@@ -8,8 +8,6 @@ from typing import Any
 from aero_kernel.canon.model import Namespace, compute_content_hash
 from pydantic import TypeAdapter
 
-SOURCE_COMMIT = "0123456789abcdef0123456789abcdef01234567"
-
 _NAMESPACES = TypeAdapter(dict[str, Namespace])
 
 
@@ -68,7 +66,6 @@ def with_hash(namespaces: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": 1,
         "content_hash": compute_content_hash(parsed),
-        "source_commit": SOURCE_COMMIT,
         "importer_version": "0.1.0",
         "namespaces": copy.deepcopy(namespaces),
     }

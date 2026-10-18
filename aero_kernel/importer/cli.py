@@ -9,7 +9,6 @@ from aero_kernel.canon.load import CanonLoadError, default_model_path, load_cano
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.pipeline import import_canon
-from aero_kernel.importer.source import resolve_source
 from aero_kernel.importer.write import PartialWriteError, write_outputs
 
 __all__ = ["main"]
@@ -35,12 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--out", type=Path, default=default_model_path().parent, help="output directory"
     )
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument(
-        "--source-commit",
-        help="commit of the canon document (default: the last commit that touched it)",
-    )
-    mode.add_argument(
+    parser.add_argument(
         "--check",
         action="store_true",
         help="write nothing; fail on a finding or if the committed model is stale",
@@ -49,8 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     canon_dir: Path = arguments.canon_dir
     if arguments.check:
         return _check(canon_dir, arguments.out)
-    commit, source_findings = resolve_source(canon_dir, arguments.source_commit)
-    result = import_canon(canon_dir, commit, source_findings=source_findings)
+    result = import_canon(canon_dir)
     if result.model is None or result.model_json is None or result.report is None:
         return _report(result.findings)
     try:
@@ -70,15 +63,10 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-# The commit of a --check build is never compared, so it needs no git: any well-formed value will do.
-_CHECK_COMMIT = "0" * 40
-
-
 def _differences(committed: CanonModel, fresh: CanonModel) -> list[str]:
     """Name what differs between the committed model and a fresh import; empty if they agree.
 
-    Only the content hash and the two versions are compared. The source commit changes with every
-    commit of the canon directory and is not content.
+    Only the content hash and the two versions are compared; the report file is not.
     """
     pairs = (
         ("content_hash", committed.content_hash, fresh.content_hash),
@@ -98,7 +86,7 @@ def _check(canon_dir: Path, out: Path) -> int:
     Returns:
         ``0`` if the committed model is current, ``1`` on a finding or a stale model.
     """
-    result = import_canon(canon_dir, _CHECK_COMMIT)
+    result = import_canon(canon_dir)
     if result.model is None:
         return _report(result.findings)
     try:

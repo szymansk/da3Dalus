@@ -316,7 +316,6 @@ def build_flight_canon() -> str:
     model = {
         "schema_version": 1,
         "content_hash": compute_content_hash(parsed),
-        "source_commit": "0123456789abcdef0123456789abcdef01234567",
         "importer_version": "0.0.0-fixture",
         "namespaces": normalised,
     }

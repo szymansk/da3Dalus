@@ -3,7 +3,6 @@
 import json
 import os
 import re
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -11,7 +10,7 @@ import pytest
 from aero_kernel.canon.load import load_canon_model
 from aero_kernel.importer import IMPORTER_VERSION
 from aero_kernel.importer.cli import main
-from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_builders import MINI_CANON, write_canon
 from aero_kernel.tests.importer_golden import GOLDEN_DIR
 
 MODEL = "canon_model.json"
@@ -20,14 +19,13 @@ REPORT = "IMPORT_REPORT.md"
 
 def import_to(canon: Path, out: Path, *extra: str) -> int:
     """Run the command line on ``canon`` and return its exit code."""
-    return main([str(canon), "--out", str(out), "--source-commit", SOURCE_COMMIT, *extra])
+    return main([str(canon), "--out", str(out), *extra])
 
 
 def test_the_import_writes_a_loadable_model_and_a_report(tmp_path: Path) -> None:
     out = tmp_path / "out"
     assert import_to(write_canon(tmp_path), out) == 0
     model = load_canon_model(out / MODEL)
-    assert model.source_commit == SOURCE_COMMIT
     assert model.importer_version == IMPORTER_VERSION
     assert model.schema_version == 1
     assert sorted(path.name for path in out.iterdir()) == [REPORT, MODEL]
@@ -41,12 +39,11 @@ def test_the_model_file_has_the_stable_format(tmp_path: Path) -> None:
     assert text == json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
-def test_the_report_names_commit_version_hash_counts_and_the_formula_table(tmp_path: Path) -> None:
+def test_the_report_names_version_hash_counts_and_the_formula_table(tmp_path: Path) -> None:
     out = tmp_path / "out"
     import_to(write_canon(tmp_path), out)
     report = (out / REPORT).read_text(encoding="utf-8")
     model = load_canon_model(out / MODEL)
-    assert SOURCE_COMMIT in report
     assert IMPORTER_VERSION in report
     assert model.content_hash in report
     assert "| formula | kind | tool | cost | applications |" in report
@@ -67,14 +64,6 @@ def test_importing_twice_is_byte_identical(tmp_path: Path) -> None:
     assert import_to(moved, second) == 0
     for name in (MODEL, REPORT):
         assert (first / name).read_bytes() == (second / name).read_bytes()
-
-
-def test_the_content_hash_ignores_the_commit(tmp_path: Path) -> None:
-    canon = write_canon(tmp_path)
-    one, two = tmp_path / "one", tmp_path / "two"
-    import_to(canon, one)
-    main([str(canon), "--out", str(two), "--source-commit", "f" * 40])
-    assert load_canon_model(one / MODEL).content_hash == load_canon_model(two / MODEL).content_hash
 
 
 def test_a_finding_writes_nothing_and_prints_file_field_message(
@@ -135,71 +124,6 @@ def test_an_unreadable_canon_directory_is_a_finding(
 ) -> None:
     assert import_to(tmp_path / "missing", tmp_path / "out") == 1
     assert "missing" in capsys.readouterr().out
-
-
-def test_a_malformed_source_commit_is_a_finding(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    canon = write_canon(tmp_path)
-    assert main([str(canon), "--out", str(tmp_path / "out"), "--source-commit", "abc"]) == 1
-    assert "source_commit" in capsys.readouterr().out
-
-
-# --- the source commit from git ---------------------------------------------------------------
-
-
-def git(repo: Path, *args: str) -> str:
-    """Run git in ``repo`` with a fixed identity and return its output."""
-    done = subprocess.run(
-        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return done.stdout.strip()
-
-
-def test_the_source_commit_defaults_to_the_git_head_of_the_canon(tmp_path: Path) -> None:
-    git(tmp_path, "init", "-q")
-    canon = write_canon(tmp_path)
-    git(tmp_path, "add", ".")
-    git(tmp_path, "commit", "-q", "-m", "canon")
-    out = tmp_path / "out"
-    assert main([str(canon), "--out", str(out)]) == 0
-    assert load_canon_model(out / MODEL).source_commit == git(tmp_path, "rev-parse", "HEAD")
-
-
-def test_uncommitted_changes_under_the_canon_are_a_finding(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    git(tmp_path, "init", "-q")
-    canon = write_canon(tmp_path)
-    git(tmp_path, "add", ".")
-    git(tmp_path, "commit", "-q", "-m", "canon")
-    (canon / "quantities" / "gravity.md").write_text("changed\n", encoding="utf-8")
-    out = tmp_path / "out"
-    assert main([str(canon), "--out", str(out)]) == 1
-    assert "uncommitted" in capsys.readouterr().out
-    assert not out.exists()
-
-
-def test_a_canon_outside_a_git_repository_needs_an_explicit_commit(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    canon = write_canon(tmp_path)
-    assert main([str(canon), "--out", str(tmp_path / "out")]) == 1
-    assert "--source-commit" in capsys.readouterr().out
-
-
-def test_a_missing_git_executable_is_a_finding(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    def no_git(*_: object, **__: object) -> None:
-        raise FileNotFoundError
-
-    monkeypatch.setattr(subprocess, "run", no_git)
-    assert main([str(write_canon(tmp_path)), "--out", str(tmp_path / "out")]) == 1
-    assert "--source-commit" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("existing", [False, True])
@@ -287,7 +211,7 @@ def test_the_default_output_directory_is_the_packaged_model_directory(
     package = tmp_path / "package"
     monkeypatch.setattr("aero_kernel.importer.cli.default_model_path", lambda: package / MODEL)
     canon = write_canon(tmp_path)
-    assert main([str(canon), "--source-commit", SOURCE_COMMIT]) == 0
+    assert main([str(canon)]) == 0
     assert (package / MODEL).is_file()
     assert (package / REPORT).is_file()
 

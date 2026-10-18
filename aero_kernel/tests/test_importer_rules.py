@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from aero_kernel.importer.pipeline import ImportResult, import_canon
-from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_builders import MINI_CANON, write_canon
 
 GRAVITY = "quantities/gravity.md"
 WEIGHT = "quantities/weight.md"
@@ -18,7 +18,7 @@ FROM_MASS = "formulas/weight-from-mass.md"
 
 def run(tmp_path: Path, overrides: Mapping[str, str | None] | None = None) -> ImportResult:
     """Import the mini canon with ``overrides`` applied."""
-    return import_canon(write_canon(tmp_path, dict(overrides or {})), SOURCE_COMMIT)
+    return import_canon(write_canon(tmp_path, dict(overrides or {})))
 
 
 def mutate(name: str, old: str, new: str) -> dict[str, str | None]:
@@ -624,7 +624,7 @@ def test_findings_with_the_same_file_and_field_are_ordered_by_message_whatever_t
     from aero_kernel.importer import rules
     from aero_kernel.importer.findings import Finding
 
-    model = import_canon(write_canon(tmp_path), SOURCE_COMMIT).model
+    model = import_canon(write_canon(tmp_path)).model
     assert model is not None
     reverse = [
         Finding(file="formulas/outer.md", field="embeds", message=message)

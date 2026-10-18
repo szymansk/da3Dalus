@@ -108,14 +108,14 @@ def test_json_that_is_no_object_is_internal(tmp_path: Path) -> None:
 def test_invalid_model_lists_the_findings(tmp_path: Path) -> None:
     raw = base_model()
     raw["namespaces"]["calc"]["quantities"]["weight"]["unit"] = "furlong"
-    raw["source_commit"] = "xyz"
+    raw["importer_version"] = ""
     with pytest.raises(CanonLoadError) as caught:
         load_canon_model(write_model(tmp_path, raw))
     assert_internal(caught.value)
     detail = caught.value.error.detail
     assert detail["error_count"] == 2
     locations = {entry["loc"] for entry in detail["errors"]}  # type: ignore[index, union-attr]
-    assert locations == {"source_commit", "namespaces.calc.quantities.weight.unit"}
+    assert locations == {"importer_version", "namespaces.calc.quantities.weight.unit"}
 
 
 def test_hash_mismatch_is_internal(tmp_path: Path) -> None:
@@ -179,7 +179,7 @@ def failures(tmp_path: Path) -> list[CanonLoadError]:
     deep = tmp_path / "deep.json"
     deep.write_text("[" * 200_000, encoding="utf-8")
     wrong_version = dict(base_model(), schema_version=2)
-    invalid = dict(base_model(), source_commit="xyz")
+    invalid = dict(base_model(), importer_version="")
     paths = [
         tmp_path / "absent.json",
         corrupt,
@@ -218,7 +218,7 @@ def test_the_cause_travels_on_the_exception_not_in_the_error(tmp_path: Path) -> 
         load_canon_model(tmp_path / "absent.json")
     assert isinstance(missing.value.__cause__, FileNotFoundError)
     assert str(tmp_path) not in f"{missing.value.error.message} {missing.value.error.detail}"
-    invalid = write_model(tmp_path, dict(base_model(), source_commit="xyz"))
+    invalid = write_model(tmp_path, dict(base_model(), importer_version=""))
     with pytest.raises(CanonLoadError) as bad:
         load_canon_model(invalid)
     assert bad.value.error.detail["error_count"] == 1

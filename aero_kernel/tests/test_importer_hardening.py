@@ -13,7 +13,7 @@ from typing import cast
 
 import pytest
 from aero_kernel.importer.pipeline import ImportResult, import_canon
-from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_builders import MINI_CANON, write_canon
 
 
 @contextmanager
@@ -42,7 +42,7 @@ FROM_MASS = "formulas/weight-from-mass.md"
 
 def run(tmp_path: Path, overrides: dict[str, str | None] | None = None) -> ImportResult:
     """Import the mini canon with ``overrides`` applied."""
-    return import_canon(write_canon(tmp_path, overrides), SOURCE_COMMIT)
+    return import_canon(write_canon(tmp_path, overrides))
 
 
 def mutate(name: str, old: str, new: str) -> dict[str, str | None]:
@@ -229,7 +229,7 @@ def test_leading_prose_before_the_front_matter_is_a_finding(tmp_path: Path) -> N
 def test_a_directory_named_like_an_entry_is_a_finding(tmp_path: Path) -> None:
     canon = write_canon(tmp_path)
     (canon / "quantities" / "dir.md").mkdir()
-    result = import_canon(canon, SOURCE_COMMIT)
+    result = import_canon(canon)
     assert shown(result) == ["quantities/dir.md: file: is a directory, not an entry file"]
 
 
@@ -239,10 +239,7 @@ def test_a_missing_entry_directory_is_a_finding_for_each(tmp_path: Path, sub: st
     for path in (canon / sub).iterdir():
         path.unlink()
     (canon / sub).rmdir()
-    assert any(
-        f.file == sub and f.field == "directory"
-        for f in import_canon(canon, SOURCE_COMMIT).findings
-    )
+    assert any(f.file == sub and f.field == "directory" for f in import_canon(canon).findings)
 
 
 def test_a_default_value_of_null_is_a_finding(tmp_path: Path) -> None:
@@ -420,24 +417,6 @@ def test_a_cycle_between_two_formulas_terminates_with_a_finite_sorted_closure(
     assert closures["weigh-twice"] == ("calc:outer.default", "calc:weigh-twice.default")
 
 
-# --- S14: the source commit pattern, with stage-1 findings --------------------------------------------
-
-
-@pytest.mark.parametrize("commit", ["A" * 40, "a" * 39, "a" * 41, "xa" + "a" * 38, "a" * 40 + "\n"])
-def test_a_malformed_commit_is_a_finding(tmp_path: Path, commit: str) -> None:
-    result = import_canon(write_canon(tmp_path), commit)
-    assert [(f.file, f.field) for f in result.findings] == [("command line", "source_commit")]
-
-
-def test_a_malformed_commit_and_a_stage_1_finding_are_both_reported(tmp_path: Path) -> None:
-    canon = write_canon(tmp_path, {GRAVITY: "no front matter\n"})
-    result = import_canon(canon, "abc")
-    assert [(f.file, f.field) for f in result.findings] == [
-        ("command line", "source_commit"),
-        (GRAVITY, "front matter"),
-    ]
-
-
 # --- S15: the mapping of defaults ------------------------------------------------------------------------
 
 
@@ -610,7 +589,7 @@ def test_an_unreadable_file_is_a_finding_not_a_traceback(tmp_path: Path, name: s
     canon = write_canon(tmp_path)
     (canon / name).chmod(0)
     try:
-        result = import_canon(canon, SOURCE_COMMIT)
+        result = import_canon(canon)
     finally:
         (canon / name).chmod(0o644)
     (finding,) = result.findings
@@ -691,7 +670,7 @@ def test_two_missing_required_fields_are_both_reported(tmp_path: Path) -> None:
 
 
 def test_a_missing_canon_directory_is_one_finding(tmp_path: Path) -> None:
-    result = import_canon(tmp_path / "missing", SOURCE_COMMIT)
+    result = import_canon(tmp_path / "missing")
     assert [(f.file, f.field) for f in result.findings] == [(".", "canon directory")]
     assert result.findings[0].message.endswith("missing is not a directory")
 
@@ -708,12 +687,6 @@ def test_an_empty_applications_list_and_a_separate_bad_embed_are_both_reported(
     ]
 
 
-def test_no_source_commit_is_a_finding_never_silence(tmp_path: Path) -> None:
-    result = import_canon(write_canon(tmp_path), None)
-    assert result.model is None
-    assert shown(result) == ["command line: source_commit: no source commit given"]
-
-
 def test_findings_of_two_bad_files_are_sorted_whatever_the_directory_listing_order(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -725,7 +698,7 @@ def test_findings_of_two_bad_files_are_sorted_whatever_the_directory_listing_ord
         return iter(reversed(list(real(self))))
 
     monkeypatch.setattr(Path, "iterdir", reversed_listing)
-    assert [f.file for f in import_canon(canon, SOURCE_COMMIT).findings] == [GRAVITY, WEIGHT]
+    assert [f.file for f in import_canon(canon).findings] == [GRAVITY, WEIGHT]
 
 
 # --- the embeds closure of a diamond chain is computed once per formula ---------------------------------
@@ -814,17 +787,6 @@ def test_an_unknown_quantity_in_a_produce_override_names_the_application_and_par
 def test_an_unknown_variable_names_its_position(tmp_path: Path) -> None:
     result = run(tmp_path, mutate(TWICE, "variables: [aircraft-mass]", "variables: [nothing]"))
     assert shown(result) == [f"{TWICE}: variables[0]: unknown quantity calc:nothing"]
-
-
-@pytest.mark.parametrize(
-    "commit", ["A" * 40, "a" * 39, "a" * 41, "x" + "a" * 40, "a" * 40 + "x", "a" * 40 + "\n"]
-)
-def test_a_malformed_commit_is_exactly_one_finding(tmp_path: Path, commit: str) -> None:
-    result = import_canon(write_canon(tmp_path), commit)
-    assert [(f.file, f.field) for f in result.findings] == [("command line", "source_commit")]
-    assert result.findings[0].message == (
-        f"{commit!r} is not a 40-character lower-case hex git commit"
-    )
 
 
 # 60 characters is the longest written value a finding repeats.
@@ -977,37 +939,3 @@ def test_a_parameter_called_const_is_not_mistaken_for_the_constant_tag(tmp_path:
     assert shown(run(tmp_path, {FROM_MASS: text})) == [
         f"{FROM_MASS}: applications[0].bind.const: Input should be a valid string (got 7)"
     ]
-
-
-def test_the_commit_format_is_defined_once_structurally() -> None:
-    """N5: the importer reuses the model's pattern object; no module compiles its own 40-hex."""
-    import ast
-
-    from aero_kernel.canon import model
-    from aero_kernel.importer import pipeline, source
-
-    assert source.COMMIT_PATTERN.pattern is model.SOURCE_COMMIT_REGEX
-    field = model.CanonModel.model_fields["source_commit"]
-    assert any(
-        getattr(meta, "pattern", None) == f"^{model.SOURCE_COMMIT_REGEX}$"
-        for meta in field.metadata
-    )
-    for module in (source, pipeline):
-        assert module.__file__ is not None
-        tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                assert not re.search(r"\{\s*40\s*\}|\{40,|\{0,40", node.value), (
-                    f"{module.__name__} writes its own 40-character pattern: {node.value!r}"
-                )
-            if (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr in ("compile", "match", "fullmatch", "search")
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "re"
-            ):
-                first = node.args[0] if node.args else None
-                assert not isinstance(first, ast.Constant), (
-                    f"{module.__name__} calls re.{node.func.attr} with a literal pattern"
-                )

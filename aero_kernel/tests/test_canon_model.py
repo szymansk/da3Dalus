@@ -48,7 +48,6 @@ def test_hash_must_match_the_namespaces() -> None:
 def test_hash_ignores_provenance() -> None:
     first = base_model()
     second = base_model()
-    second["source_commit"] = "f" * 40
     second["importer_version"] = "9.9.9"
     assert first["content_hash"] == second["content_hash"]
     CanonModel.model_validate(second)
@@ -57,7 +56,6 @@ def test_hash_ignores_provenance() -> None:
 def test_hash_format_and_provenance_formats() -> None:
     for field, bad in (
         ("content_hash", "abc"),
-        ("source_commit", "xyz"),
         ("importer_version", ""),
     ):
         raw = base_model()
@@ -440,7 +438,6 @@ def test_public_names_of_the_model_are_pinned() -> None:
     assert sorted(model.__all__) == sorted(
         [
             "BINDING_TAGS",
-            "SOURCE_COMMIT_REGEX",
             "DEFAULT_NAMESPACE",
             "Application",
             "Binding",
@@ -497,16 +494,6 @@ def test_hash_covers_every_namespace() -> None:
     first = with_hash(namespaces)["content_hash"]
     namespaces["other"]["defaults"]["gravity"]["value"] = 9.81
     assert with_hash(namespaces)["content_hash"] != first
-
-
-@pytest.mark.parametrize(
-    "commit", ["a" * 39, "a" * 41, " " + "a" * 40, "a" * 40 + "\n", "x" + "a" * 39]
-)
-def test_source_commit_is_exactly_forty_hex_characters(commit: str) -> None:
-    raw = base_model()
-    raw["source_commit"] = commit
-    with pytest.raises(ValidationError):
-        CanonModel.model_validate(raw)
 
 
 def test_an_unknown_embed_is_a_problem_of_the_embeds_field() -> None:

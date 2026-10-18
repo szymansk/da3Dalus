@@ -8,10 +8,6 @@ import pytest
 import yaml
 from aero_kernel.canon import model
 from aero_kernel.canon.load import default_model_path, load_canon_model
-from aero_kernel.importer import source
-from aero_kernel.importer.pipeline import import_canon
-from aero_kernel.importer.source import commit_format_finding
-from aero_kernel.tests.importer_builders import write_canon
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = REPO_ROOT / "_reversa_sdd" / "calculations" / "canon" / "README.md"
@@ -87,15 +83,6 @@ def test_a_canon_only_change_triggers_the_backend_filter() -> None:
 
 
 # --- N5: both users of the commit format consult the shared pattern --------------------------------------------
-
-
-def test_replacing_the_shared_pattern_changes_both_users(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(source, "COMMIT_PATTERN", re.compile(".*"))
-    assert commit_format_finding("not-a-sha") is None
-    result = import_canon(write_canon(tmp_path), "zz")
-    assert [f for f in result.findings if f.file == "command line"] == []
 
 
 # --- S3 (b) amendment 2: S1 and A2, two more gates in the fast job ----------------------------------------------

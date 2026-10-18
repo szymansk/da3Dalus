@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 from aero_kernel.importer.cli import main
-from aero_kernel.tests.importer_builders import SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_builders import write_canon
 
 __all__ = ["GOLDEN_DIR", "regenerate"]
 
@@ -19,7 +19,7 @@ def regenerate() -> None:
     """Import the mini canon and store the two outputs as the golden files."""
     with tempfile.TemporaryDirectory() as work:
         canon = write_canon(Path(work))
-        status = main([str(canon), "--out", str(GOLDEN_DIR), "--source-commit", SOURCE_COMMIT])
+        status = main([str(canon), "--out", str(GOLDEN_DIR)])
     if status != 0:
         raise SystemExit(status)
 

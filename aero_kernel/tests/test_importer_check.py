@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from aero_kernel.canon.load import load_canon_model
 from aero_kernel.importer.cli import main
-from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_builders import MINI_CANON, write_canon
 
 MODEL = "canon_model.json"
 REPORT = "IMPORT_REPORT.md"
@@ -16,7 +16,7 @@ REPORT = "IMPORT_REPORT.md"
 
 def import_to(canon: Path, out: Path) -> None:
     """Write the committed model the check compares against."""
-    assert main([str(canon), "--out", str(out), "--source-commit", SOURCE_COMMIT]) == 0
+    assert main([str(canon), "--out", str(out)]) == 0
 
 
 def check(canon: Path, out: Path) -> int:
@@ -120,13 +120,6 @@ def test_a_different_schema_version_makes_the_model_stale(
     assert f"{MODEL} is stale: it cannot be loaded" in capsys.readouterr().out
 
 
-def test_the_source_commit_does_not_matter(tmp_path: Path) -> None:
-    canon, out = write_canon(tmp_path), tmp_path / "out"
-    assert main([str(canon), "--out", str(out), "--source-commit", "f" * 40]) == 0
-    assert check(canon, out) == 0
-    assert load_canon_model(out / MODEL).source_commit == "f" * 40
-
-
 def test_the_check_needs_no_git_and_ignores_a_dirty_canon(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -144,17 +137,11 @@ def test_the_check_needs_no_git_and_ignores_a_dirty_canon(
 
 
 def test_the_report_file_is_not_compared(tmp_path: Path) -> None:
-    """The report holds the source commit, which the check ignores."""
+    """The report is not part of what the check compares."""
     canon, out = write_canon(tmp_path), tmp_path / "out"
     import_to(canon, out)
     (out / REPORT).write_text("edited\n", encoding="utf-8")
     assert check(canon, out) == 0
-
-
-def test_check_and_source_commit_exclude_each_other(tmp_path: Path) -> None:
-    with pytest.raises(SystemExit) as raised:
-        main([str(write_canon(tmp_path)), "--check", "--source-commit", SOURCE_COMMIT])
-    assert raised.value.code == 2
 
 
 def test_run_as_a_module_the_import_check_exits_1_on_a_stale_model(

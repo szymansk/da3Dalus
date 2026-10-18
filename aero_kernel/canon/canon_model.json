@@ -3889,6 +3889,5 @@
       }
     }
   },
-  "schema_version": 1,
-  "source_commit": "a10d969279a97dd23c16f92d10d370278401b7a3"
+  "schema_version": 1
 }

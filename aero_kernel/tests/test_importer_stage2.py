@@ -8,7 +8,7 @@ import pytest
 from aero_kernel.canon.model import Tool
 from aero_kernel.importer.normalise import DERIVED_COST
 from aero_kernel.importer.pipeline import ImportResult, import_canon
-from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_builders import MINI_CANON, write_canon
 
 GRAVITY = "quantities/gravity.md"
 WEIGHT = "quantities/weight.md"
@@ -19,7 +19,7 @@ FROM_MASS = "formulas/weight-from-mass.md"
 
 def run(tmp_path: Path, overrides: dict[str, str | None] | None = None) -> ImportResult:
     """Import the mini canon with ``overrides`` applied."""
-    return import_canon(write_canon(tmp_path, overrides), SOURCE_COMMIT)
+    return import_canon(write_canon(tmp_path, overrides))
 
 
 def mutate(name: str, old: str, new: str) -> dict[str, str | None]:

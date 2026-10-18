@@ -2,7 +2,6 @@
 
 import pytest
 from aero_kernel.importer.assemble import assemble, findings_of
-from aero_kernel.tests.importer_builders import SOURCE_COMMIT
 from pydantic import BaseModel, ValidationError, model_validator
 
 
@@ -36,7 +35,7 @@ def namespace(**formula_overrides: object) -> dict[str, object]:
 
 
 def test_a_valid_namespace_assembles() -> None:
-    model, findings = assemble(namespace(), SOURCE_COMMIT)
+    model, findings = assemble(namespace())
     assert findings == []
     assert model is not None
 
@@ -53,18 +52,12 @@ def test_a_list_index_in_the_location_is_rendered_in_brackets() -> None:
             }
         ]
     )
-    model, findings = assemble(bad, SOURCE_COMMIT)
+    model, findings = assemble(bad)
     assert model is None
     assert any(
         f.file == "formulas/weigh.md" and f.field.startswith("applications[0].bind.m")
         for f in findings
     )
-
-
-def test_a_field_of_the_model_itself_is_named_by_its_own_name() -> None:
-    model, findings = assemble(namespace(), "not-a-commit")
-    assert model is None
-    assert [(f.file, f.field) for f in findings] == [("canon model", "source_commit")]
 
 
 def test_a_whole_model_rule_the_mapping_does_not_know_still_becomes_a_finding() -> None:
@@ -86,7 +79,7 @@ def test_a_whole_model_rule_the_mapping_does_not_know_still_becomes_a_finding() 
 
 def test_a_one_element_location_names_the_section_of_the_model() -> None:
     bad: dict[str, object] = {"quantities": {}, "formulas": 5, "defaults": {}}
-    model, findings = assemble(bad, SOURCE_COMMIT)
+    model, findings = assemble(bad)
     assert model is None
     assert [(f.file, f.field, f.message) for f in findings] == [
         ("canon model", "formulas", "Input should be a valid dictionary (got 5)")

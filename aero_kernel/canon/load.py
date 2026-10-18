@@ -131,9 +131,8 @@ def load_canon_model(path: Path | None = None) -> CanonModel:
     except ValidationError as exc:
         raise load_failure("the model is invalid", _findings(exc)) from exc
     logger.debug(
-        "canon model loaded: %s, source commit %s, importer %s",
+        "canon model loaded: %s, importer %s",
         model.content_hash,
-        model.source_commit,
         model.importer_version,
     )
     return model

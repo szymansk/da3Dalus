@@ -6,9 +6,7 @@ once against the real canon document.
 
 from pathlib import Path
 
-__all__ = ["MINI_CANON", "SOURCE_COMMIT", "write_canon"]
-
-SOURCE_COMMIT = "0123456789abcdef0123456789abcdef01234567"
+__all__ = ["MINI_CANON", "write_canon"]
 
 
 def _quantity(

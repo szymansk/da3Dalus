@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from aero_kernel.canon.load import load_canon_model
 from aero_kernel.importer.pipeline import import_canon
-from aero_kernel.tests.importer_builders import SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_builders import write_canon
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANON = REPO_ROOT / "_reversa_sdd" / "calculations" / "canon"
@@ -17,7 +17,7 @@ PACKAGE = REPO_ROOT / "aero_kernel"
 
 
 def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
-    result = import_canon(CANON, SOURCE_COMMIT)
+    result = import_canon(CANON)
     assert result.findings == (), [str(finding) for finding in result.findings]
     assert result.model_json is not None
     (tmp_path / "canon_model.json").write_text(result.model_json, encoding="utf-8")
@@ -32,7 +32,7 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
 
 
 def test_the_real_canon_imports_byte_identically_twice() -> None:
-    first, second = import_canon(CANON, SOURCE_COMMIT), import_canon(CANON, SOURCE_COMMIT)
+    first, second = import_canon(CANON), import_canon(CANON)
     assert first.model_json is not None
     assert (first.model_json, first.report) == (second.model_json, second.report)
 
@@ -85,7 +85,7 @@ def test_python_m_aero_kernel_importer_runs_the_command_line(
 ) -> None:
     canon = write_canon(tmp_path)
     out = tmp_path / "out"
-    argv = ["importer", str(canon), "--out", str(out), "--source-commit", SOURCE_COMMIT]
+    argv = ["importer", str(canon), "--out", str(out)]
     monkeypatch.setattr("sys.argv", argv)
     with pytest.raises(SystemExit) as exit_info:
         runpy.run_module("aero_kernel.importer", run_name="__main__")

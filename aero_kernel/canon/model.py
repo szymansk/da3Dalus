@@ -31,7 +31,6 @@ from pydantic_core import PydanticCustomError
 __all__ = [
     "BINDING_TAGS",
     "DEFAULT_NAMESPACE",
-    "SOURCE_COMMIT_REGEX",
     "Application",
     "Binding",
     "CanonModel",
@@ -55,9 +54,6 @@ __all__ = [
 
 # Text the canon must state (a symbol, a source, a regime): at least one non-blank character.
 NonBlank = Annotated[str, StringConstraints(min_length=1, pattern=r"\S")]
-
-# The one definition of a source commit: 40 lower-case hex digits (the importer pre-checks with it).
-SOURCE_COMMIT_REGEX = r"[0-9a-f]{40}"
 
 # Numbers in the model are finite (a model with NaN would not survive its JSON form).
 FiniteNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
@@ -448,8 +444,8 @@ class Namespace(BaseModel):
 def compute_content_hash(namespaces: Mapping[str, Namespace]) -> str:
     """Hash the canon's content: ``"sha256:"`` plus the hex SHA-256 of the canonical JSON.
 
-    Only the namespaces enter; provenance (``source_commit``, ``importer_version``) and the hash
-    itself do not, so identical content hashes alike whatever commit it was imported from.
+    Only the namespaces enter; provenance (``importer_version``) and the hash itself do not, so
+    identical content hashes alike whatever importer version wrote it.
 
     Args:
         namespaces: The namespaces of a model.
@@ -552,7 +548,6 @@ class CanonModel(BaseModel):
     Attributes:
         schema_version: Version of this model shape; ``1``.
         content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).
-        source_commit: Commit of the canon document the model was imported from.
         importer_version: Version of the importer that wrote the model.
         namespaces: Quantities and formulas per namespace; every reference inside is qualified.
     """
@@ -561,7 +556,6 @@ class CanonModel(BaseModel):
 
     schema_version: Literal[1]
     content_hash: Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
-    source_commit: Annotated[str, _anchored(SOURCE_COMMIT_REGEX)]
     importer_version: str = Field(min_length=1)
     namespaces: Annotated[dict[NamespaceKey, Namespace], Field(min_length=1)]
 

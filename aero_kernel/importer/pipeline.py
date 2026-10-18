@@ -1,7 +1,6 @@
 """The import pipeline: stages 1 to 3 over a canon directory, producing the texts to write."""
 
 import logging
-from collections.abc import Sequence
 from pathlib import Path
 
 from aero_kernel.canon.model import CanonModel
@@ -11,7 +10,6 @@ from aero_kernel.importer.normalise import normalise
 from aero_kernel.importer.parse import parse_canon
 from aero_kernel.importer.report import model_text, report_text
 from aero_kernel.importer.rules import check_model
-from aero_kernel.importer.source import commit_format_finding
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -37,37 +35,24 @@ class ImportResult(BaseModel):
     report: str | None = None
 
 
-def import_canon(
-    canon_dir: Path, source_commit: str | None, *, source_findings: Sequence[Finding] = ()
-) -> ImportResult:
+def import_canon(canon_dir: Path) -> ImportResult:
     """Run stages 1 to 3 and render the outputs; all or nothing.
 
     A stage that finds something stops the pipeline after reporting all of its own findings.
 
     Args:
         canon_dir: The canon document directory.
-        source_commit: The 40-hex commit of the canon document; ``None`` if there is none, which
-            ``source_findings`` then explains.
-        source_findings: Findings about the source commit; they are reported with those of stage 1.
 
     Returns:
         The result; it holds either findings or the model and the texts to write.
     """
-    findings: list[Finding] = list(source_findings)
-    if source_commit is not None and (malformed := commit_format_finding(source_commit)):
-        findings.append(malformed)
-    if source_commit is None and not findings:
-        findings.append(
-            Finding(file="command line", field="source_commit", message="no source commit given")
-        )
     parsed = parse_canon(canon_dir)
-    findings.extend(parsed.findings)
-    if findings or source_commit is None:
-        return ImportResult(findings=tuple(findings))
+    if parsed.findings:
+        return ImportResult(findings=tuple(parsed.findings))
     namespace, findings = normalise(parsed)
     if findings:
         return ImportResult(findings=tuple(findings))
-    model, findings = assemble(namespace, source_commit)
+    model, findings = assemble(namespace)
     if model is None:
         return ImportResult(findings=tuple(findings))
     findings = check_model(model)

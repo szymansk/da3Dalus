@@ -162,7 +162,6 @@ def test_not_implemented_is_sorted_by_qualified_slug(flight_canon: CanonModel) -
     model = CanonModel(
         schema_version=1,
         content_hash=compute_content_hash(namespaces),
-        source_commit="0" * 40,
         importer_version="test",
         namespaces=namespaces,
     )

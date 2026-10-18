@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 from aero_kernel.importer.pipeline import ImportResult, import_canon
-from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_builders import MINI_CANON, write_canon
 
 
 def run(tmp_path: Path, overrides: dict[str, str | None] | None = None) -> ImportResult:
     """Import the mini canon with ``overrides`` applied."""
-    return import_canon(write_canon(tmp_path, overrides), SOURCE_COMMIT)
+    return import_canon(write_canon(tmp_path, overrides))
 
 
 def mutate(name: str, old: str, new: str) -> dict[str, str | None]:
@@ -281,7 +281,7 @@ def test_all_findings_of_a_stage_are_reported_together(tmp_path: Path) -> None:
 def test_a_file_that_is_not_utf8_is_a_finding(tmp_path: Path) -> None:
     canon = write_canon(tmp_path)
     (canon / GRAVITY).write_bytes(b"---\ncanon: gravity\nsymbol: \xff\n---\n")
-    result = import_canon(canon, SOURCE_COMMIT)
+    result = import_canon(canon)
     assert any(f.file == GRAVITY and "unreadable" in f.message for f in result.findings)
 
 
@@ -290,7 +290,7 @@ def test_a_missing_entry_directory_is_a_finding(tmp_path: Path) -> None:
     for path in (canon / "quantities").iterdir():
         path.unlink()
     (canon / "quantities").rmdir()
-    result = import_canon(canon, SOURCE_COMMIT)
+    result = import_canon(canon)
     assert any(f.file == "quantities" and f.field == "directory" for f in result.findings)
 
 
@@ -392,4 +392,4 @@ def test_hidden_files_and_subdirectories_are_ignored(tmp_path: Path) -> None:
     canon = write_canon(tmp_path)
     (canon / "formulas" / ".DS_Store").write_bytes(b"\x00")
     (canon / "quantities" / "drafts").mkdir()
-    assert import_canon(canon, SOURCE_COMMIT).findings == ()
+    assert import_canon(canon).findings == ()

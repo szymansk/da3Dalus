@@ -181,14 +181,11 @@ def findings_of(error: ValidationError) -> list[Finding]:
     return findings
 
 
-def assemble(
-    namespace: dict[str, object], source_commit: str
-) -> tuple[CanonModel | None, list[Finding]]:
+def assemble(namespace: dict[str, object]) -> tuple[CanonModel | None, list[Finding]]:
     """Validate the normalised calc namespace and build the canon model.
 
     Args:
         namespace: The result of stage 2.
-        source_commit: The 40-hex commit of the canon document.
 
     Returns:
         The model, or ``None`` with the findings that name why it cannot be built.
@@ -200,7 +197,6 @@ def assemble(
             {
                 "schema_version": 1,
                 "content_hash": compute_content_hash(content),
-                "source_commit": source_commit,
                 "importer_version": IMPORTER_VERSION,
                 "namespaces": {DEFAULT_NAMESPACE: validated.model_dump(mode="json")},
             }
