@@ -57,7 +57,6 @@ async def test_compute_runs_on_the_shipped_build(monkeypatch: pytest.MonkeyPatch
     assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED  # no formulas yet, Q1
     fixture = load_canon_model(FIXTURE)
     assert result.provenance.canon_model_hash == fixture.content_hash
-    assert result.provenance.canon_source_commit == fixture.source_commit
 
 
 async def test_no_packaged_model_makes_every_quantity_internal_and_never_raises(
@@ -77,7 +76,6 @@ async def test_no_packaged_model_makes_every_quantity_internal_and_never_raises(
         assert quantity.error.quantity == quantity.slug
         assert str(tmp_path) not in f"{quantity.error.message} {quantity.error.hint}"
     assert result.provenance.canon_model_hash is None
-    assert result.provenance.canon_source_commit is None
     assert result.provenance.build_digest.startswith("sha256:")
     logged = [r for r in caplog.records if r.levelno >= logging.ERROR]
     assert len(logged) == 1

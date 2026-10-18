@@ -589,7 +589,6 @@ def _provenance(build: Build, defaults: tuple[DefaultUsed, ...] = ()) -> Provena
         defaults_used=defaults,
         build_digest=build.digest,
         canon_model_hash=build.model.content_hash,
-        canon_source_commit=build.model.source_commit,
     )
 
 

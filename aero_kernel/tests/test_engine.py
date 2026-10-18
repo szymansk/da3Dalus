@@ -78,7 +78,6 @@ async def test_q3_a_result_leads_back_to_application_tool_and_canon_state() -> N
     quantity = result.quantities[0]
     assert (quantity.slug, quantity.application, quantity.tool) == ("weight", "default", "APP")
     assert result.provenance.canon_model_hash == build.model.content_hash
-    assert result.provenance.canon_source_commit == build.model.source_commit
     assert result.provenance.build_digest == build.digest
     assert result.provenance.tool_versions == {}
     assert result.provenance.solver_settings == {}
@@ -942,7 +941,6 @@ async def test_provenance_equals_the_builds() -> None:
     build = make_build()
     result = await evaluate(build, aircraft(), request("weight"))
     assert result.provenance.canon_model_hash == build.model.content_hash
-    assert result.provenance.canon_source_commit == build.model.source_commit
     assert result.provenance.build_digest == build.digest
     refused = await evaluate(build, aircraft({"aircraft-mass": 0.0}), request("weight"))
     assert refused.provenance == result.provenance

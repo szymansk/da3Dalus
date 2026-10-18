@@ -366,8 +366,6 @@ class Provenance(BaseModel):
         build_digest: Hash over the code and canon model; identifies the exact build.
         canon_model_hash: Hash of the canon model; ``None`` only when the shipped model could
             not be loaded.
-        canon_source_commit: Commit of the canon document the model was imported from; ``None``
-            only when the shipped model could not be loaded.
         tool_versions: Version per tool (aerosandbox, NeuralFoil model, AVL).
         solver_settings: Solver settings of the call.
         defaults_used: Every canon default the call took.
@@ -377,7 +375,6 @@ class Provenance(BaseModel):
 
     build_digest: str = Field(min_length=1)
     canon_model_hash: str | None = Field(default=None, min_length=1)
-    canon_source_commit: str | None = Field(default=None, min_length=1)
     tool_versions: dict[
         Annotated[str, Field(min_length=1)], Annotated[str, Field(min_length=1)]
     ] = Field(default_factory=dict)

@@ -341,7 +341,6 @@ def make_provenance(**overrides: object) -> Provenance:
     fields: dict[str, object] = {
         "build_digest": "ab" * 32,
         "canon_model_hash": "cd" * 32,
-        "canon_source_commit": "3a86f54c",
         "tool_versions": {"aerosandbox": "4.2.9"},
         "solver_settings": {},
         "defaults_used": [
@@ -356,13 +355,12 @@ class TestProvenance:
         assert sorted(Provenance.model_fields) == [
             "build_digest",
             "canon_model_hash",
-            "canon_source_commit",
             "defaults_used",
             "solver_settings",
             "tool_versions",
         ]
 
-    @pytest.mark.parametrize("field", ["kernel_version", "accuracy"])
+    @pytest.mark.parametrize("field", ["kernel_version", "accuracy", "canon_source_commit"])
     def test_removed_fields_are_rejected(self, field: str) -> None:
         with pytest.raises(ValidationError, match="extra_forbidden"):
             make_provenance(**{field: "x"})
@@ -379,14 +377,13 @@ class TestProvenance:
         with pytest.raises(ValidationError):
             make_provenance(defaults_used=[entry])
 
-    @pytest.mark.parametrize("field", ["build_digest", "canon_model_hash", "canon_source_commit"])
+    @pytest.mark.parametrize("field", ["build_digest", "canon_model_hash"])
     def test_rejects_empty_identifier(self, field: str) -> None:
         with pytest.raises(ValidationError):
             make_provenance(**{field: ""})
 
-    @pytest.mark.parametrize("field", ["canon_model_hash", "canon_source_commit"])
-    def test_canon_state_is_none_without_a_model(self, field: str) -> None:
-        assert getattr(make_provenance(**{field: None}), field) is None
+    def test_canon_hash_is_none_without_a_model(self) -> None:
+        assert make_provenance(canon_model_hash=None).canon_model_hash is None
 
     def test_build_digest_stays_required(self) -> None:
         with pytest.raises(ValidationError):
