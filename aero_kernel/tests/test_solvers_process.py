@@ -421,6 +421,36 @@ async def test_a_run_cancelled_while_communicate_is_still_queued_reaps_and_close
     assert process.stderr.closed
 
 
+async def test_a_pool_that_refuses_the_work_still_reaps_the_child_and_closes_its_pipes(
+    tmp_path: Path, popens: list[subprocess.Popen[bytes]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """E.g. the runtime closed between the slot check and the submit: the child already runs."""
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    closed = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    closed.shutdown()
+    with pytest.raises(RuntimeError, match="after shutdown"):
+        async with asyncio.timeout(10):
+            await _run_process(
+                {},
+                "",
+                executable=sys.executable,
+                args=["-c", "import time; time.sleep(30)"],
+                executor=closed,
+            )
+    (process,) = popens
+    assert process.returncode is not None  # killed and reaped, not left running
+    assert await _wait_dead(process.pid)
+    assert process.stdin is not None
+    assert process.stdout is not None
+    assert process.stderr is not None
+    assert process.stdin.closed
+    assert process.stdout.closed
+    assert process.stderr.closed
+    assert _entries(scratch) == []
+
+
 async def test_a_start_that_fails_for_another_reason_propagates_and_leaks_nothing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

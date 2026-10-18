@@ -93,22 +93,23 @@ def _remove_directory(directory: Path) -> None:
 
 
 async def _reap(
-    pending: concurrent.futures.Future[tuple[bytes, bytes]],
+    pending: concurrent.futures.Future[tuple[bytes, bytes]] | None,
     process: subprocess.Popen[bytes],
     tool: str,
 ) -> None:
     """Kill the process group, then wait, within a bound, until the process is reaped.
 
-    Normally ``communicate`` runs in a pool thread and returns once the group is dead. If the
-    run was cancelled while ``communicate`` was still queued (the pool was busy), cancelling the
-    waiting future also cancelled it: it never runs, so the pipes are closed and the process
-    polled here instead. Cancellations that arrive during the wait are swallowed (the caller
-    re-raises the original one afterwards). Past the bound the process is left to finish by
-    itself and the operator is told (ADR 0020).
+    Normally ``communicate`` runs in a pool thread and returns once the group is dead. If it
+    never runs, the pipes are closed and the process polled here instead: the run was cancelled
+    while ``communicate`` was still queued (cancelling the waiting future cancelled it), or the
+    pool refused the work after the process had started (``pending`` is ``None``).
+    Cancellations that arrive during the wait are swallowed (the caller re-raises the original
+    one afterwards). Past the bound the process is left to finish by itself and the operator is
+    told (ADR 0020).
     """
     _kill_group(process)
     deadline = time.monotonic() + _REAP_BOUND_S
-    if pending.cancelled():
+    if pending is None or pending.cancelled():
         for pipe in (process.stdin, process.stdout, process.stderr):
             if pipe is not None:
                 pipe.close()
@@ -211,7 +212,7 @@ async def run_process(
         # Cancelled, timed out or finished: the process is gone and the directory removed before
         # the exception continues. Kill first so rmtree never races a writer.
         try:
-            if process is not None and pending is not None and process.returncode is None:
+            if process is not None and process.returncode is None:
                 await _reap(pending, process, Path(executable).name)
         finally:
             _remove_directory(directory)  # whatever went wrong above, the directory goes
