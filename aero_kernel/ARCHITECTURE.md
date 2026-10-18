@@ -767,7 +767,9 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - CPU-bound solver work (AeroBuildup, NeuralFoil, IPOPT via `asb.Opti`) runs in a **process pool**. The
     spawn context mirrors `app/services/cad_service.py`, because CasADi/IPOPT and numpy do not reliably
     release the GIL.
-  - AVL runs through `asyncio.create_subprocess_exec`.
+  - AVL runs as a plain `subprocess.Popen` (pipes, `start_new_session=True`); its `communicate()` runs in a
+    thread pool the runtime owns. There is no asyncio subprocess transport (#1188: cancelling asyncio's
+    start task can hang the shutdown forever, CPython gh-103847, not fixed for 3.11/3.12).
   - Formula code itself runs on the loop; it is cheap by contract (ch. 8.12). Only the solver adapters
     leave the loop. There is no size threshold.
 - **Concurrency from the graph.** Independent nodes of the subtree and world assignments (A11) run
@@ -789,16 +791,18 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     ever created; no call starts after closing began. `aclose()` drains this runtime's running jobs off the
     loop, then shuts the pool down in `asyncio.to_thread` (waiting for the workers, cancelling what is
     pending): when it returns, no work of this runtime is running.
+  - **Threads for AVL.** The runtime also owns one `ThreadPoolExecutor` (`max_workers = max_concurrency`)
+    for the subprocesses' `communicate()`, created with the runtime and shut down in `aclose()`; the loop's
+    default executor is never used.
   - Nothing starts at import. Resources are not results: they never change a value.
 - **Cancellation.**
   - Cancelling the `compute()` task cancels all child tasks.
   - It kills running AVL subprocesses (their whole process group) and removes their temporary directories.
-    The kernel creates the child's pipes itself (`os.pipe`, read and written through the public
-    `connect_read_pipe` / `connect_write_pipe`, every descriptor closed in a `finally`), so a start that fails
-    after the spawn leaks no descriptor and cannot hang; a cancel never interrupts the start; the start is
-    awaited to its end, so a spawned child is never orphaned (#1188) — except when asyncio's child-watcher registration
-    fails after the spawn (no pid is returned): that start is `internal`, and one `WARNING` log line says a
-    child may have been left running (ADR 0020).
+    The spawn is synchronous, so there is no start to interrupt. On a cancel or timeout the kernel sends
+    `SIGKILL` to the group (`os.killpg`), then waits a bounded 5 s for `communicate()` to reap the child,
+    ignoring further cancels during that wait only, and re-raises. Past the bound, one `WARNING`
+    `process not reaped (<tool>)` (ADR 0020). The pid-reuse race between exit and `killpg` is not closed
+    (no `WNOWAIT`; KISS).
   - Work already running in the process pool is allowed to finish but its result is discarded, because
     pool workers cannot be interrupted safely.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.

@@ -49,7 +49,8 @@ then the code. Epic: #1173.
 - **English only (ADR 0029).** Identifiers, file names, comments, docstrings, error `message`/`hint`
   and docs in this package are English. Canon slugs are used as they are.
 - **Async API (ARCHITECTURE §8.10).** `compute()` is a coroutine and must never block the event loop:
-  solver work goes through `runtime.py` (process pool), AVL through `asyncio.create_subprocess_exec`.
+  solver work goes through `runtime.py` (process pool), AVL through `subprocess.Popen` with `communicate()` in the runtime's thread pool (never an asyncio
+  subprocess transport, #1188).
   Never call `asyncio.run` inside the package; always re-raise `CancelledError`; clean up subprocesses and
   temp dirs on cancellation.
 - **Two interfaces, one engine (ARCHITECTURE §8.4).** `compute()` is stateless (the one exception is the memoised shipped `Build` in `build.py`, an immutable package artefact): no cache, no module-level
