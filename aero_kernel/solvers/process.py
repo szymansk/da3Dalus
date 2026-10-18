@@ -112,11 +112,13 @@ async def _reap(
     _kill_group(process)
     deadline = time.monotonic() + _REAP_BOUND_S
     if pending is not None and not pending.done():
+        waiter = asyncio.wrap_future(pending)
+        # The caller re-raises its own cancellation; the thread's outcome is not ours to report,
+        # but an error nobody retrieves is logged by asyncio at ERROR (ch. 8.14), so it is read.
+        waiter.add_done_callback(lambda done: done.cancelled() or done.exception())
         while not pending.done() and time.monotonic() < deadline:
             with contextlib.suppress(asyncio.CancelledError):
-                await asyncio.wait(
-                    [asyncio.wrap_future(pending)], timeout=deadline - time.monotonic()
-                )
+                await asyncio.wait([waiter], timeout=deadline - time.monotonic())
     # a thread still blocked in communicate owns the pipes: only a finished one leaves them to us
     if (pending is None or pending.done()) and process.returncode is None:
         for pipe in (process.stdin, process.stdout, process.stderr):

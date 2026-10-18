@@ -575,16 +575,31 @@ async def test_a_communicate_that_raises_during_the_reaping_wait_leaves_no_zombi
         raise OSError(errno.EIO, "Input/output error")
 
     monkeypatch.setattr(subprocess.Popen, "communicate", failing_later)
-    task = asyncio.create_task(
-        run_process({}, "", executable=sys.executable, args=["-c", "import time; time.sleep(30)"])
-    )
-    await asyncio.sleep(0.05)  # communicate is running in its thread
-    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+    complaints: list[str] = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda _loop, context: complaints.append(str(context["message"])))
+
+    async def cancel_while_communicate_runs() -> None:
+        # a function of its own: when it returns, the cancellation traceback and the reap's frames
+        # (with their futures) are gone, so a future nobody retrieved is collected below
+        task = asyncio.create_task(
+            run_process(
+                {}, "", executable=sys.executable, args=["-c", "import time; time.sleep(30)"]
+            )
+        )
+        await asyncio.sleep(0.05)  # communicate is running in its thread
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             async with asyncio.timeout(10):
                 await task
+
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        await cancel_while_communicate_runs()
     (process,) = popens
+    await asyncio.sleep(0.1)  # the thread's error reaches the wrapped future a loop turn later
+    gc.collect()  # an exception nobody retrieved is reported when its future is collected
+    loop.set_exception_handler(None)
+    assert complaints == []  # asyncio would log "Future exception was never retrieved" (ERROR)
     assert process.returncode is not None  # killed and reaped, not a zombie
     assert await _wait_dead(process.pid)
     assert process.stdin is not None
