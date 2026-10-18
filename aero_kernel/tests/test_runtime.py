@@ -2,9 +2,12 @@
 
 import asyncio
 import concurrent.futures
+import contextlib
 import gc
 import logging
 import multiprocessing
+import os
+import signal
 import sys
 import textwrap
 import threading
@@ -37,12 +40,47 @@ pytestmark = pytest.mark.asyncio(loop_scope="module")
 T = TypeVar("T")
 CALL_BOUND_S = 15.0
 
+THREAD_PREFIX = "aero_kernel_process"
+
 STAMP_SCRIPT = textwrap.dedent(
     """
     import sys, time
     start = time.time()
     time.sleep(0.3)
     print(start, time.time())
+    """
+)
+
+
+# Each child waits for its stdin to be delivered (``communicate`` does that), then for the other
+# child to have been delivered too: both meet only if two ``communicate`` calls run at once.
+RENDEZVOUS_SCRIPT = textwrap.dedent(
+    """
+    import pathlib, sys, time
+    folder, me = pathlib.Path(sys.argv[1]), sys.argv[2]
+    sys.stdin.read()
+    (folder / me).write_text("here")
+    deadline = time.time() + 3
+    while time.time() < deadline:
+        if len(list(folder.iterdir())) >= 2:
+            print("met")
+            break
+        time.sleep(0.02)
+    else:
+        print("alone")
+    """
+)
+
+# The direct child sleeps; its grandchild lives in a session of its own (outside the process group
+# that a cancel kills) and keeps the inherited stdout open.
+ESCAPED_GRANDCHILD_SCRIPT = textwrap.dedent(
+    """
+    import subprocess, sys, time
+    grandchild = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True
+    )
+    open(sys.argv[1], "w").write(str(grandchild.pid))
+    time.sleep(30)
     """
 )
 
@@ -319,6 +357,23 @@ class TestConcurrencyLimit:
             )
         spans = [tuple(float(x) for x in run.stdout.split()) for run in runs]
         assert max_overlap([(a, b) for a, b in spans]) == 1  # pyright: ignore[reportUnknownVariableType]
+
+    async def test_the_thread_pool_is_as_wide_as_the_limit(self, tmp_path: Path) -> None:
+        """Two subprocesses within the limit of 2 need two ``communicate`` threads at once."""
+        script = tmp_path / "rendezvous.py"
+        script.write_text(RENDEZVOUS_SCRIPT)
+        folder = tmp_path / "meeting"
+        folder.mkdir()
+        async with BoundedRuntime(max_workers=1, max_concurrency=2) as runtime:
+            runs = await asyncio.gather(
+                *(
+                    runtime.run_process(
+                        {}, "go", executable=sys.executable, args=[str(script), str(folder), name]
+                    )
+                    for name in ("a", "b")
+                )
+            )
+        assert [run.stdout for run in runs] == ["met\n", "met\n"]
 
     async def test_a_subprocess_takes_no_worker_gate_slot(self, tmp_path: Path) -> None:
         """The worker gate belongs to pool submissions; a subprocess counts only against the limit."""
@@ -709,6 +764,71 @@ class TestPoolLifetime:
                 await runtime.run_cpu(workers.die)
             assert any(r.levelno == logging.WARNING for r in caplog.records)
             assert await runtime.run_cpu(workers.square, 8) == 64
+
+
+class TestThreadPoolLifetime:
+    async def test_aclose_does_not_wait_for_a_thread_stuck_on_an_escaped_descendant(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from aero_kernel.solvers import process as process_module
+
+        monkeypatch.setattr(process_module, "_REAP_BOUND_S", 0.3)
+        script = tmp_path / "escaped.py"
+        script.write_text(ESCAPED_GRANDCHILD_SCRIPT)
+        marker = tmp_path / "grandchild.txt"
+        runtime = SolverRuntime(max_concurrency=1)
+        task = asyncio.create_task(
+            runtime.run_process({}, "", executable=sys.executable, args=[str(script), str(marker)])
+        )
+        try:
+            for _ in range(500):
+                if marker.exists() and marker.read_text():
+                    break
+                await asyncio.sleep(0.02)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                async with asyncio.timeout(10):
+                    await task
+            began = time.monotonic()
+            async with asyncio.timeout(10):  # the thread is stuck for 30 s: closing must not wait
+                await runtime.aclose()
+            # a blocking shutdown would hold the event loop, so the timeout above cannot fire
+            assert time.monotonic() - began < 5
+        finally:
+            if marker.exists() and marker.read_text():
+                with contextlib.suppress(ProcessLookupError):
+                    os.kill(int(marker.read_text()), signal.SIGKILL)
+
+    async def test_no_thread_of_the_pool_outlives_aclose(self, tmp_path: Path) -> None:
+        script = tmp_path / "stamp.py"
+        script.write_text(STAMP_SCRIPT)
+        runtime = SolverRuntime(max_concurrency=2)
+        for _ in range(5):
+            async with asyncio.timeout(10):
+                await runtime.run_process({}, "", executable=sys.executable, args=[str(script)])
+        assert any(t.name.startswith(THREAD_PREFIX) for t in threading.enumerate())
+        await runtime.aclose()
+        for _ in range(100):
+            if not any(t.name.startswith(THREAD_PREFIX) for t in threading.enumerate()):
+                break
+            await asyncio.sleep(0.02)
+        assert [t.name for t in threading.enumerate() if t.name.startswith(THREAD_PREFIX)] == []
+
+    async def test_aclose_lets_a_call_that_has_not_started_its_process_finish(
+        self, tmp_path: Path
+    ) -> None:
+        """The pool is shut down after the processes are drained, never before."""
+        script = tmp_path / "stamp.py"
+        script.write_text(STAMP_SCRIPT)
+        runtime = SolverRuntime(max_concurrency=1)
+        call = asyncio.create_task(
+            runtime.run_process({}, "", executable=sys.executable, args=[str(script)])
+        )
+        await asyncio.sleep(0)  # past the slot check, its process not started yet
+        async with asyncio.timeout(10):
+            await runtime.aclose()
+            run = await call
+        assert run.returncode == 0
 
 
 class TestTrampoline:
