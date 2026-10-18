@@ -14,7 +14,7 @@ import tempfile
 import textwrap
 import threading
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import NoReturn
 
@@ -339,6 +339,51 @@ async def test_a_process_that_is_not_reaped_in_time_is_reported_once_and_the_can
         os.killpg(pid, signal.SIGKILL)  # the test cleans up what the run was told not to kill
     assert await _wait_dead(pid)
     assert await _wait_dead(grandchild)
+
+
+@pytest.fixture
+def popens(monkeypatch: pytest.MonkeyPatch) -> list[subprocess.Popen[bytes]]:
+    """Every Popen the run starts (the object itself, to look at its pipes and exit status)."""
+    made: list[subprocess.Popen[bytes]] = []
+    original = subprocess.Popen
+
+    class Recording(original):  # type: ignore[type-arg,misc]  # a recording Popen
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            super().__init__(*args, **kwargs)  # type: ignore[call-overload]  # as Popen's own
+            made.append(self)  # type: ignore[arg-type]  # self is the Popen
+
+    monkeypatch.setattr(subprocess, "Popen", Recording)
+    return made
+
+
+@pytest.fixture
+def one_busy_thread() -> Iterator[concurrent.futures.ThreadPoolExecutor]:
+    """A one-thread pool whose thread is busy until the test ends: ``communicate`` stays queued."""
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="test_busy")
+    release = threading.Event()
+    pool.submit(release.wait)
+    try:
+        yield pool
+    finally:
+        release.set()
+        pool.shutdown(wait=True)
+
+
+async def test_a_timeout_before_the_reap_of_an_exited_child_still_ends_as_a_timeout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    one_busy_thread: concurrent.futures.ThreadPoolExecutor,
+) -> None:
+    """The child exited, nobody has reaped it yet: on macOS killpg of a zombie-only group is EPERM."""
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(1.0):
+            await _run_process(
+                {}, "", executable=sys.executable, args=["-c", "pass"], executor=one_busy_thread
+            )
+    assert _entries(scratch) == []
 
 
 async def test_a_start_that_fails_for_another_reason_propagates_and_leaks_nothing(

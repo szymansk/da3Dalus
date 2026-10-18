@@ -76,7 +76,8 @@ _REAP_BOUND_S = 5.0
 
 def _kill_group(process: subprocess.Popen[bytes]) -> None:
     """Kill the process and everything it started (own session, see :func:`run_process`)."""
-    with contextlib.suppress(ProcessLookupError):
+    # macOS reports EPERM, not ESRCH, for a group whose only member is an unreaped zombie
+    with contextlib.suppress(ProcessLookupError, PermissionError):
         os.killpg(process.pid, signal.SIGKILL)
 
 
@@ -194,6 +195,8 @@ async def run_process(
     finally:
         # Cancelled, timed out or finished: the process is gone and the directory removed before
         # the exception continues. Kill first so rmtree never races a writer.
-        if process is not None and pending is not None and process.returncode is None:
-            await _reap(pending, process, Path(executable).name)
-        _remove_directory(directory)
+        try:
+            if process is not None and pending is not None and process.returncode is None:
+                await _reap(pending, process, Path(executable).name)
+        finally:
+            _remove_directory(directory)  # whatever went wrong above, the directory goes
