@@ -451,6 +451,42 @@ async def test_a_pool_that_refuses_the_work_still_reaps_the_child_and_closes_its
     assert _entries(scratch) == []
 
 
+async def test_a_communicate_that_raises_still_gets_its_child_reaped_and_its_pipes_closed(
+    tmp_path: Path,
+    popens: list[subprocess.Popen[bytes]],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The thread ends with an error (EIO, MemoryError): ``communicate`` never reaped the child."""
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+
+    def failing(self: object, input: object = None, timeout: object = None) -> object:  # noqa: A002  # Popen's signature
+        raise OSError(errno.EIO, "Input/output error")
+
+    monkeypatch.setattr(subprocess.Popen, "communicate", failing)
+    with (
+        caplog.at_level(logging.DEBUG, logger="aero_kernel"),
+        pytest.raises(OSError, match="Input/output error"),
+    ):
+        async with asyncio.timeout(10):
+            await run_process(
+                {}, "", executable=sys.executable, args=["-c", "import time; time.sleep(30)"]
+            )
+    (process,) = popens
+    assert process.returncode is not None  # killed and reaped, not a zombie
+    assert await _wait_dead(process.pid)
+    assert process.stdin is not None
+    assert process.stdout is not None
+    assert process.stderr is not None
+    assert process.stdin.closed
+    assert process.stdout.closed
+    assert process.stderr.closed
+    assert _entries(scratch) == []
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
 async def test_a_start_that_fails_for_another_reason_propagates_and_leaks_nothing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
