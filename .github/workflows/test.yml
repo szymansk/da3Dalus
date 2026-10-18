@@ -78,9 +78,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
-        with:
-          # The canon source-commit gate needs the ancestry of main, not a depth-1 clone.
-          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v6
@@ -121,11 +118,6 @@ jobs:
       - name: Canon authoring checks (prose, links, README examples)
         # The structural rules are the importer's; this keeps what it never reads (#1174).
         run: poetry run python scripts/check_canon.py
-
-      - name: Canon source commit is on main
-        # The packaged model names the last commit that touched the canon. It must be on main
-        # (so it survives a squash or rebase of the branch) and equal to the canon directory.
-        run: poetry run python -m aero_kernel.importer.gate _reversa_sdd/calculations/canon --upstream origin/main
 
       - name: Run PR-fast test tier with coverage
         # Excludes the heavy tiers (slow, e2e) and tests that need

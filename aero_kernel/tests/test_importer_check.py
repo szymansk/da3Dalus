@@ -1,6 +1,7 @@
 """``importer --check``: the CI gate that keeps the committed model in step with the canon (ch. 8.9)."""
 
 import json
+import runpy
 import subprocess
 from pathlib import Path
 
@@ -154,3 +155,18 @@ def test_check_and_source_commit_exclude_each_other(tmp_path: Path) -> None:
     with pytest.raises(SystemExit) as raised:
         main([str(write_canon(tmp_path)), "--check", "--source-commit", SOURCE_COMMIT])
     assert raised.value.code == 2
+
+
+def test_run_as_a_module_the_import_check_exits_1_on_a_stale_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CI runs ``python -m aero_kernel.importer ... --check``; that entry point must really run."""
+    canon, out = write_canon(tmp_path), tmp_path / "out"
+    import_to(canon, out)
+    (canon / "defaults.yaml").write_text(
+        MINI_CANON["defaults.yaml"].replace("9.80665", "9.8"), encoding="utf-8"
+    )
+    monkeypatch.setattr("sys.argv", ["importer", str(canon), "--out", str(out), "--check"])
+    with pytest.raises(SystemExit) as raised:
+        runpy.run_module("aero_kernel.importer", run_name="__main__")
+    assert raised.value.code == 1

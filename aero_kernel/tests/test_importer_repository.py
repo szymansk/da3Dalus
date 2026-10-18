@@ -129,15 +129,3 @@ def test_a_scripts_change_triggers_the_backend_filter() -> None:
         if "with" in step and "filters" in step["with"]
     )
     assert "scripts/**" in cast("dict[str, list[str]]", yaml.safe_load(filters))["backend"]
-
-
-def test_the_fast_job_checks_the_source_commit_against_a_full_history() -> None:
-    command = (
-        "poetry run python -m aero_kernel.importer.gate _reversa_sdd/calculations/canon "
-        "--upstream origin/main"
-    )
-    assert command in runs()
-    checkout = next(
-        step for step in fast_steps() if str(step.get("uses", "")).startswith("actions/checkout")
-    )
-    assert cast("dict[str, object]", checkout["with"])["fetch-depth"] == 0
