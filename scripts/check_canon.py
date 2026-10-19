@@ -572,6 +572,17 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
 
     # preconditions run before the call and check inputs; postconditions run after it and check
     # outputs (also those an application writes as null)
+    # only a per_control_surface quantity may be produced by several applications (README):
+    # counted on each application's effective outputs, explicit produce and inherited defaults
+    if apps is not None:
+        producers: dict[str, list[str]] = {}
+        for aid, (_, app_writes) in per_app.items():
+            for w in app_writes:
+                producers.setdefault(w, []).append(aid)
+        for w, aids in sorted(producers.items()):
+            if len(aids) > 1 and q[w].front.get("type") != "per_control_surface":
+                add(e.slug, "applications", f"{w!r} is produced by applications {sorted(aids)}")
+
     for field, params, kind in (
         ("preconditions", inputs, "input"),
         ("postconditions", outputs, "output"),
@@ -783,8 +794,22 @@ def _check_embeds(
             for name, value in ((app or {}).get("bind") or {}).items():
                 if isinstance(value, str):
                     params.setdefault(value, name)
+        # a straight pass-through — the embedder hands its input on under the same parameter name
+        # the embedded application binds it to — is not a hidden variable
+        inner_names: dict[str, set[str]] = {}
+        for x, app in inner:
+            fx = canon.formulas[x].front
+            binds = next(
+                (a.get("bind") or {} for a in fx.get("applications") or [] if a.get("id") == app),
+                {},
+            )
+            for name, value in _effective(fx.get("inputs") or {}, binds).items():
+                if isinstance(value, str):
+                    inner_names.setdefault(value, set()).add(name)
         for qslug in sorted((read_inside & reads_of[slug]) - variables - produced):
             qf = canon.quantities[qslug].front
+            if params.get(qslug) in inner_names.get(qslug, set()):
+                continue
             if (
                 qf.get("type") == "scalar"
                 and qf.get("role") in ("input", "target")

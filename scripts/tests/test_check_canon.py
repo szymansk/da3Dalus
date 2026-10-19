@@ -587,7 +587,8 @@ def test_a_variable_no_formula_in_the_closure_reads_is_reported(tmp_path):
     ), msgs
 
 
-TWO_APPS = "applications:\n  - id: one\n  - id: two\n"
+# two distinct effective outputs (README: only per_control_surface may be produced twice)
+TWO_APPS = "applications:\n  - id: one\n  - id: two\n    produce: {w: null}\n"
 
 
 def test_embedding_one_application_of_a_multi_application_formula_is_accepted(tmp_path):
@@ -628,7 +629,8 @@ def test_embedding_an_unknown_application_is_reported(tmp_path):
 def _per_app_canon(tmp_path, item):
     """h has two applications binding b differently; f embeds one of them and reads speed-b."""
     h_front = (
-        "applications:\n  - id: one\n    bind: {b: speed-b}\n  - id: two\n    bind: {b: speed-c}\n"
+        "applications:\n  - id: one\n    bind: {b: speed-b}\n"
+        "  - id: two\n    bind: {b: speed-c}\n    produce: {w: null}\n"
     )
     root = _embed_canon(
         tmp_path,
@@ -719,6 +721,7 @@ SCOPED_FRONT = (
     + """applications:
   - id: one
   - id: two
+    produce: {v: null}
 preconditions:
   - {id: check_a, parameter: a, on_violation: error, applications: [two]}
 """
@@ -1277,6 +1280,79 @@ def test_an_undeclared_swept_input_of_an_embedder_is_an_open_warning(tmp_path):
     )
 
 
+def _pass_through_canon(tmp_path, embedder_param):
+    """f embeds h; speed-a is a plain input (no default) that f passes on to h."""
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({embedder_param: "speed-a"}, {"v": "speed-v"}, "embeds: [h]\nvariables: []\n"),
+            "h": ({"a": "speed-a"}, {"w": "speed-w"}, ""),
+        },
+    )
+    path = root / "quantities" / "speed-a.md"
+    path.write_text(path.read_text(encoding="utf-8").replace("role: derived", "role: input"))
+    return root
+
+
+def test_a_pass_through_under_the_same_parameter_name_is_not_flagged(tmp_path):
+    """F5c narrowed: f hands its input a to h's parameter a unchanged — nothing is swept."""
+    assert _findings(_pass_through_canon(tmp_path, "a")) == []
+
+
+def test_an_input_renamed_on_the_way_into_the_closure_is_still_flagged(tmp_path):
+    """F5c keeps warning when the embedder's parameter differs (it may sweep or solve it)."""
+    opened = [f for f in _findings(_pass_through_canon(tmp_path, "a_now")) if f.open]
+    assert any("closure binds speed-a via embedder input a_now" in f.message for f in opened), (
+        _messages(opened)
+    )
+
+
+TWO_PRODUCERS = """
+inputs: {a: speed-a, b: speed-b}
+outputs: {v: speed-v}
+applications:
+  - id: one
+    produce: {v: speed-v}
+  - id: two
+    produce: {v: speed-v}
+"""
+
+
+def test_two_applications_producing_one_scalar_are_reported(tmp_path, typed_quantities):
+    """Only a per_control_surface quantity may be produced by several applications."""
+    msgs = _messages(_errors(_canon(tmp_path, front=TWO_PRODUCERS, quantities=typed_quantities)))
+    assert any(
+        "f applications: 'speed-v' is produced by applications ['one', 'two']" in m for m in msgs
+    ), msgs
+
+
+def test_two_applications_inheriting_one_scalar_output_are_reported(tmp_path, typed_quantities):
+    """Counted on effective outputs: inheriting the default output twice is producing it twice."""
+    front = GOOD_FRONT + "applications:\n  - id: one\n  - id: two\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any(
+        "f applications: 'speed-v' is produced by applications ['one', 'two']" in m for m in msgs
+    ), msgs
+
+
+def test_two_applications_producing_one_per_control_surface_quantity_are_accepted(
+    tmp_path, typed_quantities
+):
+    typed_quantities["speed-v"] = typed_quantities["speed-v"].replace(
+        "type: scalar", "type: per_control_surface"
+    )
+    root = _canon(tmp_path, front=TWO_PRODUCERS, quantities=typed_quantities)
+    readme = root / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8").replace(
+            "| `airplane` | the aircraft model |",
+            "| `airplane` | the aircraft model |\n| `per_control_surface` | one value per surface |",
+        ),
+        encoding="utf-8",
+    )
+    assert _findings(root) == []
+
+
 def test_the_real_canon_has_no_open_findings():
     """No escalation is pending and no embedder warning fires on the real canon."""
     opened = [f for f in _findings(REAL_CANON) if f.open]
@@ -1285,8 +1361,8 @@ def test_the_real_canon_has_no_open_findings():
 
 def test_every_real_entry_carries_the_fields():
     canon = check_canon.load_canon(REAL_CANON)
-    assert len(canon.formulas) == 57
-    assert len(canon.quantities) == 139
+    assert len(canon.formulas) == 59
+    assert len(canon.quantities) == 145
     assert all("inputs" in f.front and "outputs" in f.front for f in canon.formulas.values())
     assert all("type" in q.front for q in canon.quantities.values())
 
