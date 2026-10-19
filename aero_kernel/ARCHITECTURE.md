@@ -295,7 +295,9 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13), exactly one when `ok`, neither
   otherwise. `value` is a float in the quantity's canon unit, or a structured value of the quantity's `type`
   (ch. 8.12). **v1 returns floats only**; the union widens with the first non-scalar formula, no placeholder
-  type before that (ADR 0021). Numbers are **strict and finite**: `value`, the interval bounds and world
+  type before that (ADR 0021). The `per_control_surface` value (keyed by surface and application, with
+  `application` then `None`) and the handling of duplicate surface keys are specified with the first such
+  formula implementation (ch. 8.5). Numbers are **strict and finite**: `value`, the interval bounds and world
   values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf. The same holds inside every free JSON field
   (`detail` of errors and warnings, `solver_settings`): a non-finite number anywhere in the tree is
   rejected — one shared recursive check in `errors.py` — because JSON would silently turn it into `null`
@@ -419,6 +421,13 @@ quantity.
   returns its α sweep as `polar`; only the clean application produces `polar-stall`, the take-off,
   landing and inverted applications write `polar: null`. A forgotten output is an import finding, an
   unexposed one is a declaration.
+- **One producer per quantity, with one keyed exception** (canon README, maintainer 2026-10-19, #1174): a
+  quantity of type `per_control_surface` (`hinge-moment`) may be produced by several applications of **one**
+  formula — one tool, one unit — and is the union of the applicable applications' entries; two formulas
+  never produce it (ADR 0022). Such a quantity is bound by no application, so no value edge ever has to
+  choose a producer: `graph._index_producers` admits the same exception, and a read of a quantity with
+  several producers is a `GraphModelError`. Resolving a requested quantity to all its producers, their
+  closures and the engine's union come with the first `per_control_surface` formula implementation.
 - An application has at most two kinds of condition; without either it exists always:
   - `when`: one term of the closed vocabulary over facts of the aircraft geometry (`has_vertical_tail`,
     `has_aileron`, …). The canon `README.md` defines the vocabulary; each term is implemented once in
@@ -432,6 +441,9 @@ quantity.
     - `has_separate_flap_and_aileron`: some device has role `flap` and some device has role `aileron` or
       `elevon`. Flaperons are ignored for it; a mixed set (flaps, ailerons and flaperons) needs no special
       rule (KISS, D10).
+    - `has_elevator`: some device has role `elevator`, `elevon` or `ruddervator`; `has_flap`: role `flap`
+      or `flaperon`; `has_rudder`: role `rudder` or `ruddervator` (the rudder role set is shared). A
+      `stabilator` counts for none of them.
     - **Surface terms** (maintainer, 2026-10-17, D9 = C) read each wing's required **`surface_type`** —
       never a geometric inference (the provisional planform rule is dropped); the geometry-format change
       gets its own ticket. The type follows the **function**, not the position:
@@ -509,7 +521,9 @@ quantity.
     `postcondition_violated` with `detail.embedded` = `<slug>.<application-id>`, `detail.postcondition` = the
     id and the variable values of the failing evaluation; `warning` becomes the embedder's `defect` warning
     with the same detail. The embedder node is cached as a whole; the build digest covers the shared code
-    (ch. 8.4). Approval of the embedder follows approval of its closure.
+    (ch. 8.4). Approval of the embedder follows approval of its closure. Evaluating one embedded
+    formula several times at different variable values (`spar-break-load-factor`: `spanwise-loads` at
+    `n = +1` and `n = −1`) is specified with this embed engine.
 - **Optional parameters** (`optional:`, a list of input parameter names). The formula receives `None`
   when the bound quantity has neither a value nor a default, and selects its route by data. Unlike
   `given`, the application exists either way. The entry states, per route, which of three outcomes holds:
@@ -548,7 +562,10 @@ Both kinds return one of three states:
 
 ### 8.6 Consistency rules (checked by the importer)
 
-- One producer per quantity; a second path only as a probe (A7).
+- One producer per quantity; a second path only as a probe (A7). Exception: a `per_control_surface`
+  quantity may have several producers, all applications of the same formula — the finding names the reason,
+  one tool and one unit; and a `per_control_surface` quantity is bound by no application (one finding, which
+  covers `given`, `variables` and embedded inputs).
 - Unique symbols and slugs (A8).
 - Targets only as `role: target` (A9, as its text says): every `role: target` quantity has a `target` kebab
   segment in its slug (anywhere: `stall-speed-target`, `roll-rate-target-approach`), except the one A9 names
@@ -581,7 +598,9 @@ Each formula has a cost class: `instant`, `seconds` or `minutes`, carried in the
 **Where it comes from (interim, O14 question 3 open).** The importer takes the canon field `cost:` where it
 is set (#1181), otherwise derives it from the tool: APP, ATM, GEO, KAT, APC → `instant`; AB, AVL, OPT →
 `seconds`. `minutes` is never derived, only declared. Should O14 assign the class to the app instead, the
-field leaves the canon and the kernel only reports it.
+field leaves the canon and the kernel only reports it. An embedder whose closure runs a slower tool than
+its own (`spar-break-load-factor`: `tool: APP`, embeds AVL) is settled by O14 or a declared `cost:`, not
+by a derivation rule here.
 
 **Long runs are opt-in per request.** `ComputeRequest.include_long_runs` (default `false`) switches on
 formulas of cost class `minutes`. The caller decides beforehand; the kernel neither asks back nor defers.
@@ -1186,7 +1205,9 @@ choice, and reporting it first would promise a value that turning long runs on w
 Every error propagates the same way, `missing_input` included: the quantity that reads the missing value
 directly gets `missing_input`, its dependents `upstream_failed` with the cause in `detail.causes`. A
 predecessor counts only if the node actually reads it; an unused output of a multi-output formula does not
-propagate. `Subtree.propagate` is the one home of rows 2, 4 and 7; the engine applies the order.
+propagate. `Subtree.propagate` is the one home of rows 2, 4 and 7; the engine applies the order. How the
+statuses of several producers of one `per_control_surface` quantity combine is specified with the first
+such formula implementation (ch. 8.5).
 
 ### 8.14 Logging
 
