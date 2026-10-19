@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:4c79e997ecbf8c5000443684318a423b13bb6f214d6764e9ce12b1c80126eea1",
+  "content_hash": "sha256:a76202596e25cc42c9805d4be636f6672babbf4a822305af48a89c4acffcc5db",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -659,6 +659,135 @@
           "postconditions": [],
           "preconditions": [],
           "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "control-surface-hinge-moments": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:aileron-deflection",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "aileron",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_aileron"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:elevator-deflection-up",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "elevator_up",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_elevator"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:elevator-deflection-down",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "elevator_down",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_elevator"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:rudder-deflection",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "rudder",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_rudder"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:flap-deflection-takeoff",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "flap_takeoff",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_flap"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:flap-deflection-landing",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "flap_landing",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_flap"
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "delta": null,
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_load": "calc:load-factor",
+            "rho": "calc:air-density",
+            "v": "calc:flight-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "h": "calc:hinge-moment"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
           "uncertainty": null,
           "variables": [],
           "worlds": []
@@ -1806,7 +1935,8 @@
               "given": null,
               "id": "default",
               "produce": {
-                "n_prop": "calc:propeller-speed"
+                "n_prop": "calc:propeller-speed",
+                "q_m": "calc:motor-torque"
               },
               "when": null
             }
@@ -1831,7 +1961,8 @@
             "r_m"
           ],
           "outputs": {
-            "n_prop": "calc:propeller-speed"
+            "n_prop": "calc:propeller-speed",
+            "q_m": "calc:motor-torque"
           },
           "postconditions": [],
           "preconditions": [],
@@ -2128,13 +2259,61 @@
           "variables": [],
           "worlds": []
         },
+        "spanwise-loads": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "l_y": "calc:spanwise-lift-distribution",
+                "m_y": "calc:spanwise-bending-moment",
+                "v_y": "calc:spanwise-shear-force"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_load": "calc:load-factor",
+            "rho": "calc:air-density",
+            "v": "calc:flight-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "l_y": "calc:spanwise-lift-distribution",
+            "m_y": "calc:spanwise-bending-moment",
+            "v_y": "calc:spanwise-shear-force"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
         "spar-break-load-factor": {
           "applications": [
             {
               "bind": {
                 "airplane": "calc:airplane",
                 "g": "calc:gravity",
-                "m": "calc:aircraft-mass"
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_a": "calc:maneuvering-speed"
               },
               "given": null,
               "id": "default",
@@ -2146,12 +2325,18 @@
             }
           ],
           "cost": "instant",
-          "embeds": [],
-          "embeds_closure": [],
+          "embeds": [
+            "calc:spanwise-loads.default"
+          ],
+          "embeds_closure": [
+            "calc:spanwise-loads.default"
+          ],
           "inputs": {
             "airplane": "calc:airplane",
             "g": "calc:gravity",
-            "m": "calc:aircraft-mass"
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_a": "calc:maneuvering-speed"
           },
           "kind": "procedure",
           "optional": [],
@@ -2163,7 +2348,10 @@
           "preconditions": [],
           "tool": "APP",
           "uncertainty": null,
-          "variables": [],
+          "variables": [
+            "calc:load-factor",
+            "calc:flight-speed"
+          ],
           "worlds": []
         },
         "speed-from-stall-margin": {
@@ -3206,6 +3394,14 @@
           "uncertainty": null,
           "unit": "m/s^2"
         },
+        "hinge-moment": {
+          "positive": null,
+          "role": "output",
+          "symbol": "H",
+          "type": "per_control_surface",
+          "uncertainty": null,
+          "unit": "N*m"
+        },
         "induced-drag-factor": {
           "positive": null,
           "role": "derived",
@@ -3502,6 +3698,14 @@
           "uncertainty": null,
           "unit": "A"
         },
+        "motor-torque": {
+          "positive": null,
+          "role": "output",
+          "symbol": "Q_m",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N*m"
+        },
         "motor-voltage-constant": {
           "positive": null,
           "role": "derived",
@@ -3622,6 +3826,14 @@
           "uncertainty": null,
           "unit": "deg/s"
         },
+        "rudder-deflection": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_r",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
         "sea-level-air-density": {
           "positive": true,
           "role": "input",
@@ -3637,6 +3849,30 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
+        },
+        "spanwise-bending-moment": {
+          "positive": null,
+          "role": "output",
+          "symbol": "M(y)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "N*m"
+        },
+        "spanwise-lift-distribution": {
+          "positive": null,
+          "role": "output",
+          "symbol": "l(y)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "N/m"
+        },
+        "spanwise-shear-force": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V(y)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "N"
         },
         "speed-range-over-mass": {
           "positive": null,

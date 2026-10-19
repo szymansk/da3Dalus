@@ -364,3 +364,15 @@ def test_reading_a_quantity_with_several_producers_is_a_model_error() -> None:
     )
     with pytest.raises(GraphModelError, match=r"calc:b.*several producers.*calc:reader"):
         CanonGraph(model)
+
+
+def test_the_packaged_model_returns_a_per_control_surface_request_as_non_scalar() -> None:
+    """hinge-moment is produced by several applications; v1 answers before it looks at a producer."""
+    from aero_kernel.canon.load import load_canon_model
+
+    subtree = CanonGraph(load_canon_model()).subtree(["hinge-moment"])
+    assert [(error.code, error.category) for error in subtree.errors] == [
+        ("non_scalar_result", ErrorCategory.NOT_IMPLEMENTED)
+    ]
+    assert subtree.requested == ()
+    assert subtree.nodes == ()
