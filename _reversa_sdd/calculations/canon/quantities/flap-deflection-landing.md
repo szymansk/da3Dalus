@@ -22,4 +22,4 @@ Lennon: 40° landing (slotted flap, 30 % chord) — orientation only, not a defa
 
 **Unit.** `deg`
 
-**Used by.** [[airplane-configuration]] · [[butterfly-approach]]
+**Used by.** [[airplane-configuration]] · [[butterfly-approach]] · [[control-surface-hinge-moments]]

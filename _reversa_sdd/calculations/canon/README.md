@@ -408,7 +408,7 @@ parameter bound to its default, condition "always". An application starts from t
 and overrides them with its `bind` and `produce`; after that, every input parameter must be
 bound — to a quantity or to a constant with its source — and every output parameter must be
 produced: bound to a quantity, or explicitly to `null` (the implementation still returns it; the
-application does not expose it). An output parameter absent from the merged `produce` is an error. One formula, several applications is the shape described in "One formula, several
+application does not expose it). An output parameter absent from the merged `produce` is an error. Two applications of one formula produce the same quantity only when its type is `per_control_surface`; their entries are united. One formula, several applications is the shape described in "One formula, several
 applications" above; the preconditions belong to the binding, as described in "Preconditions
 belong to the binding".
 
@@ -452,6 +452,9 @@ nicht als unbenötigter Code" (maintainer, 2026-10-17).
 | `has_horizontal_tail` | a horizontal_tail or v_tail surface (surface_type, #1187); a V-tail counts as horizontal tail (ontology term, no using entry yet) |
 | `has_separate_flap_and_aileron` | a pure flap (`role` `flap`) and an aileron-acting surface (`role` `aileron` or `elevon`); flaperons do not count — "Man hat entweder Flaperons oder Ailerons und Flaps" (maintainer, 2026-10-17, D10) (`butterfly-approach`) |
 | `has_vertical_tail` | the aircraft has a fin or a V-tail behind the main wing; winglets or a centre fin on a tailless wing do not count (`spiral-parameter`, `vertical-tail-volume`). Evaluated from surface_type (vertical_tail or v_tail), #1187 |
+| `has_elevator` | the geometry has at least one control surface that acts as an elevator: trailing-edge devices with `role` `elevator`, `elevon` or `ruddervator`. A `stabilator` (all-moving tail) has no hinge in this sense and does not count (`control-surface-hinge-moments`) |
+| `has_flap` | the geometry has at least one surface that acts as a flap: trailing-edge devices with `role` `flap` or `flaperon` (`control-surface-hinge-moments`) |
+| `has_rudder` | the geometry has at least one control surface that acts as a rudder: trailing-edge devices with `role` `rudder` or `ruddervator` (`control-surface-hinge-moments`) |
 
 ### Quantity entries
 
@@ -491,6 +494,7 @@ column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` fie
 | `curve` | one value per point of a swept variable (the crow mix `s`, the mass `m`), named in the symbol |
 | `polar` | the sampled whole-aircraft coefficients over angle of attack — α, C_L, C_D, C_m, of equal length — at one evaluation condition, which the slug names (A2) |
 | `curve_pair` | two curves over the same swept variable that bound a range — a lower and an upper edge |
+| `per_control_surface` | **output only**: one value per control surface, keyed by `<wing>.<device>[_left\|_right]`: the wing's name (required, unique), the device's `name` from the geometry (derived exactly as the geometry format derives it when omitted) and `_left` / `_right` for a mirrored device, e.g. `Seitenleitwerk_links.rudder`; twin fins are separate devices; no length limit; not tied to the mixing names of #955, nor to any solver-internal name. Each entry maps the id of the producing application to a number in the declared unit, so a dual-role surface carries one value per role. Several applications of one formula may produce the same `per_control_surface` quantity; it is the union of the applicable applications' entries. A role without surfaces makes its application not applicable (`when`); when no application applies, the quantity is not applicable (the `when` rule). Two surfaces with the same key are an invalid input (`invalid_input`) |
 
 ### One example per kind
 
@@ -701,7 +705,8 @@ positive: true
   `uncertainty: interval`, and satisfies the input rule; `variables` is present with `embeds` and only
   there, and every variable is read somewhere in the closure; a scalar input or target without a default
   in `defaults.yaml` that the closure binds through an embedder input but `variables` does not list is reported as an open
-  warning (it may be swept or solved), never as an error; `optional` names input parameters;
+  warning (it may be swept or solved), never as an error — unless the embedder passes it straight through, under the same parameter name the embedded application binds it to;
+- a quantity is produced by at most one application of a formula — counted on each application's effective outputs (explicit `produce` and inherited defaults) — unless its type is `per_control_surface`; `optional` names input parameters;
 - every quantity has a `role` from the closed set and a `type` from the set above, and no `default:`
   in its front matter; `positive` is `true` (never `false`), only on `type: scalar` with role `input`
   or `target`, and its default in `defaults.yaml`, if any, is a number > 0;
