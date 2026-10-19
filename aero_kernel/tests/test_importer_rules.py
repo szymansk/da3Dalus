@@ -32,12 +32,12 @@ def shown(result: ImportResult) -> list[str]:
     return [str(finding) for finding in result.findings]
 
 
-def quantity(slug: str, symbol: str, unit: str, role: str) -> str:
-    """The text of a scalar quantity entry."""
+def quantity(slug: str, symbol: str, unit: str, role: str, type_: str = "scalar") -> str:
+    """The text of a quantity entry (a scalar unless ``type_`` says otherwise)."""
     shown_unit = f'"{unit}"' if unit == "N" else unit
     return (
         f"---\ncanon: {slug}\nkind: quantity\nsymbol: {symbol}\nunit: {shown_unit}\nrole: {role}\n"
-        "status: draft\ntags: []\ntype: scalar\n---\n"
+        f"status: draft\ntags: []\ntype: {type_}\n---\n"
     )
 
 
@@ -62,7 +62,7 @@ def test_two_formulas_producing_one_quantity(tmp_path: Path) -> None:
     )
     assert shown(result) == [
         "formulas/weight-from-mass.md: applications[0].produce.w: quantity calc:weight is "
-        "already produced by calc:estimate.default (A7)",
+        "already produced by calc:estimate.default (A7): only a per_control_surface quantity may be produced by several applications, and only of one formula, so that the merged value has one tool and one unit (ADR 0022)",
         "quantities/weight-estimate.md: role: quantity calc:weight-estimate has role derived "
         "but no formula produces it",
     ]
@@ -74,7 +74,7 @@ def test_two_applications_of_one_formula_producing_one_quantity(tmp_path: Path) 
     )
     assert shown(result) == [
         "formulas/weighing.md: applications[1].produce.w: quantity calc:weight-weighed is "
-        "already produced by calc:weighing.clean (A7)",
+        "already produced by calc:weighing.clean (A7): only a per_control_surface quantity may be produced by several applications, and only of one formula, so that the merged value has one tool and one unit (ADR 0022)",
         "quantities/weight-flapped.md: role: quantity calc:weight-flapped has role derived "
         "but no formula produces it",
     ]
@@ -560,7 +560,9 @@ def test_findings_of_two_rules_in_one_file_are_ordered_by_field(tmp_path: Path) 
         "formulas/weighing.md: applications[1].bind.m: parameter m is calc:wing-area (m^2) here but "
         "calc:aircraft-mass (kg) in application clean (A4)",
         "formulas/weighing.md: applications[1].produce.w: quantity calc:weight-weighed is already "
-        "produced by calc:weighing.clean (A7)",
+        "produced by calc:weighing.clean (A7): only a per_control_surface quantity may be produced by "
+        "several applications, and only of one formula, so that the merged value has one tool and "
+        "one unit (ADR 0022)",
         "quantities/weight-flapped.md: role: quantity calc:weight-flapped has role derived but no "
         "formula produces it",
     ]
@@ -636,3 +638,95 @@ def test_findings_with_the_same_file_and_field_are_ordered_by_message_whatever_t
 
     monkeypatch.setattr(rules, "_symbols", reversed_symbols)
     assert [finding.message for finding in rules.check_model(model)] == ["alpha", "mu", "zeta"]
+
+
+# --- per_control_surface: one quantity, several applications of one formula --------------------------------------
+
+HINGE = "quantities/hinge.md"
+HINGES = "formulas/hinges.md"
+PER_SURFACE_MESSAGE = (
+    "(A7): only a per_control_surface quantity may be produced by several applications, and only of "
+    "one formula, so that the merged value has one tool and one unit (ADR 0022)"
+)
+
+
+def hinge_files(*, type_: str = "per_control_surface") -> dict[str, str | None]:
+    """A formula ``hinges`` with two applications that both produce the quantity ``hinge``."""
+    body = (
+        "kind: law\ntool: APP\ninputs: {m: aircraft-mass}\noutputs: {h: hinge}\n"
+        "applications:\n  - id: elevator\n  - id: rudder\n"
+    )
+    return {
+        HINGE: quantity("hinge", "M_h", "N*m", "derived", type_),
+        HINGES: formula("hinges", body),
+    }
+
+
+def test_several_applications_of_one_formula_may_produce_a_per_control_surface_quantity(
+    tmp_path: Path,
+) -> None:
+    assert shown(run(tmp_path, hinge_files())) == []
+
+
+def test_several_applications_producing_a_scalar_are_still_a_finding(tmp_path: Path) -> None:
+    assert shown(run(tmp_path, hinge_files(type_="scalar"))) == [
+        "formulas/hinges.md: applications[1].produce.h: quantity calc:hinge is already produced by "
+        f"calc:hinges.elevator {PER_SURFACE_MESSAGE}"
+    ]
+
+
+def test_two_formulas_producing_a_per_control_surface_quantity_are_a_finding(
+    tmp_path: Path,
+) -> None:
+    other = formula(
+        "hinges-two", "kind: law\ntool: APP\ninputs: {m: aircraft-mass}\noutputs: {h: hinge}\n"
+    )
+    files = {**hinge_files(), "formulas/hinges-two.md": other}
+    assert shown(run(tmp_path, files)) == [
+        "formulas/hinges-two.md: applications[0].produce.h: quantity calc:hinge is already produced "
+        f"by calc:hinges.elevator {PER_SURFACE_MESSAGE}"
+    ]
+
+
+def test_an_application_that_binds_a_per_control_surface_quantity_is_a_finding(
+    tmp_path: Path,
+) -> None:
+    reader = formula(
+        "reader",
+        "kind: law\ntool: APP\ninputs: {h: hinge}\noutputs: {w: weight-read}\n",
+    )
+    files = {
+        **hinge_files(),
+        "formulas/reader.md": reader,
+        "quantities/weight-read.md": quantity("weight-read", "W_r", "N", "derived"),
+    }
+    assert shown(run(tmp_path, files)) == [
+        "formulas/reader.md: applications[0].bind.h: calc:hinge is a per_control_surface quantity: "
+        "no application may read it (v1 returns it and nothing computes from it)"
+    ]
+
+
+def test_an_embedded_application_that_binds_a_per_control_surface_quantity_is_a_finding(
+    tmp_path: Path,
+) -> None:
+    reader = formula(
+        "reader",
+        "kind: law\ntool: APP\ninputs: {h: hinge}\noutputs: {w: weight-read}\n",
+    )
+    host = formula(
+        "host",
+        "kind: law\ntool: APP\ninputs: {m: aircraft-mass}\noutputs: {w: weight-host}\n"
+        "embeds: [reader]\nvariables: [hinge]\n",
+    )
+    files = {
+        **hinge_files(),
+        "formulas/reader.md": reader,
+        "formulas/host.md": host,
+        "quantities/weight-read.md": quantity("weight-read", "W_r", "N", "derived"),
+        "quantities/weight-host.md": quantity("weight-host", "W_h", "N", "derived"),
+    }
+    messages = shown(run(tmp_path, files))
+    assert (
+        "formulas/reader.md: applications[0].bind.h: calc:hinge is a per_control_surface quantity: "
+        "no application may read it (v1 returns it and nothing computes from it)"
+    ) in messages

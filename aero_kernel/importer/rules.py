@@ -47,12 +47,45 @@ def _produced(application: Application) -> dict[str, str]:
     return {name: slug for name, slug in application.produce.items() if slug is not None}
 
 
+def _reads_of_per_control_surface(content: Namespace) -> list[Finding]:
+    """No application reads a per_control_surface quantity: given, variables and embedded inputs are binds."""
+    findings: list[Finding] = []
+    for slug, formula in sorted(content.formulas.items()):
+        for index, application in enumerate(formula.applications):
+            for parameter, value in application.bind.items():
+                if (
+                    isinstance(value, str)
+                    and content.quantities[_bare(value)].type == "per_control_surface"
+                ):
+                    findings.append(
+                        Finding(
+                            file=_formula_file(slug),
+                            field=f"applications[{index}].bind.{parameter}",
+                            message=f"{value} is a per_control_surface quantity: no application may "
+                            "read it (v1 returns it and nothing computes from it)",
+                        )
+                    )
+    return findings
+
+
 def _bound(application: Application) -> set[str]:
     """Return the quantities an application binds as inputs (constants excluded)."""
     return {value for value in application.bind.values() if isinstance(value, str)}
 
 
 # --- producers (A7) and roles (A9) ---------------------------------------------------------------------------
+
+
+def _may_be_shared(content: Namespace, quantity: str, first: str, formula: str) -> bool:
+    """Whether a second producer is allowed: a per_control_surface quantity, one formula only.
+
+    The value of such a quantity is the union of the entries of its producing applications, so the
+    producers must be applications of one formula (one tool and one unit, ADR 0022).
+    """
+    first_formula = first.removeprefix(_PREFIX).rpartition(".")[0]
+    return content.quantities[_bare(quantity)].type == "per_control_surface" and (
+        first_formula == formula
+    )
 
 
 def _producers(content: Namespace) -> list[Finding]:
@@ -74,16 +107,19 @@ def _producers(content: Namespace) -> list[Finding]:
                             "may produce it (A9)",
                         )
                     )
-                if quantity in first:
+                if quantity not in first:
+                    first[quantity] = where
+                elif not _may_be_shared(content, quantity, first[quantity], slug):
                     findings.append(
                         Finding(
                             file=_formula_file(slug),
                             field=field,
-                            message=f"quantity {quantity} is already produced by {first[quantity]} (A7)",
+                            message=f"quantity {quantity} is already produced by {first[quantity]} "
+                            "(A7): only a per_control_surface quantity may be produced by several "
+                            "applications, and only of one formula, so that the merged value has "
+                            "one tool and one unit (ADR 0022)",
                         )
                     )
-                else:
-                    first[quantity] = where
     for slug, quantity in sorted(content.quantities.items()):
         if quantity.role in ("derived", "output") and f"{_PREFIX}{slug}" not in first:
             findings.append(
@@ -276,6 +312,7 @@ def check_model(model: CanonModel) -> list[Finding]:
     findings: list[Finding] = []
     for content in model.namespaces.values():
         findings.extend(_producers(content))
+        findings.extend(_reads_of_per_control_surface(content))
         findings.extend(_names(content))
         findings.extend(_symbols(content))
         findings.extend(_units(content))
