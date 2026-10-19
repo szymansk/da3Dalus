@@ -76,7 +76,7 @@ def _reads_of_per_control_surface(content: Namespace) -> list[Finding]:
                             file=_formula_file(slug),
                             field=f"applications[{index}].bind.{parameter}",
                             message=f"{value} is a per_control_surface quantity: no application may "
-                            "read it (v1 returns it and nothing computes from it)",
+                            "read it (it is an output only; nothing computes from it)",
                         )
                     )
     return findings
@@ -90,15 +90,19 @@ def _bound(application: Application) -> set[str]:
 # --- producers (A7) and roles (A9) ---------------------------------------------------------------------------
 
 
-def _may_be_shared(content: Namespace, quantity: str, first: str, formula: str) -> bool:
+def _may_be_shared(content: Namespace, quantity: str, first: str, where: str) -> bool:
     """Whether a second producer is allowed: a per_control_surface quantity, one formula only.
 
     The value of such a quantity is the union of the entries of its producing applications, so the
-    producers must be applications of one formula (one tool and one unit, ADR 0022).
+    producers must be different applications of one formula (one tool and one unit, ADR 0022): one
+    application producing it twice would put two entries under one (surface, application) key.
     """
     first_formula = first.removeprefix(_PREFIX).rpartition(".")[0]
-    return content.quantities[_bare(quantity)].type == "per_control_surface" and (
-        first_formula == formula
+    where_formula = where.removeprefix(_PREFIX).rpartition(".")[0]
+    return (
+        content.quantities[_bare(quantity)].type == "per_control_surface"
+        and first_formula == where_formula
+        and first != where
     )
 
 
@@ -123,7 +127,7 @@ def _producers(content: Namespace) -> list[Finding]:
                     )
                 if quantity not in first:
                     first[quantity] = where
-                elif not _may_be_shared(content, quantity, first[quantity], slug):
+                elif not _may_be_shared(content, quantity, first[quantity], where):
                     findings.append(
                         Finding(
                             file=_formula_file(slug),

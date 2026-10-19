@@ -702,7 +702,7 @@ def test_an_application_that_binds_a_per_control_surface_quantity_is_a_finding(
     }
     assert shown(run(tmp_path, files)) == [
         "formulas/reader.md: applications[0].bind.h: calc:hinge is a per_control_surface quantity: "
-        "no application may read it (v1 returns it and nothing computes from it)"
+        "no application may read it (it is an output only; nothing computes from it)"
     ]
 
 
@@ -728,7 +728,7 @@ def test_an_embedded_application_that_binds_a_per_control_surface_quantity_is_a_
     messages = shown(run(tmp_path, files))
     assert (
         "formulas/reader.md: applications[0].bind.h: calc:hinge is a per_control_surface quantity: "
-        "no application may read it (v1 returns it and nothing computes from it)"
+        "no application may read it (it is an output only; nothing computes from it)"
     ) in messages
 
 
@@ -746,3 +746,29 @@ def test_a_per_control_surface_quantity_must_have_role_output(tmp_path: Path, ro
 
 def test_a_per_control_surface_quantity_with_role_output_is_fine(tmp_path: Path) -> None:
     assert shown(run(tmp_path, hinge_files())) == []
+
+
+def same_application_files(type_: str) -> dict[str, str | None]:
+    """One application that produces ``hinge`` through two output parameters."""
+    body = "kind: law\ntool: APP\ninputs: {m: aircraft-mass}\noutputs: {h: hinge, h2: hinge}\n"
+    return {
+        HINGE: quantity("hinge", "M_h", "N*m", "output", type_),
+        HINGES: formula("hinges", body),
+    }
+
+
+def test_one_application_may_not_produce_a_per_control_surface_quantity_twice(
+    tmp_path: Path,
+) -> None:
+    """Two entries under one (surface, application) key would be ambiguous."""
+    assert shown(run(tmp_path, same_application_files("per_control_surface"))) == [
+        "formulas/hinges.md: applications[0].produce.h2: quantity calc:hinge is already produced by "
+        f"calc:hinges.default {PER_SURFACE_MESSAGE}"
+    ]
+
+
+def test_one_application_producing_a_scalar_twice_is_still_a_finding(tmp_path: Path) -> None:
+    assert shown(run(tmp_path, same_application_files("scalar"))) == [
+        "formulas/hinges.md: applications[0].produce.h2: quantity calc:hinge is already produced by "
+        f"calc:hinges.default {PER_SURFACE_MESSAGE}"
+    ]
