@@ -47,6 +47,20 @@ def _produced(application: Application) -> dict[str, str]:
     return {name: slug for name, slug in application.produce.items() if slug is not None}
 
 
+def _per_control_surface_roles(content: Namespace) -> list[Finding]:
+    """A per_control_surface quantity is output only (canon README, quantity types)."""
+    return [
+        Finding(
+            file=_quantity_file(slug),
+            field="role",
+            message="a per_control_surface quantity has role output only (canon README, quantity "
+            f"types); this one is {quantity.role}",
+        )
+        for slug, quantity in sorted(content.quantities.items())
+        if quantity.type == "per_control_surface" and quantity.role != "output"
+    ]
+
+
 def _reads_of_per_control_surface(content: Namespace) -> list[Finding]:
     """No application reads a per_control_surface quantity: given, variables and embedded inputs are binds."""
     findings: list[Finding] = []
@@ -313,6 +327,7 @@ def check_model(model: CanonModel) -> list[Finding]:
     for content in model.namespaces.values():
         findings.extend(_producers(content))
         findings.extend(_reads_of_per_control_surface(content))
+        findings.extend(_per_control_surface_roles(content))
         findings.extend(_names(content))
         findings.extend(_symbols(content))
         findings.extend(_units(content))

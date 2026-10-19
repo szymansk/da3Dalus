@@ -282,3 +282,17 @@ def test_cancellation_is_not_a_load_failure(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(build_module, "build_digest", cancelled)
     with pytest.raises(asyncio.CancelledError):
         load_build(FIXTURE, Registry())
+
+
+def test_every_formula_of_the_packaged_model_is_not_implemented_at_build_time() -> None:
+    """Nothing is implemented yet (#1175 brings the formulas): all of them are declared, none run."""
+    from aero_kernel.build import shipped_build
+
+    build = shipped_build()
+    declared = {
+        f"{namespace}:{slug}"
+        for namespace, content in build.model.namespaces.items()
+        for slug in content.formulas
+    }
+    assert set(build.report.not_implemented) == declared
+    assert len(build.report.not_implemented) == 59

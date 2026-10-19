@@ -657,7 +657,7 @@ def hinge_files(*, type_: str = "per_control_surface") -> dict[str, str | None]:
         "applications:\n  - id: elevator\n  - id: rudder\n"
     )
     return {
-        HINGE: quantity("hinge", "M_h", "N*m", "derived", type_),
+        HINGE: quantity("hinge", "M_h", "N*m", "output", type_),
         HINGES: formula("hinges", body),
     }
 
@@ -730,3 +730,19 @@ def test_an_embedded_application_that_binds_a_per_control_surface_quantity_is_a_
         "formulas/reader.md: applications[0].bind.h: calc:hinge is a per_control_surface quantity: "
         "no application may read it (v1 returns it and nothing computes from it)"
     ) in messages
+
+
+@pytest.mark.parametrize("role", ["input", "target", "derived"])
+def test_a_per_control_surface_quantity_must_have_role_output(tmp_path: Path, role: str) -> None:
+    """README: the type is output only."""
+    files = hinge_files()
+    files[HINGE] = quantity("hinge", "M_h", "N*m", role, "per_control_surface")
+    messages = shown(run(tmp_path, files))
+    assert (
+        "quantities/hinge.md: role: a per_control_surface quantity has role output only "
+        f"(canon README, quantity types); this one is {role}"
+    ) in messages
+
+
+def test_a_per_control_surface_quantity_with_role_output_is_fine(tmp_path: Path) -> None:
+    assert shown(run(tmp_path, hinge_files())) == []
