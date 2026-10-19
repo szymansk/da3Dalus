@@ -81,7 +81,9 @@ class TestAirplaneGeometryRoot:
             {"name": "A", "total_mass_kg": float("nan"), "xyz_ref": [float("inf"), 0, 0]}
         )
         assert airplane.xyz_ref[0] == float("inf")
-        assert airplane.total_mass_kg != airplane.total_mass_kg
+        mass = airplane.total_mass_kg
+        assert mass is not None
+        assert math.isnan(mass)
 
     def test_model_is_frozen(self) -> None:
         airplane = AirplaneGeometry.model_validate({"name": "A"})
