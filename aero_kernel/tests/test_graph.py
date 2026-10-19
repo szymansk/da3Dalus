@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 from aero_kernel import graph
@@ -309,3 +310,57 @@ def test_two_malformed_spellings_are_two_unknown_quantities(
         ("unknown_quantity", pair[1]),
     ]
     assert subtree.requested == ()
+
+
+# --- per_control_surface: one quantity, several applications of one formula ---------------------------------------
+
+
+def multi_application_formula(quantity_slug: str = "b") -> dict[str, Any]:
+    """A formula whose two applications both produce ``quantity_slug``."""
+    base = formula({"x": "a"}, {"y": quantity_slug})
+    application = base["applications"][0]
+    base["applications"] = [
+        {**application, "id": "first"},
+        {**application, "id": "second"},
+    ]
+    return base
+
+
+def per_surface_quantities(type_: str) -> dict[str, dict[str, Any]]:
+    return {"a": quantity("input"), "b": quantity("output", type=type_)}
+
+
+def test_two_applications_of_one_formula_may_produce_a_per_control_surface_quantity() -> None:
+    model = model_of(
+        per_surface_quantities("per_control_surface"), {"f": multi_application_formula()}
+    )
+    graph = CanonGraph(model)
+    assert set(graph.node_ids) == {
+        NodeId(formula="calc:f", application="first"),
+        NodeId(formula="calc:f", application="second"),
+    }
+
+
+def test_two_applications_of_one_formula_producing_a_scalar_are_a_model_error() -> None:
+    model = model_of(per_surface_quantities("scalar"), {"f": multi_application_formula()})
+    with pytest.raises(GraphModelError, match=r"calc:b.*calc:f\.first.*calc:f\.second"):
+        CanonGraph(model)
+
+
+def test_two_formulas_producing_a_per_control_surface_quantity_are_a_model_error() -> None:
+    model = model_of(
+        per_surface_quantities("per_control_surface"),
+        {"f1": formula({"x": "a"}, {"y": "b"}), "f2": formula({"x": "a"}, {"y": "b"})},
+    )
+    with pytest.raises(GraphModelError, match=r"calc:b.*calc:f1.*calc:f2"):
+        CanonGraph(model)
+
+
+def test_reading_a_quantity_with_several_producers_is_a_model_error() -> None:
+    """Never pick one of them (ADR 0020): the importer forbids it, the graph refuses it as well."""
+    model = model_of(
+        {**per_surface_quantities("per_control_surface"), "c": quantity("output")},
+        {"f": multi_application_formula(), "reader": formula({"v": "b"}, {"w": "c"})},
+    )
+    with pytest.raises(GraphModelError, match=r"calc:b.*several producers.*calc:reader"):
+        CanonGraph(model)

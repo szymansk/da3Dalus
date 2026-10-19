@@ -529,17 +529,31 @@ class CanonGraph:
         _layers(self._edges_back_from(list(self._nodes)))  # a cycle anywhere is a model defect
 
     def _index_producers(self) -> dict[str, NodeId]:
-        """Map every produced quantity to its one producing node."""
+        """Map every produced quantity to its producing node.
+
+        A per_control_surface quantity may be produced by several applications of one formula (the
+        value is the union of their entries); it is mapped to the first of them and recorded in
+        ``self._shared``, so that nothing reads it by accident. Any other second producer is a
+        model defect.
+        """
         producers: dict[str, NodeId] = {}
+        shared: set[str] = set()
         for node in self._nodes.values():
             for produce in node.produces:
                 other = producers.setdefault(produce.quantity, node.id)
-                if other != node.id:
-                    msg = (
-                        f"{produce.quantity} has two producers: "
-                        f"{_label(other)} and {_label(node.id)}"
-                    )
-                    raise GraphModelError(msg)
+                if other == node.id:
+                    continue
+                quantity = self._model.quantity(produce.quantity)
+                if (
+                    quantity is not None
+                    and quantity.type == "per_control_surface"
+                    and other.formula == node.id.formula
+                ):
+                    shared.add(produce.quantity)
+                    continue
+                msg = f"{produce.quantity} has two producers: {_label(other)} and {_label(node.id)}"
+                raise GraphModelError(msg)
+        self._shared = frozenset(shared)
         return producers
 
     def _check_world_slugs(self) -> None:
@@ -629,6 +643,13 @@ class CanonGraph:
             node = pending.pop()
             if node in edges:
                 continue
+            for read in self._nodes[node].reads:
+                if read.quantity in self._shared:
+                    msg = (
+                        f"{read.quantity} has several producers and {_label(node)} reads it; "
+                        "nothing may read a per_control_surface quantity"
+                    )
+                    raise GraphModelError(msg)
             edges[node] = tuple(
                 Edge(
                     predecessor=self._producers[read.quantity],
