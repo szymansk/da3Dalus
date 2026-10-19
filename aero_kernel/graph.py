@@ -707,6 +707,10 @@ class WhenFacts(BaseModel):
 
     Attributes:
         has_aileron: A device acts as aileron, flaperon or elevon.
+        has_elevator: A device acts as elevator, elevon or ruddervator; a stabilator (an all-moving
+            tail) has no hinge and counts for none of the hinge-moment terms.
+        has_flap: A device acts as flap or flaperon.
+        has_rudder: A device acts as rudder or ruddervator.
         has_separate_flap_and_aileron: A flap and a distinct aileron or elevon exist; a flaperon
             counts as neither (D10).
         has_vertical_tail: The aircraft has a vertical tail (provisional rule, see below).
@@ -715,6 +719,9 @@ class WhenFacts(BaseModel):
     model_config = _FROZEN
 
     has_aileron: bool
+    has_elevator: bool
+    has_flap: bool
+    has_rudder: bool
     has_separate_flap_and_aileron: bool
     has_vertical_tail: bool
 
@@ -736,6 +743,9 @@ class WhenFacts(BaseModel):
             raise ValueError(msg)
         return {
             "has_aileron": self.has_aileron,
+            "has_elevator": self.has_elevator,
+            "has_flap": self.has_flap,
+            "has_rudder": self.has_rudder,
             "has_separate_flap_and_aileron": self.has_separate_flap_and_aileron,
             "has_vertical_tail": self.has_vertical_tail,
         }[term]
@@ -744,6 +754,9 @@ class WhenFacts(BaseModel):
 # Terms of the closed vocabulary whose fact is not implemented yet, with the ticket that brings it.
 PENDING_WHEN_TERMS: Mapping[str, str] = {"has_horizontal_tail": "#1187"}
 _AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
+# The hinge-moment terms: a device that has a hinge and acts in that role (a stabilator has none).
+_ELEVATOR_ROLES = frozenset({"elevator", "elevon", "ruddervator"})
+_FLAP_ROLES = frozenset({"flap", "flaperon"})
 # A butterfly layout (D10) needs a flap and a distinct aileron or elevon; a flaperon is neither.
 _BUTTERFLY_FLAP_ROLES = frozenset({"flap"})
 _BUTTERFLY_AILERON_ROLES = frozenset({"aileron", "elevon"})
@@ -815,6 +828,9 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
     ]
     return WhenFacts(
         has_aileron=any(role in _AILERON_ROLES for _, role in devices),
+        has_elevator=any(role in _ELEVATOR_ROLES for _, role in devices),
+        has_flap=any(role in _FLAP_ROLES for _, role in devices),
+        has_rudder=any(role in _RUDDER_ROLES for _, role in devices),
         has_separate_flap_and_aileron=any(
             flap_role in _BUTTERFLY_FLAP_ROLES
             and aileron_role in _BUTTERFLY_AILERON_ROLES

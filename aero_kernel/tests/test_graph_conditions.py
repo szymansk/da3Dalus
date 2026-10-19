@@ -51,13 +51,22 @@ def facts(wings: dict[str, dict[str, Any]] | None) -> WhenFacts:
 
 MAIN = wing(sec(0.0, 0.0, 0.2), sec(0.0, 0.5, 0.15))
 
+FACT_NAMES = (
+    "has_aileron",
+    "has_elevator",
+    "has_flap",
+    "has_rudder",
+    "has_separate_flap_and_aileron",
+    "has_vertical_tail",
+)
+ALL = WhenFacts(**dict.fromkeys(FACT_NAMES, True))
+NONE = WhenFacts(**dict.fromkeys(FACT_NAMES, False))
+
 
 def test_an_aircraft_without_wings_has_no_facts() -> None:
     no_wings: list[dict[str, dict[str, Any]] | None] = [None, {}]
     for wings in no_wings:
-        assert facts(wings) == WhenFacts(
-            has_aileron=False, has_separate_flap_and_aileron=False, has_vertical_tail=False
-        )
+        assert facts(wings) == NONE
 
 
 @pytest.mark.parametrize(
@@ -173,10 +182,6 @@ def node_of(model: CanonModel, formula: str, application: str) -> Node:
     return CanonGraph(model).node(NodeId(formula=f"calc:{formula}", application=application))
 
 
-ALL = WhenFacts(has_aileron=True, has_separate_flap_and_aileron=True, has_vertical_tail=True)
-NONE = WhenFacts(has_aileron=False, has_separate_flap_and_aileron=False, has_vertical_tail=False)
-
-
 def test_an_unconditional_application_has_no_unmet_condition(flight_canon: CanonModel) -> None:
     node = node_of(flight_canon, "stall-speed", "clean")
     assert unmet_condition(node, NONE, set()) is None
@@ -213,17 +218,10 @@ def test_a_supplied_given_in_either_spelling_is_met(
     assert unmet_condition(node, ALL, supplied) is None
 
 
-@pytest.mark.parametrize(
-    "term", ["has_aileron", "has_separate_flap_and_aileron", "has_vertical_tail"]
-)
+@pytest.mark.parametrize("term", FACT_NAMES)
 def test_every_term_of_the_vocabulary_is_read_from_its_own_fact(term: str) -> None:
-    for name in ("has_aileron", "has_separate_flap_and_aileron", "has_vertical_tail"):
-        only = WhenFacts(
-            **{
-                n: n == name
-                for n in ("has_aileron", "has_separate_flap_and_aileron", "has_vertical_tail")
-            }
-        )
+    for name in FACT_NAMES:
+        only = WhenFacts(**{n: n == name for n in FACT_NAMES})
         assert only.holds(term) is (term == name)  # type: ignore[arg-type]  # term is one of the Literal values
 
 
@@ -331,3 +329,50 @@ def test_a_pending_when_term_does_not_mask_an_unmet_given() -> None:
     pending = unmet_condition(node, facts(None), ["a"])
     assert isinstance(pending, KernelError)
     assert pending.category is ErrorCategory.NOT_IMPLEMENTED
+
+
+ROLES = (
+    "aileron",
+    "elevator",
+    "rudder",
+    "elevon",
+    "flaperon",
+    "ruddervator",
+    "stabilator",
+    "flap",
+    "other",
+)
+HINGED = {
+    "has_elevator": {"elevator", "elevon", "ruddervator"},
+    "has_flap": {"flap", "flaperon"},
+    "has_rudder": {"rudder", "ruddervator"},
+}
+
+
+@pytest.mark.parametrize("term", sorted(HINGED))
+@pytest.mark.parametrize("role", ROLES)
+def test_the_hinge_moment_terms_go_by_the_role_of_the_device(term: str, role: str) -> None:
+    """A stabilator (all-moving tail) has no hinge in this sense and counts for none of them."""
+    held = facts({"w": wing(sec(0, 0, 0.2, role), sec(0, 0.5, 0.2))})
+    assert getattr(held, term) is (role in HINGED[term])
+
+
+@pytest.mark.parametrize("term", sorted(HINGED))
+def test_the_hinge_moment_terms_are_false_without_any_device(term: str) -> None:
+    held = facts({"w": wing(sec(0, 0, 0.2), sec(0, 0.5, 0.2))})
+    assert getattr(held, term) is False
+
+
+def test_a_dual_role_surface_counts_for_both_of_its_roles() -> None:
+    held = facts({"w": wing(sec(0, 0, 0.2, "ruddervator"), sec(0, 0.5, 0.2))})
+    assert (held.has_elevator, held.has_rudder, held.has_flap) == (True, True, False)
+
+
+def test_the_devices_of_all_wings_count() -> None:
+    held = facts(
+        {
+            "main": wing(sec(0, 0, 0.2, "flaperon"), sec(0, 0.5, 0.2)),
+            "tail": wing(sec(1.0, 0, 0.1, "elevator"), sec(1.0, 0.3, 0.1)),
+        }
+    )
+    assert (held.has_flap, held.has_elevator, held.has_rudder) == (True, True, False)

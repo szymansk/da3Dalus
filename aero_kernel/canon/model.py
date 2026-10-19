@@ -171,7 +171,13 @@ FormulaKind = Literal["law", "procedure", "optimization", "fit", "rating"]
 Tool = Literal["APP", "ATM", "GEO", "AB", "AVL", "OPT", "KAT", "APC"]
 CostClass = Literal["instant", "seconds", "minutes"]
 WhenTerm = Literal[
-    "has_aileron", "has_horizontal_tail", "has_separate_flap_and_aileron", "has_vertical_tail"
+    "has_aileron",
+    "has_elevator",
+    "has_flap",
+    "has_horizontal_tail",
+    "has_rudder",
+    "has_separate_flap_and_aileron",
+    "has_vertical_tail",
 ]
 OnViolation = Literal["warning", "error"]
 
