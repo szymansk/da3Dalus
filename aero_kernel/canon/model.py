@@ -59,7 +59,15 @@ NonBlank = Annotated[str, StringConstraints(min_length=1, pattern=r"\S")]
 FiniteNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 
 QuantityRole = Literal["input", "target", "derived", "output"]
-QuantityType = Literal["scalar", "airplane", "components", "curve", "polar", "curve_pair"]
+QuantityType = Literal[
+    "scalar",
+    "airplane",
+    "components",
+    "curve",
+    "polar",
+    "curve_pair",
+    "per_control_surface",
+]
 
 # The canon's unit symbols after normalisation (ch. 8.9 stage 2); ``1`` is dimensionless and also
 # stands for the not-a-number ``airplane`` types. A new unit is a model change.
@@ -78,6 +86,8 @@ Unit = Literal[
     "1/rad^2",
     "N",
     "N/m^2",
+    "N*m",
+    "N/m",
     "Pa",
     "kg/m^3",
     "W",

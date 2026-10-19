@@ -189,6 +189,8 @@
             "1/rad^2",
             "N",
             "N/m^2",
+            "N*m",
+            "N/m",
             "Pa",
             "kg/m^3",
             "W",
@@ -462,7 +464,8 @@
             "components",
             "curve",
             "polar",
-            "curve_pair"
+            "curve_pair",
+            "per_control_surface"
           ],
           "title": "Type",
           "type": "string"
@@ -496,6 +499,8 @@
             "1/rad^2",
             "N",
             "N/m^2",
+            "N*m",
+            "N/m",
             "Pa",
             "kg/m^3",
             "W",
