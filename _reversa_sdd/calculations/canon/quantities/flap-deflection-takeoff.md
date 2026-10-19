@@ -22,4 +22,4 @@ Lennon: 20° take-off (slotted flap, 30 % chord) — orientation only, not a def
 
 **Unit.** `deg`
 
-**Used by.** [[airplane-configuration]]
+**Used by.** [[airplane-configuration]] · [[control-surface-hinge-moments]]

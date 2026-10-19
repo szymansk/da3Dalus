@@ -5,7 +5,7 @@ kind: procedure
 tool: APP
 shape: route
 status: draft
-output: propeller-speed
+output: propeller-speed, motor-torque
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -26,7 +26,7 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
-outputs: {n_prop: propeller-speed}
+outputs: {n_prop: propeller-speed, q_m: motor-torque}
 optional: [r_m]
 ---
 
@@ -38,9 +38,24 @@ optional: [r_m]
 route B (R_m known):  (I(n_prop) - I_0) / K_v' = C_P(J) * rho * n_prop^2 * D_prop^5 / (2*pi)
                       I(n_prop) = (U_bat - 2*pi*n_prop / K_v') / R_m,   J = V / (n_prop * D_prop)
 route A (R_m absent): n_prop = min( K_v * U_bat / 60 ,  n_prop  with  C_P(J) * rho * n_prop^3 * D_prop^5 = eta_mot * P_mot,max )
+both routes:          Q_m = C_P(J) * rho * n_prop^2 * D_prop^5 / (2*pi)          (torque absorbed; equal to the motor torque at the balance on route B; route A below the power limit: upper estimate)
 ```
 
-**Produces** [[propeller-speed]]  ·  **from** [[components]] · [[flight-speed]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[propeller-speed]] · [[motor-torque]]  ·  **from** [[components]] · [[flight-speed]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+
+**Second output: the motor torque** (maintainer, 2026-10-19, #1174). The balance already equates
+motor and propeller torque; `Q_m = C_P(J)·ρ·n_prop²·D_prop⁵/(2π) = P_shaft/(2π·n_prop)` is that torque
+at the solved `n_prop` (on route A at the power limit `Q_m = eta_mot·P_mot,max /
+(2π·n_prop)`). Route B: exact at the balance point. **Route A below the power limit is an upper
+estimate, declared (ADR 0020):** it runs at the free-run rpm `K_v·U_bat`, which ignores the rpm drop
+under load — by this entry's own measurement (D-Power AL 28-13, APC 6x4E: 10 064 vs 8 973 rpm) the
+torque `∝ n_prop²` is about 26 % too high. It is covered by the existing `practice` warning that names
+route A (`Q-PT-6`). At the power limit it uses `eta_mot`, the sourced default 0.75 (Roxxy
+Motoren-Fibel, `defaults.yaml`). Both routes take the nominal battery voltage. The construction side sizes the motor
+mount from it; the speed it is read at (static, `V = 0`, is the usual maximum) and any factor are the
+construction's and the evaluation's (A10). Source: the torque balance itself (Drela `motor1` §1.1);
+Sadraey §6.8.2 treats propeller reaction torque only as a roll-trim effect — no source for its
+structural use.
 
 **Kind: a procedure with two routes, selected by data.** `K_v'` is the speed constant in rad/s per volt.
 

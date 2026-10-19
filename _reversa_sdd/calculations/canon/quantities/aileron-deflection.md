@@ -19,4 +19,4 @@ the MVP, maintainer 2026-10-01).
 
 **Unit.** `deg`
 
-**Used by.** [[roll-rate-cruise-target]] · [[roll-rate]]
+**Used by.** [[control-surface-hinge-moments]] · [[roll-rate]] · [[roll-rate-cruise-target]]
