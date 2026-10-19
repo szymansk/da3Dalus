@@ -18,3 +18,5 @@ Corner of the envelope where the stall line meets the limit load: below it the w
 **Unit.** `m/s`
 
 **Produced by.** [[maneuvering-speed]]
+
+**Used by.** [[spar-break-load-factor]]
