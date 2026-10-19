@@ -121,14 +121,22 @@ def test_importing_the_package_does_not_import_a_solver_library() -> None:
 
 
 def test_checking_availability_imports_nothing() -> None:
-    assert "pydoc_data" not in sys.modules
-    modules_before = set(sys.modules)
-
-    class Harmless(SolverAdapter):
-        tool: ClassVar[str] = "fake-harmless"
-        requirements: ClassVar[Mapping[str, str]] = {"pydoc-data": "pydoc_data"}
-
-    adapter = Harmless(SolverRuntime())
-    assert adapter.available() is True
-    adapter.require_available()
-    assert set(sys.modules) == modules_before
+    """Run in a fresh interpreter: the process of a test run has imported anything before."""
+    code = (
+        "import sys\n"
+        "from collections.abc import Mapping\n"
+        "from typing import ClassVar\n"
+        "from aero_kernel.runtime import SolverRuntime\n"
+        "from aero_kernel.solvers.base import SolverAdapter\n"
+        "assert 'pydoc_data' not in sys.modules\n"
+        "modules_before = set(sys.modules)\n"
+        "class Harmless(SolverAdapter):\n"
+        "    tool: ClassVar[str] = 'fake-harmless'\n"
+        "    requirements: ClassVar[Mapping[str, str]] = {'pydoc-data': 'pydoc_data'}\n"
+        "adapter = Harmless(SolverRuntime())\n"
+        "assert adapter.available() is True\n"
+        "adapter.require_available()\n"
+        "assert set(sys.modules) == modules_before\n"
+    )
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stderr
