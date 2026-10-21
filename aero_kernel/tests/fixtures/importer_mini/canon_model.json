@@ -1,0 +1,332 @@
+{
+  "content_hash": "sha256:b5922c0765f15555012a3f5b7a65e8ec0bb271d7f3acd5b81c2648b90238550f",
+  "importer_version": "1.0.0",
+  "namespaces": {
+    "calc": {
+      "defaults": {
+        "gravity": {
+          "regime": "regime-independent",
+          "source": "standard gravity",
+          "unit": "m/s^2",
+          "value": 9.80665
+        }
+      },
+      "formulas": {
+        "estimate": {
+          "applications": [
+            {
+              "bind": {
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "w": "calc:weight-estimate"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "w": "calc:weight-estimate"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
+          "uncertainty": "interval",
+          "variables": [],
+          "worlds": [
+            "simple",
+            "detailed"
+          ]
+        },
+        "outer": {
+          "applications": [
+            {
+              "bind": {
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "w": "calc:weight-outer"
+              },
+              "when": null
+            }
+          ],
+          "cost": "minutes",
+          "embeds": [
+            "calc:weigh-twice.default"
+          ],
+          "embeds_closure": [
+            "calc:weigh-twice.default",
+            "calc:weighing.clean",
+            "calc:weight-from-mass.default"
+          ],
+          "inputs": {
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass"
+          },
+          "kind": "optimization",
+          "optional": [
+            "g"
+          ],
+          "outputs": {
+            "w": "calc:weight-outer"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:aircraft-mass"
+          ],
+          "worlds": []
+        },
+        "weigh-twice": {
+          "applications": [
+            {
+              "bind": {
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "w": "calc:weight-twice"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [
+            "calc:weight-from-mass.default",
+            "calc:weighing.clean"
+          ],
+          "embeds_closure": [
+            "calc:weighing.clean",
+            "calc:weight-from-mass.default"
+          ],
+          "inputs": {
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "w": "calc:weight-twice"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [
+            "calc:aircraft-mass"
+          ],
+          "worlds": []
+        },
+        "weighing": {
+          "applications": [
+            {
+              "bind": {
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass"
+              },
+              "given": null,
+              "id": "clean",
+              "produce": {
+                "w": "calc:weight-weighed"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "g": {
+                  "const": 9.81,
+                  "source": "test source"
+                },
+                "m": "calc:aircraft-mass"
+              },
+              "given": [
+                "calc:aircraft-mass"
+              ],
+              "id": "flapped",
+              "produce": {
+                "w": "calc:weight-flapped"
+              },
+              "when": "has_aileron"
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "w": null
+          },
+          "postconditions": [
+            {
+              "applications": [
+                "clean"
+              ],
+              "id": "clean_only",
+              "on_violation": "warning",
+              "parameter": "w"
+            }
+          ],
+          "preconditions": [],
+          "tool": "AB",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "weight-from-mass": {
+          "applications": [
+            {
+              "bind": {
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "w": "calc:weight"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "w": "calc:weight"
+          },
+          "postconditions": [
+            {
+              "applications": null,
+              "id": "w_checked",
+              "on_violation": "error",
+              "parameter": "w"
+            }
+          ],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "m_checked",
+              "on_violation": "warning",
+              "parameter": "m"
+            }
+          ],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        }
+      },
+      "quantities": {
+        "aircraft-mass": {
+          "positive": true,
+          "role": "input",
+          "symbol": "m",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg"
+        },
+        "airplane": {
+          "positive": null,
+          "role": "input",
+          "symbol": "airplane",
+          "type": "airplane",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "gravity": {
+          "positive": true,
+          "role": "input",
+          "symbol": "g",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s^2"
+        },
+        "ratio": {
+          "positive": null,
+          "role": "input",
+          "symbol": "r",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "weight": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "W",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "weight-estimate": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "W_e",
+          "type": "scalar",
+          "uncertainty": "interval",
+          "unit": "N"
+        },
+        "weight-flapped": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "W_f",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "weight-outer": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "W_o",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "weight-twice": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "W_2",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "weight-weighed": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "W_w",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        }
+      }
+    }
+  },
+  "schema_version": 1
+}

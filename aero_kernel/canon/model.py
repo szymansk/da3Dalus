@@ -1,0 +1,707 @@
+"""Canon-model types (ARCHITECTURE ch. 8.9): the interpreted canon the kernel runs on.
+
+Every field mirrors the canon README section "Machine-readable fields" one to one, normalised as
+ch. 8.9 says. All models are frozen, reject unknown fields and carry their invariants themselves:
+they are canon-model types, not input types.
+"""
+
+from collections.abc import Iterator, Mapping
+from typing import Annotated, Literal, NamedTuple, Self, TypedDict
+
+from aero_kernel.canonical import sha256_of
+from aero_kernel.errors import (
+    DEFAULT_NAMESPACE,
+    IDENTIFIER_REGEX,
+    NAMESPACE_REGEX,
+    SLUG_REGEX,
+    WORLD_NAME_REGEX,
+)
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Discriminator,
+    Field,
+    StringConstraints,
+    Tag,
+    field_validator,
+    model_validator,
+)
+from pydantic_core import PydanticCustomError
+
+__all__ = [
+    "BINDING_TAGS",
+    "DEFAULT_NAMESPACE",
+    "Application",
+    "Binding",
+    "CanonModel",
+    "CanonProblem",
+    "Check",
+    "ConstBinding",
+    "CostClass",
+    "Default",
+    "Formula",
+    "FormulaKind",
+    "Namespace",
+    "OnViolation",
+    "Quantity",
+    "QuantityRole",
+    "QuantityType",
+    "Tool",
+    "Unit",
+    "WhenTerm",
+    "compute_content_hash",
+]
+
+# Text the canon must state (a symbol, a source, a regime): at least one non-blank character.
+NonBlank = Annotated[str, StringConstraints(min_length=1, pattern=r"\S")]
+
+# Numbers in the model are finite (a model with NaN would not survive its JSON form).
+FiniteNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
+
+QuantityRole = Literal["input", "target", "derived", "output"]
+QuantityType = Literal[
+    "scalar",
+    "airplane",
+    "components",
+    "curve",
+    "polar",
+    "curve_pair",
+    "per_control_surface",
+]
+
+# The canon's unit symbols after normalisation (ch. 8.9 stage 2); ``1`` is dimensionless and also
+# stands for the not-a-number ``airplane`` types. A new unit is a model change.
+Unit = Literal[
+    "1",
+    "m",
+    "m^2",
+    "kg",
+    "s",
+    "deg",
+    "deg/s",
+    "m/s",
+    "m/s^2",
+    "1/s",
+    "1/rad",
+    "1/rad^2",
+    "N",
+    "N/m^2",
+    "N*m",
+    "N/m",
+    "Pa",
+    "kg/m^3",
+    "W",
+    "V",
+    "A",
+    "ohm",
+    "Wh",
+    "Wh/kg",
+    "rpm/V",
+]
+
+_MODEL_CONFIG = ConfigDict(extra="forbid", frozen=True)
+
+
+class Default(BaseModel):
+    """A value the canon states for a supplied quantity, with its unit, source and regime.
+
+    Attributes:
+        value: The value, in ``unit``.
+        unit: The unit of ``value``; it must equal the unit of the quantity.
+        source: Citation of where the value comes from (ADR 0028).
+        regime: The flight regime the value is valid for (ADR 0028).
+    """
+
+    model_config = _MODEL_CONFIG
+
+    value: FiniteNumber
+    unit: Unit
+    source: NonBlank
+    regime: NonBlank
+
+
+class Quantity(BaseModel):
+    """A quantity of the canon vocabulary.
+
+    Attributes:
+        symbol: The quantity's symbol.
+        unit: The unit of its values; ``1`` is dimensionless.
+        role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.
+        type: The kind of value.
+        uncertainty: ``interval`` where the producer declares method worlds.
+        positive: ``True`` where the quantity is strictly greater than zero by its definition,
+            otherwise omitted (``None``); ``false`` is no spelling of the canon.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    symbol: NonBlank
+    unit: Unit
+    role: QuantityRole
+    type: QuantityType
+    uncertainty: Literal["interval"] | None = None
+    positive: Literal[True] | None = None
+
+    @field_validator("positive", mode="before")
+    @classmethod
+    def _positive_is_the_boolean(cls, value: object) -> object:
+        """Reject 1, 1.0 and "true": Python and pydantic read them as ``True``, JSON Schema does not."""
+        if value is not None and not isinstance(value, bool):
+            msg = "positive must be the boolean true"
+            raise ValueError(msg)
+        return value
+
+    @model_validator(mode="after")
+    def _check_positive(self) -> Self:
+        """Allow ``positive`` only on supplied scalars."""
+        if self.positive is None:
+            return self
+        if self.role not in ("input", "target"):
+            msg = f"positive is only allowed on role input or target, not {self.role}"
+            raise ValueError(msg)
+        if self.type != "scalar":
+            msg = f"positive is only allowed on a scalar quantity, not {self.type}"
+            raise ValueError(msg)
+        return self
+
+
+# --- formulas -------------------------------------------------------------------------------
+
+FormulaKind = Literal["law", "procedure", "optimization", "fit", "rating"]
+Tool = Literal["APP", "ATM", "GEO", "AB", "AVL", "OPT", "KAT", "APC"]
+CostClass = Literal["instant", "seconds", "minutes"]
+WhenTerm = Literal[
+    "has_aileron",
+    "has_elevator",
+    "has_flap",
+    "has_horizontal_tail",
+    "has_rudder",
+    "has_separate_flap_and_aileron",
+    "has_vertical_tail",
+]
+OnViolation = Literal["warning", "error"]
+
+# The slug, world-name, namespace and identifier patterns are defined once, in ``errors.py``; every other pattern here
+# is built from them. Parameter names, like world names, are snake_case. A reference is fully
+# qualified: ``<namespace>:<slug>`` (ch. 8.9).
+
+
+def _anchored(regex: str) -> StringConstraints:
+    """Constrain a string to match ``regex`` completely."""
+    return StringConstraints(pattern=f"^{regex}$")
+
+
+Parameter = Annotated[str, _anchored(WORLD_NAME_REGEX)]
+Identifier = Annotated[str, _anchored(IDENTIFIER_REGEX)]
+
+
+WorldName = Annotated[str, _anchored(WORLD_NAME_REGEX)]
+QualifiedSlug = Annotated[str, _anchored(f"{NAMESPACE_REGEX}:{SLUG_REGEX}")]
+# An embedded application: ``<namespace>:<slug>.<application-id>``; never a bare formula slug.
+QualifiedApplication = Annotated[
+    str, _anchored(rf"{NAMESPACE_REGEX}:{SLUG_REGEX}\.{IDENTIFIER_REGEX}")
+]
+
+
+class ConstBinding(BaseModel):
+    """A constant bound to an input parameter, with its source (ADR 0028).
+
+    Attributes:
+        const: The value, in the parameter's unit.
+        source: Citation of where the constant comes from.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    const: FiniteNumber
+    source: NonBlank
+
+
+# A binding is a quantity slug or a ``{const, source}`` constant. The tags are ours, so a validation
+# location names the branch with a word of this module (``BINDING_TAGS``) and not with a pydantic name.
+BINDING_TAGS = ("slug", "const")
+
+
+def _binding_tag(value: object) -> str:
+    """Tell the two kinds of binding apart: a mapping or a constant is ``const``, all else ``slug``."""
+    return "const" if isinstance(value, dict | ConstBinding) else "slug"
+
+
+Binding = Annotated[
+    Annotated[QualifiedSlug, Tag("slug")] | Annotated[ConstBinding, Tag("const")],
+    Discriminator(_binding_tag),
+]
+
+
+class Application(BaseModel):
+    """A formula applied to concrete quantities, written out completely (ch. 8.5).
+
+    ``bind`` and ``produce`` hold the merged result of the formula's defaults and the application's
+    own overrides, so every input parameter is bound and every output parameter is produced.
+
+    Attributes:
+        id: Name of the application, unique within its formula; ``default`` for the implicit one.
+        bind: Quantity or constant per input parameter.
+        produce: Quantity per output parameter; ``None`` = the application does not expose it.
+        when: Condition over the geometry; ``None`` = always.
+        given: Quantities that must be supplied for the application to exist; ``None`` = always.
+            Each must be bound by the application, but ``Formula`` checks that, not this type: an
+            ``Application`` alone does not guarantee ``given`` is a subset of its bindings. The
+            check runs after the bindings and the field rules, so a ``given`` fault of a formula
+            that has other faults is deferred to the next run; it is never hidden.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    id: Identifier
+    bind: dict[Parameter, Binding]
+    produce: dict[Parameter, QualifiedSlug | None]
+    when: WhenTerm | None = None
+    given: Annotated[tuple[QualifiedSlug, ...], Field(min_length=1)] | None = None
+
+
+class Check(BaseModel):
+    """A pre- or postcondition of a formula (ch. 8.5).
+
+    Attributes:
+        id: Name of the check, unique among the formula's checks of its kind.
+        parameter: The input (precondition) or output (postcondition) parameter it concerns.
+        on_violation: ``error`` withholds the value, ``warning`` returns it with a defect warning.
+        applications: Ids of the applications it belongs to; ``None`` = all of them.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    id: Identifier
+    parameter: Parameter
+    on_violation: OnViolation
+    applications: Annotated[tuple[Identifier, ...], Field(min_length=1)] | None = None
+
+
+def _parameter_problems(
+    application_id: str,
+    side: str,
+    written: Mapping[str, object],
+    declared: Mapping[str, object],
+    how: str,
+) -> list[str]:
+    """Name every parameter an application binds or produces wrongly, application included."""
+    where = f"application `{application_id}`"
+    fault = "bound" if how == "bind" else "produced"
+    problems = [
+        f"{where}: {side} parameter `{name}` is not {fault}"
+        + (" (write null to leave it unexposed)" if how == "produce" else "")
+        for name in declared
+        if name not in written
+    ]
+    problems.extend(
+        f"{where}: parameter `{name}` is not an {side} of the formula"
+        for name in written
+        if name not in declared
+    )
+    return problems
+
+
+class Formula(BaseModel):
+    """A canon formula with its applications, checks, worlds and embeds (ch. 8.5, 8.13).
+
+    Attributes:
+        kind: The formula's kind.
+        tool: The tool that evaluates it.
+        cost: Cost class: declared in the canon, otherwise derived from ``tool`` (ch. 8.7).
+        inputs: Default quantity per input parameter; ``None`` = bound per application.
+        outputs: Default quantity per output parameter; ``None`` = produced per application.
+        optional: Input parameters that may arrive as ``None``.
+        applications: The applications, at least one.
+        preconditions: Checks on inputs, run before the call.
+        postconditions: Checks on outputs, run after the call.
+        uncertainty: ``interval`` where the formula has method worlds.
+        worlds: The method worlds, exactly with ``uncertainty``.
+        embeds: Directly embedded applications, ``<ns>:<slug>.<application-id>``.
+        variables: Quantities the embedder solves for or sweeps itself, exactly with ``embeds``.
+        embeds_closure: Sorted, unique embeds reachable through ``embeds``, direct ones included.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    kind: FormulaKind
+    tool: Tool
+    cost: CostClass
+    inputs: dict[Parameter, QualifiedSlug | None]
+    outputs: dict[Parameter, QualifiedSlug | None]
+    optional: tuple[Parameter, ...] = ()
+    applications: Annotated[tuple[Application, ...], Field(min_length=1)]
+    preconditions: tuple[Check, ...] = ()
+    postconditions: tuple[Check, ...] = ()
+    uncertainty: Literal["interval"] | None = None
+    worlds: tuple[WorldName, ...] = ()
+    embeds: tuple[QualifiedApplication, ...] = ()
+    variables: tuple[QualifiedSlug, ...] = ()
+    embeds_closure: tuple[QualifiedApplication, ...] = ()
+
+    def application(self, application_id: str) -> Application:
+        """Return the application with the given id.
+
+        Args:
+            application_id: Id of the application.
+
+        Returns:
+            The application.
+
+        Raises:
+            KeyError: If the formula has no such application.
+        """
+        for application in self.applications:
+            if application.id == application_id:
+                return application
+        raise KeyError(application_id)
+
+    @model_validator(mode="after")
+    def _check_applications(self) -> Self:
+        """Require unique ids, and every input bound and every output produced, nothing else."""
+        ids = [application.id for application in self.applications]
+        if len(set(ids)) != len(ids):
+            msg = "application ids must be unique"
+            raise ValueError(msg)
+        problems: list[str] = []
+        for application in self.applications:
+            found = [
+                *_parameter_problems(
+                    application.id, "input", application.bind, self.inputs, "bind"
+                ),
+                *_parameter_problems(
+                    application.id, "output", application.produce, self.outputs, "produce"
+                ),
+            ]
+            if not found:  # a given slug is judged only once the bindings themselves are complete
+                bound = {value for value in application.bind.values() if isinstance(value, str)}
+                found = [
+                    f"application `{application.id}`: given {slug} is not bound by the application"
+                    for slug in application.given or ()
+                    if slug not in bound
+                ]
+            problems.extend(found)
+        if problems:
+            raise ValueError("; ".join(problems))
+        unknown = set(self.optional) - self.inputs.keys()
+        if unknown:
+            msg = f"optional names parameters that are no input: {sorted(unknown)}"
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_checks(self) -> Self:
+        """Require preconditions on inputs, postconditions on outputs, unique ids, known applications."""
+        ids = {application.id for application in self.applications}
+        for label, checks, side in (
+            ("precondition", self.preconditions, self.inputs),
+            ("postcondition", self.postconditions, self.outputs),
+        ):
+            check_ids = [check.id for check in checks]
+            if len(set(check_ids)) != len(check_ids):
+                msg = f"{label} ids must be unique"
+                raise ValueError(msg)
+            for check in checks:
+                if check.parameter not in side:
+                    msg = f"{label} {check.id} names {check.parameter}, which is not on its side"
+                    raise ValueError(msg)
+                for application_id in check.applications or ():
+                    if application_id not in ids:
+                        msg = f"{label} {check.id} names unknown application {application_id}"
+                        raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_worlds_and_embeds(self) -> Self:
+        """Tie worlds to interval uncertainty, variables to embeds, and embeds to their closure."""
+        if (self.uncertainty == "interval") != bool(self.worlds):
+            msg = "worlds are required exactly with uncertainty: interval"
+            raise ValueError(msg)
+        if self.worlds and (len(self.worlds) < 2 or len(set(self.worlds)) != len(self.worlds)):
+            msg = "worlds must be at least two and unique"
+            raise ValueError(msg)
+        if bool(self.variables) != bool(self.embeds):
+            msg = "variables are required exactly with embeds"
+            raise ValueError(msg)
+        if bool(self.embeds_closure) != bool(self.embeds) or not set(self.embeds) <= set(
+            self.embeds_closure
+        ):
+            msg = "embeds_closure must exist exactly with embeds and contain them"
+            raise ValueError(msg)
+        if list(self.embeds_closure) != sorted(set(self.embeds_closure)):
+            msg = "embeds_closure must be sorted and unique"
+            raise ValueError(msg)
+        return self
+
+
+# --- the model ------------------------------------------------------------------------------
+
+# Dict keys inside a namespace are bare slugs; namespace names are lower-case identifiers.
+SlugKey = Annotated[str, _anchored(SLUG_REGEX)]
+NamespaceKey = Annotated[str, _anchored(NAMESPACE_REGEX)]
+
+
+class Namespace(BaseModel):
+    """One canon of the model: its quantities, formulas and defaults, keyed by bare slug.
+
+    Attributes:
+        quantities: The quantity vocabulary.
+        formulas: The formulas.
+        defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    quantities: dict[SlugKey, Quantity]
+    formulas: dict[SlugKey, Formula]
+    defaults: dict[SlugKey, Default] = {}
+
+
+def compute_content_hash(namespaces: Mapping[str, Namespace]) -> str:
+    """Hash the canon's content: ``"sha256:"`` plus the hex SHA-256 of the canonical JSON.
+
+    Only the namespaces enter; provenance (``importer_version``) and the hash itself do not, so
+    identical content hashes alike whatever importer version wrote it.
+
+    Args:
+        namespaces: The namespaces of a model.
+
+    Returns:
+        The prefixed hex digest.
+    """
+    return sha256_of({name: ns.model_dump(mode="json") for name, ns in namespaces.items()})
+
+
+def _split(reference: str) -> tuple[str, str]:
+    """Split ``<namespace>:<slug>``; a bare slug belongs to the default namespace."""
+    namespace, separator, slug = reference.partition(":")
+    if not separator:
+        return DEFAULT_NAMESPACE, reference
+    return namespace, slug
+
+
+class CanonProblem(TypedDict):
+    """One problem of a whole-model rule, located for the importer (carried in the error context).
+
+    Attributes:
+        namespace: Namespace of the entry.
+        section: ``formulas`` or ``defaults``.
+        slug: Slug of the entry.
+        field: Field of the entry, e.g. ``applications[1].bind.m``; empty for the whole entry.
+        side: ``inputs`` or ``outputs`` for a formula-level default, ``bind`` or ``produce`` for an
+            application's binding; ``None`` elsewhere.
+        application: Index of the application for ``bind`` and ``produce``; ``None`` elsewhere.
+        parameter: The parameter for ``side``; ``None`` elsewhere.
+        text: What is wrong.
+    """
+
+    namespace: str
+    section: Literal["formulas", "defaults"]
+    slug: str
+    field: str
+    side: Literal["inputs", "outputs", "bind", "produce"] | None
+    application: int | None
+    parameter: str | None
+    text: str
+
+
+def _describe(problem: CanonProblem) -> str:
+    """Render a problem as the one-line message a plain ``str(error)`` shows."""
+    if problem["section"] == "defaults":
+        return problem["text"]
+    return f"{problem['namespace']}:{problem['slug']}: {problem['text']}"
+
+
+def _canon_error(problems: list[CanonProblem]) -> PydanticCustomError:
+    """Build the validation error of a whole-model rule; the problems travel in its context."""
+    summary = "; ".join(_describe(problem) for problem in problems)
+    return PydanticCustomError(
+        "canon_problems", "{summary}", {"summary": summary, "problems": problems}
+    )
+
+
+class _Reference(NamedTuple):
+    """One reference a formula holds, with where it is written."""
+
+    field: str
+    kind: str
+    reference: str
+    side: Literal["inputs", "outputs", "bind", "produce"] | None = None
+    application: int | None = None
+    parameter: str | None = None
+
+
+def _references(formula: Formula) -> Iterator[_Reference]:
+    """Yield every reference the formula holds: ``quantity``, ``given`` or ``embed``."""
+    for name, default in formula.inputs.items():
+        if default is not None:
+            yield _Reference(f"inputs.{name}", "quantity", default, "inputs", None, name)
+    for name, default in formula.outputs.items():
+        if default is not None:
+            yield _Reference(f"outputs.{name}", "quantity", default, "outputs", None, name)
+    for index, application in enumerate(formula.applications):
+        where = f"applications[{index}]"
+        for name, binding in application.bind.items():
+            if isinstance(binding, str):
+                yield _Reference(f"{where}.bind.{name}", "quantity", binding, "bind", index, name)
+        for name, produced in application.produce.items():
+            if produced is not None:
+                yield _Reference(
+                    f"{where}.produce.{name}", "quantity", produced, "produce", index, name
+                )
+        for position, slug in enumerate(application.given or ()):
+            yield _Reference(f"{where}.given[{position}]", "given", slug)
+    for position, slug in enumerate(formula.variables):
+        yield _Reference(f"variables[{position}]", "quantity", slug)
+    for name, items in (("embeds", formula.embeds), ("embeds_closure", formula.embeds_closure)):
+        for position, item in enumerate(items):
+            yield _Reference(f"{name}[{position}]", "embed", item)
+
+
+class CanonModel(BaseModel):
+    """The interpreted canon the kernel runs on (ch. 8.9); the content of ``canon_model.json``.
+
+    Attributes:
+        schema_version: Version of this model shape; ``1``.
+        content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).
+        importer_version: Version of the importer that wrote the model.
+        namespaces: Quantities and formulas per namespace; every reference inside is qualified.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    schema_version: Literal[1]
+    content_hash: Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
+    importer_version: str = Field(min_length=1)
+    namespaces: Annotated[dict[NamespaceKey, Namespace], Field(min_length=1)]
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def _reject_bool_version(cls, value: object) -> object:
+        """Reject ``true``: Python reads it as ``1``, JSON Schema does not."""
+        if isinstance(value, bool):
+            msg = "schema_version must be the integer 1, not a boolean"
+            raise ValueError(msg)
+        return value
+
+    def quantity(self, reference: str) -> Quantity | None:
+        """Look a quantity up by slug.
+
+        Args:
+            reference: ``<namespace>:<slug>``, or a bare slug, which means ``calc:``.
+
+        Returns:
+            The quantity, or ``None`` if the model has none.
+        """
+        namespace, slug = _split(reference)
+        found = self.namespaces.get(namespace)
+        return None if found is None else found.quantities.get(slug)
+
+    def formula(self, reference: str) -> Formula | None:
+        """Look a formula up by slug.
+
+        Args:
+            reference: ``<namespace>:<slug>``, or a bare slug, which means ``calc:``.
+
+        Returns:
+            The formula, or ``None`` if the model has none.
+        """
+        namespace, slug = _split(reference)
+        found = self.namespaces.get(namespace)
+        return None if found is None else found.formulas.get(slug)
+
+    @model_validator(mode="after")
+    def _check_hash(self) -> Self:
+        """Reject a model whose content does not match its ``content_hash``."""
+        expected = compute_content_hash(self.namespaces)
+        if self.content_hash != expected:
+            msg = f"content_hash {self.content_hash} does not match the content ({expected})"
+            raise ValueError(msg)
+        return self
+
+    def _check_embed(self, item: str) -> str | None:
+        """Return the problem with an embedded ``<ns>:<slug>.<application-id>``, if any."""
+        reference, _, application_id = item.rpartition(".")
+        formula = self.formula(reference)
+        if formula is None:
+            return f"embeds {item}, but formula {reference} does not exist"
+        if all(application.id != application_id for application in formula.applications):
+            return f"embeds {item}, but the formula has no such application"
+        return None
+
+    def _check_given(self, reference: str) -> str | None:
+        """Return the problem with a ``given`` slug, if any: it must be a supplied, default-less one."""
+        quantity = self.quantity(reference)
+        if quantity is None:
+            return f"unknown quantity {reference}"
+        namespace, slug = _split(reference)
+        if quantity.role not in ("input", "target") or slug in self.namespaces[namespace].defaults:
+            return f"given {reference} must be an input or target without default"
+        return None
+
+    @model_validator(mode="after")
+    def _check_defaults(self) -> Self:
+        """Require every default to belong to a supplied scalar of the same unit, > 0 if positive."""
+        problems: list[CanonProblem] = []
+        for namespace, content in self.namespaces.items():
+            for slug, default in content.defaults.items():
+                quantity = content.quantities.get(slug)
+                where = f"{namespace}:{slug}"
+                text = None
+                if quantity is None:
+                    text = f"default of unknown quantity {where}"
+                elif quantity.role not in ("input", "target"):
+                    text = f"default of {where}: role must be input or target, not {quantity.role}"
+                elif quantity.type != "scalar":
+                    text = f"default of {where}: quantity must be a scalar, not {quantity.type}"
+                elif default.unit != quantity.unit:
+                    text = f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
+                elif quantity.positive and default.value <= 0:
+                    text = f"default of positive quantity {where} must be > 0"
+                if text is not None:
+                    problems.append(
+                        CanonProblem(
+                            namespace=namespace,
+                            section="defaults",
+                            slug=slug,
+                            field="",
+                            side=None,
+                            application=None,
+                            parameter=None,
+                            text=text,
+                        )
+                    )
+        if problems:
+            raise _canon_error(problems)
+        return self
+
+    @model_validator(mode="after")
+    def _check_references(self) -> Self:
+        """Require every reference of every formula to resolve."""
+        problems: list[CanonProblem] = []
+        for namespace, content in self.namespaces.items():
+            for slug, formula in content.formulas.items():
+                for found in _references(formula):
+                    reference = found.reference
+                    if found.kind == "embed":
+                        text = self._check_embed(reference)
+                    elif found.kind == "given":
+                        text = self._check_given(reference)
+                    else:
+                        text = None if self.quantity(reference) else f"unknown quantity {reference}"
+                    if text is not None:
+                        problems.append(
+                            CanonProblem(
+                                namespace=namespace,
+                                section="formulas",
+                                slug=slug,
+                                field=found.field,
+                                side=found.side,
+                                application=found.application,
+                                parameter=found.parameter,
+                                text=text,
+                            )
+                        )
+        if problems:
+            raise _canon_error(problems)
+        return self

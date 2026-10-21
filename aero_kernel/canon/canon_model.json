@@ -1,0 +1,4129 @@
+{
+  "content_hash": "sha256:a76202596e25cc42c9805d4be636f6672babbf4a822305af48a89c4acffcc5db",
+  "importer_version": "1.0.0",
+  "namespaces": {
+    "calc": {
+      "defaults": {
+        "approach-speed-margin-target": {
+          "regime": "transport rule taken as the lower bound: at low wing loading and low speed a gust changes the angle of attack and load factor more (Scholz Wing Design §7.3), so RC needs at least this margin; a larger RC margin has no source",
+          "source": "Lennon, Basics of R/C Model Aircraft Design, Ch. 20 (FAR 23 reasoning, scaled); CS 25.125 as transport-category reference",
+          "unit": "1",
+          "value": 1.3
+        },
+        "gravity": {
+          "regime": "regime-independent",
+          "source": "standard gravity, CGPM 1901 / U.S. Standard Atmosphere 1976",
+          "unit": "m/s^2",
+          "value": 9.80665
+        },
+        "load-factor": {
+          "regime": "regime-independent",
+          "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W",
+          "unit": "1",
+          "value": 1.0
+        },
+        "motor-efficiency": {
+          "regime": "RC brushless motors (the source's subject); at P_max copper loss grows with I², so the efficiency lies below the peak band and the lower bound fits",
+          "source": "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point",
+          "unit": "1",
+          "value": 0.75
+        },
+        "sea-level-air-density": {
+          "regime": "regime-independent (a high or hot field lies below it; field density stays an input)",
+          "source": "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa",
+          "unit": "kg/m^3",
+          "value": 1.225
+        },
+        "takeoff-speed-margin-target": {
+          "regime": "rise-off-ground without wheel brakes has no decision-speed logic; Sadraey's ground roll rotates at about 1.1 V_s (§4.3.4.2 Eq. 4.76); hand launch: no source",
+          "source": "Sadraey, Aircraft Design (2013), §4.3.4: V_TO = 1.1–1.3 V_s (lower edge)",
+          "unit": "1",
+          "value": 1.1
+        },
+        "touchdown-speed-margin-target": {
+          "regime": "RC models flare to near V_min and have no wheel brakes, so the low end of the band applies; the old 1.2 (Lennon) is a landing speed with a safety margin, which approach 1.3 covers. Maintainer decision 2026-10-17",
+          "source": "Sadraey, Aircraft Design (2013), §4.3.2: take-off and landing speeds are typically 1.1–1.3 V_s; §9.3.10: flare to minimum speed",
+          "unit": "1",
+          "value": 1.1
+        }
+      },
+      "formulas": {
+        "advance-ratio-from-speed": {
+          "applications": [
+            {
+              "bind": {
+                "d_prop": "calc:propeller-diameter",
+                "n_prop": "calc:propeller-speed",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "j": "calc:advance-ratio"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "d_prop": "calc:propeller-diameter",
+            "n_prop": "calc:propeller-speed",
+            "v": "calc:flight-speed"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "j": "calc:advance-ratio"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "aerobuildup-evaluation": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "alpha": "calc:angle-of-attack",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "alpha_0": "calc:zero-lift-angle",
+                "cl_alpha": "calc:lift-curve-slope",
+                "d": "calc:drag-force",
+                "l": "calc:lift-force"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "alpha": "calc:angle-of-attack",
+            "rho": "calc:air-density",
+            "v": "calc:flight-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "alpha_0": "calc:zero-lift-angle",
+            "cl_alpha": "calc:lift-curve-slope",
+            "d": "calc:drag-force",
+            "l": "calc:lift-force"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AB",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "aileron-deflection-required": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "p_target": "calc:roll-rate-target-cruise",
+                "rho": "calc:air-density",
+                "v": "calc:cruise-speed-target"
+              },
+              "given": [
+                "calc:roll-rate-target-cruise",
+                "calc:cruise-speed-target"
+              ],
+              "id": "cruise",
+              "produce": {
+                "delta_a_req": "calc:aileron-deflection-required-cruise"
+              },
+              "when": "has_aileron"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "p_target": "calc:roll-rate-target-approach",
+                "rho": "calc:air-density",
+                "v": "calc:approach-speed"
+              },
+              "given": [
+                "calc:roll-rate-target-approach"
+              ],
+              "id": "approach",
+              "produce": {
+                "delta_a_req": "calc:aileron-deflection-required-approach"
+              },
+              "when": "has_aileron"
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "p_target": null,
+            "rho": "calc:air-density",
+            "v": null
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "delta_a_req": null
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": "interval",
+          "variables": [],
+          "worlds": [
+            "aerobuildup",
+            "avl"
+          ]
+        },
+        "air-density-isa": {
+          "applications": [
+            {
+              "bind": {
+                "h": "calc:altitude"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "rho": "calc:air-density"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "h": "calc:altitude"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "rho": "calc:air-density"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "ATM",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "airplane-components": {
+          "applications": [
+            {
+              "bind": {
+                "components": "calc:components"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "d_prop": "calc:propeller-diameter",
+                "e_bat": "calc:battery-capacity",
+                "e_star": "calc:battery-specific-energy",
+                "eta_total": "calc:propulsive-efficiency",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m_bat": "calc:battery-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "u_bat": "calc:battery-voltage"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "components": "calc:components"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "d_prop": "calc:propeller-diameter",
+            "e_bat": "calc:battery-capacity",
+            "e_star": "calc:battery-specific-energy",
+            "eta_total": "calc:propulsive-efficiency",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m_bat": "calc:battery-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "u_bat": "calc:battery-voltage"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "KAT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "airplane-configuration": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "flap_deflection": "calc:flap-deflection-takeoff"
+              },
+              "given": null,
+              "id": "takeoff",
+              "produce": {
+                "airplane_cfg": "calc:airplane-takeoff"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "flap_deflection": "calc:flap-deflection-landing"
+              },
+              "given": null,
+              "id": "landing",
+              "produce": {
+                "airplane_cfg": "calc:airplane-landing"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "flap_deflection": null
+          },
+          "kind": "procedure",
+          "optional": [
+            "flap_deflection"
+          ],
+          "outputs": {
+            "airplane_cfg": null
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "GEO",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "airplane-geometry": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "b_ref": "calc:wing-span",
+                "c_mac": "calc:mean-aerodynamic-chord",
+                "s_ref": "calc:wing-reference-area"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "b_ref": "calc:wing-span",
+            "c_mac": "calc:mean-aerodynamic-chord",
+            "s_ref": "calc:wing-reference-area"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "GEO",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "aspect-ratio": {
+          "applications": [
+            {
+              "bind": {
+                "b_ref": "calc:wing-span",
+                "s_ref": "calc:wing-reference-area"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "ar": "calc:aspect-ratio"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "b_ref": "calc:wing-span",
+            "s_ref": "calc:wing-reference-area"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "ar": "calc:aspect-ratio"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "battery-mass-from-capacity": {
+          "applications": [
+            {
+              "bind": {
+                "e_bat": "calc:battery-capacity",
+                "e_star": "calc:battery-specific-energy"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "m_bat_pred": "calc:predicted-battery-mass"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "e_bat": "calc:battery-capacity",
+            "e_star": "calc:battery-specific-energy"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "m_bat_pred": "calc:predicted-battery-mass"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "best-angle-of-climb": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m": "calc:aircraft-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "gamma_max": "calc:max-climb-angle",
+                "v_x": "calc:best-angle-of-climb-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m": "calc:aircraft-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage"
+          },
+          "kind": "optimization",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "gamma_max": "calc:max-climb-angle",
+            "v_x": "calc:best-angle-of-climb-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "best-rate-of-climb": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m": "calc:aircraft-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "roc_max": "calc:max-rate-of-climb",
+                "v_y": "calc:best-rate-of-climb-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m": "calc:aircraft-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage"
+          },
+          "kind": "optimization",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "roc_max": "calc:max-rate-of-climb",
+            "v_y": "calc:best-rate-of-climb-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "butterfly-approach": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane-landing",
+                "delta_a_crow": "calc:crow-aileron-deflection",
+                "delta_f_crow": "calc:crow-flap-deflection",
+                "delta_f_ldg": "calc:flap-deflection-landing",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_app": "calc:approach-speed"
+              },
+              "given": null,
+              "id": "crow",
+              "produce": {
+                "gamma_curve": "calc:butterfly-glide-angle-curve",
+                "s_max": "calc:butterfly-max-mix",
+                "v_app_curve": "calc:butterfly-approach-speed-curve",
+                "v_s0_curve": "calc:butterfly-stall-speed-curve"
+              },
+              "when": "has_separate_flap_and_aileron"
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": null,
+            "delta_a_crow": "calc:crow-aileron-deflection",
+            "delta_f_crow": "calc:crow-flap-deflection",
+            "delta_f_ldg": "calc:flap-deflection-landing",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_app": "calc:approach-speed"
+          },
+          "kind": "optimization",
+          "optional": [],
+          "outputs": {
+            "gamma_curve": "calc:butterfly-glide-angle-curve",
+            "s_max": "calc:butterfly-max-mix",
+            "v_app_curve": "calc:butterfly-approach-speed-curve",
+            "v_s0_curve": "calc:butterfly-stall-speed-curve"
+          },
+          "postconditions": [
+            {
+              "applications": null,
+              "id": "optimum_at_first_cl_peak",
+              "on_violation": "error",
+              "parameter": "v_s0_curve"
+            }
+          ],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "cg-for-target-margin": {
+          "applications": [
+            {
+              "bind": {
+                "c_mac": "calc:mean-aerodynamic-chord",
+                "sm_target": "calc:static-margin-target",
+                "x_np": "calc:neutral-point"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "x_cg_sm": "calc:cg-for-target-margin"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "c_mac": "calc:mean-aerodynamic-chord",
+            "sm_target": "calc:static-margin-target",
+            "x_np": "calc:neutral-point"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "x_cg_sm": "calc:cg-for-target-margin"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "control-surface-hinge-moments": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:aileron-deflection",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "aileron",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_aileron"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:elevator-deflection-up",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "elevator_up",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_elevator"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:elevator-deflection-down",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "elevator_down",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_elevator"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:rudder-deflection",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "rudder",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_rudder"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:flap-deflection-takeoff",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "flap_takeoff",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_flap"
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta": "calc:flap-deflection-landing",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "flap_landing",
+              "produce": {
+                "h": "calc:hinge-moment"
+              },
+              "when": "has_flap"
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "delta": null,
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_load": "calc:load-factor",
+            "rho": "calc:air-density",
+            "v": "calc:flight-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "h": "calc:hinge-moment"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "cruise-target-performance": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "e_bat": "calc:battery-capacity",
+                "eta": "calc:propulsive-efficiency",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_cruise_target": "calc:cruise-speed-target"
+              },
+              "given": [
+                "calc:cruise-speed-target"
+              ],
+              "id": "at_cruise_speed_target",
+              "produce": {
+                "r_cruise": "calc:range-at-cruise-target",
+                "t_cruise": "calc:endurance-at-cruise-target"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "e_bat": "calc:battery-capacity",
+            "eta": "calc:propulsive-efficiency",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_cruise_target": "calc:cruise-speed-target"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "r_cruise": "calc:range-at-cruise-target",
+            "t_cruise": "calc:endurance-at-cruise-target"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "dive-speed": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m": "calc:aircraft-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "v_d": "calc:dive-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m": "calc:aircraft-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage"
+          },
+          "kind": "procedure",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "v_d": "calc:dive-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "drag-polar": {
+          "applications": [
+            {
+              "bind": {
+                "cd0": "calc:zero-lift-drag-coefficient",
+                "cl": "calc:lift-coefficient",
+                "k": "calc:induced-drag-factor"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "cd_par": "calc:drag-coefficient-parabolic"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "cd0": "calc:zero-lift-drag-coefficient",
+            "cl": "calc:lift-coefficient",
+            "k": "calc:induced-drag-factor"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "cd_par": "calc:drag-coefficient-parabolic"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "dynamic-pressure": {
+          "applications": [
+            {
+              "bind": {
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "q": "calc:dynamic-pressure"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "rho": "calc:air-density",
+            "v": "calc:flight-speed"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "q": "calc:dynamic-pressure"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "endurance-and-range": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "e_bat": "calc:battery-capacity",
+                "eta": "calc:propulsive-efficiency",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_md": "calc:minimum-drag-speed",
+                "v_mp": "calc:minimum-sink-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "r_max": "calc:max-range",
+                "t_max": "calc:max-endurance"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "e_bat": "calc:battery-capacity",
+            "eta": "calc:propulsive-efficiency",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_md": "calc:minimum-drag-speed",
+            "v_mp": "calc:minimum-sink-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "r_max": "calc:max-range",
+            "t_max": "calc:max-endurance"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "glide-distance-from-ratio": {
+          "applications": [
+            {
+              "bind": {
+                "e": "calc:lift-to-drag-ratio",
+                "h": "calc:altitude"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "r_glide": "calc:glide-distance"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "e": "calc:lift-to-drag-ratio",
+            "h": "calc:altitude"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "r_glide": "calc:glide-distance"
+          },
+          "postconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "lift_to_drag_of_flown_configuration",
+              "on_violation": "warning",
+              "parameter": "e"
+            },
+            {
+              "applications": null,
+              "id": "propeller_drag_not_in_polar",
+              "on_violation": "warning",
+              "parameter": "e"
+            }
+          ],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "induced-drag-factor": {
+          "applications": [
+            {
+              "bind": {
+                "ar": "calc:aspect-ratio",
+                "e_osw": "calc:oswald-efficiency"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "k": "calc:induced-drag-factor"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "ar": "calc:aspect-ratio",
+            "e_osw": "calc:oswald-efficiency"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "k": "calc:induced-drag-factor"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "lateral-static-stability-app": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v": "calc:approach-speed",
+                "x_cg": "calc:centre-of-gravity"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "c_l_beta": "calc:dihedral-effect-app",
+                "c_n_beta": "calc:weathercock-stability-app",
+                "e_spiral": "calc:spiral-criterion-app",
+                "t2_spiral": "calc:spiral-doubling-time-app"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v": "calc:approach-speed",
+            "x_cg": "calc:centre-of-gravity"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "c_l_beta": "calc:dihedral-effect-app",
+            "c_n_beta": "calc:weathercock-stability-app",
+            "e_spiral": "calc:spiral-criterion-app",
+            "t2_spiral": "calc:spiral-doubling-time-app"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "lateral-static-stability-md": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v": "calc:minimum-drag-speed",
+                "x_cg": "calc:centre-of-gravity"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "c_l_beta": "calc:dihedral-effect-md",
+                "c_n_beta": "calc:weathercock-stability-md",
+                "e_spiral": "calc:spiral-criterion-md",
+                "t2_spiral": "calc:spiral-doubling-time-md"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v": "calc:minimum-drag-speed",
+            "x_cg": "calc:centre-of-gravity"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "c_l_beta": "calc:dihedral-effect-md",
+            "c_n_beta": "calc:weathercock-stability-md",
+            "e_spiral": "calc:spiral-criterion-md",
+            "t2_spiral": "calc:spiral-doubling-time-md"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "lift-coefficient-required": {
+          "applications": [
+            {
+              "bind": {
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "q": "calc:dynamic-pressure",
+                "s_ref": "calc:wing-reference-area"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "cl_req": "calc:lift-coefficient"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_load": "calc:load-factor",
+            "q": "calc:dynamic-pressure",
+            "s_ref": "calc:wing-reference-area"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "cl_req": "calc:lift-coefficient"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "lift-to-drag-ratio": {
+          "applications": [
+            {
+              "bind": {
+                "d": "calc:drag-force",
+                "l": "calc:lift-force"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "e": "calc:lift-to-drag-ratio"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "d": "calc:drag-force",
+            "l": "calc:lift-force"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "e": "calc:lift-to-drag-ratio"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "linear-lift-curve-inverse": {
+          "applications": [
+            {
+              "bind": {
+                "alpha_0": "calc:zero-lift-angle",
+                "cl": "calc:lift-coefficient-best-glide",
+                "cl_alpha": "calc:lift-curve-slope"
+              },
+              "given": null,
+              "id": "best_glide",
+              "produce": {
+                "alpha": "calc:angle-of-attack-best-glide-probe"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "alpha_0": "calc:zero-lift-angle",
+                "cl": "calc:lift-coefficient-minimum-sink",
+                "cl_alpha": "calc:lift-curve-slope"
+              },
+              "given": null,
+              "id": "minimum_sink",
+              "produce": {
+                "alpha": "calc:angle-of-attack-minimum-sink-probe"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "alpha_0": "calc:zero-lift-angle",
+            "cl": null,
+            "cl_alpha": "calc:lift-curve-slope"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "alpha": null
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "maneuvering-speed": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_lim": "calc:limit-load-factor",
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "v_a": "calc:maneuvering-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_lim": "calc:limit-load-factor",
+            "rho": "calc:air-density"
+          },
+          "kind": "optimization",
+          "optional": [],
+          "outputs": {
+            "v_a": "calc:maneuvering-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "mass-envelope": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "airplane_ldg": "calc:airplane-landing",
+                "airplane_to": "calc:airplane-takeoff",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "delta_e_down": "calc:elevator-deflection-down",
+                "delta_e_up": "calc:elevator-deflection-up",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m_current": "calc:aircraft-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage",
+                "v_s_to": "calc:stall-speed-takeoff",
+                "v_to": "calc:takeoff-speed",
+                "x_np": "calc:neutral-point"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "cg_envelope": "calc:cg-envelope-over-mass",
+                "m_max_level": "calc:max-mass-level-flight",
+                "m_max_to": "calc:max-mass-lift-off",
+                "roc_curve": "calc:climb-rate-over-mass",
+                "speed_range": "calc:speed-range-over-mass"
+              },
+              "when": null
+            }
+          ],
+          "cost": "minutes",
+          "embeds": [
+            "calc:stall-speed.clean",
+            "calc:stall-speed.landing",
+            "calc:stall-speed.takeoff",
+            "calc:max-level-speed.default",
+            "calc:best-rate-of-climb.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:best-rate-of-climb.default",
+            "calc:max-level-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:stall-speed.clean",
+            "calc:stall-speed.landing",
+            "calc:stall-speed.takeoff",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "airplane_ldg": "calc:airplane-landing",
+            "airplane_to": "calc:airplane-takeoff",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "delta_e_down": "calc:elevator-deflection-down",
+            "delta_e_up": "calc:elevator-deflection-up",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m_current": "calc:aircraft-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage",
+            "v_s_to": "calc:stall-speed-takeoff",
+            "v_to": "calc:takeoff-speed",
+            "x_np": "calc:neutral-point"
+          },
+          "kind": "optimization",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "cg_envelope": "calc:cg-envelope-over-mass",
+            "m_max_level": "calc:max-mass-level-flight",
+            "m_max_to": "calc:max-mass-lift-off",
+            "roc_curve": "calc:climb-rate-over-mass",
+            "speed_range": "calc:speed-range-over-mass"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:aircraft-mass",
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "max-level-speed": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m": "calc:aircraft-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "v_max": "calc:max-level-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m": "calc:aircraft-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage"
+          },
+          "kind": "optimization",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "v_max": "calc:max-level-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "max-lift-to-drag-parabolic": {
+          "applications": [
+            {
+              "bind": {
+                "ar": "calc:aspect-ratio",
+                "cd0": "calc:zero-lift-drag-coefficient",
+                "e_osw": "calc:oswald-efficiency"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "e_max_probe": "calc:max-lift-to-drag-probe"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "ar": "calc:aspect-ratio",
+            "cd0": "calc:zero-lift-drag-coefficient",
+            "e_osw": "calc:oswald-efficiency"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "e_max_probe": "calc:max-lift-to-drag-probe"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "max-mass-structure": {
+          "applications": [
+            {
+              "bind": {
+                "m": "calc:aircraft-mass",
+                "n_break_pos": "calc:break-load-factor-positive"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "m_max_struct": "calc:max-mass-structure"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "m": "calc:aircraft-mass",
+            "n_break_pos": "calc:break-load-factor-positive"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "m_max_struct": "calc:max-mass-structure"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "max-sustained-turn-rate": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m": "calc:aircraft-mass",
+                "n_lim": "calc:limit-load-factor",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "omega_max": "calc:max-sustained-turn-rate",
+                "v_omega": "calc:max-sustained-turn-rate-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m": "calc:aircraft-mass",
+            "n_lim": "calc:limit-load-factor",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage"
+          },
+          "kind": "optimization",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "omega_max": "calc:max-sustained-turn-rate",
+            "v_omega": "calc:max-sustained-turn-rate-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "mean-geometric-chord": {
+          "applications": [
+            {
+              "bind": {
+                "b_ref": "calc:wing-span",
+                "s_ref": "calc:wing-reference-area"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "c_bar": "calc:mean-geometric-chord"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "b_ref": "calc:wing-span",
+            "s_ref": "calc:wing-reference-area"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "c_bar": "calc:mean-geometric-chord"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "min-sustained-turn-radius": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m": "calc:aircraft-mass",
+                "n_lim": "calc:limit-load-factor",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "r_min": "calc:min-sustained-turn-radius",
+                "v_r": "calc:min-sustained-turn-radius-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m": "calc:aircraft-mass",
+            "n_lim": "calc:limit-load-factor",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage"
+          },
+          "kind": "optimization",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "r_min": "calc:min-sustained-turn-radius",
+            "v_r": "calc:min-sustained-turn-radius-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "minimum-drag-speed-closed-form": {
+          "applications": [
+            {
+              "bind": {
+                "cd0": "calc:zero-lift-drag-coefficient",
+                "k": "calc:induced-drag-factor",
+                "rho": "calc:air-density",
+                "w_s": "calc:wing-loading"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "v_md_probe": "calc:minimum-drag-speed-probe"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "cd0": "calc:zero-lift-drag-coefficient",
+            "k": "calc:induced-drag-factor",
+            "rho": "calc:air-density",
+            "w_s": "calc:wing-loading"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "v_md_probe": "calc:minimum-drag-speed-probe"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "minimum-drag-speed-from-polar": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": {
+                  "const": 1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
+                },
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "level_flight",
+              "produce": {
+                "alpha_md": "calc:angle-of-attack-best-glide",
+                "cl_md": "calc:lift-coefficient-best-glide",
+                "e_max": "calc:max-lift-to-drag-ratio",
+                "v_md": "calc:minimum-drag-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_load": null,
+            "rho": "calc:air-density"
+          },
+          "kind": "optimization",
+          "optional": [],
+          "outputs": {
+            "alpha_md": "calc:angle-of-attack-best-glide",
+            "cl_md": "calc:lift-coefficient-best-glide",
+            "e_max": "calc:max-lift-to-drag-ratio",
+            "v_md": "calc:minimum-drag-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "minimum-sink-speed-from-polar": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": {
+                  "const": 1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
+                },
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "level_flight",
+              "produce": {
+                "alpha_mp": "calc:angle-of-attack-minimum-sink",
+                "cl_mp": "calc:lift-coefficient-minimum-sink",
+                "v_mp": "calc:minimum-sink-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_load": null,
+            "rho": "calc:air-density"
+          },
+          "kind": "optimization",
+          "optional": [],
+          "outputs": {
+            "alpha_mp": "calc:angle-of-attack-minimum-sink",
+            "cl_mp": "calc:lift-coefficient-minimum-sink",
+            "v_mp": "calc:minimum-sink-speed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "motor-propeller-equilibrium": {
+          "applications": [
+            {
+              "bind": {
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "n_prop": "calc:propeller-speed",
+                "q_m": "calc:motor-torque"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage",
+            "v": "calc:flight-speed"
+          },
+          "kind": "procedure",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "n_prop": "calc:propeller-speed",
+            "q_m": "calc:motor-torque"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "neutral-point": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_md": "calc:minimum-drag-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "x_np": "calc:neutral-point"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_md": "calc:minimum-drag-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "x_np": "calc:neutral-point"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
+          "uncertainty": "interval",
+          "variables": [],
+          "worlds": [
+            "textbook",
+            "pappas",
+            "avl"
+          ]
+        },
+        "parabolic-polar-fit": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "ar": "calc:aspect-ratio",
+                "cl_max": "calc:max-lift-coefficient",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "cd0": "calc:zero-lift-drag-coefficient",
+                "e_osw": "calc:oswald-efficiency"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "ar": "calc:aspect-ratio",
+            "cl_max": "calc:max-lift-coefficient",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density"
+          },
+          "kind": "fit",
+          "optional": [],
+          "outputs": {
+            "cd0": "calc:zero-lift-drag-coefficient",
+            "e_osw": "calc:oswald-efficiency"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "propeller-table-lookup": {
+          "applications": [
+            {
+              "bind": {
+                "components": "calc:components",
+                "j": "calc:advance-ratio"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "c_t": "calc:thrust-coefficient"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "components": "calc:components",
+            "j": "calc:advance-ratio"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "c_t": "calc:thrust-coefficient"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APC",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "relative-mass-deviation": {
+          "applications": [
+            {
+              "bind": {
+                "m_bat": "calc:battery-mass",
+                "m_bat_pred": "calc:predicted-battery-mass"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "dev": "calc:battery-mass-deviation"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "m_bat": "calc:battery-mass",
+            "m_bat_pred": "calc:predicted-battery-mass"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "dev": "calc:battery-mass-deviation"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "roll-rate": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "b_ref": "calc:wing-span",
+                "delta_a": "calc:aileron-deflection",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_app": "calc:approach-speed"
+              },
+              "given": null,
+              "id": "approach",
+              "produce": {
+                "p": "calc:roll-rate-approach",
+                "p_hat": "calc:roll-rate-nondimensional-approach"
+              },
+              "when": "has_aileron"
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "b_ref": "calc:wing-span",
+            "delta_a": "calc:aileron-deflection",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_app": "calc:approach-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "p": "calc:roll-rate-approach",
+            "p_hat": "calc:roll-rate-nondimensional-approach"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": "interval",
+          "variables": [],
+          "worlds": [
+            "aerobuildup",
+            "avl"
+          ]
+        },
+        "roll-rate-cruise-target": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "delta_a": "calc:aileron-deflection",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_cruise_target": "calc:cruise-speed-target"
+              },
+              "given": [
+                "calc:cruise-speed-target"
+              ],
+              "id": "at_cruise_speed_target",
+              "produce": {
+                "p": "calc:roll-rate-cruise"
+              },
+              "when": "has_aileron"
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "delta_a": "calc:aileron-deflection",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_cruise_target": "calc:cruise-speed-target"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "p": "calc:roll-rate-cruise"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": "interval",
+          "variables": [],
+          "worlds": [
+            "aerobuildup",
+            "avl"
+          ]
+        },
+        "sink-rate": {
+          "applications": [
+            {
+              "bind": {
+                "cd": "calc:drag-coefficient-parabolic",
+                "cl": "calc:lift-coefficient",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "w_sink": "calc:sink-rate"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "cd": "calc:drag-coefficient-parabolic",
+            "cl": "calc:lift-coefficient",
+            "v": "calc:flight-speed"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "w_sink": "calc:sink-rate"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "spanwise-loads": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": "calc:load-factor",
+                "rho": "calc:air-density",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "l_y": "calc:spanwise-lift-distribution",
+                "m_y": "calc:spanwise-bending-moment",
+                "v_y": "calc:spanwise-shear-force"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_load": "calc:load-factor",
+            "rho": "calc:air-density",
+            "v": "calc:flight-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "l_y": "calc:spanwise-lift-distribution",
+            "m_y": "calc:spanwise-bending-moment",
+            "v_y": "calc:spanwise-shear-force"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "spar-break-load-factor": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_a": "calc:maneuvering-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "n_break_neg": "calc:break-load-factor-negative",
+                "n_break_pos": "calc:break-load-factor-positive"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [
+            "calc:spanwise-loads.default"
+          ],
+          "embeds_closure": [
+            "calc:spanwise-loads.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_a": "calc:maneuvering-speed"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "n_break_neg": "calc:break-load-factor-negative",
+            "n_break_pos": "calc:break-load-factor-positive"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [
+            "calc:load-factor",
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "speed-from-stall-margin": {
+          "applications": [
+            {
+              "bind": {
+                "k_s": "calc:approach-speed-margin-target",
+                "v_s_cfg": "calc:stall-speed-landing"
+              },
+              "given": null,
+              "id": "approach",
+              "produce": {
+                "v": "calc:approach-speed"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "k_s": "calc:touchdown-speed-margin-target",
+                "v_s_cfg": "calc:stall-speed-landing"
+              },
+              "given": null,
+              "id": "touchdown",
+              "produce": {
+                "v": "calc:touchdown-speed"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "k_s": "calc:takeoff-speed-margin-target",
+                "v_s_cfg": "calc:stall-speed-takeoff"
+              },
+              "given": null,
+              "id": "takeoff",
+              "produce": {
+                "v": "calc:takeoff-speed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "k_s": null,
+            "v_s_cfg": null
+          },
+          "kind": "rating",
+          "optional": [],
+          "outputs": {
+            "v": null
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "spiral-parameter": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_md": "calc:minimum-drag-speed"
+              },
+              "given": null,
+              "id": "with_vertical_tail",
+              "produce": {
+                "b_spiral": "calc:spiral-parameter"
+              },
+              "when": "has_vertical_tail"
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_md": "calc:minimum-drag-speed"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "b_spiral": "calc:spiral-parameter"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "stall-onset-detection": {
+          "applications": [
+            {
+              "bind": {
+                "polar": "calc:polar-stall"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "i_stall": "calc:stall-onset-index"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "polar": "calc:polar-stall"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "i_stall": "calc:stall-onset-index"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AB",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "stall-speed": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": {
+                  "const": 1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
+                },
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "clean",
+              "produce": {
+                "alpha_s": "calc:angle-of-attack-stall",
+                "cl_max": "calc:max-lift-coefficient",
+                "polar": "calc:polar-stall",
+                "v_s": "calc:stall-speed"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane-takeoff",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": {
+                  "const": 1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
+                },
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "takeoff",
+              "produce": {
+                "alpha_s": null,
+                "cl_max": "calc:max-lift-coefficient-takeoff",
+                "polar": null,
+                "v_s": "calc:stall-speed-takeoff"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane-landing",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": {
+                  "const": 1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
+                },
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "landing",
+              "produce": {
+                "alpha_s": null,
+                "cl_max": "calc:max-lift-coefficient-landing",
+                "polar": null,
+                "v_s": "calc:stall-speed-landing"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "n_load": {
+                  "const": -1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"
+                },
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "inverted",
+              "produce": {
+                "alpha_s": null,
+                "cl_max": "calc:inverted-max-lift-coefficient",
+                "polar": null,
+                "v_s": null
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "n_load": null,
+            "rho": "calc:air-density"
+          },
+          "kind": "optimization",
+          "optional": [],
+          "outputs": {
+            "alpha_s": null,
+            "cl_max": null,
+            "polar": null,
+            "v_s": null
+          },
+          "postconditions": [
+            {
+              "applications": null,
+              "id": "cl_max_at_stall_reynolds_number",
+              "on_violation": "error",
+              "parameter": "cl_max"
+            },
+            {
+              "applications": [
+                "inverted"
+              ],
+              "id": "alpha_range_past_inverted_stall",
+              "on_violation": "error",
+              "parameter": "polar"
+            },
+            {
+              "applications": [
+                "clean",
+                "takeoff",
+                "landing"
+              ],
+              "id": "optimum_at_first_cl_peak",
+              "on_violation": "error",
+              "parameter": "cl_max"
+            },
+            {
+              "applications": [
+                "inverted"
+              ],
+              "id": "optimum_at_first_cl_trough",
+              "on_violation": "error",
+              "parameter": "cl_max"
+            }
+          ],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "rho_at_evaluation_altitude",
+              "on_violation": "warning",
+              "parameter": "rho"
+            }
+          ],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "stall-wing-loading-limit": {
+          "applications": [
+            {
+              "bind": {
+                "cl_max": "calc:max-lift-coefficient",
+                "rho_0": "calc:sea-level-air-density",
+                "v_s_target": "calc:stall-speed-target"
+              },
+              "given": [
+                "calc:stall-speed-target"
+              ],
+              "id": "at_stall_speed_target",
+              "produce": {
+                "ws_max_stall": "calc:wing-loading-limit-stall"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "cl_max": "calc:max-lift-coefficient",
+            "rho_0": "calc:sea-level-air-density",
+            "v_s_target": "calc:stall-speed-target"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "ws_max_stall": "calc:wing-loading-limit-stall"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "static-margin": {
+          "applications": [
+            {
+              "bind": {
+                "c_mac": "calc:mean-aerodynamic-chord",
+                "x_cg": "calc:centre-of-gravity",
+                "x_np": "calc:neutral-point"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "sm": "calc:static-margin"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "c_mac": "calc:mean-aerodynamic-chord",
+            "x_cg": "calc:centre-of-gravity",
+            "x_np": "calc:neutral-point"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "sm": "calc:static-margin"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "static-margin-probe": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v_md": "calc:minimum-drag-speed",
+                "x_cg": "calc:centre-of-gravity"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "c_m_alpha": "calc:pitching-moment-slope",
+                "sm_probe": "calc:static-margin-probe"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v_md": "calc:minimum-drag-speed",
+            "x_cg": "calc:centre-of-gravity"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "c_m_alpha": "calc:pitching-moment-slope",
+            "sm_probe": "calc:static-margin-probe"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AB",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "static-thrust-to-weight": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage",
+                "w": "calc:weight"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "t0_w": "calc:static-thrust-to-weight"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage",
+            "w": "calc:weight"
+          },
+          "kind": "law",
+          "optional": [
+            "r_m"
+          ],
+          "outputs": {
+            "t0_w": "calc:static-thrust-to-weight"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "thrust-at-airspeed-from-coefficient": {
+          "applications": [
+            {
+              "bind": {
+                "c_t": "calc:thrust-coefficient",
+                "d_prop": "calc:propeller-diameter",
+                "n_prop": "calc:propeller-speed",
+                "rho": "calc:air-density"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "t": "calc:thrust-at-airspeed"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "c_t": "calc:thrust-coefficient",
+            "d_prop": "calc:propeller-diameter",
+            "n_prop": "calc:propeller-speed",
+            "rho": "calc:air-density"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "t": "calc:thrust-at-airspeed"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "vertical-tail-volume": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane"
+              },
+              "given": null,
+              "id": "with_vertical_tail",
+              "produce": {
+                "v_v": "calc:vertical-tail-volume"
+              },
+              "when": "has_vertical_tail"
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "v_v": "calc:vertical-tail-volume"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "weight-from-mass": {
+          "applications": [
+            {
+              "bind": {
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "w": "calc:weight"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "w": "calc:weight"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "wing-loading": {
+          "applications": [
+            {
+              "bind": {
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "s_ref": "calc:wing-reference-area"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "w_s": "calc:wing-loading"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "s_ref": "calc:wing-reference-area"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "w_s": "calc:wing-loading"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        }
+      },
+      "quantities": {
+        "advance-ratio": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "J",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "aileron-deflection": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_a",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "aileron-deflection-required-approach": {
+          "positive": null,
+          "role": "output",
+          "symbol": "delta_a,req,app",
+          "type": "scalar",
+          "uncertainty": "interval",
+          "unit": "deg"
+        },
+        "aileron-deflection-required-cruise": {
+          "positive": null,
+          "role": "output",
+          "symbol": "delta_a,req,cruise",
+          "type": "scalar",
+          "uncertainty": "interval",
+          "unit": "deg"
+        },
+        "air-density": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "rho",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg/m^3"
+        },
+        "aircraft-mass": {
+          "positive": true,
+          "role": "input",
+          "symbol": "m",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg"
+        },
+        "airplane": {
+          "positive": null,
+          "role": "input",
+          "symbol": "airplane",
+          "type": "airplane",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "airplane-landing": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "airplane_LDG",
+          "type": "airplane",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "airplane-takeoff": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "airplane_TO",
+          "type": "airplane",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "altitude": {
+          "positive": null,
+          "role": "input",
+          "symbol": "h",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "angle-of-attack": {
+          "positive": null,
+          "role": "input",
+          "symbol": "alpha",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "angle-of-attack-best-glide": {
+          "positive": null,
+          "role": "output",
+          "symbol": "alpha_bg",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "angle-of-attack-best-glide-probe": {
+          "positive": null,
+          "role": "output",
+          "symbol": "alpha_bg,probe",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "angle-of-attack-minimum-sink": {
+          "positive": null,
+          "role": "output",
+          "symbol": "alpha_ms",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "angle-of-attack-minimum-sink-probe": {
+          "positive": null,
+          "role": "output",
+          "symbol": "alpha_ms,probe",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "angle-of-attack-stall": {
+          "positive": null,
+          "role": "output",
+          "symbol": "alpha_stall",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "approach-speed": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "V_app",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "approach-speed-margin-target": {
+          "positive": true,
+          "role": "target",
+          "symbol": "k_S,app",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "aspect-ratio": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "AR",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "battery-capacity": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "E_bat",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "Wh"
+        },
+        "battery-mass": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "m_bat",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg"
+        },
+        "battery-mass-deviation": {
+          "positive": null,
+          "role": "output",
+          "symbol": "dev",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "battery-specific-energy": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "E_star",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "Wh/kg"
+        },
+        "battery-voltage": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "U_bat",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "V"
+        },
+        "best-angle-of-climb-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_x",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "best-rate-of-climb-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_y",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "break-load-factor-negative": {
+          "positive": null,
+          "role": "output",
+          "symbol": "n_break,neg",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "break-load-factor-positive": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "n_break,pos",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "butterfly-approach-speed-curve": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_app(s)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "butterfly-glide-angle-curve": {
+          "positive": null,
+          "role": "output",
+          "symbol": "gamma(s)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "butterfly-max-mix": {
+          "positive": null,
+          "role": "output",
+          "symbol": "s_max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "butterfly-stall-speed-curve": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_S0(s)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "centre-of-gravity": {
+          "positive": null,
+          "role": "input",
+          "symbol": "x_CG",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "cg-envelope-over-mass": {
+          "positive": null,
+          "role": "output",
+          "symbol": "x_fwd(m), x_aft(m)",
+          "type": "curve_pair",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "cg-for-target-margin": {
+          "positive": null,
+          "role": "output",
+          "symbol": "x_CG,SM",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "climb-rate-over-mass": {
+          "positive": null,
+          "role": "output",
+          "symbol": "ROC_max(m)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "components": {
+          "positive": null,
+          "role": "input",
+          "symbol": "components",
+          "type": "components",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "crow-aileron-deflection": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_a,crow",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "crow-flap-deflection": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_f,crow",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "cruise-speed-target": {
+          "positive": true,
+          "role": "target",
+          "symbol": "V_cruise,target",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "dihedral-effect-app": {
+          "positive": null,
+          "role": "output",
+          "symbol": "C_l_beta,app",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
+        "dihedral-effect-md": {
+          "positive": null,
+          "role": "output",
+          "symbol": "C_l_beta,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
+        "dive-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_D",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "drag-coefficient-parabolic": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_D,par",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "drag-force": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "D",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "dynamic-pressure": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "q",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "Pa"
+        },
+        "elevator-deflection-down": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_e,down",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "elevator-deflection-up": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_e,up",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "endurance-at-cruise-target": {
+          "positive": null,
+          "role": "output",
+          "symbol": "t_cruise",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "s"
+        },
+        "flap-deflection-landing": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_f,LDG",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "flap-deflection-takeoff": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_f,TO",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "flight-speed": {
+          "positive": null,
+          "role": "input",
+          "symbol": "V",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "glide-distance": {
+          "positive": null,
+          "role": "output",
+          "symbol": "R_glide",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "gravity": {
+          "positive": true,
+          "role": "input",
+          "symbol": "g",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s^2"
+        },
+        "hinge-moment": {
+          "positive": null,
+          "role": "output",
+          "symbol": "H",
+          "type": "per_control_surface",
+          "uncertainty": null,
+          "unit": "N*m"
+        },
+        "induced-drag-factor": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "k",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "inverted-max-lift-coefficient": {
+          "positive": null,
+          "role": "output",
+          "symbol": "C_L,min",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "lift-coefficient": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_L",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "lift-coefficient-best-glide": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_L,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "lift-coefficient-minimum-sink": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_L,mp",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "lift-curve-slope": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_Lalpha",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
+        "lift-force": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "L",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "lift-to-drag-ratio": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "E",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "limit-load-factor": {
+          "positive": true,
+          "role": "target",
+          "symbol": "n_lim",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "load-factor": {
+          "positive": null,
+          "role": "input",
+          "symbol": "n",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "maneuvering-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_A",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "max-climb-angle": {
+          "positive": null,
+          "role": "output",
+          "symbol": "gamma_max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "max-endurance": {
+          "positive": null,
+          "role": "output",
+          "symbol": "t_max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "s"
+        },
+        "max-level-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "max-lift-coefficient": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_L,max,stall",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "max-lift-coefficient-landing": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_L,max,LDG",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "max-lift-coefficient-takeoff": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_L,max,TO",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "max-lift-to-drag-probe": {
+          "positive": null,
+          "role": "output",
+          "symbol": "E_max,probe",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "max-lift-to-drag-ratio": {
+          "positive": null,
+          "role": "output",
+          "symbol": "E_max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "max-mass-level-flight": {
+          "positive": null,
+          "role": "output",
+          "symbol": "m_max,level",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg"
+        },
+        "max-mass-lift-off": {
+          "positive": null,
+          "role": "output",
+          "symbol": "m_max,TO",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg"
+        },
+        "max-mass-structure": {
+          "positive": null,
+          "role": "output",
+          "symbol": "m_max,struct",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg"
+        },
+        "max-range": {
+          "positive": null,
+          "role": "output",
+          "symbol": "R_max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "max-rate-of-climb": {
+          "positive": null,
+          "role": "output",
+          "symbol": "ROC_max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "max-sustained-turn-rate": {
+          "positive": null,
+          "role": "output",
+          "symbol": "omega_max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg/s"
+        },
+        "max-sustained-turn-rate-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_omega",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "mean-aerodynamic-chord": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "c_MAC",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "mean-geometric-chord": {
+          "positive": null,
+          "role": "output",
+          "symbol": "c_bar",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "min-sustained-turn-radius": {
+          "positive": null,
+          "role": "output",
+          "symbol": "r_min",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "min-sustained-turn-radius-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_r",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "minimum-drag-speed": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "V_md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "minimum-drag-speed-probe": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_md,probe",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "minimum-sink-speed": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "V_mp",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "motor-circuit-resistance": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "R_m",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "ohm"
+        },
+        "motor-efficiency": {
+          "positive": true,
+          "role": "input",
+          "symbol": "eta_mot",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "motor-max-power": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "P_mot,max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "W"
+        },
+        "motor-no-load-current": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "I_0",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "A"
+        },
+        "motor-torque": {
+          "positive": null,
+          "role": "output",
+          "symbol": "Q_m",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N*m"
+        },
+        "motor-voltage-constant": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "K_v",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "rpm/V"
+        },
+        "neutral-point": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "x_NP",
+          "type": "scalar",
+          "uncertainty": "interval",
+          "unit": "m"
+        },
+        "oswald-efficiency": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "e_osw",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "pitching-moment-slope": {
+          "positive": null,
+          "role": "output",
+          "symbol": "C_malpha",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
+        "polar-stall": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "polar_S",
+          "type": "polar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "predicted-battery-mass": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "m_bat,pred",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg"
+        },
+        "propeller-diameter": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "D_prop",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "propeller-speed": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "n_prop",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/s"
+        },
+        "propulsive-efficiency": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "eta_total",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "range-at-cruise-target": {
+          "positive": null,
+          "role": "output",
+          "symbol": "R_cruise",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "roll-rate-approach": {
+          "positive": null,
+          "role": "output",
+          "symbol": "p_app",
+          "type": "scalar",
+          "uncertainty": "interval",
+          "unit": "deg/s"
+        },
+        "roll-rate-cruise": {
+          "positive": null,
+          "role": "output",
+          "symbol": "p_cruise",
+          "type": "scalar",
+          "uncertainty": "interval",
+          "unit": "deg/s"
+        },
+        "roll-rate-nondimensional-approach": {
+          "positive": null,
+          "role": "output",
+          "symbol": "p_hat_app",
+          "type": "scalar",
+          "uncertainty": "interval",
+          "unit": "1"
+        },
+        "roll-rate-target-approach": {
+          "positive": null,
+          "role": "target",
+          "symbol": "p_target,app",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg/s"
+        },
+        "roll-rate-target-cruise": {
+          "positive": null,
+          "role": "target",
+          "symbol": "p_target,cruise",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg/s"
+        },
+        "rudder-deflection": {
+          "positive": null,
+          "role": "input",
+          "symbol": "delta_r",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "sea-level-air-density": {
+          "positive": true,
+          "role": "input",
+          "symbol": "rho_0",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "kg/m^3"
+        },
+        "sink-rate": {
+          "positive": null,
+          "role": "output",
+          "symbol": "w_sink",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "spanwise-bending-moment": {
+          "positive": null,
+          "role": "output",
+          "symbol": "M(y)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "N*m"
+        },
+        "spanwise-lift-distribution": {
+          "positive": null,
+          "role": "output",
+          "symbol": "l(y)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "N/m"
+        },
+        "spanwise-shear-force": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V(y)",
+          "type": "curve",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "speed-range-over-mass": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_S(m), V_max(m)",
+          "type": "curve_pair",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "spiral-criterion-app": {
+          "positive": null,
+          "role": "output",
+          "symbol": "E_spiral,app",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad^2"
+        },
+        "spiral-criterion-md": {
+          "positive": null,
+          "role": "output",
+          "symbol": "E_spiral,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad^2"
+        },
+        "spiral-doubling-time-app": {
+          "positive": null,
+          "role": "output",
+          "symbol": "T_2,spiral,app",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "s"
+        },
+        "spiral-doubling-time-md": {
+          "positive": null,
+          "role": "output",
+          "symbol": "T_2,spiral,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "s"
+        },
+        "spiral-parameter": {
+          "positive": null,
+          "role": "output",
+          "symbol": "B_spiral",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "stall-onset-index": {
+          "positive": null,
+          "role": "output",
+          "symbol": "i_stall",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "stall-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_S",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "stall-speed-landing": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "V_S0",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "stall-speed-takeoff": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "V_S,TO",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "stall-speed-target": {
+          "positive": true,
+          "role": "target",
+          "symbol": "V_S,target",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "static-margin": {
+          "positive": null,
+          "role": "output",
+          "symbol": "SM",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "static-margin-probe": {
+          "positive": null,
+          "role": "output",
+          "symbol": "SM_probe",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "static-margin-target": {
+          "positive": null,
+          "role": "target",
+          "symbol": "SM_target",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "static-thrust-to-weight": {
+          "positive": null,
+          "role": "output",
+          "symbol": "T_0/W",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "takeoff-speed": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "V_TO",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "takeoff-speed-margin-target": {
+          "positive": true,
+          "role": "target",
+          "symbol": "k_S,TO",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "thrust-at-airspeed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "T",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "thrust-coefficient": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_T",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "touchdown-speed": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_TD",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
+        },
+        "touchdown-speed-margin-target": {
+          "positive": true,
+          "role": "target",
+          "symbol": "k_S,TD",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "vertical-tail-volume": {
+          "positive": null,
+          "role": "output",
+          "symbol": "V_V",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "weathercock-stability-app": {
+          "positive": null,
+          "role": "output",
+          "symbol": "C_n_beta,app",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
+        "weathercock-stability-md": {
+          "positive": null,
+          "role": "output",
+          "symbol": "C_n_beta,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
+        "weight": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "W",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N"
+        },
+        "wing-loading": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "W/S",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N/m^2"
+        },
+        "wing-loading-limit-stall": {
+          "positive": null,
+          "role": "output",
+          "symbol": "(W/S)_max,stall",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "N/m^2"
+        },
+        "wing-reference-area": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "S_ref",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m^2"
+        },
+        "wing-span": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "b_ref",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "zero-lift-angle": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "alpha_0",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "zero-lift-drag-coefficient": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "C_D0",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        }
+      }
+    }
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,568 @@
+{
+  "$defs": {
+    "Application": {
+      "additionalProperties": false,
+      "description": "A formula applied to concrete quantities, written out completely (ch. 8.5).\n\n``bind`` and ``produce`` hold the merged result of the formula's defaults and the application's\nown overrides, so every input parameter is bound and every output parameter is produced.\n\nAttributes:\n    id: Name of the application, unique within its formula; ``default`` for the implicit one.\n    bind: Quantity or constant per input parameter.\n    produce: Quantity per output parameter; ``None`` = the application does not expose it.\n    when: Condition over the geometry; ``None`` = always.\n    given: Quantities that must be supplied for the application to exist; ``None`` = always.\n        Each must be bound by the application, but ``Formula`` checks that, not this type: an\n        ``Application`` alone does not guarantee ``given`` is a subset of its bindings. The\n        check runs after the bindings and the field rules, so a ``given`` fault of a formula\n        that has other faults is deferred to the next run; it is never hidden.",
+      "properties": {
+        "bind": {
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(_[a-z0-9]+)*$": {
+              "oneOf": [
+                {
+                  "pattern": "^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/ConstBinding"
+                }
+              ]
+            }
+          },
+          "title": "Bind",
+          "type": "object"
+        },
+        "given": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Given"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "produce": {
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(_[a-z0-9]+)*$": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "title": "Produce",
+          "type": "object"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "enum": [
+                "has_aileron",
+                "has_elevator",
+                "has_flap",
+                "has_horizontal_tail",
+                "has_rudder",
+                "has_separate_flap_and_aileron",
+                "has_vertical_tail"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "When"
+        }
+      },
+      "required": [
+        "id",
+        "bind",
+        "produce"
+      ],
+      "title": "Application",
+      "type": "object"
+    },
+    "Check": {
+      "additionalProperties": false,
+      "description": "A pre- or postcondition of a formula (ch. 8.5).\n\nAttributes:\n    id: Name of the check, unique among the formula's checks of its kind.\n    parameter: The input (precondition) or output (postcondition) parameter it concerns.\n    on_violation: ``error`` withholds the value, ``warning`` returns it with a defect warning.\n    applications: Ids of the applications it belongs to; ``None`` = all of them.",
+      "properties": {
+        "applications": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Applications"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "on_violation": {
+          "enum": [
+            "warning",
+            "error"
+          ],
+          "title": "On Violation",
+          "type": "string"
+        },
+        "parameter": {
+          "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+          "title": "Parameter",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "parameter",
+        "on_violation"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "ConstBinding": {
+      "additionalProperties": false,
+      "description": "A constant bound to an input parameter, with its source (ADR 0028).\n\nAttributes:\n    const: The value, in the parameter's unit.\n    source: Citation of where the constant comes from.",
+      "properties": {
+        "const": {
+          "title": "Const",
+          "type": "number"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "const",
+        "source"
+      ],
+      "title": "ConstBinding",
+      "type": "object"
+    },
+    "Default": {
+      "additionalProperties": false,
+      "description": "A value the canon states for a supplied quantity, with its unit, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``; it must equal the unit of the quantity.\n    source: Citation of where the value comes from (ADR 0028).\n    regime: The flight regime the value is valid for (ADR 0028).",
+      "properties": {
+        "regime": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Regime",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source",
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "1",
+            "m",
+            "m^2",
+            "kg",
+            "s",
+            "deg",
+            "deg/s",
+            "m/s",
+            "m/s^2",
+            "1/s",
+            "1/rad",
+            "1/rad^2",
+            "N",
+            "N/m^2",
+            "N*m",
+            "N/m",
+            "Pa",
+            "kg/m^3",
+            "W",
+            "V",
+            "A",
+            "ohm",
+            "Wh",
+            "Wh/kg",
+            "rpm/V"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "unit",
+        "source",
+        "regime"
+      ],
+      "title": "Default",
+      "type": "object"
+    },
+    "Formula": {
+      "additionalProperties": false,
+      "description": "A canon formula with its applications, checks, worlds and embeds (ch. 8.5, 8.13).\n\nAttributes:\n    kind: The formula's kind.\n    tool: The tool that evaluates it.\n    cost: Cost class: declared in the canon, otherwise derived from ``tool`` (ch. 8.7).\n    inputs: Default quantity per input parameter; ``None`` = bound per application.\n    outputs: Default quantity per output parameter; ``None`` = produced per application.\n    optional: Input parameters that may arrive as ``None``.\n    applications: The applications, at least one.\n    preconditions: Checks on inputs, run before the call.\n    postconditions: Checks on outputs, run after the call.\n    uncertainty: ``interval`` where the formula has method worlds.\n    worlds: The method worlds, exactly with ``uncertainty``.\n    embeds: Directly embedded applications, ``<ns>:<slug>.<application-id>``.\n    variables: Quantities the embedder solves for or sweeps itself, exactly with ``embeds``.\n    embeds_closure: Sorted, unique embeds reachable through ``embeds``, direct ones included.",
+      "properties": {
+        "applications": {
+          "items": {
+            "$ref": "#/$defs/Application"
+          },
+          "minItems": 1,
+          "title": "Applications",
+          "type": "array"
+        },
+        "cost": {
+          "enum": [
+            "instant",
+            "seconds",
+            "minutes"
+          ],
+          "title": "Cost",
+          "type": "string"
+        },
+        "embeds": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*\\.[a-z][a-z0-9]*([_-][a-z0-9]+)*$",
+            "type": "string"
+          },
+          "title": "Embeds",
+          "type": "array"
+        },
+        "embeds_closure": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*\\.[a-z][a-z0-9]*([_-][a-z0-9]+)*$",
+            "type": "string"
+          },
+          "title": "Embeds Closure",
+          "type": "array"
+        },
+        "inputs": {
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(_[a-z0-9]+)*$": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "title": "Inputs",
+          "type": "object"
+        },
+        "kind": {
+          "enum": [
+            "law",
+            "procedure",
+            "optimization",
+            "fit",
+            "rating"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "optional": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "title": "Optional",
+          "type": "array"
+        },
+        "outputs": {
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(_[a-z0-9]+)*$": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "title": "Outputs",
+          "type": "object"
+        },
+        "postconditions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Check"
+          },
+          "title": "Postconditions",
+          "type": "array"
+        },
+        "preconditions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Check"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "tool": {
+          "enum": [
+            "APP",
+            "ATM",
+            "GEO",
+            "AB",
+            "AVL",
+            "OPT",
+            "KAT",
+            "APC"
+          ],
+          "title": "Tool",
+          "type": "string"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "const": "interval",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "variables": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "title": "Variables",
+          "type": "array"
+        },
+        "worlds": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "title": "Worlds",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "tool",
+        "cost",
+        "inputs",
+        "outputs",
+        "applications"
+      ],
+      "title": "Formula",
+      "type": "object"
+    },
+    "Namespace": {
+      "additionalProperties": false,
+      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.",
+      "properties": {
+        "defaults": {
+          "default": {},
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/Default"
+            }
+          },
+          "title": "Defaults",
+          "type": "object"
+        },
+        "formulas": {
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/Formula"
+            }
+          },
+          "title": "Formulas",
+          "type": "object"
+        },
+        "quantities": {
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/Quantity"
+            }
+          },
+          "title": "Quantities",
+          "type": "object"
+        }
+      },
+      "required": [
+        "quantities",
+        "formulas"
+      ],
+      "title": "Namespace",
+      "type": "object"
+    },
+    "Quantity": {
+      "additionalProperties": false,
+      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.",
+      "properties": {
+        "positive": {
+          "anyOf": [
+            {
+              "const": true,
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Positive"
+        },
+        "role": {
+          "enum": [
+            "input",
+            "target",
+            "derived",
+            "output"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "symbol": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Symbol",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "scalar",
+            "airplane",
+            "components",
+            "curve",
+            "polar",
+            "curve_pair",
+            "per_control_surface"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "const": "interval",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "unit": {
+          "enum": [
+            "1",
+            "m",
+            "m^2",
+            "kg",
+            "s",
+            "deg",
+            "deg/s",
+            "m/s",
+            "m/s^2",
+            "1/s",
+            "1/rad",
+            "1/rad^2",
+            "N",
+            "N/m^2",
+            "N*m",
+            "N/m",
+            "Pa",
+            "kg/m^3",
+            "W",
+            "V",
+            "A",
+            "ohm",
+            "Wh",
+            "Wh/kg",
+            "rpm/V"
+          ],
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "symbol",
+        "unit",
+        "role",
+        "type"
+      ],
+      "title": "Quantity",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The interpreted canon the kernel runs on (ch. 8.9); the content of ``canon_model.json``.\n\nAttributes:\n    schema_version: Version of this model shape; ``1``.\n    content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).\n    importer_version: Version of the importer that wrote the model.\n    namespaces: Quantities and formulas per namespace; every reference inside is qualified.",
+  "properties": {
+    "content_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "importer_version": {
+      "minLength": 1,
+      "title": "Importer Version",
+      "type": "string"
+    },
+    "namespaces": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*$": {
+          "$ref": "#/$defs/Namespace"
+        }
+      },
+      "title": "Namespaces",
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "content_hash",
+    "importer_version",
+    "namespaces"
+  ],
+  "title": "CanonModel",
+  "type": "object"
+}

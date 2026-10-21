@@ -52,6 +52,9 @@ jobs:
             backend:
               - 'app/**'
               - 'cad_designer/**'
+              - 'aero_kernel/**'
+              - '_reversa_sdd/calculations/canon/**'
+              - 'scripts/**'
               - 'pyproject.toml'
               - 'poetry.lock'
               - 'alembic/**'
@@ -101,6 +104,21 @@ jobs:
       - name: Lint (ruff)
         run: poetry run ruff check .
 
+      - name: Format check (ruff, aero_kernel)
+        run: poetry run ruff format --check aero_kernel
+
+      - name: Type check (pyright strict, aero_kernel)
+        run: poetry run pyright aero_kernel
+
+      - name: Canon model is current (importer --check)
+        # Fails on a finding in the canon document, or if the committed canon_model.json no
+        # longer matches it. A canon change re-imports the model in the same change.
+        run: poetry run python -m aero_kernel.importer _reversa_sdd/calculations/canon --check
+
+      - name: Canon authoring checks (prose, links, README examples)
+        # The structural rules are the importer's; this keeps what it never reads (#1174).
+        run: poetry run python scripts/check_canon.py
+
       - name: Run PR-fast test tier with coverage
         # Excludes the heavy tiers (slow, e2e) and tests that need
         # external tooling (CadQuery / Aerosandbox / AVL). pytest-xdist
@@ -109,11 +127,12 @@ jobs:
         # by the autouse `clean_cad_task_state` fixture.
         run: |
           poetry run pytest \
-            -m "not slow and not e2e and not requires_cadquery and not requires_aerosandbox and not requires_avl" \
+            -m "not slow and not e2e and not requires_cadquery and not requires_aerosandbox and not requires_avl and not aero" \
             -n auto --dist worksteal \
             --tb=short \
             --cov=app \
             --cov=cad_designer \
+            --cov=aero_kernel \
             --cov-report=term-missing \
             --cov-report=xml \
             --cov-fail-under=70
@@ -228,6 +247,7 @@ jobs:
             poetry run pytest -v --tb=short \
               --cov=app \
               --cov=cad_designer \
+              --cov=aero_kernel \
               --cov-report=term-missing \
               --cov-report=xml
         env:
