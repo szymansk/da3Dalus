@@ -54,7 +54,7 @@ from aero_kernel.schema import (
     ReasonCode,
     dedupe_warnings,
 )
-from aero_kernel.validate import validate_aircraft, validate_values
+from aero_kernel.validate import validate_aircraft, validate_request, validate_values
 from pydantic import JsonValue
 
 logger = logging.getLogger(__name__)
@@ -153,9 +153,43 @@ class _Call:
         """Run the layers in order; the nodes of a layer concurrently."""
         for layer in self.subtree.layers:
             async with asyncio.TaskGroup() as group:
-                tasks = [group.create_task(self._node(self.nodes[node_id])) for node_id in layer]
-            for node_id, task in zip(layer, tasks, strict=True):
-                self.runs[node_id] = task.result()
+                for node_id in layer:
+                    group.create_task(self._finish(self.nodes[node_id]))
+
+    async def _finish(self, node: Node) -> None:
+        """Run one node and record its run the moment it is done.
+
+        Recorded here and not after the layer, so that a node that finished before the time
+        budget expired keeps its value even if its layer did not complete.
+        """
+        self.runs[node.id] = await self._node(node)
+
+    def close_open_nodes(self) -> None:
+        """Give every node that did not finish when the time budget expired a ``timeout`` run.
+
+        Dependents of an open node are open too. Their pool jobs, if any, finish and are discarded
+        (ch. 8.10).
+        """
+        for node_id, node in self.nodes.items():
+            if node_id not in self.runs:
+                self.runs[node_id] = self._failed(
+                    self._anchor(node),
+                    lambda slug, open_node=node: self._timeout_error(slug, open_node),
+                )
+
+    def _timeout_error(self, slug: str, node: Node) -> KernelError:
+        """The error of a quantity still open when the time budget expired."""
+        budget = self.request.time_budget_s
+        return KernelError(
+            code="timeout",
+            category=ErrorCategory.TIMEOUT,
+            quantity=slug,
+            formula=display_slug(node.id.formula),
+            application=node.id.application,
+            message=f"`{slug}` did not finish within the time budget of {budget} s.",
+            hint="Raise time_budget_s, or request fewer or cheaper quantities.",
+            detail={"time_budget_s": budget},
+        )
 
     def _anchor(self, node: Node) -> str:
         """The name of the node's quantity in its errors: the requested spelling, else its first."""
@@ -744,14 +778,25 @@ async def evaluate(
     call_id = secrets.token_hex(4)
     started = time.perf_counter()
     validation = validate_aircraft(aircraft)
-    errors = validation.errors + validate_values(aircraft.values, build.model)
+    errors = (
+        validation.errors
+        + validate_values(aircraft.values, build.model)
+        + validate_request(request)
+    )
     if errors:
         result = ComputeResult(input_errors=errors, provenance=_provenance(build))
         log_call(call_id, request, result, started)
         return result
     subtree = build.graph.subtree(request.quantities)
     call = _Call(build, aircraft, request, subtree, call_id, validation.warnings, solvers)
-    await call.run()
+    try:
+        async with asyncio.timeout(request.time_budget_s):
+            await call.run()
+    except TimeoutError:
+        logger.debug(
+            "time budget of %s s expired", request.time_budget_s, extra={"call_id": call_id}
+        )
+        call.close_open_nodes()
     results: dict[str, QuantityResult] = {}
     for error in subtree.errors:
         assert error.quantity is not None  # the graph words a rejection for the requested slug

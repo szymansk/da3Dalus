@@ -832,10 +832,11 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - Work already running in the process pool is allowed to finish but its result is discarded, because
     pool workers cannot be interrupted safely.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
-- **Time budget** (built with the solver path, the first step whose formulas can be slow; until then
-  `ComputeRequest` has no `time_budget_s` field — no field without behaviour, ADR 0021). `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
-  the whole request, enforced with `asyncio.timeout`. Quantities still open when it expires get
-  `error.category = timeout`; quantities already finished are returned.
+- **Time budget** (built with the solver path, #1201). `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
+  the whole request, enforced with `asyncio.timeout` around the graph run. A budget that is not a finite number > 0 is an
+  input error (`non_finite_number` / `non_positive_value`, `input_path` `request.time_budget_s`). Quantities still open when it expires, and
+  those waiting for them, get `error.category = timeout`; quantities already finished are returned, also when their
+  layer did not complete. The running tasks are cancelled; pool jobs finish and are discarded.
 - **Cache under concurrency (`CachedKernel` only).** The cache is used from the event loop only, so it needs no lock. **In-flight
   deduplication** (mode `use`): when two concurrent requests need the same key, the second awaits the first
   one's future instead of computing it again.

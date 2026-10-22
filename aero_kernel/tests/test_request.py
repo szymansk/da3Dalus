@@ -67,11 +67,17 @@ class TestComputeRequestShape:
         with pytest.raises(ValidationError, match="quantities"):
             ComputeRequest(quantities=())
 
-    def test_time_budget_is_not_a_field_yet(self) -> None:
-        """It comes back with the solver path (ch. 8.10); no field without behaviour."""
-        assert "time_budget_s" not in ComputeRequest.model_fields
-        with pytest.raises(ValidationError, match="extra_forbidden"):
-            ComputeRequest.model_validate({"quantities": ["a"], "time_budget_s": 2.5})
+    def test_time_budget_is_an_optional_number(self) -> None:
+        """Built with the solver path (ch. 8.10); admissibility is validate.py's."""
+        assert ComputeRequest.model_validate({"quantities": ["a"]}).time_budget_s is None
+        assert (
+            ComputeRequest.model_validate({"quantities": ["a"], "time_budget_s": 2}).time_budget_s
+            == 2
+        )
+        with pytest.raises(ValidationError, match="time_budget_s"):
+            ComputeRequest.model_validate({"quantities": ["a"], "time_budget_s": "2"})
+        with pytest.raises(ValidationError, match="time_budget_s"):
+            ComputeRequest.model_validate({"quantities": ["a"], "time_budget_s": True})
 
     def test_long_runs_flag_must_be_a_bool(self) -> None:
         with pytest.raises(ValidationError, match="include_long_runs"):
@@ -125,7 +131,11 @@ class TestAircraftInput:
 
 class TestComputeRequestFields:
     def test_the_fields_are_exactly_these(self) -> None:
-        assert sorted(ComputeRequest.model_fields) == ["include_long_runs", "quantities"]
+        assert sorted(ComputeRequest.model_fields) == [
+            "include_long_runs",
+            "quantities",
+            "time_budget_s",
+        ]
 
     def test_accuracy_is_no_field_any_more(self) -> None:
         with pytest.raises(ValidationError, match="extra_forbidden"):

@@ -445,12 +445,16 @@ class ComputeRequest(BaseModel):
     Attributes:
         quantities: Canon quantity slugs (not formula slugs); at least one, each once.
         include_long_runs: Whether quantities of cost class ``minutes`` run (ch. 8.7).
+        time_budget_s: One wall-clock budget in seconds for the whole request, or ``None`` for
+            none (ch. 8.10). Quantities still open when it expires are ``timeout`` errors; the
+            finished ones are returned. Admissibility (finite, > 0) is validation's.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     quantities: tuple[Annotated[str, Field(min_length=1)], ...] = Field(min_length=1)
     include_long_runs: bool = Field(default=False, strict=True)
+    time_budget_s: float | None = Field(default=None, strict=True)
 
     @model_validator(mode="after")
     def _check_unique_quantities(self) -> Self:
