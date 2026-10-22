@@ -33,6 +33,9 @@ MODELS: dict[str, type[BaseModel]] = {
     "FuselageXSecSuperEllipse": geometry.FuselageXSecSuperEllipse,
 }
 
+# Model fields the JSON Schema does not have yet: kernel-side until #1187 extends the format.
+KERNEL_ONLY_FIELDS = {("Wing", "surface_type")}
+
 # Millimetre fields: the model default is the schema default in metres.
 MILLIMETRE_KEYS = {"height_mm"}
 
@@ -173,8 +176,11 @@ def test_every_object_definition_has_a_model() -> None:
 def test_fields_required_set_and_additional_properties_match(name: str) -> None:
     definition = object_schemas()[name]
     model = model_for(name)
-    keys = {format_key(n, f) for n, f in model.model_fields.items()}
-    required = {format_key(n, f) for n, f in model.model_fields.items() if f.is_required()}
+    kernel_only = {key for owner, key in KERNEL_ONLY_FIELDS if owner == name}
+    keys = {format_key(n, f) for n, f in model.model_fields.items()} - kernel_only
+    required = {
+        format_key(n, f) for n, f in model.model_fields.items() if f.is_required()
+    } - kernel_only
     assert keys == set(definition["properties"])
     assert required == set(definition.get("required", []))
     assert definition["additionalProperties"] is False
@@ -187,6 +193,8 @@ def test_enums_and_defaults_match(name: str) -> None:
     model = model_for(name)
     for field_name, field in model.model_fields.items():
         key = format_key(field_name, field)
+        if (name, key) in KERNEL_ONLY_FIELDS:
+            continue
         prop = definition["properties"][key]
         enum = prop.get("enum")
         if enum is not None:

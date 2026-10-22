@@ -27,6 +27,7 @@ from aero_kernel.schema import AircraftInput, ComputeResult, QuantityResult, Qua
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
+from aero_kernel.tests.wing_builders import airplane_document
 
 pytestmark = pytest.mark.asyncio
 
@@ -42,7 +43,7 @@ def aircraft_of(name: str, mass_kg: float) -> AircraftInput:
     """An aircraft with a mass, an altitude and a speed; gravity is left to the canon default."""
     return AircraftInput.model_validate(
         {
-            "airplane": {"name": name},
+            "airplane": airplane_document(name),
             "values": {"aircraft-mass": mass_kg, "altitude": ALTITUDE_M, "flight-speed": SPEED_MS},
         }
     )
@@ -83,7 +84,10 @@ async def test_the_fleet_through_the_engine_with_a_stub_atmosphere(
 
 async def test_a_missing_altitude_fails_density_and_pressure_but_not_weight() -> None:
     no_altitude = AircraftInput.model_validate(
-        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 0.151, "flight-speed": 15.0}}
+        {
+            "airplane": airplane_document(),
+            "values": {"aircraft-mass": 0.151, "flight-speed": 15.0},
+        }
     )
     solvers = solvers_with(atmosphere=StubAtmosphere({}))
     result = await evaluate(shipped_build(), no_altitude, request(*SLUGS), solvers=solvers)
@@ -135,7 +139,10 @@ async def test_a_request_of_pure_formulas_reports_no_tool_version() -> None:
 
 async def test_a_formula_that_was_never_called_reports_no_tool_version() -> None:
     no_altitude = AircraftInput.model_validate(
-        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 0.151, "flight-speed": 15.0}}
+        {
+            "airplane": airplane_document(),
+            "values": {"aircraft-mass": 0.151, "flight-speed": 15.0},
+        }
     )
     solvers = solvers_with(atmosphere=StubAtmosphere({}, {"aerosandbox": "7.7"}))
     result = await evaluate(shipped_build(), no_altitude, request("air-density"), solvers=solvers)

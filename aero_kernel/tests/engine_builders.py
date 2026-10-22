@@ -15,6 +15,7 @@ from aero_kernel.schema import AircraftInput, ComputeRequest
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.tests.graph_builders import formula, model_of, quantity
+from aero_kernel.tests.wing_builders import main_wing_document
 
 Impl = Callable[[Inputs, Context], Coroutine[object, object, Mapping[str, object]]]
 
@@ -459,8 +460,7 @@ def aircraft(
     document: dict[str, Any] = {"name": "t"}
     if geometry_mass_kg is not None:
         document["total_mass_kg"] = geometry_mass_kg
-    if wings is not None:
-        document["wings"] = wings
+    document["wings"] = {"Main": main_wing_document()} if wings is None else wings
     given = {"aircraft-mass": 2.0, "gravity": 9.81, **(values or {})}
     return AircraftInput.model_validate({"airplane": document, "values": given})
 
@@ -482,7 +482,14 @@ def aileron_wing() -> dict[str, Any]:
         },
         {"xyz_le": [0.0, 0.5, 0.0], "chord": 0.2, "twist": 0.0, "airfoil": "naca2412"},
     ]
-    return {"Main": {"name": "Main", "symmetric": True, "x_secs": sections}}
+    return {
+        "Main": {
+            "name": "Main",
+            "symmetric": True,
+            "surface_type": "main_wing",
+            "x_secs": sections,
+        }
+    }
 
 
 def deflected_wing() -> dict[str, Any]:
@@ -508,4 +515,11 @@ def two_deflected_wing() -> dict[str, Any]:
         }
         for y in (0.0, 0.5, 1.0)
     ]
-    return {"Main": {"name": "Main", "symmetric": True, "x_secs": sections}}
+    return {
+        "Main": {
+            "name": "Main",
+            "symmetric": True,
+            "surface_type": "main_wing",
+            "x_secs": sections,
+        }
+    }

@@ -332,7 +332,40 @@ def _wing_findings(wings: Mapping[str, Wing]) -> list[KernelError]:
         last = len(wing.x_secs) - 1
         for index, x_sec in enumerate(wing.x_secs):
             findings += _section_findings(x_sec, f"{path}.x_secs[{index}]", is_last=index == last)
-    return findings
+        findings += _missing_surface_type(wing, key, path)
+    return findings + _main_wing_count(wings)
+
+
+def _missing_surface_type(wing: Wing, key: str, path: str) -> list[KernelError]:
+    """Report a wing without its ``surface_type`` (D9: required, never inferred)."""
+    if wing.surface_type is not None:
+        return []
+    return [
+        _finding(
+            "missing_surface_type",
+            path,
+            f"The wing {key!r} has no surface_type.",
+            "Set surface_type to the function of the wing, e.g. main_wing or horizontal_tail.",
+        )
+    ]
+
+
+def _main_wing_count(wings: Mapping[str, Wing]) -> list[KernelError]:
+    """Report an airplane that does not have exactly one wing of ``surface_type`` ``main_wing``."""
+    count = sum(1 for wing in wings.values() if wing.surface_type == "main_wing")
+    if count == 1:
+        return []
+    logger.debug("finding main_wing_count at airplane.wings: %d", count)
+    return [
+        KernelError(
+            code="main_wing_count",
+            category=ErrorCategory.INVALID_INPUT,
+            input_path="airplane.wings",
+            message=f"The airplane has {count} wings with surface_type main_wing; it needs exactly one.",
+            hint="Mark exactly one wing as main_wing; its area, span and chord are the reference values.",
+            detail={"count": count},
+        )
+    ]
 
 
 def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[KernelError]:

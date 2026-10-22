@@ -30,6 +30,7 @@ from aero_kernel.tests.engine_builders import (
     registry_with,
     request,
 )
+from aero_kernel.tests.wing_builders import airplane_document
 
 pytestmark = pytest.mark.asyncio
 
@@ -118,7 +119,7 @@ async def test_an_absent_optional_input_arrives_as_none() -> None:
     values = {"aircraft-mass": 2.0}
     registry = registry_with({"optional-g": optional})
     build = make_build(registry)
-    only_mass = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": values})
+    only_mass = AircraftInput.model_validate({"airplane": airplane_document(), "values": values})
     result = await evaluate(build, only_mass, request("opt-q"), solvers=NO_SOLVERS)
     assert result.quantities[0].status is QuantityStatus.OK
     assert seen[0]["g"] is None
@@ -359,7 +360,7 @@ async def test_a_non_finite_value_is_an_input_error() -> None:
 
 async def test_q24_a_missing_value_fails_only_its_dependents() -> None:
     no_gravity = AircraftInput.model_validate(
-        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 2.0}}
+        {"airplane": airplane_document(), "values": {"aircraft-mass": 2.0}}
     )
     result = await evaluate(
         make_build(),
@@ -522,7 +523,7 @@ async def test_order_3_no_implementation_beats_a_failed_predecessor() -> None:
 
 
 async def test_order_3_no_implementation_beats_a_missing_input() -> None:
-    no_mass = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    no_mass = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
     result = await evaluate(
         make_build(registry_with(drop=("unimplemented",))),
         no_mass,
@@ -540,7 +541,7 @@ async def test_order_3_a_pending_when_term_beats_a_failed_predecessor() -> None:
 
 
 async def test_order_3_an_unsupported_read_beats_a_missing_input() -> None:
-    no_mass = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    no_mass = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
     result = await evaluate(
         make_build(), no_mass, request("needs-components-q"), solvers=NO_SOLVERS
     )
@@ -674,7 +675,7 @@ async def test_the_exact_fields_of_every_engine_built_error() -> None:
         )
     )
     no_g = AircraftInput.model_validate(
-        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 2.0}}
+        {"airplane": airplane_document(), "values": {"aircraft-mass": 2.0}}
     )
     missing = (
         await evaluate(make_build(), no_g, request("weight"), solvers=NO_SOLVERS)
@@ -852,7 +853,7 @@ async def test_zero_is_a_value() -> None:
 
 
 async def test_several_missing_inputs_name_every_display_name_in_message_and_hint() -> None:
-    nothing = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    nothing = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
     result = await evaluate(make_build(), nothing, request("weight"), solvers=NO_SOLVERS)
     error = result.quantities[0].error
     assert error is not None
@@ -861,7 +862,7 @@ async def test_several_missing_inputs_name_every_display_name_in_message_and_hin
 
 
 async def test_three_missing_inputs_read_as_a_list() -> None:
-    nothing = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    nothing = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
     result = await evaluate(make_build(), nothing, request("long-needs-t-q"), solvers=NO_SOLVERS)
     error = result.quantities[0].error
     assert error is not None
@@ -928,7 +929,7 @@ async def test_an_absent_optional_input_adds_no_info_line(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     only_mass = AircraftInput.model_validate(
-        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 2.0}}
+        {"airplane": airplane_document(), "values": {"aircraft-mass": 2.0}}
     )
     with caplog.at_level(logging.INFO, logger="aero_kernel"):
         await evaluate(make_build(), only_mass, request("opt-q"), solvers=NO_SOLVERS)
@@ -1128,7 +1129,7 @@ async def test_an_upstream_failed_sibling_names_its_own_slug() -> None:
 
 
 async def test_a_missing_input_sibling_names_its_own_slug() -> None:
-    no_mass = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    no_mass = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
     result = await evaluate(make_build(), no_mass, request("twin-a", "twin-b"), solvers=NO_SOLVERS)
     for quantity in result.quantities:
         assert quantity.error is not None
@@ -1205,7 +1206,7 @@ async def test_an_unsupported_read_fails_only_its_reader() -> None:
 
 
 async def test_several_missing_inputs_are_one_error_with_the_first_as_input_path() -> None:
-    nothing = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    nothing = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
     result = await evaluate(make_build(), nothing, request("weight"), solvers=NO_SOLVERS)
     error = result.quantities[0].error
     assert error is not None
@@ -1216,7 +1217,7 @@ async def test_several_missing_inputs_are_one_error_with_the_first_as_input_path
 
 async def test_one_missing_input_reads_in_the_singular() -> None:
     only_mass = AircraftInput.model_validate(
-        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 2.0}}
+        {"airplane": airplane_document(), "values": {"aircraft-mass": 2.0}}
     )
     result = await evaluate(make_build(), only_mass, request("weight"), solvers=NO_SOLVERS)
     assert result.quantities[0].error is not None
@@ -1304,7 +1305,7 @@ async def test_a_crash_is_logged_against_the_first_requested_spelling(
 
 
 async def test_three_missing_inputs_read_as_a_list_with_and() -> None:
-    nothing = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    nothing = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
     result = await evaluate(make_build(), nothing, request("three-q"), solvers=NO_SOLVERS)
     error = result.quantities[0].error
     assert error is not None

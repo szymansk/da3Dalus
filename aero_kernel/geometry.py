@@ -25,6 +25,7 @@ __all__ = [
     "InlineAirfoil",
     "Servo",
     "SpareDetail",
+    "SurfaceType",
     "TrailingEdgeDevice",
     "Turbulator",
     "Wing",
@@ -343,12 +344,27 @@ class WingXSec(_Frozen):
     turbulator: Turbulator | None = None
 
 
+# The function of a wing (ARCHITECTURE ch. 8.5): the type follows the function, not the position.
+SurfaceType = Literal[
+    "main_wing",
+    "horizontal_tail",
+    "vertical_tail",
+    "v_tail",
+    "canard",
+    "tandem_wing",
+    "winglet",
+]
+
+
 class Wing(_Frozen):
     """One lifting surface: an ordered chain of ribs, root first.
 
     Attributes:
         name: Wing name.
         symmetric: Whether the surface is mirrored about the XZ plane (only one half is stored).
+        surface_type: The function of the surface (ARCHITECTURE ch. 8.5, D9); required, never
+            inferred. Optional in the type because ``validate.py`` reports its absence
+            (``missing_surface_type``); kernel-side until the format carries it (#1187).
         design_model: Which editor owns the wing; geometry-neutral.
         x_secs: Ribs from root to tip.
         units: Declared units; the constants when absent.
@@ -356,6 +372,7 @@ class Wing(_Frozen):
 
     name: str
     symmetric: Flag = True
+    surface_type: SurfaceType | None = None
     design_model: Literal["wc", "asb"] | None = None
     x_secs: tuple[WingXSec, ...]
     units: WingUnits = Field(default_factory=WingUnits)

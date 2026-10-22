@@ -24,7 +24,13 @@ def _document() -> dict[str, Any]:
     return {
         "airplane": {
             "name": "Test",
-            "wings": {"Main wing": {"name": "Main wing", "x_secs": [_xsec(0.0), _xsec(0.5)]}},
+            "wings": {
+                "Main wing": {
+                    "name": "Main wing",
+                    "surface_type": "main_wing",
+                    "x_secs": [_xsec(0.0), _xsec(0.5)],
+                }
+            },
             "fuselages": {
                 "Body": {
                     "name": "Body",
