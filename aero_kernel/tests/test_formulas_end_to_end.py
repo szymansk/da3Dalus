@@ -22,7 +22,10 @@ from aero_kernel.build import shipped_build
 from aero_kernel.cache import cache_key
 from aero_kernel.context import Solvers
 from aero_kernel.engine import evaluate
+from aero_kernel.errors import ErrorCategory
+from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityResult, QuantityStatus
+from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import StubAtmosphere, close
 
@@ -160,3 +163,43 @@ async def test_the_real_provenance_names_the_installed_aerosandbox() -> None:
     assert result.provenance.tool_versions == {
         "aerosandbox": importlib.metadata.version("aerosandbox")
     }
+
+
+async def test_q10_a_missing_aerosandbox_fails_density_and_pressure_as_tool_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The adapter's own availability check says aerosandbox is missing (Q10)."""
+    adapter = AtmosphereAdapter(SolverRuntime())
+    monkeypatch.setattr(adapter, "_missing", lambda: ["aerosandbox"])
+    result = await evaluate(
+        shipped_build(),
+        aircraft_of("BRYAN", 0.151),
+        request("air-density", "dynamic-pressure"),
+        solvers=Solvers(atmosphere=adapter),
+    )
+    quantities = by_slug(result)
+    density = quantities["air-density"].error
+    assert density is not None
+    assert density.category is ErrorCategory.TOOL_UNAVAILABLE
+    pressure = quantities["dynamic-pressure"].error
+    assert pressure is not None
+    assert pressure.category is ErrorCategory.UPSTREAM_FAILED
+    assert pressure.detail["causes"] == [{"quantity": "air-density", "code": "tool_unavailable"}]
+
+
+async def test_q10_a_distribution_that_is_not_installed_reports_no_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        AtmosphereAdapter, "requirements", {"no-such-distribution": "no_such_module_xyz"}
+    )
+    result = await evaluate(
+        shipped_build(),
+        aircraft_of("BRYAN", 0.151),
+        request("dynamic-pressure"),
+        solvers=Solvers(atmosphere=AtmosphereAdapter(SolverRuntime())),
+    )
+    (only,) = result.quantities
+    assert only.error is not None
+    assert only.error.category is ErrorCategory.UPSTREAM_FAILED
+    assert result.provenance.tool_versions == {}

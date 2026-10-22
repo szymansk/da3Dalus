@@ -58,7 +58,7 @@ async def test_compute_runs_on_the_shipped_build(monkeypatch: pytest.MonkeyPatch
     quantity = result.quantities[0]
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.error is not None
-    assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED  # no formulas yet, Q1
+    assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED
     fixture = load_canon_model(FIXTURE)
     assert result.provenance.canon_model_hash == fixture.content_hash
 
@@ -217,6 +217,18 @@ def run_script(script: str) -> None:
 async def test_importing_the_kernel_does_not_import_the_formulas() -> None:
     run_script(
         "import sys, aero_kernel, aero_kernel.api\n"
+        "assert 'aero_kernel.formulas' not in sys.modules\n"
+    )
+
+
+async def test_a_build_with_a_given_registry_neither_freezes_nor_imports_the_default() -> None:
+    run_script(
+        "import sys\n"
+        "from aero_kernel.build import load_build\n"
+        "from aero_kernel.registry import DEFAULT_REGISTRY, Registry\n"
+        "from aero_kernel.tests.test_build import FIXTURE\n"
+        "load_build(FIXTURE, Registry())\n"
+        "assert not DEFAULT_REGISTRY.frozen\n"
         "assert 'aero_kernel.formulas' not in sys.modules\n"
     )
 
