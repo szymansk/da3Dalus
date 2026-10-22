@@ -501,30 +501,31 @@ def validate_request(request: ComputeRequest) -> tuple[KernelError, ...]:
         budget is absent or a positive finite number.
     """
     budget = request.time_budget_s
-    if budget is None:
-        return ()
     path = "request.time_budget_s"
+    errors: list[KernelError] = []
+    if budget is None:
+        return tuple(errors)
     if not math.isfinite(budget):
-        return (
+        errors.append(
             _finding(
                 "non_finite_number",
                 path,
                 f"Value at {path} is {budget}; it must be a finite number.",
                 "Give a finite budget in seconds, or leave it out for none.",
                 budget,
-            ),
+            )
         )
-    if budget <= 0:
-        return (
+    elif budget <= 0:
+        errors.append(
             _finding(
                 "non_positive_value",
                 path,
                 f"Value at {path} is {budget} s; it must be > 0.",
                 "Give a positive budget in seconds, or leave it out for none.",
                 budget,
-            ),
+            )
         )
-    return ()
+    return tuple(errors)
 
 
 def validate_values(values: Mapping[str, float], model: CanonModel) -> tuple[KernelError, ...]:

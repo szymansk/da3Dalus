@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from aero_kernel.build import Build
-from aero_kernel.canon.model import ConstBinding, Default, Formula
+from aero_kernel.canon.model import Check, ConstBinding, Default, Formula
 from aero_kernel.context import Context, Inputs, Solvers, Value
 from aero_kernel.devices import devices_at_rest
 from aero_kernel.errors import (
@@ -110,6 +110,25 @@ def _unit_of(build: Build, slug: str) -> str | None:
 
 # The quantity types a value of v1 can carry between nodes (``Value``).
 _CARRIED_TYPES = frozenset({"scalar", "airplane"})
+
+
+def _in_scope(entry: Check, node: Node) -> bool:
+    """Whether a pre- or postcondition belongs to the application of the node (absent = all)."""
+    return entry.applications is None or node.id.application in entry.applications
+
+
+def _check_warning(
+    what: str, check_id: str, node: Node, result: CheckResult, origin: str
+) -> KernelWarning:
+    """The warning of an ``unchecked`` check or of a violated one whose ``on_violation`` is warning."""
+    unchecked = result.state == "unchecked"
+    verdict = "was not checked" if unchecked else "is violated"
+    return KernelWarning.of(
+        f"{what}_unchecked" if unchecked else f"{what}_violated",
+        f"The {what} `{check_id}` of `{display_slug(node.id.formula)}` {verdict}: {result.message}",
+        origin=origin,
+        detail={what: check_id},
+    )
 
 
 class _Call:
@@ -391,58 +410,56 @@ class _Call:
         what = "precondition" if kind == "pre" else "postcondition"
         declared = formula.preconditions if kind == "pre" else formula.postconditions
         registered = self.build.registry.checks(node.id.formula, kind)
-        formula_slug = display_slug(node.id.formula)
         warnings: list[KernelWarning] = []
         for entry in declared:
-            if entry.applications is not None and node.id.application not in entry.applications:
+            if not _in_scope(entry, node):
                 continue
-            function = registered.get(entry.id)
-            if function is None:
-                result = CheckResult(
-                    state="unchecked", message=f"no implementation of the {what} is registered"
-                )
-            elif kind == "pre":
-                result = function(inputs)
-            else:
-                assert outputs is not None  # a postcondition runs after the implementation
-                result = function(inputs, outputs)
+            result = self._check_result(kind, what, registered.get(entry.id), inputs, outputs)
             logger.debug("%s %s: %s", what, entry.id, result.state, extra={"call_id": self.call_id})
-            detail: dict[str, JsonValue] = {what: entry.id}
             if result.state == "held":
                 continue
-            if result.state == "unchecked":
-                warnings.append(
-                    KernelWarning.of(
-                        f"{what}_unchecked",
-                        f"The {what} `{entry.id}` of `{formula_slug}` was not checked: {result.message}",
-                        origin=origin,
-                        detail=detail,
-                    )
-                )
-            elif entry.on_violation == "warning":
-                warnings.append(
-                    KernelWarning.of(
-                        f"{what}_violated",
-                        f"The {what} `{entry.id}` of `{formula_slug}` is violated: {result.message}",
-                        origin=origin,
-                        detail=detail,
-                    )
-                )
-            else:
-                return warnings, KernelError(
-                    code=f"{what}_violated",
-                    category=ErrorCategory.UNSUPPORTED_CONFIGURATION,
-                    formula=formula_slug,
-                    application=node.id.application,
-                    message=f"The {what} `{entry.id}` of `{formula_slug}` is violated: {result.message}",
-                    hint=(
-                        "Change the inputs so that the formula applies."
-                        if kind == "pre"
-                        else "The value was discarded; the evaluation is not trustworthy."
-                    ),
-                    detail=detail,
-                )
+            if result.state == "violated" and entry.on_violation == "error":
+                return warnings, self._violation_error(kind, what, entry.id, node, result.message)
+            warnings.append(_check_warning(what, entry.id, node, result, origin))
         return warnings, None
+
+    @staticmethod
+    def _check_result(
+        kind: Literal["pre", "post"],
+        what: str,
+        function: Callable[..., CheckResult] | None,
+        inputs: Inputs,
+        outputs: Mapping[str, object] | None,
+    ) -> CheckResult:
+        """Run one check; a check the registry lacks is ``unchecked``."""
+        if function is None:
+            return CheckResult(
+                state="unchecked", message=f"no implementation of the {what} is registered"
+            )
+        if kind == "pre":
+            return function(inputs)
+        assert outputs is not None  # a postcondition runs after the implementation
+        return function(inputs, outputs)
+
+    @staticmethod
+    def _violation_error(
+        kind: Literal["pre", "post"], what: str, check_id: str, node: Node, message: str
+    ) -> KernelError:
+        """The error of a violated check whose ``on_violation`` is ``error``."""
+        formula_slug = display_slug(node.id.formula)
+        return KernelError(
+            code=f"{what}_violated",
+            category=ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            formula=formula_slug,
+            application=node.id.application,
+            message=f"The {what} `{check_id}` of `{formula_slug}` is violated: {message}",
+            hint=(
+                "Change the inputs so that the formula applies."
+                if kind == "pre"
+                else "The value was discarded; the evaluation is not trustworthy."
+            ),
+            detail={what: check_id},
+        )
 
     def _inherit(self, node: Node, anchor: str, status: QuantityStatus) -> _NodeRun | None:
         """The run of a node that inherits ``status`` from a predecessor it reads, if it does."""

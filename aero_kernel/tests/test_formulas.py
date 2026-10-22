@@ -316,6 +316,7 @@ async def test_stall_speed_passes_an_optimiser_failure_on_unchanged() -> None:
             raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "m", "h")
 
     context = context_with(StubAtmosphere({}), opti=Failing())
+    x = stall_x()
     with pytest.raises(FormulaError) as raised:
-        await stall_speed(stall_x(), context)
+        await stall_speed(x, context)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED

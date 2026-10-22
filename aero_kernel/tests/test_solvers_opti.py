@@ -76,16 +76,18 @@ async def test_an_inadmissible_input_is_invalid_input(
 ) -> None:
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution()))
     adapter = OptiAdapter(InProcessRuntime())
+    plane = airplane()
     with pytest.raises(FormulaError) as raised:
-        await adapter.stall(airplane(), mass, gravity, n_load, AIR)
+        await adapter.stall(plane, mass, gravity, n_load, AIR)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
     adapter = OptiAdapter(InProcessRuntime())
+    plane = airplane()
     with pytest.raises(FormulaError) as raised:
-        await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
+        await adapter.stall(plane, 1.5, 9.81, 1.0, AIR)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 
@@ -330,8 +332,9 @@ async def test_a_deflected_control_surface_view_is_refused_too(
 
     monkeypatch.setattr(opti_module, "stall_worker", worker)
     adapter = OptiAdapter(InProcessRuntime())
+    deflected = airplane(surface_deflection=12.0)
     with pytest.raises(FormulaError) as raised:
-        await adapter.stall(airplane(surface_deflection=12.0), 1.5, 9.81, 1.0, AIR)
+        await adapter.stall(deflected, 1.5, 9.81, 1.0, AIR)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
     assert "deflected control surfaces are not yet passed to AeroBuildup" in raised.value.message
     assert "cs-1" in raised.value.message

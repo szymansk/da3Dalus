@@ -228,6 +228,13 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
+def _admissible(value: float, *, positive: bool) -> bool:
+    """Whether a finite value is > 0 (``positive``) or merely not zero (a signed load factor)."""
+    if not math.isfinite(value):
+        return False
+    return value > 0.0 if positive else abs(value) > 0.0
+
+
 def _invalid(message: str, hint: str, parameter: str) -> FormulaError:
     return FormulaError(
         ErrorCategory.INVALID_INPUT, "invalid_input", message, hint, parameter=parameter
@@ -318,7 +325,7 @@ class OptiAdapter(SolverAdapter):
             ("g", gravity, True),
             ("n_load", n_load, False),
         ):
-            if not math.isfinite(value) or (value <= 0.0 if positive else value == 0.0):
+            if not _admissible(value, positive=positive):
                 raise _invalid(f"{name} = {value} is not admissible", f"give a valid {name}", name)
         request = StallRequest(
             airplane=airplane, mass_kg=mass_kg, gravity=gravity, n_load=n_load, air=air

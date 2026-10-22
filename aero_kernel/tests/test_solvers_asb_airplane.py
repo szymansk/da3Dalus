@@ -132,8 +132,9 @@ def test_only_the_geometry_is_passed_never_a_control_device_or_the_dihedral_fiel
 
 def test_an_airplane_without_a_main_wing_is_a_defect_of_the_caller() -> None:
     """Validation guarantees one main wing; the reference values need it."""
+    empty = AirplaneGeometry.model_validate({"name": "empty"})
     with pytest.raises(ValueError, match="exactly one main wing"):
-        to_asb_airplane(AirplaneGeometry.model_validate({"name": "empty"}))
+        to_asb_airplane(empty)
 
 
 def test_the_reference_values_are_the_kernels_projected_ones() -> None:
@@ -178,8 +179,9 @@ def test_a_fuselage_without_wings_list_converts_to_no_fuselages() -> None:
 
 def test_a_mirrored_fuselage_is_unsupported() -> None:
     """ASB has no mirrored body; substituting one would be silent (ADR 0020)."""
+    mirrored = with_fuselage_change(symmetric=True)
     with pytest.raises(FormulaError) as raised:
-        to_asb_airplane(with_fuselage_change(symmetric=True))
+        to_asb_airplane(mirrored)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
@@ -187,8 +189,9 @@ def test_different_upper_and_lower_exponents_are_unsupported() -> None:
     """ASB has one shape exponent per section."""
     document = geometry_document()
     document["fuselages"]["Body"]["x_secs"][1]["n_lower"] = 3.0
+    two_exponents = AirplaneGeometry.model_validate(document)
     with pytest.raises(FormulaError) as raised:
-        to_asb_airplane(AirplaneGeometry.model_validate(document))
+        to_asb_airplane(two_exponents)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
