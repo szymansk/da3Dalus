@@ -20,6 +20,8 @@ class MainWingProperties(BaseModel):
         s_ref: Reference area in m^2 (canon quantity ``wing-reference-area``).
         b_ref: Reference span in m (``wing-span``).
         c_mac: Mean aerodynamic chord in m (``mean-aerodynamic-chord``).
+        extended_m: Length in m by which the root was extended to y = 0 with the root chord.
+        clipped_m: Length in m of the stored side that was clipped away at y = 0.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -27,6 +29,8 @@ class MainWingProperties(BaseModel):
     s_ref: float
     b_ref: float
     c_mac: float
+    extended_m: float = 0.0
+    clipped_m: float = 0.0
 
 
 def _unsupported(message: str, hint: str, wing: str) -> FormulaError:
@@ -46,17 +50,15 @@ def _outboard_chain(
 ) -> list[tuple[float, float]]:
     """Orient the (y, chord) chain so y never decreases from the root outwards.
 
-    A mirrored wing is flipped so that its outermost section lies at y > 0; any other wing so that
-    its last section has the larger y.
+    The chain is reversed if it runs from the tip inwards, and a mirrored wing stored on the
+    negative side is mirrored to y >= 0 (outermost section at y > 0).
 
     Raises:
         FormulaError: ``unsupported_configuration`` if the chain folds back in y.
     """
-    if symmetric:
-        flip = max(points, key=lambda point: abs(point[0]))[0] < 0.0
-    else:
-        flip = points[-1][0] < points[0][0]
-    oriented = [(-y, c) for y, c in points] if flip else points
+    oriented = points[::-1] if points[-1][0] < points[0][0] else points
+    if symmetric and max(oriented, key=lambda point: abs(point[0]))[0] < 0.0:
+        oriented = [(-y, c) for y, c in oriented][::-1]
     if any(outer[0] < inner[0] for inner, outer in pairwise(oriented)):
         raise _unsupported(
             f"the sections of the main wing {name!r} fold back in y",
@@ -86,9 +88,13 @@ def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
     its chords:
 
     - area ``dy (c1 + c2) / 2``, ``integral c^2 dy = dy (c1^2 + c1 c2 + c2^2) / 3``;
-    - ``S_ref`` and ``b_ref`` are the sums, doubled if the wing is mirrored;
+    - ``S_ref`` is the sum of the panel areas and ``b_ref`` the planform's y extent, both doubled
+      if the wing is mirrored (``2 max|y|`` after carrying it to the centreline);
     - ``c_MAC = (2/S_ref) * integral(c^2 dy)`` over the half wing, which is the integral over
-      the stored side divided by the stored side's area (mirrored or not).
+      the reference planform (extension and clip included) divided by its area, mirrored or not.
+
+    ``extended_m`` and ``clipped_m`` of the result report the length by which the centreline
+    convention changed the planform, so the caller can declare it (ADR 0020).
 
     No external tool is called, so this needs no AeroSandbox.
 
@@ -113,9 +119,12 @@ def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
         [(s.xyz_le[1], s.chord) for s in wing.x_secs], wing.symmetric, wing.name
     )
     panels: list[tuple[float, float, float]] = []  # (dy, c1, c2)
+    extended = clipped = 0.0
     if wing.symmetric:
         if chain[0][0] > 0.0:
+            extended = chain[0][0]
             panels.append((chain[0][0], chain[0][1], chain[0][1]))
+        clipped = max(-chain[0][0], 0.0)
         for (y1, c1), (y2, c2) in pairwise(chain):
             low = max(y1, 0.0)
             if y2 > low:
@@ -133,4 +142,10 @@ def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
             wing.name,
         )
     mirrored = 2.0 if wing.symmetric else 1.0
-    return MainWingProperties(s_ref=mirrored * area, b_ref=mirrored * span, c_mac=squares / area)
+    return MainWingProperties(
+        s_ref=mirrored * area,
+        b_ref=mirrored * span,
+        c_mac=squares / area,
+        extended_m=extended,
+        clipped_m=clipped,
+    )

@@ -134,3 +134,42 @@ async def test_airplane_geometry_returns_the_projected_reference_values_of_the_m
 async def test_airplane_geometry_rejects_a_value_that_is_not_the_geometry() -> None:
     with pytest.raises(TypeError, match="airplane"):
         await airplane_geometry({"airplane": 1.0}, context_with(StubAtmosphere({})))
+
+
+def main_wing_document(root_y: float) -> AirplaneGeometry:
+    sections = [
+        {"xyz_le": [0.0, y, 0.0], "chord": c, "twist": 0.0, "airfoil": "naca2412"}
+        for y, c in ((root_y, 0.3), (0.45, 0.2))
+    ]
+    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
+    return AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+
+
+async def test_airplane_geometry_warns_when_the_root_is_extended_to_the_centreline() -> None:
+    x = inputs_from_model(MODEL, "airplane-geometry", {"airplane": main_wing_document(0.05)})
+    context = context_with(StubAtmosphere({}), origin="wing-reference-area")
+    await airplane_geometry(x, context)
+    (warning,) = context.warnings
+    assert warning.code == "reference_wing_at_centreline"
+    assert warning.severity.value == "practice"
+    assert warning.origin == "wing-reference-area"
+    assert warning.detail == {"wing": "Main", "extended_m": 0.05}
+    assert "extended" in warning.message
+    assert "centreline" in warning.message
+
+
+async def test_airplane_geometry_warns_when_the_stored_side_is_clipped_at_the_centreline() -> None:
+    x = inputs_from_model(MODEL, "airplane-geometry", {"airplane": main_wing_document(-0.1)})
+    context = context_with(StubAtmosphere({}))
+    await airplane_geometry(x, context)
+    (warning,) = context.warnings
+    assert warning.code == "reference_wing_at_centreline"
+    assert warning.detail == {"wing": "Main", "clipped_m": 0.1}
+    assert "clipped" in warning.message
+
+
+async def test_airplane_geometry_does_not_warn_when_the_root_lies_on_the_centreline() -> None:
+    x = inputs_from_model(MODEL, "airplane-geometry", {"airplane": main_wing_document(0.0)})
+    context = context_with(StubAtmosphere({}))
+    await airplane_geometry(x, context)
+    assert context.warnings == ()

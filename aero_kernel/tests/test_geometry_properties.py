@@ -304,3 +304,35 @@ def test_a_wing_count_other_than_one_is_an_internal_guard_not_an_input_error() -
     airplane = AirplaneGeometry.model_validate({"name": "t"})
     with pytest.raises(ValueError, match="exactly one main wing"):
         main_wing_properties(airplane)
+
+
+def full(wing: dict[str, Any]) -> Any:  # the properties model, read by attribute
+    airplane = AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+    return main_wing_properties(airplane)
+
+
+@pytest.mark.parametrize("ys", [(0.5, 0.3, 0.0), (0.0, 0.3, 0.5)])
+def test_a_mirrored_wing_stored_tip_first_is_no_fold(ys: tuple[float, ...]) -> None:
+    """Only a genuine fold back is rejected; the direction of the chain is free."""
+    reference = properties_of(wing_of(True, (0.0, 0.3), (0.3, 0.25), (0.5, 0.2)))
+    chords = {0.0: 0.3, 0.3: 0.25, 0.5: 0.2}
+    assert properties_of(wing_of(True, *((y, chords[y]) for y in ys))) == reference
+
+
+def test_a_mirrored_wing_stored_tip_first_on_the_negative_side_is_no_fold() -> None:
+    reference = properties_of(wing_of(True, (0.0, 0.3), (0.3, 0.25), (0.5, 0.2)))
+    assert properties_of(wing_of(True, (-0.5, 0.2), (-0.3, 0.25), (0.0, 0.3))) == reference
+    assert properties_of(wing_of(True, (0.0, 0.3), (-0.3, 0.25), (-0.5, 0.2))) == reference
+
+
+def test_the_centreline_changes_are_reported_in_metres() -> None:
+    assert (
+        full(wing_of(True, (0.0, 0.3), (0.4, 0.2))).extended_m,
+        full(wing_of(True, (0.0, 0.3), (0.4, 0.2))).clipped_m,
+    ) == (0.0, 0.0)
+    extended = full(wing_of(True, (0.05, 0.3), (0.45, 0.2)))
+    assert (extended.extended_m, extended.clipped_m) == (0.05, 0.0)
+    clipped = full(wing_of(True, (-0.1, 0.3), (0.4, 0.2)))
+    assert (clipped.extended_m, clipped.clipped_m) == (0.0, 0.1)
+    kept = full(wing_of(False, (-0.1, 0.3), (0.4, 0.2)))
+    assert (kept.extended_m, kept.clipped_m) == (0.0, 0.0)

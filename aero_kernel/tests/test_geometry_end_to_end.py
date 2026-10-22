@@ -22,6 +22,12 @@ from aero_kernel.tests.test_geometry_properties import numeric_projected
 pytestmark = pytest.mark.asyncio
 
 GRAVITY = 9.80665
+CENTRELINE = "reference_wing_at_centreline"
+# BRYAN's root lies 0.253 mm beyond y = 0 (clipped), JAGUAR's 1.06 mm short of it (extended).
+CENTRELINE_CHANGE = {
+    FleetMember.BRYAN: ("clipped_m", 0.000253),
+    FleetMember.JAGUAR: ("extended_m", 0.00106),
+}
 SLUGS = (
     "wing-reference-area",
     "wing-span",
@@ -58,6 +64,13 @@ async def test_the_geometry_quantities_of_the_fleet(member: FleetMember) -> None
         assert close(quantities[slug].value, value, 1e-8), slug
         assert quantities[slug].unit == unit, slug
     assert quantities["wing-reference-area"].tool == "GEO"
+    # the centreline convention changed the planform of both aircraft: declared on every quantity
+    # computed from the geometry (ADR 0020)
+    for slug in SLUGS:
+        key, metres = CENTRELINE_CHANGE[member]
+        (warning,) = [w for w in quantities[slug].warnings if w.code == CENTRELINE]
+        assert warning.origin in {"wing-reference-area", "wing-span", "mean-aerodynamic-chord"}
+        assert warning.detail == {"wing": "Tragflaeche", key: metres}
     assert [d.slug for d in result.provenance.defaults_used] == ["gravity"]
 
 
