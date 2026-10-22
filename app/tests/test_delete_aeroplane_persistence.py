@@ -164,3 +164,90 @@ def test_delete_removes_component_tree_and_construction_parts(client_and_db):
         # Other aeroplanes' rows are untouched.
         assert s.query(ComponentTreeNodeModel).filter_by(aeroplane_id=other_uuid).count() == 1
         assert s.query(ConstructionPartModel).filter_by(aeroplane_id=other_uuid).count() == 1
+
+
+# --- Versioning semantics (maintainer decision on gh-1151, option A) ------------
+
+
+def _node_id(session_factory, aeroplane_uuid: str) -> int:
+    return _id_of(session_factory, aeroplane_uuid)
+
+
+def _lineage_with_two_side_branches(client, session_factory):
+    """Main head with two snapshots plus two side branches; returns ids."""
+    main_uuid = _uuid_of(_create(client))
+    root_id = _node_id(session_factory, main_uuid)
+    for label in ("v1", "v2"):
+        r = client.post(f"/aeroplanes/{root_id}/snapshot", json={"label": label})
+        assert r.status_code in (200, 201), r.text
+    side_heads = []
+    for name in ("side-a", "side-b"):
+        r = client.post(f"/aeroplanes/{root_id}/branch", json={"name": name})
+        assert r.status_code in (200, 201), r.text
+        side_heads.append(r.json()["head_id"])
+    return main_uuid, root_id, side_heads
+
+
+def test_delete_with_two_snapshots_leaves_no_orphan_nodes(client_and_db):
+    client, session_factory = client_and_db
+    a_uuid = _uuid_of(_create(client))
+    node_id = _node_id(session_factory, a_uuid)
+    for label in ("v1", "v2"):
+        r = client.post(f"/aeroplanes/{node_id}/snapshot", json={"label": label})
+        assert r.status_code in (200, 201), r.text
+
+    assert client.delete(f"/aeroplanes/{a_uuid}").status_code == 200
+
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).count() == 0
+        assert s.query(BranchModel).count() == 0
+
+
+def test_delete_main_head_removes_the_whole_lineage(client_and_db):
+    client, session_factory = client_and_db
+    main_uuid, root_id, _ = _lineage_with_two_side_branches(client, session_factory)
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).filter_by(root_id=root_id).count() > 3
+
+    assert client.delete(f"/aeroplanes/{main_uuid}").status_code == 200
+
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).filter_by(root_id=root_id).count() == 0
+        assert s.query(AeroplaneModel).count() == 0
+        assert s.query(BranchModel).filter_by(root_id=root_id).count() == 0
+        assert s.query(BranchModel).count() == 0
+
+
+def test_delete_side_branch_head_discards_only_that_branch(client_and_db):
+    client, session_factory = client_and_db
+    main_uuid, root_id, side_heads = _lineage_with_two_side_branches(client, session_factory)
+    with session_factory() as s:
+        side = s.query(AeroplaneModel).filter_by(id=side_heads[0]).one()
+        side_uuid, side_branch_id = str(side.uuid), side.branch_id
+        total_before = s.query(AeroplaneModel).count()
+
+    resp = client.delete(f"/aeroplanes/{side_uuid}")
+
+    assert resp.status_code == 200, resp.text
+    with session_factory() as s:
+        assert s.query(BranchModel).filter_by(id=side_branch_id).count() == 0
+        assert s.query(AeroplaneModel).filter_by(branch_id=side_branch_id).count() == 0
+        assert s.query(BranchModel).filter_by(root_id=root_id).count() == 2  # main + other side
+        assert s.query(AeroplaneModel).count() < total_before
+        assert s.query(AeroplaneModel).filter_by(id=side_heads[1]).count() == 1
+        assert s.query(AeroplaneModel).filter_by(id=root_id).count() == 1
+    assert client.get(f"/lineages/{root_id}/tree").status_code == 200
+
+
+def test_delete_snapshot_node_is_refused_with_409(client_and_db):
+    client, session_factory = client_and_db
+    a_uuid = _uuid_of(_create(client))
+    node_id = _node_id(session_factory, a_uuid)
+    r = client.post(f"/aeroplanes/{node_id}/snapshot", json={"label": "v1"})
+    snapshot_uuid = r.json()["uuid"]
+
+    resp = client.delete(f"/aeroplanes/{snapshot_uuid}")
+
+    assert resp.status_code == 409, resp.text
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).filter(AeroplaneModel.uuid == snapshot_uuid).count() == 1

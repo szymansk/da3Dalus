@@ -10,21 +10,16 @@ from datetime import datetime
 from typing import List, OrderedDict
 
 import numpy as np
-from sqlalchemy import delete, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import schemas
-from app.core.exceptions import NotFoundError, InternalError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError, InternalError, ValidationError
 from app.converters.model_schema_converters import (
     fuselage_model_to_fuselage_config,
     wing_model_to_wing_config,
 )
 from app.models.aeroplanemodel import AeroplaneModel, BranchModel
-from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
-from app.models.component_tree import ComponentTreeNodeModel
-from app.models.construction_part import ConstructionPartModel
-from app.models.tessellation_cache import TessellationCacheModel
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import (
     AirplaneConfiguration,
 )
@@ -171,38 +166,31 @@ def get_aeroplane_schema(db: Session, aeroplane_uuid) -> schemas.AeroplaneSchema
     )
 
 
-def _detach_versioning_rows(db: Session, aeroplane: AeroplaneModel) -> None:
-    """Remove the rows that point at *aeroplane* through NOT NULL or self FKs.
+def _delete_node_with_versioning(db: Session, aeroplane: AeroplaneModel) -> None:
+    """Delete *aeroplane* according to its place in the version lineage.
 
-    Mirrors the ordering of ``discard_branch`` (BR-VR9): the branch rows go
-    first, otherwise the ORM tries to null ``branches.root_id/head_id``.
-    Self-references (predecessor/root) are cleared to avoid a circular
-    dependency; ``tessellation_cache`` has no ORM relationship, so SQLite
-    (foreign keys off) would leave its rows orphaned.
+    - head of the main branch: the whole lineage goes (all branches, all
+      snapshots and side-branch nodes);
+    - head of a side branch: exactly ``discard_branch``;
+    - immutable snapshot: refused, snapshots are not deleted on their own;
+    - no branch (legacy row): the single node.
     """
-    for branch in {*aeroplane.root_branches, *aeroplane.head_branches}:
-        db.delete(branch)
-    db.execute(
-        update(AeroplaneModel)
-        .where(AeroplaneModel.predecessor_id == aeroplane.id)
-        .values(predecessor_id=None)
-    )
-    db.execute(
-        delete(TessellationCacheModel).where(TessellationCacheModel.aeroplane_id == aeroplane.id)
-    )
-    # Rows bound by a nullable integer FK (analysis) or a plain string uuid
-    # (component tree, construction parts) have no ORM cascade. Left behind,
-    # they would be inherited by the next aeroplane that reuses the integer id.
-    for model in (OperatingPointModel, OperatingPointSetModel):
-        db.execute(delete(model).where(model.aircraft_id == aeroplane.id))
-    uuid_key = str(aeroplane.uuid)
-    # Tree nodes first: they reference construction parts.
-    for model in (ComponentTreeNodeModel, ConstructionPartModel):
-        db.execute(delete(model).where(model.aeroplane_id == uuid_key))
-    aeroplane.root_id = None
-    aeroplane.predecessor_id = None
-    aeroplane.branch_id = None
-    db.flush()
+    # Local import: aeroplane_version_service pulls in the clone service,
+    # which imports this module.
+    from app.services import aeroplane_version_service
+
+    if aeroplane.is_immutable:
+        raise ConflictError(
+            message="Cannot delete an immutable snapshot; delete the branch head instead",
+            details={"aeroplane_id": str(aeroplane.uuid), "is_immutable": True},
+        )
+    branch = db.get(BranchModel, aeroplane.branch_id) if aeroplane.branch_id else None
+    if branch is None:
+        aeroplane_version_service.delete_nodes(db, [aeroplane])
+    elif branch.is_main:
+        aeroplane_version_service.delete_lineage(db, branch.root_id)
+    else:
+        aeroplane_version_service.discard_branch(db, branch.id)
 
 
 def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
@@ -220,8 +208,7 @@ def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
             raise NotFoundError(
                 message=_ERR_AEROPLANE_NOT_FOUND, details={"aeroplane_id": str(aeroplane_uuid)}
             )
-        _detach_versioning_rows(db, aeroplane)
-        db.delete(aeroplane)
+        _delete_node_with_versioning(db, aeroplane)
         # Flush inside the try: the commit in get_db() runs after the
         # response is sent, so a constraint violation must surface here.
         db.flush()

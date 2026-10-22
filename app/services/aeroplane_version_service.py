@@ -21,10 +21,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError, ConflictError
 from app.models.aeroplanemodel import AeroplaneModel, BranchModel
+from app.services.aeroplane_purge import purge_node_dependents
 from app.services.aeroplane_clone_service import clone_aeroplane_subgraph
 
 logger = logging.getLogger(__name__)
@@ -380,17 +382,47 @@ def discard_branch(db: Session, branch_id: int) -> None:
     db.delete(branch)
     db.flush()
 
-    # Delete aeroplane rows (cascade will handle owned subgraphs).
-    for node in nodes_to_delete:
-        db.delete(node)
-
-    db.flush()
+    # Delete aeroplane rows (cascade handles owned subgraphs, the purge the
+    # rows without ORM cascade).
+    delete_nodes(db, nodes_to_delete)
 
     logger.info(
         "discard_branch: branch %s deleted, %s node(s) removed",
         branch_id,
         len(nodes_to_delete),
     )
+
+
+def delete_nodes(db: Session, nodes: list[AeroplaneModel]) -> None:
+    """Delete aeroplane nodes together with everything they own.
+
+    Single implementation shared by ``discard_branch``, ``delete_lineage`` and
+    the plain aeroplane delete (ADR 0022). Self-references between the nodes
+    are cleared first, otherwise the ORM reports a circular dependency.
+    """
+    for node in nodes:
+        node.predecessor_id = None
+        node.root_id = None
+    db.flush()
+    for node in nodes:
+        purge_node_dependents(db, node)
+        db.delete(node)
+    db.flush()
+
+
+def delete_lineage(db: Session, root_id: int) -> None:
+    """Delete a whole lineage: every branch and every node with this root."""
+    nodes = (
+        db.query(AeroplaneModel)
+        .filter(or_(AeroplaneModel.id == root_id, AeroplaneModel.root_id == root_id))
+        .all()
+    )
+    # Branch rows first (BR-VR9): otherwise the ORM nulls branches.root_id/head_id.
+    for branch in db.query(BranchModel).filter(BranchModel.root_id == root_id).all():
+        db.delete(branch)
+    db.flush()
+    delete_nodes(db, nodes)
+    logger.info("delete_lineage: root %s, %s node(s) removed", root_id, len(nodes))
 
 
 def compare(
