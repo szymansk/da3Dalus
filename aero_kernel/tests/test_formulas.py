@@ -132,8 +132,9 @@ async def test_airplane_geometry_returns_the_projected_reference_values_of_the_m
 
 
 async def test_airplane_geometry_rejects_a_value_that_is_not_the_geometry() -> None:
+    context = context_with(StubAtmosphere({}))
     with pytest.raises(TypeError, match="airplane"):
-        await airplane_geometry({"airplane": 1.0}, context_with(StubAtmosphere({})))
+        await airplane_geometry({"airplane": 1.0}, context)
 
 
 def main_wing_document(root_y: float) -> AirplaneGeometry:

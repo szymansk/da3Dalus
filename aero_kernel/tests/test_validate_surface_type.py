@@ -58,8 +58,9 @@ def test_a_wing_may_lack_the_type_in_the_model_because_validation_reports_it() -
 
 
 def test_an_unknown_surface_type_does_not_parse() -> None:
+    document = wing("w", "biplane_lower")
     with pytest.raises(ValidationError):
-        geometry.Wing.model_validate(wing("w", "biplane_lower"))
+        geometry.Wing.model_validate(document)
 
 
 @pytest.mark.parametrize("code", ["missing_surface_type", "main_wing_count"])
