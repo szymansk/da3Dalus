@@ -24,7 +24,7 @@ from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["AeroBuildupAdapter", "Sweep", "SweepRequest", "sweep_worker"]
+__all__ = ["AeroBuildupAdapter", "Sweep", "SweepRequest", "sweep_polar", "sweep_worker"]
 
 
 class SweepRequest(BaseModel):
@@ -59,6 +59,41 @@ class Sweep(BaseModel):
     warnings: tuple[KernelWarning, ...]
 
 
+def sweep_polar(
+    asb_airplane: object, air: AirState, velocity_ms: float, alphas_deg: Sequence[float]
+) -> Polar:
+    """Run AeroBuildup over the angles of attack on an already converted airplane.
+
+    The one place that evaluates AeroBuildup in a fixed air state, shared by the sweep and the
+    stall worker (ADR 0022). Runs in a pool worker.
+
+    Args:
+        asb_airplane: The ``asb.Airplane`` (from :func:`to_asb_airplane`).
+        air: The air state.
+        velocity_ms: True airspeed in m/s.
+        alphas_deg: Angles of attack in degrees, strictly rising.
+
+    Returns:
+        The polar (CL, CD, Cm as AeroBuildup computes them).
+    """
+    asb = load_aerosandbox()
+    alphas = np.asarray(alphas_deg, dtype=float)
+    result = asb.AeroBuildup(
+        asb_airplane,
+        asb.OperatingPoint(
+            atmosphere=FixedAtmosphere(air),
+            velocity=np.full_like(alphas, velocity_ms),
+            alpha=alphas,
+        ),
+    ).run()
+    return Polar(
+        alpha_deg=tuple(float(a) for a in alphas_deg),
+        cl=tuple(float(v) for v in result["CL"]),
+        cd=tuple(float(v) for v in result["CD"]),
+        cm=tuple(float(v) for v in result["Cm"]),
+    )
+
+
 def sweep_worker(request: SweepRequest) -> WorkerOutcome[Polar]:
     """Run AeroBuildup over the angles of attack in the pool worker.
 
@@ -68,22 +103,9 @@ def sweep_worker(request: SweepRequest) -> WorkerOutcome[Polar]:
     Returns:
         The polar, with the worker's diagnostics.
     """
-    asb = load_aerosandbox()
     started = time.perf_counter()
-    alphas = np.asarray(request.alphas_deg, dtype=float)
-    result = asb.AeroBuildup(
-        to_asb_airplane(request.airplane),
-        asb.OperatingPoint(
-            atmosphere=FixedAtmosphere(request.air),
-            velocity=np.full_like(alphas, request.velocity_ms),
-            alpha=alphas,
-        ),
-    ).run()
-    polar = Polar(
-        alpha_deg=request.alphas_deg,
-        cl=tuple(float(v) for v in result["CL"]),
-        cd=tuple(float(v) for v in result["CD"]),
-        cm=tuple(float(v) for v in result["Cm"]),
+    polar = sweep_polar(
+        to_asb_airplane(request.airplane), request.air, request.velocity_ms, request.alphas_deg
     )
     diagnostics = WorkerDiagnostics(duration_s=time.perf_counter() - started)
     return WorkerOutcome(value=polar, diagnostics=diagnostics)
