@@ -362,3 +362,42 @@ def test_avl_control_derivatives_are_per_degree_and_aileron_sign_is_inverted(tmp
 def test_dataclasses_are_frozen():
     with pytest.raises(dataclasses.FrozenInstanceError):
         THROWS.elevator_deg = 1.0  # type: ignore[misc]
+
+
+# --- component build-up ---------------------------------------------------------------------------
+def test_buildup_point_masses_match_analytic_values():
+    import inertia_buildup as ib
+
+    pts = [
+        ib.PointMass("a", 1.0, 0.5, 0.0, 0.0, "t"),  # geometry x aft
+        ib.PointMass("b", 1.0, -0.5, 0.0, 0.0, "t"),
+        ib.PointMass("c", 2.0, 0.0, 0.3, 0.0, "t"),
+    ]
+    r = ib.buildup(pts, [])
+    assert r.cg_geometry == pytest.approx((0.0, 0.15, 0.0))
+    # about the CG: y offsets are -0.15 (a, b) and +0.15 (c)
+    assert r.ixx == pytest.approx(2 * 0.15**2 + 2 * 0.15**2)
+    assert r.iyy == pytest.approx(2 * 0.5**2)
+    assert r.izz == pytest.approx(2 * (0.5**2 + 0.15**2) + 2 * 0.15**2)
+    assert r.ixz == pytest.approx(0.0)
+
+
+def test_buildup_rod_adds_its_own_inertia_and_conserves_mass():
+    import inertia_buildup as ib
+
+    r = ib.buildup([], [ib.Rod("f", 0.06, 0.0, 0.5, 0.0, "t")])
+    assert r.iyy == pytest.approx(0.06 * 0.5**2 / 12)
+    assert r.izz == pytest.approx(r.iyy)
+    assert r.ixx == pytest.approx(0.0)
+    assert r.mass_kg == pytest.approx(0.06)
+
+
+def test_bryan_buildup_is_below_the_radius_of_gyration_upper_bound():
+    pytest.importorskip("aerosandbox")
+    import bryan_aero as ba
+    import export_bryan
+
+    inertia, basis, bound = export_bryan.bryan_inertia(ba.build_bryan())
+    assert inertia.ixz == 0.0 and "declared" in basis.lower()
+    for k in ("ixx", "iyy", "izz"):
+        assert 0 < getattr(inertia, k) <= getattr(bound, k)

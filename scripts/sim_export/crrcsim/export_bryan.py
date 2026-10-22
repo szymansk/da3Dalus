@@ -24,20 +24,30 @@ sys.path.insert(0, str(HERE))
 
 import bryan_aero as ba  # noqa: E402
 import crrcsim_model as cm  # noqa: E402
+import inertia_buildup as ib  # noqa: E402
 import polar  # noqa: E402
 
 REF_TOL = 1e-3  # relative tolerance between ASB reference values and what AVL reports
 
 # --- declared estimates (ADR 0020: nothing silent) -------------------------------------------------
-# Radii of gyration. Source and values: see GYRATION_SOURCE; sensitivity: x1/1.5 .. x1.5 in I.
+# Radii of gyration: only a plausibility UPPER BOUND for the component build-up (Scholz-skill answer:
+# the vault has no RC/glider values; Roskam/Raymer single-engine radii, from memory and unverified,
+# over-predict even a Cessna 182 by ~30 %, so for a pod-and-boom model they bound from above).
 RADII = cm.GyrationRadii(
     rx_over_b=0.25,
     ry_over_l=0.38,
-    rz_over_e=0.46,
-    xz_tilt_deg=2.0,
-    source="Raymer, Aircraft Design: A Conceptual Approach, typical radii of gyration for a "
-    "single-engine propeller aircraft (R_x/b, R_y/L, R_z/e with e=(b+L)/2); tilt is a declared guess",
+    rz_over_e=0.39,
+    xz_tilt_deg=0.0,
+    source="Roskam/Raymer single-engine R_x/b, R_y/L, R_z/e (memory, unverified); upper bound only",
 )
+# Component build-up (Sadraey 11.7). Masses [g] from bryan.konstruktion.json komponenten unless noted.
+M_MOTOR, M_PROP, M_ESC, M_BATT, M_RX, M_SERVO = 19.0, 4.568, 7.0, 28.0, 5.0, 4.8
+X_MOTOR, X_PROP, X_ESC, X_BATT, X_RX = 0.010, -0.005, 0.050, 0.1103, 0.150
+X_SERVO_TAIL, Y_SERVO_AIL, X_SERVO_AIL = 0.2195, 0.10, 0.165
+# remainder of the 0.151 kg (structure, gear, wire, hatch, glue, covering) split by declared shares
+# 0.4/0.4/0.2 puts the build-up CG 29 mm behind the plan CG; 0.6/0.3/0.1 reduces that to ~12 mm
+# (a boom-and-pod model carries most structure mass in the wing and nose). Not matched exactly.
+STRUCT_SHARE = {"wing": 0.60, "fuselage": 0.30, "tail": 0.10}
 # Power chain, variant A of BRYAN_Motorisierung.md (Pulsar Micro 1510, 2000 KV, 6x4, 2S 450 mAh).
 KV = 2000.0
 PROP_D_M, PROP_H_M = 6 * 0.0254, 4 * 0.0254
@@ -193,13 +203,13 @@ def power_xml() -> tuple[str, list[cm.Entry]]:
             "config/power/engine",
             "R_I",
             ENGINE_R_I,
-            "DECLARED ESTIMATE: no datasheet value for the Pulsar 1510",
+            "DECLARED ESTIMATE: db components id 629 (Pulsar Micro 1510) states Ri, Io not published",
         ),
         e(
             "config/power/engine",
             "I_0",
             ENGINE_I_0,
-            "DECLARED ESTIMATE: no datasheet value for the Pulsar 1510",
+            "DECLARED ESTIMATE: db components id 629 (Pulsar Micro 1510) states Ri, Io not published",
         ),
         e(
             "config/power/engine",
@@ -273,7 +283,82 @@ def hard_points(b: ba.Bryan) -> list[tuple[float, float, float]]:
     return pts
 
 
-def export(speed: float, throws: cm.Throws, graphics_model: str = "mav.ac") -> dict:
+def bryan_inertia(b: ba.Bryan) -> tuple[cm.Inertia, str, cm.Inertia]:
+    """Component build-up about the build-up CG; I_xz declared 0. Returns (inertia, basis text,
+    radius-of-gyration upper bound)."""
+    g = b.geometry
+    kg = 1e-3
+    pts = [
+        ib.PointMass("motor", M_MOTOR * kg, X_MOTOR, 0.0, 0.0, "konstruktion komponenten.motor.masse"),
+        ib.PointMass("propeller", M_PROP * kg, X_PROP, 0.0, 0.0, "db propeller_polars APC 6x4E weight_g"),
+        ib.PointMass("ESC", M_ESC * kg, X_ESC, 0.0, -0.010, "konstruktion komponenten.regler.masse, Nasenboden"),
+        ib.PointMass("battery", M_BATT * kg, X_BATT, 0.0, 0.0, "konstruktion komponenten.akku (x range mid 99.5..121.1 mm)"),
+        ib.PointMass("receiver", M_RX * kg, X_RX, 0.0, -0.005, "konstruktion komponenten.empfaenger, wing root rib"),
+        ib.PointMass("elevator servo", M_SERVO * kg, X_SERVO_TAIL, 0.0, 0.0, "konstruktion servos, x 205.5..233.5"),
+        ib.PointMass("rudder servo", M_SERVO * kg, X_SERVO_TAIL, 0.0, 0.0, "konstruktion servos, x 205.5..233.5"),
+        ib.PointMass("aileron servo R", M_SERVO * kg, X_SERVO_AIL, Y_SERVO_AIL, -0.014, "konstruktion servos, wing rib 24.b (position estimated)"),
+        ib.PointMass("aileron servo L", M_SERVO * kg, X_SERVO_AIL, -Y_SERVO_AIL, -0.014, "konstruktion servos, wing rib 24.b (position estimated)"),
+    ]  # fmt: skip
+    listed = sum(p.mass_kg for p in pts)
+    rest = b.mass_kg - listed
+    if rest <= 0:
+        raise cm.ExportError(
+            f"listed component masses {listed:.4f} kg exceed the total {b.mass_kg} kg"
+        )
+    st = "remainder of the total mass (structure, gear, linkage, hatch, glue, covering)"
+    wings = g["wings"]
+    xs = lambda name: b.airplane.wings[[w.name for w in b.airplane.wings].index(name)].xsecs  # noqa: E731
+    pts += ib.strip_masses("wing", xs("Tragflaeche"), rest * STRUCT_SHARE["wing"], True, st)
+    tail_area = {}
+    for name in ("Hoehenleitwerk", "Seitenleitwerk"):
+        xsecs = xs(name)
+        tail_area[name] = sum(
+            0.5 * (a.chord + c.chord) * float(np.hypot(c.xyz_le[1] - a.xyz_le[1], c.xyz_le[2] - a.xyz_le[2]))
+            * (2 if wings[name]["symmetric"] else 1)
+            for a, c in zip(xsecs[:-1], xsecs[1:], strict=True)
+        )  # fmt: skip
+    for name, area in tail_area.items():
+        pts += ib.strip_masses(
+            name,
+            xs(name),
+            rest * STRUCT_SHARE["tail"] * area / sum(tail_area.values()),
+            wings[name]["symmetric"],
+            st,
+        )
+    fus = g["fuselages"]["Rumpf"]["x_secs"]
+    rods = [
+        ib.Rod(
+            "fuselage",
+            rest * STRUCT_SHARE["fuselage"],
+            fus[0]["xyz"][0],
+            fus[-1]["xyz"][0],
+            0.0,
+            st,
+        )
+    ]
+    res = ib.buildup(pts, rods)
+    dx = (res.cg_geometry[0] - b.xyz_cg[0]) * 1000
+    basis = (
+        f"Sadraey 11.7 component build-up I = sum(I_c + m d^2) about the build-up CG; listed components "
+        f"{listed * 1000:.1f} g (motor {M_MOTOR}, prop {M_PROP}, ESC {M_ESC}, battery {M_BATT}, receiver {M_RX}, "
+        f"4 servos {M_SERVO} each; positions from bryan.konstruktion.json, aileron servo and ESC/receiver heights estimated), "
+        f"remainder {rest * 1000:.1f} g split wing {STRUCT_SHARE['wing']:.0%} (area-weighted strips) / fuselage "
+        f"{STRUCT_SHARE['fuselage']:.0%} (uniform rod, I_c=mL^2/12) / tail {STRUCT_SHARE['tail']:.0%} (area-weighted); "
+        f"component self-inertia neglected; build-up CG x = {res.cg_geometry[0] * 1000:.1f} mm vs plan CG "
+        f"{b.xyz_cg[0] * 1000:.1f} mm (offset {dx:+.1f} mm, inertia not shifted to the plan CG); I_xz declared 0"
+    )
+    bound = cm.estimate_inertia(
+        b.mass_kg,
+        float(b.airplane.wings[0].span("yz")),
+        float(fus[-1]["xyz"][0]),
+        RADII,
+    )
+    return cm.Inertia(res.ixx, res.iyy, res.izz, 0.0, basis), basis, bound
+
+
+def export(
+    speed: float, throws: cm.Throws, graphics_model: str = "mav.ac", throws_note: str = ""
+) -> dict:
     num = analyse(speed)
     a = build_aero_numbers(num, throws, speed)
     b, avl, st, fit = num["b"], num["avl"], num["st"], num["fit"]
@@ -289,18 +374,13 @@ def export(speed: float, throws: cm.Throws, graphics_model: str = "mav.ac") -> d
         "aileron_drag": "CRRCSim doc 3.5 rule 0.01 / (max stick 0.5)^2; AeroBuildup deflected-surface drag is not quadratic (5 deg: -0.0007, 10: +0.004, 15: +0.039, 20: +0.14)",
     }
     aero = cm.aero_entries(a, throws, src)
-    inertia = cm.estimate_inertia(
-        b.mass_kg,
-        float(b.airplane.wings[0].span("yz")),
-        float(b.geometry["fuselages"]["Rumpf"]["x_secs"][-1]["xyz"][0]),
-        RADII,
-    )
+    inertia, basis, bound = bryan_inertia(b)
     sens = cm.inertia_sensitivity(inertia)
     pxml, pentries = power_xml()
     wheels = hard_points(b)
     scale = b.mass_kg / WASABI_MASS
     spring = tuple(v * scale for v in WASABI_SPRING)
-    est = "DECLARED ESTIMATE (radius of gyration): " + inertia.basis
+    est = "DECLARED ESTIMATE (component build-up, not measured): " + basis
     body_entries = [
         cm.Entry(
             "config/mass_inertia",
@@ -315,7 +395,7 @@ def export(speed: float, throws: cm.Throws, graphics_model: str = "mav.ac") -> d
             "config/mass_inertia",
             "I_xz",
             inertia.ixz,
-            est + "; I_xz = 0.5 (I_zz - I_xx) tan(2 eps), sign a declared choice",
+            "DECLARED: 0 for the first export (small for a laterally symmetric model)",
         ),
         cm.Entry(
             "CG",
@@ -343,13 +423,23 @@ def export(speed: float, throws: cm.Throws, graphics_model: str = "mav.ac") -> d
         ),
     ]
     inertia_comment = (
-        "DECLARED ESTIMATE (not measured): inertia from radii of gyration, "
-        + inertia.basis
-        + f". I_xx={inertia.ixx:.3g}, I_yy={inertia.iyy:.3g}, I_zz={inertia.izz:.3g}, I_xz={inertia.ixz:.3g} kg m^2. "
+        "DECLARED ESTIMATE (not measured): "
+        + basis
+        + f". I_xx={inertia.ixx:.3g}, I_yy={inertia.iyy:.3g}, I_zz={inertia.izz:.3g}, I_xz=0 kg m^2. "
         + "Sensitivity band (x1/1.5..x1.5): "
         + ", ".join(f"{k} {lo:.3g}..{hi:.3g}" for k, (lo, hi) in sens.items())
-        + ". Low I_xx/I_yy speeds up roll/pitch response, high I_zz slows yaw; measure with a bifilar pendulum when possible."
+        + ". Plausibility upper bound from radii of gyration (Roskam/Raymer single-engine, unverified): "
+        + f"I_xx={bound.ixx:.3g}, I_yy={bound.iyy:.3g}, I_zz={bound.izz:.3g}. "
+        + "Low I_xx/I_yy speeds up roll/pitch response, high I_zz slows yaw; measure with a bifilar pendulum when possible."
     )
+    throw_comments = []
+    if throws_note:
+        throw_comments.append(f"Throws provenance: {throws_note}")
+    if max(throws.elevator_deg, throws.aileron_deg, throws.rudder_deg) > 20:
+        throw_comments.append(
+            "AVL control derivatives are linear in deflection: effectiveness at throws above ~20 deg "
+            "is overestimated (flow separation and hinge-gap losses are not modelled)."
+        )
     comments = [
         f"Generated by scripts/sim_export/crrcsim/export_bryan.py (gh-1195). Trim: {src['trim']}; elevator trim {num['e_trim']:.2f} deg is baked into stick zero.",
         f"Throws (full stick, deg): elevator {throws.elevator_deg}, aileron {throws.aileron_deg}, rudder {throws.rudder_deg}; derivative = AVL_per_deg * travel / 0.5.",
@@ -404,6 +494,14 @@ def export(speed: float, throws: cm.Throws, graphics_model: str = "mav.ac") -> d
         "inertia_comment": inertia_comment,
         "aero_entries": aero,
         "body_entries": body_entries,
+        "throw_entries": [
+            cm.Entry("controls", f"{n} full-stick throw [deg]", v, throws_note or "CLI argument")
+            for n, v in (
+                ("elevator", throws.elevator_deg),
+                ("aileron", throws.aileron_deg),
+                ("rudder", throws.rudder_deg),
+            )
+        ],
         "power_entries": pentries,
         "wheels": wheels,
         "xml": xml,
@@ -467,9 +565,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=pathlib.Path, required=True)
     ap.add_argument("--mapping-md", type=pathlib.Path)
     ap.add_argument("--graphics-model", default="mav.ac")
+    ap.add_argument(
+        "--throws-note", default="", help="provenance of the throws, written into the XML"
+    )
     args = ap.parse_args(argv)
     throws = cm.Throws(args.elevator_throw_deg, args.aileron_throw_deg, args.rudder_throw_deg)
-    rep = export(args.speed, throws, args.graphics_model)
+    rep = export(args.speed, throws, args.graphics_model, args.throws_note)
     args.out.write_text(rep["xml"], encoding="iso-8859-1")
     print(f"wrote {args.out}")
     for k in (
@@ -487,6 +588,7 @@ def main(argv: list[str] | None = None) -> int:
             "CRRCSim BRYAN.xml: field mapping",
             [
                 ("Aerodynamics `<aero>`", rep["aero_entries"]),
+                ("Control throws (required inputs)", rep["throw_entries"]),
                 ("Mass, inertia, hard points, graphics", rep["body_entries"]),
                 ("Power chain `<power>`", rep["power_entries"]),
             ],
