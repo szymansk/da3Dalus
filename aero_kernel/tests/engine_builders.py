@@ -6,14 +6,19 @@ from typing import Any
 # ``Any`` is the raw-JSON boundary: hand-written model dicts that the canon model validates.
 from aero_kernel.build import Build
 from aero_kernel.canon.model import CanonModel
-from aero_kernel.context import Context, Inputs
+from aero_kernel.context import Context, Inputs, Solvers
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.graph import CanonGraph
 from aero_kernel.registry import Registry
+from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeRequest
+from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.tests.graph_builders import formula, model_of, quantity
 
 Impl = Callable[[Inputs, Context], Coroutine[object, object, Mapping[str, object]]]
+
+# For the engine tests whose stub formulas use no solver; the runtime never starts a thread or a pool.
+NO_SOLVERS = Solvers(atmosphere=AtmosphereAdapter(SolverRuntime()))
 
 
 def num(x: Inputs, name: str) -> float:

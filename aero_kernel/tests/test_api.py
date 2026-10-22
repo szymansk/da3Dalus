@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -17,9 +18,12 @@ from aero_kernel.build import Build, shipped_build
 from aero_kernel.cache import build_digest
 from aero_kernel.canon import load as load_module
 from aero_kernel.canon.load import load_canon_model
+from aero_kernel.context import Solvers
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.registry import Registry
+from aero_kernel.runtime import SolverRuntime, WorkerOutcome
 from aero_kernel.schema import QuantityStatus
+from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.tests.engine_builders import aircraft, request
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "flight_canon.json"
@@ -54,7 +58,7 @@ async def test_compute_runs_on_the_shipped_build(monkeypatch: pytest.MonkeyPatch
     quantity = result.quantities[0]
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.error is not None
-    assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED  # no formulas yet, Q1
+    assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED
     fixture = load_canon_model(FIXTURE)
     assert result.provenance.canon_model_hash == fixture.content_hash
 
@@ -188,9 +192,10 @@ async def test_compute_hands_the_identical_objects_to_the_engine(
     seen: list[tuple[object, object, object]] = []
     original = api_module.evaluate
 
-    async def spy(build: Build, aircraft_: object, request_: object) -> object:
+    async def spy(build: Build, aircraft_: object, request_: object, *, solvers: Solvers) -> object:
         seen.append((build, aircraft_, request_))
-        return await original(build, aircraft_, request_)  # type: ignore[arg-type]  # pass-through spy
+        assert isinstance(solvers.atmosphere, AtmosphereAdapter)
+        return await original(build, aircraft_, request_, solvers=solvers)  # type: ignore[arg-type]  # pass-through spy
 
     monkeypatch.setattr(api_module, "evaluate", spy)
     the_aircraft, the_request = aircraft({"air-density": 1.225}), request("stall-speed")
@@ -201,12 +206,44 @@ async def test_compute_hands_the_identical_objects_to_the_engine(
     assert build is shipped_build()
 
 
-async def test_the_formulas_package_is_not_imported_by_a_call(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    use_model(monkeypatch, FIXTURE)
-    await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
-    assert "aero_kernel.formulas" not in sys.modules
+def run_script(script: str) -> None:
+    """Run a script in a fresh interpreter (module state of this process is not clean)."""
+    done = subprocess.run(  # fixed interpreter and inline script
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
+    )
+    assert done.returncode == 0, done.stderr
+
+
+async def test_importing_the_kernel_does_not_import_the_formulas() -> None:
+    run_script(
+        "import sys, aero_kernel, aero_kernel.api\n"
+        "assert 'aero_kernel.formulas' not in sys.modules\n"
+    )
+
+
+async def test_a_build_with_a_given_registry_neither_freezes_nor_imports_the_default() -> None:
+    run_script(
+        "import sys\n"
+        "from aero_kernel.build import load_build\n"
+        "from aero_kernel.registry import DEFAULT_REGISTRY, Registry\n"
+        "from aero_kernel.tests.test_build import FIXTURE\n"
+        "load_build(FIXTURE, Registry())\n"
+        "assert not DEFAULT_REGISTRY.frozen\n"
+        "assert 'aero_kernel.formulas' not in sys.modules\n"
+    )
+
+
+async def test_the_first_build_imports_the_formulas_and_freezes_the_default_registry() -> None:
+    run_script(
+        "import sys\n"
+        "from aero_kernel.build import shipped_build\n"
+        "from aero_kernel.registry import DEFAULT_REGISTRY\n"
+        "assert not DEFAULT_REGISTRY.frozen\n"
+        "shipped_build()\n"
+        "assert 'aero_kernel.formulas' in sys.modules\n"
+        "assert DEFAULT_REGISTRY.frozen\n"
+        "assert len(DEFAULT_REGISTRY.slugs()) == 3\n"
+    )
 
 
 async def test_the_first_compute_emits_exactly_one_info_record(
@@ -283,3 +320,54 @@ async def test_cancellation_passes_through_compute(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(build_module, "build_digest", cancelled)
     with pytest.raises(asyncio.CancelledError):
         await compute(aircraft(), request("stall-speed"))
+
+
+def never_runs() -> WorkerOutcome[float]:
+    raise AssertionError
+
+
+async def assert_closed(runtime: SolverRuntime) -> None:
+    """A closed runtime refuses work before it looks at it (ch. 8.10)."""
+    with pytest.raises(RuntimeError, match="closed"):
+        await runtime.run_cpu(never_runs)
+
+
+async def test_compute_closes_the_runtime_it_created(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stateless (ch. 8.10): the runtime of a call is closed before ``compute`` returns."""
+    use_model(monkeypatch, FIXTURE)
+    created: list[SolverRuntime] = []
+    original = api_module.SolverRuntime
+
+    class Spy(original):  # type: ignore[valid-type,misc]  # records the instance it creates
+        def __init__(self) -> None:
+            super().__init__()
+            created.append(self)
+
+    monkeypatch.setattr(api_module, "SolverRuntime", Spy)
+    await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
+    (runtime,) = created
+    await assert_closed(runtime)
+
+
+async def test_compute_closes_the_runtime_when_the_call_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    use_model(monkeypatch, FIXTURE)
+    created: list[SolverRuntime] = []
+    original = api_module.SolverRuntime
+
+    class Spy(original):  # type: ignore[valid-type,misc]  # records the instance it creates
+        def __init__(self) -> None:
+            super().__init__()
+            created.append(self)
+
+    async def boom(*args: object, **kwargs: object) -> object:
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(api_module, "SolverRuntime", Spy)
+    monkeypatch.setattr(api_module, "evaluate", boom)
+    the_aircraft, the_request = aircraft({"air-density": 1.225}), request("stall-speed")
+    with pytest.raises(asyncio.CancelledError):
+        await compute(the_aircraft, the_request)
+    (runtime,) = created
+    await assert_closed(runtime)

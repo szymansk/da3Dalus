@@ -118,12 +118,16 @@ class SolverAdapter:
     def tool_versions(self) -> dict[str, str]:
         """Return the installed version per required distribution (provenance, cache key).
 
-        A distribution that is not installed is omitted. The result is read once and then kept;
-        treat it as read-only.
+        A tool that cannot run has no version (ch. 8.4): while :meth:`available` is false the
+        result is empty, even if one of its distributions is installed. A distribution that is
+        not installed is omitted. The versions are read once and then kept; treat the result as
+        read-only.
 
         Returns:
             Distribution name -> version, e.g. ``{"aerosandbox": "4.2.8"}``.
         """
+        if not self.available():
+            return {}
         if self._versions is None:
             versions: dict[str, str] = {}
             for distribution in self.requirements:
