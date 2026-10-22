@@ -23,6 +23,7 @@ def airplane(
     chords: tuple[float, ...] = (0.2, 0.1),
     device: tuple[str, float] | None = None,
     tail_chords: tuple[float, ...] | None = None,
+    surface_deflection: float | None = None,
 ) -> AirplaneGeometry:
     """A main wing of the given chords; ``device`` is (role, deflection_deg) on the first panel."""
     sections: list[dict[str, Any]] = [
@@ -36,6 +37,8 @@ def airplane(
             "role": role,
             "deflection_deg": deflection,
         }
+    if surface_deflection is not None:
+        sections[0]["control_surface"] = {"name": "cs-1", "deflection": surface_deflection}
     wings: dict[str, Any] = {
         "Main": {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
     }

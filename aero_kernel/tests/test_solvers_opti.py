@@ -314,3 +314,33 @@ async def test_an_optimum_on_a_bound_is_not_converged_and_names_the_variable(
         opti_module.stall_worker(request)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
     assert raised.value.detail["variable"] == variable
+
+
+async def test_a_deflected_control_surface_view_is_refused_too(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The conversion drops control_surface.deflection as well as the device's, so the guard
+    refuses what the conversion would drop."""
+    called: list[object] = []
+
+    def worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
+        called.append(request)
+        return WorkerOutcome(value=solution(), diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+    monkeypatch.setattr(opti_module, "stall_worker", worker)
+    adapter = OptiAdapter(InProcessRuntime())
+    with pytest.raises(FormulaError) as raised:
+        await adapter.stall(airplane(surface_deflection=12.0), 1.5, 9.81, 1.0, AIR)
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert "deflected control surfaces are not yet passed to AeroBuildup" in raised.value.message
+    assert "cs-1" in raised.value.message
+    assert called == []
+
+
+async def test_a_control_surface_view_at_rest_is_no_obstacle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution()))
+    adapter = OptiAdapter(InProcessRuntime())
+    result = await adapter.stall(airplane(surface_deflection=0.0), 1.5, 9.81, 1.0, AIR)
+    assert result.solution == solution()

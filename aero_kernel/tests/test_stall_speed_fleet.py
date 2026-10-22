@@ -82,9 +82,9 @@ async def test_bryans_inverted_stall_gives_no_value_because_the_trough_vanishes_
 ):
     """At the first estimate's speed (5.88 m/s) the sweep has a trough at -10.5 deg; at the speed
     the second sweep uses (8.32 m/s, higher Re) it has none: C_L falls monotonically down to the
-    sweep's lower end (-15 deg, C_L -0.55). The trough was a low-Re artefact of the first sweep, so
-    the bracket finds no extremum and the kernel returns no value (ADR 0020) instead of a
-    boundary sample."""
+    sweep's lower end (-15 deg, C_L -0.55). The trough is present at the lower Reynolds number of
+    the first sweep, so the bracket finds no extremum and the kernel returns no value (ADR 0020)
+    instead of a boundary sample."""
     inverted = (await stall(FleetMember.BRYAN))["inverted-max-lift-coefficient"]
     assert inverted.status is QuantityStatus.ERROR
     assert inverted.value is None

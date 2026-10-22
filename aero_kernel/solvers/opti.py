@@ -236,25 +236,35 @@ def _refuse_deflected_devices(airplane: AirplaneGeometry) -> None:
     """Refuse an airplane with a control device off its rest position.
 
     The conversion does not pass devices to AeroBuildup yet (it comes with the roll-rate step, where
-    ailerons need it), so a deflected airplane would silently be evaluated as the clean one.
+    ailerons need it), so a deflected airplane would silently be evaluated as the clean one. Both
+    state fields the conversion drops are checked: the device's ``deflection_deg`` and the
+    aerodynamic view's ``control_surface.deflection``.
 
     Raises:
         FormulaError: ``unsupported_configuration`` naming the first deflected device and its role.
     """
     for key, wing in (airplane.wings or {}).items():
         for index, section in enumerate(wing.x_secs):
-            device = section.trailing_edge_device
+            device, surface = section.trailing_edge_device, section.control_surface
             if device is not None and device.deflection_deg:
-                label = device.name or f"device {index}"
-                raise FormulaError(
-                    ErrorCategory.UNSUPPORTED_CONFIGURATION,
-                    "unsupported_configuration",
-                    f"deflected control surfaces are not yet passed to AeroBuildup: {label!r} "
-                    f"(role {device.role}) of the wing {key!r} is at {device.deflection_deg} deg",
-                    "no value is computed for a deflected configuration rather than the clean one",
-                    detail={"wing": key, "device": label, "role": device.role},
-                    parameter="airplane",
+                label, role, angle = (
+                    device.name or f"device {index}",
+                    device.role,
+                    device.deflection_deg,
                 )
+            elif surface is not None and surface.deflection:
+                label, role, angle = surface.name, "control_surface", surface.deflection
+            else:
+                continue
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "unsupported_configuration",
+                f"deflected control surfaces are not yet passed to AeroBuildup: {label!r} "
+                f"(role {role}) of the wing {key!r} is at {angle} deg",
+                "no value is computed for a deflected configuration rather than the clean one",
+                detail={"wing": key, "device": label, "role": role},
+                parameter="airplane",
+            )
 
 
 class OptiAdapter(SolverAdapter):
