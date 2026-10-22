@@ -1,0 +1,109 @@
+"""Slice 1 end to end: weight, ISA density and dynamic pressure through the engine on the shipped
+canon model, BRYAN (0.151 kg) and WIESEL (0.625 kg), against hand-computed values.
+
+Fast tier: the engine seam ``evaluate`` with a stub ATM adapter. ``aero`` tier: the public
+``compute()`` with the real adapter (AeroSandbox).
+
+Operating point: altitude 500 m, flight speed 15 m/s; gravity is the canon default (9.80665).
+
+Hand computation (all SI):
+- W = m g: BRYAN 0.151 * 9.80665 = 1.48080415 N; WIESEL 0.625 * 9.80665 = 6.12915625 N.
+- ISA troposphere (ISO 2533): T = 288.15 - 0.0065 * 500 = 284.9 K;
+  p = 101325 * (284.9 / 288.15)^(9.80665 / (287.053 * 0.0065)) = 95460.84 Pa;
+  rho = p / (287.053 * 284.9) = 1.167268 kg/m^3.
+- q = 1/2 rho V^2 = 0.5 * 1.167268 * 15^2 = 131.3177 Pa (the same for both aircraft).
+"""
+
+import pytest
+from aero_kernel import compute
+from aero_kernel.build import shipped_build
+from aero_kernel.context import Solvers
+from aero_kernel.engine import evaluate
+from aero_kernel.schema import AircraftInput, ComputeResult, QuantityResult, QuantityStatus
+from aero_kernel.tests.engine_builders import request
+from aero_kernel.tests.formula_builders import StubAtmosphere, close
+
+pytestmark = pytest.mark.asyncio
+
+ALTITUDE_M = 500.0
+SPEED_MS = 15.0
+RHO_HAND = 1.167268
+Q_HAND = 131.3177
+FLEET = [("BRYAN", 0.151, 1.48080415), ("WIESEL", 0.625, 6.12915625)]
+SLUGS = ("weight", "air-density", "dynamic-pressure")
+
+
+def aircraft_of(name: str, mass_kg: float) -> AircraftInput:
+    """An aircraft with a mass, an altitude and a speed; gravity is left to the canon default."""
+    return AircraftInput.model_validate(
+        {
+            "airplane": {"name": name},
+            "values": {"aircraft-mass": mass_kg, "altitude": ALTITUDE_M, "flight-speed": SPEED_MS},
+        }
+    )
+
+
+def by_slug(result: ComputeResult) -> dict[str, QuantityResult]:
+    return {q.slug: q for q in result.quantities}
+
+
+def check(result: ComputeResult, weight_n: float, rho: float, q: float, rel: float) -> None:
+    quantities = by_slug(result)
+    assert all(r.status is QuantityStatus.OK for r in quantities.values()), result
+    assert close(quantities["weight"].value, weight_n, 1e-12)
+    assert quantities["weight"].unit == "N"
+    assert close(quantities["air-density"].value, rho, rel)
+    assert quantities["air-density"].unit == "kg/m^3"
+    assert close(quantities["dynamic-pressure"].value, q, rel)
+    assert quantities["dynamic-pressure"].unit == "Pa"
+    assert quantities["air-density"].tool == "ATM"
+    assert quantities["weight"].tool == "APP"
+    assert [d.slug for d in result.provenance.defaults_used] == ["gravity"]
+    assert result.provenance.defaults_used[0].value == 9.80665
+
+
+@pytest.mark.parametrize(("name", "mass_kg", "weight_n"), FLEET)
+async def test_the_fleet_through_the_engine_with_a_stub_atmosphere(
+    name: str, mass_kg: float, weight_n: float
+) -> None:
+    stub = StubAtmosphere({ALTITUDE_M: RHO_HAND})
+    solvers = Solvers(atmosphere=stub)
+    result = await evaluate(
+        shipped_build(), aircraft_of(name, mass_kg), request(*SLUGS), solvers=solvers
+    )
+    check(result, weight_n, RHO_HAND, 0.5 * RHO_HAND * SPEED_MS**2, rel=1e-12)
+    assert close(Q_HAND, 0.5 * RHO_HAND * SPEED_MS**2, 1e-6)
+    assert stub.asked == [ALTITUDE_M]
+
+
+async def test_a_missing_altitude_fails_density_and_pressure_but_not_weight() -> None:
+    no_altitude = AircraftInput.model_validate(
+        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 0.151, "flight-speed": 15.0}}
+    )
+    solvers = Solvers(atmosphere=StubAtmosphere({}))
+    result = await evaluate(shipped_build(), no_altitude, request(*SLUGS), solvers=solvers)
+    quantities = by_slug(result)
+    assert quantities["weight"].status is QuantityStatus.OK
+    assert quantities["air-density"].status is QuantityStatus.ERROR
+    assert quantities["dynamic-pressure"].status is QuantityStatus.ERROR
+
+
+async def test_everything_else_is_still_not_implemented() -> None:
+    solvers = Solvers(atmosphere=StubAtmosphere({}))
+    result = await evaluate(
+        shipped_build(), aircraft_of("BRYAN", 0.151), request("wing-loading"), solvers=solvers
+    )
+    (only,) = result.quantities
+    assert only.status is QuantityStatus.ERROR
+    assert only.error is not None
+    assert only.error.category.value == "not_implemented"
+
+
+@pytest.mark.aero
+@pytest.mark.parametrize(("name", "mass_kg", "weight_n"), FLEET)
+async def test_the_fleet_through_the_public_compute_with_the_real_atmosphere(
+    name: str, mass_kg: float, weight_n: float
+) -> None:
+    """The real adapter reproduces the hand ISA to 0.05 % (AeroSandbox's documented 0.02 %)."""
+    result = await compute(aircraft_of(name, mass_kg), request(*SLUGS))
+    check(result, weight_n, RHO_HAND, Q_HAND, rel=5e-4)
