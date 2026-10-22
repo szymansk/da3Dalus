@@ -10,6 +10,7 @@ from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.schema import ComputeResult, DefaultUsed, QuantityStatus, WarningSeverity
 from aero_kernel.tests.engine_builders import (
+    NO_SOLVERS,
     Impl,
     aileron_wing,
     aircraft,
@@ -40,6 +41,7 @@ async def go(
         make_build(registry_with(overrides)),
         aircraft(values, wings, geometry_mass_kg),
         request(*slugs, long_runs=long_runs),
+        solvers=NO_SOLVERS,
     )
 
 
@@ -139,6 +141,7 @@ async def test_a_value_without_a_default_is_still_missing() -> None:
         make_build(),
         aircraft().model_copy(update={"values": {}}),
         request("weight"),
+        solvers=NO_SOLVERS,
     )
     assert nothing.quantities[0].error is not None
     assert nothing.quantities[0].error.code == "missing_input"
@@ -190,7 +193,7 @@ async def test_a_node_that_stops_at_rows_1_to_3_takes_no_default(
 ) -> None:
     registry = registry_with(drop=drop)
     with caplog.at_level(logging.INFO, logger="aero_kernel"):
-        result = await evaluate(make_build(registry), aircraft(), request(slug))
+        result = await evaluate(make_build(registry), aircraft(), request(slug), solvers=NO_SOLVERS)
     assert result.quantities[0].status is not QuantityStatus.OK, row
     assert result.provenance.defaults_used == (), row
     assert default_lines(caplog) == [], row

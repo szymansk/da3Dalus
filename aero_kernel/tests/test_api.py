@@ -17,9 +17,12 @@ from aero_kernel.build import Build, shipped_build
 from aero_kernel.cache import build_digest
 from aero_kernel.canon import load as load_module
 from aero_kernel.canon.load import load_canon_model
+from aero_kernel.context import Solvers
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.registry import Registry
+from aero_kernel.runtime import SolverRuntime, WorkerOutcome
 from aero_kernel.schema import QuantityStatus
+from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.tests.engine_builders import aircraft, request
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "flight_canon.json"
@@ -188,9 +191,10 @@ async def test_compute_hands_the_identical_objects_to_the_engine(
     seen: list[tuple[object, object, object]] = []
     original = api_module.evaluate
 
-    async def spy(build: Build, aircraft_: object, request_: object) -> object:
+    async def spy(build: Build, aircraft_: object, request_: object, *, solvers: Solvers) -> object:
         seen.append((build, aircraft_, request_))
-        return await original(build, aircraft_, request_)  # type: ignore[arg-type]  # pass-through spy
+        assert isinstance(solvers.atmosphere, AtmosphereAdapter)
+        return await original(build, aircraft_, request_, solvers=solvers)  # type: ignore[arg-type]  # pass-through spy
 
     monkeypatch.setattr(api_module, "evaluate", spy)
     the_aircraft, the_request = aircraft({"air-density": 1.225}), request("stall-speed")
@@ -283,3 +287,53 @@ async def test_cancellation_passes_through_compute(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(build_module, "build_digest", cancelled)
     with pytest.raises(asyncio.CancelledError):
         await compute(aircraft(), request("stall-speed"))
+
+
+def never_runs() -> WorkerOutcome[float]:
+    raise AssertionError
+
+
+async def assert_closed(runtime: SolverRuntime) -> None:
+    """A closed runtime refuses work before it looks at it (ch. 8.10)."""
+    with pytest.raises(RuntimeError, match="closed"):
+        await runtime.run_cpu(never_runs)
+
+
+async def test_compute_closes_the_runtime_it_created(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stateless (ch. 8.10): the runtime of a call is closed before ``compute`` returns."""
+    use_model(monkeypatch, FIXTURE)
+    created: list[SolverRuntime] = []
+    original = api_module.SolverRuntime
+
+    class Spy(original):  # type: ignore[valid-type,misc]  # records the instance it creates
+        def __init__(self) -> None:
+            super().__init__()
+            created.append(self)
+
+    monkeypatch.setattr(api_module, "SolverRuntime", Spy)
+    await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
+    (runtime,) = created
+    await assert_closed(runtime)
+
+
+async def test_compute_closes_the_runtime_when_the_call_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    use_model(monkeypatch, FIXTURE)
+    created: list[SolverRuntime] = []
+    original = api_module.SolverRuntime
+
+    class Spy(original):  # type: ignore[valid-type,misc]  # records the instance it creates
+        def __init__(self) -> None:
+            super().__init__()
+            created.append(self)
+
+    async def boom(*args: object, **kwargs: object) -> object:
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(api_module, "SolverRuntime", Spy)
+    monkeypatch.setattr(api_module, "evaluate", boom)
+    with pytest.raises(asyncio.CancelledError):
+        await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
+    (runtime,) = created
+    await assert_closed(runtime)

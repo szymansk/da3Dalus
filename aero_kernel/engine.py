@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from aero_kernel.build import Build
 from aero_kernel.canon.model import ConstBinding, Default, Formula
-from aero_kernel.context import Context, Inputs, Value
+from aero_kernel.context import Context, Inputs, Solvers, Value
 from aero_kernel.errors import (
     ErrorCategory,
     FormulaError,
@@ -120,6 +120,7 @@ class _Call:
         subtree: Subtree,
         call_id: str,
         input_warnings: Sequence[KernelWarning],
+        solvers: Solvers,
     ) -> None:
         self.build = build
         self.aircraft = aircraft
@@ -127,6 +128,7 @@ class _Call:
         self.subtree = subtree
         self.call_id = call_id
         self.input_warnings = input_warnings
+        self.solvers = solvers
         # the defaults taken so far, by qualified slug: only nodes that run take one (ch. 8.11)
         self.taken: dict[str, Default] = {}
         self.nodes: dict[NodeId, Node] = {node.id: node for node in subtree.nodes}
@@ -288,7 +290,7 @@ class _Call:
         if inherited is not None:
             return inherited
 
-        warner = Context(origin=display_slug(node.produces[0].quantity))
+        warner = Context(origin=display_slug(node.produces[0].quantity), solvers=self.solvers)
         default_warnings = self._take_defaults(defaults)
         try:
             returned = await implementation.func(inputs, warner)
@@ -622,13 +624,16 @@ def log_call(
     )
 
 
-async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
+async def evaluate(
+    build: Build, aircraft: AircraftInput, request: ComputeRequest, *, solvers: Solvers
+) -> ComputeResult:
     """Compute a request on a build (ch. 6); the internal seam under ``compute``.
 
     Args:
         build: The canon model with its graph and implementations.
         aircraft: The geometry and the input and target values, in canon units.
         request: The quantities to compute.
+        solvers: The solver adapters of the call; the caller owns their runtime.
 
     Returns:
         ``input_errors`` and nothing computed if the input is inadmissible, else one result per
@@ -643,7 +648,7 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
         log_call(call_id, request, result, started)
         return result
     subtree = build.graph.subtree(request.quantities)
-    call = _Call(build, aircraft, request, subtree, call_id, validation.warnings)
+    call = _Call(build, aircraft, request, subtree, call_id, validation.warnings, solvers)
     await call.run()
     results: dict[str, QuantityResult] = {}
     for error in subtree.errors:

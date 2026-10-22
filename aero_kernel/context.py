@@ -5,12 +5,14 @@ cache, no request, no global.
 """
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import KernelWarning
+from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from pydantic import JsonValue
 
-__all__ = ["Context", "Inputs", "Value"]
+__all__ = ["Context", "Inputs", "Solvers", "Value"]
 
 # The values that flow between nodes: a scalar in the canon unit of its quantity, or the geometry.
 # A new quantity type adds its class here when the first formula needs it (ch. 8.12).
@@ -20,16 +22,32 @@ Value = float | AirplaneGeometry
 Inputs = Mapping[str, Value | None]
 
 
+@dataclass(frozen=True)
+class Solvers:
+    """The solver adapters a formula may use (ch. 8.8); one attribute per adapter.
+
+    A frozen dataclass rather than a Pydantic model: it holds adapters, which are code. An
+    adapter is added with the first formula that needs it (ADR 0021).
+
+    Attributes:
+        atmosphere: The ATM adapter (exact ISA density).
+    """
+
+    atmosphere: AtmosphereAdapter
+
+
 class Context:
     """The context of one formula call."""
 
-    def __init__(self, *, origin: str) -> None:
+    def __init__(self, *, origin: str, solvers: Solvers) -> None:
         """Create the context of one node.
 
         Args:
             origin: Slug of the quantity that warnings of this call are reported against.
+            solvers: The solver adapters of the call.
         """
         self._origin = origin
+        self.solvers = solvers
         self._warnings: list[KernelWarning] = []
 
     def warn(self, code: str, message: str, detail: dict[str, JsonValue] | None = None) -> None:
