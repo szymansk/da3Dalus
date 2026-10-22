@@ -1,5 +1,5 @@
 """Slice 1 end to end: weight, ISA density and dynamic pressure through the engine on the shipped
-canon model, BRYAN (0.151 kg) and WIESEL (0.625 kg), against hand-computed values.
+canon model, BRYAN (0.151 kg) and JAGUAR (0.160 kg, approx., maintainer 2026-10-14), against hand-computed values.
 
 Fast tier: the engine seam ``evaluate`` with a stub ATM adapter. ``aero`` tier: the public
 ``compute()`` with the real adapter (AeroSandbox).
@@ -7,7 +7,7 @@ Fast tier: the engine seam ``evaluate`` with a stub ATM adapter. ``aero`` tier: 
 Operating point: altitude 500 m, flight speed 15 m/s; gravity is the canon default (9.80665).
 
 Hand computation (all SI):
-- W = m g: BRYAN 0.151 * 9.80665 = 1.48080415 N; WIESEL 0.625 * 9.80665 = 6.12915625 N.
+- W = m g: BRYAN 0.151 * 9.80665 = 1.48080415 N; JAGUAR 0.160 * 9.80665 = 1.569064 N.
 - ISA troposphere (ISO 2533): T = 288.15 - 0.0065 * 500 = 284.9 K;
   p = 101325 * (284.9 / 288.15)^(9.80665 / (287.053 * 0.0065)) = 95460.84 Pa;
   rho = p / (287.053 * 284.9) = 1.167268 kg/m^3.
@@ -29,7 +29,7 @@ ALTITUDE_M = 500.0
 SPEED_MS = 15.0
 RHO_HAND = 1.167268
 Q_HAND = 131.3177
-FLEET = [("BRYAN", 0.151, 1.48080415), ("WIESEL", 0.625, 6.12915625)]
+FLEET = [("BRYAN", 0.151, 1.48080415), ("JAGUAR", 0.160, 1.569064)]
 SLUGS = ("weight", "air-density", "dynamic-pressure")
 
 
