@@ -4,6 +4,7 @@ Golden values are regression, not validation (aero_kernel/CLAUDE.md).
 """
 
 import math
+from itertools import pairwise
 from typing import Any
 
 import pytest
@@ -76,6 +77,10 @@ async def test_the_polar_contains_alpha_s_and_the_optimum_is_the_first_peak() ->
     sampled_peak_alpha = polar.alpha_deg[polar.alpha_deg.index(0.0) + peak]
     assert abs(sampled_peak_alpha - solution.alpha_s) <= ALPHA_STEP_DEG + 1e-9
     assert polar.alpha_deg[-1] - solution.alpha_s > 3.0  # the sweep runs past the peak
+    assert (polar.alpha_deg[0], polar.alpha_deg[-1]) == (-15.0, 25.0)
+    steps = {round(b - a, 9) for a, b in pairwise(polar.alpha_deg)}
+    assert max(steps) == ALPHA_STEP_DEG  # alpha_S splits one step, never widens one
+    assert len(polar.alpha_deg) in (161, 162)
 
 
 async def test_two_g_stalls_faster_by_sqrt_two() -> None:

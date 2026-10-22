@@ -2,6 +2,7 @@
 
 import importlib.metadata
 import math
+from itertools import pairwise
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
@@ -217,3 +218,99 @@ async def test_any_other_exception_of_the_solve_is_a_defect_and_stays_an_excepti
     request = install_failing_solver(monkeypatch, ValueError("a bug"))
     with pytest.raises(ValueError, match="a bug"):
         opti_module.stall_worker(request)
+
+
+async def test_the_sweep_grid_spans_minus_15_to_25_deg_in_quarter_degree_steps() -> None:
+    grid = opti_module._grid()  # pyright: ignore[reportPrivateUsage]  # the grid is the contract
+    assert len(grid) == 161
+    assert (grid[0], grid[-1]) == (-15.0, 25.0)
+    assert all(math.isclose(b - a, 0.25, abs_tol=1e-12) for a, b in pairwise(grid))
+    assert (opti_module.ALPHA_MIN_DEG, opti_module.ALPHA_MAX_DEG) == (-15.0, 25.0)
+    assert opti_module.ALPHA_STEP_DEG == 0.25
+
+
+def install_solution(monkeypatch: pytest.MonkeyPatch, v_s: float, alpha_s: float) -> StallRequest:
+    """Fake the solver boundary so that IPOPT 'returns' (v_s, alpha_s); records the bounds."""
+    from types import SimpleNamespace
+
+    from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
+
+    polar = lift_curve(UPRIGHT_PEAK, upright=True)
+
+    class Variable:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    class FakeOpti:
+        def __init__(self) -> None:
+            self.count = 0
+
+        def variable(self, **_: object) -> Variable:
+            self.count += 1
+            return Variable("speed" if self.count == 1 else "alpha")
+
+        def subject_to(self, _: object) -> None:
+            return None
+
+        def minimize(self, _: object) -> None:
+            return None
+
+        def solve(self, **_: object) -> object:
+            values = {"speed": v_s, "alpha": alpha_s}
+
+            def solved(variable: Variable) -> float:
+                return values[variable.name]
+
+            return solved
+
+    def operating_point(**_: object) -> None:
+        return None
+
+    def aerobuildup(*_: object, **__: object) -> SimpleNamespace:
+        return SimpleNamespace(run=lambda: {"L": 0.0})
+
+    def sweep(*_: object) -> Polar:
+        return polar
+
+    def convert(_: object) -> SimpleNamespace:
+        return SimpleNamespace(s_ref=0.28)
+
+    fake_asb = SimpleNamespace(
+        Opti=FakeOpti, OperatingPoint=operating_point, AeroBuildup=aerobuildup
+    )
+    monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+    monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
+    monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake_asb)
+    return StallRequest(airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
+
+
+V_HIGH = opti_module.V_MAX_MACH * AIR.speed_of_sound
+V_LOW = opti_module.V_MIN_MS
+
+
+async def test_an_interior_optimum_is_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
+    request = install_solution(monkeypatch, 8.0, 15.75)
+    outcome = opti_module.stall_worker(request)
+    assert (outcome.value.v_s, outcome.value.alpha_s) == (8.0, 15.75)
+
+
+@pytest.mark.parametrize(
+    ("v_s", "alpha_s", "variable"),
+    [
+        (V_HIGH, 15.75, "V"),
+        (V_HIGH - 1e-9, 15.75, "V"),
+        (V_LOW, 15.75, "V"),
+        (V_LOW + 1e-9, 15.75, "V"),
+        (8.0, opti_module.ALPHA_MIN_DEG, "alpha"),
+        (8.0, opti_module.ALPHA_MIN_DEG + 1e-9, "alpha"),
+        (8.0, 16.0, "alpha"),  # the window's upper edge: peak (15.75) + one step
+    ],
+)
+async def test_an_optimum_on_a_bound_is_not_converged_and_names_the_variable(
+    monkeypatch: pytest.MonkeyPatch, v_s: float, alpha_s: float, variable: str
+) -> None:
+    request = install_solution(monkeypatch, v_s, alpha_s)
+    with pytest.raises(FormulaError) as raised:
+        opti_module.stall_worker(request)
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED
+    assert raised.value.detail["variable"] == variable

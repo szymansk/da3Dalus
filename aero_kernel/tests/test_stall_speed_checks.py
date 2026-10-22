@@ -149,3 +149,62 @@ def test_the_inverted_range_check_is_violated_when_the_trough_is_on_the_boundary
 def test_the_extremum_checks_are_unchecked_without_a_polar(check: object) -> None:
     y: dict[str, object] = {"v_s": 8.0, "cl_max": 1.2, "alpha_s": 15.0, "polar": None}
     assert check(x_of(), y).state == "unchecked"  # type: ignore[operator]
+
+
+def peak_y(alpha_s: float, cl_max: float) -> dict[str, object]:
+    """A result whose polar peaks at 15.75 deg (C_L 1.19), with a chosen optimum."""
+    polar = upright_polar()
+    return {"v_s": 8.0, "cl_max": cl_max, "alpha_s": alpha_s, "polar": polar}
+
+
+def trough_y(alpha_s: float, cl_max: float) -> dict[str, object]:
+    return {"v_s": 8.0, "cl_max": cl_max, "alpha_s": alpha_s, "polar": inverted_polar()}
+
+
+def test_the_peak_check_is_violated_when_cl_max_falls_short_of_the_sampled_peak() -> None:
+    sampled = upright_polar()
+    peak = sampled.cl[sampled.alpha_deg.index(15.75)]
+    result = optimum_at_first_cl_peak(x_of(), peak_y(15.75, peak - 1e-3))
+    assert result.state == "violated"
+    assert "short of the first sampled peak" in result.message
+
+
+def test_the_peak_check_tolerates_numerical_noise_below_the_sampled_peak() -> None:
+    sampled = upright_polar()
+    peak = sampled.cl[sampled.alpha_deg.index(15.75)]
+    assert optimum_at_first_cl_peak(x_of(), peak_y(15.75, peak - 1e-7)).state == "held"
+    assert optimum_at_first_cl_peak(x_of(), peak_y(15.75, peak + 1e-3)).state == "held"
+
+
+def test_the_trough_check_is_violated_when_cl_max_lies_above_the_sampled_trough() -> None:
+    sampled = inverted_polar()
+    trough = sampled.cl[sampled.alpha_deg.index(-10.0)]
+    result = optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.0, trough + 1e-3))
+    assert result.state == "violated"
+    assert "short of the first sampled trough" in result.message
+
+
+def test_the_trough_check_tolerates_numerical_noise_above_the_sampled_trough() -> None:
+    sampled = inverted_polar()
+    trough = sampled.cl[sampled.alpha_deg.index(-10.0)]
+    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.0, trough + 1e-7)).state == "held"
+    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.0, trough - 1e-3)).state == "held"
+
+
+def test_the_peak_window_is_one_sweep_step() -> None:
+    """alpha_S 0.25 deg from the sampled peak is held, 0.5 deg is another branch."""
+    sampled = upright_polar()
+    peak = sampled.cl[sampled.alpha_deg.index(15.75)]
+    assert optimum_at_first_cl_peak(x_of(), peak_y(16.0, peak)).state == "held"
+    assert optimum_at_first_cl_peak(x_of(), peak_y(15.5, peak)).state == "held"
+    assert optimum_at_first_cl_peak(x_of(), peak_y(16.25, peak)).state == "violated"
+    assert optimum_at_first_cl_peak(x_of(), peak_y(15.25, peak)).state == "violated"
+
+
+def test_the_trough_window_is_one_sweep_step() -> None:
+    sampled = inverted_polar()
+    trough = sampled.cl[sampled.alpha_deg.index(-10.0)]
+    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-9.75, trough)).state == "held"
+    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.25, trough)).state == "held"
+    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-9.5, trough)).state == "violated"
+    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.5, trough)).state == "violated"

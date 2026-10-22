@@ -91,3 +91,12 @@ def test_a_fixed_atmosphere_answers_from_its_state_with_ideal_gas_temperature_an
     assert math.isclose(
         atmosphere.pressure(), 1.225 * 287.0500676 * atmosphere.temperature(), rel_tol=1e-12
     )
+
+
+def test_a_boundary_sample_is_never_an_extremum() -> None:
+    """A falling series has its maximum at the first sample, a rising one at the last: neither
+    is a turning point (ADR 0020), and a wrapped index must not make it one."""
+    assert first_extremum([3.0, 2.0, 1.0], maximum=True) is None
+    assert first_extremum([1.0, 2.0, 3.0], maximum=False) is None
+    assert first_extremum([1.0, 2.0, 3.0], maximum=True) is None
+    assert first_extremum([3.0, 2.0, 1.0], maximum=False) is None
