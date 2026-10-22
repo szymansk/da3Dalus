@@ -1,5 +1,6 @@
 """The slice-1 formulas: each against a hand value, ``x`` built from the model (Q11)."""
 
+import math
 from typing import Any
 
 import pytest
@@ -11,12 +12,15 @@ from aero_kernel.formulas.airplane_geometry import airplane_geometry
 from aero_kernel.formulas.aspect_ratio import aspect_ratio
 from aero_kernel.formulas.dynamic_pressure import dynamic_pressure
 from aero_kernel.formulas.mean_geometric_chord import mean_geometric_chord
+from aero_kernel.formulas.stall_speed import stall_speed
 from aero_kernel.formulas.values import number
 from aero_kernel.formulas.weight_from_mass import weight_from_mass
 from aero_kernel.formulas.wing_loading import wing_loading
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import DEFAULT_REGISTRY
+from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.air import AirState
+from aero_kernel.solvers.opti import Stall
 from aero_kernel.tests.formula_builders import (
     IMPLEMENTED,
     STUB_SPEED_OF_SOUND,
@@ -26,6 +30,7 @@ from aero_kernel.tests.formula_builders import (
     context_with,
     inputs_from_model,
 )
+from aero_kernel.tests.stall_stubs import StubOpti
 
 pytestmark = pytest.mark.asyncio
 
@@ -247,3 +252,71 @@ async def test_configuration_with_flaps_but_no_deflection_is_a_missing_input() -
     assert raised.value.category is ErrorCategory.INVALID_INPUT
     assert raised.value.code == "missing_input"
     assert raised.value.parameter == "flap_deflection"
+
+
+def stall_x(n_load: float = 1.0) -> dict[str, Any]:
+    """``x`` of stall-speed from the model: the 1.5 kg trainer wing at sea level."""
+    sections = [
+        {"xyz_le": [0.0, y, 0.0], "chord": 0.2, "twist": 0.0, "airfoil": "naca2412"}
+        for y in (0.0, 0.7)
+    ]
+    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
+    airplane = AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+    x: dict[str, Any] = {
+        "airplane": airplane,
+        "m": 1.5,
+        "g": 9.81,
+        "n_load": n_load,
+        "rho": 1.225,
+        "mu": 1.7894e-5,
+        "a": 340.294,
+    }
+    assert set(x) == set(MODEL.formula("stall-speed").inputs)  # type: ignore[union-attr]
+    return x
+
+
+async def test_stall_speed_asks_the_optimiser_with_the_bound_air_and_returns_its_outputs() -> None:
+    stub = StubOpti()
+    x = stall_x()
+    result = await stall_speed(x, context_with(StubAtmosphere({}), opti=stub))
+    ((airplane, mass, gravity, n_load, air),) = stub.calls
+    assert airplane is x["airplane"]
+    assert (mass, gravity, n_load) == (1.5, 9.81, 1.0)
+    assert (air.density, air.dynamic_viscosity, air.speed_of_sound) == (1.225, 1.7894e-5, 340.294)
+    assert set(result) == {"v_s", "cl_max", "alpha_s", "polar"}
+    assert isinstance(result["polar"], Polar)
+    # hand value: V_S = sqrt(2 m g / (rho S C_L)) = sqrt(2*1.5*9.81/(1.225*0.28*1.19)) = 8.5 m/s
+    v_s = result["v_s"]
+    assert isinstance(v_s, float)
+    assert close(v_s, math.sqrt(2 * 1.5 * 9.81 / (1.225 * 0.28 * 1.19)), 1e-12)
+    assert (result["cl_max"], result["alpha_s"]) == (1.19, 15.75)
+
+
+async def test_stall_speed_forwards_the_regime_warnings_of_the_optimiser() -> None:
+    class Warned(StubOpti):
+        async def stall(self, *args: Any) -> Stall:  # type: ignore[override]
+            stall = await super().stall(*args)
+            warning = KernelWarning.of(
+                "reynolds_bubble_sensitive", "Re is low", detail={"mach": 0.02}
+            )
+            return Stall(solution=stall.solution, warnings=(warning,))
+
+    context = context_with(StubAtmosphere({}), opti=Warned(), origin="stall-speed")
+    await stall_speed(stall_x(), context)
+    (warning,) = context.warnings
+    assert (warning.code, warning.origin, warning.detail) == (
+        "reynolds_bubble_sensitive",
+        "stall-speed",
+        {"mach": 0.02},
+    )
+
+
+async def test_stall_speed_passes_an_optimiser_failure_on_unchanged() -> None:
+    class Failing(StubOpti):
+        async def stall(self, *args: Any) -> Stall:  # type: ignore[override]
+            raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "m", "h")
+
+    context = context_with(StubAtmosphere({}), opti=Failing())
+    with pytest.raises(FormulaError) as raised:
+        await stall_speed(stall_x(), context)
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED

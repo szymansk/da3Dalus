@@ -1,4 +1,7 @@
-"""Canon formula ``stall-speed``: the checks of the stall problem (ARCHITECTURE ch. 8.5, 8.12).
+"""Canon formula ``stall-speed``: the stall problem and its checks (ARCHITECTURE ch. 8.5, 8.12).
+
+The formula passes the airplane, the mass, the load factor and the ISA air state to the OPT adapter,
+which runs the sweep, IPOPT and the re-sweep in the process pool (canon K32).
 
 The postconditions read the polar the formula returns (the sweep at ``V_S``, with ``alpha_S`` among
 its samples), so they need no solver access. Tolerances are numeric consistency of the solve (A10:
@@ -8,10 +11,12 @@ they decide whether the solver's own answer is self-consistent, not whether the 
 import math
 from collections.abc import Mapping
 
+from aero_kernel.context import Context, Inputs
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import main_wing_properties
-from aero_kernel.registry import CheckResult, postcondition
+from aero_kernel.registry import CheckResult, formula, postcondition
 from aero_kernel.schema import Polar
+from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import ALPHA_STEP_DEG
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
 
@@ -20,6 +25,7 @@ __all__ = [
     "cl_max_at_stall_reynolds_number",
     "optimum_at_first_cl_peak",
     "optimum_at_first_cl_trough",
+    "stall_speed",
 ]
 
 # Relative disagreement allowed between V_S and the closed form with the polar's C_L at alpha_S
@@ -29,6 +35,48 @@ PROBE_TOLERANCE = 1e-6
 # C_L,max may fall short of the sampled first peak by this much (absolute): IPOPT's optimum lies
 # between samples, the sampled peak is a sample.
 PEAK_TOLERANCE = 1e-6
+
+
+@formula("stall-speed")
+async def stall_speed(x: Inputs, ctx: Context) -> dict[str, float | Polar]:
+    """The smallest speed at which the airplane still carries ``n m g``, and where it stalls.
+
+    Args:
+        x: ``airplane`` the geometry as configured for the application, ``m`` the mass in kg,
+            ``g`` the gravity in m/s^2, ``n_load`` the load factor, and the ISA air state
+            ``rho`` in kg/m^3, ``mu`` in Pa s, ``a`` in m/s.
+        ctx: The formula context; ``ctx.solvers.opti`` solves the problem.
+
+    Returns:
+        ``v_s`` in m/s, ``cl_max`` the lift coefficient at the optimum, ``alpha_s`` the optimum
+        angle of attack in degrees and ``polar`` the sweep at ``v_s`` (the application exposes
+        only what the canon binds).
+
+    Raises:
+        TypeError: If ``airplane`` is not the geometry or a number is not a number.
+        FormulaError: From the adapter, unchanged (``tool_unavailable``, ``not_converged``).
+    """
+    airplane = x["airplane"]
+    if not isinstance(airplane, AirplaneGeometry):
+        msg = f"parameter 'airplane' must be the geometry, got {type(airplane).__name__}"
+        raise TypeError(msg)
+    air = AirState(
+        density=_number(x, "rho"),
+        dynamic_viscosity=_number(x, "mu"),
+        speed_of_sound=_number(x, "a"),
+    )
+    stall = await ctx.solvers.opti.stall(
+        airplane, _number(x, "m"), _number(x, "g"), _number(x, "n_load"), air
+    )
+    for warning in stall.warnings:
+        ctx.warn(warning.code, warning.message, warning.detail)
+    solution = stall.solution
+    return {
+        "v_s": solution.v_s,
+        "cl_max": solution.cl_max,
+        "alpha_s": solution.alpha_s,
+        "polar": solution.polar,
+    }
 
 
 def _number(values: Mapping[str, object], name: str) -> float:

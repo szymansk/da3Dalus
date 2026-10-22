@@ -21,6 +21,7 @@ IMPLEMENTED = {
     "calc:wing-loading",
     "calc:airplane-geometry",
     "calc:airplane-configuration",
+    "calc:stall-speed",
 }
 
 
@@ -101,9 +102,11 @@ def solvers_with(
     )
 
 
-def context_with(atmosphere: AtmosphereAdapter, origin: str = "t") -> Context:
-    """A formula context whose ATM adapter is the given one."""
-    return Context(origin=origin, solvers=solvers_with(atmosphere=atmosphere))
+def context_with(
+    atmosphere: AtmosphereAdapter, origin: str = "t", opti: OptiAdapter | None = None
+) -> Context:
+    """A formula context whose ATM (and, if given, OPT) adapter is the given one."""
+    return Context(origin=origin, solvers=solvers_with(atmosphere=atmosphere, opti=opti))
 
 
 def close(actual: float | None, expected: float, rel: float) -> bool:
