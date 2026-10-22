@@ -19,7 +19,8 @@ def number(x: Inputs, name: str) -> float:
         The value as a float.
 
     Raises:
-        TypeError: If the parameter is absent or not a number.
+        TypeError: If the parameter is ``None`` (an absent optional) or not a number.
+        KeyError: If the formula has no such parameter.
     """
     value = x[name]
     if not isinstance(value, float):

@@ -4,6 +4,8 @@ The kernel has one ISA, ``asb.Atmosphere(altitude=h, method="isa")``; there is n
 second one. Implements the tool behind the canon formula ``air-density-isa``.
 """
 
+import asyncio
+import importlib
 import logging
 from collections.abc import Mapping
 from typing import ClassVar
@@ -30,8 +32,9 @@ class AtmosphereAdapter(SolverAdapter):
     async def density(self, altitude_m: float) -> float:
         """Return the ISA air density at a geopotential altitude, in kg/m^3.
 
-        A closed-form table lookup, so it runs inline on the event loop and not in the pool
-        (ch. 8.10). Finiteness of the altitude is the input validation's.
+        The lookup is closed-form and runs inline on the event loop, not in the pool; only the
+        first import of aerosandbox, which is slow, runs in a worker thread (ch. 8.10).
+        Finiteness of the altitude is the input validation's.
 
         Args:
             altitude_m: Altitude above mean sea level in metres.
@@ -44,10 +47,8 @@ class AtmosphereAdapter(SolverAdapter):
                 (parameter ``h``) if the altitude is outside the range of AeroSandbox's ISA.
         """
         self.require_available()
-        # lazy: a missing install is tool_unavailable, not ImportError; aerosandbox ships no
-        # type stubs and is untyped, which strict mode reports at this one boundary
-        import aerosandbox as asb  # pyright: ignore[reportMissingTypeStubs]
-
+        # Lazy and off the loop: the first import of aerosandbox takes about 0.8 s (ch. 8.10).
+        asb = await asyncio.to_thread(importlib.import_module, "aerosandbox")
         atmosphere = asb.Atmosphere(altitude=altitude_m, method="isa")
         # AeroSandbox keeps its validity range in a private attribute; it is the tool's own
         # statement of where the ISA model holds, so it is read rather than copied here.

@@ -1,13 +1,16 @@
 """The ATM adapter: exact ISA density behind the solver boundary (ARCHITECTURE ch. 8.8, K30)."""
 
+import importlib
 import importlib.machinery
 import math
 import sys
+import threading
 import types
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import SolverRuntime
+from aero_kernel.solvers import atmosphere as atmosphere_module
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 
 
@@ -94,3 +97,21 @@ async def test_the_real_isa_matches_the_hand_computed_troposphere(altitude: floa
     hand: float = pressure / (gas_constant * temperature)
     density = await AtmosphereAdapter(SolverRuntime()).density(altitude)
     assert math.isclose(density, hand, rel_tol=5e-4)
+
+
+@pytest.mark.asyncio
+async def test_the_import_runs_off_the_event_loop_thread(
+    fake_aerosandbox: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The first import of aerosandbox takes about 0.8 s and must not stall the loop (ch. 8.10)."""
+    imported_on: list[tuple[str, int]] = []
+    real_import = importlib.import_module
+
+    def recording(name: str, package: str | None = None) -> types.ModuleType:
+        imported_on.append((name, threading.get_ident()))
+        return real_import(name, package)
+
+    monkeypatch.setattr(atmosphere_module.importlib, "import_module", recording)
+    await AtmosphereAdapter(SolverRuntime()).density(100.0)
+    assert [name for name, _ in imported_on] == ["aerosandbox"]
+    assert imported_on[0][1] != threading.get_ident()
