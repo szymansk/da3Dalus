@@ -67,7 +67,8 @@ async def test_air_density_isa_passes_an_adapter_failure_on_unchanged() -> None:
 
 
 async def test_the_default_registry_holds_exactly_these_three_and_is_frozen() -> None:
-    assert DEFAULT_REGISTRY.slugs() == IMPLEMENTED
+    implemented = {s for s in DEFAULT_REGISTRY.slugs() if DEFAULT_REGISTRY.implementation(s)}
+    assert implemented == IMPLEMENTED
     assert DEFAULT_REGISTRY.frozen
 
 

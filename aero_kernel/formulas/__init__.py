@@ -11,6 +11,7 @@ from aero_kernel.formulas import (
     aspect_ratio,
     dynamic_pressure,
     mean_geometric_chord,
+    stall_speed,
     weight_from_mass,
     wing_loading,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "aspect_ratio",
     "dynamic_pressure",
     "mean_geometric_chord",
+    "stall_speed",
     "weight_from_mass",
     "wing_loading",
 ]
