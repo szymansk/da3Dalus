@@ -316,3 +316,124 @@ def avl_variant(b: Bryan, family: str, n_chord: int, n_wing: int) -> Bryan:
         b_ref=b.ref.b_ref,
     )
     return Bryan(p, b.mass_kg, b.xyz_cg, b.ref, b.geometry)
+
+
+# --- aligned explicit-station AVL mesh (the exporter's mesh) -----------------------------------
+def _on(sec: dict) -> bool:
+    c = sec.get("control_surface")
+    return bool(c and c["hinge_point"] >= MIN_HINGE_POINT)
+
+
+def _bounds(secs: list[dict], axis: int) -> tuple[float, float, list[float]]:
+    pos = [s["xyz_le"][axis] for s in secs]
+    bounds = [pos[i] for i in range(len(secs)) if _on(secs[i]) != (i > 0 and _on(secs[i - 1]))]
+    bounds += [
+        pos[i] for i in range(len(secs)) if i + 1 < len(secs) and _on(secs[i]) != _on(secs[i + 1])
+    ]
+    return pos[0], pos[-1], bounds
+
+
+def _resample(
+    secs: list[dict], axis: int, stations: list[float], af: dict, dz: float, symmetric_ctrl: dict
+) -> list[asb.WingXSec]:
+    pos = np.array([s["xyz_le"][axis] for s in secs])
+    cols = {k: np.array([s["xyz_le"][i] for s in secs]) for i, k in enumerate("xyz")}
+    chord = np.array([s["chord"] for s in secs])
+    twist = np.array([s["twist"] for s in secs])
+    hinge = np.array([s["control_surface"]["hinge_point"] if _on(s) else 0.0 for s in secs])
+    out = []
+    for t in stations:
+        near = np.where(np.abs(pos - t) < 1e-9)[0]
+        i = int(np.searchsorted(pos, t, side="right") - 1)
+        i = min(max(i, 0), len(secs) - 2)
+        if len(near):
+            j = int(near[-1])
+            ctrl_on = _on(secs[j])
+        else:
+            ctrl_on = _on(secs[i]) and _on(secs[i + 1])
+        ctrl = []
+        if ctrl_on:
+            c = next(s["control_surface"] for s in (secs[i], secs[i + 1]) if _on(s))
+            ctrl = [
+                asb.ControlSurface(
+                    name=CONTROL_NAMES[c["name"]],
+                    symmetric=c["symmetric"],
+                    hinge_point=float(np.interp(t, pos, hinge)),
+                    deflection=0.0,
+                )
+            ]
+        out.append(
+            asb.WingXSec(
+                xyz_le=[
+                    float(np.interp(t, pos, cols["x"])),
+                    float(np.interp(t, pos, cols["y"])),
+                    float(np.interp(t, pos, cols["z"])) + dz,
+                ],
+                chord=float(np.interp(t, pos, chord)),
+                twist=float(np.interp(t, pos, twist)),
+                airfoil=af[secs[i]["airfoil"]],
+                control_surfaces=ctrl,
+                analysis_specific_options={asb.AVL: dict(spanwise_resolution=1)},
+            )
+        )
+    return out
+
+
+def aligned_stations(geo: dict, n_wing: int) -> tuple[list[float], list[float], list[float]]:
+    """Strip stations of the aligned AVL mesh: wing y, horizontal tail y (the wing's stations over the
+    tail span plus its tip) and fin z. geo is the `wings` dict of the geometry file."""
+    w_secs, h_secs, f_secs = (
+        geo["Tragflaeche"]["x_secs"],
+        geo["Hoehenleitwerk"]["x_secs"],
+        geo["Seitenleitwerk"]["x_secs"],
+    )
+    y0, y_tip, w_bounds = _bounds(w_secs, 1)
+    _, t_tip, h_bounds = _bounds(h_secs, 1)
+    step = (y_tip - y0) / n_wing
+    grid = [y0 + k * step for k in range(n_wing + 1)]
+    extra = [y for y in (*w_bounds, *h_bounds) if y0 < y < y_tip]
+    wing_st = sorted({round(y, 9) for y in (*grid, *extra)})
+    ht_st = [y for y in wing_st if y < t_tip - 0.3 * step]
+    ht_st = [h_secs[0]["xyz_le"][1], *[y for y in ht_st if y > h_secs[0]["xyz_le"][1]], t_tip]
+    z0, z1 = f_secs[0]["xyz_le"][2], f_secs[-1]["xyz_le"][2]
+    _, _, f_bounds = _bounds(f_secs, 2)
+    nf = max(2, round((z1 - z0) / step))
+    fin_st = sorted(
+        {round(z, 9) for z in (*[z0 + k * (z1 - z0) / nf for k in range(nf + 1)], *f_bounds)}
+    )
+    return wing_st, ht_st, fin_st
+
+
+def aligned_variant(b: Bryan, case: str, n_chord: int, n_wing: int) -> Bryan:
+    """BRYAN with an aligned explicit-station AVL mesh (one strip per station pair). case: 'full',
+    'no-fin', 'ht+0.05', 'ht-0.05' (diagnostic tail shift) or 'wing-only'. References stay those of
+    the full geometry."""
+    af = _airfoils()
+    geo = b.geometry["wings"]
+    w_secs, h_secs, f_secs = (
+        geo["Tragflaeche"]["x_secs"],
+        geo["Hoehenleitwerk"]["x_secs"],
+        geo["Seitenleitwerk"]["x_secs"],
+    )
+    wing_st, ht_st, fin_st = aligned_stations(geo, n_wing)
+    dz = {"ht+0.05": 0.05, "ht-0.05": -0.05}.get(case, 0.0)
+    opts = {asb.AVL: dict(wing_level_spanwise_spacing=False, chordwise_resolution=n_chord)}
+    wings = [
+        asb.Wing(name="Tragflaeche", symmetric=True, analysis_specific_options=opts,
+                 xsecs=_resample(w_secs, 1, wing_st, af, 0.0, {}))
+    ]  # fmt: skip
+    if case != "wing-only":
+        wings.append(
+            asb.Wing(name="Hoehenleitwerk", symmetric=True, analysis_specific_options=opts,
+                     xsecs=_resample(h_secs, 1, ht_st, af, dz, {}))
+        )  # fmt: skip
+    if case == "full":
+        wings.append(
+            asb.Wing(name="Seitenleitwerk", symmetric=False, analysis_specific_options=opts,
+                     xsecs=_resample(f_secs, 2, fin_st, af, 0.0, {}))
+        )  # fmt: skip
+    plane = asb.Airplane(
+        name="BRYAN", xyz_ref=b.airplane.xyz_ref, wings=wings, fuselages=b.airplane.fuselages,
+        s_ref=b.ref.s_ref, c_ref=b.ref.c_ref, b_ref=b.ref.b_ref,
+    )  # fmt: skip
+    return Bryan(plane, b.mass_kg, b.xyz_cg, b.ref, b.geometry)

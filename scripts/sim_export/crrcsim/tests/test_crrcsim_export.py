@@ -497,3 +497,29 @@ def test_animations_xml_references_existing_objects_and_uses_the_throws(ac_model
         np.radians(35.0), abs=1e-4
     )
     assert all(len(a.findall("hinge")) == 2 for a in root.findall("animation"))
+
+
+# --- aligned AVL stations ------------------------------------------------------------------------
+def test_aligned_stations_put_tail_strips_at_the_wing_station_positions():
+    import json
+
+    import bryan_aero as ba
+
+    geo = json.loads((ba.BRYAN_DIR / "bryan.airplane.json").read_text())["wings"]
+    wing, tail, fin = ba.aligned_stations(geo, 24)
+    t_tip = geo["Hoehenleitwerk"]["x_secs"][-1]["xyz_le"][1]
+    inner = [y for y in tail if y < t_tip]
+    assert tail[-1] == pytest.approx(t_tip)
+    # every tail station except the root/tip ends is one of the wing's stations
+    wing_set = np.array(wing)
+    for y in inner[1:]:
+        assert np.min(np.abs(wing_set - y)) < 1e-8
+    # and the tail takes all wing stations inside its span (bar the last, merged into the tip strip)
+    expected = [
+        y for y in wing if geo["Hoehenleitwerk"]["x_secs"][0]["xyz_le"][1] < y < t_tip - 1e-6
+    ]
+    assert len(inner) - 1 >= len(expected) - 1
+    # wing stations are monotone and contain the control-surface boundaries
+    assert np.all(np.diff(wing) > 0) and np.all(np.diff(fin) > 0)
+    for y in (0.063151, 0.208903):  # aileron inner / outer section y
+        assert np.min(np.abs(wing_set - y)) < 1e-6

@@ -28,9 +28,10 @@ import crrcsim_model as cm  # noqa: E402
 import inertia_buildup as ib  # noqa: E402
 import polar  # noqa: E402
 
-# AVL mesh: -sine per surface, Nchord 10 / Nspan 24 (wing half), default core 0.25. This is the last level
-# before the longitudinal results diverge in avl_convergence.py; it is NOT converged (see MAPPING.md).
-AVL_FAMILY, AVL_LEVEL = "sine", (10, 24)
+# AVL mesh: aligned explicit stations (one strip per station pair; the tail's strip boundaries sit at the
+# wing's station y-positions), Nchord 10 / Nspan 24 per wing half, default vortex core ratio 0.25. Converged:
+# see AVL_CONVERGENCE.md.
+AVL_LEVEL = (10, 24)
 REF_TOL = 1e-3  # relative tolerance between ASB reference values and what AVL reports
 
 # --- declared estimates (ADR 0020: nothing silent) -------------------------------------------------
@@ -91,7 +92,7 @@ def analyse(speed: float) -> dict:
     rho = float(b.atmosphere.density())
     weight = b.mass_kg * ba.G
     cl_trim = weight / (0.5 * rho * speed**2 * b.ref.s_ref)
-    avl = ba.run_avl_trimmed(ba.avl_variant(b, AVL_FAMILY, *AVL_LEVEL), cl_trim, speed)
+    avl = ba.run_avl_trimmed(ba.aligned_variant(b, "full", *AVL_LEVEL), cl_trim, speed)
     for key, mine in (("Sref", b.ref.s_ref), ("Cref", b.ref.c_ref), ("Bref", b.ref.b_ref)):
         if abs(avl[key] - mine) / mine > REF_TOL:
             raise cm.ExportError(f"AVL reports {key} {avl[key]} but ASB reference is {mine}")
@@ -375,7 +376,7 @@ def export(
         "trim": f"level flight at {speed} m/s, C_L = m g / (q S_ref) = {num['cl_trim']:.4f}",
         "eta_loc": "geometry: 2 * area-centroid y of the half wing / span (stock models use 0.25-0.3)",
         "cg_arm": "geometry: (x_CG - x_AC,wing) / c_ref (stalled wing lift acts at the wing AC)",
-        "span_eff": f"min(0.95 * AVL e, 0.95): AVL e = {avl['e']:.3f} > 1 (AVL discretisation, see MAPPING notes); "
+        "span_eff": f"min(0.95 * AVL e, 0.95): AVL e = {avl['e']:.3f} (>= 1 is AVL's discretisation overshoot, see MAPPING notes); "
         "CRRCSim documents 0.95 for conventional aft-tail planes",
         "stall": f"AeroBuildup polar at {speed} m/s, trimmed elevator {num['e_trim']:.2f} deg",
         "drag": f"AeroBuildup polar at {speed} m/s minus induced C_L^2/(pi AR {num['ar']:.3f} span_eff)",
@@ -472,7 +473,7 @@ def export(
         f"Throws (full stick, deg): elevator {throws.elevator_deg}, aileron {throws.aileron_deg}, rudder {throws.rudder_deg}; derivative = AVL_per_deg * travel / 0.5.",
         "Reference values are projected onto the x-y plane (S, b, MAC). Origin of the wheel/CG frame is the plan CG.",
         "Power: engine k_M from KV 2000; R_I, I_0, J_M and battery R_I are DECLARED ESTIMATES (no datasheet).",
-        "PITCH DERIVATIVES ARE PROVISIONAL: AVL longitudinal results (Cm_a, neutral point, trim elevator, CL_a) do not converge with mesh and core size (+-3 % MAC); see MAPPING.md and avl_convergence.py.",
+        "AVL mesh: aligned strips (wing and tail share strip y-positions), Nchord 10 / Nspan 24, converged to 0.3 % MAC in neutral point (AVL_CONVERGENCE.md). The AVL vortex-core ratio is a model parameter: 0.5 instead of the default 0.25 shifts the neutral point by +2.3 % MAC (static margin +2.3 %).",
         f"Graphics: {graphics_note or 'stock mav.ac placeholder, its size does not match BRYAN'}.",
     ]
     xml = cm.render_xml(
@@ -573,23 +574,23 @@ table cannot drift from the file. Values are from the last generation (command a
   but gives no engine resistance, no-load current or pack resistance: those are estimates (marked
   DECLARED ESTIMATE in the table). The CRRCSim `automagic` design was not used because it would invent
   the KV as well.
-- **AVL mesh and pitch derivatives (NOT converged, provisional):** surface-level -sine spacing, Nchord 10 /
-  Nspan 24 (wing half), tail and fin scaled by span, sections merged to 20 mm, core ratio 0.25. The study
-  `avl_convergence.py` (AVL spacing rules: one distribution per surface, Nchord and Nspan refined together,
-  core-size check) does not converge: NP 34.9 / 35.3 / 31.7 % MAC for Nchord/Nspan 5/12, 10/24, 20/48
-  (core 0.25), and 37.2 / 37.7 / 35.0 % with core 0.5; the finest level exceeds AVL's vortex array. The
-  longitudinal values (Cm_a, NP, trim elevator, e, CL_a) therefore carry about +-3 % MAC of mesh and
-  core uncertainty; the lateral derivatives and Cm_q (-5.3..-6.7) are stable within ~10-20 %. Per-segment
-  strips (the earlier setting) gave 37.5 / 35.4 / 33.1 % for 1 / 2 / 3 strips per segment.
-  Full table: AVL_CONVERGENCE.md.
-- **span_eff:** AVL's e is 1.04 at the chosen mesh and rises above 1.2 on finer ones. References as passed (Sref 0.069905 m2, Bref 0.54603 m, Cref 0.13280 m, as passed and
-  echoed by AVL). e > 1 is a property of AVL's discretisation, not of the references: a planar rectangular
-  wing of the same aspect ratio through the same pipeline gives e = 1.16 (3 strips) and 1.04 (10 strips)
-  with the correct Bref, and the wing alone on BRYAN gives about the same e as the whole airplane.
-  min(0.95 e, 0.95) = 0.95, the CRRCSim documented value for conventional aft-tail planes, is used.
-- **Neutral point worlds:** AVL (with downwash) puts the neutral point at 35.3 % MAC at the chosen mesh (static margin 3.9 %
-  at the plan CG 31.4 %; 6.3 % with core 0.5); AeroBuildup (no downwash) 43.8 % (12.3 %); the known worlds in
-  ERGEBNISSE_STABILITAET.md span 32.9..36.9 % MAC (1.5..5.5 % margin).
+- **AVL mesh (converged):** aligned explicit stations, one strip per station pair; the horizontal tail's
+  strip boundaries sit at the wing's station y-positions over the tail span (plus the control-surface
+  boundaries), the fin uses the same strip width; Nchord 10 / Nspan 24 per wing half, vortex core ratio
+  0.25 (AVL default). Nchord and Nspan refined together (5/12, 10/24, 20/48) give NP 38.1 / 38.1 / 37.8 % MAC
+  (|dNP| 0.3 % between the last two levels). Earlier meshes with unaligned strips (per-segment counts, or
+  surface-level spacing with equal N on wing and tail) did not converge: the non-convergence was
+  wing-tail strip misalignment (AVL rule 1), not the fin or the tail height. Table, diagnostics and the
+  previous NP worlds: [AVL_CONVERGENCE.md](AVL_CONVERGENCE.md).
+- **Core ratio:** the vortex-core ratio (OPER > Option > C) is a model parameter, not a mesh effect: 0.5
+  instead of the default 0.25 shifts the neutral point by +2.3 % MAC at every level (static margin +2.3 %).
+- **span_eff:** AVL's e is 1.003 at the chosen mesh (0.989 at 20/48; the wing alone converges to about 1;
+  Sref 0.069905 m2, Bref 0.54603 m, Cref 0.13280 m as passed and echoed by AVL). e at or above 1 is AVL's
+  discretisation overshoot, not a reference error. min(0.95 e, 0.95) = 0.95, the CRRCSim documented value for
+  conventional aft-tail planes, is used.
+- **Neutral point worlds:** AVL (with downwash) puts the neutral point at 38.1 % MAC at the chosen mesh
+  (static margin 6.7 % at the plan CG 31.4 %; 9.0 % with core 0.5); AeroBuildup (no downwash) 43.8 % (12.3 %).
+  The earlier AVL world of 32.9 % MAC came from an unaligned per-segment mesh and is suspect.
 - **CD_AIsq:** CRRCSim documented rule, because AeroBuildup's deflected-surface drag is not quadratic.
 - **CG_arm, eta_loc:** from the geometry (no stall-moment data in AeroBuildup: its Cm follows the linear
   extrapolation through the stall).
