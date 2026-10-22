@@ -12,6 +12,7 @@ from aero_kernel.devices import FLAP_ROLES
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -19,9 +20,17 @@ from aero_kernel.schema import (
     QuantityResult,
     QuantityStatus,
 )
-from aero_kernel.solvers.opti import StallSolution
+from aero_kernel.solvers import opti as opti_module
+from aero_kernel.solvers.opti import OptiAdapter, StallRequest, StallSolution
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
-from aero_kernel.tests.stall_stubs import INVERTED_TROUGH, UPRIGHT_PEAK, StubOpti, lift_curve
+from aero_kernel.tests.solver_builders import InProcessRuntime
+from aero_kernel.tests.stall_stubs import (
+    INVERTED_TROUGH,
+    UPRIGHT_PEAK,
+    StubOpti,
+    consistent_stall,
+    lift_curve,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -224,3 +233,40 @@ async def test_an_expired_time_budget_cancels_the_solve_and_reports_timeout() ->
     assert error is not None
     assert (error.category, error.code) == (ErrorCategory.TIMEOUT, "timeout")
     assert opti.cancelled
+
+
+async def test_a_flapped_landing_is_an_error_and_never_the_clean_speed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The reviewer's reproduction: a flap and flap-deflection-landing = 30 deg. The conversion does
+    not pass devices to AeroBuildup yet, so the real adapter refuses instead of returning V_S1."""
+    adapter = OptiAdapter(InProcessRuntime())
+    calls: list[StallRequest] = []
+
+    def worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
+        calls.append(request)
+        return WorkerOutcome(
+            value=consistent_stall(
+                request.airplane, request.mass_kg, request.gravity, request.n_load, request.air
+            ),
+            diagnostics=WorkerDiagnostics(duration_s=0.0),
+        )
+
+    monkeypatch.setattr(opti_module, "stall_worker", worker)
+    solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=adapter)
+    request = ComputeRequest(quantities=("stall-speed", "stall-speed-landing"))
+    result = await evaluate(
+        shipped_build(),
+        aircraft(True, **{"flap-deflection-landing": 30.0}),
+        request,
+        solvers=solvers,
+    )
+    quantities = by_slug(result)
+    assert quantities["stall-speed"].status is QuantityStatus.OK
+    landing = quantities["stall-speed-landing"]
+    assert landing.status is QuantityStatus.ERROR
+    assert landing.value is None
+    assert landing.error is not None
+    assert landing.error.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert "flap" in landing.error.message
+    assert len(calls) == 1  # only the clean airplane reached a solver

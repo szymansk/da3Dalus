@@ -90,3 +90,36 @@ async def test_the_tool_versions_are_aerosandboxs() -> None:
     assert OptiAdapter(InProcessRuntime()).tool_versions() == {
         "aerosandbox": importlib.metadata.version("aerosandbox")
     }
+
+
+@pytest.mark.parametrize(
+    ("role", "deflection"), [("flap", 30.0), ("aileron", -5.0), ("flaperon", 0.5)]
+)
+async def test_a_deflected_control_surface_is_refused_not_computed_as_clean(
+    monkeypatch: pytest.MonkeyPatch, role: str, deflection: float
+) -> None:
+    """The conversion does not pass devices to AeroBuildup yet (it comes with the roll-rate step);
+    a deflected airplane would silently be computed as the clean one."""
+    called: list[object] = []
+
+    def worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
+        called.append(request)
+        return WorkerOutcome(value=solution(), diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+    monkeypatch.setattr(opti_module, "stall_worker", worker)
+    adapter = OptiAdapter(InProcessRuntime())
+    deflected = airplane(device=(role, deflection))
+    with pytest.raises(FormulaError) as raised:
+        await adapter.stall(deflected, 1.5, 9.81, 1.0, AIR)
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert "deflected control surfaces are not yet passed to AeroBuildup" in raised.value.message
+    assert "flap-1" in raised.value.message
+    assert role in raised.value.message
+    assert called == []
+
+
+async def test_a_device_at_rest_is_no_obstacle(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution()))
+    adapter = OptiAdapter(InProcessRuntime())
+    result = await adapter.stall(airplane(device=("flap", 0.0)), 1.5, 9.81, 1.0, AIR)
+    assert result.solution == solution()

@@ -227,6 +227,31 @@ def _invalid(message: str, hint: str, parameter: str) -> FormulaError:
     )
 
 
+def _refuse_deflected_devices(airplane: AirplaneGeometry) -> None:
+    """Refuse an airplane with a control device off its rest position.
+
+    The conversion does not pass devices to AeroBuildup yet (it comes with the roll-rate step, where
+    ailerons need it), so a deflected airplane would silently be evaluated as the clean one.
+
+    Raises:
+        FormulaError: ``unsupported_configuration`` naming the first deflected device and its role.
+    """
+    for key, wing in (airplane.wings or {}).items():
+        for index, section in enumerate(wing.x_secs):
+            device = section.trailing_edge_device
+            if device is not None and device.deflection_deg:
+                label = device.name or f"device {index}"
+                raise FormulaError(
+                    ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                    "unsupported_configuration",
+                    f"deflected control surfaces are not yet passed to AeroBuildup: {label!r} "
+                    f"(role {device.role}) of the wing {key!r} is at {device.deflection_deg} deg",
+                    "no value is computed for a deflected configuration rather than the clean one",
+                    detail={"wing": key, "device": label, "role": device.role},
+                    parameter="airplane",
+                )
+
+
 class OptiAdapter(SolverAdapter):
     """The stall problem solved with IPOPT over AeroBuildup, in the process pool.
 
@@ -263,6 +288,7 @@ class OptiAdapter(SolverAdapter):
                 an inadmissible input; ``not_converged`` as :func:`stall_worker`.
         """
         self.require_available()
+        _refuse_deflected_devices(airplane)
         for name, value, positive in (
             ("m", mass_kg, True),
             ("g", gravity, True),
