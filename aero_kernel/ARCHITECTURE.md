@@ -977,16 +977,16 @@ one code, one test:
 | code | rule |
 |---|---|
 | `non_finite_number` | NaN or ±inf anywhere in the geometry fields the kernel reads or in `values` (exact leaf path, tuple elements as `[i]`) |
-| `non_positive_length` | a chord ≤ 0; fuselage semi-axes `a`, `b` ≤ 0; a wing whose span — the summed Euclidean length of its `xyz_le` chain — is 0 (path: its `x_secs`) |
+| `non_positive_length` | a chord ≤ 0; a fuselage semi-axis `a`, `b` < 0 at the first or last section, ≤ 0 at an interior section (a lofted fuselage closes to a point or a line at its ends; team-lead 2026-10-22, BRYAN nose/tail points); a wing whose span — the summed Euclidean length of its `xyz_le` chain — is 0 (path: its `x_secs`) |
 | `non_positive_exponent` | a fuselage super-ellipse exponent `n` or `n_lower` ≤ 0 |
 | `non_positive_thickness` | an airfoil of thickness ≤ 0 (inline contour, or NACA thickness digits `00`) |
 | `too_few_sections` | a wing or a fuselage with fewer than two `x_secs` |
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
+| `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 | `missing_surface_type` | a wing without its `surface_type` (D9: required, never inferred) |
 | `main_wing_count` | not exactly one wing of `surface_type` `main_wing` |
-| `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 
 `values` are checked here for finiteness only. **Their admissibility comes from the canon model, never
 from a slug written in code:** a quantity entry may declare `positive: true` (strictly > 0 by definition —

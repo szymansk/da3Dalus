@@ -322,9 +322,13 @@ class TestTrailingEdgeDeviceReadSet:
 class TestFuselage:
     @pytest.mark.parametrize("axis", ["a", "b"])
     @pytest.mark.parametrize("size", [0.0, -0.05])
-    def test_non_positive_semi_axis_is_rejected(self, axis: str, size: float) -> None:
+    def test_non_positive_semi_axis_is_rejected_at_an_interior_section(
+        self, axis: str, size: float
+    ) -> None:
         document = _document()
-        document["airplane"]["fuselages"]["Body"]["x_secs"][1][axis] = size
+        sections = document["airplane"]["fuselages"]["Body"]["x_secs"]
+        sections.insert(1, {"xyz": [0.25, 0.0, 0.0], "a": 0.05, "b": 0.05, "n": 2.0})
+        sections[1][axis] = size
         errors = _validate(document)
         assert _paths(errors) == [f'airplane.fuselages["Body"].x_secs[1].{axis}']
         assert _codes(errors) == ["non_positive_length"]
@@ -732,7 +736,9 @@ class TestOrder:
         wing["x_secs"][0]["chord"] = 0.0
         wing["x_secs"][0]["airfoil"] = "e387.dat"
         wing["x_secs"][1]["xyz_le"][2] = math.inf
-        document["airplane"]["fuselages"]["Body"]["x_secs"][0]["b"] = 0.0
+        document["airplane"]["fuselages"]["Body"]["x_secs"][0][
+            "b"
+        ] = -0.05  # 0 is allowed at an end
         document["values"] = {"b-value": math.nan, "a-value": math.nan}
         assert _paths(_validate(document)) == [
             "airplane.total_mass_kg",
@@ -787,3 +793,52 @@ class TestLogging:
         records = [r for r in caplog.records if r.name == "aero_kernel.validate"]
         assert records
         assert {r.levelno for r in records} == {logging.DEBUG}
+
+
+class TestFuselageEnds:
+    """A lofted fuselage closes to a point or a line at its ends (team-lead 2026-10-22)."""
+
+    @staticmethod
+    def _three_sections() -> dict[str, Any]:
+        document = _document()
+        sections = document["airplane"]["fuselages"]["Body"]["x_secs"]
+        sections.insert(1, {"xyz": [0.25, 0.0, 0.0], "a": 0.05, "b": 0.05, "n": 2.0})
+        return document
+
+    @pytest.mark.parametrize("index", [0, 2])
+    @pytest.mark.parametrize("axis", ["a", "b"])
+    def test_a_zero_semi_axis_is_allowed_at_the_first_and_last_section(
+        self, index: int, axis: str
+    ) -> None:
+        document = self._three_sections()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][index][axis] = 0.0
+        assert _validate(document) == ()
+
+    @pytest.mark.parametrize("index", [0, 2])
+    def test_both_semi_axes_zero_closes_the_end_to_a_point(self, index: int) -> None:
+        document = self._three_sections()
+        section = document["airplane"]["fuselages"]["Body"]["x_secs"][index]
+        section["a"] = section["b"] = 0.0
+        assert _validate(document) == ()
+
+    @pytest.mark.parametrize("axis", ["a", "b"])
+    def test_a_zero_semi_axis_at_an_interior_section_is_rejected(self, axis: str) -> None:
+        document = self._three_sections()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][1][axis] = 0.0
+        errors = _validate(document)
+        assert _paths(errors) == [f'airplane.fuselages["Body"].x_secs[1].{axis}']
+        assert _codes(errors) == ["non_positive_length"]
+
+    @pytest.mark.parametrize("index", [0, 2])
+    @pytest.mark.parametrize("axis", ["a", "b"])
+    def test_a_negative_semi_axis_is_rejected_at_an_end(self, index: int, axis: str) -> None:
+        document = self._three_sections()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][index][axis] = -0.01
+        errors = _validate(document)
+        assert _paths(errors) == [f'airplane.fuselages["Body"].x_secs[{index}].{axis}']
+        assert _codes(errors) == ["non_positive_length"]
+
+    def test_a_non_finite_semi_axis_is_rejected_at_an_end(self) -> None:
+        document = self._three_sections()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][0]["a"] = math.nan
+        assert _codes(_validate(document)) == ["non_finite_number"]

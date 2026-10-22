@@ -72,8 +72,8 @@ def test_the_readme_records_every_hash_the_tests_check() -> None:
         assert digest in readme
 
 
-def test_jaguar_parses_and_is_admissible() -> None:
-    member = FleetMember.JAGUAR
+@pytest.mark.parametrize("member", list(FleetMember))
+def test_a_reference_aircraft_parses_and_is_admissible(member: FleetMember) -> None:
     aircraft = AircraftInput.model_validate(
         {"airplane": reference_document(member), "values": {"aircraft-mass": member.mass_kg}}
     )

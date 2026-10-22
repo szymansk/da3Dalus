@@ -140,12 +140,23 @@ def _non_finite(node: object, path: str, skip: frozenset[str] = frozenset()) -> 
 
 
 def _not_positive(
-    value: float, path: str, code: str, what: str, unit: str, hint: str
+    value: float,
+    path: str,
+    code: str,
+    what: str,
+    unit: str,
+    hint: str,
+    *,
+    allow_zero: bool = False,
 ) -> list[KernelError]:
-    """Report ``value`` if it is finite and ``<= 0`` (a non-finite value is reported elsewhere)."""
-    if not math.isfinite(value) or value > 0:
+    """Report ``value`` if it is finite and ``<= 0`` (``< 0`` with ``allow_zero``).
+
+    A non-finite value is reported elsewhere.
+    """
+    if not math.isfinite(value) or value > 0 or (allow_zero and value == 0):
         return []
-    message = f"{what} at {path} is {f'{value} {unit}'.rstrip()}; it must be > 0."
+    bound = ">= 0" if allow_zero else "> 0"
+    message = f"{what} at {path} is {f'{value} {unit}'.rstrip()}; it must be {bound}."
     return [_finding(code, path, message, hint, value)]
 
 
@@ -369,14 +380,17 @@ def _main_wing_count(wings: Mapping[str, Wing]) -> list[KernelError]:
 
 
 def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[KernelError]:
-    """Check the fuselages: section count, positive semi-axes and exponents."""
+    """Check the fuselages: section count, semi-axes (0 allowed at the ends) and exponents."""
     findings: list[KernelError] = []
     for key, fuselage in fuselages.items():
         path = _key_path("airplane.fuselages", key)
         findings += _too_few_sections("Fuselage", key, len(fuselage.x_secs), path)
+        last = len(fuselage.x_secs) - 1
         for index, x_sec in enumerate(fuselage.x_secs):
             section = f"{path}.x_secs[{index}]"
             findings += _non_finite(x_sec, section)
+            # A lofted fuselage closes to a point or a line at its ends (team-lead 2026-10-22).
+            at_end = index in (0, last)
             for axis, size in (("a", x_sec.a), ("b", x_sec.b)):
                 findings += _not_positive(
                     size,
@@ -384,7 +398,8 @@ def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[Kerne
                     "non_positive_length",
                     "Semi-axis",
                     "m",
-                    "Give the semi-axis a length > 0.",
+                    "Give the semi-axis a length >= 0 at an end section, > 0 elsewhere.",
+                    allow_zero=at_end,
                 )
             for name, exponent in (("n", x_sec.n), ("n_lower", x_sec.n_lower)):
                 if exponent is not None:
