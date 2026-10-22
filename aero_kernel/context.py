@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
-from aero_kernel.solvers.geometry import GeometryAdapter
 from pydantic import JsonValue
 
 __all__ = ["Context", "Inputs", "Solvers", "Value"]
@@ -24,7 +23,7 @@ Inputs = Mapping[str, Value | None]
 
 
 # Canon tool codes of formulas that call no adapter: pure relations and plain input reads (ch. 8.8).
-_PURE_TOOLS = frozenset({"APP", "KAT", "APC"})
+_PURE_TOOLS = frozenset({"APP", "GEO", "KAT", "APC"})
 
 
 @dataclass(frozen=True)
@@ -36,17 +35,15 @@ class Solvers:
 
     Attributes:
         atmosphere: The ATM adapter (exact ISA density).
-        geometry: The GEO adapter (the AeroSandbox airplane of the geometry).
     """
 
     atmosphere: AtmosphereAdapter
-    geometry: GeometryAdapter
 
     def tool_versions_of(self, tool: str) -> dict[str, str]:
         """Return the installed versions of the distributions a canon tool code relies on.
 
         Feeds ``Provenance.tool_versions`` and the cache key (ch. 8.4). A plain read or a pure
-        formula (``APP``, ``KAT``, ``APC``) uses no tool and has none.
+        formula (``APP``, ``GEO``, ``KAT``, ``APC``) uses no tool and has none.
 
         Args:
             tool: The canon tool code of a formula, e.g. ``ATM``.
@@ -60,9 +57,8 @@ class Solvers:
         """
         if tool in _PURE_TOOLS:
             return {}
-        for adapter in (self.atmosphere, self.geometry):
-            if tool == adapter.tool:
-                return dict(adapter.tool_versions())
+        if tool == self.atmosphere.tool:
+            return dict(self.atmosphere.tool_versions())
         msg = f"no solver adapter for the tool {tool}"
         raise ValueError(msg)
 
