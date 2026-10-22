@@ -21,7 +21,7 @@ from aero_kernel.solvers.aerobuildup import sweep_polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
 from aero_kernel.solvers.base import SolverAdapter, regime
-from aero_kernel.solvers.stall_math import first_extremum
+from aero_kernel.solvers.stall_math import first_extremum_from_zero
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -119,10 +119,8 @@ def _bracket(polar: Polar, upright: bool) -> int:
     Raises:
         FormulaError: ``not_converged`` if the series does not turn inside the sampled range.
     """
-    start = min(range(len(polar.alpha_deg)), key=lambda k: abs(polar.alpha_deg[k]))
-    scan = list(range(start, len(polar.alpha_deg))) if upright else list(range(start, -1, -1))
-    found = first_extremum([polar.cl[k] for k in scan], maximum=upright)
-    if found is None:
+    index = first_extremum_from_zero(polar.alpha_deg, polar.cl, upright=upright)
+    if index is None:
         what = "peak" if upright else "trough"
         raise _not_converged(
             f"the lift coefficient has no {what} inside {ALPHA_MIN_DEG}..{ALPHA_MAX_DEG} deg",
@@ -130,7 +128,7 @@ def _bracket(polar: Polar, upright: bool) -> int:
             alpha_min_deg=ALPHA_MIN_DEG,
             alpha_max_deg=ALPHA_MAX_DEG,
         )
-    return scan[found]
+    return index
 
 
 def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
