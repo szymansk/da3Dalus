@@ -34,8 +34,17 @@ S_ref, b_ref, c_MAC := geometry of the airplane model
 
 **Kind: a procedure — an evaluation of the model.** These are properties of the aircraft, read or
 integrated from its geometry: reference area and span from the main wing (the wing with surface_type main_wing, #1187), the mean
-aerodynamic chord as `(2/S)·∫c(y)² dy`, the flap factor from the flap type. AeroSandbox provides the wing values directly
-(`Wing.area()`, `Wing.span()`, `Wing.mean_aerodynamic_chord()`).
+aerodynamic chord as `(2/S)·∫c(y)² dy`, the flap factor from the flap type.
+
+**Definition (maintainer, 2026-10-22).** The reference values are the sections' chords and leading edges as
+given, projected onto the x-y plane, panel by panel; twist does not change them. A mirrored wing is carried to the
+centreline: a root off the plane is extended to y = 0 with the root chord, and a stored side that crosses y = 0 is
+clipped there, so b_ref = 2·max|y| and S_ref, c_MAC are integrated over 0 … max|y|; a wing that is not mirrored
+keeps its stored extent (max y − min y) without extension. Sections that fold back in y are not supported. The kernel integrates the
+sections itself. AeroSandbox's `Wing.area()`, `Wing.span()` and `Wing.mean_aerodynamic_chord()` are not used for
+the reference values: their projection depends on twist (they measure along the quarter-chord line), and the
+mean aerodynamic chord weights panels by their slant area. The app's current values are measured along the
+panels and differ by up to about 2 % at 8° dihedral.
 
 **Why this entry exists.** These quantities used to stand as free inputs. They are not: a
 change to the wing changes all of them, and the graph has to say so, or invalidation (A1)

@@ -20,14 +20,14 @@ import pytest
 from aero_kernel import compute
 from aero_kernel.build import shipped_build
 from aero_kernel.cache import cache_key
-from aero_kernel.context import Solvers
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityResult, QuantityStatus
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.tests.engine_builders import request
-from aero_kernel.tests.formula_builders import StubAtmosphere, close
+from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
+from aero_kernel.tests.wing_builders import airplane_document
 
 pytestmark = pytest.mark.asyncio
 
@@ -43,7 +43,7 @@ def aircraft_of(name: str, mass_kg: float) -> AircraftInput:
     """An aircraft with a mass, an altitude and a speed; gravity is left to the canon default."""
     return AircraftInput.model_validate(
         {
-            "airplane": {"name": name},
+            "airplane": airplane_document(name),
             "values": {"aircraft-mass": mass_kg, "altitude": ALTITUDE_M, "flight-speed": SPEED_MS},
         }
     )
@@ -73,7 +73,7 @@ async def test_the_fleet_through_the_engine_with_a_stub_atmosphere(
     name: str, mass_kg: float, weight_n: float
 ) -> None:
     stub = StubAtmosphere({ALTITUDE_M: RHO_HAND})
-    solvers = Solvers(atmosphere=stub)
+    solvers = solvers_with(atmosphere=stub)
     result = await evaluate(
         shipped_build(), aircraft_of(name, mass_kg), request(*SLUGS), solvers=solvers
     )
@@ -84,9 +84,12 @@ async def test_the_fleet_through_the_engine_with_a_stub_atmosphere(
 
 async def test_a_missing_altitude_fails_density_and_pressure_but_not_weight() -> None:
     no_altitude = AircraftInput.model_validate(
-        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 0.151, "flight-speed": 15.0}}
+        {
+            "airplane": airplane_document(),
+            "values": {"aircraft-mass": 0.151, "flight-speed": 15.0},
+        }
     )
-    solvers = Solvers(atmosphere=StubAtmosphere({}))
+    solvers = solvers_with(atmosphere=StubAtmosphere({}))
     result = await evaluate(shipped_build(), no_altitude, request(*SLUGS), solvers=solvers)
     quantities = by_slug(result)
     assert quantities["weight"].status is QuantityStatus.OK
@@ -95,9 +98,9 @@ async def test_a_missing_altitude_fails_density_and_pressure_but_not_weight() ->
 
 
 async def test_everything_else_is_still_not_implemented() -> None:
-    solvers = Solvers(atmosphere=StubAtmosphere({}))
+    solvers = solvers_with(atmosphere=StubAtmosphere({}))
     result = await evaluate(
-        shipped_build(), aircraft_of("BRYAN", 0.151), request("wing-loading"), solvers=solvers
+        shipped_build(), aircraft_of("BRYAN", 0.151), request("stall-speed"), solvers=solvers
     )
     (only,) = result.quantities
     assert only.status is QuantityStatus.ERROR
@@ -116,7 +119,9 @@ async def test_the_fleet_through_the_public_compute_with_the_real_atmosphere(
 
 
 async def test_the_provenance_names_the_tool_versions_of_the_tools_that_ran() -> None:
-    solvers = Solvers(atmosphere=StubAtmosphere({ALTITUDE_M: RHO_HAND}, {"aerosandbox": "7.7"}))
+    solvers = solvers_with(
+        atmosphere=StubAtmosphere({ALTITUDE_M: RHO_HAND}, {"aerosandbox": "7.7"})
+    )
     for slugs in (("air-density",), ("dynamic-pressure",), SLUGS):
         result = await evaluate(
             shipped_build(), aircraft_of("BRYAN", 0.151), request(*slugs), solvers=solvers
@@ -125,7 +130,7 @@ async def test_the_provenance_names_the_tool_versions_of_the_tools_that_ran() ->
 
 
 async def test_a_request_of_pure_formulas_reports_no_tool_version() -> None:
-    solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": "7.7"}))
+    solvers = solvers_with(atmosphere=StubAtmosphere({}, {"aerosandbox": "7.7"}))
     result = await evaluate(
         shipped_build(), aircraft_of("BRYAN", 0.151), request("weight"), solvers=solvers
     )
@@ -134,16 +139,19 @@ async def test_a_request_of_pure_formulas_reports_no_tool_version() -> None:
 
 async def test_a_formula_that_was_never_called_reports_no_tool_version() -> None:
     no_altitude = AircraftInput.model_validate(
-        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 0.151, "flight-speed": 15.0}}
+        {
+            "airplane": airplane_document(),
+            "values": {"aircraft-mass": 0.151, "flight-speed": 15.0},
+        }
     )
-    solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": "7.7"}))
+    solvers = solvers_with(atmosphere=StubAtmosphere({}, {"aerosandbox": "7.7"}))
     result = await evaluate(shipped_build(), no_altitude, request("air-density"), solvers=solvers)
     assert result.provenance.tool_versions == {}
 
 
 async def test_the_cache_key_of_the_density_node_follows_the_tool_version() -> None:
     def key(version: str) -> str:
-        solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": version}))
+        solvers = solvers_with(atmosphere=StubAtmosphere({}, {"aerosandbox": version}))
         return cache_key(
             formula="calc:air-density-isa",
             application="default",
@@ -176,7 +184,7 @@ async def test_q10_a_missing_aerosandbox_fails_density_and_pressure_as_tool_unav
         shipped_build(),
         aircraft_of("BRYAN", 0.151),
         request("air-density", "dynamic-pressure"),
-        solvers=Solvers(atmosphere=adapter),
+        solvers=solvers_with(atmosphere=adapter),
     )
     quantities = by_slug(result)
     density = quantities["air-density"].error
@@ -200,7 +208,7 @@ async def test_q10_a_distribution_that_is_not_installed_reports_no_version(
         shipped_build(),
         aircraft_of("BRYAN", 0.151),
         request("dynamic-pressure"),
-        solvers=Solvers(atmosphere=AtmosphereAdapter(SolverRuntime())),
+        solvers=solvers_with(atmosphere=AtmosphereAdapter(SolverRuntime())),
     )
     (only,) = result.quantities
     assert only.error is not None

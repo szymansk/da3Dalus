@@ -4,15 +4,26 @@ import math
 from collections.abc import Mapping
 
 from aero_kernel.canon.model import CanonModel
-from aero_kernel.context import Context, Solvers
+from aero_kernel.context import Context, Solvers, Value
 from aero_kernel.errors import display_slug
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 
+# The canon formulas that have an implementation (slugs, qualified); grows with each slice.
+IMPLEMENTED = {
+    "calc:weight-from-mass",
+    "calc:air-density-isa",
+    "calc:dynamic-pressure",
+    "calc:mean-geometric-chord",
+    "calc:aspect-ratio",
+    "calc:wing-loading",
+    "calc:airplane-geometry",
+}
+
 
 def inputs_from_model(
-    model: CanonModel, formula_slug: str, by_quantity: Mapping[str, float]
-) -> dict[str, float]:
+    model: CanonModel, formula_slug: str, by_quantity: Mapping[str, Value]
+) -> dict[str, Value]:
     """Build the ``x`` of a formula from the model (Q11): the value of each bound quantity under
     the formula's parameter name.
 
@@ -68,9 +79,14 @@ class StubAtmosphere(AtmosphereAdapter):
         return self.table[altitude_m]
 
 
+def solvers_with(atmosphere: AtmosphereAdapter | None = None) -> Solvers:
+    """Solvers with the given ATM adapter; left out, it is the real one on a fresh runtime."""
+    return Solvers(atmosphere=atmosphere or AtmosphereAdapter(SolverRuntime()))
+
+
 def context_with(atmosphere: AtmosphereAdapter, origin: str = "t") -> Context:
     """A formula context whose ATM adapter is the given one."""
-    return Context(origin=origin, solvers=Solvers(atmosphere=atmosphere))
+    return Context(origin=origin, solvers=solvers_with(atmosphere=atmosphere))
 
 
 def close(actual: float | None, expected: float, rel: float) -> bool:

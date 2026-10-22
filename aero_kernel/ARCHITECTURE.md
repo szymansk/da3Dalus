@@ -272,6 +272,7 @@ Sources:
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
+- the reference wing carried to the centreline (`reference_wing_at_centreline`, `practice`, origin: the quantities of `airplane-geometry`): a mirrored main wing whose root lies off y = 0 is extended to the plane with the root chord, or its stored side crossing y = 0 is clipped there (`detail`: `wing` and `extended_m` or `clipped_m`); the convention changes the planform by that length, so it is declared (ADR 0020)
 - active bounds in the optimiser
 
 The A11 "not validated" marker is the field `QuantityResult.validated`, not a warning.
@@ -448,7 +449,10 @@ quantity.
       never a geometric inference (the provisional planform rule is dropped); the geometry-format change
       gets its own ticket. The type follows the **function**, not the position:
       - `main_wing` — exactly one (biplanes are out of v1; a second `main_wing` is `main_wing_count`);
-        `S_ref`, `b_ref`, `c_MAC` come from it alone;
+        `S_ref`, `b_ref`, `c_MAC` come from it alone, integrated from its sections' chords and leading edges
+        projected onto the x-y plane (twist-independent); a mirrored wing is carried to the centreline (root off
+        y = 0 extended with the root chord, a side crossing y = 0 clipped; maintainer 2026-10-22, team-lead
+        2026-10-23), declared by the warning `reference_wing_at_centreline` (ch. 8.2);
       - `horizontal_tail`;
       - `vertical_tail` — also tip fins and centre fins that carry a rudder or serve directional stability;
       - `v_tail` — counts as **both** a horizontal and a vertical tail;
@@ -977,16 +981,16 @@ one code, one test:
 | code | rule |
 |---|---|
 | `non_finite_number` | NaN or ±inf anywhere in the geometry fields the kernel reads or in `values` (exact leaf path, tuple elements as `[i]`) |
-| `non_positive_length` | a chord ≤ 0; fuselage semi-axes `a`, `b` ≤ 0; a wing whose span — the summed Euclidean length of its `xyz_le` chain — is 0 (path: its `x_secs`) |
+| `non_positive_length` | a chord ≤ 0; a fuselage semi-axis `a`, `b` < 0 at the first or last section, ≤ 0 at an interior section (a lofted fuselage closes to a point or a line at its ends; team-lead 2026-10-22, BRYAN nose/tail points); a wing whose span — the summed Euclidean length of its `xyz_le` chain — is 0 (path: its `x_secs`) |
 | `non_positive_exponent` | a fuselage super-ellipse exponent `n` or `n_lower` ≤ 0 |
 | `non_positive_thickness` | an airfoil of thickness ≤ 0 (inline contour, or NACA thickness digits `00`) |
 | `too_few_sections` | a wing or a fuselage with fewer than two `x_secs` |
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
+| `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 | `missing_surface_type` | a wing without its `surface_type` (D9: required, never inferred) |
 | `main_wing_count` | not exactly one wing of `surface_type` `main_wing` |
-| `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 
 `values` are checked here for finiteness only. **Their admissibility comes from the canon model, never
 from a slug written in code:** a quantity entry may declare `positive: true` (strictly > 0 by definition —

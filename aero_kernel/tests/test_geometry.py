@@ -619,6 +619,7 @@ def test_all_pins_the_public_names() -> None:
             "FuselageXSecSuperEllipse",
             "InlineAirfoil",
             "Servo",
+            "SurfaceType",
             "SpareDetail",
             "TrailingEdgeDevice",
             "Turbulator",
@@ -631,7 +632,9 @@ def test_all_pins_the_public_names() -> None:
         assert hasattr(geometry, name)
 
 
-@pytest.mark.parametrize("name", [n for n in geometry.__all__ if n != "Airfoil"])
+@pytest.mark.parametrize(
+    "name", [n for n in geometry.__all__ if n not in {"Airfoil", "SurfaceType"}]
+)
 def test_docstring_documents_every_attribute(name: str) -> None:
     model = getattr(geometry, name)
     doc = model.__doc__ or ""

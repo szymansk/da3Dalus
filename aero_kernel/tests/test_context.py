@@ -1,13 +1,11 @@
 """Tests of the formula ``Context`` (ARCHITECTURE ch. 8.12)."""
 
 import pytest
-from aero_kernel.context import Context, Solvers
-from aero_kernel.runtime import SolverRuntime
+from aero_kernel.context import Context
 from aero_kernel.schema import WarningSeverity
-from aero_kernel.solvers.atmosphere import AtmosphereAdapter
-from aero_kernel.tests.formula_builders import StubAtmosphere
+from aero_kernel.tests.formula_builders import StubAtmosphere, solvers_with
 
-SOLVERS = Solvers(atmosphere=AtmosphereAdapter(SolverRuntime()))
+SOLVERS = solvers_with()
 
 
 def test_warn_builds_the_catalogue_warning_with_the_origin() -> None:
@@ -55,7 +53,7 @@ def test_the_returned_warnings_are_a_snapshot() -> None:
 
 
 def test_tool_versions_of_an_adapter_tool_are_the_adapters() -> None:
-    solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": "1.2.3"}))
+    solvers = solvers_with(atmosphere=StubAtmosphere({}, {"aerosandbox": "1.2.3"}))
     assert solvers.tool_versions_of("ATM") == {"aerosandbox": "1.2.3"}
 
 

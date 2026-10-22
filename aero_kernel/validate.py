@@ -140,12 +140,23 @@ def _non_finite(node: object, path: str, skip: frozenset[str] = frozenset()) -> 
 
 
 def _not_positive(
-    value: float, path: str, code: str, what: str, unit: str, hint: str
+    value: float,
+    path: str,
+    code: str,
+    what: str,
+    unit: str,
+    hint: str,
+    *,
+    allow_zero: bool = False,
 ) -> list[KernelError]:
-    """Report ``value`` if it is finite and ``<= 0`` (a non-finite value is reported elsewhere)."""
-    if not math.isfinite(value) or value > 0:
+    """Report ``value`` if it is finite and ``<= 0`` (``< 0`` with ``allow_zero``).
+
+    A non-finite value is reported elsewhere.
+    """
+    if not math.isfinite(value) or value > 0 or (allow_zero and value == 0):
         return []
-    message = f"{what} at {path} is {f'{value} {unit}'.rstrip()}; it must be > 0."
+    bound = ">= 0" if allow_zero else "> 0"
+    message = f"{what} at {path} is {f'{value} {unit}'.rstrip()}; it must be {bound}."
     return [_finding(code, path, message, hint, value)]
 
 
@@ -332,18 +343,54 @@ def _wing_findings(wings: Mapping[str, Wing]) -> list[KernelError]:
         last = len(wing.x_secs) - 1
         for index, x_sec in enumerate(wing.x_secs):
             findings += _section_findings(x_sec, f"{path}.x_secs[{index}]", is_last=index == last)
-    return findings
+        findings += _missing_surface_type(wing, key, path)
+    return findings + _main_wing_count(wings)
+
+
+def _missing_surface_type(wing: Wing, key: str, path: str) -> list[KernelError]:
+    """Report a wing without its ``surface_type`` (D9: required, never inferred)."""
+    if wing.surface_type is not None:
+        return []
+    return [
+        _finding(
+            "missing_surface_type",
+            path,
+            f"The wing {key!r} has no surface_type.",
+            "Set surface_type to the function of the wing, e.g. main_wing or horizontal_tail.",
+        )
+    ]
+
+
+def _main_wing_count(wings: Mapping[str, Wing]) -> list[KernelError]:
+    """Report an airplane that does not have exactly one wing of ``surface_type`` ``main_wing``."""
+    count = sum(1 for wing in wings.values() if wing.surface_type == "main_wing")
+    if count == 1:
+        return []
+    logger.debug("finding main_wing_count at airplane.wings: %d", count)
+    return [
+        KernelError(
+            code="main_wing_count",
+            category=ErrorCategory.INVALID_INPUT,
+            input_path="airplane.wings",
+            message=f"The airplane has {count} wings with surface_type main_wing; it needs exactly one.",
+            hint="Mark exactly one wing as main_wing; its area, span and chord are the reference values.",
+            detail={"count": count},
+        )
+    ]
 
 
 def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[KernelError]:
-    """Check the fuselages: section count, positive semi-axes and exponents."""
+    """Check the fuselages: section count, semi-axes (0 allowed at the ends) and exponents."""
     findings: list[KernelError] = []
     for key, fuselage in fuselages.items():
         path = _key_path("airplane.fuselages", key)
         findings += _too_few_sections("Fuselage", key, len(fuselage.x_secs), path)
+        last = len(fuselage.x_secs) - 1
         for index, x_sec in enumerate(fuselage.x_secs):
             section = f"{path}.x_secs[{index}]"
             findings += _non_finite(x_sec, section)
+            # A lofted fuselage closes to a point or a line at its ends (team-lead 2026-10-22).
+            at_end = index in (0, last)
             for axis, size in (("a", x_sec.a), ("b", x_sec.b)):
                 findings += _not_positive(
                     size,
@@ -351,7 +398,8 @@ def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[Kerne
                     "non_positive_length",
                     "Semi-axis",
                     "m",
-                    "Give the semi-axis a length > 0.",
+                    "Give the semi-axis a length >= 0 at an end section, > 0 elsewhere.",
+                    allow_zero=at_end,
                 )
             for name, exponent in (("n", x_sec.n), ("n_lower", x_sec.n_lower)):
                 if exponent is not None:

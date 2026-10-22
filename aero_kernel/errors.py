@@ -90,6 +90,8 @@ CODE_CATALOGUE: Mapping[str, ErrorCategory] = {
     "invalid_airfoil_contour": ErrorCategory.INVALID_INPUT,
     "segment_on_last_section": ErrorCategory.INVALID_INPUT,
     "control_surface_without_device": ErrorCategory.INVALID_INPUT,
+    "missing_surface_type": ErrorCategory.INVALID_INPUT,
+    "main_wing_count": ErrorCategory.INVALID_INPUT,
     "unknown_quantity": ErrorCategory.INVALID_INPUT,
     "not_an_input": ErrorCategory.INVALID_INPUT,
     "not_requestable": ErrorCategory.INVALID_INPUT,
