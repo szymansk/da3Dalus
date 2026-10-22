@@ -22,7 +22,7 @@ from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
 from aero_kernel.solvers.base import SolverAdapter, regime
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,10 @@ V_MIN_MS = 1.0
 V_MAX_MACH = 0.6
 # IPOPT: iteration limit as in the survey scripts; the default convergence tolerance (1e-8).
 MAX_ITERATIONS = 300
+# The NeuralFoil model AeroBuildup evaluates its sections with. ASB's default is "small", the size
+# the goldens were computed with; ARCHITECTURE 8.4 names the largest. The size is a maintainer
+# decision (pending), recorded in Provenance.solver_settings so a changed size is visible.
+NEURALFOIL_MODEL_SIZE = "small"
 # A bound counts as active when the optimum lies within this fraction of the variable's range.
 ACTIVE_BOUND_FRACTION = 1e-6
 
@@ -163,10 +167,10 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     # speed a first estimate implies (one refinement, not a loop); IPOPT's window is then one sweep
     # step wide around that extremum, and an optimum on its edge is an error.
     v_first = math.sqrt(2.0 * abs(lift) / (air.density * reference_area * BRACKET_CL))
-    first = sweep_polar(airplane, air, v_first, grid)
+    first = sweep_polar(airplane, air, v_first, grid, NEURALFOIL_MODEL_SIZE)
     cl_first = abs(first.cl[_bracket(first, upright)])
     v_bracket = math.sqrt(2.0 * abs(lift) / (air.density * reference_area * cl_first))
-    bracket = sweep_polar(airplane, air, v_bracket, grid)
+    bracket = sweep_polar(airplane, air, v_bracket, grid, NEURALFOIL_MODEL_SIZE)
     peak = _bracket(bracket, upright)
     alpha_peak = bracket.alpha_deg[peak]
     low, high = (
@@ -187,6 +191,7 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     aero = asb.AeroBuildup(
         airplane,
         asb.OperatingPoint(atmosphere=FixedAtmosphere(air), velocity=speed, alpha=alpha),
+        model_size=NEURALFOIL_MODEL_SIZE,
     ).run()
     opti.subject_to(aero["L"] == lift)
     opti.minimize(speed)
@@ -210,7 +215,7 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
             )
 
     angles = sorted({*grid, alpha_s})
-    polar = sweep_polar(airplane, air, v_s, angles)
+    polar = sweep_polar(airplane, air, v_s, angles, NEURALFOIL_MODEL_SIZE)
     cl_max = polar.cl[polar.alpha_deg.index(alpha_s)]
     solution = StallSolution(v_s=v_s, cl_max=cl_max, alpha_s=alpha_s, polar=polar)
     diagnostics = WorkerDiagnostics(
@@ -261,7 +266,14 @@ class OptiAdapter(SolverAdapter):
     """
 
     tool: ClassVar[str] = "OPT"
-    requirements: ClassVar[Mapping[str, str]] = {"aerosandbox": "aerosandbox"}
+    requirements: ClassVar[Mapping[str, str]] = {
+        "aerosandbox": "aerosandbox",
+        "neuralfoil": "neuralfoil",
+    }
+
+    def settings(self) -> dict[str, JsonValue]:
+        """The NeuralFoil model size AeroBuildup is evaluated with."""
+        return {"neuralfoil_model_size": NEURALFOIL_MODEL_SIZE}
 
     async def stall(
         self,

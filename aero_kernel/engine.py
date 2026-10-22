@@ -139,6 +139,8 @@ class _Call:
         self.taken: dict[str, Default] = {}
         # the versions of the tools whose formulas this call actually called (ch. 8.4)
         self.tool_versions: dict[str, str] = {}
+        # the settings of those solvers, e.g. the NeuralFoil model size (ch. 8.4)
+        self.solver_settings: dict[str, JsonValue] = {}
         self.nodes: dict[NodeId, Node] = {node.id: node for node in subtree.nodes}
         self.values = {qualify(slug): value for slug, value in aircraft.values.items()}
         self.runs: dict[NodeId, _NodeRun] = {}
@@ -342,6 +344,7 @@ class _Call:
             )
         # A called formula used its tool even if it then fails, like a default (ch. 8.11).
         self.tool_versions.update(self.solvers.tool_versions_of(formula.tool))
+        self.solver_settings.update(self.solvers.settings_of(formula.tool))
         try:
             returned = await implementation.func(inputs, warner)
         except FormulaError as exc:
@@ -720,11 +723,13 @@ def _provenance(
     build: Build,
     defaults: tuple[DefaultUsed, ...] = (),
     tool_versions: Mapping[str, str] | None = None,
+    solver_settings: Mapping[str, JsonValue] | None = None,
 ) -> Provenance:
     """The provenance of a call on a loaded build."""
     return Provenance(
         defaults_used=defaults,
         tool_versions=dict(tool_versions or {}),
+        solver_settings=dict(solver_settings or {}),
         build_digest=build.digest,
         canon_model_hash=build.model.content_hash,
     )
@@ -809,7 +814,9 @@ async def evaluate(
     results.update({r.requested: call.result_of(r) for r in subtree.requested})
     result = ComputeResult(
         quantities=tuple(results[slug] for slug in request.quantities),
-        provenance=_provenance(build, call.defaults_used(), call.tool_versions),
+        provenance=_provenance(
+            build, call.defaults_used(), call.tool_versions, call.solver_settings
+        ),
     )
     log_call(call_id, request, result, started)
     return result

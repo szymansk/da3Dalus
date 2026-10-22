@@ -115,6 +115,14 @@ class SolverAdapter:
             detail={"tool": self.tool, "missing": list(missing)},
         )
 
+    def settings(self) -> dict[str, JsonValue]:
+        """Return the solver settings this adapter fixes (``Provenance.solver_settings``, ch. 8.4).
+
+        Returns:
+            Name -> value; empty if the adapter has no setting that changes a value.
+        """
+        return {}
+
     def tool_versions(self) -> dict[str, str]:
         """Return the installed version per required distribution (provenance, cache key).
 

@@ -110,9 +110,15 @@ async def test_clean_stall_speed_from_the_shipped_canon() -> None:
     assert air.density == RHO
 
 
-async def test_the_provenance_names_the_optimiser_tool_versions() -> None:
+async def test_the_provenance_names_the_optimiser_tool_versions_and_settings() -> None:
     result, _ = await run("stall-speed")
-    assert set(result.provenance.tool_versions) == {"aerosandbox"}
+    assert set(result.provenance.tool_versions) == {"aerosandbox", "neuralfoil"}
+    assert result.provenance.solver_settings == {"neuralfoil_model_size": "small"}
+
+
+async def test_a_request_that_runs_no_solver_has_no_solver_settings() -> None:
+    result, _ = await run("weight")
+    assert result.provenance.solver_settings == {}
 
 
 async def test_takeoff_and_landing_without_flaps_are_the_clean_airplane_not_a_fallback() -> None:

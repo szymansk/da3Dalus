@@ -42,6 +42,20 @@ class Solvers:
     atmosphere: AtmosphereAdapter
     opti: OptiAdapter
 
+    def settings_of(self, tool: str) -> dict[str, JsonValue]:
+        """Return the solver settings of the adapter of a canon tool code (``solver_settings``).
+
+        Args:
+            tool: The canon tool code of a formula, e.g. ``OPT``.
+
+        Returns:
+            Name -> value; empty for a tool whose adapter fixes no setting, and for a pure tool.
+        """
+        for adapter in (self.atmosphere, self.opti):
+            if tool == adapter.tool:
+                return adapter.settings()
+        return {}
+
     def tool_versions_of(self, tool: str) -> dict[str, str]:
         """Return the installed versions of the distributions a canon tool code relies on.
 

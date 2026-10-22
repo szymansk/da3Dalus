@@ -80,3 +80,14 @@ def test_the_optimiser_tool_reports_the_versions_of_its_adapter() -> None:
     solvers = solvers_with(opti=Versioned(SolverRuntime()))
     assert solvers.tool_versions_of("OPT") == {"aerosandbox": "3.2.1"}
     assert solvers.opti.tool == "OPT"
+
+
+def test_solver_settings_of_an_adapter_tool_are_the_adapters() -> None:
+    solvers = solvers_with()
+    assert solvers.settings_of("OPT") == solvers.opti.settings()
+    assert solvers.settings_of("OPT") == {"neuralfoil_model_size": "small"}
+
+
+@pytest.mark.parametrize("tool", ["APP", "GEO", "KAT", "APC", "ATM"])
+def test_a_tool_without_settings_has_none(tool: str) -> None:
+    assert SOLVERS.settings_of(tool) == {}

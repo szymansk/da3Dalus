@@ -15,7 +15,11 @@ __all__ = ["sweep_polar"]
 
 
 def sweep_polar(
-    asb_airplane: object, air: AirState, velocity_ms: float, alphas_deg: Sequence[float]
+    asb_airplane: object,
+    air: AirState,
+    velocity_ms: float,
+    alphas_deg: Sequence[float],
+    model_size: str,
 ) -> Polar:
     """Run AeroBuildup over the angles of attack on an already converted airplane.
 
@@ -27,6 +31,7 @@ def sweep_polar(
         air: The air state.
         velocity_ms: True airspeed in m/s.
         alphas_deg: Angles of attack in degrees, strictly rising.
+        model_size: The NeuralFoil model size AeroBuildup evaluates its sections with.
 
     Returns:
         The polar (CL, CD, Cm as AeroBuildup computes them).
@@ -40,6 +45,7 @@ def sweep_polar(
             velocity=np.full_like(alphas, velocity_ms),
             alpha=alphas,
         ),
+        model_size=model_size,
     ).run()
     return Polar(
         alpha_deg=tuple(float(a) for a in alphas_deg),

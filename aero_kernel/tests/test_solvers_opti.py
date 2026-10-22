@@ -29,7 +29,8 @@ def canned(result: StallSolution) -> object:
 
 async def test_the_adapter_declares_its_tool_and_requirement() -> None:
     assert OptiAdapter.tool == "OPT"
-    assert OptiAdapter.requirements == {"aerosandbox": "aerosandbox"}
+    # NeuralFoil is the model AeroBuildup's sections come from: a tool of the result (ch. 8.4)
+    assert OptiAdapter.requirements == {"aerosandbox": "aerosandbox", "neuralfoil": "neuralfoil"}
 
 
 async def test_the_stall_hands_the_worker_everything_it_needs(
@@ -86,10 +87,19 @@ async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.Mon
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 
-async def test_the_tool_versions_are_aerosandboxs() -> None:
+async def test_the_tool_versions_are_aerosandboxs_and_neuralfoils() -> None:
     assert OptiAdapter(InProcessRuntime()).tool_versions() == {
-        "aerosandbox": importlib.metadata.version("aerosandbox")
+        "aerosandbox": importlib.metadata.version("aerosandbox"),
+        "neuralfoil": importlib.metadata.version("neuralfoil"),
     }
+
+
+async def test_the_adapter_declares_the_neuralfoil_model_size_it_passes() -> None:
+    """ASB's default is "small"; ARCHITECTURE 8.4 decided on the largest (maintainer decision
+    pending, so the constant records the size the goldens were computed with)."""
+    adapter = OptiAdapter(InProcessRuntime())
+    assert adapter.settings() == {"neuralfoil_model_size": opti_module.NEURALFOIL_MODEL_SIZE}
+    assert opti_module.NEURALFOIL_MODEL_SIZE == "small"
 
 
 @pytest.mark.parametrize(

@@ -32,7 +32,7 @@ def test_the_sweep_equals_asbs_own_aerobuildup_in_the_same_air(altitude: float) 
     asb = load_aerosandbox()
     atmosphere, air = isa_air(altitude)
     converted = to_asb_airplane(airplane())
-    polar = sweep_polar(converted, air, 12.0, ALPHAS)
+    polar = sweep_polar(converted, air, 12.0, ALPHAS, "small")
     reference: dict[str, Any] = asb.AeroBuildup(
         converted,
         asb.OperatingPoint(
@@ -49,5 +49,14 @@ def test_the_sweep_equals_asbs_own_aerobuildup_in_the_same_air(altitude: float) 
 
 def test_the_lift_curve_rises_with_alpha_for_a_cambered_wing() -> None:
     _, air = isa_air(0.0)
-    polar = sweep_polar(to_asb_airplane(airplane()), air, 12.0, ALPHAS)
+    polar = sweep_polar(to_asb_airplane(airplane()), air, 12.0, ALPHAS, "small")
     assert polar.cl[0] < polar.cl[len(ALPHAS) // 2] < polar.cl[-3]
+
+
+def test_the_model_size_is_passed_to_aerobuildup() -> None:
+    """A larger NeuralFoil model gives other coefficients: the size reaches AeroBuildup."""
+    _, air = isa_air(0.0)
+    converted = to_asb_airplane(airplane())
+    small = sweep_polar(converted, air, 12.0, ALPHAS, "small")
+    large = sweep_polar(converted, air, 12.0, ALPHAS, "xxxlarge")
+    assert small.cl != large.cl
