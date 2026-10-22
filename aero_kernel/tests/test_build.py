@@ -141,6 +141,7 @@ def test_a_failed_shipped_load_is_not_memoised(
     with pytest.raises(CanonLoadError):
         shipped_build()
     monkeypatch.setattr(load_module, "default_model_path", lambda: FIXTURE)
+    monkeypatch.setattr(build_module, "DEFAULT_REGISTRY", Registry())  # the fixture has no formulas
     assert shipped_build().model.content_hash.startswith("sha256:")
 
 
@@ -284,8 +285,8 @@ def test_cancellation_is_not_a_load_failure(monkeypatch: pytest.MonkeyPatch) -> 
         load_build(FIXTURE, Registry())
 
 
-def test_every_formula_of_the_packaged_model_is_not_implemented_at_build_time() -> None:
-    """Nothing is implemented yet (#1175 brings the formulas): all of them are declared, none run."""
+def test_every_formula_but_the_slice_is_not_implemented_at_build_time() -> None:
+    """Only the three formulas of slice 1 (#1194) are implemented; the other 56 are declared only."""
     from aero_kernel.build import shipped_build
 
     build = shipped_build()
@@ -294,5 +295,6 @@ def test_every_formula_of_the_packaged_model_is_not_implemented_at_build_time() 
         for namespace, content in build.model.namespaces.items()
         for slug in content.formulas
     }
-    assert set(build.report.not_implemented) == declared
-    assert len(build.report.not_implemented) == 59
+    implemented = {"calc:weight-from-mass", "calc:air-density-isa", "calc:dynamic-pressure"}
+    assert set(build.report.not_implemented) == declared - implemented
+    assert len(build.report.not_implemented) == 56

@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -205,12 +206,32 @@ async def test_compute_hands_the_identical_objects_to_the_engine(
     assert build is shipped_build()
 
 
-async def test_the_formulas_package_is_not_imported_by_a_call(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    use_model(monkeypatch, FIXTURE)
-    await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
-    assert "aero_kernel.formulas" not in sys.modules
+def run_script(script: str) -> None:
+    """Run a script in a fresh interpreter (module state of this process is not clean)."""
+    done = subprocess.run(  # fixed interpreter and inline script
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
+    )
+    assert done.returncode == 0, done.stderr
+
+
+async def test_importing_the_kernel_does_not_import_the_formulas() -> None:
+    run_script(
+        "import sys, aero_kernel, aero_kernel.api\n"
+        "assert 'aero_kernel.formulas' not in sys.modules\n"
+    )
+
+
+async def test_the_first_build_imports_the_formulas_and_freezes_the_default_registry() -> None:
+    run_script(
+        "import sys\n"
+        "from aero_kernel.build import shipped_build\n"
+        "from aero_kernel.registry import DEFAULT_REGISTRY\n"
+        "assert not DEFAULT_REGISTRY.frozen\n"
+        "shipped_build()\n"
+        "assert 'aero_kernel.formulas' in sys.modules\n"
+        "assert DEFAULT_REGISTRY.frozen\n"
+        "assert len(DEFAULT_REGISTRY.slugs()) == 3\n"
+    )
 
 
 async def test_the_first_compute_emits_exactly_one_info_record(
