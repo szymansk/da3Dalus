@@ -2,7 +2,9 @@
 
 import pytest
 from aero_kernel.context import Context
+from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
+from aero_kernel.solvers.opti import OptiAdapter
 from aero_kernel.tests.formula_builders import StubAtmosphere, solvers_with
 
 SOLVERS = solvers_with()
@@ -62,7 +64,30 @@ def test_a_pure_tool_has_no_version(tool: str) -> None:
     assert SOLVERS.tool_versions_of(tool) == {}
 
 
-@pytest.mark.parametrize("tool", ["AB", "AVL", "OPT"])
+@pytest.mark.parametrize("tool", ["AB", "AVL"])
 def test_a_tool_without_an_adapter_is_a_defect_not_an_empty_version(tool: str) -> None:
     with pytest.raises(ValueError, match=tool):
         SOLVERS.tool_versions_of(tool)
+
+
+def test_the_optimiser_tool_reports_the_versions_of_its_adapter() -> None:
+    """OPT has an adapter (ch. 8.8): the stall problem runs there, so it reports aerosandbox."""
+
+    class Versioned(OptiAdapter):
+        def tool_versions(self) -> dict[str, str]:
+            return {"aerosandbox": "3.2.1"}
+
+    solvers = solvers_with(opti=Versioned(SolverRuntime()))
+    assert solvers.tool_versions_of("OPT") == {"aerosandbox": "3.2.1"}
+    assert solvers.opti.tool == "OPT"
+
+
+def test_solver_settings_of_an_adapter_tool_are_the_adapters() -> None:
+    solvers = solvers_with()
+    assert solvers.settings_of("OPT") == solvers.opti.settings()
+    assert solvers.settings_of("OPT") == {"neuralfoil_model_size": "xlarge"}
+
+
+@pytest.mark.parametrize("tool", ["APP", "GEO", "KAT", "APC", "ATM"])
+def test_a_tool_without_settings_has_none(tool: str) -> None:
+    assert SOLVERS.settings_of(tool) == {}

@@ -21,6 +21,8 @@ inputs:
   m_current: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   v_s_to: stall-speed-takeoff
   v_to: takeoff-speed
   x_np: neutral-point
@@ -70,7 +72,7 @@ for each mass m (a sweep; the airplane's mass is one point of it):
   x_aft(m):     most aft x_CG trimmable at V_max(m), elevator at delta_e,down     (both given design inputs)
 ```
 
-**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[components]] · [[gravity]] · [[air-density]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[airplane-landing]] · [[elevator-deflection-up]] · [[elevator-deflection-down]] · [[aircraft-mass]] · [[motor-efficiency]]
+**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[components]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[airplane-landing]] · [[elevator-deflection-up]] · [[elevator-deflection-down]] · [[aircraft-mass]] · [[motor-efficiency]]
 
 **Kind: an optimisation problem family, swept over the mass** (maintainer, 2026-10-02 —
 replaces the payload question: payload is *"how much mass may be added"*). Everything that

@@ -24,12 +24,12 @@ from aero_kernel import geometry
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.geometry import Wing
-from aero_kernel.schema import AircraftInput, KernelWarning
+from aero_kernel.schema import AircraftInput, ComputeRequest, KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["Validation", "validate_aircraft", "validate_values"]
+__all__ = ["Validation", "validate_aircraft", "validate_request", "validate_values"]
 
 
 class Validation(BaseModel):
@@ -488,6 +488,44 @@ def validate_aircraft(aircraft: AircraftInput) -> Validation:
     warnings = _mass_warnings(aircraft) + _deflection_warnings(airplane.wings or {})
     logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))
+
+
+def validate_request(request: ComputeRequest) -> tuple[KernelError, ...]:
+    """Report an inadmissible time budget of the request (ch. 8.10).
+
+    Args:
+        request: The parsed request.
+
+    Returns:
+        ``non_finite_number`` or ``non_positive_value`` at ``request.time_budget_s``; empty if the
+        budget is absent or a positive finite number.
+    """
+    budget = request.time_budget_s
+    path = "request.time_budget_s"
+    errors: list[KernelError] = []
+    if budget is None:
+        return tuple(errors)
+    if not math.isfinite(budget):
+        errors.append(
+            _finding(
+                "non_finite_number",
+                path,
+                f"Value at {path} is {budget}; it must be a finite number.",
+                "Give a finite budget in seconds, or leave it out for none.",
+                budget,
+            )
+        )
+    elif budget <= 0:
+        errors.append(
+            _finding(
+                "non_positive_value",
+                path,
+                f"Value at {path} is {budget} s; it must be > 0.",
+                "Give a positive budget in seconds, or leave it out for none.",
+                budget,
+            )
+        )
+    return tuple(errors)
 
 
 def validate_values(values: Mapping[str, float], model: CanonModel) -> tuple[KernelError, ...]:

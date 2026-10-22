@@ -17,7 +17,7 @@ tags:
   - status/draft
   - flag/conflict
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {v_s: null, cl_max: null, alpha_s: null, polar: null}
 applications:
   - id: clean
@@ -32,8 +32,6 @@ applications:
   - id: inverted
     bind: {n_load: {const: -1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"}}
     produce: {v_s: null, cl_max: inverted-max-lift-coefficient, alpha_s: null, polar: null}
-preconditions:
-  - {id: rho_at_evaluation_altitude, parameter: rho, on_violation: warning}
 postconditions:
   - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
   - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error, applications: [inverted]}
@@ -50,11 +48,12 @@ minimize over V, alpha:   V
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[angle-of-attack-stall]] · [[polar-stall]] · [[inverted-max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[max-lift-coefficient-landing]] · [[max-lift-coefficient-takeoff]]  ·  **from** [[airplane]] · [[airplane-takeoff]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]]
+**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[angle-of-attack-stall]] · [[polar-stall]] · [[inverted-max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[max-lift-coefficient-landing]] · [[max-lift-coefficient-takeoff]]  ·  **from** [[airplane]] · [[airplane-takeoff]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
 
 **One relation, two directions.** This entry is the lift balance solved for the speed at the named condition C_L = C_L,max. [[lift-coefficient-required]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
 
-**Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section. Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
+**Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section, with the bound `ρ` and `μ`
+(`Re = ρ·V·c/μ`), and the Mach number from the bound `a` (#1201). Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
 
 **Dimensional check.** ⚪ procedural — an optimisation problem, not an expression
 
@@ -83,7 +82,10 @@ of `C_L` (BRYAN: 1.26 at 12° and 1.07 at 23°). IPOPT from a generic start foun
 not catch it. The canonical evaluation therefore first locates the first `C_L` maximum by an α
 sweep (re-evaluated at the resulting `V_S` for the Reynolds number) and restricts `α` to the
 pre-stall branch. Approval adds: **the optimum must be the first `C_L` peak**, checked against the
-sweep. Since #1181 the check also runs per evaluation (postcondition `optimum_at_first_cl_peak`, and
+sweep. The procedure always runs two bracketing AeroBuildup sweeps — one at the speed a first
+lift-coefficient estimate implies, one at the speed the first sweep's own extremum implies, because the
+first `C_L` extremum moves with the Reynolds number; this is neither a retry nor triggered by a failure,
+and not a fixed point (aero_kernel ARCHITECTURE §8.8, #1201). Since #1181 the check also runs per evaluation (postcondition `optimum_at_first_cl_peak`, and
 `optimum_at_first_cl_trough` for the inverted application), from K32: without it a wrong-branch value
 would be returned silently (ADR 0020).
 
@@ -202,9 +204,15 @@ And it misses often because the lower bound is not a property of the aircraft: g
 
 **Test that settles it.** Sweep C_L,max(V) instead of max-over-all and compare the value at the low end of the range against the high end. If they diverge, the fixed-point iteration is required; if they do not, today's simplification is evidenced rather than assumed.
 
-### `rho` — 🔴 **violated**
+### `rho` — guaranteed by the binding (#1201); no precondition
 
 **Requirement.** The density of the altitude the speed is evaluated at.
+
+**Soll.** `rho`, `mu` and `a` are bound to [[air-density]], [[dynamic-viscosity]] and
+[[speed-of-sound]], whose one producer is [[air-density-isa]] at the one [[altitude]]; a caller cannot
+supply a derived quantity (`not_an_input`, aero_kernel ARCHITECTURE §8.11). The requirement therefore
+holds by construction and the former precondition `rho_at_evaluation_altitude` is deleted: a check that
+can never fire is inert (ADR 0021). The Ist finding below is what the binding resolves.
 
 **Why it decides the answer.** The V-n curve and the speed polar otherwise report two different stall speeds for one aircraft above sea level.
 

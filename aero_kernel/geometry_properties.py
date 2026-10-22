@@ -135,7 +135,7 @@ def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
         span = chain[-1][0] - chain[0][0]
     area = sum(dy * (c1 + c2) / 2.0 for dy, c1, c2 in panels)
     squares = sum(dy * (c1 * c1 + c1 * c2 + c2 * c2) / 3.0 for dy, c1, c2 in panels)
-    if not area > 0.0:
+    if area <= 0.0:
         raise _unsupported(
             f"the main wing {wing.name!r} has no area projected onto the x-y plane",
             "a main wing needs sections at different y; a vertical surface is no main wing",

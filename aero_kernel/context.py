@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
+from aero_kernel.solvers.opti import OptiAdapter
 from pydantic import JsonValue
 
 __all__ = ["Context", "Inputs", "Solvers", "Value"]
@@ -35,9 +36,25 @@ class Solvers:
 
     Attributes:
         atmosphere: The ATM adapter (exact ISA density).
+        opti: The OPT adapter (the stall problem, IPOPT over AeroBuildup).
     """
 
     atmosphere: AtmosphereAdapter
+    opti: OptiAdapter
+
+    def settings_of(self, tool: str) -> dict[str, JsonValue]:
+        """Return the solver settings of the adapter of a canon tool code (``solver_settings``).
+
+        Args:
+            tool: The canon tool code of a formula, e.g. ``OPT``.
+
+        Returns:
+            Name -> value; empty for a tool whose adapter fixes no setting, and for a pure tool.
+        """
+        for adapter in (self.atmosphere, self.opti):
+            if tool == adapter.tool:
+                return adapter.settings()
+        return {}
 
     def tool_versions_of(self, tool: str) -> dict[str, str]:
         """Return the installed versions of the distributions a canon tool code relies on.
@@ -57,8 +74,9 @@ class Solvers:
         """
         if tool in _PURE_TOOLS:
             return {}
-        if tool == self.atmosphere.tool:
-            return dict(self.atmosphere.tool_versions())
+        for adapter in (self.atmosphere, self.opti):
+            if tool == adapter.tool:
+                return dict(adapter.tool_versions())
         msg = f"no solver adapter for the tool {tool}"
         raise ValueError(msg)
 

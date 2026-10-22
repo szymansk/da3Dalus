@@ -7,7 +7,9 @@ from aero_kernel.canon.model import CanonModel
 from aero_kernel.context import Context, Solvers, Value
 from aero_kernel.errors import display_slug
 from aero_kernel.runtime import SolverRuntime
+from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
+from aero_kernel.solvers.opti import OptiAdapter
 
 # The canon formulas that have an implementation (slugs, qualified); grows with each slice.
 IMPLEMENTED = {
@@ -18,6 +20,8 @@ IMPLEMENTED = {
     "calc:aspect-ratio",
     "calc:wing-loading",
     "calc:airplane-geometry",
+    "calc:airplane-configuration",
+    "calc:stall-speed",
 }
 
 
@@ -52,6 +56,11 @@ def inputs_from_model(
     return {wanted[slug]: value for slug, value in given.items()}
 
 
+# Sea-level ISA viscosity and speed of sound, the stub's constants next to its table of densities.
+STUB_VISCOSITY = 1.7894e-5
+STUB_SPEED_OF_SOUND = 340.294
+
+
 class StubAtmosphere(AtmosphereAdapter):
     """An ATM adapter that answers from a table of altitude -> density, and nothing else."""
 
@@ -73,20 +82,31 @@ class StubAtmosphere(AtmosphereAdapter):
         """Return the versions the stub was given."""
         return self.versions
 
-    async def density(self, altitude_m: float) -> float:
-        """Return the tabulated density; an altitude not in the table is a test error."""
+    async def state(self, altitude_m: float) -> AirState:
+        """Return the tabulated density with fixed viscosity and speed of sound (sea-level ISA)."""
         self.asked.append(altitude_m)
-        return self.table[altitude_m]
+        return AirState(
+            density=self.table[altitude_m],
+            dynamic_viscosity=STUB_VISCOSITY,
+            speed_of_sound=STUB_SPEED_OF_SOUND,
+        )
 
 
-def solvers_with(atmosphere: AtmosphereAdapter | None = None) -> Solvers:
-    """Solvers with the given ATM adapter; left out, it is the real one on a fresh runtime."""
-    return Solvers(atmosphere=atmosphere or AtmosphereAdapter(SolverRuntime()))
+def solvers_with(
+    atmosphere: AtmosphereAdapter | None = None, opti: OptiAdapter | None = None
+) -> Solvers:
+    """Solvers with the given adapters; one left out is the real one on a fresh runtime."""
+    return Solvers(
+        atmosphere=atmosphere or AtmosphereAdapter(SolverRuntime()),
+        opti=opti or OptiAdapter(SolverRuntime()),
+    )
 
 
-def context_with(atmosphere: AtmosphereAdapter, origin: str = "t") -> Context:
-    """A formula context whose ATM adapter is the given one."""
-    return Context(origin=origin, solvers=solvers_with(atmosphere=atmosphere))
+def context_with(
+    atmosphere: AtmosphereAdapter, origin: str = "t", opti: OptiAdapter | None = None
+) -> Context:
+    """A formula context whose ATM (and, if given, OPT) adapter is the given one."""
+    return Context(origin=origin, solvers=solvers_with(atmosphere=atmosphere, opti=opti))
 
 
 def close(actual: float | None, expected: float, rel: float) -> bool:

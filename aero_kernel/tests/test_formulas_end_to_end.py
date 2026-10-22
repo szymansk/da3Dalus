@@ -26,7 +26,13 @@ from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityResult, QuantityStatus
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.tests.engine_builders import request
-from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
+from aero_kernel.tests.formula_builders import (
+    STUB_SPEED_OF_SOUND,
+    STUB_VISCOSITY,
+    StubAtmosphere,
+    close,
+    solvers_with,
+)
 from aero_kernel.tests.wing_builders import airplane_document
 
 pytestmark = pytest.mark.asyncio
@@ -35,8 +41,10 @@ ALTITUDE_M = 500.0
 SPEED_MS = 15.0
 RHO_HAND = 1.167268
 Q_HAND = 131.3177
+MU_HAND = 1.773656e-05  # Sutherland: 1.458e-6 T^1.5 / (T + 110.4) at T = 284.9 K
+A_HAND = 338.3678  # sqrt(1.4 * 287.05 * 284.9)
 FLEET = [("BRYAN", 0.151, 1.48080415), ("JAGUAR", 0.160, 1.569064)]
-SLUGS = ("weight", "air-density", "dynamic-pressure")
+SLUGS = ("weight", "air-density", "dynamic-pressure", "dynamic-viscosity", "speed-of-sound")
 
 
 def aircraft_of(name: str, mass_kg: float) -> AircraftInput:
@@ -53,7 +61,14 @@ def by_slug(result: ComputeResult) -> dict[str, QuantityResult]:
     return {q.slug: q for q in result.quantities}
 
 
-def check(result: ComputeResult, weight_n: float, rho: float, q: float, rel: float) -> None:
+def check(
+    result: ComputeResult,
+    weight_n: float,
+    rho: float,
+    q: float,
+    rel: float,
+    air: tuple[float, float] = (MU_HAND, A_HAND),
+) -> None:
     quantities = by_slug(result)
     assert all(r.status is QuantityStatus.OK for r in quantities.values()), result
     assert close(quantities["weight"].value, weight_n, 1e-12)
@@ -62,6 +77,10 @@ def check(result: ComputeResult, weight_n: float, rho: float, q: float, rel: flo
     assert quantities["air-density"].unit == "kg/m^3"
     assert close(quantities["dynamic-pressure"].value, q, rel)
     assert quantities["dynamic-pressure"].unit == "Pa"
+    assert close(quantities["dynamic-viscosity"].value, air[0], rel)
+    assert quantities["dynamic-viscosity"].unit == "Pa*s"
+    assert close(quantities["speed-of-sound"].value, air[1], rel)
+    assert quantities["speed-of-sound"].unit == "m/s"
     assert quantities["air-density"].tool == "ATM"
     assert quantities["weight"].tool == "APP"
     assert [d.slug for d in result.provenance.defaults_used] == ["gravity"]
@@ -77,7 +96,8 @@ async def test_the_fleet_through_the_engine_with_a_stub_atmosphere(
     result = await evaluate(
         shipped_build(), aircraft_of(name, mass_kg), request(*SLUGS), solvers=solvers
     )
-    check(result, weight_n, RHO_HAND, 0.5 * RHO_HAND * SPEED_MS**2, rel=1e-12)
+    stub_air = (STUB_VISCOSITY, STUB_SPEED_OF_SOUND)  # the stub answers sea-level mu and a
+    check(result, weight_n, RHO_HAND, 0.5 * RHO_HAND * SPEED_MS**2, rel=1e-12, air=stub_air)
     assert close(Q_HAND, 0.5 * RHO_HAND * SPEED_MS**2, 1e-6)
     assert stub.asked == [ALTITUDE_M]
 
@@ -100,7 +120,7 @@ async def test_a_missing_altitude_fails_density_and_pressure_but_not_weight() ->
 async def test_everything_else_is_still_not_implemented() -> None:
     solvers = solvers_with(atmosphere=StubAtmosphere({}))
     result = await evaluate(
-        shipped_build(), aircraft_of("BRYAN", 0.151), request("stall-speed"), solvers=solvers
+        shipped_build(), aircraft_of("BRYAN", 0.151), request("neutral-point"), solvers=solvers
     )
     (only,) = result.quantities
     assert only.status is QuantityStatus.ERROR

@@ -15,7 +15,7 @@ from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 
 
 class FakeAtmosphere:
-    """Stands in for ``asb.Atmosphere``: records its arguments, density = 2 * altitude / 1000."""
+    """Stands in for ``asb.Atmosphere``: records its arguments, density = 1 + altitude / 1000."""
 
     calls: list[tuple[float, str]] = []  # noqa: RUF012  # test spy, reset by the fixture
 
@@ -26,7 +26,13 @@ class FakeAtmosphere:
         FakeAtmosphere.calls.append((altitude, method))
 
     def density(self) -> float:
-        return 2.0 * self.altitude / 1000.0
+        return 1.0 + self.altitude / 1000.0
+
+    def dynamic_viscosity(self) -> float:
+        return 1.0e-5 + self.altitude * 1.0e-9
+
+    def speed_of_sound(self) -> float:
+        return 300.0 + self.altitude / 1000.0
 
 
 @pytest.fixture
@@ -45,9 +51,10 @@ def test_the_adapter_declares_its_tool_and_requirement() -> None:
 
 
 @pytest.mark.asyncio
-async def test_density_asks_the_exact_isa_for_the_altitude(fake_aerosandbox: None) -> None:
-    density = await AtmosphereAdapter(SolverRuntime()).density(1500.0)
-    assert density == 3.0
+async def test_state_asks_the_exact_isa_for_the_altitude(fake_aerosandbox: None) -> None:
+    air = await AtmosphereAdapter(SolverRuntime()).state(1500.0)
+    assert (air.density, air.speed_of_sound) == (2.5, 301.5)
+    assert math.isclose(air.dynamic_viscosity, 1.15e-05, rel_tol=1e-12)
     assert FakeAtmosphere.calls == [(1500.0, "isa")]
 
 
@@ -58,7 +65,7 @@ async def test_an_altitude_outside_the_isa_range_is_invalid_input(
 ) -> None:
     adapter = AtmosphereAdapter(SolverRuntime())
     with pytest.raises(FormulaError) as raised:
-        await adapter.density(altitude)
+        await adapter.state(altitude)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
     assert raised.value.parameter == "h"
     assert raised.value.detail is not None
@@ -70,7 +77,9 @@ async def test_an_altitude_outside_the_isa_range_is_invalid_input(
 async def test_the_range_limits_belong_to_the_range(
     fake_aerosandbox: None, altitude: float
 ) -> None:
-    assert await AtmosphereAdapter(SolverRuntime()).density(altitude) == 2.0 * altitude / 1000.0
+    assert (
+        await AtmosphereAdapter(SolverRuntime()).state(altitude)
+    ).density == 1.0 + altitude / 1000.0
 
 
 @pytest.mark.asyncio
@@ -78,7 +87,7 @@ async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.Mon
     monkeypatch.setattr(AtmosphereAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
     adapter = AtmosphereAdapter(SolverRuntime())
     with pytest.raises(FormulaError) as raised:
-        await adapter.density(100.0)
+        await adapter.state(100.0)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 
@@ -97,8 +106,14 @@ async def test_the_real_isa_matches_the_hand_computed_troposphere(altitude: floa
     temperature = 288.15 - lapse * altitude
     pressure = 101325.0 * (temperature / 288.15) ** (gravity / (gas_constant * lapse))
     hand: float = pressure / (gas_constant * temperature)
-    density = await AtmosphereAdapter(SolverRuntime()).density(altitude)
-    assert math.isclose(density, hand, rel_tol=5e-4)
+    air = await AtmosphereAdapter(SolverRuntime()).state(altitude)
+    assert math.isclose(air.density, hand, rel_tol=5e-4)
+    # Sutherland's law and the speed of sound of an ideal gas, with the same temperature:
+    # mu = 1.458e-6 T^1.5 / (T + 110.4) Pa s; a = sqrt(1.4 R T), R = 287.05 J/(kg K).
+    assert math.isclose(
+        air.dynamic_viscosity, 1.458e-6 * temperature**1.5 / (temperature + 110.4), rel_tol=1e-4
+    )
+    assert math.isclose(air.speed_of_sound, math.sqrt(1.4 * 287.05 * temperature), rel_tol=1e-4)
 
 
 @pytest.mark.asyncio
@@ -114,6 +129,6 @@ async def test_the_import_runs_off_the_event_loop_thread(
         return real_import(name, package)
 
     monkeypatch.setattr(atmosphere_module.importlib, "import_module", recording)
-    await AtmosphereAdapter(SolverRuntime()).density(100.0)
+    await AtmosphereAdapter(SolverRuntime()).state(100.0)
     assert [name for name, _ in imported_on] == ["aerosandbox"]
     assert imported_on[0][1] != threading.get_ident()

@@ -13,13 +13,16 @@ from aero_kernel.registry import Registry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeRequest
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
+from aero_kernel.solvers.opti import OptiAdapter
 from aero_kernel.tests.graph_builders import formula, model_of, quantity
 from aero_kernel.tests.wing_builders import main_wing_document
 
 Impl = Callable[[Inputs, Context], Coroutine[object, object, Mapping[str, object]]]
 
 # For the engine tests whose stub formulas use no solver; the runtime never starts a thread or a pool.
-NO_SOLVERS = Solvers(atmosphere=AtmosphereAdapter(SolverRuntime()))
+NO_SOLVERS = Solvers(
+    atmosphere=AtmosphereAdapter(SolverRuntime()), opti=OptiAdapter(SolverRuntime())
+)
 
 
 def num(x: Inputs, name: str) -> float:

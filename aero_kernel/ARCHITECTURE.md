@@ -329,7 +329,10 @@ No internal paths or mechanisms in any field (ADR 0019).
   could not be loaded (every quantity is then `internal`)
 - tool versions (aerosandbox, NeuralFoil model, AVL): one non-empty version string per tool **the call actually
   used**; empty when only pure formulas ran
-- solver settings (e.g. the NeuralFoil model size the adapters use, fixed to the largest in v1)
+- solver settings (e.g. the NeuralFoil model size the adapters use: `xlarge` in v1, the author's default at the knee
+  of speed versus accuracy, Sharpe 2024, PhD thesis ch. 7, Table 7.1; maintainer 2026-10-22. It is a named constant of the
+  OPT adapter, recorded in `solver_settings`; a caller-selectable accuracy level comes only when a caller needs it. The
+  airfoil scoring, #821, uses `xxxlarge` on purpose: it is precomputed)
 - `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 
 **Cache key** = SHA-256 over the canonical JSON of:
@@ -631,7 +634,8 @@ caller's responsibility.
     async subprocess in its own process group and temp dir, killed and cleaned up on cancellation or
     timeout, Q17; the AVL adapter is its first user); and `regime(chords_m, v, speed_of_sound,
     kinematic_viscosity) -> list[KernelWarning]` (ADR 0028 check, ch. 8.2; the atmosphere values come from
-    the caller, the ISA is the ATM formula's). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
+    the caller, the ISA is the ATM formula's: `air-density-isa` outputs `rho`, `mu` and `a`, the solver entries
+    bind them, and the kinematic viscosity is `mu / rho` of the bound values, never recomputed from the altitude). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
     or > 10⁶), `reynolds_bubble_sensitive` (practice, 3·10⁴ ≤ Re < 7·10⁴; below the band `reynolds_outside_band`
     alone applies), `mach_above_limit` (practice,
     0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
@@ -648,8 +652,15 @@ caller's responsibility.
     second, hand-written ISA in the kernel. Its `requirements` include aerosandbox, so a missing ASB is
     `tool_unavailable`; fast-tier tests stub the adapter, the hand-computed COESA check runs against the
     real adapter in the `aero` tier.
-  - **#1175 adds the domain methods** (`aerobuildup.sweep`, `avl.stability`, `opti.solve` …), each built on
-    the base, alongside the first formula that needs it.
+  - **#1175 adds the domain methods** (`opti.stall` with `stall-speed`; `aerobuildup.sweep` arrives with
+    `aerobuildup-evaluation`, the first formula that calls AeroBuildup itself; `avl.stability` …), each built
+    on the base, alongside the first formula that needs it. Until then AeroBuildup is reached only inside
+    the stall worker, through `solvers.aerobuildup.sweep_polar`, the one place that evaluates it.
+  - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
+    the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
+    extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
+    inverted trough lay about three sweep steps outside IPOPT's window. It is unconditional (never
+    triggered by a failure) and not a fixed point; an optimum on the edge of the window is still an error.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
     the quantity of the node whose call produced them.
 - Data: KAT (the fitted components) and APC (the fitted propeller's measured table) are **plain reads of
@@ -832,10 +843,11 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - Work already running in the process pool is allowed to finish but its result is discarded, because
     pool workers cannot be interrupted safely.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
-- **Time budget** (built with the solver path, the first step whose formulas can be slow; until then
-  `ComputeRequest` has no `time_budget_s` field — no field without behaviour, ADR 0021). `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
-  the whole request, enforced with `asyncio.timeout`. Quantities still open when it expires get
-  `error.category = timeout`; quantities already finished are returned.
+- **Time budget** (built with the solver path, #1201). `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
+  the whole request, enforced with `asyncio.timeout` around the graph run. A budget that is not a finite number > 0 is an
+  input error (`non_finite_number` / `non_positive_value`, `input_path` `request.time_budget_s`). Quantities still open when it expires, and
+  those waiting for them, get `error.category = timeout`; quantities already finished are returned, also when their
+  layer did not complete. The running tasks are cancelled; pool jobs finish and are discarded.
 - **Cache under concurrency (`CachedKernel` only).** The cache is used from the event loop only, so it needs no lock. **In-flight
   deduplication** (mode `use`): when two concurrent requests need the same key, the second awaits the first
   one's future instead of computing it again.
@@ -1053,7 +1065,7 @@ requested output is its own `QuantityResult`. Requesting two outputs of the same
 ```python
 @formula("stall-speed")
 async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
-    polar = await ctx.solvers.aerobuildup.sweep(x["airplane"], ...)   # leaves the loop
+    stall = await ctx.solvers.opti.stall(x["airplane"], ...)   # leaves the loop
     ...
     return {"stall_speed": v_s, "cl_max": cl_max}       # output parameter names, snake_case
 ```

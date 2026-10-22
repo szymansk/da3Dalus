@@ -599,6 +599,7 @@ def test_all_pins_the_public_names() -> None:
             "Interval",
             "KernelError",
             "KernelWarning",
+            "Polar",
             "Provenance",
             "QuantityResult",
             "QuantityStatus",

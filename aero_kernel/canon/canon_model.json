@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:a76202596e25cc42c9805d4be636f6672babbf4a822305af48a89c4acffcc5db",
+  "content_hash": "sha256:eed7452bbc0ddd00a5f73dfe9469b3109cb3a11bff0988146bcaee3ec7223e0f",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -88,8 +88,10 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "alpha": "calc:angle-of-attack",
+                "mu": "calc:dynamic-viscosity",
                 "rho": "calc:air-density",
                 "v": "calc:flight-speed"
               },
@@ -108,8 +110,10 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "alpha": "calc:angle-of-attack",
+            "mu": "calc:dynamic-viscosity",
             "rho": "calc:air-density",
             "v": "calc:flight-speed"
           },
@@ -203,6 +207,8 @@
               "given": null,
               "id": "default",
               "produce": {
+                "a": "calc:speed-of-sound",
+                "mu": "calc:dynamic-viscosity",
                 "rho": "calc:air-density"
               },
               "when": null
@@ -217,6 +223,8 @@
           "kind": "law",
           "optional": [],
           "outputs": {
+            "a": "calc:speed-of-sound",
+            "mu": "calc:dynamic-viscosity",
             "rho": "calc:air-density"
           },
           "postconditions": [],
@@ -1370,6 +1378,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "airplane_ldg": "calc:airplane-landing",
                 "airplane_to": "calc:airplane-takeoff",
@@ -1382,6 +1391,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m_current": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
@@ -1426,6 +1436,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "airplane_ldg": "calc:airplane-landing",
             "airplane_to": "calc:airplane-takeoff",
@@ -1438,6 +1449,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m_current": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
@@ -2488,9 +2500,11 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": {
                   "const": 1.0,
                   "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
@@ -2509,9 +2523,11 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane-takeoff",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": {
                   "const": 1.0,
                   "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
@@ -2530,9 +2546,11 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane-landing",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": {
                   "const": 1.0,
                   "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
@@ -2551,9 +2569,11 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": {
                   "const": -1.0,
                   "source": "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"
@@ -2575,9 +2595,11 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "n_load": null,
             "rho": "calc:air-density"
           },
@@ -2623,14 +2645,7 @@
               "parameter": "cl_max"
             }
           ],
-          "preconditions": [
-            {
-              "applications": null,
-              "id": "rho_at_evaluation_altitude",
-              "on_violation": "warning",
-              "parameter": "rho"
-            }
-          ],
+          "preconditions": [],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [],
@@ -3330,6 +3345,14 @@
           "uncertainty": null,
           "unit": "Pa"
         },
+        "dynamic-viscosity": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "mu",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "Pa*s"
+        },
         "elevator-deflection-down": {
           "positive": null,
           "role": "input",
@@ -3873,6 +3896,14 @@
           "type": "curve",
           "uncertainty": null,
           "unit": "N"
+        },
+        "speed-of-sound": {
+          "positive": null,
+          "role": "derived",
+          "symbol": "a",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m/s"
         },
         "speed-range-over-mass": {
           "positive": null,

@@ -31,6 +31,7 @@ VOCABULARIES = {
         "N*m",
         "N/m",
         "Pa",
+        "Pa*s",
         "kg/m^3",
         "W",
         "V",
