@@ -16,10 +16,13 @@ async def air_density_isa(x: Inputs, ctx: Context) -> dict[str, float]:
         ctx: The formula context; ``ctx.solvers.atmosphere`` is the ISA tool.
 
     Returns:
-        ``rho`` the air density in kg/m^3 (canon quantity ``air-density``).
+        ``rho`` the air density in kg/m^3 (``air-density``), ``mu`` the dynamic viscosity in Pa s
+        (``dynamic-viscosity``) and ``a`` the speed of sound in m/s (``speed-of-sound``), all of
+        the ISA at the altitude.
 
     Raises:
         FormulaError: From the adapter, unchanged (``tool_unavailable``, or ``invalid_input``
             for an altitude outside the ISA range).
     """
-    return {"rho": (await ctx.solvers.atmosphere.state(number(x, "h"))).density}
+    air = await ctx.solvers.atmosphere.state(number(x, "h"))
+    return {"rho": air.density, "mu": air.dynamic_viscosity, "a": air.speed_of_sound}

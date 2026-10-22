@@ -19,6 +19,8 @@ from aero_kernel.registry import DEFAULT_REGISTRY
 from aero_kernel.solvers.air import AirState
 from aero_kernel.tests.formula_builders import (
     IMPLEMENTED,
+    STUB_SPEED_OF_SOUND,
+    STUB_VISCOSITY,
     StubAtmosphere,
     close,
     context_with,
@@ -50,7 +52,7 @@ async def test_air_density_isa_asks_the_atmosphere_adapter_for_the_altitude() ->
     atmosphere = StubAtmosphere({1000.0: 1.1116})
     x = inputs_from_model(MODEL, "air-density-isa", {"altitude": 1000.0})
     result = await air_density_isa(x, context_with(atmosphere))
-    assert result == {"rho": 1.1116}
+    assert result == {"rho": 1.1116, "mu": STUB_VISCOSITY, "a": STUB_SPEED_OF_SOUND}
     assert atmosphere.asked == [1000.0]
 
 

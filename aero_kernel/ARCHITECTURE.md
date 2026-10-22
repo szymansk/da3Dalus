@@ -631,7 +631,8 @@ caller's responsibility.
     async subprocess in its own process group and temp dir, killed and cleaned up on cancellation or
     timeout, Q17; the AVL adapter is its first user); and `regime(chords_m, v, speed_of_sound,
     kinematic_viscosity) -> list[KernelWarning]` (ADR 0028 check, ch. 8.2; the atmosphere values come from
-    the caller, the ISA is the ATM formula's). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
+    the caller, the ISA is the ATM formula's: `air-density-isa` outputs `rho`, `mu` and `a`, the solver entries
+    bind them, and the kinematic viscosity is `mu / rho` of the bound values, never recomputed from the altitude). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
     or > 10⁶), `reynolds_bubble_sensitive` (practice, 3·10⁴ ≤ Re < 7·10⁴; below the band `reynolds_outside_band`
     alone applies), `mach_above_limit` (practice,
     0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
