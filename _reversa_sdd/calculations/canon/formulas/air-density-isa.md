@@ -5,7 +5,7 @@ kind: law
 tool: ATM
 shape: law
 status: approved
-output: air-density
+output: air-density, dynamic-viscosity, speed-of-sound
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -16,22 +16,36 @@ tags:
   - kind/law
   - status/approved
 inputs: {h: altitude}
-outputs: {rho: air-density}
+outputs: {rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 ---
 
-# ISA air density at altitude
+# ISA air density, dynamic viscosity and speed of sound at altitude
 
 **Canonical form**
 
 ```
-rho = rho_ISA(h)   [U.S. 1976 COESA standard atmosphere]
+rho = rho_ISA(h)                          [U.S. 1976 COESA standard atmosphere]
+T   = T_ISA(h)                            (same model, same altitude)
+mu  = beta * T^(3/2) / (T + S),           beta = 1.458e-6 kg/(m*s*K^(1/2)),  S = 110.4 K   (Sutherland)
+a   = sqrt(gamma * R * T),                gamma = 1.4,  R = 287.053 J/(kg*K)   (sea level: mu = 1.7894e-5 Pa*s, a = 340.29 m/s)
 ```
 
-**Produces** [[air-density]]  ·  **from** [[altitude]]
+**Produces** [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]  ·  **from** [[altitude]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. Not a procedure. rho_ISA(h) is a closed form — the barometric formula over a piecewise-linear lapse-rate table, closed with the ideal gas law. AeroSandbox even ships that exact closed form (`method='isa'`, _isa_atmo_functions.py:62). It was classified as a procedure only because the formula sits behind a library call the parser could not read. Caveat worth keeping in the canon: no call site in this repo passes `method=`, so every rho in the app comes from the *default* `method='differentiable'` path, which is a cubic-B-spline surrogate of that law, not the law itself — see `method` and `convergence` below.
+
+**Three outputs of one atmosphere (maintainer, 2026-10-22, #1201).** Density, dynamic viscosity and speed
+of sound come from the same ISA temperature and pressure at the same altitude, so every solver that forms
+a Reynolds number (`ρ·V·c/μ`) or a Mach number (`V/a`) gets all three from one evaluation. They are this
+entry's outputs and the solver entries bind them as inputs; no adapter derives a viscosity or a speed of
+sound of its own from an altitude or inverts a density (one producer per quantity, ADR 0022). The
+viscosity is Sutherland's law and the speed of sound the ideal-gas relation, both on the ISA temperature
+(U.S. Standard Atmosphere 1976, Eq. 50–51), as `asb.Atmosphere(method="isa").dynamic_viscosity()` and
+`.speed_of_sound()` evaluate them (`atmosphere.py:199-227`; γ fixed at 1.4). Sutherland's law holds to
+about 2 % between 170 K and 1900 K (White, *Viscous Fluid Flow*, cited there) — the whole RC/UAV
+altitude band.
 
 **Canonical model (O5, maintainer 2026-10-05).** The exact ISA, `asb.Atmosphere(altitude=h, method="isa")`. The
 differentiable spline surrogate below is today's Ist and is to be replaced (register K30): altitude is fixed per
