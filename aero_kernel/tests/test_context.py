@@ -1,13 +1,13 @@
 """Tests of the formula ``Context`` (ARCHITECTURE ch. 8.12)."""
 
 import pytest
-from aero_kernel.context import Context, Solvers
+from aero_kernel.context import Context
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
-from aero_kernel.solvers.atmosphere import AtmosphereAdapter
-from aero_kernel.tests.formula_builders import StubAtmosphere
+from aero_kernel.solvers.geometry import GeometryAdapter
+from aero_kernel.tests.formula_builders import StubAtmosphere, solvers_with
 
-SOLVERS = Solvers(atmosphere=AtmosphereAdapter(SolverRuntime()))
+SOLVERS = solvers_with()
 
 
 def test_warn_builds_the_catalogue_warning_with_the_origin() -> None:
@@ -55,11 +55,11 @@ def test_the_returned_warnings_are_a_snapshot() -> None:
 
 
 def test_tool_versions_of_an_adapter_tool_are_the_adapters() -> None:
-    solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": "1.2.3"}))
+    solvers = solvers_with(atmosphere=StubAtmosphere({}, {"aerosandbox": "1.2.3"}))
     assert solvers.tool_versions_of("ATM") == {"aerosandbox": "1.2.3"}
 
 
-@pytest.mark.parametrize("tool", ["APP", "GEO", "KAT", "APC"])
+@pytest.mark.parametrize("tool", ["APP", "KAT", "APC"])
 def test_a_pure_tool_has_no_version(tool: str) -> None:
     assert SOLVERS.tool_versions_of(tool) == {}
 
@@ -68,3 +68,15 @@ def test_a_pure_tool_has_no_version(tool: str) -> None:
 def test_a_tool_without_an_adapter_is_a_defect_not_an_empty_version(tool: str) -> None:
     with pytest.raises(ValueError, match=tool):
         SOLVERS.tool_versions_of(tool)
+
+
+def test_the_geometry_tool_reports_the_versions_of_its_adapter() -> None:
+    """GEO has an adapter (ch. 8.8), so it is no pure tool: it reports aerosandbox like ATM."""
+
+    class Versioned(GeometryAdapter):
+        def tool_versions(self) -> dict[str, str]:
+            return {"aerosandbox": "3.2.1"}
+
+    solvers = solvers_with(geometry=Versioned(SolverRuntime()))
+    assert solvers.tool_versions_of("GEO") == {"aerosandbox": "3.2.1"}
+    assert solvers.geometry.tool == "GEO"

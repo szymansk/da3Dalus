@@ -19,6 +19,7 @@ from aero_kernel.schema import (
     QuantityStatus,
 )
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
+from aero_kernel.solvers.geometry import GeometryAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -67,5 +68,10 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
     # returning, also on cancellation.
     async with SolverRuntime() as runtime:
         return await evaluate(
-            build, aircraft, request, solvers=Solvers(atmosphere=AtmosphereAdapter(runtime))
+            build,
+            aircraft,
+            request,
+            solvers=Solvers(
+                atmosphere=AtmosphereAdapter(runtime), geometry=GeometryAdapter(runtime)
+            ),
         )
