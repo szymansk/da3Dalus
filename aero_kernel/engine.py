@@ -13,6 +13,7 @@ import time
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 from aero_kernel.build import Build
 from aero_kernel.canon.model import ConstBinding, Default, Formula
@@ -39,6 +40,7 @@ from aero_kernel.graph import (
     facts_from_geometry,
     unmet_condition,
 )
+from aero_kernel.registry import CheckResult
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -296,8 +298,14 @@ class _Call:
         if inherited is not None:
             return inherited
 
-        warner = Context(origin=display_slug(node.produces[0].quantity), solvers=self.solvers)
+        origin = display_slug(node.produces[0].quantity)
+        warner = Context(origin=origin, solvers=self.solvers)
         default_warnings = self._take_defaults(defaults)
+        pre_warnings, refused = self._run_checks("pre", node, formula, inputs, None, origin)
+        if refused is not None:
+            return self._failed(
+                anchor, lambda slug, error=refused: error.model_copy(update={"quantity": slug})
+            )
         # A called formula used its tool even if it then fails, like a default (ch. 8.11).
         self.tool_versions.update(self.solvers.tool_versions_of(formula.tool))
         try:
@@ -311,12 +319,93 @@ class _Call:
                 ),
             )
         self._check_outputs(node, formula, returned)
+        post_warnings, discarded = self._run_checks("post", node, formula, inputs, returned, origin)
+        if discarded is not None:
+            return self._failed(
+                anchor, lambda slug, error=discarded: error.model_copy(update={"quantity": slug})
+            )
         return _NodeRun(
             outcome=NodeOutcome(status=QuantityStatus.OK),
             anchor=anchor,
             outputs=returned,
-            warnings=(*default_warnings, *warner.warnings),
+            warnings=(*default_warnings, *pre_warnings, *warner.warnings, *post_warnings),
         )
+
+    def _run_checks(
+        self,
+        kind: Literal["pre", "post"],
+        node: Node,
+        formula: Formula,
+        inputs: Inputs,
+        outputs: Mapping[str, object] | None,
+        origin: str,
+    ) -> tuple[list[KernelWarning], KernelError | None]:
+        """Run the pre- or postconditions of an application (ch. 8.5, Q25).
+
+        Only the checks whose ``applications`` include this one run (absent = all). A check the
+        canon declares and the registry lacks is ``unchecked``, never silently held (ADR 0020).
+        ``unchecked`` and, with ``on_violation: warning``, ``violated`` give a warning and the value
+        stays; ``violated`` with ``on_violation: error`` gives the error (for a postcondition the
+        caller discards every output of the application).
+
+        Returns:
+            The warnings, and the error of the first violated ``error`` check, if any.
+        """
+        what = "precondition" if kind == "pre" else "postcondition"
+        declared = formula.preconditions if kind == "pre" else formula.postconditions
+        registered = self.build.registry.checks(node.id.formula, kind)
+        formula_slug = display_slug(node.id.formula)
+        warnings: list[KernelWarning] = []
+        for entry in declared:
+            if entry.applications is not None and node.id.application not in entry.applications:
+                continue
+            function = registered.get(entry.id)
+            if function is None:
+                result = CheckResult(
+                    state="unchecked", message=f"no implementation of the {what} is registered"
+                )
+            elif kind == "pre":
+                result = function(inputs)
+            else:
+                assert outputs is not None  # a postcondition runs after the implementation
+                result = function(inputs, outputs)
+            logger.debug("%s %s: %s", what, entry.id, result.state, extra={"call_id": self.call_id})
+            detail: dict[str, JsonValue] = {what: entry.id}
+            if result.state == "held":
+                continue
+            if result.state == "unchecked":
+                warnings.append(
+                    KernelWarning.of(
+                        f"{what}_unchecked",
+                        f"The {what} `{entry.id}` of `{formula_slug}` was not checked: {result.message}",
+                        origin=origin,
+                        detail=detail,
+                    )
+                )
+            elif entry.on_violation == "warning":
+                warnings.append(
+                    KernelWarning.of(
+                        f"{what}_violated",
+                        f"The {what} `{entry.id}` of `{formula_slug}` is violated: {result.message}",
+                        origin=origin,
+                        detail=detail,
+                    )
+                )
+            else:
+                return warnings, KernelError(
+                    code=f"{what}_violated",
+                    category=ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                    formula=formula_slug,
+                    application=node.id.application,
+                    message=f"The {what} `{entry.id}` of `{formula_slug}` is violated: {result.message}",
+                    hint=(
+                        "Change the inputs so that the formula applies."
+                        if kind == "pre"
+                        else "The value was discarded; the evaluation is not trustworthy."
+                    ),
+                    detail=detail,
+                )
+        return warnings, None
 
     def _inherit(self, node: Node, anchor: str, status: QuantityStatus) -> _NodeRun | None:
         """The run of a node that inherits ``status`` from a predecessor it reads, if it does."""
