@@ -69,43 +69,43 @@ Command: `python export_bryan.py --speed 7.82 --elevator-throw-deg 14.0 --ailero
 | `aero/ref` `span` | 0.54603142 | ASB geometry, projected onto the x-y plane; passed explicitly to AVL and AeroBuildup (y extent) |
 | `aero/ref` `area` | 0.0699048 | ASB geometry, projected onto the x-y plane; passed explicitly to AVL and AeroBuildup (x-y projected planform) |
 | `aero/ref` `speed` | 7.82 | level flight at 7.82 m/s, C_L = m g / (q S_ref) = 0.5656: speed at which CD_prof is valid |
-| `aero/misc` `Alpha_0` | 0.03852971 | AVL Alpha at the trim point [rad]; trim elevator baked into stick zero |
+| `aero/misc` `Alpha_0` | 0.03852989 | AVL Alpha at the trim point [rad]; trim elevator baked into stick zero |
 | `aero/misc` `eta_loc` | 0.45364777 | geometry: 2 * area-centroid y of the half wing / span (stock models use 0.25-0.3) |
 | `aero/misc` `CG_arm` | 0.06410008 | geometry: (x_CG - x_AC,wing) / c_ref (stalled wing lift acts at the wing AC) |
 | `aero/misc` `span_eff` | 0.95 | min(0.95 * AVL e, 0.95): AVL e = 1.004 (>= 1 is AVL's discretisation overshoot, see MAPPING notes); CRRCSim documents 0.95 for conventional aft-tail planes |
 | `aero/m` `Cm_0` | 0.0 | AVL Cmtot at the trim point (0 by the elevator trim) |
 | `aero/m` `Cm_a` | -0.288086 | AVL ST `Cma` [1/rad] |
 | `aero/m` `Cm_q` | -6.425376 | AVL ST `Cmq` (q c/2V) |
-| `aero/m` `Cm_de` | -0.449568 | Cmd02: AVL ST d02 (elevator) x 14.0 deg / 0.5 |
+| `aero/m` `Cm_de` | -0.449064 | Cmd02: AVL ST d02 (elevator) x 14.0 deg / 0.5 |
 | `aero/lift` `CL_0` | 0.56555 | AVL CLtot at the trim point (guard: /CL_0/ >= 0.01) |
-| `aero/lift` `CL_max` | 1.33327022 | AeroBuildup polar at 7.82 m/s, trimmed elevator 0.87 deg: first C_L peak |
-| `aero/lift` `CL_min` | -0.49752528 | AeroBuildup polar at 7.82 m/s, trimmed elevator 0.87 deg: negative stall knee |
+| `aero/lift` `CL_max` | 1.3332728 | AeroBuildup polar at 7.82 m/s, trimmed elevator 0.88 deg: first C_L peak |
+| `aero/lift` `CL_min` | -0.49751687 | AeroBuildup polar at 7.82 m/s, trimmed elevator 0.88 deg: negative stall knee |
 | `aero/lift` `CL_a` | 4.297588 | AVL ST `CLa` [1/rad] |
-| `aero/lift` `CL_q` | 6.920358 | AVL ST `CLq` (q c/2V) |
-| `aero/lift` `CL_de` | 0.20874 | CLd02: AVL ST d02 (elevator) x 14.0 deg / 0.5 |
-| `aero/lift` `CL_drop` | 0.27846013 | AeroBuildup polar at 7.82 m/s, trimmed elevator 0.87 deg: CL_max - mean post-stall plateau |
-| `aero/lift` `CL_CD0` | 0.27717536 | AeroBuildup polar at 7.82 m/s minus induced C_L^2/(pi AR 4.265 span_eff): vertex of the profile parabola |
-| `aero/drag` `CD_prof` | 0.04328027 | AeroBuildup polar at 7.82 m/s minus induced C_L^2/(pi AR 4.265 span_eff): parabola minimum at v_ref |
-| `aero/drag` `Uexp_CD` | -0.468882 | AeroBuildup polar at 7.82 m/s minus induced C_L^2/(pi AR 4.265 span_eff): ln(CD_prof) vs ln(V) |
-| `aero/drag` `CD_stall` | 0.16412947 | AeroBuildup polar at 7.82 m/s, trimmed elevator 0.87 deg: CD plateau - CD at the peak |
-| `aero/drag` `CD_CLsq` | 0.04700766 | AeroBuildup polar at 7.82 m/s minus induced C_L^2/(pi AR 4.265 span_eff): parabola curvature |
+| `aero/lift` `CL_q` | 6.920359 | AVL ST `CLq` (q c/2V) |
+| `aero/lift` `CL_de` | 0.208488 | CLd02: AVL ST d02 (elevator) x 14.0 deg / 0.5 |
+| `aero/lift` `CL_drop` | 0.27846028 | AeroBuildup polar at 7.82 m/s, trimmed elevator 0.88 deg: CL_max - mean post-stall plateau |
+| `aero/lift` `CL_CD0` | 0.27716393 | AeroBuildup polar at 7.82 m/s minus induced C_L^2/(pi AR 4.265 span_eff): vertex of the profile parabola |
+| `aero/drag` `CD_prof` | 0.04328006 | AeroBuildup polar at 7.82 m/s minus induced C_L^2/(pi AR 4.265 span_eff): parabola minimum at v_ref |
+| `aero/drag` `Uexp_CD` | -0.46888461 | AeroBuildup polar at 7.82 m/s minus induced C_L^2/(pi AR 4.265 span_eff): ln(CD_prof) vs ln(V) |
+| `aero/drag` `CD_stall` | 0.16412916 | AeroBuildup polar at 7.82 m/s, trimmed elevator 0.88 deg: CD plateau - CD at the peak |
+| `aero/drag` `CD_CLsq` | 0.04700942 | AeroBuildup polar at 7.82 m/s minus induced C_L^2/(pi AR 4.265 span_eff): parabola curvature |
 | `aero/drag` `CD_AIsq` | 0.04 | CRRCSim doc 3.5 rule 0.01 / (max stick 0.5)^2; AeroBuildup deflected-surface drag is not quadratic (5 deg: -0.0007, 10: +0.004, 15: +0.039, 20: +0.14) |
 | `aero/drag` `CD_ELsq` | 0.0 | 0: CRRCSim documents non-zero only for elevons |
-| `aero/Y` `CY_b` | -0.264366 | AVL ST `CYb` |
-| `aero/Y` `CY_p` | 0.089698 | AVL ST `CYp` (p b/2V) |
+| `aero/Y` `CY_b` | -0.264367 | AVL ST `CYb` |
+| `aero/Y` `CY_p` | 0.089701 | AVL ST `CYp` (p b/2V) |
 | `aero/Y` `CY_r` | 0.282765 | AVL ST `CYr` (r b/2V) |
-| `aero/Y` `CY_dr` | 0.12404 | CYd03: AVL ST d03 (rudder) x 35.0 deg / 0.5, sign inverted (CRRCSim +rudder = nose left) |
+| `aero/Y` `CY_dr` | 0.12369 | CYd03: AVL ST d03 (rudder) x 35.0 deg / 0.5, sign inverted (CRRCSim +rudder = nose left) |
 | `aero/Y` `CY_da` | 0.001728 | CYd01: AVL ST d01 (aileron) x 32.0 deg / 0.5, sign inverted (AVL +d = right TE down) |
-| `aero/l` `Cl_b` | -0.058156 | AVL ST `Clb` |
+| `aero/l` `Cl_b` | -0.058162 | AVL ST `Clb` |
 | `aero/l` `Cl_p` | -0.355403 | AVL ST `Clp` |
-| `aero/l` `Cl_r` | 0.141909 | AVL ST `Clr` (scaled by CL/CL_0 in the simulator) |
-| `aero/l` `Cl_dr` | 0.01029 | Cld03: AVL ST d03 (rudder) x 35.0 deg / 0.5, sign inverted (CRRCSim +rudder = nose left) |
-| `aero/l` `Cl_da` | 0.301312 | Cld01: AVL ST d01 (aileron) x 32.0 deg / 0.5, sign inverted (AVL +d = right TE down) |
+| `aero/l` `Cl_r` | 0.141916 | AVL ST `Clr` (scaled by CL/CL_0 in the simulator) |
+| `aero/l` `Cl_dr` | 0.01022 | Cld03: AVL ST d03 (rudder) x 35.0 deg / 0.5, sign inverted (CRRCSim +rudder = nose left) |
+| `aero/l` `Cl_da` | 0.301056 | Cld01: AVL ST d01 (aileron) x 32.0 deg / 0.5, sign inverted (AVL +d = right TE down) |
 | `aero/n` `Cn_b` | 0.123994 | AVL ST `Cnb` |
-| `aero/n` `Cn_p` | -0.038471 | AVL ST `Cnp` (scaled by CL/CL_0 in the simulator) |
-| `aero/n` `Cn_r` | -0.164167 | AVL ST `Cnr` |
-| `aero/n` `Cn_dr` | -0.07413 | Cnd03: AVL ST d03 (rudder) x 35.0 deg / 0.5, sign inverted (CRRCSim +rudder = nose left) |
-| `aero/n` `Cn_da` | 0.004992 | Cnd01: AVL ST d01 (aileron) x 32.0 deg / 0.5, sign inverted (AVL +d = right TE down) |
+| `aero/n` `Cn_p` | -0.038473 | AVL ST `Cnp` (scaled by CL/CL_0 in the simulator) |
+| `aero/n` `Cn_r` | -0.164168 | AVL ST `Cnr` |
+| `aero/n` `Cn_dr` | -0.07392 | Cnd03: AVL ST d03 (rudder) x 35.0 deg / 0.5, sign inverted (CRRCSim +rudder = nose left) |
+| `aero/n` `Cn_da` | 0.005056 | Cnd01: AVL ST d01 (aileron) x 32.0 deg / 0.5, sign inverted (AVL +d = right TE down) |
 
 ## Control throws (required inputs)
 

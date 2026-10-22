@@ -337,8 +337,9 @@ def _bounds(secs: list[dict], axis: int) -> tuple[float, float, list[float]]:
 
 def _control_at(secs: list[dict], pos: np.ndarray, t: float) -> tuple[dict, float] | None:
     """(control dict, hinge fraction) of the surface at station t, or None. A station is controlled iff
-    the segment it lies in starts at a controlled rib; the station at the outboard end of the last
-    controlled segment carries that rib's hinge (as ASB's AVL writer does)."""
+    the segment it lies in starts at a controlled rib. The station at the outboard end of the last controlled
+    segment has NO control of its own: ASB's AVL writer emits the closing CONTROL of a segment from the
+    preceding station."""
     last = len(secs) - 1
     i = min(int(np.searchsorted(pos, t + 1e-9, side="right") - 1), last)
     i = max(i, 0)
@@ -349,9 +350,6 @@ def _control_at(secs: list[dict], pos: np.ndarray, t: float) -> tuple[dict, floa
             h1 = secs[i + 1]["control_surface"]["hinge_point"] if _on(secs[i + 1]) else h0
             return c, float(np.interp(t, [pos[i], pos[i + 1]], [h0, h1]))
         return c, float(h0)
-    if i > 0 and abs(t - pos[i]) < 1e-9 and _on(secs[i - 1]):
-        c = secs[i - 1]["control_surface"]
-        return c, float(c["hinge_point"])
     return None
 
 

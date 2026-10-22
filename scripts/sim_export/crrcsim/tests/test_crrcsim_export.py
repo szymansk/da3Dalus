@@ -549,19 +549,33 @@ def geometry_control_extents() -> dict[str, tuple[float, float]]:
     return out
 
 
-def test_aligned_mesh_controls_cover_the_full_geometry_extent():
+def test_avl_file_controls_cover_the_full_geometry_extent(tmp_path):
+    """What AVL receives: parse the CONTROL lines of the written .avl (ASB writes the closing CONTROL of a
+    segment at the next section, so a control extends from its first to its last CONTROL line)."""
     pytest.importorskip("aerosandbox")
+    import aerosandbox as asb
     import bryan_aero as ba
 
     b = ba.build_bryan()
     mesh = ba.aligned_variant(b, "full", 10, 24)
-    want = geometry_control_extents()
-    axis = {"Tragflaeche": 1, "Hoehenleitwerk": 1, "Seitenleitwerk": 2}
+    geom = ba.write_avl_geometry(
+        mesh, tmp_path, asb.OperatingPoint(mesh.atmosphere, velocity=7.8, alpha=1)
+    )
+    lines = geom.read_text().splitlines()
     got: dict[str, list[float]] = {}
-    for w in mesh.airplane.wings:
-        for x in w.xsecs:
-            for c in x.control_surfaces:
-                got.setdefault(c.name, []).append(float(x.xyz_le[axis[w.name]]))
+    surface = ""
+    pos = 0.0
+    for k, ln in enumerate(lines):
+        if ln.strip() == "SURFACE":
+            surface = lines[k + 1].strip()
+        elif ln.strip() == "SECTION":
+            vals = [float(v) for v in lines[k + 2].split()[:3]]
+            pos = (
+                vals[2] if surface == "Seitenleitwerk" else vals[1]
+            )  # fin runs along z, others along y
+        elif ln.startswith(("aileron ", "elevator ", "rudder ")):
+            got.setdefault(ln.split()[0], []).append(pos)
+    want = geometry_control_extents()
     for name, (lo, hi) in want.items():
         assert min(got[name]) == pytest.approx(lo, abs=1e-6), name
         assert max(got[name]) == pytest.approx(hi, abs=1e-6), name
