@@ -401,3 +401,99 @@ def test_bryan_buildup_is_below_the_radius_of_gyration_upper_bound():
     assert inertia.ixz == 0.0 and "declared" in basis.lower()
     for k in ("ixx", "iyy", "izz"):
         assert 0 < getattr(inertia, k) <= getattr(bound, k)
+
+
+# --- AC3D model ----------------------------------------------------------------------------------
+GEO_DIR = CRRC_DIR.parents[1] / "canon_checks" / "reference_fleet" / "bryan"
+
+
+@pytest.fixture(scope="module")
+def ac_model():
+    import json
+
+    import ac3d
+
+    geo = json.loads((GEO_DIR / "bryan.airplane.json").read_text())
+    af = {
+        "./bryan_profil.dat": ac3d.read_dat(GEO_DIR / "bryan_profil.dat"),
+        "./bryan_platte.dat": ac3d.read_dat(GEO_DIR / "bryan_platte.dat"),
+    }
+    meshes, hinges = ac3d.build_model(geo, af)
+    return geo, meshes, hinges, ac3d.render_ac(meshes)
+
+
+def test_ac_is_well_formed_and_counts_match_the_header(ac_model):
+    _, meshes, _, text = ac_model
+    lines = text.splitlines()
+    assert lines[0] == "AC3Db"
+    assert sum(1 for ln in lines if ln.startswith("OBJECT poly")) == len(meshes)
+    assert sum(len(m.verts) for m in meshes) == sum(
+        int(ln.split()[1]) for ln in lines if ln.startswith("numvert")
+    )
+    n_surf = sum(len(m.faces) for m in meshes)
+    assert n_surf == sum(1 for ln in lines if ln.startswith("SURF"))
+    for m in meshes:  # every face index points into its own object's vertex list
+        assert all(0 <= i < len(m.verts) for f in m.faces for i in f)
+        assert all(len(f) >= 3 for f in m.faces)
+
+
+def test_ac_span_and_length_match_the_geometry_and_axes(ac_model):
+    import numpy as np
+
+    geo, _, _, text = ac_model
+    import ac3d
+
+    v = np.array([p for vs in ac3d.parse_ac(text).values() for p in vs])
+    span_geo = 2 * max(s["xyz_le"][1] for s in geo["wings"]["Tragflaeche"]["x_secs"])
+    assert v[:, 0].max() - v[:, 0].min() == pytest.approx(span_geo, abs=2e-3)  # AC3D X = lateral
+    x_all = [s["xyz_le"][0] + s["chord"] for w in geo["wings"].values() for s in w["x_secs"]]
+    x_all += [s["xyz"][0] for f in geo["fuselages"].values() for s in f["x_secs"]]
+    length_geo = max(x_all) - min(s["xyz"][0] for s in geo["fuselages"]["Rumpf"]["x_secs"])
+    assert v[:, 2].max() - v[:, 2].min() == pytest.approx(
+        length_geo, abs=3.5e-3
+    )  # AC3D Z = forward; thinning drops sliver sections (<= 3 mm)
+    assert v[:, 2].max() == pytest.approx(geo["xyz_ref"][0], abs=1e-3)  # nose at x = 0, CG origin
+    assert v[:, 1].max() > 0.05  # fin rises above the CG (AC3D Y = up)
+
+
+def test_ac_has_the_four_animated_control_surface_objects(ac_model):
+    _, meshes, hinges, _ = ac_model
+    names = {m.name for m in meshes}
+    assert {
+        "aileron_r",
+        "aileron_l",
+        "elevator",
+        "rudder",
+        "wing",
+        "htail",
+        "fin",
+        "fuselage",
+    } <= names
+    assert {h.object_name for h in hinges} == {"aileron_r", "aileron_l", "elevator", "rudder"}
+
+
+def test_hinge_axes_give_the_crrcsim_stick_senses(ac_model):
+    """Right-hand rule about p1 -> p2: +elevator axis +y (TE down), +rudder axis +z/down (TE left),
+    +aileron: right axis -y (TE up), left axis +y (TE down) = roll right."""
+    _, _, hinges, _ = ac_model
+    ax = {h.object_name: [b - a for a, b in zip(h.p1, h.p2, strict=True)] for h in hinges}
+    assert ax["elevator"][1] > 0.1 and abs(ax["elevator"][0]) < 1e-3
+    assert ax["rudder"][2] > 0.03 and abs(ax["rudder"][1]) < 1e-3
+    assert ax["aileron_r"][1] < 0 < ax["aileron_l"][1]
+
+
+def test_animations_xml_references_existing_objects_and_uses_the_throws(ac_model):
+    import ac3d
+
+    _, meshes, hinges, _ = ac_model
+    xml = ac3d.animations_xml(hinges, {"AILERON": 32.0, "ELEVATOR": 14.0, "RUDDER": 35.0})
+    root = ET.fromstring(xml)
+    objs = {a.find("object").get("name"): a for a in root.findall("animation")}
+    assert set(objs) <= {m.name for m in meshes}
+    assert float(objs["elevator"].find("object").get("max_angle")) == pytest.approx(
+        np.radians(14.0), abs=1e-4
+    )
+    assert float(objs["rudder"].find("object").get("max_angle")) == pytest.approx(
+        np.radians(35.0), abs=1e-4
+    )
+    assert all(len(a.findall("hinge")) == 2 for a in root.findall("animation"))

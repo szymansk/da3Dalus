@@ -23,6 +23,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import bryan_aero as ba  # noqa: E402
+import ac3d  # noqa: E402
 import crrcsim_model as cm  # noqa: E402
 import inertia_buildup as ib  # noqa: E402
 import polar  # noqa: E402
@@ -360,7 +361,11 @@ def bryan_inertia(b: ba.Bryan) -> tuple[cm.Inertia, str, cm.Inertia]:
 
 
 def export(
-    speed: float, throws: cm.Throws, graphics_model: str = "mav.ac", throws_note: str = ""
+    speed: float,
+    throws: cm.Throws,
+    graphics_model: str = "mav.ac",
+    throws_note: str = "",
+    own_model: bool = False,
 ) -> dict:
     num = analyse(speed)
     a = build_aero_numbers(num, throws, speed)
@@ -410,7 +415,9 @@ def export(
             "graphics",
             "model",
             graphics_model,
-            "stock model placeholder; size does not match BRYAN",
+            "generated from the geometry (ac3d.py), true scale, origin at the plan CG"
+            if own_model
+            else "stock model placeholder; size does not match BRYAN",
         ),
         cm.Entry(
             "wheels",
@@ -435,6 +442,23 @@ def export(
         + f"I_xx={bound.ixx:.3g}, I_yy={bound.iyy:.3g}, I_zz={bound.izz:.3g}. "
         + "Low I_xx/I_yy speeds up roll/pitch response, high I_zz slows yaw; measure with a bifilar pendulum when possible."
     )
+    ac_text, animations, graphics_note = "", "", None
+    if own_model:
+        airfoils = {
+            "./bryan_profil.dat": ac3d.read_dat(ba.BRYAN_DIR / "bryan_profil.dat"),
+            "./bryan_platte.dat": ac3d.read_dat(ba.BRYAN_DIR / "bryan_platte.dat"),
+        }
+        meshes, hinges = ac3d.build_model(b.geometry, airfoils)
+        ac_text = ac3d.render_ac(meshes)
+        animations = ac3d.animations_xml(
+            hinges,
+            {
+                "AILERON": throws.aileron_deg,
+                "ELEVATOR": throws.elevator_deg,
+                "RUDDER": throws.rudder_deg,
+            },
+        )
+        graphics_note = "BRYAN low-poly model generated from bryan.airplane.json (true scale, origin at the plan CG)."
     throw_comments = []
     if throws_note:
         throw_comments.append(f"Throws provenance: {throws_note}")
@@ -449,7 +473,7 @@ def export(
         "Reference values are projected onto the x-y plane (S, b, MAC). Origin of the wheel/CG frame is the plan CG.",
         "Power: engine k_M from KV 2000; R_I, I_0, J_M and battery R_I are DECLARED ESTIMATES (no datasheet).",
         "PITCH DERIVATIVES ARE PROVISIONAL: AVL longitudinal results (Cm_a, neutral point, trim elevator, CL_a) do not converge with mesh and core size (+-3 % MAC); see MAPPING.md and avl_convergence.py.",
-        "Graphics: stock mav.ac placeholder, its size does not match BRYAN.",
+        f"Graphics: {graphics_note or 'stock mav.ac placeholder, its size does not match BRYAN'}.",
     ]
     xml = cm.render_xml(
         name="BRYAN",
@@ -468,6 +492,8 @@ def export(
         wheel_spring=spring,  # type: ignore[arg-type]
         cg=(0.0, 0.0, 0.0),
         comments=comments,
+        animations=animations,
+        **({"graphics_note": graphics_note} if graphics_note else {}),
     )
     # report
     sm = (avl["Xnp"] - b.xyz_cg[0]) / b.ref.c_ref
@@ -509,6 +535,7 @@ def export(
         "power_entries": pentries,
         "wheels": wheels,
         "xml": xml,
+        "ac_text": ac_text,
         "avl": {k: v for k, v in avl.items() if k != "raw_output"},
     }
     return report
@@ -586,11 +613,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--mapping-md", type=pathlib.Path)
     ap.add_argument("--graphics-model", default="mav.ac")
     ap.add_argument(
+        "--ac-out", type=pathlib.Path, help="write BRYAN's own .ac model here and use it"
+    )
+    ap.add_argument(
         "--throws-note", default="", help="provenance of the throws, written into the XML"
     )
     args = ap.parse_args(argv)
     throws = cm.Throws(args.elevator_throw_deg, args.aileron_throw_deg, args.rudder_throw_deg)
-    rep = export(args.speed, throws, args.graphics_model, args.throws_note)
+    model_name = args.ac_out.name if args.ac_out else args.graphics_model
+    rep = export(args.speed, throws, model_name, args.throws_note, own_model=bool(args.ac_out))
+    if args.ac_out:
+        args.ac_out.write_text(rep["ac_text"])
+        print(f"wrote {args.ac_out}")
     args.out.write_text(rep["xml"], encoding="iso-8859-1")
     print(f"wrote {args.out}")
     for k in (

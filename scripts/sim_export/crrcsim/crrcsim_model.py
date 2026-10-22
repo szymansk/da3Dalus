@@ -304,6 +304,8 @@ def render_xml(
     wheel_spring: tuple[float, float, float],
     cg: tuple[float, float, float],
     comments: list[str],
+    animations: str = "",
+    graphics_note: str = "Stock model (size does not match the plane): placeholder until a BRYAN model exists.",
 ) -> str:
     k, c, fmax = wheel_spring
     wheel_xml = "\n".join(
@@ -354,7 +356,7 @@ def render_xml(
   </config>
   <graphics version="1" model="{graphics_model}">
     <descr_long>
-      <en>Stock model (size does not match the plane): placeholder until a BRYAN model exists.</en>
+      <en>{escape(graphics_note)}</en>
     </descr_long>
     <descr_short>
       <en>default</en>
@@ -364,6 +366,7 @@ def render_xml(
 {wheel_xml}
   </wheels>
   <CG units="1" x="{cg[0]:.5f}" y="{cg[1]:.5f}" z="{cg[2]:.5f}" />
+{animations}
   <launch>
     <preset name_en="glider default (hand)" altitude="6" velocity_rel="1" angle="0" sal="0" rel_to_player="1" rel_front="0" rel_right="2" />
   </launch>

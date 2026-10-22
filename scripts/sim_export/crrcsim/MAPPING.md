@@ -123,7 +123,7 @@ Command: `python export_bryan.py --speed 7.82 --elevator-throw-deg 14.0 --ailero
 | `config/mass_inertia` `I_zz` | 0.00274313 | DECLARED ESTIMATE (component build-up, not measured): Sadraey 11.7 component build-up I = sum(I_c + m d^2) about the build-up CG; listed components 82.8 g (motor 19.0, prop 4.568, ESC 7.0, battery 28.0, receiver 5.0, 4 servos 4.8 each; positions from bryan.konstruktion.json, aileron servo and ESC/receiver heights estimated), remainder 68.2 g split wing 60% (area-weighted strips) / fuselage 30% (uniform rod, I_c=mL^2/12) / tail 10% (area-weighted); component self-inertia neglected; build-up CG x = 149.2 mm vs plan CG 136.8 mm (offset +12.4 mm, inertia not shifted to the plan CG); I_xz declared 0 |
 | `config/mass_inertia` `I_xz` | 0.0 | DECLARED: 0 for the first export (small for a laterally symmetric model) |
 | `CG` `x, y, z` | 0, 0, 0 | plan CG (bryan.airplane.json xyz_ref) is the origin of the hard-point frame |
-| `graphics` `model` | mav.ac | stock model placeholder; size does not match BRYAN |
+| `graphics` `model` | BRYAN.ac | generated from the geometry (ac3d.py), true scale, origin at the plan CG |
 | `wheels` `pos (x8)` | (0.137, 0.000, -0.008); (-0.332, 0.000, -0.002); (-0.023, 0.000, 0.031); (-0.013, 0.273, 0.006); (-0.013, -0.273, 0.006); (-0.303, 0.096, -0.005); (-0.303, -0.096, -0.005); (-0.324, 0.000, -0.094) | geometry: nose, tail, belly at CG, wing tips, stabiliser tips, fin top; CRRCSim axes relative to CG [m] |
 | `wheels/spring` `constant, damping, max_force` | 1006 N/m, 2.01 N s/m, 31 N | wasabi.xml hard point (500 lbf/ft, 1 lbf s/ft, 50 lbf) scaled by m / 1.095 kg |
 
