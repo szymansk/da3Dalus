@@ -29,6 +29,7 @@ __all__ = [
     "Interval",
     "KernelError",
     "KernelWarning",
+    "Polar",
     "Provenance",
     "QuantityResult",
     "QuantityStatus",
@@ -416,6 +417,36 @@ class ComputeResult(BaseModel):
         slugs = [q.slug for q in self.quantities]
         if len(set(slugs)) != len(slugs):
             msg = "each requested slug appears once: duplicate slug in quantities"
+            raise ValueError(msg)
+        return self
+
+
+class Polar(BaseModel):
+    """A sampled whole-aircraft polar over angle of attack (ch. 8.12): the solver's own values.
+
+    Attributes:
+        alpha_deg: Angle of attack in degrees, strictly rising.
+        cl: Lift coefficient, normalised by the reference area of the airplane.
+        cd: Drag coefficient (the solver's drag, not a fitted parabola, ADR 0026).
+        cm: Pitching-moment coefficient about the airplane's reference point.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    alpha_deg: tuple[FiniteFloat, ...] = Field(min_length=2)
+    cl: tuple[FiniteFloat, ...]
+    cd: tuple[FiniteFloat, ...]
+    cm: tuple[FiniteFloat, ...]
+
+    @model_validator(mode="after")
+    def _check_series(self) -> Self:
+        """Require equally long series and a strictly rising angle of attack."""
+        lengths = {len(self.alpha_deg), len(self.cl), len(self.cd), len(self.cm)}
+        if len(lengths) != 1:
+            msg = "alpha_deg, cl, cd and cm must have the same length"
+            raise ValueError(msg)
+        if any(b <= a for a, b in zip(self.alpha_deg, self.alpha_deg[1:], strict=False)):
+            msg = "alpha_deg must be strictly rising"
             raise ValueError(msg)
         return self
 
