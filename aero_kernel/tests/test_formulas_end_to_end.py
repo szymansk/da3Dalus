@@ -185,6 +185,8 @@ async def test_q10_a_missing_aerosandbox_fails_density_and_pressure_as_tool_unav
     assert pressure is not None
     assert pressure.category is ErrorCategory.UPSTREAM_FAILED
     assert pressure.detail["causes"] == [{"quantity": "air-density", "code": "tool_unavailable"}]
+    # installed but not importable: the tool could not run, so it reports no version (ch. 8.4)
+    assert result.provenance.tool_versions == {}
 
 
 async def test_q10_a_distribution_that_is_not_installed_reports_no_version(

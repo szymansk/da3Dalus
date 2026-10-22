@@ -48,10 +48,11 @@ def test_an_installed_tool_is_available_and_reports_its_version() -> None:
     assert adapter.tool_versions() == {"pytest": importlib.metadata.version("pytest")}
 
 
-def test_a_missing_tool_is_not_available_and_not_in_the_versions() -> None:
+def test_a_missing_tool_is_not_available_and_has_no_versions() -> None:
     adapter = MissingAdapter(SolverRuntime())
     assert adapter.available() is False
-    assert adapter.tool_versions() == {"pytest": importlib.metadata.version("pytest")}
+    # a tool that cannot run has no version, although one of its distributions is installed
+    assert adapter.tool_versions() == {}
 
 
 def test_a_dotted_module_name_is_rejected_when_the_class_is_defined() -> None:
