@@ -336,3 +336,22 @@ def test_the_centreline_changes_are_reported_in_metres() -> None:
     assert (clipped.extended_m, clipped.clipped_m) == (0.0, 0.1)
     kept = full(wing_of(False, (-0.1, 0.3), (0.4, 0.2)))
     assert (kept.extended_m, kept.clipped_m) == (0.0, 0.0)
+
+
+def test_a_wing_that_is_not_mirrored_and_does_not_reach_the_centreline_is_not_extended() -> None:
+    """Sections at y = 0.2 and 0.5 m (chord 0.3 -> 0.2): b = 0.3 m, S = 0.3 * 0.25 = 0.075 m^2."""
+    wing = wing_of(False, (0.2, 0.3), (0.5, 0.2))
+    s_ref, b_ref, c_mac = properties_of(wing)
+    assert math.isclose(b_ref, 0.3, rel_tol=1e-12)
+    assert math.isclose(s_ref, 0.075, rel_tol=1e-12)
+    assert all(
+        close(a, e) for a, e in zip((s_ref, b_ref, c_mac), numeric_projected(wing), strict=True)
+    )
+
+
+@pytest.mark.parametrize("symmetric", [True, False])
+def test_a_repeated_y_is_a_vertical_step_not_a_fold(symmetric: bool) -> None:
+    """A tip winglet section above the last one: the dy = 0 panel adds nothing."""
+    plain = wing_of(symmetric, (0.0, 0.3), (0.4, 0.2))
+    stepped = wing_of(symmetric, (0.0, 0.3), (0.4, 0.2), (0.4, 0.1))
+    assert properties_of(stepped) == properties_of(plain)
