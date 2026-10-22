@@ -37,11 +37,9 @@ CONTROL_NAMES = {"Querruder": "aileron", "Hoehenruder": "elevator", "Seitenruder
 # is not a hinged surface of the model. Documented in MAPPING.md.
 MIN_HINGE_POINT = 0.3
 AVL_WING_OPTS = {asb.AVL: dict(wing_level_spanwise_spacing=False, chordwise_resolution=10)}
-# One strip per geometry segment. With 2..5 strips per segment AVL's longitudinal results drift
-# without converging (static margin 6.1 / 4.0 / 1.7 / -1.5 / -6.5 % MAC, e 1.10 / 1.14 / 1.24 / 1.44 / 2.0):
-# the tail sits within ~0.02 m of the wing's trailing-vortex plane, and strips narrower than that
-# separation make the tail's induced velocities ill-conditioned. Lateral derivatives do not move.
-# Coarsening the section clusters instead gives 5.4..6.2 % at one strip per segment.
+# Default mesh of build_bryan(): one strip per geometry segment, NOT aligned between wing and tail and
+# therefore not converged (see AVL_CONVERGENCE.md). The exporter runs AVL on aligned_variant() instead; this
+# default serves the mesh studies and the control-derivative unit test.
 AVL_XSEC_OPTS = {asb.AVL: dict(spanwise_resolution=1, spanwise_spacing="uniform")}
 
 
@@ -325,40 +323,57 @@ def _on(sec: dict) -> bool:
 
 
 def _bounds(secs: list[dict], axis: int) -> tuple[float, float, list[float]]:
+    """Span ends and the stations that bound control surfaces. Geometry contract: the control on rib i
+    covers the segment from rib i to rib i+1 (the last rib has no outboard segment)."""
     pos = [s["xyz_le"][axis] for s in secs]
-    bounds = [pos[i] for i in range(len(secs)) if _on(secs[i]) != (i > 0 and _on(secs[i - 1]))]
+    last = len(secs) - 1
+    on = [_on(s) for s in secs]
+    bounds = [pos[i] for i in range(len(secs)) if on[i] and not (i > 0 and on[i - 1])]
     bounds += [
-        pos[i] for i in range(len(secs)) if i + 1 < len(secs) and _on(secs[i]) != _on(secs[i + 1])
+        pos[min(i + 1, last)] for i in range(len(secs)) if on[i] and not (i < last and on[i + 1])
     ]
     return pos[0], pos[-1], bounds
 
 
+def _control_at(secs: list[dict], pos: np.ndarray, t: float) -> tuple[dict, float] | None:
+    """(control dict, hinge fraction) of the surface at station t, or None. A station is controlled iff
+    the segment it lies in starts at a controlled rib; the station at the outboard end of the last
+    controlled segment carries that rib's hinge (as ASB's AVL writer does)."""
+    last = len(secs) - 1
+    i = min(int(np.searchsorted(pos, t + 1e-9, side="right") - 1), last)
+    i = max(i, 0)
+    if _on(secs[i]):
+        c = secs[i]["control_surface"]
+        h0 = c["hinge_point"]
+        if i < last and t > pos[i] + 1e-9:
+            h1 = secs[i + 1]["control_surface"]["hinge_point"] if _on(secs[i + 1]) else h0
+            return c, float(np.interp(t, [pos[i], pos[i + 1]], [h0, h1]))
+        return c, float(h0)
+    if i > 0 and abs(t - pos[i]) < 1e-9 and _on(secs[i - 1]):
+        c = secs[i - 1]["control_surface"]
+        return c, float(c["hinge_point"])
+    return None
+
+
 def _resample(
-    secs: list[dict], axis: int, stations: list[float], af: dict, dz: float, symmetric_ctrl: dict
+    secs: list[dict], axis: int, stations: list[float], af: dict, dz: float
 ) -> list[asb.WingXSec]:
     pos = np.array([s["xyz_le"][axis] for s in secs])
     cols = {k: np.array([s["xyz_le"][i] for s in secs]) for i, k in enumerate("xyz")}
     chord = np.array([s["chord"] for s in secs])
     twist = np.array([s["twist"] for s in secs])
-    hinge = np.array([s["control_surface"]["hinge_point"] if _on(s) else 0.0 for s in secs])
     out = []
     for t in stations:
-        near = np.where(np.abs(pos - t) < 1e-9)[0]
-        i = int(np.searchsorted(pos, t, side="right") - 1)
-        i = min(max(i, 0), len(secs) - 2)
-        if len(near):
-            j = int(near[-1])
-            ctrl_on = _on(secs[j])
-        else:
-            ctrl_on = _on(secs[i]) and _on(secs[i + 1])
+        i = min(max(int(np.searchsorted(pos, t, side="right") - 1), 0), len(secs) - 2)
+        hit = _control_at(secs, pos, t)
         ctrl = []
-        if ctrl_on:
-            c = next(s["control_surface"] for s in (secs[i], secs[i + 1]) if _on(s))
+        if hit:
+            c, h = hit
             ctrl = [
                 asb.ControlSurface(
                     name=CONTROL_NAMES[c["name"]],
                     symmetric=c["symmetric"],
-                    hinge_point=float(np.interp(t, pos, hinge)),
+                    hinge_point=h,
                     deflection=0.0,
                 )
             ]
@@ -393,7 +408,11 @@ def aligned_stations(geo: dict, n_wing: int) -> tuple[list[float], list[float], 
     grid = [y0 + k * step for k in range(n_wing + 1)]
     extra = [y for y in (*w_bounds, *h_bounds) if y0 < y < y_tip]
     wing_st = sorted({round(y, 9) for y in (*grid, *extra)})
-    ht_st = [y for y in wing_st if y < t_tip - 0.3 * step]
+    # keep control-surface boundaries even next to the tip; drop only grid stations that would leave a
+    # sliver strip against it
+    ht_st = [
+        y for y in wing_st if y < t_tip - 0.3 * step or any(abs(y - bnd) < 1e-9 for bnd in h_bounds)
+    ]
     ht_st = [h_secs[0]["xyz_le"][1], *[y for y in ht_st if y > h_secs[0]["xyz_le"][1]], t_tip]
     z0, z1 = f_secs[0]["xyz_le"][2], f_secs[-1]["xyz_le"][2]
     _, _, f_bounds = _bounds(f_secs, 2)
@@ -420,17 +439,17 @@ def aligned_variant(b: Bryan, case: str, n_chord: int, n_wing: int) -> Bryan:
     opts = {asb.AVL: dict(wing_level_spanwise_spacing=False, chordwise_resolution=n_chord)}
     wings = [
         asb.Wing(name="Tragflaeche", symmetric=True, analysis_specific_options=opts,
-                 xsecs=_resample(w_secs, 1, wing_st, af, 0.0, {}))
+                 xsecs=_resample(w_secs, 1, wing_st, af, 0.0))
     ]  # fmt: skip
     if case != "wing-only":
         wings.append(
             asb.Wing(name="Hoehenleitwerk", symmetric=True, analysis_specific_options=opts,
-                     xsecs=_resample(h_secs, 1, ht_st, af, dz, {}))
+                     xsecs=_resample(h_secs, 1, ht_st, af, dz))
         )  # fmt: skip
     if case == "full":
         wings.append(
             asb.Wing(name="Seitenleitwerk", symmetric=False, analysis_specific_options=opts,
-                     xsecs=_resample(f_secs, 2, fin_st, af, 0.0, {}))
+                     xsecs=_resample(f_secs, 2, fin_st, af, 0.0))
         )  # fmt: skip
     plane = asb.Airplane(
         name="BRYAN", xyz_ref=b.airplane.xyz_ref, wings=wings, fuselages=b.airplane.fuselages,

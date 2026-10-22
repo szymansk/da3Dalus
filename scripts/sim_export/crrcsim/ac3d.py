@@ -140,6 +140,7 @@ def thin_sections(secs: list[dict]) -> list[dict]:
     if (
         len(kept) > 1
         and not on[kept[-1]]
+        and not on[kept[-2]]  # keep the rib that ends a control surface
         and ((a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2) ** 0.5 < MIN_DY
     ):
         kept.pop()
@@ -173,14 +174,21 @@ def surface_meshes(
     for sgn in sides:
         tag = "r" if sgn > 0 else "l"
         loops, idx = [], []
-        for s, o, c in zip(secs, on, ctrl, strict=True):
-            h = c["hinge_point"] if o else h_default
+        for j, (s, o, c) in enumerate(zip(secs, on, ctrl, strict=True)):
+            # hinge fraction per rib; the first rib past a control carries the previous rib's hinge
+            # (the control on rib i covers the segment i -> i+1)
+            if o:
+                h = c["hinge_point"]
+            elif j > 0 and on[j - 1]:
+                h = ctrl[j - 1]["hinge_point"]
+            else:
+                h = h_default
             up, lo = airfoils[s["airfoil"]]
             le = (s["xyz_le"][0], sgn * s["xyz_le"][1], s["xyz_le"][2])
             loops.append(loop(up, lo, h, le, s["chord"], s["twist"], vertical))
         fixed = mesh(name, material)
         for i in range(len(secs) - 1):
-            moving = on[i] and on[i + 1]
+            moving = on[i]  # the control on rib i covers the segment i -> i+1
             ncol = len(loops[i])
             # fixed part: front of the hinge on both sides = polyline indices around the leading edge
             f_lo, f_hi = UP_H, LO_H

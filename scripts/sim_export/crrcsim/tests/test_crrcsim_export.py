@@ -521,5 +521,66 @@ def test_aligned_stations_put_tail_strips_at_the_wing_station_positions():
     assert len(inner) - 1 >= len(expected) - 1
     # wing stations are monotone and contain the control-surface boundaries
     assert np.all(np.diff(wing) > 0) and np.all(np.diff(fin) > 0)
-    for y in (0.063151, 0.208903):  # aileron inner / outer section y
+    for y in (
+        0.063151,
+        0.2265,
+    ):  # aileron inner rib y; outer end = the rib after the last controlled one
         assert np.min(np.abs(wing_set - y)) < 1e-6
+
+
+# --- control-surface extent: rib i's control covers segment i -> i+1 ------------------------------
+def geometry_control_extents() -> dict[str, tuple[float, float]]:
+    """Per control: (lo, hi) along the span axis (y for aileron/elevator, z for rudder). The geometry
+    contract: a control on rib i covers the segment to rib i+1 (the last rib has no outboard segment)."""
+    import json
+
+    geo = json.loads((GEO_DIR / "bryan.airplane.json").read_text())["wings"]
+    out = {}
+    for wing, name, axis in (
+        ("Tragflaeche", "aileron", 1),
+        ("Hoehenleitwerk", "elevator", 1),
+        ("Seitenleitwerk", "rudder", 2),
+    ):
+        secs = geo[wing]["x_secs"]
+        on = [bool((s.get("control_surface") or {}).get("hinge_point", 0) >= 0.3) for s in secs]
+        idx = [i for i, v in enumerate(on) if v]
+        pos = [s["xyz_le"][axis] for s in secs]
+        out[name] = (pos[idx[0]], pos[min(idx[-1] + 1, len(secs) - 1)])
+    return out
+
+
+def test_aligned_mesh_controls_cover_the_full_geometry_extent():
+    pytest.importorskip("aerosandbox")
+    import bryan_aero as ba
+
+    b = ba.build_bryan()
+    mesh = ba.aligned_variant(b, "full", 10, 24)
+    want = geometry_control_extents()
+    axis = {"Tragflaeche": 1, "Hoehenleitwerk": 1, "Seitenleitwerk": 2}
+    got: dict[str, list[float]] = {}
+    for w in mesh.airplane.wings:
+        for x in w.xsecs:
+            for c in x.control_surfaces:
+                got.setdefault(c.name, []).append(float(x.xyz_le[axis[w.name]]))
+    for name, (lo, hi) in want.items():
+        assert min(got[name]) == pytest.approx(lo, abs=1e-6), name
+        assert max(got[name]) == pytest.approx(hi, abs=1e-6), name
+
+
+def test_ac_control_objects_cover_the_full_geometry_extent(ac_model):
+    import numpy as np
+
+    import ac3d
+
+    geo, _, _, text = ac_model
+    objs = {k: np.array(v) for k, v in ac3d.parse_ac(text).items()}
+    want = geometry_control_extents()
+    cg = geo["xyz_ref"]
+    ail = np.abs(objs["aileron_r"][:, 0])  # AC3D X = -y
+    assert ail.min() == pytest.approx(want["aileron"][0], abs=1e-3)
+    assert ail.max() == pytest.approx(want["aileron"][1], abs=1e-3)
+    ele = np.abs(objs["elevator"][:, 0])
+    assert ele.max() == pytest.approx(want["elevator"][1], abs=1e-3)
+    rud = objs["rudder"][:, 1] + cg[2]  # AC3D Y = z - cg_z
+    assert rud.min() == pytest.approx(want["rudder"][0], abs=1e-3)
+    assert rud.max() == pytest.approx(want["rudder"][1], abs=1e-3)

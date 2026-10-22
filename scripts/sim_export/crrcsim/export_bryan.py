@@ -596,7 +596,9 @@ table cannot drift from the file. Values are from the last generation (command a
   extrapolation through the stall).
 - **Rudder sections with hinge_point < 0.3** (the slender lower trailing blade, hinge_point 0.0/0.002)
   are not hinged surfaces and carry no control in AVL/AeroBuildup.
-- **Graphics:** stock `mav.ac` placeholder; hard points from the geometry (nose, tail, belly, wing tips,
+- **Graphics:** with `--ac-out`, BRYAN's own low-poly `.ac` (ac3d.py: true scale, origin at the plan CG,
+  separate aileron/elevator/rudder objects animated at their hinge lines with the throws); otherwise the
+  stock `mav.ac` placeholder. Hard points from the geometry (nose, tail, belly, wing tips,
   stabiliser tips, fin top), spring/damper/max force of the stock wasabi hard point scaled by mass,
   no wheel brakes (`percent_brake=0`, RC equipment, ADR 0028).
 """
@@ -638,6 +640,7 @@ def main(argv: list[str] | None = None) -> int:
         cmd = (
             f"python export_bryan.py --speed {args.speed} --elevator-throw-deg {args.elevator_throw_deg} "
             f"--aileron-throw-deg {args.aileron_throw_deg} --rudder-throw-deg {args.rudder_throw_deg}"
+            + (f" --ac-out {args.ac_out.name}" if args.ac_out else "")
         )
         md = cm.render_mapping_md(
             "CRRCSim BRYAN.xml: field mapping",
