@@ -21,8 +21,9 @@ file name into inline coordinates when it loads a document.
 
 `surface_type` (ARCHITECTURE 8.5, D9) on every wing, inserted after `name`. The role follows the
 function (conventional layout): `Tragflaeche` is `main_wing`, `Hoehenleitwerk` is
-`horizontal_tail`, `Seitenleitwerk` is `vertical_tail`, for both aircraft. Assigned from the wing
-names, not computed; the app-side migration is #1187.
+`horizontal_tail`, `Seitenleitwerk` is `vertical_tail`, for both aircraft. The assignment is the
+team-lead's (2026-10-22), made from the conventional layout and checked for both aircraft; it is
+not computed. The app-side migration is #1187.
 
 ## Airfoil files (byte-identical copies)
 
