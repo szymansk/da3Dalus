@@ -113,7 +113,7 @@ async def test_clean_stall_speed_from_the_shipped_canon() -> None:
 async def test_the_provenance_names_the_optimiser_tool_versions_and_settings() -> None:
     result, _ = await run("stall-speed")
     assert set(result.provenance.tool_versions) == {"aerosandbox", "neuralfoil"}
-    assert result.provenance.solver_settings == {"neuralfoil_model_size": "small"}
+    assert result.provenance.solver_settings == {"neuralfoil_model_size": "xlarge"}
 
 
 async def test_a_request_that_runs_no_solver_has_no_solver_settings() -> None:

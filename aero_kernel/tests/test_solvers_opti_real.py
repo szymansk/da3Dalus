@@ -11,9 +11,10 @@ import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
+from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
-from aero_kernel.solvers.opti import ALPHA_STEP_DEG, OptiAdapter, StallSolution
+from aero_kernel.solvers.opti import ALPHA_STEP_DEG, OptiAdapter, StallRequest, StallSolution
 from aero_kernel.solvers.stall_math import first_extremum
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
@@ -49,13 +50,30 @@ async def solve(n_load: float, mass: float = MASS_KG) -> StallSolution:
     return stall.solution
 
 
-async def test_the_trainer_stalls_where_the_canon_entry_verified_it() -> None:
+async def test_the_trainer_stalls_where_the_canon_entry_verified_it_with_the_small_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Canon entry: optimiser 8.4888 m/s at alpha 15.8 deg, C_L 1.191 (1.5 kg, NACA 2412, 1.4 m
-    span). Regression golden, relative tolerance 2e-3 (the entry quotes 4-5 digits)."""
-    solution = await solve(1.0)
+    span). That was computed with AeroSandbox's default NeuralFoil model, "small", so the worker is
+    run in this process with that size. Regression golden, relative tolerance 2e-3 (the entry
+    quotes 4-5 digits)."""
+    monkeypatch.setattr(opti_module, "NEURALFOIL_MODEL_SIZE", "small")
+    request = StallRequest(
+        airplane=trainer(), mass_kg=MASS_KG, gravity=GRAVITY, n_load=1.0, air=sea_level()
+    )
+    solution = opti_module.stall_worker(request).value
     assert math.isclose(solution.v_s, 8.4888, rel_tol=2e-3)
     assert math.isclose(solution.alpha_s, 15.8, abs_tol=0.3)
     assert math.isclose(solution.cl_max, 1.191, rel_tol=2e-3)
+
+
+async def test_the_trainer_with_the_xlarge_model_regression() -> None:
+    """The size the kernel uses (maintainer 2026-10-22): 8.3855 m/s at 15.3 deg, C_L 1.220, 2.1 %
+    below the small model's value that the canon entry quotes. Regression, not validation."""
+    solution = await solve(1.0)
+    assert math.isclose(solution.v_s, 8.38546, rel_tol=1e-4)
+    assert math.isclose(solution.alpha_s, 15.3226, abs_tol=0.01)
+    assert math.isclose(solution.cl_max, 1.22023, rel_tol=1e-4)
 
 
 async def test_the_lift_balance_holds_at_the_optimum() -> None:

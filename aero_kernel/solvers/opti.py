@@ -45,10 +45,12 @@ V_MIN_MS = 1.0
 V_MAX_MACH = 0.6
 # IPOPT: iteration limit as in the survey scripts; the default convergence tolerance (1e-8).
 MAX_ITERATIONS = 300
-# The NeuralFoil model AeroBuildup evaluates its sections with. ASB's default is "small", the size
-# the goldens were computed with; ARCHITECTURE 8.4 names the largest. The size is a maintainer
-# decision (pending), recorded in Provenance.solver_settings so a changed size is visible.
-NEURALFOIL_MODEL_SIZE = "small"
+# The NeuralFoil model AeroBuildup evaluates its sections with: "xlarge", the author's default, at the
+# knee of speed versus accuracy (Sharpe 2024, PhD thesis ch. 7, Table 7.1; maintainer decision
+# 2026-10-22). The airfoil scoring (#821) uses "xxxlarge" on purpose: it is precomputed, so its
+# cost does not matter. The size is a named constant recorded in Provenance.solver_settings; a
+# caller-selectable accuracy level comes only when a caller needs it.
+NEURALFOIL_MODEL_SIZE = "xlarge"
 # A bound counts as active when the optimum lies within this fraction of the variable's range.
 ACTIVE_BOUND_FRACTION = 1e-6
 

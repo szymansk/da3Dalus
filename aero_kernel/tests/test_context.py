@@ -85,7 +85,7 @@ def test_the_optimiser_tool_reports_the_versions_of_its_adapter() -> None:
 def test_solver_settings_of_an_adapter_tool_are_the_adapters() -> None:
     solvers = solvers_with()
     assert solvers.settings_of("OPT") == solvers.opti.settings()
-    assert solvers.settings_of("OPT") == {"neuralfoil_model_size": "small"}
+    assert solvers.settings_of("OPT") == {"neuralfoil_model_size": "xlarge"}
 
 
 @pytest.mark.parametrize("tool", ["APP", "GEO", "KAT", "APC", "ATM"])

@@ -329,7 +329,10 @@ No internal paths or mechanisms in any field (ADR 0019).
   could not be loaded (every quantity is then `internal`)
 - tool versions (aerosandbox, NeuralFoil model, AVL): one non-empty version string per tool **the call actually
   used**; empty when only pure formulas ran
-- solver settings (e.g. the NeuralFoil model size the adapters use, fixed to the largest in v1)
+- solver settings (e.g. the NeuralFoil model size the adapters use: `xlarge` in v1, the author's default at the knee
+  of speed versus accuracy, Sharpe 2024, PhD thesis ch. 7, Table 7.1; maintainer 2026-10-22. It is a named constant of the
+  OPT adapter, recorded in `solver_settings`; a caller-selectable accuracy level comes only when a caller needs it. The
+  airfoil scoring, #821, uses `xxxlarge` on purpose: it is precomputed)
 - `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 
 **Cache key** = SHA-256 over the canonical JSON of:

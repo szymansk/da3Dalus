@@ -24,11 +24,12 @@ SLUGS = (
     "stall-speed-landing",
     "inverted-max-lift-coefficient",
 )
-# Regression goldens at sea level, mass of the fleet member, ISA, the kernel's projected S_ref.
-BRYAN_V_S = 5.2894317  # m/s
-JAGUAR_V_S = 6.1679285  # m/s
-JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 1.0410012, 9.5515985
-JAGUAR_CL_MIN = -0.7870643
+# Regression goldens at sea level, mass of the fleet member, ISA, the kernel's projected S_ref,
+# NeuralFoil model size xlarge (maintainer 2026-10-22).
+BRYAN_V_S = 5.2453741  # m/s
+JAGUAR_V_S = 6.2992129  # m/s
+JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 0.9980616, 9.9252911
+JAGUAR_CL_MIN = -0.7827520
 
 
 async def stall_result(member: FleetMember) -> ComputeResult:
@@ -51,15 +52,17 @@ def assert_goldens_are_pinned_to_their_tools(result: ComputeResult) -> None:
         "aerosandbox": importlib.metadata.version("aerosandbox"),
         "neuralfoil": importlib.metadata.version("neuralfoil"),
     }
-    assert result.provenance.solver_settings == {"neuralfoil_model_size": "small"}
+    assert result.provenance.solver_settings == {"neuralfoil_model_size": "xlarge"}
 
 
 async def test_bryan_stalls_where_the_prototype_found_it() -> None:
     """Prototype (bryan/ERGEBNISSE_STABILITAET.md, 151 g): V_S = 5.29 m/s.
 
-    Computed 5.2894 m/s, 0.01 % below the table's two decimals. The prototype took S from AeroSandbox's
-    own planform area (7.0 dm2); the kernel passes its projected S_ref (6.99 dm2) to AeroBuildup, so
-    C_L,max differs a little (1.237 at 11.2 deg here) while V_S, which fixes S * C_L, agrees.
+    Computed 5.2454 m/s, 0.85 % below the prototype. Two documented differences: the prototype used
+    AeroSandbox's default NeuralFoil model ("small"; this build with "small" gives 5.2894 m/s, 0.01 %
+    from the prototype), the kernel uses "xlarge" (maintainer decision 2026-10-22), which moves C_L,max
+    from 1.237 at 11.2 deg to 1.258 at 13.2 deg; and the prototype took S from AeroSandbox's own
+    planform area (7.0 dm2) while the kernel passes its projected S_ref (6.99 dm2).
     """
     result = await stall_result(FleetMember.BRYAN)
     assert_goldens_are_pinned_to_their_tools(result)
@@ -67,7 +70,9 @@ async def test_bryan_stalls_where_the_prototype_found_it() -> None:
     clean = quantities["stall-speed"]
     assert clean.status is QuantityStatus.OK
     assert close(clean.value, BRYAN_V_S, 1e-5)  # regression
-    assert close(clean.value, 5.29, 2e-3)  # the prototype's two decimals
+    assert close(
+        clean.value, 5.29, 1e-2
+    )  # the prototype, within the documented model-size difference
     assert {"reynolds_outside_band", "reynolds_bubble_sensitive"} <= {
         w.code for w in clean.warnings
     }  # ADR 0028: the tip chord of 1 cm and the root chord of 15 cm span the band
@@ -84,7 +89,8 @@ async def test_bryans_inverted_stall_gives_no_value_because_the_trough_vanishes_
     the second sweep uses (8.32 m/s, higher Re) it has none: C_L falls monotonically down to the
     sweep's lower end (-15 deg, C_L -0.55). The trough is present at the lower Reynolds number of
     the first sweep, so the bracket finds no extremum and the kernel returns no value (ADR 0020)
-    instead of a boundary sample."""
+    instead of a boundary sample. (Speeds and the -10.5 deg trough are those of the "small" model,
+    measured in the next test; with the "xlarge" model the kernel uses, the result is the same: no value.)"""
     inverted = (await stall(FleetMember.BRYAN))["inverted-max-lift-coefficient"]
     assert inverted.status is QuantityStatus.ERROR
     assert inverted.value is None
