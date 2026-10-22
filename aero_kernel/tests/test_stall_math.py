@@ -4,7 +4,7 @@ import math
 
 import pytest
 from aero_kernel.schema import Polar
-from aero_kernel.solvers.air import AirState
+from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.stall_math import first_extremum
 from pydantic import ValidationError
 
@@ -77,3 +77,17 @@ def test_a_series_that_never_turns_has_no_extremum() -> None:
     assert first_extremum([0.0, 0.5, 1.0, 1.5], maximum=True) is None
     assert first_extremum([0.0, 0.5], maximum=True) is None
     assert first_extremum([], maximum=True) is None
+
+
+def test_a_fixed_atmosphere_answers_from_its_state_with_ideal_gas_temperature_and_pressure() -> (
+    None
+):
+    air = AirState(density=1.225, dynamic_viscosity=1.7894e-5, speed_of_sound=340.294)
+    atmosphere = FixedAtmosphere(air)
+    assert (atmosphere.density(), atmosphere.dynamic_viscosity()) == (1.225, 1.7894e-5)
+    assert atmosphere.speed_of_sound() == 340.294
+    assert atmosphere.ratio_of_specific_heats() == 1.4
+    assert math.isclose(atmosphere.temperature(), 340.294**2 / (1.4 * 287.0500676), rel_tol=1e-12)
+    assert math.isclose(
+        atmosphere.pressure(), 1.225 * 287.0500676 * atmosphere.temperature(), rel_tol=1e-12
+    )

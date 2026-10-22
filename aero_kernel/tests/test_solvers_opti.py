@@ -9,7 +9,7 @@ from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import OptiAdapter, StallRequest, StallSolution
-from aero_kernel.tests.test_solvers_aerobuildup import AIR, InProcessRuntime, airplane
+from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
 
 pytestmark = pytest.mark.asyncio
 

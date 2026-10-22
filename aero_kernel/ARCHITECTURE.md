@@ -648,8 +648,15 @@ caller's responsibility.
     second, hand-written ISA in the kernel. Its `requirements` include aerosandbox, so a missing ASB is
     `tool_unavailable`; fast-tier tests stub the adapter, the hand-computed COESA check runs against the
     real adapter in the `aero` tier.
-  - **#1175 adds the domain methods** (`aerobuildup.sweep`, `avl.stability`, `opti.solve` …), each built on
-    the base, alongside the first formula that needs it.
+  - **#1175 adds the domain methods** (`opti.stall` with `stall-speed`; `aerobuildup.sweep` arrives with
+    `aerobuildup-evaluation`, the first formula that calls AeroBuildup itself; `avl.stability` …), each built
+    on the base, alongside the first formula that needs it. Until then AeroBuildup is reached only inside
+    the stall worker, through `solvers.aerobuildup.sweep_polar`, the one place that evaluates it.
+  - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
+    the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
+    extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
+    inverted trough lay about three sweep steps outside IPOPT's window. It is unconditional (never
+    triggered by a failure) and not a fixed point; an optimum on the edge of the window is still an error.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
     the quantity of the node whose call produced them.
 - Data: KAT (the fitted components) and APC (the fitted propeller's measured table) are **plain reads of
@@ -1054,7 +1061,7 @@ requested output is its own `QuantityResult`. Requesting two outputs of the same
 ```python
 @formula("stall-speed")
 async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
-    polar = await ctx.solvers.aerobuildup.sweep(x["airplane"], ...)   # leaves the loop
+    stall = await ctx.solvers.opti.stall(x["airplane"], ...)   # leaves the loop
     ...
     return {"stall_speed": v_s, "cl_max": cl_max}       # output parameter names, snake_case
 ```
