@@ -20,7 +20,9 @@ class InProcessRuntime(SolverRuntime):
 
 
 def airplane(
-    chords: tuple[float, ...] = (0.2, 0.1), device: tuple[str, float] | None = None
+    chords: tuple[float, ...] = (0.2, 0.1),
+    device: tuple[str, float] | None = None,
+    tail_chords: tuple[float, ...] | None = None,
 ) -> AirplaneGeometry:
     """A main wing of the given chords; ``device`` is (role, deflection_deg) on the first panel."""
     sections: list[dict[str, Any]] = [
@@ -34,5 +36,17 @@ def airplane(
             "role": role,
             "deflection_deg": deflection,
         }
-    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
-    return AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+    wings: dict[str, Any] = {
+        "Main": {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
+    }
+    if tail_chords is not None:
+        tail_sections = [
+            {"xyz_le": [0.5, 0.1 * i, 0.0], "chord": c, "twist": 0.0, "airfoil": "naca0012"}
+            for i, c in enumerate(tail_chords)
+        ]
+        wings["Tail"] = {
+            "name": "Tail",
+            "surface_type": "horizontal_tail",
+            "x_secs": tail_sections,
+        }
+    return AirplaneGeometry.model_validate({"name": "t", "wings": wings})

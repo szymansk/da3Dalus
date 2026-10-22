@@ -59,6 +59,7 @@ async def test_the_stall_carries_the_regime_warnings_of_its_stall_speed(
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=8.0)))
     fast = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
     assert [w.code for w in fast.warnings] == ["reynolds_bubble_sensitive"]
+    assert fast.warnings[0].detail["wing"] == "Main"
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=2.0)))
     slow = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
     assert [w.code for w in slow.warnings] == ["reynolds_outside_band"]
@@ -133,3 +134,27 @@ async def test_a_device_at_rest_is_no_obstacle(monkeypatch: pytest.MonkeyPatch) 
     adapter = OptiAdapter(InProcessRuntime())
     result = await adapter.stall(airplane(device=("flap", 0.0)), 1.5, 9.81, 1.0, AIR)
     assert result.solution == solution()
+
+
+async def test_a_regime_warning_names_the_wing_that_is_out_of_band(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Main chords 0.2 / 0.1 m are in the band at 8 m/s (Re 9.1e4 / 4.6e4); a tail tip of 2 mm
+    gives Re 1.0e3: only the tail is outside the band, and the warning says so."""
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=8.0)))
+    adapter = OptiAdapter(InProcessRuntime())
+    stall = await adapter.stall(airplane(tail_chords=(0.05, 0.002)), 1.5, 9.81, 1.0, AIR)
+    outside = [w for w in stall.warnings if w.code == "reynolds_outside_band"]
+    (warning,) = outside
+    assert warning.detail["wing"] == "Tail"
+    assert "Tail" in warning.message
+    sensitive = [w for w in stall.warnings if w.code == "reynolds_bubble_sensitive"]
+    assert [w.detail["wing"] for w in sensitive] == ["Main", "Tail"][: len(sensitive)]
+    assert all(w.detail["wing"] != "Main" for w in outside)
+
+
+async def test_a_mach_warning_is_raised_once_not_per_wing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=120.0)))
+    adapter = OptiAdapter(InProcessRuntime())
+    stall = await adapter.stall(airplane(tail_chords=(0.2, 0.1)), 1.5, 9.81, 1.0, AIR)
+    assert [w.code for w in stall.warnings].count("mach_above_limit") == 1

@@ -20,7 +20,7 @@ from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.aerobuildup import sweep_polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
-from aero_kernel.solvers.base import SolverAdapter, regime
+from aero_kernel.solvers.base import SolverAdapter, regime_by_wing
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -312,7 +312,9 @@ class OptiAdapter(SolverAdapter):
             airplane=airplane, mass_kg=mass_kg, gravity=gravity, n_load=n_load, air=air
         )
         solution = await self.runtime.run_cpu(stall_worker, request)
-        chords = [s.chord for wing in (airplane.wings or {}).values() for s in wing.x_secs]
-        warnings = regime(chords, solution.v_s, air.speed_of_sound, air.kinematic_viscosity)
+        chords = {
+            key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
+        }
+        warnings = regime_by_wing(chords, solution.v_s, air.speed_of_sound, air.kinematic_viscosity)
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)
         return Stall(solution=solution, warnings=tuple(warnings))
