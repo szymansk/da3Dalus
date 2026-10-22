@@ -5,6 +5,7 @@ from aero_kernel.context import Context, Solvers
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
+from aero_kernel.tests.formula_builders import StubAtmosphere
 
 SOLVERS = Solvers(atmosphere=AtmosphereAdapter(SolverRuntime()))
 
@@ -51,3 +52,19 @@ def test_the_returned_warnings_are_a_snapshot() -> None:
     context.warn("precondition_unchecked", "second")
     assert len(snapshot) == 1
     assert len(context.warnings) == 2
+
+
+def test_tool_versions_of_an_adapter_tool_are_the_adapters() -> None:
+    solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": "1.2.3"}))
+    assert solvers.tool_versions_of("ATM") == {"aerosandbox": "1.2.3"}
+
+
+@pytest.mark.parametrize("tool", ["APP", "GEO", "KAT", "APC"])
+def test_a_pure_tool_has_no_version(tool: str) -> None:
+    assert SOLVERS.tool_versions_of(tool) == {}
+
+
+@pytest.mark.parametrize("tool", ["AB", "AVL", "OPT"])
+def test_a_tool_without_an_adapter_is_a_defect_not_an_empty_version(tool: str) -> None:
+    with pytest.raises(ValueError, match=tool):
+        SOLVERS.tool_versions_of(tool)

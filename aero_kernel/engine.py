@@ -131,6 +131,8 @@ class _Call:
         self.solvers = solvers
         # the defaults taken so far, by qualified slug: only nodes that run take one (ch. 8.11)
         self.taken: dict[str, Default] = {}
+        # the versions of the tools whose formulas this call actually called (ch. 8.4)
+        self.tool_versions: dict[str, str] = {}
         self.nodes: dict[NodeId, Node] = {node.id: node for node in subtree.nodes}
         self.values = {qualify(slug): value for slug, value in aircraft.values.items()}
         self.runs: dict[NodeId, _NodeRun] = {}
@@ -292,6 +294,8 @@ class _Call:
 
         warner = Context(origin=display_slug(node.produces[0].quantity), solvers=self.solvers)
         default_warnings = self._take_defaults(defaults)
+        # A called formula used its tool even if it then fails, like a default (ch. 8.11).
+        self.tool_versions.update(self.solvers.tool_versions_of(formula.tool))
         try:
             returned = await implementation.func(inputs, warner)
         except FormulaError as exc:
@@ -585,10 +589,15 @@ def _reason_of(propagated: Propagated) -> Reason:
     return propagated.reason
 
 
-def _provenance(build: Build, defaults: tuple[DefaultUsed, ...] = ()) -> Provenance:
+def _provenance(
+    build: Build,
+    defaults: tuple[DefaultUsed, ...] = (),
+    tool_versions: Mapping[str, str] | None = None,
+) -> Provenance:
     """The provenance of a call on a loaded build."""
     return Provenance(
         defaults_used=defaults,
+        tool_versions=dict(tool_versions or {}),
         build_digest=build.digest,
         canon_model_hash=build.model.content_hash,
     )
@@ -662,7 +671,7 @@ async def evaluate(
     results.update({r.requested: call.result_of(r) for r in subtree.requested})
     result = ComputeResult(
         quantities=tuple(results[slug] for slug in request.quantities),
-        provenance=_provenance(build, call.defaults_used()),
+        provenance=_provenance(build, call.defaults_used(), call.tool_versions),
     )
     log_call(call_id, request, result, started)
     return result

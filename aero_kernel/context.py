@@ -22,6 +22,10 @@ Value = float | AirplaneGeometry
 Inputs = Mapping[str, Value | None]
 
 
+# Canon tool codes of formulas that call no adapter: pure relations and plain input reads (ch. 8.8).
+_PURE_TOOLS = frozenset({"APP", "GEO", "KAT", "APC"})
+
+
 @dataclass(frozen=True)
 class Solvers:
     """The solver adapters a formula may use (ch. 8.8); one attribute per adapter.
@@ -34,6 +38,29 @@ class Solvers:
     """
 
     atmosphere: AtmosphereAdapter
+
+    def tool_versions_of(self, tool: str) -> dict[str, str]:
+        """Return the installed versions of the distributions a canon tool code relies on.
+
+        Feeds ``Provenance.tool_versions`` and the cache key (ch. 8.4). A plain read or a pure
+        formula (``APP``, ``GEO``, ``KAT``, ``APC``) uses no tool and has none.
+
+        Args:
+            tool: The canon tool code of a formula, e.g. ``ATM``.
+
+        Returns:
+            Distribution name -> version; empty for a pure tool.
+
+        Raises:
+            ValueError: If the tool needs an adapter that does not exist yet; an empty answer
+                there would claim a version-free result (ADR 0020).
+        """
+        if tool in _PURE_TOOLS:
+            return {}
+        if tool == self.atmosphere.tool:
+            return dict(self.atmosphere.tool_versions())
+        msg = f"no solver adapter for the tool {tool}"
+        raise ValueError(msg)
 
 
 class Context:

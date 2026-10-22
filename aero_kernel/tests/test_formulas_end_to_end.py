@@ -14,9 +14,12 @@ Hand computation (all SI):
 - q = 1/2 rho V^2 = 0.5 * 1.167268 * 15^2 = 131.3177 Pa (the same for both aircraft).
 """
 
+import importlib.metadata
+
 import pytest
 from aero_kernel import compute
 from aero_kernel.build import shipped_build
+from aero_kernel.cache import cache_key
 from aero_kernel.context import Solvers
 from aero_kernel.engine import evaluate
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityResult, QuantityStatus
@@ -107,3 +110,53 @@ async def test_the_fleet_through_the_public_compute_with_the_real_atmosphere(
     """The real adapter reproduces the hand ISA to 0.05 % (AeroSandbox's documented 0.02 %)."""
     result = await compute(aircraft_of(name, mass_kg), request(*SLUGS))
     check(result, weight_n, RHO_HAND, Q_HAND, rel=5e-4)
+
+
+async def test_the_provenance_names_the_tool_versions_of_the_tools_that_ran() -> None:
+    solvers = Solvers(atmosphere=StubAtmosphere({ALTITUDE_M: RHO_HAND}, {"aerosandbox": "7.7"}))
+    for slugs in (("air-density",), ("dynamic-pressure",), SLUGS):
+        result = await evaluate(
+            shipped_build(), aircraft_of("BRYAN", 0.151), request(*slugs), solvers=solvers
+        )
+        assert result.provenance.tool_versions == {"aerosandbox": "7.7"}
+
+
+async def test_a_request_of_pure_formulas_reports_no_tool_version() -> None:
+    solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": "7.7"}))
+    result = await evaluate(
+        shipped_build(), aircraft_of("BRYAN", 0.151), request("weight"), solvers=solvers
+    )
+    assert result.provenance.tool_versions == {}
+
+
+async def test_a_formula_that_was_never_called_reports_no_tool_version() -> None:
+    no_altitude = AircraftInput.model_validate(
+        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 0.151, "flight-speed": 15.0}}
+    )
+    solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": "7.7"}))
+    result = await evaluate(shipped_build(), no_altitude, request("air-density"), solvers=solvers)
+    assert result.provenance.tool_versions == {}
+
+
+async def test_the_cache_key_of_the_density_node_follows_the_tool_version() -> None:
+    def key(version: str) -> str:
+        solvers = Solvers(atmosphere=StubAtmosphere({}, {"aerosandbox": version}))
+        return cache_key(
+            formula="calc:air-density-isa",
+            application="default",
+            world=None,
+            inputs={"h": ALTITUDE_M},
+            build_digest="sha256:aa",
+            tool_versions=solvers.tool_versions_of("ATM"),
+        )
+
+    assert key("4.2.9") == key("4.2.9")
+    assert key("4.2.9") != key("4.3.0")
+
+
+@pytest.mark.aero
+async def test_the_real_provenance_names_the_installed_aerosandbox() -> None:
+    result = await compute(aircraft_of("BRYAN", 0.151), request(*SLUGS))
+    assert result.provenance.tool_versions == {
+        "aerosandbox": importlib.metadata.version("aerosandbox")
+    }

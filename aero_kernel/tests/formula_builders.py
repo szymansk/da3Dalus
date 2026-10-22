@@ -44,15 +44,23 @@ def inputs_from_model(
 class StubAtmosphere(AtmosphereAdapter):
     """An ATM adapter that answers from a table of altitude -> density, and nothing else."""
 
-    def __init__(self, table: Mapping[float, float]) -> None:
+    def __init__(
+        self, table: Mapping[float, float], versions: Mapping[str, str] | None = None
+    ) -> None:
         """Create the stub.
 
         Args:
             table: Density in kg/m^3 per altitude in m; any other altitude is an error.
+            versions: The tool versions the stub reports.
         """
         super().__init__(SolverRuntime())
         self.table = dict(table)
+        self.versions = dict(versions or {"aerosandbox": "0.0-stub"})
         self.asked: list[float] = []
+
+    def tool_versions(self) -> dict[str, str]:
+        """Return the versions the stub was given."""
+        return self.versions
 
     async def density(self, altitude_m: float) -> float:
         """Return the tabulated density; an altitude not in the table is a test error."""
