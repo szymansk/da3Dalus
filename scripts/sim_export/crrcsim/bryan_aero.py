@@ -37,7 +37,12 @@ CONTROL_NAMES = {"Querruder": "aileron", "Hoehenruder": "elevator", "Seitenruder
 # is not a hinged surface of the model. Documented in MAPPING.md.
 MIN_HINGE_POINT = 0.3
 AVL_WING_OPTS = {asb.AVL: dict(wing_level_spanwise_spacing=False, chordwise_resolution=10)}
-AVL_XSEC_OPTS = {asb.AVL: dict(spanwise_resolution=3, spanwise_spacing="uniform")}
+# One strip per geometry segment. With 2..5 strips per segment AVL's longitudinal results drift
+# without converging (static margin 6.1 / 4.0 / 1.7 / -1.5 / -6.5 % MAC, e 1.10 / 1.14 / 1.24 / 1.44 / 2.0):
+# the tail sits within ~0.02 m of the wing's trailing-vortex plane, and strips narrower than that
+# separation make the tail's induced velocities ill-conditioned. Lateral derivatives do not move.
+# Coarsening the section clusters instead gives 5.4..6.2 % at one strip per segment.
+AVL_XSEC_OPTS = {asb.AVL: dict(spanwise_resolution=1, spanwise_spacing="uniform")}
 
 
 @dataclass(frozen=True)

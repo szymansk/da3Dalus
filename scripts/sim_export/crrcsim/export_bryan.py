@@ -367,7 +367,7 @@ def export(
         "trim": f"level flight at {speed} m/s, C_L = m g / (q S_ref) = {num['cl_trim']:.4f}",
         "eta_loc": "geometry: 2 * area-centroid y of the half wing / span (stock models use 0.25-0.3)",
         "cg_arm": "geometry: (x_CG - x_AC,wing) / c_ref (stalled wing lift acts at the wing AC)",
-        "span_eff": f"min(0.95 * AVL e, 0.95): AVL e = {avl['e']:.3f} > 1 (tail lift vs wing-only b_ref); "
+        "span_eff": f"min(0.95 * AVL e, 0.95): AVL e = {avl['e']:.3f} > 1 (AVL discretisation, see MAPPING notes); "
         "CRRCSim documents 0.95 for conventional aft-tail planes",
         "stall": f"AeroBuildup polar at {speed} m/s, trimmed elevator {num['e_trim']:.2f} deg",
         "drag": f"AeroBuildup polar at {speed} m/s minus induced C_L^2/(pi AR {num['ar']:.3f} span_eff)",
@@ -542,7 +542,19 @@ table cannot drift from the file. Values are from the last generation (command a
   but gives no engine resistance, no-load current or pack resistance: those are estimates (marked
   DECLARED ESTIMATE in the table). The CRRCSim `automagic` design was not used because it would invent
   the KV as well.
-- **span_eff:** AVL's e exceeds 1 (tail lift against a wing-only b_ref); min(0.95 e, 0.95) is used.
+- **AVL discretisation:** one spanwise strip per geometry segment. More strips make the longitudinal
+  results drift without converging (static margin 6.1 / 4.0 / 1.7 / -1.5 / -6.5 % MAC for 1..5 strips per
+  segment; lateral derivatives do not move): the tail lies within ~0.02 m of the wing's trailing-vortex
+  plane and strips narrower than that are ill-conditioned. Merging the section clusters (min spacing
+  8..20 mm) gives 5.4..6.2 % at one strip per segment, so the one-strip value is the stable one.
+- **span_eff:** AVL's e is about 1.10 (Sref 0.069905 m2, Bref 0.54603 m, Cref 0.13280 m, as passed and
+  echoed by AVL). e > 1 is a property of AVL's discretisation, not of the references: a planar rectangular
+  wing of the same aspect ratio through the same pipeline gives e = 1.16 (3 strips) and 1.04 (10 strips)
+  with the correct Bref, and the wing alone on BRYAN gives about the same e as the whole airplane.
+  min(0.95 e, 0.95) = 0.95, the CRRCSim documented value for conventional aft-tail planes, is used.
+- **Neutral point worlds:** AVL (with downwash) puts the neutral point near 37.5 % MAC (static margin about
+  6 % at the plan CG 31.4 %); AeroBuildup (no downwash) 43.8 % (12.3 %); the known worlds in
+  ERGEBNISSE_STABILITAET.md span 32.9..36.9 % MAC (1.5..5.5 % margin).
 - **CD_AIsq:** CRRCSim documented rule, because AeroBuildup's deflected-surface drag is not quadratic.
 - **CG_arm, eta_loc:** from the geometry (no stall-moment data in AeroBuildup: its Cm follows the linear
   extrapolation through the stall).
