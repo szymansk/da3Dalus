@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 
 from app.db.base import Base
 
@@ -31,4 +31,7 @@ class FlightEnvelopeModel(Base):
     assumptions_snapshot = Column(JSON, nullable=False)
     computed_at = Column(DateTime(timezone=True), nullable=False)
 
-    aeroplane = relationship("AeroplaneModel", backref="flight_envelope")
+    aeroplane = relationship(
+        "AeroplaneModel",
+        backref=backref("flight_envelope", cascade="all, delete-orphan"),
+    )

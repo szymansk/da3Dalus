@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import List, OrderedDict
 
 import numpy as np
+from sqlalchemy import delete, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,7 @@ from app.converters.model_schema_converters import (
     wing_model_to_wing_config,
 )
 from app.models.aeroplanemodel import AeroplaneModel, BranchModel
+from app.models.tessellation_cache import TessellationCacheModel
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import (
     AirplaneConfiguration,
 )
@@ -166,6 +168,31 @@ def get_aeroplane_schema(db: Session, aeroplane_uuid) -> schemas.AeroplaneSchema
     )
 
 
+def _detach_versioning_rows(db: Session, aeroplane: AeroplaneModel) -> None:
+    """Remove the rows that point at *aeroplane* through NOT NULL or self FKs.
+
+    Mirrors the ordering of ``discard_branch`` (BR-VR9): the branch rows go
+    first, otherwise the ORM tries to null ``branches.root_id/head_id``.
+    Self-references (predecessor/root) are cleared to avoid a circular
+    dependency; ``tessellation_cache`` has no ORM relationship, so SQLite
+    (foreign keys off) would leave its rows orphaned.
+    """
+    for branch in {*aeroplane.root_branches, *aeroplane.head_branches}:
+        db.delete(branch)
+    db.execute(
+        update(AeroplaneModel)
+        .where(AeroplaneModel.predecessor_id == aeroplane.id)
+        .values(predecessor_id=None)
+    )
+    db.execute(
+        delete(TessellationCacheModel).where(TessellationCacheModel.aeroplane_id == aeroplane.id)
+    )
+    aeroplane.root_id = None
+    aeroplane.predecessor_id = None
+    aeroplane.branch_id = None
+    db.flush()
+
+
 def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
     """
     Delete an aeroplane.
@@ -181,7 +208,11 @@ def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
             raise NotFoundError(
                 message=_ERR_AEROPLANE_NOT_FOUND, details={"aeroplane_id": str(aeroplane_uuid)}
             )
+        _detach_versioning_rows(db, aeroplane)
         db.delete(aeroplane)
+        # Flush inside the try: the commit in get_db() runs after the
+        # response is sent, so a constraint violation must surface here.
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
