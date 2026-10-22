@@ -97,7 +97,7 @@ async def test_a_missing_altitude_fails_density_and_pressure_but_not_weight() ->
 async def test_everything_else_is_still_not_implemented() -> None:
     solvers = Solvers(atmosphere=StubAtmosphere({}))
     result = await evaluate(
-        shipped_build(), aircraft_of("BRYAN", 0.151), request("wing-loading"), solvers=solvers
+        shipped_build(), aircraft_of("BRYAN", 0.151), request("stall-speed"), solvers=solvers
     )
     (only,) = result.quantities
     assert only.status is QuantityStatus.ERROR

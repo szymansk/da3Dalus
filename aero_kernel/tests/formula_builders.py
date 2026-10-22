@@ -9,6 +9,16 @@ from aero_kernel.errors import display_slug
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 
+# The canon formulas that have an implementation (slugs, qualified); grows with each slice.
+IMPLEMENTED = {
+    "calc:weight-from-mass",
+    "calc:air-density-isa",
+    "calc:dynamic-pressure",
+    "calc:mean-geometric-chord",
+    "calc:aspect-ratio",
+    "calc:wing-loading",
+}
+
 
 def inputs_from_model(
     model: CanonModel, formula_slug: str, by_quantity: Mapping[str, float]

@@ -20,6 +20,7 @@ from aero_kernel.errors import ErrorCategory
 from aero_kernel.graph import CanonGraph, GraphModelError
 from aero_kernel.registry import Registry
 from aero_kernel.tests.canon_builders import with_hash
+from aero_kernel.tests.formula_builders import IMPLEMENTED
 from aero_kernel.tests.graph_builders import formula, quantity
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "flight_canon.json"
@@ -285,8 +286,8 @@ def test_cancellation_is_not_a_load_failure(monkeypatch: pytest.MonkeyPatch) -> 
         load_build(FIXTURE, Registry())
 
 
-def test_every_formula_but_the_slice_is_not_implemented_at_build_time() -> None:
-    """Only the three formulas of slice 1 (#1194) are implemented; the other 56 are declared only."""
+def test_every_formula_but_the_built_ones_is_not_implemented_at_build_time() -> None:
+    """Only the formulas of IMPLEMENTED have an implementation; the other 53 are declared only."""
     from aero_kernel.build import shipped_build
 
     build = shipped_build()
@@ -295,6 +296,6 @@ def test_every_formula_but_the_slice_is_not_implemented_at_build_time() -> None:
         for namespace, content in build.model.namespaces.items()
         for slug in content.formulas
     }
-    implemented = {"calc:weight-from-mass", "calc:air-density-isa", "calc:dynamic-pressure"}
+    implemented = IMPLEMENTED
     assert set(build.report.not_implemented) == declared - implemented
-    assert len(build.report.not_implemented) == 56
+    assert len(build.report.not_implemented) == 53

@@ -4,11 +4,15 @@ import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.air_density_isa import air_density_isa
+from aero_kernel.formulas.aspect_ratio import aspect_ratio
 from aero_kernel.formulas.dynamic_pressure import dynamic_pressure
+from aero_kernel.formulas.mean_geometric_chord import mean_geometric_chord
 from aero_kernel.formulas.values import number
 from aero_kernel.formulas.weight_from_mass import weight_from_mass
+from aero_kernel.formulas.wing_loading import wing_loading
 from aero_kernel.registry import DEFAULT_REGISTRY
 from aero_kernel.tests.formula_builders import (
+    IMPLEMENTED,
     StubAtmosphere,
     close,
     context_with,
@@ -18,7 +22,6 @@ from aero_kernel.tests.formula_builders import (
 pytestmark = pytest.mark.asyncio
 
 MODEL = shipped_build().model
-IMPLEMENTED = {"calc:weight-from-mass", "calc:air-density-isa", "calc:dynamic-pressure"}
 
 
 async def test_weight_from_mass_is_mass_times_gravity() -> None:
@@ -71,10 +74,40 @@ async def test_the_traceability_report_is_ok_on_the_shipped_model() -> None:
         for slug in content.formulas
     }
     assert set(build.report.not_implemented) == declared - IMPLEMENTED
-    assert len(build.report.not_implemented) == 56
+    assert len(build.report.not_implemented) == 53
 
 
 async def test_number_rejects_an_absent_or_non_numeric_parameter() -> None:
     assert number({"a": 2.5}, "a") == 2.5
     with pytest.raises(TypeError, match="'a'"):
         number({"a": None}, "a")
+
+
+async def test_mean_geometric_chord_is_area_over_span() -> None:
+    """Hand value: c_bar = S / b = 0.06 m^2 / 0.4 m = 0.15 m."""
+    x = inputs_from_model(
+        MODEL, "mean-geometric-chord", {"wing-reference-area": 0.06, "wing-span": 0.4}
+    )
+    result = await mean_geometric_chord(x, context_with(StubAtmosphere({})))
+    assert set(result) == {"c_bar"}
+    assert close(result["c_bar"], 0.15, 1e-12)
+
+
+async def test_aspect_ratio_is_span_squared_over_area() -> None:
+    """Hand value: AR = b^2 / S = (0.4 m)^2 / 0.06 m^2 = 8/3 = 2.6667."""
+    x = inputs_from_model(MODEL, "aspect-ratio", {"wing-reference-area": 0.06, "wing-span": 0.4})
+    result = await aspect_ratio(x, context_with(StubAtmosphere({})))
+    assert set(result) == {"ar"}
+    assert close(result["ar"], 8.0 / 3.0, 1e-12)
+
+
+async def test_wing_loading_is_weight_over_area() -> None:
+    """Hand value: W/S = m g / S = 0.151 kg * 9.80665 m/s^2 / 0.06 m^2 = 24.68007 N/m^2."""
+    x = inputs_from_model(
+        MODEL,
+        "wing-loading",
+        {"aircraft-mass": 0.151, "gravity": 9.80665, "wing-reference-area": 0.06},
+    )
+    result = await wing_loading(x, context_with(StubAtmosphere({})))
+    assert set(result) == {"w_s"}
+    assert close(result["w_s"], 1.48080415 / 0.06, 1e-12)
