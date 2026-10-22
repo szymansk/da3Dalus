@@ -251,3 +251,24 @@ def test_delete_snapshot_node_is_refused_with_409(client_and_db):
     assert resp.status_code == 409, resp.text
     with session_factory() as s:
         assert s.query(AeroplaneModel).filter(AeroplaneModel.uuid == snapshot_uuid).count() == 1
+
+
+def test_delete_lineage_root_on_a_side_branch_is_refused_with_409(client_and_db):
+    """After adopting another branch the original root node heads a side branch.
+
+    Other branches still reference it as their lineage root, so it cannot go
+    without taking the lineage with it; that is only allowed via the main head.
+    """
+    client, session_factory = client_and_db
+    root_uuid = _uuid_of(_create(client))
+    root_id = _node_id(session_factory, root_uuid)
+    r = client.post(f"/aeroplanes/{root_id}/branch", json={"name": "next"})
+    assert r.status_code in (200, 201), r.text
+    assert client.post(f"/branches/{r.json()['id']}/adopt").status_code == 200
+
+    resp = client.delete(f"/aeroplanes/{root_uuid}")
+
+    assert resp.status_code == 409, resp.text
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).filter(AeroplaneModel.id == root_id).count() == 1
+        assert s.query(BranchModel).filter_by(root_id=root_id).count() == 2

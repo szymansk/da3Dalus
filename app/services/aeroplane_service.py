@@ -171,7 +171,8 @@ def _delete_node_with_versioning(db: Session, aeroplane: AeroplaneModel) -> None
 
     - head of the main branch: the whole lineage goes (all branches, all
       snapshots and side-branch nodes);
-    - head of a side branch: exactly ``discard_branch``;
+    - head of a side branch: exactly ``discard_branch``, except the lineage
+      root node itself, which is refused (409);
     - immutable snapshot: refused, snapshots are not deleted on their own;
     - no branch (legacy row): the single node.
     """
@@ -189,6 +190,13 @@ def _delete_node_with_versioning(db: Session, aeroplane: AeroplaneModel) -> None
         aeroplane_version_service.delete_nodes(db, [aeroplane])
     elif branch.is_main:
         aeroplane_version_service.delete_lineage(db, branch.root_id)
+    elif aeroplane.id == branch.root_id:
+        # Other branches still use this node as their lineage root.
+        raise ConflictError(
+            message="Cannot delete the lineage root while it is not on the main branch; "
+            "delete the main branch head to remove the whole lineage",
+            details={"aeroplane_id": str(aeroplane.uuid), "root_id": branch.root_id},
+        )
     else:
         aeroplane_version_service.discard_branch(db, branch.id)
 
