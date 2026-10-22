@@ -21,6 +21,9 @@ from app.converters.model_schema_converters import (
     wing_model_to_wing_config,
 )
 from app.models.aeroplanemodel import AeroplaneModel, BranchModel
+from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
+from app.models.component_tree import ComponentTreeNodeModel
+from app.models.construction_part import ConstructionPartModel
 from app.models.tessellation_cache import TessellationCacheModel
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import (
     AirplaneConfiguration,
@@ -187,6 +190,15 @@ def _detach_versioning_rows(db: Session, aeroplane: AeroplaneModel) -> None:
     db.execute(
         delete(TessellationCacheModel).where(TessellationCacheModel.aeroplane_id == aeroplane.id)
     )
+    # Rows bound by a nullable integer FK (analysis) or a plain string uuid
+    # (component tree, construction parts) have no ORM cascade. Left behind,
+    # they would be inherited by the next aeroplane that reuses the integer id.
+    for model in (OperatingPointModel, OperatingPointSetModel):
+        db.execute(delete(model).where(model.aircraft_id == aeroplane.id))
+    uuid_key = str(aeroplane.uuid)
+    # Tree nodes first: they reference construction parts.
+    for model in (ComponentTreeNodeModel, ConstructionPartModel):
+        db.execute(delete(model).where(model.aeroplane_id == uuid_key))
     aeroplane.root_id = None
     aeroplane.predecessor_id = None
     aeroplane.branch_id = None
