@@ -32,8 +32,9 @@ __all__ = [
 # (the Probe of the canon entry). IPOPT's default convergence tolerance is 1e-8 on the scaled
 # constraint, so 1e-6 leaves two decades for the scaling and the sweep's float rounding.
 PROBE_TOLERANCE = 1e-6
-# C_L,max may fall short of the sampled first peak by this much (absolute): IPOPT's optimum lies
-# between samples, the sampled peak is a sample.
+# C_L,max may fall short of the sampled first peak by this much (absolute). alpha_S is itself a
+# sample of the sweep at V_S, so the comparison is between two samples of one curve: the tolerance
+# only absorbs numerical noise.
 PEAK_TOLERANCE = 1e-6
 
 

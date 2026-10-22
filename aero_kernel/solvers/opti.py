@@ -197,7 +197,7 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     opti.minimize(speed)
     try:
         solved = opti.solve(verbose=False, max_iter=MAX_ITERATIONS)
-    except Exception as error:  # IPOPT reports every failure as a RuntimeError from CasADi
+    except RuntimeError as error:  # CasADi reports a failed IPOPT solve as a RuntimeError
         raise _not_converged(
             f"the stall problem did not converge: {error}",
             "check mass, wing area and the sampled angles of attack",

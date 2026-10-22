@@ -158,3 +158,62 @@ async def test_a_mach_warning_is_raised_once_not_per_wing(monkeypatch: pytest.Mo
     adapter = OptiAdapter(InProcessRuntime())
     stall = await adapter.stall(airplane(tail_chords=(0.2, 0.1)), 1.5, 9.81, 1.0, AIR)
     assert [w.code for w in stall.warnings].count("mach_above_limit") == 1
+
+
+def install_failing_solver(monkeypatch: pytest.MonkeyPatch, error: Exception) -> StallRequest:
+    """Fake the AeroSandbox boundary of the worker so that `Opti.solve` raises ``error``."""
+    from types import SimpleNamespace
+
+    from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
+
+    polar = lift_curve(UPRIGHT_PEAK, upright=True)
+
+    class FakeOpti:
+        def variable(self, **_: object) -> float:
+            return 1.0
+
+        def subject_to(self, _: object) -> None:
+            return None
+
+        def minimize(self, _: object) -> None:
+            return None
+
+        def solve(self, **_: object) -> object:
+            raise error
+
+    def operating_point(**_: object) -> None:
+        return None
+
+    def aerobuildup(*_: object, **__: object) -> SimpleNamespace:
+        return SimpleNamespace(run=lambda: {"L": 0.0})
+
+    def sweep(*_: object) -> Polar:
+        return polar
+
+    def convert(_: object) -> SimpleNamespace:
+        return SimpleNamespace(s_ref=0.28)
+
+    fake_asb = SimpleNamespace(
+        Opti=FakeOpti, OperatingPoint=operating_point, AeroBuildup=aerobuildup
+    )
+    monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+    monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
+    monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake_asb)
+    return StallRequest(airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
+
+
+async def test_an_ipopt_failure_is_not_converged(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CasADi reports a failed solve as a RuntimeError."""
+    request = install_failing_solver(monkeypatch, RuntimeError("Infeasible_Problem_Detected"))
+    with pytest.raises(FormulaError) as raised:
+        opti_module.stall_worker(request)
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED
+    assert "Infeasible_Problem_Detected" in raised.value.message
+
+
+async def test_any_other_exception_of_the_solve_is_a_defect_and_stays_an_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = install_failing_solver(monkeypatch, ValueError("a bug"))
+    with pytest.raises(ValueError, match="a bug"):
+        opti_module.stall_worker(request)
