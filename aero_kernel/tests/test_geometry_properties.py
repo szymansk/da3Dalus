@@ -2,13 +2,13 @@
 
 The reference values are the sections' chords and leading edges as given, projected onto the x-y
 plane (maintainer 2026-10-22); twist does not change them. The independent computation
-integrates the piecewise-linear chord ``c(y)`` of the sections with Simpson's rule per panel,
-which is exact for the quadratic ``c(y)^2`` and shares no formula with the adapter.
-Tolerance: relative 1e-8.
+samples the piecewise-linear chord ``c(y)`` of the reference planform on a fine grid and
+integrates it with the trapezoid rule; it shares no formula with the function under test.
+Tolerance: relative 1e-7 (the sampling error is below 1e-9).
 """
 
 import math
-from collections.abc import Callable
+from bisect import bisect_right
 from itertools import pairwise
 from typing import Any
 
@@ -18,32 +18,43 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
-TOLERANCE = 1e-8
-
-
-def simpson(f: Callable[[float], float], a: float, b: float) -> float:
-    """Simpson's rule on one interval: exact for the quadratic ``c(y)^2`` of a linear chord."""
-    return (b - a) / 6.0 * (f(a) + 4.0 * f((a + b) / 2.0) + f(b))
+TOLERANCE = 1e-7
+SAMPLES = 100_001
 
 
 def numeric_projected(wing: dict[str, Any]) -> tuple[float, float, float]:
-    """(S, b, c_MAC) projected onto x-y, by Simpson integration of c(y) and c(y)^2 per panel."""
-    side_area = side_squares = side_span = 0.0
-    for inner, outer in pairwise(wing["x_secs"]):
-        y1, y2 = inner["xyz_le"][1], outer["xyz_le"][1]
-        c1, c2 = inner["chord"], outer["chord"]
+    """(S, b, c_MAC) of the reference planform, by sampling c(y) on a fine y grid.
 
-        def chord(
-            y: float, y1: float = y1, y2: float = y2, c1: float = c1, c2: float = c2
-        ) -> float:
-            return c1 + (c2 - c1) * (y - y1) / (y2 - y1)
+    Independent of the adapter's panel formulas and of its handling of the centreline: the
+    chord is interpolated between the sections (and held at the root chord inboard of the root),
+    sampled at 100001 points over the planform and integrated with the trapezoid rule.
 
-        low, high = min(y1, y2), max(y1, y2)
-        side_area += simpson(chord, low, high)
-        side_squares += simpson(lambda y: chord(y) ** 2, low, high)
-        side_span += high - low
-    factor = 2.0 if wing["symmetric"] else 1.0
-    return factor * side_area, factor * side_span, side_squares / side_area
+    - A mirrored wing is carried to the centreline: the grid runs from y = 0 to the outermost
+      section (the stored side flipped to y >= 0), and S, b are doubled.
+    - A wing that is not mirrored keeps its stored extent: the grid runs from its smallest to
+      its largest y.
+    """
+    points = sorted((s["xyz_le"][1], s["chord"]) for s in wing["x_secs"])
+    mirrored = wing["symmetric"]
+    if mirrored and abs(points[0][0]) > abs(points[-1][0]):
+        points = sorted((-y, c) for y, c in points)
+    ys = [y for y, _ in points]
+    low = 0.0 if mirrored else ys[0]
+    high = ys[-1]
+
+    def chord(y: float) -> float:
+        if y <= ys[0]:
+            return points[0][1]
+        k = bisect_right(ys, y)
+        (y1, c1), (y2, c2) = points[k - 1], points[min(k, len(points) - 1)]
+        return c1 if y2 == y1 else c1 + (c2 - c1) * (y - y1) / (y2 - y1)
+
+    step = (high - low) / (SAMPLES - 1)
+    values = [chord(low + k * step) for k in range(SAMPLES)]
+    area = step * (sum(values) - (values[0] + values[-1]) / 2.0)
+    squares = step * (sum(v * v for v in values) - (values[0] ** 2 + values[-1] ** 2) / 2.0)
+    factor = 2.0 if mirrored else 1.0
+    return factor * area, factor * (high - low), squares / area
 
 
 def planform_area(wing: dict[str, Any]) -> float:
@@ -207,17 +218,89 @@ def test_the_main_wing_properties_are_those_of_the_main_wing_not_the_first_wing(
     assert math.isclose(properties.c_mac, 0.07 * 0.4 / 3 / 0.06, rel_tol=1e-12)
 
 
-@pytest.mark.parametrize("wings", [{}, {"A": "main_wing", "B": "main_wing"}])
-def test_other_than_one_main_wing_is_invalid_input(
-    wings: dict[str, str],
+def wing_of(symmetric: bool, *sections: tuple[float, float]) -> dict[str, Any]:
+    """A wing from (y, chord) pairs, in the order given (root first)."""
+    return {
+        "name": "Main",
+        "symmetric": symmetric,
+        "surface_type": "main_wing",
+        "x_secs": [
+            {"xyz_le": [0.0, y, 0.0], "chord": c, "twist": 0.0, "airfoil": "naca2412"}
+            for y, c in sections
+        ],
+    }
+
+
+def test_a_root_beyond_the_centreline_is_clipped_at_y_zero() -> None:
+    """Root y = -0.1 m (chord 0.3), tip y = 0.4 m (chord 0.2), mirrored.
+
+    The chord at y = 0 is 0.3 - 0.1 * 0.1 / 0.5 = 0.28; the planform 0..0.4 has the half area
+    0.4 * (0.28 + 0.2) / 2 = 0.096, so S = 0.192 m^2 and b = 2 * 0.4 = 0.8 m;
+    integral c^2 = 0.4 * (0.28^2 + 0.28*0.2 + 0.2^2) / 3 = 0.0232533, c_MAC = 0.242222 m.
+    """
+    wing = wing_of(True, (-0.1, 0.3), (0.4, 0.2))
+    s_ref, b_ref, c_mac = properties_of(wing)
+    assert math.isclose(s_ref, 0.192, rel_tol=1e-12)
+    assert math.isclose(b_ref, 0.8, rel_tol=1e-12)
+    assert math.isclose(c_mac, 0.0232533333333 / 0.096, rel_tol=1e-9)
+    assert all(
+        close(a, e) for a, e in zip((s_ref, b_ref, c_mac), numeric_projected(wing), strict=True)
+    )
+
+
+def test_a_root_off_the_centreline_is_carried_to_it_with_the_root_chord() -> None:
+    """Root y = 0.05 m (chord 0.3), tip y = 0.45 m (chord 0.2), mirrored.
+
+    Half area = 0.05 * 0.3 + 0.4 * 0.25 = 0.115, so S = 0.23 m^2 and b = 2 * 0.45 = 0.9 m;
+    integral c^2 = 0.05 * 0.09 + 0.4 * (0.09 + 0.06 + 0.04) / 3 = 0.0298333, c_MAC = 0.259420 m.
+    """
+    wing = wing_of(True, (0.05, 0.3), (0.45, 0.2))
+    s_ref, b_ref, c_mac = properties_of(wing)
+    assert math.isclose(s_ref, 0.23, rel_tol=1e-12)
+    assert math.isclose(b_ref, 0.9, rel_tol=1e-12)
+    assert math.isclose(c_mac, 0.0298333333333 / 0.115, rel_tol=1e-9)
+    assert all(
+        close(a, e) for a, e in zip((s_ref, b_ref, c_mac), numeric_projected(wing), strict=True)
+    )
+
+
+def test_the_same_wing_stored_on_the_negative_side_has_the_same_values() -> None:
+    assert properties_of(wing_of(True, (-0.05, 0.3), (-0.45, 0.2))) == properties_of(
+        wing_of(True, (0.05, 0.3), (0.45, 0.2))
+    )
+
+
+def test_a_wing_that_is_not_mirrored_keeps_its_stored_extent_across_y_zero() -> None:
+    """y -0.1 .. 0.4 m, chord 0.3 -> 0.2, not mirrored: no clipping, no extension.
+
+    b = 0.5 m, S = 0.5 * 0.25 = 0.125 m^2, integral c^2 = 0.5 * (0.09 + 0.06 + 0.04) / 3.
+    """
+    wing = wing_of(False, (-0.1, 0.3), (0.4, 0.2))
+    s_ref, b_ref, c_mac = properties_of(wing)
+    assert math.isclose(s_ref, 0.125, rel_tol=1e-12)
+    assert math.isclose(b_ref, 0.5, rel_tol=1e-12)
+    assert math.isclose(c_mac, 0.5 * 0.19 / 3 / 0.125, rel_tol=1e-12)
+    assert all(
+        close(a, e) for a, e in zip((s_ref, b_ref, c_mac), numeric_projected(wing), strict=True)
+    )
+
+
+@pytest.mark.parametrize("symmetric", [True, False])
+@pytest.mark.parametrize("ys", [(0.2, 0.0, 0.3), (0.0, 0.3, 0.1), (0.0, 0.3, -0.1)])
+def test_a_chain_that_folds_back_in_y_is_unsupported(
+    symmetric: bool, ys: tuple[float, ...]
 ) -> None:
-    document = two_wing_airplane().model_dump(mode="json", by_alias=True)
-    base = document["wings"]["Main"]
-    document["wings"] = {k: {**base, "name": k, "surface_type": v} for k, v in wings.items()}
-    airplane = AirplaneGeometry.model_validate(document)
+    """The planform would be counted twice where the chain doubles back."""
+    wing = wing_of(symmetric, *((y, 0.2) for y in ys))
+    airplane = AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
     with pytest.raises(FormulaError) as raised:
         main_wing_properties(airplane)
-    assert (raised.value.category, raised.value.code) == (
-        ErrorCategory.INVALID_INPUT,
-        "main_wing_count",
-    )
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert "fold" in raised.value.message
+
+
+def test_a_wing_count_other_than_one_is_an_internal_guard_not_an_input_error() -> None:
+    """validate.py is the one producer of main_wing_count; here it would be a defect."""
+    airplane = AirplaneGeometry.model_validate({"name": "t"})
+    with pytest.raises(ValueError, match="exactly one main wing"):
+        main_wing_properties(airplane)
