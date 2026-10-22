@@ -287,7 +287,7 @@ def test_cancellation_is_not_a_load_failure(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_every_formula_but_the_built_ones_is_not_implemented_at_build_time() -> None:
-    """Only the formulas of IMPLEMENTED have an implementation; the other 52 are declared only."""
+    """Only the formulas of IMPLEMENTED have an implementation; the others are declared only."""
     from aero_kernel.build import shipped_build
 
     build = shipped_build()
@@ -298,4 +298,4 @@ def test_every_formula_but_the_built_ones_is_not_implemented_at_build_time() -> 
     }
     implemented = IMPLEMENTED
     assert set(build.report.not_implemented) == declared - implemented
-    assert len(build.report.not_implemented) == 52
+    assert len(build.report.not_implemented) == 59 - len(IMPLEMENTED)

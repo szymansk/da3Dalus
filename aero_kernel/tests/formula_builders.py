@@ -18,6 +18,7 @@ IMPLEMENTED = {
     "calc:aspect-ratio",
     "calc:wing-loading",
     "calc:airplane-geometry",
+    "calc:airplane-configuration",
 }
 
 

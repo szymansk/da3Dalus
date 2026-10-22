@@ -1,9 +1,12 @@
 """The slice-1 formulas: each against a hand value, ``x`` built from the model (Q11)."""
 
+from typing import Any
+
 import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.air_density_isa import air_density_isa
+from aero_kernel.formulas.airplane_configuration import airplane_configuration
 from aero_kernel.formulas.airplane_geometry import airplane_geometry
 from aero_kernel.formulas.aspect_ratio import aspect_ratio
 from aero_kernel.formulas.dynamic_pressure import dynamic_pressure
@@ -76,7 +79,7 @@ async def test_the_traceability_report_is_ok_on_the_shipped_model() -> None:
         for slug in content.formulas
     }
     assert set(build.report.not_implemented) == declared - IMPLEMENTED
-    assert len(build.report.not_implemented) == 52
+    assert len(build.report.not_implemented) == 59 - len(IMPLEMENTED)
 
 
 async def test_number_rejects_an_absent_or_non_numeric_parameter() -> None:
@@ -174,3 +177,69 @@ async def test_airplane_geometry_does_not_warn_when_the_root_lies_on_the_centrel
     context = context_with(StubAtmosphere({}))
     await airplane_geometry(x, context)
     assert context.warnings == ()
+
+
+def configuration_x(deflection: float | None, *roles: str) -> dict[str, Any]:
+    """``x`` of airplane-configuration from the model: an airplane with devices of the given roles."""
+    sections = [
+        {
+            "xyz_le": [0.0, 0.2 * index, 0.0],
+            "chord": 0.2,
+            "twist": 0.0,
+            "airfoil": "naca2412",
+            **({"trailing_edge_device": {"role": role}} if role else {}),
+        }
+        for index, role in enumerate((*roles, ""))
+    ]
+    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
+    airplane = AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+    x: dict[str, Any] = {"airplane": airplane, "flap_deflection": deflection}
+    assert set(x) == set(MODEL.formula("airplane-configuration").inputs)  # type: ignore[union-attr]  # formula exists
+    return x
+
+
+def deflections_of(airplane: AirplaneGeometry) -> list[float | None]:
+    return [
+        None if s.trailing_edge_device is None else s.trailing_edge_device.deflection_deg
+        for s in (airplane.wings or {})["Main"].x_secs
+    ]
+
+
+async def test_configuration_with_flaps_and_a_deflection_sets_the_flaps_exactly() -> None:
+    x = configuration_x(55.0, "flap", "aileron")
+    context = context_with(StubAtmosphere({}))
+    result = await airplane_configuration(x, context)
+    assert set(result) == {"airplane_cfg"}
+    assert deflections_of(result["airplane_cfg"]) == [55.0, 0.0, None]
+    assert context.warnings == ()
+
+
+async def test_configuration_without_flaps_and_without_a_deflection_is_the_airplane_itself() -> (
+    None
+):
+    x = configuration_x(None, "aileron")
+    context = context_with(StubAtmosphere({}))
+    result = await airplane_configuration(x, context)
+    assert result["airplane_cfg"] == x["airplane"]
+    assert context.warnings == ()
+
+
+async def test_configuration_without_flaps_ignores_a_deflection_and_warns() -> None:
+    x = configuration_x(20.0, "aileron")
+    context = context_with(StubAtmosphere({}), origin="airplane-landing")
+    result = await airplane_configuration(x, context)
+    assert result["airplane_cfg"] == x["airplane"]
+    (warning,) = context.warnings
+    assert warning.code == "deflection_without_flap"
+    assert warning.origin == "airplane-landing"
+    assert warning.detail == {"flap_deflection_deg": 20.0}
+
+
+async def test_configuration_with_flaps_but_no_deflection_is_a_missing_input() -> None:
+    x = configuration_x(None, "flap")
+    context = context_with(StubAtmosphere({}))
+    with pytest.raises(FormulaError) as raised:
+        await airplane_configuration(x, context)
+    assert raised.value.category is ErrorCategory.INVALID_INPUT
+    assert raised.value.code == "missing_input"
+    assert raised.value.parameter == "flap_deflection"

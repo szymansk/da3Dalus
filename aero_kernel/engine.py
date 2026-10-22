@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from aero_kernel.build import Build
 from aero_kernel.canon.model import ConstBinding, Default, Formula
 from aero_kernel.context import Context, Inputs, Solvers, Value
+from aero_kernel.devices import devices_at_rest
 from aero_kernel.errors import (
     ErrorCategory,
     FormulaError,
@@ -124,6 +125,9 @@ class _Call:
     ) -> None:
         self.build = build
         self.aircraft = aircraft
+        # The supplied geometry as the leaf value: every device at 0 deg (ch. 8.11), where the
+        # geometry_deflection_ignored warning is raised.
+        self.airplane_at_rest = devices_at_rest(aircraft.airplane)
         self.request = request
         self.subtree = subtree
         self.call_id = call_id
@@ -461,7 +465,7 @@ class _Call:
                 return value if isinstance(value, float | AirplaneGeometry) else None
         quantity = self.build.model.quantity(slug)
         if quantity is not None and quantity.type == "airplane":
-            return self.aircraft.airplane
+            return self.airplane_at_rest
         return self.values.get(slug) if quantity is not None and quantity.type == "scalar" else None
 
     @staticmethod

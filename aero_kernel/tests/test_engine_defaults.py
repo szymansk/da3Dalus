@@ -8,6 +8,7 @@ import pytest
 from aero_kernel.context import Context, Inputs
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import ComputeResult, DefaultUsed, QuantityStatus, WarningSeverity
 from aero_kernel.tests.engine_builders import (
     NO_SOLVERS,
@@ -409,3 +410,19 @@ async def test_the_default_lines_of_one_node_follow_its_parameter_order(
         "default used: air-density = 1.225 kg/m^3 (us standard atmosphere)",
         "default used: margin-target = 1.3 1 (test margin)",
     ]
+
+
+async def test_the_supplied_airplane_reaches_a_formula_with_every_device_at_rest() -> None:
+    """Zeroed where the airplane becomes the leaf value, next to the warning (ch. 8.11)."""
+    seen: list[object] = []
+
+    async def span(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        seen.append(x["airplane"])
+        return {"s": 1.0}
+
+    await go("span-q", wings=deflected_wing(), overrides={"wing-span": span})
+    (airplane,) = seen
+    assert isinstance(airplane, AirplaneGeometry)
+    device = (airplane.wings or {})["Main"].x_secs[0].trailing_edge_device
+    assert device is not None
+    assert device.deflection_deg == 0.0
