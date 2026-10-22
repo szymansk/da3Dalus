@@ -7,6 +7,7 @@ from aero_kernel.canon.model import CanonModel
 from aero_kernel.context import Context, Solvers, Value
 from aero_kernel.errors import display_slug
 from aero_kernel.runtime import SolverRuntime
+from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 
@@ -54,6 +55,11 @@ def inputs_from_model(
     return {wanted[slug]: value for slug, value in given.items()}
 
 
+# Sea-level ISA viscosity and speed of sound, the stub's constants next to its table of densities.
+STUB_VISCOSITY = 1.7894e-5
+STUB_SPEED_OF_SOUND = 340.294
+
+
 class StubAtmosphere(AtmosphereAdapter):
     """An ATM adapter that answers from a table of altitude -> density, and nothing else."""
 
@@ -75,10 +81,14 @@ class StubAtmosphere(AtmosphereAdapter):
         """Return the versions the stub was given."""
         return self.versions
 
-    async def density(self, altitude_m: float) -> float:
-        """Return the tabulated density; an altitude not in the table is a test error."""
+    async def state(self, altitude_m: float) -> AirState:
+        """Return the tabulated density with fixed viscosity and speed of sound (sea-level ISA)."""
         self.asked.append(altitude_m)
-        return self.table[altitude_m]
+        return AirState(
+            density=self.table[altitude_m],
+            dynamic_viscosity=STUB_VISCOSITY,
+            speed_of_sound=STUB_SPEED_OF_SOUND,
+        )
 
 
 def solvers_with(

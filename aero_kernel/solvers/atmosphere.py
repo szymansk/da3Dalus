@@ -1,4 +1,4 @@
-"""The ATM adapter: exact ISA air density (ARCHITECTURE ch. 8.8, K30 / O5).
+"""The ATM adapter: the exact ISA air state (ARCHITECTURE ch. 8.8, K30 / O5).
 
 The kernel has one ISA, ``asb.Atmosphere(altitude=h, method="isa")``; there is no hand-written
 second one. Implements the tool behind the canon formula ``air-density-isa``.
@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from typing import ClassVar
 
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.base import SolverAdapter
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,8 @@ class AtmosphereAdapter(SolverAdapter):
     tool: ClassVar[str] = "ATM"
     requirements: ClassVar[Mapping[str, str]] = {"aerosandbox": "aerosandbox"}
 
-    async def density(self, altitude_m: float) -> float:
-        """Return the ISA air density at a geopotential altitude, in kg/m^3.
+    async def state(self, altitude_m: float) -> AirState:
+        """Return the ISA air state at a geopotential altitude.
 
         The lookup is closed-form and runs inline on the event loop, not in the pool; only the
         first import of aerosandbox, which is slow, runs in a worker thread (ch. 8.10).
@@ -40,7 +41,7 @@ class AtmosphereAdapter(SolverAdapter):
             altitude_m: Altitude above mean sea level in metres.
 
         Returns:
-            Air density in kg/m^3.
+            Density in kg/m^3, dynamic viscosity in Pa s and speed of sound in m/s.
 
         Raises:
             FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input``
@@ -62,6 +63,10 @@ class AtmosphereAdapter(SolverAdapter):
                 detail={"altitude_m": altitude_m, "valid_range_m": [low, high]},
                 parameter="h",
             )
-        density = float(atmosphere.density())  # pyright: ignore[reportUnknownArgumentType]  # untyped ASB
-        logger.debug("isa density %.6g kg/m^3 at %s m", density, altitude_m)
-        return density
+        air = AirState(
+            density=float(atmosphere.density()),  # pyright: ignore[reportUnknownArgumentType]  # untyped ASB
+            dynamic_viscosity=float(atmosphere.dynamic_viscosity()),  # pyright: ignore[reportUnknownArgumentType]
+            speed_of_sound=float(atmosphere.speed_of_sound()),  # pyright: ignore[reportUnknownArgumentType]
+        )
+        logger.debug("isa state at %s m: %s", altitude_m, air)
+        return air

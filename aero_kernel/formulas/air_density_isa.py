@@ -22,4 +22,4 @@ async def air_density_isa(x: Inputs, ctx: Context) -> dict[str, float]:
         FormulaError: From the adapter, unchanged (``tool_unavailable``, or ``invalid_input``
             for an altitude outside the ISA range).
     """
-    return {"rho": await ctx.solvers.atmosphere.density(number(x, "h"))}
+    return {"rho": (await ctx.solvers.atmosphere.state(number(x, "h"))).density}

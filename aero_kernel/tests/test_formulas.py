@@ -16,6 +16,7 @@ from aero_kernel.formulas.weight_from_mass import weight_from_mass
 from aero_kernel.formulas.wing_loading import wing_loading
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import DEFAULT_REGISTRY
+from aero_kernel.solvers.air import AirState
 from aero_kernel.tests.formula_builders import (
     IMPLEMENTED,
     StubAtmosphere,
@@ -55,7 +56,7 @@ async def test_air_density_isa_asks_the_atmosphere_adapter_for_the_altitude() ->
 
 async def test_air_density_isa_passes_an_adapter_failure_on_unchanged() -> None:
     class Failing(StubAtmosphere):
-        async def density(self, altitude_m: float) -> float:
+        async def state(self, altitude_m: float) -> AirState:
             raise FormulaError(ErrorCategory.TOOL_UNAVAILABLE, "tool_unavailable", "m", "h")
 
     x = inputs_from_model(MODEL, "air-density-isa", {"altitude": 0.0})
