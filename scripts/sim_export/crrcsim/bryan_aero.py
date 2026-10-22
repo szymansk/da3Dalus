@@ -187,7 +187,9 @@ def control_order(avl_text: str) -> list[str]:
     return names
 
 
-def run_avl_trimmed(b: Bryan, cl_trim: float, v_trim: float) -> dict[str, float]:
+def run_avl_trimmed(
+    b: Bryan, cl_trim: float, v_trim: float, core_ratio: float | None = None
+) -> dict[str, float]:
     """AVL at C_L = cl_trim, elevator trimmed to Cm = 0 about the CG, then the ST derivatives."""
     op = asb.OperatingPoint(b.atmosphere, velocity=v_trim, alpha=2.0)
     work = pathlib.Path(tempfile.mkdtemp(prefix="crrcsim_avl_"))
@@ -195,7 +197,9 @@ def run_avl_trimmed(b: Bryan, cl_trim: float, v_trim: float) -> dict[str, float]
     order = control_order(geom.read_text())
     if order != ["aileron", "elevator", "rudder"]:
         raise RuntimeError(f"unexpected AVL control order {order}")
-    cmds = ["oper", f"a c {cl_trim}", "d2 pm 0", "x", "st", "", "", "quit"]
+    # OPER > Option > C: core size / strip width ratio of the vortex cores (AVL default 0.25)
+    core = ["o", "c", str(core_ratio), ""] if core_ratio is not None else []
+    cmds = ["oper", *core, f"a c {cl_trim}", "d2 pm 0", "x", "st", "", "", "quit"]
     out = subprocess.run(
         [str(avl_path()), str(geom)],
         input="\n".join(cmds) + "\n",
@@ -238,3 +242,77 @@ def ab_polar(b: Bryan, v: float, alpha_deg: np.ndarray) -> dict[str, np.ndarray]
     return {k: np.ravel(r[k]).astype(float) for k in ("CL", "CD", "Cm")} | {
         "alpha": np.asarray(alpha_deg, dtype=float)
     }
+
+
+# --- surface-level AVL mesh (convergence study / exporter) -------------------------------------
+MIN_DY = 0.02
+
+
+def merged(wing: asb.Wing, min_dy: float) -> list[asb.WingXSec]:
+    xs = list(wing.xsecs)
+    kept = [xs[0]]
+    for x in xs[1:-1]:
+        a, b = kept[-1].xyz_le, x.xyz_le
+        if ((a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2) ** 0.5 >= min_dy:
+            kept.append(x)
+    a, b = kept[-1].xyz_le, xs[-1].xyz_le
+    if len(kept) > 1 and ((a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2) ** 0.5 < min_dy:
+        kept.pop()
+    return [*kept, xs[-1]]
+
+
+def inplane_span(xs: list[asb.WingXSec]) -> float:
+    return sum(
+        ((a.xyz_le[1] - b.xyz_le[1]) ** 2 + (a.xyz_le[2] - b.xyz_le[2]) ** 2) ** 0.5
+        for a, b in zip(xs[:-1], xs[1:], strict=True)
+    )
+
+
+def avl_variant(b: Bryan, family: str, n_chord: int, n_wing: int) -> Bryan:
+    """BRYAN with a surface-level AVL mesh: sections merged to MIN_DY, Nspan scaled by in-plane span,
+    family 'uniform-aligned' (equal strip width on all surfaces) or 'sine' (-sine per half wing,
+    cosine on the fin); Nchord = n_chord. References stay those of the full geometry."""
+    sections = {w.name: merged(w, MIN_DY) for w in b.airplane.wings}
+    span_wing = inplane_span(sections["Tragflaeche"])
+    wings = []
+    for w in b.airplane.wings:
+        xs = sections[w.name]
+        n = max(len(xs) - 1, round(n_wing * inplane_span(xs) / span_wing))
+        spacing = (
+            "uniform" if family == "uniform-aligned" else ("-sine" if w.symmetric else "cosine")
+        )
+        wings.append(
+            asb.Wing(
+                name=w.name,
+                symmetric=w.symmetric,
+                analysis_specific_options={
+                    asb.AVL: dict(
+                        wing_level_spanwise_spacing=True,
+                        spanwise_resolution=n,
+                        spanwise_spacing=spacing,
+                        chordwise_resolution=n_chord,
+                    )
+                },
+                xsecs=[
+                    asb.WingXSec(
+                        xyz_le=x.xyz_le,
+                        chord=x.chord,
+                        twist=x.twist,
+                        airfoil=x.airfoil,
+                        control_surfaces=x.control_surfaces,
+                        analysis_specific_options={asb.AVL: {}},
+                    )
+                    for x in xs
+                ],
+            )
+        )
+    p = asb.Airplane(
+        name="BRYAN",
+        xyz_ref=b.airplane.xyz_ref,
+        wings=wings,
+        fuselages=b.airplane.fuselages,
+        s_ref=b.ref.s_ref,
+        c_ref=b.ref.c_ref,
+        b_ref=b.ref.b_ref,
+    )
+    return Bryan(p, b.mass_kg, b.xyz_cg, b.ref, b.geometry)
