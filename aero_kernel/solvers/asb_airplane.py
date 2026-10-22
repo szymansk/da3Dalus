@@ -22,9 +22,18 @@ from aero_kernel.geometry_properties import main_wing_properties
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["to_asb_airplane"]
+__all__ = ["load_aerosandbox", "to_asb_airplane"]
 
 # ``Any`` is the boundary to AeroSandbox, which ships no type information.
+
+
+def load_aerosandbox() -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+    """Return the ``aerosandbox`` module, typed as the untyped boundary it is.
+
+    Callers import it off the event loop first (ch. 8.10), or run in a pool worker, so this is a
+    lookup.
+    """
+    return importlib.import_module("aerosandbox")
 
 
 def _airfoil(asb: Any, airfoil: Airfoil) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
@@ -121,7 +130,7 @@ def to_asb_airplane(airplane: AirplaneGeometry) -> Any:  # noqa: ANN401  # untyp
         ValueError: If the document does not have exactly one main wing.
         FormulaError: ``unsupported_configuration`` for a fuselage ASB cannot represent.
     """
-    asb = importlib.import_module("aerosandbox")
+    asb = load_aerosandbox()
     reference = main_wing_properties(airplane)
     wings = [_wing(asb, wing) for wing in (airplane.wings or {}).values()]
     fuselages = [_fuselage(asb, fuselage) for fuselage in (airplane.fuselages or {}).values()]
