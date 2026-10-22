@@ -20,10 +20,12 @@ class FakeAirfoil:
 
 
 class FakeWingXSec:
-    """Records ``asb.WingXSec(...)``."""
+    """Records ``asb.WingXSec(...)`` and exposes its arguments as attributes."""
 
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
+        self.xyz_le = kwargs["xyz_le"]
+        self.chord = kwargs["chord"]
 
 
 class FakeWing:
@@ -31,6 +33,9 @@ class FakeWing:
 
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
+        self.name = kwargs["name"]
+        self.xsecs = kwargs["xsecs"]
+        self.symmetric = kwargs["symmetric"]
 
 
 class FakeAirplane:
@@ -38,6 +43,7 @@ class FakeAirplane:
 
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
+        self.wings = kwargs["wings"]
 
 
 def install_fake_aerosandbox(monkeypatch: pytest.MonkeyPatch) -> types.ModuleType:

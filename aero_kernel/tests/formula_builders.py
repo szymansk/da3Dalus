@@ -4,7 +4,7 @@ import math
 from collections.abc import Mapping
 
 from aero_kernel.canon.model import CanonModel
-from aero_kernel.context import Context, Solvers
+from aero_kernel.context import Context, Solvers, Value
 from aero_kernel.errors import display_slug
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
@@ -18,12 +18,13 @@ IMPLEMENTED = {
     "calc:mean-geometric-chord",
     "calc:aspect-ratio",
     "calc:wing-loading",
+    "calc:airplane-geometry",
 }
 
 
 def inputs_from_model(
-    model: CanonModel, formula_slug: str, by_quantity: Mapping[str, float]
-) -> dict[str, float]:
+    model: CanonModel, formula_slug: str, by_quantity: Mapping[str, Value]
+) -> dict[str, Value]:
     """Build the ``x`` of a formula from the model (Q11): the value of each bound quantity under
     the formula's parameter name.
 
