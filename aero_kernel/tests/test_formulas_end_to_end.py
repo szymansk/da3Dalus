@@ -153,8 +153,9 @@ async def test_the_cache_key_of_the_density_node_follows_the_tool_version() -> N
             tool_versions=solvers.tool_versions_of("ATM"),
         )
 
-    assert key("4.2.9") == key("4.2.9")
-    assert key("4.2.9") != key("4.3.0")
+    first, again, other = key("4.2.9"), key("4.2.9"), key("4.3.0")
+    assert first == again
+    assert first != other
 
 
 @pytest.mark.aero

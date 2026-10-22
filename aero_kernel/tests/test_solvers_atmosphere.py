@@ -56,8 +56,9 @@ async def test_density_asks_the_exact_isa_for_the_altitude(fake_aerosandbox: Non
 async def test_an_altitude_outside_the_isa_range_is_invalid_input(
     fake_aerosandbox: None, altitude: float
 ) -> None:
+    adapter = AtmosphereAdapter(SolverRuntime())
     with pytest.raises(FormulaError) as raised:
-        await AtmosphereAdapter(SolverRuntime()).density(altitude)
+        await adapter.density(altitude)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
     assert raised.value.parameter == "h"
     assert raised.value.detail is not None
@@ -75,8 +76,9 @@ async def test_the_range_limits_belong_to_the_range(
 @pytest.mark.asyncio
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(AtmosphereAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
+    adapter = AtmosphereAdapter(SolverRuntime())
     with pytest.raises(FormulaError) as raised:
-        await AtmosphereAdapter(SolverRuntime()).density(100.0)
+        await adapter.density(100.0)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 

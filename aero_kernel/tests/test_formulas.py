@@ -51,8 +51,9 @@ async def test_air_density_isa_passes_an_adapter_failure_on_unchanged() -> None:
             raise FormulaError(ErrorCategory.TOOL_UNAVAILABLE, "tool_unavailable", "m", "h")
 
     x = inputs_from_model(MODEL, "air-density-isa", {"altitude": 0.0})
+    context = context_with(Failing({}))
     with pytest.raises(FormulaError) as raised:
-        await air_density_isa(x, context_with(Failing({})))
+        await air_density_isa(x, context)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 

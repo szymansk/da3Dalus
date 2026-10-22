@@ -366,7 +366,8 @@ async def test_compute_closes_the_runtime_when_the_call_fails(
 
     monkeypatch.setattr(api_module, "SolverRuntime", Spy)
     monkeypatch.setattr(api_module, "evaluate", boom)
+    the_aircraft, the_request = aircraft({"air-density": 1.225}), request("stall-speed")
     with pytest.raises(asyncio.CancelledError):
-        await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
+        await compute(the_aircraft, the_request)
     (runtime,) = created
     await assert_closed(runtime)
