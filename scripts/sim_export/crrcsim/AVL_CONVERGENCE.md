@@ -78,8 +78,8 @@ Result for BRYAN at the plan CG 31.4 % MAC: NP 37.8 % MAC, static margin 6.4 % (
 ### Previous NP worlds
 
 The AVL value in the NP worlds [32.9; 36.9] % MAC (NP_NIEDRIGE_RE.md, ERGEBNISSE_STABILITAET.md) came from
- / : per-section  uniform, chordwise 10, no
+bryan_lateral_avl.py / bryan_np_claf.py: per-section spanwise_resolution=3 uniform, chordwise 10, no
 alignment. That is the unaligned per-segment mesh of the first table (segment-3: NP 33.1 % MAC), which is
 mesh-dependent (segment-1 37.5, segment-2 35.4, segment-3 33.1); the 32.9 % AVL world is therefore suspect and
 low by about 5 % MAC. The upper bound 36.9 % comes from the textbook method (eta 0.9), not from AVL.
- used 4 strips per segment (uniform), chordwise 8: the same class of mesh.
+urmodell/fleet_eval.py used 4 strips per segment (uniform), chordwise 8: the same class of mesh.
