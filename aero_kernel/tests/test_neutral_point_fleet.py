@@ -40,7 +40,7 @@ WORLDS = ("textbook", "pappas", "avl")
 # Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
 GOLDEN_NP = {
     FleetMember.BRYAN: (0.1441142600, 0.1401394435, 0.144036),
-    FleetMember.JAGUAR: (0.1233721388, 0.1238206059, 0.132416),
+    FleetMember.JAGUAR: (0.1233721388, 0.1238206059, 0.126343),
 }
 C_MAC = {FleetMember.BRYAN: 0.13277219166316895, FleetMember.JAGUAR: 0.10504546518699101}
 # BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral
@@ -100,14 +100,13 @@ async def test_bryan_declares_the_missing_fuselage_in_every_world_and_converges(
 
 
 @pytest.mark.asyncio
-async def test_jaguar_declares_its_span_sensitivity_in_the_avl_world() -> None:
-    """JAGUAR's AVL neutral point moves by 1.8 % MAC when the span mesh doubles (10/24 against
-    10/48: 0.1325 against 0.1346 m), above the 0.5 % tolerance: a defect warning, in the AVL world."""
+async def test_jaguar_converges_once_its_root_is_on_the_centreline() -> None:
+    """JAGUAR's root section is stored at y = +1.1 mm. Held there, the mirrored halves left a slit and
+    the neutral point drifted by 1.9 % MAC per span doubling; on the centreline 10/24 against its
+    refinement agrees to 0.2 % MAC, below the 0.5 % tolerance, so no warning."""
     result = await run(FleetMember.JAGUAR)
     for quantity in result.quantities:
-        (warning,) = [w for w in quantity.warnings if w.code == "avl_mesh_not_converged"]
-        assert warning.world == "neutral-point=avl"
-        assert 0.005 < float(warning.detail["delta_mac"]) < 0.03  # type: ignore[arg-type]
+        assert "avl_mesh_not_converged" not in {w.code for w in quantity.warnings}
 
 
 @pytest.mark.asyncio

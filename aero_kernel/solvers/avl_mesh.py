@@ -108,8 +108,8 @@ def _section_at(
     inside = min(max(bisect_right(position, at) - 1, 0), len(secs) - 2)
     return MeshSection(
         x=_interp(position, columns[0], at),
-        y=_interp(position, columns[1], at),
-        z=_interp(position, columns[2], at),
+        y=at if axis == 1 else _interp(position, columns[1], at),
+        z=at if axis == 2 else _interp(position, columns[2], at),
         chord=_interp(position, [s.chord for s in secs], at),
         twist=_interp(position, [s.twist for s in secs], at),
         airfoil=airfoil_index(secs[inside].airfoil),

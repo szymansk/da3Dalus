@@ -211,3 +211,19 @@ def test_a_root_stored_off_the_centreline_starts_at_the_centreline() -> None:
     (main,) = mesh_surfaces(plane, NSPAN, lambda _a: 0)
     assert main.sections[0].y == 0.0
     assert math.isclose(main.sections[0].chord, 0.2 - 0.1 * 0.0003 / 0.6003, abs_tol=1e-9)
+
+
+def test_a_root_stored_off_the_centreline_on_the_far_side_is_extended_to_it() -> None:
+    """JAGUAR's root lies at y = +1.1 mm: held at that y, the mirrored halves leave a 2.2 mm slit that
+    made the neutral point drift by 1.9 % MAC per span doubling (0.1325, 0.1346, 0.1359 m)."""
+    plane = AirplaneGeometry.model_validate(
+        {
+            "name": "t",
+            "wings": {
+                "Main": wing("Main", "main_wing", [(0.0, 0.0011, 0.0, 0.2), (0.0, 0.6, 0.0, 0.1)])
+            },
+        }
+    )
+    (main,) = mesh_surfaces(plane, NSPAN, lambda _a: 0)
+    assert main.sections[0].y == 0.0
+    assert main.sections[0].chord == 0.2

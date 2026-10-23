@@ -684,8 +684,9 @@ caller's responsibility.
     point at the geometry origin. The aligned mesh (`avl_mesh.py`): one uniform spanwise distribution over
     the main wing's semi-span, the horizontal tail on the wing's stations over its span plus its tip (a
     station within 0.3 strip widths of the tip is dropped), a fin at the wing's strip width; a mirrored
-    surface starts at the centreline (a root stored off it gives a strip across its own mirror image and
-    moved BRYAN's neutral point by 3 % MAC). Section positions are not stations. `CLAF = 1 + 0.77 t/c` with
+    surface starts at the centreline, its y exactly 0 with the root chord held (a root stored at −0.25 mm gave
+    a strip across its own mirror image and moved BRYAN's neutral point by 3 % MAC; one stored at +1.1 mm
+    left a slit between the halves and made JAGUAR's neutral point drift 1.9 % MAC per span doubling). Section positions are not stations. `CLAF = 1 + 0.77 t/c` with
     the thickness from AeroSandbox `max_thickness`, computed in a pool worker. AVL runs through
     `run_process`; the lift coefficient is constrained (`a c`), not trimmed. AVL exit or output that is not
     understood, or a `CLtot` that misses the request by more than 1e-4, is `internal` (a defect of ours); a
