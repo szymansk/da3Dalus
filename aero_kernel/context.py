@@ -84,15 +84,17 @@ class Solvers:
 class Context:
     """The context of one formula call."""
 
-    def __init__(self, *, origin: str, solvers: Solvers) -> None:
+    def __init__(self, *, origin: str, solvers: Solvers, world: str | None = None) -> None:
         """Create the context of one node.
 
         Args:
             origin: Slug of the quantity that warnings of this call are reported against.
             solvers: The solver adapters of the call.
+            world: The method world this formula runs in, for a formula with worlds (ch. 8.13).
         """
         self._origin = origin
         self.solvers = solvers
+        self.world = world
         self._warnings: list[KernelWarning] = []
 
     def warn(self, code: str, message: str, detail: dict[str, JsonValue] | None = None) -> None:

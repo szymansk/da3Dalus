@@ -22,11 +22,12 @@ def test_warn_builds_the_catalogue_warning_with_the_origin() -> None:
     )
 
 
-def test_the_context_carries_the_solvers_and_the_warnings_only() -> None:
+def test_the_context_carries_the_solvers_the_world_and_the_warnings_only() -> None:
     context = Context(origin="x", solvers=SOLVERS)
     assert context.solvers is SOLVERS
     assert context.solvers.atmosphere is SOLVERS.atmosphere
-    assert not hasattr(context, "world")
+    assert context.world is None  # a formula without worlds
+    assert Context(origin="x", solvers=SOLVERS, world="avl").world == "avl"
     assert not hasattr(context, "request")
 
 

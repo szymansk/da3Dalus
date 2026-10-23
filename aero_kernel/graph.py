@@ -397,6 +397,33 @@ class Subtree(BaseModel):
             for combination in itertools.product(*(worlds[f] for f in formulas))
         )
 
+    def node_assignments(self, node: NodeId) -> tuple[tuple[str | None, dict[str, str]], ...]:
+        """Return the assignments a node runs under, each with its canonical key (A11 rule 3).
+
+        The Cartesian product over the uncertain formulas the node depends on (itself included),
+        formulas sorted by slug and worlds in canon order. A node that depends on none runs once,
+        under the key ``None``, and is shared by all assignments of the quantities that read it.
+
+        Args:
+            node: A node of the subtree.
+
+        Returns:
+            ``(key, assignment)`` pairs; the key is :func:`format_world_assignment` of the
+            assignment, or ``None`` for the one empty assignment.
+
+        Raises:
+            KeyError: If the node is not in the subtree.
+        """
+        formulas = self._uncertain_in(self._closure(node))
+        if not formulas:
+            return ((None, {}),)
+        worlds = self._worlds()
+        assignments = (
+            dict(zip(formulas, combination, strict=True))
+            for combination in itertools.product(*(worlds[f] for f in formulas))
+        )
+        return tuple((format_world_assignment(a), a) for a in assignments)
+
     def assignment_key(self, node: NodeId, assignment: Mapping[str, str]) -> str | None:
         """Restrict a world assignment to the uncertain formulas a node depends on.
 
