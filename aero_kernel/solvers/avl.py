@@ -29,6 +29,7 @@ from aero_kernel.solvers.avl_writer import (
     parse_avl_output,
 )
 from aero_kernel.solvers.base import SolverAdapter
+from aero_kernel.solvers.devices import refuse_deflected_devices
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,9 @@ REFINEMENT_TOLERANCE_MAC = 0.005
 CLAF_PER_THICKNESS = 0.77
 # AVL reaches the requested lift coefficient exactly; a larger miss is a defect of ours.
 CL_TOLERANCE = 1e-4
-_OVERFLOW = "Vortex array overflow"
+# AVL 3.40 prints the first on an overflow of its vortex arrays; on a mesh so fine that the influence
+# matrix no longer fits LAPACK's integers it exits 0 with the second (BRYAN at 20/96).
+_OVERFLOW = ("Vortex array overflow", "DGETRF parameter number")
 
 
 class AvlNeutralPoint(BaseModel):
@@ -180,7 +183,7 @@ class AvlAdapter(SolverAdapter):
             executable=avl_path(),
             args=(GEOMETRY_FILE,),
         )
-        if _OVERFLOW in run.stdout:
+        if any(marker in run.stdout for marker in _OVERFLOW):
             raise FormulaError(
                 ErrorCategory.UNSUPPORTED_CONFIGURATION,
                 "avl_array_limit",
@@ -219,6 +222,7 @@ class AvlAdapter(SolverAdapter):
             RuntimeError: If AVL fails (a defect, reported as ``internal``).
         """
         self.require_available()
+        refuse_deflected_devices(airplane, "AVL")
         reference = main_wing_properties(airplane)
         numbers: dict[Airfoil, int] = {}
 

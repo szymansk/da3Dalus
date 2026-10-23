@@ -11,6 +11,7 @@ from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers import avl as avl_module
 from aero_kernel.solvers.avl import AvlAdapter, AvlNeutralPoint, Contour
 from aero_kernel.tests.np_builders import CONVENTIONAL, airplane_with
+from aero_kernel.tests.solver_builders import airplane
 
 SCRIPT = """#!{python}
 import json, pathlib, re, sys
@@ -23,6 +24,9 @@ cl = float(re.search(r"a c (\\S+)", commands).group(1))
 (here / "seen.json").write_text(json.dumps({{"n_chord": n_chord, "commands": commands, "geometry": geometry, "files": sorted(p.name for p in pathlib.Path('.').iterdir())}}))
 if str(n_chord) in config.get("overflow", []):
     print(" SDUPL: Vortex array overflow. Increase NVMAX currently")
+    sys.exit(0)
+if str(n_chord) in config.get("illegal", []):
+    print(" ** On entry to DGETRF parameter number  4 had an illegal value")
     sys.exit(0)
 print(" Sref = 0.28000")
 print(" CLtot = %.5f" % (cl + config.get("cl_offset", 0.0)))
@@ -158,3 +162,32 @@ def test_the_settings_are_public_keys_with_their_values() -> None:
 
 def test_the_module_states_its_sources() -> None:
     assert avl_module.CLAF_PER_THICKNESS == 0.77
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("role", "deflection"), [("flap", 30.0), ("aileron", -5.0), ("flaperon", 0.5)]
+)
+async def test_a_deflected_control_surface_is_refused_not_computed_as_clean(
+    fake: Path, role: str, deflection: float
+) -> None:
+    """The writer emits no CONTROL, so a deflected device would silently be ignored."""
+    async with SolverRuntime() as runtime:
+        with pytest.raises(FormulaError) as raised:
+            await FakeAvl(runtime).neutral_point(airplane(device=(role, deflection)), 0.5)
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert "not yet passed to AVL" in raised.value.message
+    assert role in raised.value.message
+    assert not (fake / "seen.json").exists()  # AVL was never started
+
+
+@pytest.mark.asyncio
+async def test_a_matrix_too_large_for_avl_is_the_same_limit_as_an_overflow(fake: Path) -> None:
+    """AVL 3.40 on a very fine mesh exits 0 with a LAPACK 'illegal value' instead of the overflow text."""
+    configure(fake, {"10": 0.14}, illegal=["20"])
+    found = await neutral(fake)
+    assert [w.code for w in found.warnings] == ["avl_refinement_unchecked"]
+    configure(fake, {}, illegal=["10"])
+    with pytest.raises(FormulaError) as raised:
+        await neutral(fake)
+    assert raised.value.code == "avl_array_limit"

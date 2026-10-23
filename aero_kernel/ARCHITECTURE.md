@@ -689,7 +689,7 @@ caller's responsibility.
     the thickness from AeroSandbox `max_thickness`, computed in a pool worker. AVL runs through
     `run_process`; the lift coefficient is constrained (`a c`), not trimmed. AVL exit or output that is not
     understood, or a `CLtot` that misses the request by more than 1e-4, is `internal` (a defect of ours); a
-    vortex array overflow of the declared mesh is `avl_array_limit`. **Refinement check:** the adapter runs
+    vortex array overflow of the declared mesh is `avl_array_limit` (AVL signals it either by its overflow message or, on a very fine mesh, by a LAPACK "illegal value" with exit 0; both count). A deflected control device is refused (`unsupported_configuration`, the refusal shared with the AeroBuildup adapter), because no CONTROL is written. **Refinement check:** the adapter runs
     the declared mesh and the same mesh refined by `avl_refine_factor` (both counts), returns the declared
     value, and declares `avl_mesh_not_converged` if the two differ by more than
     `avl_refinement_tolerance_mac` of the mean chord, `avl_refinement_unchecked` if the refined mesh
