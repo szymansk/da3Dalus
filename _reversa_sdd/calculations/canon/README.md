@@ -556,14 +556,14 @@ postconditions:
   - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
 ```
 
-An **optimization** with several applications, sourced constants, a precondition on an input and
+An **optimization** with several applications, sourced constants and
 postconditions on outputs, some of them scoped to applications (`stall-speed`):
 
 ```yaml
 kind: optimization
 tool: OPT
 output: stall-speed, max-lift-coefficient, angle-of-attack-stall, polar-stall, inverted-max-lift-coefficient, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {v_s: null, cl_max: null, alpha_s: null, polar: null}
 applications:
   - id: clean
@@ -578,8 +578,6 @@ applications:
   - id: inverted
     bind: {n_load: {const: -1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"}}
     produce: {v_s: null, cl_max: inverted-max-lift-coefficient, alpha_s: null, polar: null}
-preconditions:
-  - {id: rho_at_evaluation_altitude, parameter: rho, on_violation: warning}
 postconditions:
   - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
   - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error, applications: [inverted]}
@@ -600,6 +598,8 @@ inputs:
   m_current: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   v_s_to: stall-speed-takeoff
   v_to: takeoff-speed
   x_np: neutral-point

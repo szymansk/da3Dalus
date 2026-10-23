@@ -29,6 +29,7 @@ __all__ = [
     "Interval",
     "KernelError",
     "KernelWarning",
+    "Polar",
     "Provenance",
     "QuantityResult",
     "QuantityStatus",
@@ -57,6 +58,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "default_target_used": WarningSeverity.PRACTICE,
     "deflection_without_flap": WarningSeverity.PRACTICE,
     "geometry_deflection_ignored": WarningSeverity.PRACTICE,
+    "reference_wing_at_centreline": WarningSeverity.PRACTICE,
     "precondition_unchecked": WarningSeverity.PRACTICE,
     "precondition_violated": WarningSeverity.DEFECT,
     "postcondition_unchecked": WarningSeverity.PRACTICE,
@@ -419,6 +421,36 @@ class ComputeResult(BaseModel):
         return self
 
 
+class Polar(BaseModel):
+    """A sampled whole-aircraft polar over angle of attack (ch. 8.12): the solver's own values.
+
+    Attributes:
+        alpha_deg: Angle of attack in degrees, strictly rising.
+        cl: Lift coefficient, normalised by the reference area of the airplane.
+        cd: Drag coefficient (the solver's drag, not a fitted parabola, ADR 0026).
+        cm: Pitching-moment coefficient about the airplane's reference point.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    alpha_deg: tuple[FiniteFloat, ...] = Field(min_length=2)
+    cl: tuple[FiniteFloat, ...]
+    cd: tuple[FiniteFloat, ...]
+    cm: tuple[FiniteFloat, ...]
+
+    @model_validator(mode="after")
+    def _check_series(self) -> Self:
+        """Require equally long series and a strictly rising angle of attack."""
+        lengths = {len(self.alpha_deg), len(self.cl), len(self.cd), len(self.cm)}
+        if len(lengths) != 1:
+            msg = "alpha_deg, cl, cd and cm must have the same length"
+            raise ValueError(msg)
+        if any(b <= a for a, b in zip(self.alpha_deg, self.alpha_deg[1:], strict=False)):
+            msg = "alpha_deg must be strictly rising"
+            raise ValueError(msg)
+        return self
+
+
 class AircraftInput(BaseModel):
     """The aircraft of a call (ch. 8.11): geometry plus the input and target values.
 
@@ -444,12 +476,16 @@ class ComputeRequest(BaseModel):
     Attributes:
         quantities: Canon quantity slugs (not formula slugs); at least one, each once.
         include_long_runs: Whether quantities of cost class ``minutes`` run (ch. 8.7).
+        time_budget_s: One wall-clock budget in seconds for the whole request, or ``None`` for
+            none (ch. 8.10). Quantities still open when it expires are ``timeout`` errors; the
+            finished ones are returned. Admissibility (finite, > 0) is validation's.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     quantities: tuple[Annotated[str, Field(min_length=1)], ...] = Field(min_length=1)
     include_long_runs: bool = Field(default=False, strict=True)
+    time_budget_s: float | None = Field(default=None, strict=True)
 
     @model_validator(mode="after")
     def _check_unique_quantities(self) -> Self:

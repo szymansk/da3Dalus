@@ -152,3 +152,21 @@ def test_two_bubble_chords_give_one_warning() -> None:
 
 def test_zero_airspeed_is_accepted() -> None:
     assert codes(regime([0.3], 0.0, SPEED_OF_SOUND, NU)) == ["reynolds_outside_band"]
+
+
+def test_regime_by_wing_names_the_wing_that_leaves_the_band_and_raises_mach_once() -> None:
+    from aero_kernel.solvers.base import regime_by_wing
+
+    warnings = regime_by_wing({"Main": [0.2, 0.1], "Tail": [0.05, 0.002]}, 120.0, 340.0, 1.46e-5)
+    by_code: dict[str, list[str | None]] = {}
+    for warning in warnings:
+        by_code.setdefault(warning.code, []).append(
+            None if "wing" not in warning.detail else str(warning.detail["wing"])
+        )
+    assert by_code["reynolds_outside_band"] == [
+        "Main",
+        "Tail",
+    ]  # Main: Re up to 1.6e6; Tail: down to 1.6e4
+    assert by_code["mach_above_limit"] == [None]
+    mach = next(w for w in warnings if w.code == "mach_above_limit")
+    assert set(mach.detail) == {"mach"}

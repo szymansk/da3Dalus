@@ -7,6 +7,7 @@ one ERROR of the call. Nothing here logs a failure.
 """
 
 import functools
+import importlib
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -76,6 +77,11 @@ def load_build(path: Path | None = None, registry: Registry | None = None) -> Bu
 def _assemble(path: Path | None, registry: Registry | None) -> Build:
     """Load the model, trace the registry against it and build the graph and the digest."""
     model = load_canon_model(path)
+    if registry is None:
+        # Registers the implementations into the default registry and freezes it (ch. 8.12);
+        # here and not at import, so importing the kernel stays free of work.
+        importlib.import_module("aero_kernel.formulas")
+
     used = DEFAULT_REGISTRY if registry is None else registry
     report = used.check_traceability(model)
     if not report.ok:

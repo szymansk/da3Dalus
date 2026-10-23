@@ -17,7 +17,7 @@ from pydantic import JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SolverAdapter", "regime"]
+__all__ = ["SolverAdapter", "regime", "regime_by_wing"]
 
 # The RC/UAV regime of ADR 0028, defined by flow physics.
 _RE_BAND_MIN = 3.0e4
@@ -115,15 +115,27 @@ class SolverAdapter:
             detail={"tool": self.tool, "missing": list(missing)},
         )
 
+    def settings(self) -> dict[str, JsonValue]:
+        """Return the solver settings this adapter fixes (``Provenance.solver_settings``, ch. 8.4).
+
+        Returns:
+            Name -> value; empty if the adapter has no setting that changes a value.
+        """
+        return {}
+
     def tool_versions(self) -> dict[str, str]:
         """Return the installed version per required distribution (provenance, cache key).
 
-        A distribution that is not installed is omitted. The result is read once and then kept;
-        treat it as read-only.
+        A tool that cannot run has no version (ch. 8.4): while :meth:`available` is false the
+        result is empty, even if one of its distributions is installed. A distribution that is
+        not installed is omitted. The versions are read once and then kept; treat the result as
+        read-only.
 
         Returns:
             Distribution name -> version, e.g. ``{"aerosandbox": "4.2.8"}``.
         """
+        if not self.available():
+            return {}
         if self._versions is None:
             versions: dict[str, str] = {}
             for distribution in self.requirements:
@@ -232,3 +244,49 @@ def regime(
             )
         )
     return warnings
+
+
+def regime_by_wing(
+    chords_by_wing: Mapping[str, Sequence[float]],
+    v_ms: float,
+    speed_of_sound_ms: float,
+    kinematic_viscosity_m2s: float,
+) -> list[KernelWarning]:
+    """Check the regime per wing, so a reader sees which surface is out of the Reynolds band.
+
+    The Reynolds warnings of :func:`regime` are raised for each wing on its own chords and name it
+    (``detail["wing"]``, and in the message); the Mach warning does not depend on a chord and is
+    raised once.
+
+    Args:
+        chords_by_wing: Section chords in metres per wing name (each not empty, all > 0).
+        v_ms: Evaluated airspeed in m/s.
+        speed_of_sound_ms: Speed of sound in m/s.
+        kinematic_viscosity_m2s: Kinematic viscosity in m^2/s.
+
+    Returns:
+        The warnings, wings in the order given, the Mach warning last.
+
+    Raises:
+        ValueError: As :func:`regime`.
+    """
+    warnings: list[KernelWarning] = []
+    mach: KernelWarning | None = None
+    for name, chords in chords_by_wing.items():
+        for warning in regime(chords, v_ms, speed_of_sound_ms, kinematic_viscosity_m2s):
+            if warning.code.startswith("mach"):
+                if mach is None:
+                    mach = KernelWarning.of(
+                        warning.code,
+                        warning.message,
+                        detail={"mach": warning.detail["mach"]},
+                    )
+                continue
+            warnings.append(
+                KernelWarning.of(
+                    warning.code,
+                    f"Wing {name!r}: {warning.message}",
+                    detail={**warning.detail, "wing": name},
+                )
+            )
+    return [*warnings, *([] if mach is None else [mach])]

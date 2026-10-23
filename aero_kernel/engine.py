@@ -13,10 +13,12 @@ import time
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 from aero_kernel.build import Build
-from aero_kernel.canon.model import ConstBinding, Default, Formula
-from aero_kernel.context import Context, Inputs, Value
+from aero_kernel.canon.model import Check, ConstBinding, Default, Formula
+from aero_kernel.context import Context, Inputs, Solvers, Value
+from aero_kernel.devices import devices_at_rest
 from aero_kernel.errors import (
     ErrorCategory,
     FormulaError,
@@ -38,6 +40,7 @@ from aero_kernel.graph import (
     facts_from_geometry,
     unmet_condition,
 )
+from aero_kernel.registry import CheckResult
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -51,7 +54,7 @@ from aero_kernel.schema import (
     ReasonCode,
     dedupe_warnings,
 )
-from aero_kernel.validate import validate_aircraft, validate_values
+from aero_kernel.validate import validate_aircraft, validate_request, validate_values
 from pydantic import JsonValue
 
 logger = logging.getLogger(__name__)
@@ -109,6 +112,25 @@ def _unit_of(build: Build, slug: str) -> str | None:
 _CARRIED_TYPES = frozenset({"scalar", "airplane"})
 
 
+def _in_scope(entry: Check, node: Node) -> bool:
+    """Whether a pre- or postcondition belongs to the application of the node (absent = all)."""
+    return entry.applications is None or node.id.application in entry.applications
+
+
+def _check_warning(
+    what: str, check_id: str, node: Node, result: CheckResult, origin: str
+) -> KernelWarning:
+    """The warning of an ``unchecked`` check or of a violated one whose ``on_violation`` is warning."""
+    unchecked = result.state == "unchecked"
+    verdict = "was not checked" if unchecked else "is violated"
+    return KernelWarning.of(
+        f"{what}_unchecked" if unchecked else f"{what}_violated",
+        f"The {what} `{check_id}` of `{display_slug(node.id.formula)}` {verdict}: {result.message}",
+        origin=origin,
+        detail={what: check_id},
+    )
+
+
 class _Call:
     """The state of one ``evaluate`` call: nothing in it outlives the call."""
 
@@ -120,15 +142,24 @@ class _Call:
         subtree: Subtree,
         call_id: str,
         input_warnings: Sequence[KernelWarning],
+        solvers: Solvers,
     ) -> None:
         self.build = build
         self.aircraft = aircraft
+        # The supplied geometry as the leaf value: every device at 0 deg (ch. 8.11), where the
+        # geometry_deflection_ignored warning is raised.
+        self.airplane_at_rest = devices_at_rest(aircraft.airplane)
         self.request = request
         self.subtree = subtree
         self.call_id = call_id
         self.input_warnings = input_warnings
+        self.solvers = solvers
         # the defaults taken so far, by qualified slug: only nodes that run take one (ch. 8.11)
         self.taken: dict[str, Default] = {}
+        # the versions of the tools whose formulas this call actually called (ch. 8.4)
+        self.tool_versions: dict[str, str] = {}
+        # the settings of those solvers, e.g. the NeuralFoil model size (ch. 8.4)
+        self.solver_settings: dict[str, JsonValue] = {}
         self.nodes: dict[NodeId, Node] = {node.id: node for node in subtree.nodes}
         self.values = {qualify(slug): value for slug, value in aircraft.values.items()}
         self.runs: dict[NodeId, _NodeRun] = {}
@@ -143,9 +174,43 @@ class _Call:
         """Run the layers in order; the nodes of a layer concurrently."""
         for layer in self.subtree.layers:
             async with asyncio.TaskGroup() as group:
-                tasks = [group.create_task(self._node(self.nodes[node_id])) for node_id in layer]
-            for node_id, task in zip(layer, tasks, strict=True):
-                self.runs[node_id] = task.result()
+                for node_id in layer:
+                    group.create_task(self._finish(self.nodes[node_id]))
+
+    async def _finish(self, node: Node) -> None:
+        """Run one node and record its run the moment it is done.
+
+        Recorded here and not after the layer, so that a node that finished before the time
+        budget expired keeps its value even if its layer did not complete.
+        """
+        self.runs[node.id] = await self._node(node)
+
+    def close_open_nodes(self) -> None:
+        """Give every node that did not finish when the time budget expired a ``timeout`` run.
+
+        Dependents of an open node are open too. Their pool jobs, if any, finish and are discarded
+        (ch. 8.10).
+        """
+        for node_id, node in self.nodes.items():
+            if node_id not in self.runs:
+                self.runs[node_id] = self._failed(
+                    self._anchor(node),
+                    lambda slug, open_node=node: self._timeout_error(slug, open_node),
+                )
+
+    def _timeout_error(self, slug: str, node: Node) -> KernelError:
+        """The error of a quantity still open when the time budget expired."""
+        budget = self.request.time_budget_s
+        return KernelError(
+            code="timeout",
+            category=ErrorCategory.TIMEOUT,
+            quantity=slug,
+            formula=display_slug(node.id.formula),
+            application=node.id.application,
+            message=f"`{slug}` did not finish within the time budget of {budget} s.",
+            hint="Raise time_budget_s, or request fewer or cheaper quantities.",
+            detail={"time_budget_s": budget},
+        )
 
     def _anchor(self, node: Node) -> str:
         """The name of the node's quantity in its errors: the requested spelling, else its first."""
@@ -288,8 +353,17 @@ class _Call:
         if inherited is not None:
             return inherited
 
-        warner = Context(origin=display_slug(node.produces[0].quantity))
+        origin = display_slug(node.produces[0].quantity)
+        warner = Context(origin=origin, solvers=self.solvers)
         default_warnings = self._take_defaults(defaults)
+        pre_warnings, refused = self._run_checks("pre", node, formula, inputs, None, origin)
+        if refused is not None:
+            return self._failed(
+                anchor, lambda slug, error=refused: error.model_copy(update={"quantity": slug})
+            )
+        # A called formula used its tool even if it then fails, like a default (ch. 8.11).
+        self.tool_versions.update(self.solvers.tool_versions_of(formula.tool))
+        self.solver_settings.update(self.solvers.settings_of(formula.tool))
         try:
             returned = await implementation.func(inputs, warner)
         except FormulaError as exc:
@@ -301,11 +375,90 @@ class _Call:
                 ),
             )
         self._check_outputs(node, formula, returned)
+        post_warnings, discarded = self._run_checks("post", node, formula, inputs, returned, origin)
+        if discarded is not None:
+            return self._failed(
+                anchor, lambda slug, error=discarded: error.model_copy(update={"quantity": slug})
+            )
         return _NodeRun(
             outcome=NodeOutcome(status=QuantityStatus.OK),
             anchor=anchor,
             outputs=returned,
-            warnings=(*default_warnings, *warner.warnings),
+            warnings=(*default_warnings, *pre_warnings, *warner.warnings, *post_warnings),
+        )
+
+    def _run_checks(
+        self,
+        kind: Literal["pre", "post"],
+        node: Node,
+        formula: Formula,
+        inputs: Inputs,
+        outputs: Mapping[str, object] | None,
+        origin: str,
+    ) -> tuple[list[KernelWarning], KernelError | None]:
+        """Run the pre- or postconditions of an application (ch. 8.5, Q25).
+
+        Only the checks whose ``applications`` include this one run (absent = all). A check the
+        canon declares and the registry lacks is ``unchecked``, never silently held (ADR 0020).
+        ``unchecked`` and, with ``on_violation: warning``, ``violated`` give a warning and the value
+        stays; ``violated`` with ``on_violation: error`` gives the error (for a postcondition the
+        caller discards every output of the application).
+
+        Returns:
+            The warnings, and the error of the first violated ``error`` check, if any.
+        """
+        what = "precondition" if kind == "pre" else "postcondition"
+        declared = formula.preconditions if kind == "pre" else formula.postconditions
+        registered = self.build.registry.checks(node.id.formula, kind)
+        warnings: list[KernelWarning] = []
+        for entry in declared:
+            if not _in_scope(entry, node):
+                continue
+            result = self._check_result(kind, what, registered.get(entry.id), inputs, outputs)
+            logger.debug("%s %s: %s", what, entry.id, result.state, extra={"call_id": self.call_id})
+            if result.state == "held":
+                continue
+            if result.state == "violated" and entry.on_violation == "error":
+                return warnings, self._violation_error(kind, what, entry.id, node, result.message)
+            warnings.append(_check_warning(what, entry.id, node, result, origin))
+        return warnings, None
+
+    @staticmethod
+    def _check_result(
+        kind: Literal["pre", "post"],
+        what: str,
+        function: Callable[..., CheckResult] | None,
+        inputs: Inputs,
+        outputs: Mapping[str, object] | None,
+    ) -> CheckResult:
+        """Run one check; a check the registry lacks is ``unchecked``."""
+        if function is None:
+            return CheckResult(
+                state="unchecked", message=f"no implementation of the {what} is registered"
+            )
+        if kind == "pre":
+            return function(inputs)
+        assert outputs is not None  # a postcondition runs after the implementation
+        return function(inputs, outputs)
+
+    @staticmethod
+    def _violation_error(
+        kind: Literal["pre", "post"], what: str, check_id: str, node: Node, message: str
+    ) -> KernelError:
+        """The error of a violated check whose ``on_violation`` is ``error``."""
+        formula_slug = display_slug(node.id.formula)
+        return KernelError(
+            code=f"{what}_violated",
+            category=ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            formula=formula_slug,
+            application=node.id.application,
+            message=f"The {what} `{check_id}` of `{formula_slug}` is violated: {message}",
+            hint=(
+                "Change the inputs so that the formula applies."
+                if kind == "pre"
+                else "The value was discarded; the evaluation is not trustworthy."
+            ),
+            detail={what: check_id},
         )
 
     def _inherit(self, node: Node, anchor: str, status: QuantityStatus) -> _NodeRun | None:
@@ -455,7 +608,7 @@ class _Call:
                 return value if isinstance(value, float | AirplaneGeometry) else None
         quantity = self.build.model.quantity(slug)
         if quantity is not None and quantity.type == "airplane":
-            return self.aircraft.airplane
+            return self.airplane_at_rest
         return self.values.get(slug) if quantity is not None and quantity.type == "scalar" else None
 
     @staticmethod
@@ -583,10 +736,17 @@ def _reason_of(propagated: Propagated) -> Reason:
     return propagated.reason
 
 
-def _provenance(build: Build, defaults: tuple[DefaultUsed, ...] = ()) -> Provenance:
+def _provenance(
+    build: Build,
+    defaults: tuple[DefaultUsed, ...] = (),
+    tool_versions: Mapping[str, str] | None = None,
+    solver_settings: Mapping[str, JsonValue] | None = None,
+) -> Provenance:
     """The provenance of a call on a loaded build."""
     return Provenance(
         defaults_used=defaults,
+        tool_versions=dict(tool_versions or {}),
+        solver_settings=dict(solver_settings or {}),
         build_digest=build.digest,
         canon_model_hash=build.model.content_hash,
     )
@@ -622,13 +782,16 @@ def log_call(
     )
 
 
-async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
+async def evaluate(
+    build: Build, aircraft: AircraftInput, request: ComputeRequest, *, solvers: Solvers
+) -> ComputeResult:
     """Compute a request on a build (ch. 6); the internal seam under ``compute``.
 
     Args:
         build: The canon model with its graph and implementations.
         aircraft: The geometry and the input and target values, in canon units.
         request: The quantities to compute.
+        solvers: The solver adapters of the call; the caller owns their runtime.
 
     Returns:
         ``input_errors`` and nothing computed if the input is inadmissible, else one result per
@@ -637,14 +800,25 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
     call_id = secrets.token_hex(4)
     started = time.perf_counter()
     validation = validate_aircraft(aircraft)
-    errors = validation.errors + validate_values(aircraft.values, build.model)
+    errors = (
+        validation.errors
+        + validate_values(aircraft.values, build.model)
+        + validate_request(request)
+    )
     if errors:
         result = ComputeResult(input_errors=errors, provenance=_provenance(build))
         log_call(call_id, request, result, started)
         return result
     subtree = build.graph.subtree(request.quantities)
-    call = _Call(build, aircraft, request, subtree, call_id, validation.warnings)
-    await call.run()
+    call = _Call(build, aircraft, request, subtree, call_id, validation.warnings, solvers)
+    try:
+        async with asyncio.timeout(request.time_budget_s):
+            await call.run()
+    except TimeoutError:
+        logger.debug(
+            "time budget of %s s expired", request.time_budget_s, extra={"call_id": call_id}
+        )
+        call.close_open_nodes()
     results: dict[str, QuantityResult] = {}
     for error in subtree.errors:
         assert error.quantity is not None  # the graph words a rejection for the requested slug
@@ -657,7 +831,9 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
     results.update({r.requested: call.result_of(r) for r in subtree.requested})
     result = ComputeResult(
         quantities=tuple(results[slug] for slug in request.quantities),
-        provenance=_provenance(build, call.defaults_used()),
+        provenance=_provenance(
+            build, call.defaults_used(), call.tool_versions, call.solver_settings
+        ),
     )
     log_call(call_id, request, result, started)
     return result

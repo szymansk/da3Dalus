@@ -1,0 +1,992 @@
+{
+ "name": "JAGUAR (Test da3Dalus-Export)",
+ "total_mass_kg": null,
+ "xyz_ref": [
+  0.11197,
+  0.0,
+  0.02603
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "name": "Tragflaeche",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.071557,
+      0.00106,
+      0.023912
+     ],
+     "chord": 0.120096,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.072214,
+      0.020446,
+      0.023929
+     ],
+     "chord": 0.11815,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "rel_chord_root": 0.8689,
+      "rel_chord_tip": 0.8652,
+      "symmetric": false,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8689,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.073247,
+      0.05094,
+      0.023956
+     ],
+     "chord": 0.115088,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "rel_chord_root": 0.8652,
+      "rel_chord_tip": 0.8589,
+      "symmetric": false,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8652,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.074943,
+      0.10103,
+      0.023947
+     ],
+     "chord": 0.11006,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "rel_chord_root": 0.8589,
+      "rel_chord_tip": 0.8519,
+      "symmetric": false,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8589,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.076626,
+      0.15077,
+      0.023916
+     ],
+     "chord": 0.105065,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "rel_chord_root": 0.8519,
+      "rel_chord_tip": 0.8442,
+      "symmetric": false,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8519,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.078324,
+      0.20087,
+      0.023964
+     ],
+     "chord": 0.100036,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "rel_chord_root": 0.8442,
+      "rel_chord_tip": 0.8358,
+      "symmetric": false,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8442,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.080018,
+      0.25096,
+      0.023882
+     ],
+     "chord": 0.095007,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "rel_chord_root": 0.8358,
+      "rel_chord_tip": 0.8293,
+      "symmetric": false,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8358,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.08119,
+      0.285559,
+      0.023913
+     ],
+     "chord": 0.091533,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.081715,
+      0.30106,
+      0.023927
+     ],
+     "chord": 0.089977,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.086873,
+      0.30789,
+      0.023932
+     ],
+     "chord": 0.065726,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.106616,
+      0.31209,
+      0.023941
+     ],
+     "chord": 0.01647,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__tragflaeche_kulfan.dat"
+    }
+   ]
+  },
+  "Hoehenleitwerk": {
+   "name": "Hoehenleitwerk",
+   "surface_type": "horizontal_tail",
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.3279,
+      0.0,
+      0.050919
+     ],
+     "chord": 0.056814,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.8977,
+      "rel_chord_tip": 0.8961,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.8977,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.327904,
+      0.00368,
+      0.050919
+     ],
+     "chord": 0.056907,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.8961,
+      "rel_chord_tip": 0.8141,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.8961,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.327904,
+      0.0061,
+      0.050919
+     ],
+     "chord": 0.062643,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.8141,
+      "rel_chord_tip": 0.7313,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.8141,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.328494,
+      0.00895,
+      0.050919
+     ],
+     "chord": 0.068926,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.7313,
+      "rel_chord_tip": 0.7207,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.7313,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.334684,
+      0.04,
+      0.050919
+     ],
+     "chord": 0.061354,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.7207,
+      "rel_chord_tip": 0.7019,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.7207,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.342625,
+      0.08,
+      0.050919
+     ],
+     "chord": 0.051682,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.7019,
+      "rel_chord_tip": 0.6763,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.7019,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.350282,
+      0.118,
+      0.050919
+     ],
+     "chord": 0.042315,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.6763,
+      "rel_chord_tip": 0.6681,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6763,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.351527,
+      0.12,
+      0.050919
+     ],
+     "chord": 0.040973,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.6681,
+      "rel_chord_tip": 0.6895,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6681,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.352357,
+      0.121,
+      0.050919
+     ],
+     "chord": 0.038497,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.6895,
+      "rel_chord_tip": 0.7448,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6895,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.353264,
+      0.122,
+      0.050919
+     ],
+     "chord": 0.034419,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.7448,
+      "rel_chord_tip": 0.8161,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.7448,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.354412,
+      0.123,
+      0.050919
+     ],
+     "chord": 0.030006,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.8161,
+      "rel_chord_tip": 0.9086,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.8161,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.355765,
+      0.124,
+      0.050919
+     ],
+     "chord": 0.025463,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat",
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "rel_chord_root": 0.9086,
+      "rel_chord_tip": 0.9639,
+      "symmetric": true,
+      "deflection_deg": 0.0
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.9086,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.35656,
+      0.1245,
+      0.050919
+     ],
+     "chord": 0.023176,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.358102,
+      0.1253,
+      0.050919
+     ],
+     "chord": 0.018938,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.359975,
+      0.126,
+      0.050919
+     ],
+     "chord": 0.014447,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.361952,
+      0.1265,
+      0.050919
+     ],
+     "chord": 0.010084,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.364314,
+      0.1269,
+      0.050919
+     ],
+     "chord": 0.004711,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__hoehenleitwerk_kulfan.dat"
+    }
+   ]
+  },
+  "Seitenleitwerk": {
+   "name": "Seitenleitwerk",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.327698,
+      0.0,
+      0.051919
+     ],
+     "chord": 0.065003,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.292576,
+      -0.0,
+      0.05813
+     ],
+     "chord": 0.101343,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.303858,
+      0.0,
+      0.061
+     ],
+     "chord": 0.09033,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.307678,
+      -0.0,
+      0.065
+     ],
+     "chord": 0.086561,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.317546,
+      0.0,
+      0.075
+     ],
+     "chord": 0.075985,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.328188,
+      0.0,
+      0.085
+     ],
+     "chord": 0.063708,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.339887,
+      -0.0,
+      0.095
+     ],
+     "chord": 0.049681,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.346307,
+      -0.0,
+      0.1
+     ],
+     "chord": 0.041899,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.353236,
+      -0.0,
+      0.105
+     ],
+     "chord": 0.033401,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.361053,
+      -0.0,
+      0.11
+     ],
+     "chord": 0.023886,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.368338,
+      -0.0,
+      0.114
+     ],
+     "chord": 0.014973,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.37254,
+      -0.0,
+      0.116
+     ],
+     "chord": 0.0099,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.374952,
+      -0.0,
+      0.117
+     ],
+     "chord": 0.00689,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.376613,
+      -0.0,
+      0.1175
+     ],
+     "chord": 0.004447,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.378339,
+      -0.0,
+      0.1178
+     ],
+     "chord": 0.001637,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/jaguar_test_da3dalus_export__seitenleitwerk_kulfan.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "name": "Rumpf",
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz": [
+      0.00014,
+      -0.0,
+      0.040447
+     ],
+     "a": 0.012631,
+     "b": 0.010332,
+     "n": 9.3802
+    },
+    {
+     "xyz": [
+      0.00274,
+      -0.0,
+      0.040379
+     ],
+     "a": 0.012786,
+     "b": 0.011476,
+     "n": 9.9641
+    },
+    {
+     "xyz": [
+      0.01274,
+      -0.0,
+      0.039245
+     ],
+     "a": 0.013382,
+     "b": 0.013205,
+     "n": 10.9881
+    },
+    {
+     "xyz": [
+      0.02624,
+      -0.0,
+      0.038681
+     ],
+     "a": 0.014186,
+     "b": 0.015423,
+     "n": 12.3077
+    },
+    {
+     "xyz": [
+      0.04274,
+      -0.0,
+      0.038452
+     ],
+     "a": 0.015013,
+     "b": 0.017449,
+     "n": 13.5467
+    },
+    {
+     "xyz": [
+      0.05774,
+      -0.0,
+      0.038546
+     ],
+     "a": 0.015013,
+     "b": 0.018779,
+     "n": 14.1102
+    },
+    {
+     "xyz": [
+      0.07124,
+      -0.0,
+      0.038853
+     ],
+     "a": 0.015013,
+     "b": 0.019582,
+     "n": 14.4476
+    },
+    {
+     "xyz": [
+      0.07194,
+      -0.0,
+      0.04161
+     ],
+     "a": 0.015013,
+     "b": 0.016876,
+     "n": 13.3016
+    },
+    {
+     "xyz": [
+      0.07774,
+      -0.0,
+      0.043164
+     ],
+     "a": 0.015013,
+     "b": 0.015747,
+     "n": 12.8146
+    },
+    {
+     "xyz": [
+      0.09274,
+      -0.0,
+      0.044786
+     ],
+     "a": 0.015013,
+     "b": 0.015105,
+     "n": 12.5351
+    },
+    {
+     "xyz": [
+      0.10774,
+      -0.0,
+      0.045382
+     ],
+     "a": 0.015013,
+     "b": 0.015246,
+     "n": 12.5967
+    },
+    {
+     "xyz": [
+      0.12274,
+      -0.0,
+      0.045376
+     ],
+     "a": 0.015013,
+     "b": 0.015754,
+     "n": 12.8177
+    },
+    {
+     "xyz": [
+      0.13774,
+      -0.0,
+      0.044946
+     ],
+     "a": 0.015013,
+     "b": 0.016441,
+     "n": 13.1148
+    },
+    {
+     "xyz": [
+      0.15274,
+      -0.0,
+      0.046338
+     ],
+     "a": 0.015013,
+     "b": 0.019295,
+     "n": 14.3269
+    },
+    {
+     "xyz": [
+      0.16774,
+      -0.0,
+      0.048058
+     ],
+     "a": 0.015013,
+     "b": 0.022847,
+     "n": 15.8011
+    },
+    {
+     "xyz": [
+      0.18274,
+      -0.0,
+      0.048768
+     ],
+     "a": 0.015013,
+     "b": 0.025674,
+     "n": 16.9566
+    },
+    {
+     "xyz": [
+      0.19094,
+      -0.0,
+      0.048505
+     ],
+     "a": 0.015013,
+     "b": 0.026646,
+     "n": 17.3513
+    },
+    {
+     "xyz": [
+      0.19224,
+      -0.0,
+      0.047963
+     ],
+     "a": 0.015013,
+     "b": 0.027189,
+     "n": 17.5712
+    },
+    {
+     "xyz": [
+      0.21274,
+      -0.0,
+      0.047823
+     ],
+     "a": 0.015013,
+     "b": 0.024948,
+     "n": 16.6612
+    },
+    {
+     "xyz": [
+      0.24274,
+      -0.0,
+      0.046656
+     ],
+     "a": 0.013719,
+     "b": 0.020658,
+     "n": 14.2887
+    },
+    {
+     "xyz": [
+      0.27274,
+      -0.0,
+      0.045368
+     ],
+     "a": 0.011281,
+     "b": 0.016299,
+     "n": 11.3453
+    },
+    {
+     "xyz": [
+      0.30274,
+      -0.0,
+      0.044179
+     ],
+     "a": 0.008843,
+     "b": 0.012004,
+     "n": 8.4287
+    },
+    {
+     "xyz": [
+      0.32774,
+      -0.0,
+      0.043295
+     ],
+     "a": 0.006811,
+     "b": 0.008589,
+     "n": 6.0707
+    },
+    {
+     "xyz": [
+      0.32874,
+      -0.0,
+      0.042365
+     ],
+     "a": 0.00673,
+     "b": 0.007554,
+     "n": 5.6009
+    },
+    {
+     "xyz": [
+      0.34824,
+      -0.0,
+      0.044384
+     ],
+     "a": 0.005145,
+     "b": 0.007535,
+     "n": 4.8501
+    },
+    {
+     "xyz": [
+      0.36274,
+      -0.0,
+      0.045124
+     ],
+     "a": 0.003967,
+     "b": 0.006795,
+     "n": 3.9709
+    },
+    {
+     "xyz": [
+      0.37864,
+      -0.0,
+      0.045949
+     ],
+     "a": 0.002675,
+     "b": 0.005971,
+     "n": 3.6364
+    }
+   ]
+  }
+ }
+}

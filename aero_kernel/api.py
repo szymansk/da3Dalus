@@ -7,7 +7,9 @@ import time
 from aero_kernel.build import shipped_build
 from aero_kernel.cache import build_digest
 from aero_kernel.canon.load import CanonLoadError
+from aero_kernel.context import Solvers
 from aero_kernel.engine import evaluate, log_call
+from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -16,6 +18,8 @@ from aero_kernel.schema import (
     QuantityResult,
     QuantityStatus,
 )
+from aero_kernel.solvers.atmosphere import AtmosphereAdapter
+from aero_kernel.solvers.opti import OptiAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -60,4 +64,12 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
         )
         log_call(call_id, request, result, started, "the shipped canon model is not loaded")
         return result
-    return await evaluate(build, aircraft, request)
+    # Resources are never global (ch. 8.10): this call owns its runtime and releases it before
+    # returning, also on cancellation.
+    async with SolverRuntime() as runtime:
+        return await evaluate(
+            build,
+            aircraft,
+            request,
+            solvers=Solvers(atmosphere=AtmosphereAdapter(runtime), opti=OptiAdapter(runtime)),
+        )

@@ -272,6 +272,7 @@ Sources:
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
+- the reference wing carried to the centreline (`reference_wing_at_centreline`, `practice`, origin: the quantities of `airplane-geometry`): a mirrored main wing whose root lies off y = 0 is extended to the plane with the root chord, or its stored side crossing y = 0 is clipped there (`detail`: `wing` and `extended_m` or `clipped_m`); the convention changes the planform by that length, so it is declared (ADR 0020)
 - active bounds in the optimiser
 
 The A11 "not validated" marker is the field `QuantityResult.validated`, not a warning.
@@ -328,7 +329,10 @@ No internal paths or mechanisms in any field (ADR 0019).
   could not be loaded (every quantity is then `internal`)
 - tool versions (aerosandbox, NeuralFoil model, AVL): one non-empty version string per tool **the call actually
   used**; empty when only pure formulas ran
-- solver settings (e.g. the NeuralFoil model size the adapters use, fixed to the largest in v1)
+- solver settings (e.g. the NeuralFoil model size the adapters use: `xlarge` in v1, the author's default at the knee
+  of speed versus accuracy, Sharpe 2024, PhD thesis ch. 7, Table 7.1; maintainer 2026-10-22. It is a named constant of the
+  OPT adapter, recorded in `solver_settings`; a caller-selectable accuracy level comes only when a caller needs it. The
+  airfoil scoring, #821, uses `xxxlarge` on purpose: it is precomputed)
 - `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 
 **Cache key** = SHA-256 over the canonical JSON of:
@@ -448,7 +452,10 @@ quantity.
       never a geometric inference (the provisional planform rule is dropped); the geometry-format change
       gets its own ticket. The type follows the **function**, not the position:
       - `main_wing` — exactly one (biplanes are out of v1; a second `main_wing` is `main_wing_count`);
-        `S_ref`, `b_ref`, `c_MAC` come from it alone;
+        `S_ref`, `b_ref`, `c_MAC` come from it alone, integrated from its sections' chords and leading edges
+        projected onto the x-y plane (twist-independent); a mirrored wing is carried to the centreline (root off
+        y = 0 extended with the root chord, a side crossing y = 0 clipped; maintainer 2026-10-22, team-lead
+        2026-10-23), declared by the warning `reference_wing_at_centreline` (ch. 8.2);
       - `horizontal_tail`;
       - `vertical_tail` — also tip fins and centre fins that carry a rudder or serve directional stability;
       - `v_tail` — counts as **both** a horizontal and a vertical tail;
@@ -627,7 +634,8 @@ caller's responsibility.
     async subprocess in its own process group and temp dir, killed and cleaned up on cancellation or
     timeout, Q17; the AVL adapter is its first user); and `regime(chords_m, v, speed_of_sound,
     kinematic_viscosity) -> list[KernelWarning]` (ADR 0028 check, ch. 8.2; the atmosphere values come from
-    the caller, the ISA is the ATM formula's). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
+    the caller, the ISA is the ATM formula's: `air-density-isa` outputs `rho`, `mu` and `a`, the solver entries
+    bind them, and the kinematic viscosity is `mu / rho` of the bound values, never recomputed from the altitude). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
     or > 10⁶), `reynolds_bubble_sensitive` (practice, 3·10⁴ ≤ Re < 7·10⁴; below the band `reynolds_outside_band`
     alone applies), `mach_above_limit` (practice,
     0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
@@ -644,8 +652,15 @@ caller's responsibility.
     second, hand-written ISA in the kernel. Its `requirements` include aerosandbox, so a missing ASB is
     `tool_unavailable`; fast-tier tests stub the adapter, the hand-computed COESA check runs against the
     real adapter in the `aero` tier.
-  - **#1175 adds the domain methods** (`aerobuildup.sweep`, `avl.stability`, `opti.solve` …), each built on
-    the base, alongside the first formula that needs it.
+  - **#1175 adds the domain methods** (`opti.stall` with `stall-speed`; `aerobuildup.sweep` arrives with
+    `aerobuildup-evaluation`, the first formula that calls AeroBuildup itself; `avl.stability` …), each built
+    on the base, alongside the first formula that needs it. Until then AeroBuildup is reached only inside
+    the stall worker, through `solvers.aerobuildup.sweep_polar`, the one place that evaluates it.
+  - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
+    the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
+    extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
+    inverted trough lay about three sweep steps outside IPOPT's window. It is unconditional (never
+    triggered by a failure) and not a fixed point; an optimum on the edge of the window is still an error.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
     the quantity of the node whose call produced them.
 - Data: KAT (the fitted components) and APC (the fitted propeller's measured table) are **plain reads of
@@ -828,10 +843,11 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - Work already running in the process pool is allowed to finish but its result is discarded, because
     pool workers cannot be interrupted safely.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
-- **Time budget** (built with the solver path, the first step whose formulas can be slow; until then
-  `ComputeRequest` has no `time_budget_s` field — no field without behaviour, ADR 0021). `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
-  the whole request, enforced with `asyncio.timeout`. Quantities still open when it expires get
-  `error.category = timeout`; quantities already finished are returned.
+- **Time budget** (built with the solver path, #1201). `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
+  the whole request, enforced with `asyncio.timeout` around the graph run. A budget that is not a finite number > 0 is an
+  input error (`non_finite_number` / `non_positive_value`, `input_path` `request.time_budget_s`). Quantities still open when it expires, and
+  those waiting for them, get `error.category = timeout`; quantities already finished are returned, also when their
+  layer did not complete. The running tasks are cancelled; pool jobs finish and are discarded.
 - **Cache under concurrency (`CachedKernel` only).** The cache is used from the event loop only, so it needs no lock. **In-flight
   deduplication** (mode `use`): when two concurrent requests need the same key, the second awaits the first
   one's future instead of computing it again.
@@ -977,16 +993,16 @@ one code, one test:
 | code | rule |
 |---|---|
 | `non_finite_number` | NaN or ±inf anywhere in the geometry fields the kernel reads or in `values` (exact leaf path, tuple elements as `[i]`) |
-| `non_positive_length` | a chord ≤ 0; fuselage semi-axes `a`, `b` ≤ 0; a wing whose span — the summed Euclidean length of its `xyz_le` chain — is 0 (path: its `x_secs`) |
+| `non_positive_length` | a chord ≤ 0; a fuselage semi-axis `a`, `b` < 0 at the first or last section, ≤ 0 at an interior section (a lofted fuselage closes to a point or a line at its ends; team-lead 2026-10-22, BRYAN nose/tail points); a wing whose span — the summed Euclidean length of its `xyz_le` chain — is 0 (path: its `x_secs`) |
 | `non_positive_exponent` | a fuselage super-ellipse exponent `n` or `n_lower` ≤ 0 |
 | `non_positive_thickness` | an airfoil of thickness ≤ 0 (inline contour, or NACA thickness digits `00`) |
 | `too_few_sections` | a wing or a fuselage with fewer than two `x_secs` |
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
+| `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 | `missing_surface_type` | a wing without its `surface_type` (D9: required, never inferred) |
 | `main_wing_count` | not exactly one wing of `surface_type` `main_wing` |
-| `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 
 `values` are checked here for finiteness only. **Their admissibility comes from the canon model, never
 from a slug written in code:** a quantity entry may declare `positive: true` (strictly > 0 by definition —
@@ -1049,7 +1065,7 @@ requested output is its own `QuantityResult`. Requesting two outputs of the same
 ```python
 @formula("stall-speed")
 async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
-    polar = await ctx.solvers.aerobuildup.sweep(x["airplane"], ...)   # leaves the loop
+    stall = await ctx.solvers.opti.stall(x["airplane"], ...)   # leaves the loop
     ...
     return {"stall_speed": v_s, "cl_max": cl_max}       # output parameter names, snake_case
 ```

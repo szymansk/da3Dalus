@@ -8,8 +8,10 @@ import pytest
 from aero_kernel.context import Context, Inputs
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import ComputeResult, DefaultUsed, QuantityStatus, WarningSeverity
 from aero_kernel.tests.engine_builders import (
+    NO_SOLVERS,
     Impl,
     aileron_wing,
     aircraft,
@@ -40,6 +42,7 @@ async def go(
         make_build(registry_with(overrides)),
         aircraft(values, wings, geometry_mass_kg),
         request(*slugs, long_runs=long_runs),
+        solvers=NO_SOLVERS,
     )
 
 
@@ -139,6 +142,7 @@ async def test_a_value_without_a_default_is_still_missing() -> None:
         make_build(),
         aircraft().model_copy(update={"values": {}}),
         request("weight"),
+        solvers=NO_SOLVERS,
     )
     assert nothing.quantities[0].error is not None
     assert nothing.quantities[0].error.code == "missing_input"
@@ -190,7 +194,7 @@ async def test_a_node_that_stops_at_rows_1_to_3_takes_no_default(
 ) -> None:
     registry = registry_with(drop=drop)
     with caplog.at_level(logging.INFO, logger="aero_kernel"):
-        result = await evaluate(make_build(registry), aircraft(), request(slug))
+        result = await evaluate(make_build(registry), aircraft(), request(slug), solvers=NO_SOLVERS)
     assert result.quantities[0].status is not QuantityStatus.OK, row
     assert result.provenance.defaults_used == (), row
     assert default_lines(caplog) == [], row
@@ -406,3 +410,19 @@ async def test_the_default_lines_of_one_node_follow_its_parameter_order(
         "default used: air-density = 1.225 kg/m^3 (us standard atmosphere)",
         "default used: margin-target = 1.3 1 (test margin)",
     ]
+
+
+async def test_the_supplied_airplane_reaches_a_formula_with_every_device_at_rest() -> None:
+    """Zeroed where the airplane becomes the leaf value, next to the warning (ch. 8.11)."""
+    seen: list[object] = []
+
+    async def span(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        seen.append(x["airplane"])
+        return {"s": 1.0}
+
+    await go("span-q", wings=deflected_wing(), overrides={"wing-span": span})
+    (airplane,) = seen
+    assert isinstance(airplane, AirplaneGeometry)
+    device = (airplane.wings or {})["Main"].x_secs[0].trailing_edge_device
+    assert device is not None
+    assert device.deflection_deg == 0.0
