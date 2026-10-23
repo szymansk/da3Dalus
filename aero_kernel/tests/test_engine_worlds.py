@@ -212,15 +212,16 @@ async def test_a_downstream_node_of_a_failed_assignment_is_upstream_failed_there
     assert count(probe, "join") == 2  # not run in the failed assignment
 
 
-async def test_the_reported_failure_is_the_first_row_then_the_first_assignment_key() -> None:
-    """alpha fails in a computed way (row 8), gamma with a missing input (row 5): gamma is reported
-    although alpha sorts first; with both computed, the first key (alpha) is reported."""
+async def test_the_reported_failure_is_ranked_by_the_row_of_the_run_not_by_its_code() -> None:
+    """A missing_input a formula raises while computing is a computed failure (row 8), not the
+    engine's row 5: with alpha not converged, gamma raising missing_input, both are row 8 and the
+    first key (alpha) is reported."""
     probe = Probe()
     probe.fail["alpha"] = failing("not_converged", ErrorCategory.NOT_CONVERGED)
     probe.fail["gamma"] = failing("missing_input", ErrorCategory.INVALID_INPUT)
     error = only(await run(probe, "np-q")).error
     assert error is not None
-    assert (error.code, error.world) == ("missing_input", "unc=gamma")
+    assert (error.code, error.world) == ("not_converged", "unc=alpha")
     tie = Probe()
     tie.fail["beta"] = failing("not_converged", ErrorCategory.NOT_CONVERGED)
     tie.fail["gamma"] = failing("invalid_input", ErrorCategory.INVALID_INPUT)
@@ -229,15 +230,27 @@ async def test_the_reported_failure_is_the_first_row_then_the_first_assignment_k
     assert (error.code, error.world) == ("not_converged", "unc=beta")
 
 
-async def test_a_shared_input_that_fails_fails_every_world() -> None:
+async def test_a_shared_input_that_fails_fails_every_world_and_names_no_world() -> None:
     """No per-world inputs: head has no mass (row 5), so every unc assignment is upstream_failed
-    (row 4) and the first key is reported; nothing is left to compute."""
+    (row 4). The cause is in no world: the error carries no world label and no world computed."""
     probe = Probe()
     error = only(await run(probe, "np-q", mass=False)).error
     assert error is not None
-    assert (error.code, error.world) == ("upstream_failed", "unc=alpha")
+    assert (error.code, error.world) == ("upstream_failed", None)
     assert error.detail["worlds_ok"] == {}
     assert count(probe, "unc") == 0
+
+
+async def test_a_failure_raised_alike_in_every_world_names_no_world() -> None:
+    """The layout refusal of the neutral point is raised in each world with the same text: the cause
+    is the airplane, not a method."""
+    probe = Probe()
+    for world in WORLDS:
+        probe.fail[world] = failing("invalid_input", ErrorCategory.INVALID_INPUT)
+    error = only(await run(probe, "np-q")).error
+    assert error is not None
+    assert (error.code, error.world) == ("invalid_input", None)
+    assert error.detail["worlds_ok"] == {}
 
 
 async def test_a_warning_carries_the_world_it_arose_in() -> None:

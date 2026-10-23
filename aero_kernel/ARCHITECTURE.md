@@ -1242,11 +1242,14 @@ sampled grid and no `-static` chain.
   AeroBuildup maximum is an error even though AVL, linear in δ, returns an angle; the AVL value is in
   `detail.worlds_ok`.
 - **Which failure is reported.** When several assignments fail, the quantity's error is that of the failed
-  assignment whose node status comes first in the order below, then the lexicographically smallest
-  assignment key; `detail.worlds_ok` holds the values that did compute. A failure of a node shared by all
-  assignments (outside every uncertain subtree) is the same for all of them and has no `worlds_ok`.
-  `upstream_failed` is decided per assignment: a dependent inside an uncertain subtree is
-  `upstream_failed` in exactly the assignments where its predecessor failed.
+  assignment whose run has the lowest row in the status order below, then the lexicographically smallest
+  assignment key. The row is the run's, not the error code's: a failure the formula raises while computing
+  is row 8 whatever its code (a `missing_input` raised by a formula is not the engine's row 5).
+  `detail.worlds_ok` holds the values that did compute. A failure that is the same in every assignment — a
+  failed node shared by all of them (outside every uncertain subtree), or a refusal every world raises
+  alike, such as the neutral point's unsupported layout — has its cause in no world: the error carries no
+  `world` and `worlds_ok` is `{}`. `upstream_failed` is decided per assignment: a dependent inside an
+  uncertain subtree is `upstream_failed` in exactly the assignments where its predecessor failed.
 - **Continuous causes** (a parameter evaluated at its bounds, A11 rule 2) and the **monotonicity check**
   (rule 4) are declared in the canon model but not in v1: such a formula returns `not_implemented`, code
   `continuous_uncertainty`. The core chain has only method worlds.

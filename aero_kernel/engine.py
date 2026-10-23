@@ -96,6 +96,8 @@ class _NodeRun:
         error_for: Builds the error of an ``error`` node for a quantity.
         outputs: The returned value per output parameter, for status ``ok``.
         warnings: The warnings the node's formula reported.
+        computed: Whether the failure was raised by the formula while computing (row 8 of the
+            status order, whatever its code), not decided by the engine before the call.
     """
 
     outcome: NodeOutcome
@@ -104,6 +106,7 @@ class _NodeRun:
     error_for: Callable[[str], KernelError] | None = None
     outputs: Mapping[str, object] | None = None
     warnings: tuple[KernelWarning, ...] = ()
+    computed: bool = False
 
 
 def _unit_of(build: Build, slug: str) -> str | None:
@@ -294,13 +297,18 @@ class _Call:
 
     @staticmethod
     def _failed(
-        anchor: str, error_for: Callable[[str], KernelError], error: KernelError | None = None
+        anchor: str,
+        error_for: Callable[[str], KernelError],
+        error: KernelError | None = None,
+        *,
+        computed: bool = False,
     ) -> _NodeRun:
         """A node that failed; ``error`` is its error worded for the anchor, if already built."""
         return _NodeRun(
             outcome=NodeOutcome(status=QuantityStatus.ERROR, error=error or error_for(anchor)),
             anchor=anchor,
             error_for=error_for,
+            computed=computed,
         )
 
     @staticmethod
@@ -402,6 +410,7 @@ class _Call:
             return self._failed(
                 anchor,
                 lambda slug, raised=exc: self._run_limit_error(slug, node, raised),
+                computed=True,
             )
         except FormulaError as exc:
             path = self._input_path(node, formula, exc.parameter)
@@ -410,6 +419,7 @@ class _Call:
                 lambda slug, raised=exc: raised.to_kernel_error(
                     quantity=slug, formula=formula_slug, application=application, input_path=path
                 ),
+                computed=True,
             )
         self._check_outputs(node, formula, returned)
         post_warnings, discarded = self._run_checks("post", node, formula, inputs, returned, origin)
@@ -745,7 +755,12 @@ class _Call:
         if len(assignments) == 1 and not assignments[0]:
             return self._result_under(resolved, {})
         results = [
-            (format_world_assignment(a), self._result_under(resolved, a)) for a in assignments
+            (
+                format_world_assignment(a),
+                self._result_under(resolved, a),
+                self._run_of(resolved.producer, a).computed,
+            )
+            for a in assignments
         ]
         return _merge_worlds(resolved.requested, resolved.quantity.unit, results)
 
@@ -837,18 +852,24 @@ _ROW_BY_CODE = {
 _ROW_OF_A_COMPUTED_FAILURE = 8
 
 
-def _row(result: QuantityResult) -> int:
-    """The row of the status order (ch. 8.13) of a result that is not ``ok``."""
+def _row(result: QuantityResult, *, computed: bool) -> int:
+    """The row of the status order (ch. 8.13) of a result that is not ``ok``.
+
+    ``computed``: the formula raised the failure while computing. That is row 8 whatever its code,
+    so a ``missing_input`` the formula raised is not the engine's row 5.
+    """
     if result.status is QuantityStatus.NOT_APPLICABLE:
         return 2
     if result.status is QuantityStatus.SKIPPED:
         return 7
     assert result.error is not None  # status error carries an error
+    if computed:
+        return _ROW_OF_A_COMPUTED_FAILURE
     return _ROW_BY_CODE.get(result.error.code, _ROW_OF_A_COMPUTED_FAILURE)
 
 
 def _merge_worlds(
-    slug: str, unit: str | None, results: Sequence[tuple[str, QuantityResult]]
+    slug: str, unit: str | None, results: Sequence[tuple[str, QuantityResult, bool]]
 ) -> QuantityResult:
     """Merge the results of one quantity over its world assignments (ch. 8.13, A11).
 
@@ -856,9 +877,9 @@ def _merge_worlds(
     its row of the status order, then by the assignment key; an error carries the values that did
     compute in ``detail.worlds_ok``. A failed assignment is never dropped from the interval.
     """
-    if all(result.status is QuantityStatus.OK for _, result in results):
+    if all(result.status is QuantityStatus.OK for _, result, _ in results):
         values: dict[str, float] = {}
-        for key, result in results:
+        for key, result, _ in results:
             assert result.value is not None
             values[key] = result.value
         first = results[0][1]
@@ -869,23 +890,38 @@ def _merge_worlds(
             interval=Interval(min=min(values.values()), max=max(values.values()), worlds=values),
             tool=first.tool,
             application=first.application,
-            warnings=dedupe_warnings([w for _, result in results for w in result.warnings]),
+            warnings=dedupe_warnings([w for _, result, _ in results for w in result.warnings]),
         )
     _, _, chosen = min(
         (
-            (_row(result), key, result)
-            for key, result in results
+            (_row(result, computed=computed), key, result)
+            for key, result, computed in results
             if result.status is not QuantityStatus.OK
         ),
         key=lambda candidate: (candidate[0], candidate[1]),
     )
     if chosen.error is None:
         return chosen
-    worlds_ok = {key: result.value for key, result in results if result.status is QuantityStatus.OK}
-    error = chosen.error.model_copy(
-        update={"detail": {**chosen.error.detail, "worlds_ok": worlds_ok}}
-    )
+    worlds_ok = {
+        key: result.value for key, result, _ in results if result.status is QuantityStatus.OK
+    }
+    error = chosen.error
+    if _alike_in_every_world(results):
+        error = error.model_copy(update={"world": None})  # the cause is in no world
+    error = error.model_copy(update={"detail": {**error.detail, "worlds_ok": worlds_ok}})
     return chosen.model_copy(update={"error": error})
+
+
+def _alike_in_every_world(results: Sequence[tuple[str, QuantityResult, bool]]) -> bool:
+    """Whether every assignment failed with the same error, the world label aside.
+
+    Then the cause is the airplane or a shared input, not a method world (ch. 8.13).
+    """
+    errors = [result.error for _, result, _ in results]
+    if any(error is None for error in errors):
+        return False
+    unlabelled = [error.model_copy(update={"world": None}) for error in errors if error is not None]
+    return all(error == unlabelled[0] for error in unlabelled)
 
 
 def _error_of(propagated: Propagated) -> KernelError:
