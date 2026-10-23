@@ -16,6 +16,7 @@ from bisect import bisect_right
 from collections.abc import Callable, Sequence
 
 from aero_kernel.geometry import Airfoil, AirplaneGeometry, Wing
+from aero_kernel.surface_chain import ChainPoint, oriented_chain
 from pydantic import BaseModel, ConfigDict
 
 __all__ = ["MeshSection", "MeshSurface", "mesh_surfaces"]
@@ -84,14 +85,15 @@ def _axis(wing: Wing) -> int:
     return 1 if y_extent >= z_extent else 2
 
 
-def _root(wing: Wing) -> float:
+def _root(wing: Wing, chain: Sequence[ChainPoint]) -> float:
     """Y of the first station: the centreline for a mirrored surface (centreline convention).
 
     A root section stored slightly off the centreline would give a strip that crosses its own
-    mirror image and moves AVL's neutral point by about 3 % MAC (BRYAN's root is at -0.25 mm); the
-    section values at y = 0 are interpolated, or held if the root lies beyond it.
+    mirror image (BRYAN, -0.25 mm: 3 % MAC), or a slit between the halves (JAGUAR, +1.1 mm: a neutral
+    point that drifts with every span doubling); the section values at y = 0 are interpolated, or held
+    if the root lies beyond it.
     """
-    return 0.0 if wing.symmetric else wing.x_secs[0].xyz_le[1]
+    return 0.0 if wing.symmetric else chain[0].y
 
 
 def _uniform(start: float, end: float, count: int) -> list[float]:
@@ -100,19 +102,18 @@ def _uniform(start: float, end: float, count: int) -> list[float]:
 
 
 def _section_at(
-    wing: Wing, axis: int, at: float, airfoil_index: Callable[[Airfoil], int]
+    chain: Sequence[ChainPoint], axis: int, at: float, airfoil_index: Callable[[Airfoil], int]
 ) -> MeshSection:
-    secs = wing.x_secs
-    position = [s.xyz_le[axis] for s in secs]
-    columns = [[s.xyz_le[k] for s in secs] for k in range(3)]
-    inside = min(max(bisect_right(position, at) - 1, 0), len(secs) - 2)
+    """The section of an oriented chain at the station ``at`` along ``axis``."""
+    position = [p.y if axis == 1 else p.z for p in chain]
+    inside = min(max(bisect_right(position, at) - 1, 0), len(chain) - 2)
     return MeshSection(
-        x=_interp(position, columns[0], at),
-        y=at if axis == 1 else _interp(position, columns[1], at),
-        z=at if axis == 2 else _interp(position, columns[2], at),
-        chord=_interp(position, [s.chord for s in secs], at),
-        twist=_interp(position, [s.twist for s in secs], at),
-        airfoil=airfoil_index(secs[inside].airfoil),
+        x=_interp(position, [p.x for p in chain], at),
+        y=at if axis == 1 else _interp(position, [p.y for p in chain], at),
+        z=at if axis == 2 else _interp(position, [p.z for p in chain], at),
+        chord=_interp(position, [p.chord for p in chain], at),
+        twist=_interp(position, [p.twist for p in chain], at),
+        airfoil=airfoil_index(chain[inside].airfoil),
     )
 
 
@@ -141,7 +142,8 @@ def mesh_surfaces(
     tails = [w for w in wings if w.surface_type == "horizontal_tail"]
     rest = sorted((w for w in wings if w is not main and w not in tails), key=lambda w: w.name)
 
-    y_root, y_tip = _root(main), main.x_secs[-1].xyz_le[1]
+    main_chain = oriented_chain(main, 1)
+    y_root, y_tip = _root(main, main_chain), main_chain[-1].y
     step = (y_tip - y_root) / n_wing
     main_stations = _uniform(y_root, y_tip, n_wing)
 
@@ -149,30 +151,33 @@ def mesh_surfaces(
         MeshSurface(
             name=main.name,
             symmetric=bool(main.symmetric),
-            sections=tuple(_section_at(main, 1, y, airfoil_index) for y in main_stations),
+            sections=tuple(_section_at(main_chain, 1, y, airfoil_index) for y in main_stations),
         )
     ]
     for tail in tails:
-        root, tip = _root(tail), tail.x_secs[-1].xyz_le[1]
+        chain = oriented_chain(tail, 1)
+        root, tip = _root(tail, chain), chain[-1].y
         inside = [y for y in main_stations if root < y < tip - SLIVER_STEPS * step]
         stations = [root, *inside, tip]
         surfaces.append(
             MeshSurface(
                 name=tail.name,
                 symmetric=bool(tail.symmetric),
-                sections=tuple(_section_at(tail, 1, y, airfoil_index) for y in stations),
+                sections=tuple(_section_at(chain, 1, y, airfoil_index) for y in stations),
             )
         )
     for wing in rest:
         axis = _axis(wing)
-        start, end = wing.x_secs[0].xyz_le[axis], wing.x_secs[-1].xyz_le[axis]
+        chain = oriented_chain(wing, axis)
+        along = [p.y if axis == 1 else p.z for p in chain]
+        start, end = along[0], along[-1]
         count = max(2, round(abs(end - start) / abs(step)))
         stations = _uniform(start, end, count)
         surfaces.append(
             MeshSurface(
                 name=wing.name,
                 symmetric=bool(wing.symmetric),
-                sections=tuple(_section_at(wing, axis, t, airfoil_index) for t in stations),
+                sections=tuple(_section_at(chain, axis, t, airfoil_index) for t in stations),
             )
         )
     return tuple(surfaces)

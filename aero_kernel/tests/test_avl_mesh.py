@@ -2,6 +2,8 @@
 
 import math
 
+import pytest
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces
 
@@ -227,3 +229,115 @@ def test_a_root_stored_off_the_centreline_on_the_far_side_is_extended_to_it() ->
     (main,) = mesh_surfaces(plane, NSPAN, lambda _a: 0)
     assert main.sections[0].y == 0.0
     assert main.sections[0].chord == 0.2
+
+
+def stored(
+    surface_type: str,
+    name: str,
+    rows: list[tuple[float, float, float, float]],
+    airfoils: list[str],
+    *,
+    mirrored_to_negative: bool = False,
+    tip_first: bool = False,
+) -> dict[str, object]:
+    """A surface from root-first rows (x_le, y, z, chord), stored the other way round if asked."""
+    sign = -1.0 if mirrored_to_negative else 1.0
+    sections = [
+        {"xyz_le": [x, sign * y, z], "chord": c, "twist": 1.5 * k, "airfoil": airfoils[k]}
+        for k, (x, y, z, c) in enumerate(rows)
+    ]
+    if tip_first:
+        sections.reverse()
+    return {"name": name, "symmetric": True, "surface_type": surface_type, "x_secs": sections}
+
+
+MAIN_ROWS = [(0.0, 0.0, 0.0, 0.2), (0.02, 0.4, 0.01, 0.15), (0.04, 0.6, 0.02, 0.1)]
+TAIL_ROWS = [(0.5, 0.0, 0.0, 0.1), (0.52, 0.15, 0.0, 0.08), (0.53, 0.2, 0.0, 0.05)]
+AIRFOILS = ["naca2412", "naca0012", "naca0010"]
+INDEX = {"naca2412": 0, "naca0012": 1, "naca0010": 2}
+
+
+def meshes(**storage: bool) -> tuple[MeshSurface, ...]:
+    plane = AirplaneGeometry.model_validate(
+        {
+            "name": "t",
+            "wings": {
+                "Main": stored("main_wing", "Main", MAIN_ROWS, AIRFOILS, **storage),
+                "Tail": stored("horizontal_tail", "Tail", TAIL_ROWS, AIRFOILS, **storage),
+            },
+        }
+    )
+    return mesh_surfaces(plane, NSPAN, lambda airfoil: INDEX[str(airfoil)])
+
+
+@pytest.mark.parametrize(
+    "storage",
+    [
+        {"mirrored_to_negative": True},
+        {"tip_first": True},
+        {"mirrored_to_negative": True, "tip_first": True},
+    ],
+)
+def test_the_mesh_does_not_depend_on_how_the_chain_is_stored(storage: dict[str, bool]) -> None:
+    """The same wing stored on -y or tip first gave Xnp 8.6 % MAC lower, or collapsed to y = 0."""
+    reference = meshes()
+    other = meshes(**storage)
+    assert len(other) == len(reference)
+    for want, got in zip(reference, other, strict=True):
+        assert got.name == want.name
+        assert len(got.sections) == len(want.sections)
+        for a, b in zip(want.sections, got.sections, strict=True):
+            for field in ("x", "y", "z", "chord", "twist"):
+                assert math.isclose(getattr(a, field), getattr(b, field), abs_tol=1e-9), field
+            assert a.airfoil == b.airfoil
+
+
+def test_a_fin_stored_from_the_tip_down_is_oriented_root_first() -> None:
+    fin_rows = [(0.5, 0.0, 0.0, 0.1), (0.52, 0.0, 0.07, 0.08), (0.53, 0.0, 0.15, 0.05)]
+    both: list[AirplaneGeometry] = []
+    for tip_first in (False, True):
+        fin = stored(
+            "vertical_tail",
+            "Fin",
+            [(x, y, z, c) for x, y, z, c in fin_rows],
+            AIRFOILS,
+            tip_first=tip_first,
+        )
+        fin["symmetric"] = False
+        both.append(
+            AirplaneGeometry.model_validate(
+                {
+                    "name": "t",
+                    "wings": {
+                        "Main": stored("main_wing", "Main", MAIN_ROWS, AIRFOILS),
+                        "Tail": stored("horizontal_tail", "Tail", TAIL_ROWS, AIRFOILS),
+                        "Fin": fin,
+                    },
+                }
+            )
+        )
+    first, second = (
+        next(s for s in mesh_surfaces(p, NSPAN, lambda a: INDEX[str(a)]) if s.name == "Fin")
+        for p in both
+    )
+    assert [s.z for s in first.sections] == [s.z for s in second.sections]
+    assert first.sections[0].z == 0.0
+    assert [s.chord for s in first.sections] == [s.chord for s in second.sections]
+
+
+def test_a_chain_that_folds_back_is_refused() -> None:
+    plane = AirplaneGeometry.model_validate(
+        {
+            "name": "t",
+            "wings": {
+                "Main": wing(
+                    "Main",
+                    "main_wing",
+                    [(0.0, 0.0, 0.0, 0.2), (0.0, 0.4, 0.0, 0.15), (0.0, 0.2, 0.0, 0.1)],
+                )
+            },
+        }
+    )
+    with pytest.raises(FormulaError) as raised:
+        mesh_surfaces(plane, NSPAN, lambda _a: 0)
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION

@@ -127,3 +127,21 @@ def test_claf_follows_the_thickness_rule_of_the_airfoil() -> None:
     xs = [x for x, _ in contour.coordinates]
     assert min(xs) >= -1e-9
     assert max(xs) <= 1.0 + 1e-9
+
+
+@pytest.mark.asyncio
+async def test_the_neutral_point_does_not_depend_on_how_the_surfaces_are_stored() -> None:
+    """BRYAN's wing and tail stored on -y and tip first give the same AVL neutral point (the
+    same wing stored on -y once gave 8.6 % MAC less, tip first made AVL spin)."""
+    document = reference_document(FleetMember.BRYAN)
+    flipped = reference_document(FleetMember.BRYAN)
+    for wing in flipped["wings"].values():
+        if wing["symmetric"]:
+            for section in wing["x_secs"]:
+                section["xyz_le"][1] = -section["xyz_le"][1]
+            wing["x_secs"].reverse()
+    async with SolverRuntime() as runtime:
+        adapter = AvlAdapter(runtime)
+        want = await adapter.neutral_point(AirplaneGeometry.model_validate(document), BRYAN_CL_MD)
+        got = await adapter.neutral_point(AirplaneGeometry.model_validate(flipped), BRYAN_CL_MD)
+    assert abs(got.x_np - want.x_np) < 1e-6

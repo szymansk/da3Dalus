@@ -10,6 +10,7 @@ from itertools import pairwise
 
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry, Wing
+from aero_kernel.surface_chain import oriented_chain
 from pydantic import BaseModel, ConfigDict
 
 __all__ = ["MainWingProperties", "SurfaceProperties", "main_wing_properties", "surface_properties"]
@@ -78,27 +79,6 @@ def _unsupported(message: str, hint: str, wing: str) -> FormulaError:
     )
 
 
-def _outboard_chain(points: list[_Point], symmetric: bool, name: str) -> list[_Point]:
-    """Orient the (y, chord, x_le) chain so y never decreases from the root outwards.
-
-    The chain is reversed if it runs from the tip inwards, and a mirrored wing stored on the
-    negative side is mirrored to y >= 0 (outermost section at y > 0).
-
-    Raises:
-        FormulaError: ``unsupported_configuration`` if the chain folds back in y.
-    """
-    oriented = points[::-1] if points[-1][0] < points[0][0] else points
-    if symmetric and max(oriented, key=lambda point: abs(point[0]))[0] < 0.0:
-        oriented = [(-y, c, x) for y, c, x in oriented][::-1]
-    if any(outer[0] < inner[0] for inner, outer in pairwise(oriented)):
-        raise _unsupported(
-            f"the sections of the wing {name!r} fold back in y",
-            "order the sections from the root outwards without doubling back in y",
-            name,
-        )
-    return oriented
-
-
 def _panels(chain: list[_Point], symmetric: bool) -> tuple[list[_Panel], float, float, float]:
     """The panels of the reference planform, its half span, and what the centreline convention did.
 
@@ -160,9 +140,7 @@ def surface_properties(wing: Wing) -> SurfaceProperties:
         FormulaError: ``unsupported_configuration`` if the sections fold back in y or the surface
             has no projected area (all its sections at one y).
     """
-    chain = _outboard_chain(
-        [(s.xyz_le[1], s.chord, s.xyz_le[0]) for s in wing.x_secs], wing.symmetric, wing.name
-    )
+    chain = [(p.y, p.chord, p.x) for p in oriented_chain(wing, 1)]
     panels, half_span, extended, clipped = _panels(chain, wing.symmetric)
     area = sum(dy * (c1 + c2) / 2.0 for dy, c1, c2, _x1, _x2 in panels)
     squares = sum(dy * (c1 * c1 + c1 * c2 + c2 * c2) / 3.0 for dy, c1, c2, _x1, _x2 in panels)
