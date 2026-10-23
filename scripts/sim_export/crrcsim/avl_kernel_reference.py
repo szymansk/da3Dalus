@@ -37,9 +37,9 @@ from avl_binary import avl_path
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
 import bryan_aero as ba  # noqa: E402
+from aero_kernel.solvers.avl import AIRFOIL_POINTS_PER_SIDE  # noqa: E402
 from aero_kernel.solvers.avl_contour import repanel  # noqa: E402
 
-AIRFOIL_POINTS_PER_SIDE = 80  # keep equal to aero_kernel.solvers.avl.AIRFOIL_POINTS_PER_SIDE
 KERNEL_CL = 0.6240228  # BRYAN C_L at the minimum-drag speed, aero_kernel/tests/test_minimum_drag_speed_fleet.py
 PROTOTYPE_CL = 0.5656  # trimmed prototype, 7.82 m/s
 CASES = (("kernel C_L,md", KERNEL_CL), ("prototype C_L", PROTOTYPE_CL))
