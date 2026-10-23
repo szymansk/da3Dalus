@@ -179,9 +179,11 @@ async def test_a_deflected_control_surface_is_refused_not_computed_as_clean(
     fake: Path, role: str, deflection: float
 ) -> None:
     """The writer emits no CONTROL, so a deflected device would silently be ignored."""
+    deflected = airplane(device=(role, deflection))
     async with SolverRuntime() as runtime:
+        adapter = FakeAvl(runtime)
         with pytest.raises(FormulaError) as raised:
-            await FakeAvl(runtime).neutral_point(airplane(device=(role, deflection)), 0.5)
+            await adapter.neutral_point(deflected, 0.5)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
     assert "not yet passed to AVL" in raised.value.message
     assert role in raised.value.message
@@ -225,12 +227,17 @@ async def test_a_run_longer_than_the_adapters_own_limit_is_a_timeout_and_is_kill
     assert not alive(fake)
 
 
+async def neutral_within(directory: Path, budget_s: float) -> AvlNeutralPoint:
+    """``neutral`` under a request-style time budget."""
+    async with asyncio.timeout(budget_s):
+        return await neutral(directory)
+
+
 @pytest.mark.asyncio
 async def test_a_time_budget_kills_a_running_avl(fake: Path) -> None:
     configure(fake, {"10": 0.14, "20": 0.14}, sleep=30)
     with pytest.raises(TimeoutError) as raised:
-        async with asyncio.timeout(0.5):
-            await neutral(fake)
+        await neutral_within(fake, 0.5)
     assert not isinstance(raised.value, ToolRunTimeoutError)  # the budget's, not the adapter's own
     await asyncio.sleep(0.2)
     assert not alive(fake)
@@ -280,9 +287,10 @@ async def test_a_refined_run_that_fails_for_another_reason_propagates(
     fake: Path, failure: Exception
 ) -> None:
     """Only the array limit makes the refinement 'unchecked'; any other failure is the run's."""
+    plane = airplane_with(*CONVENTIONAL)
     async with SolverRuntime() as runtime:
         adapter = SecondCallFails(runtime)
         adapter.failure = failure
         with pytest.raises(type(failure)) as raised:
-            await adapter.neutral_point(airplane_with(*CONVENTIONAL), 0.5)
+            await adapter.neutral_point(plane, 0.5)
     assert raised.value is failure

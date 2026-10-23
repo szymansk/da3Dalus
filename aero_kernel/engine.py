@@ -6,7 +6,6 @@ holds no state between calls. Every outcome of a node is a value (a result, a st
 """
 
 import asyncio
-import dataclasses
 import logging
 import math
 import secrets
@@ -827,8 +826,11 @@ def _labelled(run: _NodeRun, key: str | None) -> _NodeRun:
 
     error_for = run.error_for
     outcome_error = run.outcome.error
-    return dataclasses.replace(
-        run,
+    return _NodeRun(
+        anchor=run.anchor,
+        reason_for=run.reason_for,
+        outputs=run.outputs,
+        computed=run.computed,
         outcome=run.outcome.model_copy(
             update={"error": None if outcome_error is None else with_world(outcome_error)}
         ),
