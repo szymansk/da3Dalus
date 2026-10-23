@@ -16,7 +16,7 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}V_md = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha) \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs:
   v_md: minimum-drag-speed
   e_max: max-lift-to-drag-ratio
@@ -36,11 +36,11 @@ minimize over V, alpha:   D(V, alpha)
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[minimum-drag-speed]] · [[max-lift-to-drag-ratio]] · [[angle-of-attack-best-glide]] · [[lift-coefficient-best-glide]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]]
+**Produces** [[minimum-drag-speed]] · [[max-lift-to-drag-ratio]] · [[angle-of-attack-best-glide]] · [[lift-coefficient-best-glide]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
 
 **Autorität.** Dies ist der Erzeuger dieser Größe. Die geschlossene Form ([[minimum-drag-speed-closed-form]]) setzt einen reynoldsunabhängigen parabolischen Polarenverlauf voraus; im RC/UAV-Regime (Re 3·10⁴–1·10⁶, ADR 0028) gilt das nicht. Sie bleibt als **Probe** — die Differenz beider misst, wie stark die Reynoldsabhängigkeit an diesem Punkt wirkt.
 
-**Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section. Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
+**Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section, with the bound `ρ` and `μ` (`Re = ρ·V·c/μ`), and the Mach number from the bound `a` (as for [[stall-speed]], #1201; #1203). Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
 
 **Optimum angle of attack (maintainer, 2026-10-14, D2).** α is a decision variable of this optimisation, so the angle of attack at the optimum comes from the nonlinear polar at the correct Reynolds number; it is an output here, and a second producer would violate one authority per quantity (ADR 0022). `C_L,md` at the optimum is output too: the Probe [[linear-lift-curve-inverse]] reads it.
 
