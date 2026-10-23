@@ -65,7 +65,7 @@ def test_a_pure_tool_has_no_version(tool: str) -> None:
     assert SOLVERS.tool_versions_of(tool) == {}
 
 
-@pytest.mark.parametrize("tool", ["AB", "AVL"])
+@pytest.mark.parametrize("tool", ["AB"])
 def test_a_tool_without_an_adapter_is_a_defect_not_an_empty_version(tool: str) -> None:
     with pytest.raises(ValueError, match=tool):
         SOLVERS.tool_versions_of(tool)

@@ -577,6 +577,8 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "control_surface_without_device": ErrorCategory.INVALID_INPUT,
         "missing_surface_type": ErrorCategory.INVALID_INPUT,
         "main_wing_count": ErrorCategory.INVALID_INPUT,
+        "unsupported_layout": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "avl_array_limit": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "unknown_quantity": ErrorCategory.INVALID_INPUT,
         "not_an_input": ErrorCategory.INVALID_INPUT,
         "not_requestable": ErrorCategory.INVALID_INPUT,
