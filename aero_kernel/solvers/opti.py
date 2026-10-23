@@ -10,8 +10,9 @@ error, never a value (ADR 0020). The whole procedure is one pool job (a picklabl
 import logging
 import math
 import time
-from collections.abc import Mapping
-from typing import ClassVar
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
@@ -137,6 +138,144 @@ def _bracket(polar: Polar, upright: bool) -> int:
     return index
 
 
+@dataclass(frozen=True)
+class _Bracketed:
+    """The airplane and the alpha window of a problem that lives on the pre-stall branch.
+
+    Attributes:
+        airplane: The ``asb.Airplane`` with the kernel's reference values.
+        lift: The signed lift the balance asks for, ``n m g`` in N.
+        v_bracket: The speed of the bracketing sweep in m/s.
+        alpha_peak: The first C_L extremum of that sweep in degrees.
+        low: Lower bound of alpha in degrees.
+        high: Upper bound of alpha in degrees.
+        v_low: Lower bound of the speed in m/s.
+        v_high: Upper bound of the speed in m/s.
+    """
+
+    airplane: Any
+    lift: float
+    v_bracket: float
+    alpha_peak: float
+    low: float
+    high: float
+    v_low: float
+    v_high: float
+
+
+@dataclass(frozen=True)
+class _Solved:
+    """The optimum of one IPOPT run.
+
+    Attributes:
+        speed: The optimal speed in m/s.
+        alpha: The optimal angle of attack in degrees.
+        aero: The AeroBuildup result expressions, to be read at the optimum with :meth:`value`.
+        value: Reads an expression of the problem at the optimum.
+    """
+
+    speed: float
+    alpha: float
+    aero: Any
+    value: Callable[[Any], float]
+
+
+def _bracketed(request: StallRequest) -> _Bracketed:
+    """Locate the first C_L extremum and the bounds of the problem (canon K32).
+
+    The first extremum moves with the Reynolds number, so the bracketing sweep is made at the speed
+    a first estimate implies (one refinement, not a loop); the window of alpha is then one sweep
+    step wide beyond that extremum, and an optimum on its edge is an error.
+
+    Raises:
+        FormulaError: ``not_converged`` if the sweep has no extremum.
+    """
+    air, upright = request.air, request.n_load > 0.0
+    airplane = to_asb_airplane(request.airplane)
+    lift = request.n_load * request.mass_kg * request.gravity
+    grid = _grid()
+    area = float(airplane.s_ref)
+    v_first = math.sqrt(2.0 * abs(lift) / (air.density * area * BRACKET_CL))
+    first = sweep_polar(airplane, air, v_first, grid, NEURALFOIL_MODEL_SIZE)
+    cl_first = abs(first.cl[_bracket(first, upright)])
+    v_bracket = math.sqrt(2.0 * abs(lift) / (air.density * area * cl_first))
+    bracket = sweep_polar(airplane, air, v_bracket, grid, NEURALFOIL_MODEL_SIZE)
+    alpha_peak = bracket.alpha_deg[_bracket(bracket, upright)]
+    if upright:
+        low, high = ALPHA_MIN_DEG, alpha_peak + ALPHA_STEP_DEG
+    else:
+        low, high = alpha_peak - ALPHA_STEP_DEG, ALPHA_MAX_DEG
+    return _Bracketed(
+        airplane=airplane,
+        lift=lift,
+        v_bracket=v_bracket,
+        alpha_peak=alpha_peak,
+        low=low,
+        high=high,
+        v_low=V_MIN_MS,
+        v_high=V_MAX_MACH * air.speed_of_sound,
+    )
+
+
+def _solve(
+    problem: _Bracketed,
+    air: AirState,
+    objective: Callable[[Any, Any], Any],
+    init: tuple[float, float],
+    what: str,
+) -> _Solved:
+    """Minimise ``objective(speed, aero)`` subject to ``L = lift`` on the bracketed window.
+
+    Args:
+        problem: The bracketed problem.
+        air: The air state.
+        objective: The expression to minimise, from the speed variable and the AeroBuildup result.
+        init: The initial speed in m/s and angle of attack in degrees.
+        what: The name of the problem, for the error messages.
+
+    Raises:
+        FormulaError: ``not_converged`` if IPOPT fails or the optimum lies on a bound.
+    """
+    asb = load_aerosandbox()
+    opti = asb.Opti()
+    speed = opti.variable(
+        init_guess=min(max(init[0], problem.v_low), problem.v_high),
+        lower_bound=problem.v_low,
+        upper_bound=problem.v_high,
+    )
+    alpha = opti.variable(init_guess=init[1], lower_bound=problem.low, upper_bound=problem.high)
+    aero = asb.AeroBuildup(
+        problem.airplane,
+        asb.OperatingPoint(atmosphere=FixedAtmosphere(air), velocity=speed, alpha=alpha),
+        model_size=NEURALFOIL_MODEL_SIZE,
+    ).run()
+    opti.subject_to(aero["L"] == problem.lift)
+    opti.minimize(objective(speed, aero))
+    try:
+        solved = opti.solve(verbose=False, max_iter=MAX_ITERATIONS)
+    except RuntimeError as error:  # CasADi reports a failed IPOPT solve as a RuntimeError
+        raise _not_converged(
+            f"the {what} problem did not converge: {error}",
+            "check mass, wing area and the sampled angles of attack",
+            solver_error=str(error)[:200],
+        ) from error
+    v_opt, alpha_opt = float(solved(speed)), float(solved(alpha))
+    bounds = (
+        ("V", v_opt, (problem.v_low, problem.v_high)),
+        ("alpha", alpha_opt, (problem.low, problem.high)),
+    )
+    for name, value, (lower, upper) in bounds:
+        margin = ACTIVE_BOUND_FRACTION * (upper - lower)
+        if value - lower < margin or upper - value < margin:
+            raise _not_converged(
+                f"the optimum of the {what} problem lies on the bound of {name}",
+                "the problem has no interior solution; a value on a bound is no optimum",
+                variable=name,
+                value=value,
+            )
+    return _Solved(speed=v_opt, alpha=alpha_opt, aero=aero, value=lambda e: float(solved(e)))
+
+
 def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     """Solve the stall problem in the pool worker (canon ``stall-speed``).
 
@@ -158,72 +297,24 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
             a bound.
     """
     started = time.perf_counter()
-    asb = load_aerosandbox()
-    air, upright = request.air, request.n_load > 0.0
-    airplane = to_asb_airplane(request.airplane)
-    lift = request.n_load * request.mass_kg * request.gravity
-    grid = _grid()
-
-    reference_area = float(airplane.s_ref)
-    # The first C_L extremum moves with the Reynolds number, so the bracketing sweep is made at the
-    # speed a first estimate implies (one refinement, not a loop); IPOPT's window is then one sweep
-    # step wide around that extremum, and an optimum on its edge is an error.
-    v_first = math.sqrt(2.0 * abs(lift) / (air.density * reference_area * BRACKET_CL))
-    first = sweep_polar(airplane, air, v_first, grid, NEURALFOIL_MODEL_SIZE)
-    cl_first = abs(first.cl[_bracket(first, upright)])
-    v_bracket = math.sqrt(2.0 * abs(lift) / (air.density * reference_area * cl_first))
-    bracket = sweep_polar(airplane, air, v_bracket, grid, NEURALFOIL_MODEL_SIZE)
-    peak = _bracket(bracket, upright)
-    alpha_peak = bracket.alpha_deg[peak]
-    low, high = (
-        (ALPHA_MIN_DEG, alpha_peak + ALPHA_STEP_DEG)
-        if upright
-        else (
-            alpha_peak - ALPHA_STEP_DEG,
-            ALPHA_MAX_DEG,
-        )
+    problem = _bracketed(request)
+    optimum = _solve(
+        problem,
+        request.air,
+        lambda speed, _aero: speed,
+        (problem.v_bracket, problem.alpha_peak),
+        "stall",
     )
-    v_low, v_high = V_MIN_MS, V_MAX_MACH * air.speed_of_sound
-
-    opti = asb.Opti()
-    speed = opti.variable(
-        init_guess=min(max(v_bracket, v_low), v_high), lower_bound=v_low, upper_bound=v_high
-    )
-    alpha = opti.variable(init_guess=alpha_peak, lower_bound=low, upper_bound=high)
-    aero = asb.AeroBuildup(
-        airplane,
-        asb.OperatingPoint(atmosphere=FixedAtmosphere(air), velocity=speed, alpha=alpha),
-        model_size=NEURALFOIL_MODEL_SIZE,
-    ).run()
-    opti.subject_to(aero["L"] == lift)
-    opti.minimize(speed)
-    try:
-        solved = opti.solve(verbose=False, max_iter=MAX_ITERATIONS)
-    except RuntimeError as error:  # CasADi reports a failed IPOPT solve as a RuntimeError
-        raise _not_converged(
-            f"the stall problem did not converge: {error}",
-            "check mass, wing area and the sampled angles of attack",
-            solver_error=str(error)[:200],
-        ) from error
-    v_s, alpha_s = float(solved(speed)), float(solved(alpha))
-    for name, value, bounds in (("V", v_s, (v_low, v_high)), ("alpha", alpha_s, (low, high))):
-        margin = ACTIVE_BOUND_FRACTION * (bounds[1] - bounds[0])
-        if value - bounds[0] < margin or bounds[1] - value < margin:
-            raise _not_converged(
-                f"the optimum of the stall problem lies on the bound of {name}",
-                "the problem has no interior solution; a value on a bound is no stall speed",
-                variable=name,
-                value=value,
-            )
-
-    angles = sorted({*grid, alpha_s})
-    polar = sweep_polar(airplane, air, v_s, angles, NEURALFOIL_MODEL_SIZE)
-    cl_max = polar.cl[polar.alpha_deg.index(alpha_s)]
-    solution = StallSolution(v_s=v_s, cl_max=cl_max, alpha_s=alpha_s, polar=polar)
+    angles = sorted({*_grid(), optimum.alpha})
+    polar = sweep_polar(problem.airplane, request.air, optimum.speed, angles, NEURALFOIL_MODEL_SIZE)
+    cl_max = polar.cl[polar.alpha_deg.index(optimum.alpha)]
+    solution = StallSolution(v_s=optimum.speed, cl_max=cl_max, alpha_s=optimum.alpha, polar=polar)
     diagnostics = WorkerDiagnostics(
         duration_s=time.perf_counter() - started,
         solver_status="Solve_Succeeded",
-        notes=(f"bracketed at {alpha_peak} deg with a sweep at {v_bracket:.3f} m/s",),
+        notes=(
+            f"bracketed at {problem.alpha_peak} deg with a sweep at {problem.v_bracket:.3f} m/s",
+        ),
     )
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
