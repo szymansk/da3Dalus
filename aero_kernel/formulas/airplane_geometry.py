@@ -1,6 +1,7 @@
 """Canon formula ``airplane-geometry``: S_ref, b_ref, c_MAC of the main wing (ARCHITECTURE ch. 8.5)."""
 
 from aero_kernel.context import Context, Inputs
+from aero_kernel.formulas.values import airplane_of
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import MainWingProperties, main_wing_properties
 from aero_kernel.registry import formula
@@ -48,10 +49,7 @@ async def airplane_geometry(x: Inputs, ctx: Context) -> dict[str, float]:
         TypeError: If ``airplane`` is not the geometry document.
         FormulaError: From :func:`main_wing_properties`, unchanged.
     """
-    airplane = x["airplane"]
-    if not isinstance(airplane, AirplaneGeometry):
-        msg = f"parameter 'airplane' must be the geometry, got {type(airplane).__name__}"
-        raise TypeError(msg)
+    airplane = airplane_of(x)
     properties = main_wing_properties(airplane)
     if properties.extended_m > 0.0 or properties.clipped_m > 0.0:
         _declare_centreline(ctx, properties, airplane)

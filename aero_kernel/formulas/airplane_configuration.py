@@ -3,6 +3,7 @@
 from aero_kernel.context import Context, Inputs
 from aero_kernel.devices import has_flap, with_flaps_at
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.formulas.values import airplane_of
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import formula
 
@@ -32,10 +33,7 @@ async def airplane_configuration(x: Inputs, ctx: Context) -> dict[str, AirplaneG
         FormulaError: ``invalid_input`` (``missing_input``) for an airplane with flaps and no
             deflection.
     """
-    airplane = x["airplane"]
-    if not isinstance(airplane, AirplaneGeometry):
-        msg = f"parameter 'airplane' must be the geometry, got {type(airplane).__name__}"
-        raise TypeError(msg)
+    airplane = airplane_of(x)
     deflection = x["flap_deflection"]
     if deflection is not None and not isinstance(deflection, float):
         msg = f"parameter 'flap_deflection' must be a number, got {type(deflection).__name__}"

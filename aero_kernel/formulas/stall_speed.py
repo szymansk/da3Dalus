@@ -12,11 +12,10 @@ import math
 from collections.abc import Mapping
 
 from aero_kernel.context import Context, Inputs
-from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.registry import CheckResult, formula, postcondition
 from aero_kernel.schema import Polar
-from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import ALPHA_STEP_DEG
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
 
@@ -57,20 +56,10 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, float | Polar]:
         TypeError: If ``airplane`` is not the geometry or a number is not a number.
         FormulaError: From the adapter, unchanged (``tool_unavailable``, ``not_converged``).
     """
-    airplane = x["airplane"]
-    if not isinstance(airplane, AirplaneGeometry):
-        msg = f"parameter 'airplane' must be the geometry, got {type(airplane).__name__}"
-        raise TypeError(msg)
-    air = AirState(
-        density=_number(x, "rho"),
-        dynamic_viscosity=_number(x, "mu"),
-        speed_of_sound=_number(x, "a"),
-    )
     stall = await ctx.solvers.opti.stall(
-        airplane, _number(x, "m"), _number(x, "g"), _number(x, "n_load"), air
+        airplane_of(x), number(x, "m"), number(x, "g"), number(x, "n_load"), air_state(x)
     )
-    for warning in stall.warnings:
-        ctx.warn(warning.code, warning.message, warning.detail)
+    forward_warnings(ctx, stall.warnings)
     solution = stall.solution
     return {
         "v_s": solution.v_s,
@@ -78,14 +67,6 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, float | Polar]:
         "alpha_s": solution.alpha_s,
         "polar": solution.polar,
     }
-
-
-def _number(values: Mapping[str, object], name: str) -> float:
-    value = values[name]
-    if not isinstance(value, float):
-        msg = f"parameter {name!r} must be a number, got {type(value).__name__}"
-        raise TypeError(msg)
-    return value
 
 
 def _polar(y: Mapping[str, object]) -> Polar | None:
@@ -110,7 +91,7 @@ def cl_max_at_stall_reynolds_number(
     polar = _polar(y)
     if polar is None:
         return _unchecked("the Probe needs the sweep at V_S")
-    alpha_s, cl_max, v_s = _number(y, "alpha_s"), _number(y, "cl_max"), _number(y, "v_s")
+    alpha_s, cl_max, v_s = number(y, "alpha_s"), number(y, "cl_max"), number(y, "v_s")
     if alpha_s not in polar.alpha_deg:
         return CheckResult(
             state="violated", message=f"alpha_S = {alpha_s} deg is not a sample of the sweep at V_S"
@@ -121,13 +102,9 @@ def cl_max_at_stall_reynolds_number(
             state="violated",
             message=f"C_L,max = {cl_max} differs from the sweep's C_L = {cl_sample} at alpha_S",
         )
-    airplane = x["airplane"]
-    if not isinstance(airplane, AirplaneGeometry):
-        msg = "parameter 'airplane' must be the geometry"
-        raise TypeError(msg)
-    area = main_wing_properties(airplane).s_ref
-    weight = abs(_number(x, "n_load")) * _number(x, "m") * _number(x, "g")
-    probe = math.sqrt(2.0 * weight / (_number(x, "rho") * area * abs(cl_sample)))
+    area = main_wing_properties(airplane_of(x)).s_ref
+    weight = abs(number(x, "n_load")) * number(x, "m") * number(x, "g")
+    probe = math.sqrt(2.0 * weight / (number(x, "rho") * area * abs(cl_sample)))
     deviation = abs(v_s - probe) / v_s
     if deviation > PROBE_TOLERANCE:
         return CheckResult(
@@ -151,7 +128,7 @@ def _first_extremum_check(y: Mapping[str, object], *, upright: bool) -> CheckRes
         return CheckResult(
             state="violated", message=f"the sweep at V_S has no C_L {what} inside its range"
         )
-    alpha_s, cl_max = _number(y, "alpha_s"), _number(y, "cl_max")
+    alpha_s, cl_max = number(y, "alpha_s"), number(y, "cl_max")
     peak_alpha, peak_cl = polar.alpha_deg[index], polar.cl[index]
     if abs(peak_alpha - alpha_s) > ALPHA_STEP_DEG + 1e-9:
         return CheckResult(
