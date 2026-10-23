@@ -19,6 +19,7 @@ from aero_kernel.geometry_properties import MainWingProperties, main_wing_proper
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
+from aero_kernel.solvers.avl_contour import repanel
 from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces
 from aero_kernel.solvers.avl_writer import (
     GEOMETRY_FILE,
@@ -49,6 +50,12 @@ REFINE_FACTOR = 2
 # The disagreement of the two meshes above which the value is declared not converged, in mean
 # chords (0.5 % MAC, AVL_CONVERGENCE.md).
 REFINEMENT_TOLERANCE_MAC = 0.005
+# Every airfoil is repanelled to this many points per side (cosine spaced), whatever it had: AVL stops
+# at 399 contour points in total (its IBX limit; AeroSandbox's NACA 4-digit contour has 399 and a
+# fine inline contour more), and a repanelling done only when a contour is too large would be an
+# undeclared conditional substitution (ADR 0020). 80 per side give 159 points; BRYAN's own contours
+# have 162. The same contour gives the thickness for CLAF.
+AIRFOIL_POINTS_PER_SIDE = 80
 # AVL's CLAF rule (avl_doc.txt): the lift-curve-slope factor 1 + 0.77 t/c.
 CLAF_PER_THICKNESS = 0.77
 # AVL reaches the requested lift coefficient exactly; a larger miss is a defect of ours.
@@ -111,9 +118,7 @@ def contour_worker(airfoils: tuple[Airfoil, ...]) -> WorkerOutcome[tuple[Contour
             raw = np.array(airfoil.coordinates, dtype=float)
         else:
             raw = np.asarray(asb.Airfoil(name=airfoil).coordinates, dtype=float)
-        x_min = float(raw[:, 0].min())
-        chord = float(raw[:, 0].max()) - x_min
-        unit = np.column_stack(((raw[:, 0] - x_min) / chord, raw[:, 1] / chord))
+        unit = np.array(repanel([(float(x), float(y)) for x, y in raw], AIRFOIL_POINTS_PER_SIDE))
         thickness = float(asb.Airfoil(name="contour", coordinates=unit).max_thickness())
         contours.append(
             Contour(
@@ -144,6 +149,7 @@ class AvlAdapter(SolverAdapter):
         return {
             "avl_nchord": N_CHORD,
             "avl_nspan": N_SPAN,
+            "avl_airfoil_points_per_side": AIRFOIL_POINTS_PER_SIDE,
             "avl_core_ratio": CORE_RATIO,
             "avl_refine_factor": REFINE_FACTOR,
             "avl_refinement_tolerance_mac": REFINEMENT_TOLERANCE_MAC,

@@ -12,10 +12,11 @@ The CG of BRYAN is the plan value (136.8 mm, 31.4 % MAC). JAGUAR's is the mainta
 
 import pytest
 from aero_kernel import compute
-from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.geometry import AirplaneGeometry, InlineAirfoil
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
-from aero_kernel.solvers.avl import AvlAdapter, contour_worker
+from aero_kernel.solvers.asb_airplane import load_aerosandbox
+from aero_kernel.solvers.avl import AIRFOIL_POINTS_PER_SIDE, AvlAdapter, contour_worker
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
@@ -39,15 +40,15 @@ CG = {
 WORLDS = ("textbook", "pappas", "avl")
 # Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
 GOLDEN_NP = {
-    FleetMember.BRYAN: (0.1441142600, 0.1401394435, 0.144036),
-    FleetMember.JAGUAR: (0.1233721388, 0.1238206059, 0.126343),
+    FleetMember.BRYAN: (0.1441142600, 0.1401394435, 0.144039),
+    FleetMember.JAGUAR: (0.1233721388, 0.1238206059, 0.126344),
 }
 C_MAC = {FleetMember.BRYAN: 0.13277219166316895, FleetMember.JAGUAR: 0.10504546518699101}
 # BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral
 # point of the template's own aligned mesh under the kernel's conditions at that C_L:
 # scripts/sim_export/crrcsim/avl_kernel_reference.py, AVL_CONVERGENCE.md "Kernel conditions".
 BRYAN_CL_MD = 0.6240228
-BRYAN_TEMPLATE_X_NP = 0.144021
+BRYAN_TEMPLATE_X_NP = 0.144023
 ABS_M = 1e-4  # the regression tolerance of the AVL world
 
 
@@ -145,3 +146,29 @@ async def test_the_neutral_point_does_not_depend_on_how_the_surfaces_are_stored(
         want = await adapter.neutral_point(AirplaneGeometry.model_validate(document), BRYAN_CL_MD)
         got = await adapter.neutral_point(AirplaneGeometry.model_validate(flipped), BRYAN_CL_MD)
     assert abs(got.x_np - want.x_np) < 1e-6
+
+
+def test_every_contour_is_repanelled_to_the_declared_point_count() -> None:
+    """AVL stops at 399 contour points (IBX): a NACA 2412 from AeroSandbox has 399 and failed. Every
+    airfoil is repanelled, never only the ones that are too large (ADR 0020)."""
+    naca, thin = contour_worker(("naca2412", "naca0012")).value
+    expected = 2 * AIRFOIL_POINTS_PER_SIDE - 1
+    assert len(naca.coordinates) == len(thin.coordinates) == expected
+    asb = load_aerosandbox()
+    dense = asb.Airfoil("naca0012").repanel(n_points_per_side=500).coordinates
+    points = tuple((float(x), float(y)) for x, y in dense)
+    (inline,) = contour_worker((InlineAirfoil(coordinates=points),)).value
+    assert len(inline.coordinates) == expected
+
+
+@pytest.mark.asyncio
+async def test_a_naca_2412_wing_and_tail_runs_through_avl() -> None:
+    """NACA airfoils of AeroSandbox exceed AVL's contour limit unless repanelled."""
+    document = reference_document(FleetMember.BRYAN)
+    for wing in document["wings"].values():
+        for section in wing["x_secs"]:
+            section["airfoil"] = "naca2412"
+    plane = AirplaneGeometry.model_validate(document)
+    async with SolverRuntime() as runtime:
+        found = await AvlAdapter(runtime).neutral_point(plane, BRYAN_CL_MD)
+    assert 0.10 < found.x_np < 0.17

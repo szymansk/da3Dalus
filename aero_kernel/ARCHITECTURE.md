@@ -687,15 +687,20 @@ caller's responsibility.
     surface starts at the centreline, its y exactly 0 with the root chord held (a root stored at −0.25 mm gave
     a strip across its own mirror image and moved BRYAN's neutral point by 3 % MAC; one stored at +1.1 mm
     left a slit between the halves and made JAGUAR's neutral point drift 1.9 % MAC per span doubling). Section positions are not stations. `CLAF = 1 + 0.77 t/c` with
-    the thickness from AeroSandbox `max_thickness`, computed in a pool worker. AVL runs through
+    the thickness from AeroSandbox `max_thickness`, computed in a pool worker. Every contour is repanelled to
+    `avl_airfoil_points_per_side` (80) cosine-spaced points per side by `solvers/avl_contour.py`, always and
+    not only when too large (AVL stops at 399 contour points; a conditional substitution would be undeclared,
+    ADR 0020); AeroSandbox's own `repanel` is not used, it leaves the chord on BRYAN's contour. The chain of
+    each surface is read through `surface_chain.oriented_chain`, the same rule as the planform values
+    (root first, a surface stored on −y or tip first gives the same mesh, ADR 0022). AVL runs through
     `run_process`; the lift coefficient is constrained (`a c`), not trimmed. AVL exit or output that is not
     understood, or a `CLtot` that misses the request by more than 1e-4, is `internal` (a defect of ours); a
-    vortex array overflow of the declared mesh is `avl_array_limit` (AVL signals it either by its overflow message or, on a very fine mesh, by a LAPACK "illegal value" with exit 0; both count). A deflected control device is refused (`unsupported_configuration`, the refusal shared with the AeroBuildup adapter), because no CONTROL is written. **Refinement check:** the adapter runs
+    vortex array overflow of the declared mesh is `avl_array_limit` (AVL signals it either by its overflow message or, on a very fine mesh, by a LAPACK "illegal value" with exit 0; both count). One AVL run never takes longer than `AVL_MAX_RUN_S` (120 s, far above the measured 15 s refined run; AVL can spin forever on a geometry it cannot solve): expiry kills the process group and is a `timeout` error of the quantity (`detail.run_limit_s`), distinct from the request's time budget. A deflected control device is refused (`unsupported_configuration`, the refusal shared with the AeroBuildup adapter), because no CONTROL is written. **Refinement check:** the adapter runs
     the declared mesh and the same mesh refined by `avl_refine_factor` (both counts), returns the declared
     value, and declares `avl_mesh_not_converged` if the two differ by more than
     `avl_refinement_tolerance_mac` of the mean chord, `avl_refinement_unchecked` if the refined mesh
     overflows. Settings (`Provenance.solver_settings`, public keys): `avl_nchord` 10, `avl_nspan` 24,
-    `avl_core_ratio` 0.25, `avl_refine_factor` 2, `avl_refinement_tolerance_mac` 0.005; tool versions
+    `avl_airfoil_points_per_side` 80, `avl_core_ratio` 0.25, `avl_refine_factor` 2, `avl_refinement_tolerance_mac` 0.005; tool versions
     `avl-binary` and `aerosandbox`. The AVL world adds no regime warning: those come with the
     minimum-drag speed and are inherited. The reference value for BRYAN under these conditions is in
     `scripts/sim_export/crrcsim/AVL_CONVERGENCE.md`.
