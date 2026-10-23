@@ -5,6 +5,11 @@ strip boundaries lie on the main wing's stations over the tail span, and a fin u
 width along z. Unaligned strips between wing and tail make AVL's neutral point mesh-dependent by
 several percent of the mean chord; aligned ones converge (BRYAN: NP 38.1 / 38.1 / 37.8 % MAC for
 5/12, 10/24, 20/48 strips). No control surface is meshed: the devices are at rest.
+
+The stations are uniform: the section positions of the airplane are not stations, the geometry is
+interpolated linearly between them. Meshing a surface at its own section breaks gives strips of very
+different widths, and AVL's neutral point then depends on them (BRYAN: a root section stored 0.25 mm
+off the centreline gave a strip across its own mirror image and moved the neutral point by 3 % MAC).
 """
 
 from bisect import bisect_right
@@ -89,18 +94,9 @@ def _root(wing: Wing) -> float:
     return 0.0 if wing.symmetric else wing.x_secs[0].xyz_le[1]
 
 
-def _stations(grid: Sequence[float], breaks: Sequence[float], step: float) -> list[float]:
-    """The grid plus the section breaks that are not within a sliver of a grid station.
-
-    A break closer than ``SLIVER_STEPS`` strip widths to a station is left to the linear
-    interpolation between the sections: a strip that narrow makes AVL's neutral point
-    mesh-dependent (BRYAN's root sections, 0.25 mm apart).
-    """
-    kept = {round(v, _DECIMALS) for v in grid}
-    for value in breaks:
-        if all(abs(value - station) > SLIVER_STEPS * step for station in kept):
-            kept.add(round(value, _DECIMALS))
-    return sorted(kept)
+def _uniform(start: float, end: float, count: int) -> list[float]:
+    """``count`` equal strips from ``start`` to ``end``: the ``count + 1`` stations."""
+    return [round(start + k * (end - start) / count, _DECIMALS) for k in range(count + 1)]
 
 
 def _section_at(
@@ -127,7 +123,7 @@ def mesh_surfaces(
 
     Args:
         airplane: A geometry of a supported layout (one main wing).
-        n_wing: Strips over the main wing's span, before its own section breaks.
+        n_wing: Strips over the main wing's span.
         airfoil_index: Numbers an airfoil for the adapter's coordinate files.
 
     Returns:
@@ -147,9 +143,7 @@ def mesh_surfaces(
 
     y_root, y_tip = _root(main), main.x_secs[-1].xyz_le[1]
     step = (y_tip - y_root) / n_wing
-    main_stations = _stations(
-        [y_root + k * step for k in range(n_wing + 1)], [s.xyz_le[1] for s in main.x_secs], step
-    )
+    main_stations = _uniform(y_root, y_tip, n_wing)
 
     surfaces = [
         MeshSurface(
@@ -160,9 +154,8 @@ def mesh_surfaces(
     ]
     for tail in tails:
         root, tip = _root(tail), tail.x_secs[-1].xyz_le[1]
-        grid = [y for y in main_stations if root < y < tip - SLIVER_STEPS * step]
-        # No breaks of its own: a station the wing does not share would misalign the strips.
-        stations = _stations([root, *grid, tip], [], step)
+        inside = [y for y in main_stations if root < y < tip - SLIVER_STEPS * step]
+        stations = [root, *inside, tip]
         surfaces.append(
             MeshSurface(
                 name=tail.name,
@@ -174,11 +167,7 @@ def mesh_surfaces(
         axis = _axis(wing)
         start, end = wing.x_secs[0].xyz_le[axis], wing.x_secs[-1].xyz_le[axis]
         count = max(2, round(abs(end - start) / abs(step)))
-        stations = _stations(
-            [start + k * (end - start) / count for k in range(count + 1)],
-            [s.xyz_le[axis] for s in wing.x_secs],
-            step,
-        )
+        stations = _uniform(start, end, count)
         surfaces.append(
             MeshSurface(
                 name=wing.name,

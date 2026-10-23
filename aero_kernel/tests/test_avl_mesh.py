@@ -77,52 +77,16 @@ def test_the_surfaces_come_main_wing_first_then_tail_then_the_rest() -> None:
     ]
 
 
-def test_the_main_wing_has_a_uniform_distribution_plus_its_section_breaks() -> None:
+def test_the_main_wing_has_a_uniform_distribution_whatever_its_sections() -> None:
     """12 strips over 0.6 m (step 0.05 m) already contain the section at 0.4 m; the tip is 0.6 m."""
     stations = ys(surfaces()["Main"])
     assert len(stations) == NSPAN + 1
     assert same(stations, [0.05 * k for k in range(13)])
 
 
-def test_a_section_break_off_the_grid_is_a_station_of_its_own() -> None:
-    plane = AirplaneGeometry.model_validate(
-        {
-            "name": "t",
-            "wings": {
-                "Main": wing(
-                    "Main",
-                    "main_wing",
-                    [(0.0, 0.0, 0.0, 0.2), (0.0, 0.43, 0.0, 0.15), (0.0, 0.6, 0.0, 0.1)],
-                )
-            },
-        }
-    )
-    (main,) = mesh_surfaces(plane, NSPAN, lambda _a: 0)
-    assert any(math.isclose(s.y, 0.43, abs_tol=1e-9) for s in main.sections)
-    assert len(main.sections) == NSPAN + 2
-
-
-def test_a_section_break_within_a_sliver_of_a_station_is_not_a_station() -> None:
-    """0.41 m is 0.01 m from the station at 0.4 m, under 0.3 steps (0.015 m): no sliver strip."""
-    plane = AirplaneGeometry.model_validate(
-        {
-            "name": "t",
-            "wings": {
-                "Main": wing(
-                    "Main",
-                    "main_wing",
-                    [(0.0, 0.0, 0.0, 0.2), (0.0, 0.41, 0.0, 0.15), (0.0, 0.6, 0.0, 0.1)],
-                )
-            },
-        }
-    )
-    (main,) = mesh_surfaces(plane, NSPAN, lambda _a: 0)
-    assert len(main.sections) == NSPAN + 1
-
-
 def test_the_tail_strip_boundaries_lie_on_the_wings_stations() -> None:
-    """Over the tail span (0..0.2 m) the tail uses the wing's stations (0, 0.05, 0.1, 0.15), plus its
-    own section break (0.15, already one) and its tip (0.2 m)."""
+    """Over the tail span (0..0.2 m) the tail uses the wing's stations (0, 0.05, 0.1, 0.15) and its tip
+    (0.2 m), none of its own section breaks (0.15 m is a wing station by chance)."""
     wing_stations = ys(surfaces()["Main"])
     tail = ys(surfaces()["Tail"])
     assert same(tail, [0.0, 0.05, 0.1, 0.15, 0.2])
@@ -153,6 +117,28 @@ def test_the_fin_strip_width_equals_the_wings_step() -> None:
     zs = [s.z for s in fin.sections]
     assert same(zs, [0.0, 0.05, 0.1, 0.15])
     assert not fin.symmetric
+
+
+def test_a_fin_is_meshed_uniformly_whatever_its_sections() -> None:
+    plane = AirplaneGeometry.model_validate(
+        {
+            "name": "t",
+            "wings": {
+                "Main": wing("Main", "main_wing", [(0.0, 0.0, 0.0, 0.2), (0.0, 0.6, 0.0, 0.1)]),
+                "Tail": wing(
+                    "Tail", "horizontal_tail", [(0.5, 0.0, 0.0, 0.1), (0.5, 0.2, 0.0, 0.05)]
+                ),
+                "Fin": wing(
+                    "Fin",
+                    "vertical_tail",
+                    [(0.5, 0.0, 0.0, 0.1), (0.4, 0.0, 0.07, 0.12), (0.5, 0.0, 0.15, 0.05)],
+                    symmetric=False,
+                ),
+            },
+        }
+    )
+    fin = next(s for s in mesh_surfaces(plane, NSPAN, lambda _a: 0) if s.name == "Fin")
+    assert same([s.z for s in fin.sections], [0.0, 0.05, 0.1, 0.15])
 
 
 def test_a_low_fin_gets_at_least_two_strips() -> None:
