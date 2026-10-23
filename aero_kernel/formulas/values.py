@@ -1,21 +1,23 @@
 """Reading ``x`` inside a formula (ARCHITECTURE ch. 8.12)."""
 
-from aero_kernel.context import Context, Inputs
+from collections.abc import Mapping
+
+from aero_kernel.context import Context
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.air import AirState
 
-__all__ = ["air_state", "airplane", "forward_warnings", "number"]
+__all__ = ["air_state", "airplane_of", "forward_warnings", "number"]
 
 
-def number(x: Inputs, name: str) -> float:
+def number(x: Mapping[str, object], name: str) -> float:
     """Return the scalar bound to a parameter.
 
     The engine binds every non-optional parameter before it calls a formula, and the parameters
     of this slice are scalars; anything else is a defect of the engine or of the model.
 
     Args:
-        x: The formula inputs.
+        x: The formula inputs (or a check's ``x`` / ``y``).
         name: The parameter name.
 
     Returns:
@@ -32,7 +34,7 @@ def number(x: Inputs, name: str) -> float:
     return value
 
 
-def airplane(x: Inputs) -> AirplaneGeometry:
+def airplane_of(x: Mapping[str, object]) -> AirplaneGeometry:
     """Return the geometry bound to the parameter ``airplane``.
 
     Raises:
@@ -45,7 +47,7 @@ def airplane(x: Inputs) -> AirplaneGeometry:
     return value
 
 
-def air_state(x: Inputs) -> AirState:
+def air_state(x: Mapping[str, object]) -> AirState:
     """The ISA air state of the bound ``rho`` (kg/m^3), ``mu`` (Pa s) and ``a`` (m/s)."""
     return AirState(
         density=number(x, "rho"),

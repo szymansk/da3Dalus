@@ -6,7 +6,7 @@ pool (the same procedure as ``stall-speed``, shared code; no postcondition, deci
 """
 
 from aero_kernel.context import Context, Inputs
-from aero_kernel.formulas.values import air_state, airplane, forward_warnings, number
+from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
 
 __all__ = ["minimum_drag_speed_from_polar"]
@@ -31,7 +31,7 @@ async def minimum_drag_speed_from_polar(x: Inputs, ctx: Context) -> dict[str, fl
         FormulaError: From the adapter, unchanged (``tool_unavailable``, ``not_converged``).
     """
     glide = await ctx.solvers.opti.best_glide(
-        airplane(x), number(x, "m"), number(x, "g"), number(x, "n_load"), air_state(x)
+        airplane_of(x), number(x, "m"), number(x, "g"), number(x, "n_load"), air_state(x)
     )
     forward_warnings(ctx, glide.warnings)
     solution = glide.solution

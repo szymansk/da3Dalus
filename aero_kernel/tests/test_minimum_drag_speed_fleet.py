@@ -26,6 +26,9 @@ SLUGS = (
     "angle-of-attack-best-glide",
     "lift-coefficient-best-glide",
 )
+# The tool versions the goldens hold for. A different version may move them; this is then noticed
+# here (and the goldens are re-recorded deliberately), not discovered later.
+GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # Regression goldens at sea level, mass of the fleet member, ISA, the kernel's projected S_ref,
 # NeuralFoil model size xlarge: (V_md m/s, (L/D)max, alpha_md deg, C_L,md).
 GOLDEN = {
@@ -48,10 +51,7 @@ async def glide(member: FleetMember) -> ComputeResult:
 async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> None:
     result = await glide(member)
     assert all(q.status is QuantityStatus.OK for q in result.quantities), result
-    assert result.provenance.tool_versions == {
-        "aerosandbox": importlib.metadata.version("aerosandbox"),
-        "neuralfoil": importlib.metadata.version("neuralfoil"),
-    }
+    assert result.provenance.tool_versions == GOLDEN_TOOL_VERSIONS
     assert result.provenance.solver_settings == {"neuralfoil_model_size": "xlarge"}
     for quantity, value in zip(result.quantities, GOLDEN[member], strict=True):
         assert close(quantity.value, value, 1e-5), quantity.slug
@@ -73,6 +73,8 @@ async def test_bryan_best_glide_where_the_prototype_found_it_with_the_small_mode
     With the kernel's "xlarge" the same airplane gives 7.447 m/s, 4.8 % lower: the model size, not
     the procedure, is the difference.
     """
+    installed = {name: importlib.metadata.version(name) for name in GOLDEN_TOOL_VERSIONS}
+    assert installed == GOLDEN_TOOL_VERSIONS  # the 7.8181 below holds for these versions only
     monkeypatch.setattr(opti_module, "NEURALFOIL_MODEL_SIZE", "small")
     request_ = StallRequest(
         airplane=AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN)),

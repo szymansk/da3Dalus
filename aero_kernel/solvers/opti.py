@@ -365,6 +365,8 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
 # The first guess of the best-glide solve: V_md lies above the stall speed (1.48 times it for the
 # BRYAN of the prototype); IPOPT only needs to start on the pre-stall branch.
 GLIDE_SPEED_FACTOR = 1.4
+# Start value of alpha for that solve, as a fraction of the first C_L peak's angle: a start only, not a
+# result or a bound; the optimum is wherever IPOPT finds it inside the window.
 GLIDE_ALPHA_FRACTION = 0.4
 
 
@@ -456,11 +458,15 @@ def _refuse_deflected_devices(airplane: AirplaneGeometry) -> None:
 
 
 class OptiAdapter(SolverAdapter):
-    """The stall problem solved with IPOPT over AeroBuildup, in the process pool.
+    """The stall and best-glide problems solved with IPOPT over AeroBuildup, in the process pool.
+
+    ``stall`` minimises V and ``best_glide`` minimises D subject to the lift balance, both on the
+    pre-stall branch bracketed by an alpha sweep (canon ``stall-speed`` and
+    ``minimum-drag-speed-from-polar``).
 
     Attributes:
         tool: ``OPT``.
-        requirements: AeroSandbox.
+        requirements: AeroSandbox and NeuralFoil, the model AeroBuildup evaluates its sections with.
     """
 
     tool: ClassVar[str] = "OPT"
