@@ -9,6 +9,7 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
+from aero_kernel.solvers.base import regime_by_wing
 from aero_kernel.solvers.opti import OptiAdapter, StallRequest, StallSolution
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
 
@@ -348,3 +349,20 @@ async def test_a_control_surface_view_at_rest_is_no_obstacle(
     adapter = OptiAdapter(InProcessRuntime())
     result = await adapter.stall(airplane(surface_deflection=0.0), 1.5, 9.81, 1.0, AIR)
     assert result.solution == solution()
+
+
+async def test_the_stall_regime_warnings_are_those_of_the_stall_speed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Chords 0.2 and 0.1 m at 6 m/s: only the smaller chord is bubble-sensitive (Re 4.1e4). At
+    three times the speed (18 m/s) there would be no warning at all."""
+    adapter = OptiAdapter(InProcessRuntime())
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=6.0)))
+    result = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
+    expected = regime_by_wing(
+        {"Main": [0.2, 0.1]}, 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
+    )
+    assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
+    assert result.warnings == tuple(expected)
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=18.0)))
+    assert (await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)).warnings == ()

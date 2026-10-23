@@ -9,6 +9,7 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
+from aero_kernel.solvers.base import regime_by_wing
 from aero_kernel.solvers.opti import (
     BestGlideSolution,
     OptiAdapter,
@@ -69,6 +70,24 @@ async def test_the_glide_carries_the_regime_warnings_of_its_speed_per_wing(
     (warning,) = outside
     assert warning.detail["wing"] == "Tail"
     assert all(w.origin is None for w in result.warnings)
+
+
+async def test_the_regime_warnings_are_those_of_the_optimum_speed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Chords 0.2 and 0.1 m at 6 m/s: Re 8.2e4 and 4.1e4, so the smaller chord is bubble-sensitive.
+    Evaluated at three times the speed (18 m/s, Re > 1.2e5) there would be no warning at all."""
+    monkeypatch.setattr(opti_module, "best_glide_worker", canned(glide(6.0)))
+    adapter = OptiAdapter(InProcessRuntime())
+    result = await adapter.best_glide(airplane(), MASS, GRAVITY, 1.0, AIR)
+    expected = regime_by_wing(
+        {"Main": [0.2, 0.1]}, 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
+    )
+    assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
+    assert result.warnings == tuple(expected)
+    fast = canned(glide(18.0))
+    monkeypatch.setattr(opti_module, "best_glide_worker", fast)
+    assert (await adapter.best_glide(airplane(), MASS, GRAVITY, 1.0, AIR)).warnings == ()
 
 
 @pytest.mark.parametrize(
