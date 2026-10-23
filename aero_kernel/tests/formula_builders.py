@@ -22,6 +22,7 @@ IMPLEMENTED = {
     "calc:airplane-geometry",
     "calc:airplane-configuration",
     "calc:stall-speed",
+    "calc:minimum-drag-speed-from-polar",
 }
 
 

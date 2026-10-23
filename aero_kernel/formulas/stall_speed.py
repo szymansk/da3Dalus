@@ -12,11 +12,11 @@ import math
 from collections.abc import Mapping
 
 from aero_kernel.context import Context, Inputs
+from aero_kernel.formulas.values import air_state, airplane, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.registry import CheckResult, formula, postcondition
 from aero_kernel.schema import Polar
-from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import ALPHA_STEP_DEG
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
 
@@ -57,20 +57,10 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, float | Polar]:
         TypeError: If ``airplane`` is not the geometry or a number is not a number.
         FormulaError: From the adapter, unchanged (``tool_unavailable``, ``not_converged``).
     """
-    airplane = x["airplane"]
-    if not isinstance(airplane, AirplaneGeometry):
-        msg = f"parameter 'airplane' must be the geometry, got {type(airplane).__name__}"
-        raise TypeError(msg)
-    air = AirState(
-        density=_number(x, "rho"),
-        dynamic_viscosity=_number(x, "mu"),
-        speed_of_sound=_number(x, "a"),
-    )
     stall = await ctx.solvers.opti.stall(
-        airplane, _number(x, "m"), _number(x, "g"), _number(x, "n_load"), air
+        airplane(x), number(x, "m"), number(x, "g"), number(x, "n_load"), air_state(x)
     )
-    for warning in stall.warnings:
-        ctx.warn(warning.code, warning.message, warning.detail)
+    forward_warnings(ctx, stall.warnings)
     solution = stall.solution
     return {
         "v_s": solution.v_s,

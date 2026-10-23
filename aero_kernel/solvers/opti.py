@@ -1,10 +1,12 @@
-"""The Opti adapter: the stall speed as an optimisation over AeroBuildup (ARCHITECTURE ch. 8.8).
+"""The Opti adapter: optimisation problems over AeroBuildup (ARCHITECTURE ch. 8.8).
 
-The canon procedure (``stall-speed``, K32 / O3) and nothing else: an alpha sweep brackets the
-first C_L extremum, IPOPT (``asb.Opti``) then minimises V on the branch before it, and one more
-sweep at the resulting V_S gives the published polar at the Reynolds number of the stall. There is
-no fixed point on V; the bracketing sweep is made once at a speed refined from a first estimate. An active bound at the optimum, a missing extremum or a failed solve is an
-error, never a value (ADR 0020). The whole procedure is one pool job (a picklable worker).
+The canon procedure for stall speed (``stall-speed``, K32 / O3) and best glide
+(``minimum-drag-speed-from-polar``): an alpha sweep brackets the first C_L extremum, IPOPT
+(``asb.Opti``) then minimises V (stall) or D (best glide) on the branch before it. The stall adds one
+more sweep at the resulting V_S, the published polar at the Reynolds number of the stall. There is
+no fixed point on V; the bracketing sweep is made once at a speed refined from a first estimate. An
+active bound at the optimum, a missing extremum or a failed solve is an error, never a value
+(ADR 0020). Each problem is one pool job (a picklable worker).
 """
 
 import logging
@@ -27,7 +29,16 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["OptiAdapter", "Stall", "StallRequest", "StallSolution", "stall_worker"]
+__all__ = [
+    "BestGlide",
+    "BestGlideSolution",
+    "OptiAdapter",
+    "Stall",
+    "StallRequest",
+    "StallSolution",
+    "best_glide_worker",
+    "stall_worker",
+]
 
 # The sweep range of the canon: "the default sweep starts at -15 deg" (stall-speed.md, inverted
 # application); the upper end leaves room past the stall for stall-onset-detection (D4).
@@ -57,7 +68,7 @@ ACTIVE_BOUND_FRACTION = 1e-6
 
 
 class StallRequest(BaseModel):
-    """What the worker needs for one stall computation; plain data, picklable.
+    """What the worker needs for one Opti problem (stall or best glide); plain data, picklable.
 
     Attributes:
         airplane: The geometry as evaluated (devices as configured).
@@ -92,6 +103,38 @@ class StallSolution(BaseModel):
     cl_max: float
     alpha_s: float
     polar: Polar
+
+
+class BestGlideSolution(BaseModel):
+    """The solution of the best-glide problem (canon ``minimum-drag-speed-from-polar``).
+
+    Attributes:
+        v_md: Minimum-drag speed in m/s.
+        e_max: The lift-to-drag ratio there, ``n m g / D``.
+        alpha_md: The angle of attack at the optimum in degrees.
+        cl_md: The lift coefficient at the optimum.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    v_md: float
+    e_max: float
+    alpha_md: float
+    cl_md: float
+
+
+class BestGlide(BaseModel):
+    """A best-glide solution and the caveats of its operating point.
+
+    Attributes:
+        solution: The solved problem.
+        warnings: Regime warnings (ADR 0028), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    solution: BestGlideSolution
+    warnings: tuple[KernelWarning, ...]
 
 
 class Stall(BaseModel):
@@ -319,6 +362,51 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
+# The first guess of the best-glide solve: V_md lies above the stall speed (1.48 times it for the
+# BRYAN of the prototype); IPOPT only needs to start on the pre-stall branch.
+GLIDE_SPEED_FACTOR = 1.4
+GLIDE_ALPHA_FRACTION = 0.4
+
+
+def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]:
+    """Solve the best-glide problem in the pool worker (canon ``minimum-drag-speed-from-polar``).
+
+    The same bracketing as the stall (the window of alpha ends one sweep step past the first
+    C_L peak), then IPOPT minimises ``D`` subject to ``L = n m g``. At fixed lift the minimum drag is
+    the maximum lift-to-drag ratio. A bound active at the optimum is an error.
+
+    Args:
+        request: The problem; ``n_load`` must be positive.
+
+    Returns:
+        The solution with the worker's diagnostics.
+
+    Raises:
+        FormulaError: ``not_converged`` if the sweep has no extremum, the solve fails or ends on
+            a bound.
+    """
+    started = time.perf_counter()
+    problem = _bracketed(request)
+    optimum = _solve(
+        problem,
+        request.air,
+        lambda _speed, aero: aero["D"],
+        (GLIDE_SPEED_FACTOR * problem.v_bracket, GLIDE_ALPHA_FRACTION * problem.alpha_peak),
+        "best-glide",
+    )
+    drag = optimum.value(optimum.aero["D"])
+    solution = BestGlideSolution(
+        v_md=optimum.speed,
+        e_max=abs(problem.lift) / drag,
+        alpha_md=optimum.alpha,
+        cl_md=optimum.value(optimum.aero["CL"]),
+    )
+    diagnostics = WorkerDiagnostics(
+        duration_s=time.perf_counter() - started, solver_status="Solve_Succeeded"
+    )
+    return WorkerOutcome(value=solution, diagnostics=diagnostics)
+
+
 def _admissible(value: float, *, positive: bool) -> bool:
     """Whether a finite value is > 0 (``positive``) or merely not zero (a signed load factor)."""
     if not math.isfinite(value):
@@ -385,6 +473,36 @@ class OptiAdapter(SolverAdapter):
         """The NeuralFoil model size AeroBuildup is evaluated with."""
         return {"neuralfoil_model_size": NEURALFOIL_MODEL_SIZE}
 
+    def _request(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        n_load: float,
+        air: AirState,
+        *,
+        upright_only: bool = False,
+    ) -> StallRequest:
+        """Check the tool and the inputs of an Opti problem and build the worker's request.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``unsupported_configuration`` for a deflected
+                control surface; ``invalid_input`` for an inadmissible mass, gravity or load factor
+                (``upright_only``: the load factor must be positive).
+        """
+        self.require_available()
+        _refuse_deflected_devices(airplane)
+        for name, value, positive in (
+            ("m", mass_kg, True),
+            ("g", gravity, True),
+            ("n_load", n_load, upright_only),
+        ):
+            if not _admissible(value, positive=positive):
+                raise _invalid(f"{name} = {value} is not admissible", f"give a valid {name}", name)
+        return StallRequest(
+            airplane=airplane, mass_kg=mass_kg, gravity=gravity, n_load=n_load, air=air
+        )
+
     async def stall(
         self,
         airplane: AirplaneGeometry,
@@ -409,18 +527,7 @@ class OptiAdapter(SolverAdapter):
             FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for
                 an inadmissible input; ``not_converged`` as :func:`stall_worker`.
         """
-        self.require_available()
-        _refuse_deflected_devices(airplane)
-        for name, value, positive in (
-            ("m", mass_kg, True),
-            ("g", gravity, True),
-            ("n_load", n_load, False),
-        ):
-            if not _admissible(value, positive=positive):
-                raise _invalid(f"{name} = {value} is not admissible", f"give a valid {name}", name)
-        request = StallRequest(
-            airplane=airplane, mass_kg=mass_kg, gravity=gravity, n_load=n_load, air=air
-        )
+        request = self._request(airplane, mass_kg, gravity, n_load, air)
         solution = await self.runtime.run_cpu(stall_worker, request)
         chords = {
             key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
@@ -428,3 +535,39 @@ class OptiAdapter(SolverAdapter):
         warnings = regime_by_wing(chords, solution.v_s, air.speed_of_sound, air.kinematic_viscosity)
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)
         return Stall(solution=solution, warnings=tuple(warnings))
+
+    async def best_glide(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        n_load: float,
+        air: AirState,
+    ) -> BestGlide:
+        """Solve ``min D s.t. L(V, alpha) = n m g`` on the branch before the first C_L peak.
+
+        Args:
+            airplane: The geometry with its devices as they are to be evaluated.
+            mass_kg: Mass in kg, > 0.
+            gravity: Gravity in m/s^2, > 0.
+            n_load: Load factor, > 0 (the problem lives on the upright branch).
+            air: The air state.
+
+        Returns:
+            The solution and the regime warnings of its speed.
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for
+                an inadmissible input; ``unsupported_configuration`` for a deflected control
+                surface; ``not_converged`` as :func:`best_glide_worker`.
+        """
+        request = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
+        solution = await self.runtime.run_cpu(best_glide_worker, request)
+        chords = {
+            key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
+        }
+        warnings = regime_by_wing(
+            chords, solution.v_md, air.speed_of_sound, air.kinematic_viscosity
+        )
+        logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
+        return BestGlide(solution=solution, warnings=tuple(warnings))
