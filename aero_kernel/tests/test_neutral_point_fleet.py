@@ -6,8 +6,8 @@ NeuralFoil xlarge for the minimum-drag speed that sets the lift coefficient) so 
 or tool is noticed. The AVL world has no fuselage, so the numbers are neutral points of the wing and
 tail, not of the airplane.
 
-The CG of BRYAN is the plan value (136.8 mm, 31.4 % MAC). JAGUAR's is a **fixture**: the geometry
-document's reference point x (111.97 mm), not a plan value.
+The CG of BRYAN is the plan value (136.8 mm, 31.4 % MAC). JAGUAR's is the maintainer's (2026-10-23,
+#1203): 40.41 mm aft of the main wing's root leading edge, derived from the geometry below.
 """
 
 import pytest
@@ -22,7 +22,20 @@ from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 pytestmark = [pytest.mark.aero]
 
-CG = {FleetMember.BRYAN: 0.1368, FleetMember.JAGUAR: 0.11197}
+JAGUAR_CG_AFT_OF_ROOT_LE = 0.04041  # maintainer 2026-10-23, #1203
+
+
+def main_wing_root_le_x(member: FleetMember) -> float:
+    """x of the main wing's root leading edge in the geometry frame."""
+    wings = reference_document(member)["wings"].values()
+    (main,) = [w for w in wings if w["surface_type"] == "main_wing"]
+    return float(main["x_secs"][0]["xyz_le"][0])
+
+
+CG = {
+    FleetMember.BRYAN: 0.1368,
+    FleetMember.JAGUAR: main_wing_root_le_x(FleetMember.JAGUAR) + JAGUAR_CG_AFT_OF_ROOT_LE,
+}
 WORLDS = ("textbook", "pappas", "avl")
 # Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
 GOLDEN_NP = {
