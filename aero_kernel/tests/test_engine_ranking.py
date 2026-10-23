@@ -6,7 +6,7 @@ import pytest
 from aero_kernel.engine import _labelled, _merge_worlds, _NodeRun
 from aero_kernel.errors import ErrorCategory, KernelError
 from aero_kernel.graph import NodeOutcome
-from aero_kernel.schema import QuantityResult, QuantityStatus
+from aero_kernel.schema import QuantityResult, QuantityStatus, Reason, ReasonCode
 
 # (code, category) of the failures the order of ch. 8.13 ranks.
 NOT_IMPLEMENTED = ("not_implemented", ErrorCategory.NOT_IMPLEMENTED)
@@ -100,3 +100,22 @@ def test_an_error_without_a_world_gets_the_runs_world(key: str) -> None:
     labelled = _labelled(run, key)
     assert labelled.outcome.error is not None
     assert labelled.outcome.error.world == key
+
+
+def test_a_skipped_world_outranks_a_computed_failure_such_as_a_run_limit() -> None:
+    """Row 7 (skipped) comes before row 8 (computed): the skipped result is reported, not the
+    timeout of the other assignment."""
+    timeout = QuantityResult(
+        slug="q",
+        unit=None,
+        status=QuantityStatus.ERROR,
+        error=failure(("timeout", ErrorCategory.TIMEOUT)),
+    )
+    skipped = QuantityResult(
+        slug="q",
+        unit=None,
+        status=QuantityStatus.SKIPPED,
+        reason=Reason(code=ReasonCode.LONG_RUN_NOT_INCLUDED, message="long run"),
+    )
+    result = _merge_worlds("q", None, [("f=alpha", timeout, True), ("f=beta", skipped, False)])
+    assert result.status is QuantityStatus.SKIPPED

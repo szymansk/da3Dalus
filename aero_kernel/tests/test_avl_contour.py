@@ -1,6 +1,7 @@
 """The AVL contour resampling: unit chord, fixed count, never outside the chord."""
 
 import math
+from itertools import pairwise
 
 import pytest
 from aero_kernel.solvers.avl_contour import repanel
@@ -62,3 +63,18 @@ def test_too_little_to_resample_is_refused(
 ) -> None:
     with pytest.raises(ValueError, match="at least 3"):
         repanel(coordinates, points)
+
+
+def test_a_contour_without_a_chord_is_refused() -> None:
+    with pytest.raises(ValueError, match="the contour has no chord"):
+        repanel([(0.5, 0.0), (0.5, 0.01), (0.5, -0.01), (0.5, 0.0)], 80)
+
+
+def test_a_slightly_non_monotone_side_still_gives_a_monotone_contour_inside_the_chord() -> None:
+    base = ellipse(50)
+    jittered = [(x + (0.002 if k % 7 == 3 else 0.0), y) for k, (x, y) in enumerate(base)]
+    contour = repanel(jittered, 80)
+    xs = [x for x, _ in contour]
+    assert all(0.0 <= x <= 1.0 for x in xs)
+    assert all(a >= b for a, b in pairwise(xs[:80]))
+    assert all(a <= b for a, b in pairwise(xs[79:]))

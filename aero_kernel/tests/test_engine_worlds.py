@@ -284,3 +284,14 @@ async def test_the_cache_key_is_per_assignment() -> None:
         for key in keys
     }
     assert len(digests) == 3
+
+
+async def test_two_worlds_failing_alike_and_one_differently_keep_a_world_label() -> None:
+    """Only a failure that is the same in every assignment has its cause in no world."""
+    probe = Probe()
+    probe.fail["alpha"] = failing("invalid_input", ErrorCategory.INVALID_INPUT)
+    probe.fail["beta"] = failing("invalid_input", ErrorCategory.INVALID_INPUT)
+    probe.fail["gamma"] = failing("not_converged", ErrorCategory.NOT_CONVERGED)
+    error = only(await run(probe, "np-q")).error
+    assert error is not None
+    assert error.world is not None

@@ -41,7 +41,7 @@ def repanel(
         raise ValueError(msg)
     unit = np.column_stack(((points[:, 0] - x_min) / chord, points[:, 1] / chord))
     leading_edge = int(np.argmin(unit[:, 0]))
-    upper = unit[: leading_edge + 1][::-1]  # leading edge to trailing edge
+    upper = unit[: leading_edge + 1]
     lower = unit[leading_edge:]
     stations = 0.5 * (1.0 - np.cos(np.pi * np.arange(points_per_side) / (points_per_side - 1)))
 

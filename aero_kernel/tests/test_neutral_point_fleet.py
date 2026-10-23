@@ -172,3 +172,20 @@ async def test_a_naca_2412_wing_and_tail_runs_through_avl() -> None:
     async with SolverRuntime() as runtime:
         found = await AvlAdapter(runtime).neutral_point(plane, BRYAN_CL_MD)
     assert 0.10 < found.x_np < 0.17
+
+
+@pytest.mark.asyncio
+async def test_a_ventral_fin_gives_the_same_neutral_point() -> None:
+    """BRYAN's fin mirrored below the wing plane (z -> -z): the fin does not enter the longitudinal
+    neutral point, whichever way it points."""
+    document = reference_document(FleetMember.BRYAN)
+    ventral = reference_document(FleetMember.BRYAN)
+    for wing in ventral["wings"].values():
+        if wing["surface_type"] == "vertical_tail":
+            for section in wing["x_secs"]:
+                section["xyz_le"][2] = -section["xyz_le"][2]
+    async with SolverRuntime() as runtime:
+        adapter = AvlAdapter(runtime)
+        want = await adapter.neutral_point(AirplaneGeometry.model_validate(document), BRYAN_CL_MD)
+        got = await adapter.neutral_point(AirplaneGeometry.model_validate(ventral), BRYAN_CL_MD)
+    assert abs(got.x_np - want.x_np) < 1e-4
