@@ -775,6 +775,7 @@ def test_public_names_of_errors_are_pinned() -> None:
             "ErrorCategory",
             "FormulaError",
             "KernelError",
+            "ToolRunTimeoutError",
             "aggregate_upstream",
             "check_finite_json",
             "display_slug",

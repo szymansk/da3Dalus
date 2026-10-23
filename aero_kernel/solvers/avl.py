@@ -7,12 +7,13 @@ adapter). It adds no regime warning of its own: those come with the minimum-drag
 inherited (#1203, M2).
 """
 
+import asyncio
 import logging
 import time
 from collections.abc import Mapping
 from typing import ClassVar
 
-from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.errors import ErrorCategory, FormulaError, ToolRunTimeoutError
 from aero_kernel.geometry import Airfoil, AirplaneGeometry, InlineAirfoil
 from aero_kernel.geometry_properties import MainWingProperties, main_wing_properties
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
@@ -54,6 +55,11 @@ CLAF_PER_THICKNESS = 0.77
 CL_TOLERANCE = 1e-4
 # AVL 3.40 prints the first on an overflow of its vortex arrays; on a mesh so fine that the influence
 # matrix no longer fits LAPACK's integers it exits 0 with the second (BRYAN at 20/96).
+# The longest one AVL run may take. The measured refined 20/48 run of BRYAN and JAGUAR takes 15 s and
+# the 20/96 run 45 s; AVL can also spin forever on a geometry it cannot solve (a chain it reads tip
+# first), so a run is never waited for longer than this. Expiry is a `timeout` error and the process
+# group is killed (run_process).
+AVL_MAX_RUN_S = 120.0
 _OVERFLOW = ("Vortex array overflow", "DGETRF parameter number")
 
 
@@ -177,12 +183,16 @@ class AvlAdapter(SolverAdapter):
         }
         for index, contour in enumerate(contours):
             files[airfoil_file_name(index)] = airfoil_file(f"airfoil {index}", contour.coordinates)
-        run = await self.runtime.run_process(
-            files,
-            avl_commands(cl, CORE_RATIO),
-            executable=avl_path(),
-            args=(GEOMETRY_FILE,),
-        )
+        try:
+            async with asyncio.timeout(AVL_MAX_RUN_S):
+                run = await self.runtime.run_process(
+                    files,
+                    avl_commands(cl, CORE_RATIO),
+                    executable=avl_path(),
+                    args=(GEOMETRY_FILE,),
+                )
+        except TimeoutError as error:
+            raise ToolRunTimeoutError("the vortex lattice run", AVL_MAX_RUN_S) from error
         if any(marker in run.stdout for marker in _OVERFLOW):
             raise FormulaError(
                 ErrorCategory.UNSUPPORTED_CONFIGURATION,

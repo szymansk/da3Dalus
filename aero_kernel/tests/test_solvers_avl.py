@@ -1,11 +1,12 @@
 """The AVL adapter against a fake executable through the real ``run_process`` (fast tier)."""
 
+import asyncio
 import json
 import stat
 from pathlib import Path
 
 import pytest
-from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.errors import ErrorCategory, FormulaError, ToolRunTimeoutError
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers import avl as avl_module
@@ -19,6 +20,9 @@ here = pathlib.Path(__file__).resolve().parent
 config = json.loads((here / "fake.json").read_text())
 geometry = pathlib.Path(sys.argv[1]).read_text()
 commands = sys.stdin.read()
+(here / "pid.txt").write_text(str(__import__("os").getpid()))
+if config.get("sleep"):
+    __import__("time").sleep(config["sleep"])
 n_chord = int(re.search(r"#Nchordwise  Cspace\\n(\\d+)", geometry).group(1))
 cl = float(re.search(r"a c (\\S+)", commands).group(1))
 (here / "seen.json").write_text(json.dumps({{"n_chord": n_chord, "commands": commands, "geometry": geometry, "files": sorted(p.name for p in pathlib.Path('.').iterdir())}}))
@@ -191,3 +195,44 @@ async def test_a_matrix_too_large_for_avl_is_the_same_limit_as_an_overflow(fake:
     with pytest.raises(FormulaError) as raised:
         await neutral(fake)
     assert raised.value.code == "avl_array_limit"
+
+
+def alive(directory: Path) -> bool:
+    """Whether the fake AVL of the last run still exists."""
+    import os
+
+    try:
+        os.kill(int((directory / "pid.txt").read_text()), 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+@pytest.mark.asyncio
+async def test_a_run_longer_than_the_adapters_own_limit_is_a_timeout_and_is_killed(
+    fake: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AVL can spin forever on a geometry it cannot solve; the adapter never waits for it."""
+    monkeypatch.setattr(avl_module, "AVL_MAX_RUN_S", 0.5)
+    configure(fake, {"10": 0.14, "20": 0.14}, sleep=30)
+    with pytest.raises(ToolRunTimeoutError) as raised:
+        await neutral(fake)
+    assert raised.value.limit_s == 0.5
+    await asyncio.sleep(0.2)
+    assert not alive(fake)
+
+
+@pytest.mark.asyncio
+async def test_a_time_budget_kills_a_running_avl(fake: Path) -> None:
+    configure(fake, {"10": 0.14, "20": 0.14}, sleep=30)
+    with pytest.raises(TimeoutError) as raised:
+        async with asyncio.timeout(0.5):
+            await neutral(fake)
+    assert not isinstance(raised.value, ToolRunTimeoutError)  # the budget's, not the adapter's own
+    await asyncio.sleep(0.2)
+    assert not alive(fake)
+
+
+def test_the_run_limit_is_far_above_the_measured_refined_run() -> None:
+    """15 s measured for the refined 20/48 run of BRYAN and JAGUAR; BRYAN 20/96 fails fast."""
+    assert avl_module.AVL_MAX_RUN_S >= 4 * 15

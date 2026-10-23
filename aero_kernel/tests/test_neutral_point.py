@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.engine import evaluate
-from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.errors import ErrorCategory, FormulaError, ToolRunTimeoutError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import (
     AircraftInput,
@@ -244,3 +244,20 @@ async def test_the_avl_adapter_warnings_are_forwarded_in_the_avl_world_only() ->
     quantity = only((await run("neutral-point", avl=StubAvl(X_NP_AVL, warnings=(mesh,))))[0])
     forwarded = [w for w in quantity.warnings if w.code == "avl_mesh_not_converged"]
     assert [w.world for w in forwarded] == ["neutral-point=avl"]
+
+
+async def test_an_avl_run_that_exceeds_its_limit_is_a_timeout_error_with_the_values_that_computed() -> (
+    None
+):
+    avl = StubAvl(X_NP_AVL)
+    avl.failure = ToolRunTimeoutError("the vortex lattice run", 120.0)
+    quantity = only((await run("neutral-point", avl=avl))[0])
+    assert quantity.status is QuantityStatus.ERROR
+    assert quantity.error is not None
+    assert (quantity.error.category, quantity.error.code) == (ErrorCategory.TIMEOUT, "timeout")
+    assert quantity.error.world == "neutral-point=avl"
+    assert quantity.error.detail["run_limit_s"] == 120.0
+    assert set(quantity.error.detail["worlds_ok"]) == {  # type: ignore[arg-type]
+        "neutral-point=textbook",
+        "neutral-point=pappas",
+    }

@@ -24,6 +24,7 @@ from aero_kernel.errors import (
     ErrorCategory,
     FormulaError,
     KernelError,
+    ToolRunTimeoutError,
     display_slug,
     format_world_assignment,
     internal_error,
@@ -227,6 +228,19 @@ class _Call:
             detail={"time_budget_s": budget},
         )
 
+    def _run_limit_error(self, slug: str, node: Node, raised: ToolRunTimeoutError) -> KernelError:
+        """The error of a quantity whose tool run exceeded the adapter's own maximum run time."""
+        return KernelError(
+            code="timeout",
+            category=ErrorCategory.TIMEOUT,
+            quantity=slug,
+            formula=display_slug(node.id.formula),
+            application=node.id.application,
+            message=f"`{slug}` did not finish: {raised.what} exceeded {raised.limit_s} s.",
+            hint="The run was stopped; check the geometry for a configuration the tool cannot solve.",
+            detail={"run_limit_s": raised.limit_s},
+        )
+
     def _anchor(self, node: Node) -> str:
         """The name of the node's quantity in its errors: the requested spelling, else its first."""
         requested = self.requested_by_node.get(node.id)
@@ -384,6 +398,11 @@ class _Call:
         self.solver_settings.update(self.solvers.settings_of(formula.tool))
         try:
             returned = await implementation.func(inputs, warner)
+        except ToolRunTimeoutError as exc:
+            return self._failed(
+                anchor,
+                lambda slug, raised=exc: self._run_limit_error(slug, node, raised),
+            )
         except FormulaError as exc:
             path = self._input_path(node, formula, exc.parameter)
             return self._failed(
