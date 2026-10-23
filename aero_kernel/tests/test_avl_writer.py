@@ -4,6 +4,7 @@ import pytest
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.solvers.avl_mesh import mesh_surfaces
 from aero_kernel.solvers.avl_writer import (
+    AvlOutput,
     airfoil_file,
     avl_commands,
     avl_geometry,
@@ -86,8 +87,20 @@ def test_the_output_is_read_by_its_first_hit_of_each_key() -> None:
     out = " Sref = 0.28000  Cref = 0.2\n CLtot =   0.50000\n Xnp = 0.131\n Clb Cnr / Clr Cnb = 1\n Xnp = 9.9\n"
     parsed = parse_avl_output(out)
     assert parsed is not None
-    assert (parsed.x_np, parsed.cl, parsed.s_ref) == (0.131, 0.5, 0.28)
+    assert (parsed.x_np, parsed.cl) == (0.131, 0.5)
 
 
 def test_an_output_without_the_neutral_point_is_none() -> None:
     assert parse_avl_output(" Sref = 0.28\n CLtot = 0.5\n") is None
+
+
+def test_fortran_d_exponents_are_read() -> None:
+    parsed = parse_avl_output(" CLtot = 1.5D-01\n Xnp = 1.5D-02\n")
+    assert parsed is not None
+    assert (parsed.x_np, parsed.cl) == (0.015, 0.15)
+
+
+def test_the_output_carries_only_what_the_adapter_reads() -> None:
+    """The reference area is the kernel's own and goes into the file; reading it back would be a
+    second authority for it (ADR 0022) that nothing consults (ADR 0021)."""
+    assert set(AvlOutput.model_fields) == {"x_np", "cl"}

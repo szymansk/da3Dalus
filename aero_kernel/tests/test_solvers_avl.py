@@ -4,6 +4,7 @@ import asyncio
 import json
 import stat
 from pathlib import Path
+from typing import Any
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError, ToolRunTimeoutError
@@ -11,6 +12,7 @@ from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers import avl as avl_module
 from aero_kernel.solvers.avl import AvlAdapter, AvlNeutralPoint, Contour
+from aero_kernel.solvers.avl_writer import AvlOutput
 from aero_kernel.tests.np_builders import CONVENTIONAL, airplane_with
 from aero_kernel.tests.solver_builders import airplane
 
@@ -237,3 +239,50 @@ async def test_a_time_budget_kills_a_running_avl(fake: Path) -> None:
 def test_the_run_limit_is_far_above_the_measured_refined_run() -> None:
     """15 s measured for the refined 20/48 run of BRYAN and JAGUAR; BRYAN 20/96 fails fast."""
     assert avl_module.AVL_MAX_RUN_S >= 4 * 15
+
+
+@pytest.mark.asyncio
+async def test_a_refined_value_forward_of_the_declared_one_is_also_a_disagreement(
+    fake: Path,
+) -> None:
+    """The delta is absolute: the refined neutral point 0.6 % MAC forward of the declared one warns."""
+    configure(fake, {"10": 0.14, "20": 0.14 - 0.2 * 0.006})
+    found = await neutral(fake)
+    (warning,) = found.warnings
+    assert warning.code == "avl_mesh_not_converged"
+    assert warning.detail["delta_mac"] == pytest.approx(0.006, rel=1e-9)  # pyright: ignore[reportUnknownMemberType]
+
+
+class SecondCallFails(FakeAvl):
+    """The adapter whose refined (second) run raises ``failure``."""
+
+    failure: Exception
+
+    async def _run(self, *args: Any) -> AvlOutput:  # type: ignore[override]
+        self.calls = getattr(self, "calls", 0) + 1
+        if self.calls == 2:
+            raise self.failure
+        return await super()._run(*args)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure",
+    [
+        FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION, "unsupported_configuration", "m", "h"
+        ),
+        FormulaError(ErrorCategory.TOOL_UNAVAILABLE, "tool_unavailable", "m", "h"),
+        ToolRunTimeoutError("the vortex lattice run", 120.0),
+    ],
+)
+async def test_a_refined_run_that_fails_for_another_reason_propagates(
+    fake: Path, failure: Exception
+) -> None:
+    """Only the array limit makes the refinement 'unchecked'; any other failure is the run's."""
+    async with SolverRuntime() as runtime:
+        adapter = SecondCallFails(runtime)
+        adapter.failure = failure
+        with pytest.raises(type(failure)) as raised:
+            await adapter.neutral_point(airplane_with(*CONVENTIONAL), 0.5)
+    assert raised.value is failure

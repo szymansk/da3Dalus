@@ -35,14 +35,12 @@ class AvlOutput(BaseModel):
     Attributes:
         x_np: x of the neutral point in m.
         cl: The total lift coefficient AVL trimmed to.
-        s_ref: The reference area AVL used, in m^2.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     x_np: float
     cl: float
-    s_ref: float
 
 
 def airfoil_file_name(index: int) -> str:
@@ -141,12 +139,12 @@ def _first(text: str, key: str) -> float | None:
 
 
 def parse_avl_output(text: str) -> AvlOutput | None:
-    """Read ``Xnp``, ``CLtot`` and ``Sref`` from the output.
+    """Read ``Xnp`` and ``CLtot`` from the output.
 
     Returns:
         The values, or ``None`` if one is missing (the run did not complete).
     """
-    x_np, cl, s_ref = _first(text, "Xnp"), _first(text, "CLtot"), _first(text, "Sref")
-    if x_np is None or cl is None or s_ref is None:
+    x_np, cl = _first(text, "Xnp"), _first(text, "CLtot")
+    if x_np is None or cl is None:
         return None
-    return AvlOutput(x_np=x_np, cl=cl, s_ref=s_ref)
+    return AvlOutput(x_np=x_np, cl=cl)

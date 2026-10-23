@@ -341,3 +341,26 @@ def test_a_chain_that_folds_back_is_refused() -> None:
     with pytest.raises(FormulaError) as raised:
         mesh_surfaces(plane, NSPAN, lambda _a: 0)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+
+
+def test_a_surface_offset_equally_in_y_and_z_is_meshed_along_y() -> None:
+    """On a tie the surface spreads in y (axis 1): the stations are uniform in y, not in z."""
+    plane = AirplaneGeometry.model_validate(
+        {
+            "name": "t",
+            "wings": {
+                "Main": wing("Main", "main_wing", [(0.0, 0.0, 0.0, 0.2), (0.0, 0.6, 0.0, 0.1)]),
+                "Tail": wing(
+                    "Tail", "horizontal_tail", [(0.5, 0.0, 0.0, 0.1), (0.5, 0.2, 0.0, 0.05)]
+                ),
+                "Fin": wing(
+                    "Fin",
+                    "vertical_tail",
+                    [(0.5, 0.0, 0.0, 0.1), (0.5, 0.02, 0.08, 0.08), (0.5, 0.1, 0.1, 0.05)],
+                    symmetric=False,
+                ),
+            },
+        }
+    )
+    fin = next(s for s in mesh_surfaces(plane, NSPAN, lambda _a: 0) if s.name == "Fin")
+    assert same([s.y for s in fin.sections], [0.1 * k / 2 for k in range(3)])

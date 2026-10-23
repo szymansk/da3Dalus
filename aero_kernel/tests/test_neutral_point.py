@@ -154,6 +154,8 @@ async def test_a_missing_centre_of_gravity_is_a_missing_input() -> None:
         (("main_wing", "canard"), ["canard", "main_wing"]),
         (("main_wing", "tandem_wing"), ["main_wing", "tandem_wing"]),
         (("main_wing", "v_tail"), ["main_wing", "v_tail"]),
+        (("main_wing", "horizontal_tail", "canard"), ["canard", "horizontal_tail", "main_wing"]),
+        (("main_wing", "horizontal_tail", "v_tail"), ["horizontal_tail", "main_wing", "v_tail"]),
         (
             ("main_wing", "horizontal_tail", "horizontal_tail"),
             ["horizontal_tail", "horizontal_tail", "main_wing"],
