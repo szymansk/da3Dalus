@@ -140,6 +140,8 @@ class Quantity(BaseModel):
         uncertainty: ``interval`` where the producer declares method worlds.
         positive: ``True`` where the quantity is strictly greater than zero by its definition,
             otherwise omitted (``None``); ``false`` is no spelling of the canon.
+        at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),
+            otherwise omitted (``None``).
     """
 
     model_config = _MODEL_CONFIG
@@ -150,6 +152,7 @@ class Quantity(BaseModel):
     type: QuantityType
     uncertainty: Literal["interval"] | None = None
     positive: Literal[True] | None = None
+    at_most: FiniteNumber | None = None
 
     @field_validator("positive", mode="before")
     @classmethod
@@ -162,15 +165,16 @@ class Quantity(BaseModel):
 
     @model_validator(mode="after")
     def _check_positive(self) -> Self:
-        """Allow ``positive`` only on supplied scalars."""
-        if self.positive is None:
-            return self
-        if self.role not in ("input", "target"):
-            msg = f"positive is only allowed on role input or target, not {self.role}"
-            raise ValueError(msg)
-        if self.type != "scalar":
-            msg = f"positive is only allowed on a scalar quantity, not {self.type}"
-            raise ValueError(msg)
+        """Allow ``positive`` and ``at_most`` only on supplied scalars."""
+        for name, value in (("positive", self.positive), ("at_most", self.at_most)):
+            if value is None:
+                continue
+            if self.role not in ("input", "target"):
+                msg = f"{name} is only allowed on role input or target, not {self.role}"
+                raise ValueError(msg)
+            if self.type != "scalar":
+                msg = f"{name} is only allowed on a scalar quantity, not {self.type}"
+                raise ValueError(msg)
         return self
 
 
@@ -667,6 +671,8 @@ class CanonModel(BaseModel):
                     text = f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
                 elif quantity.positive and default.value <= 0:
                     text = f"default of positive quantity {where} must be > 0"
+                elif quantity.at_most is not None and default.value > quantity.at_most:
+                    text = f"default of {where} exceeds its at_most {quantity.at_most}"
                 if text is not None:
                     problems.append(
                         CanonProblem(

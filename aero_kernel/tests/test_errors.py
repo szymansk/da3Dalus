@@ -587,6 +587,7 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "not_an_input": ErrorCategory.INVALID_INPUT,
         "not_requestable": ErrorCategory.INVALID_INPUT,
         "non_positive_value": ErrorCategory.INVALID_INPUT,
+        "value_above_maximum": ErrorCategory.INVALID_INPUT,
         "target_above_method_maximum": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "precondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "postcondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,

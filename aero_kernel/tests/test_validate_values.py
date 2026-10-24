@@ -21,6 +21,14 @@ def model() -> CanonModel:
         "type": "scalar",
         "positive": True,
     }
+    quantities["efficiency"] = {
+        "symbol": "eta",
+        "unit": "1",
+        "role": "input",
+        "type": "scalar",
+        "positive": True,
+        "at_most": 1.0,
+    }
     quantities["airplane-landing"] = {
         "symbol": "airplane_ldg",
         "unit": "1",
@@ -63,6 +71,19 @@ def test_non_positive_value_of_a_positive_quantity(value: float) -> None:
     assert error.code == "non_positive_value"
     assert error.input_path == "values.aircraft-mass"
     assert error.detail == {"value": value}
+
+
+def test_a_value_above_the_maximum_of_a_bounded_quantity_is_rejected() -> None:
+    (error,) = validate_values({"efficiency": 1.5}, model())
+    assert error.code == "value_above_maximum"
+    assert error.category is ErrorCategory.INVALID_INPUT
+    assert error.input_path == "values.efficiency"
+    assert error.detail == {"value": 1.5}
+
+
+@pytest.mark.parametrize("value", [0.65, 1.0])
+def test_a_value_up_to_the_maximum_is_admissible(value: float) -> None:
+    assert validate_values({"efficiency": value}, model()) == ()
 
 
 def test_non_finite_numbers_are_left_to_validate_aircraft() -> None:

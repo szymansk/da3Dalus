@@ -261,6 +261,13 @@ def test_the_default_of_a_positive_quantity_must_be_positive(value: float) -> No
         build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"value": value}))
 
 
+def test_the_default_of_a_bounded_quantity_must_not_exceed_its_maximum() -> None:
+    namespaces = base_namespaces()
+    namespaces["calc"]["quantities"]["gravity"]["at_most"] = 10.0
+    with pytest.raises(ValidationError, match="at_most"):
+        build(with_defaults(namespaces, gravity=GRAVITY_DEFAULT | {"value": 10.5}))
+
+
 @pytest.mark.parametrize("field", ["source", "regime"])
 def test_a_default_needs_a_source_and_a_regime(field: str) -> None:
     with pytest.raises(ValidationError):

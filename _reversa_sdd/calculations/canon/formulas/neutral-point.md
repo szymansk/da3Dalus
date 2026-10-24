@@ -22,6 +22,7 @@ inputs:
   g: gravity
   rho: air-density
   v_md: minimum-drag-speed
+  eta_h: tail-efficiency
 outputs: {x_np: neutral-point}
 worlds: [textbook, pappas, avl]
 ---
@@ -31,13 +32,13 @@ worlds: [textbook, pappas, avl]
 **Canonical form**
 
 ```
-world textbook:  x_NP = (S_w*x_ac,w + K*S_h*x_ac,h) / (S_w + K*S_h),  K = eta*(1 - 4/(AR_w+2)) * [AR_h/(AR_h+2)]/[AR_w/(AR_w+2)],  eta = 0.9
+world textbook:  x_NP = (S_w*x_ac,w + K*S_h*x_ac,h) / (S_w + K*S_h),  K = eta*(1 - 4/(AR_w+2)) * [AR_h/(AR_h+2)]/[AR_w/(AR_w+2)],  eta = eta_h
 world Pappas:    the same barycentre with K = (1 - 3.24/AR_w) * [1/(1+2/AR_h)]/[1/(1+2/AR_w)]
 world AVL:       solve for alpha at V_md:  L = m*g;   x_NP := AVL(airplane, alpha).Xnp   (CLAF by ASB's thickness rule)
 x_NP := [ min over worlds, max over worlds ]          (an interval, no core — A11)
 ```
 
-**Produces** [[neutral-point]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]]
+**Produces** [[neutral-point]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]] · [[tail-efficiency]]
 
 **Kind: a procedure with declared uncertainty (A11, maintainer 2026-10-03).** No single method captures
 the physics at Re 30k–300k (`scripts/canon_checks/reference_fleet/NP_NIEDRIGE_RE.md`). The neutral point
@@ -46,9 +47,12 @@ carried through the whole downstream chain (A11 rule 4). One entry, one producer
 
 - **Textbook world:** the barycentre form is the exact form of `h_n = h_ac + eta*V_H*(a_h/a)*(1 - de/da)`
   with `K = eta*(a_h/a)*(1 - de/da)`, lift slopes `a = 2 pi AR/(AR+2)`, downwash `de/da = 2 a_w/(pi AR_w)`
-  (**derived from** Sadraey Eq. 6.67, §6.7.4 — the barycentre is a rearrangement, not the printed form);
-  `eta = 0.9` (Sadraey §6, 0.85–0.95 conventional), **not checked for the RC regime (ADR 0028)**
-  (maintainer, 2026-10-23). Pappas implies `η = 1`; part of the textbook–Pappas gap is this choice.
+  (**derived from** Sadraey Eq. 6.67, §6.7.12 — the barycentre is a rearrangement, not the printed form);
+  `eta` is the input [[tail-efficiency]] (`eta_h`, default **0.65**, `basis: convention`; Lennon, *Basics of
+  R/C Model Aircraft Design* Ch. 7/8, conventional tail near the wing wake 0.65; Sadraey Eq. 6.28 §6.2.1 gives
+  0.85–0.95 conventional and 1 for a T-tail, full-scale; maintainer decision 2026-10-24, #1205). It is **not
+  checked at RC Reynolds number (ADR 0028)**: the wing wake is thicker at low Re, unquantified. Pappas and AVL
+  are unchanged: they imply `eta = 1`, so part of the textbook–Pappas gap is the choice of `eta_h`.
   Aerodynamic centres at 25 % of each surface's MAC.
 - **Pappas world:** Dean Pappas, "If It Flies", *Model Aviation* 10/2009 (after von Mises/Prager/Kuerti),
   verbatim barycentre with downwash factor `1 - 3.24/AR_w` and aspect-ratio correction `1/(1 + 2/AR)`.
@@ -77,5 +81,5 @@ result carries the declared warning `fuselage_not_modelled` (`defect`, ADR 0020)
 neutral point forward, so the interval is biased aft. The sourced fuselage term is open in #1205.
 Reference fleet (np_methods.py): BRYAN [32.9, 36.9] % MAC, e-Hawk [48.8, 52.9] % MAC.
 
-**Source.** 🟢 derived from Sadraey Eq. 6.67 (textbook); Pappas, *Model Aviation* 10/2009; Drela, AVL. Review of the
+**Source.** 🟢 derived from Sadraey Eq. 6.67, §6.7.12 (textbook); η from Lennon Ch. 7/8 and Sadraey Eq. 6.28, §6.2.1; Pappas, *Model Aviation* 10/2009; Drela, AVL. Review of the
 uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.
