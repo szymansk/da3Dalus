@@ -269,14 +269,16 @@ def test_a_default_needs_a_source_and_a_regime(field: str) -> None:
 
 @pytest.mark.parametrize("basis", ["", "assumed", "Convention", None])
 def test_a_default_basis_is_one_of_the_four_terms(basis: str | None) -> None:
+    namespaces = with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"basis": basis})
     with pytest.raises(ValidationError):
-        build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"basis": basis}))
+        build(namespaces)
 
 
 def test_a_default_without_a_basis_is_rejected() -> None:
     default = {key: value for key, value in GRAVITY_DEFAULT.items() if key != "basis"}
+    namespaces = with_defaults(base_namespaces(), gravity=default)
     with pytest.raises(ValidationError, match="basis"):
-        build(with_defaults(base_namespaces(), gravity=default))
+        build(namespaces)
 
 
 @pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention"])
