@@ -72,14 +72,14 @@ STUB_SPEED_OF_SOUND = 340.294
 # What the OPT adapter reports as its settings (provenance, cache key).
 OPT_SETTINGS: dict[str, JsonValue] = {
     "neuralfoil_model_size": "xlarge",
-    "alpha_min_deg": -15.0,
-    "alpha_max_deg": 25.0,
-    "alpha_step_deg": 0.25,
-    "bracket_cl": 1.0,
-    "v_min_ms": 1.0,
-    "v_max_mach": 0.6,
-    "max_iterations": 300,
-    "active_bound_fraction": 1e-6,
+    "opt_alpha_min_deg": -15.0,
+    "opt_alpha_max_deg": 25.0,
+    "opt_alpha_step_deg": 0.25,
+    "opt_bracket_cl": 1.0,
+    "opt_v_min_ms": 1.0,
+    "opt_v_max_mach": 0.6,
+    "opt_max_iterations": 300,
+    "opt_active_bound_fraction": 1e-6,
 }
 
 

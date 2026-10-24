@@ -843,17 +843,23 @@ class OptiAdapter(SolverAdapter):
     }
 
     def settings(self) -> dict[str, JsonValue]:
-        """Every constant that shapes an optimisation result: model size, alpha sweep, bounds, limits."""
+        """Every constant that shapes an optimisation result: model size, alpha sweep, bounds, limits.
+
+        The keys of this adapter's own constants carry the ``opt_`` prefix: the settings of all tools of a call
+        share one dictionary. ``neuralfoil_model_size`` keeps its name, it is NeuralFoil's.
+        The start values of the solves (``GLIDE_*``, ``ROLL_START_*``, ``ROLL_PROBE_*``) are not
+        settings: they are starts only and not a result or a bound.
+        """
         return {
             "neuralfoil_model_size": NEURALFOIL_MODEL_SIZE,
-            "alpha_min_deg": ALPHA_MIN_DEG,
-            "alpha_max_deg": ALPHA_MAX_DEG,
-            "alpha_step_deg": ALPHA_STEP_DEG,
-            "bracket_cl": BRACKET_CL,
-            "v_min_ms": V_MIN_MS,
-            "v_max_mach": V_MAX_MACH,
-            "max_iterations": MAX_ITERATIONS,
-            "active_bound_fraction": ACTIVE_BOUND_FRACTION,
+            "opt_alpha_min_deg": ALPHA_MIN_DEG,
+            "opt_alpha_max_deg": ALPHA_MAX_DEG,
+            "opt_alpha_step_deg": ALPHA_STEP_DEG,
+            "opt_bracket_cl": BRACKET_CL,
+            "opt_v_min_ms": V_MIN_MS,
+            "opt_v_max_mach": V_MAX_MACH,
+            "opt_max_iterations": MAX_ITERATIONS,
+            "opt_active_bound_fraction": ACTIVE_BOUND_FRACTION,
         }
 
     def _request(

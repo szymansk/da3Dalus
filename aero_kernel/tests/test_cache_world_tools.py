@@ -107,6 +107,29 @@ def test_a_changed_optimisation_setting_misses_the_cache_in_the_aerobuildup_worl
     assert node_key(solvers, "aerobuildup") != before
 
 
+@pytest.mark.parametrize(
+    "constant",
+    [
+        "CHORD_SPACING",
+        "SLIVER_STEPS",
+        "CLAF_PER_THICKNESS",
+        "ROLL_RATE_LIMIT",
+        "ROLL_PRINT_FLOOR",
+        "ROLL_MOMENT_TOLERANCE",
+        "CONTROL_ECHO_TOLERANCE",
+        "CL_TOLERANCE",
+        "AVL_MAX_RUN_S",
+    ],
+)
+def test_a_changed_avl_constant_misses_the_cache_in_the_avl_world(
+    monkeypatch: pytest.MonkeyPatch, constant: str
+) -> None:
+    solvers = solvers_with()
+    before = node_key(solvers, "avl")
+    monkeypatch.setattr(avl_module, constant, getattr(avl_module, constant) + 1)
+    assert node_key(solvers, "avl") != before
+
+
 def test_the_optimisation_constants_are_part_of_the_solver_settings() -> None:
     settings = solvers_with().settings_of("OPT")
     assert settings == OPT_SETTINGS

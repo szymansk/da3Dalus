@@ -168,6 +168,15 @@ def test_the_settings_are_public_keys_with_their_values() -> None:
         "avl_roll_nchord_front": 12,
         "avl_roll_nchord_aft": 8,
         "avl_roll_branch_tolerance": 0.1,
+        "avl_chord_spacing": 1,
+        "avl_sliver_steps": 0.3,
+        "avl_claf_per_thickness": 0.77,
+        "avl_roll_rate_limit": 0.10,
+        "avl_roll_print_floor": 2e-4,
+        "avl_roll_moment_tolerance": 1e-5,
+        "avl_control_echo_tolerance": 1e-4,
+        "avl_cl_tolerance": 1e-4,
+        "avl_max_run_s": 120.0,
     }
 
 

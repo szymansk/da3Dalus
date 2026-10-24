@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 # Chordwise vortex spacing: cosine (AVL's default, 1).
-_CHORD_SPACING = 1
+CHORD_SPACING = 1
 # One strip per neighbouring section pair; the spacing is moot for a single strip.
 _STRIP = "1   1"
 GEOMETRY_FILE = "airplane.avl"
@@ -148,7 +148,7 @@ def avl_geometry(
             "SURFACE",
             surface.name,
             "#Nchordwise  Cspace",
-            f"{surface.n_chord or n_chord}   {_CHORD_SPACING}",
+            f"{surface.n_chord or n_chord}   {CHORD_SPACING}",
         ]
         if surface.component is not None:
             lines += ["COMPONENT", f"{surface.component}"]

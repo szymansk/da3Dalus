@@ -22,8 +22,9 @@ from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 from aero_kernel.solvers.avl_contour import repanel
-from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces, split_at_hinge
+from aero_kernel.solvers.avl_mesh import SLIVER_STEPS, MeshSurface, mesh_surfaces, split_at_hinge
 from aero_kernel.solvers.avl_writer import (
+    CHORD_SPACING,
     GEOMETRY_FILE,
     AvlOutput,
     RollOutput,
@@ -231,7 +232,7 @@ class AvlAdapter(SolverAdapter):
     }
 
     def settings(self) -> dict[str, JsonValue]:
-        """The mesh, vortex core and refinement checks AVL is run with."""
+        """Every constant that shapes an AVL result or decides value versus error: mesh, core, checks."""
         return {
             "avl_nchord": N_CHORD,
             "avl_nspan": N_SPAN,
@@ -243,6 +244,15 @@ class AvlAdapter(SolverAdapter):
             "avl_roll_nchord_front": SPLIT_N_CHORD[0],
             "avl_roll_nchord_aft": SPLIT_N_CHORD[1],
             "avl_roll_branch_tolerance": ROLL_BRANCH_TOLERANCE,
+            "avl_chord_spacing": CHORD_SPACING,
+            "avl_sliver_steps": SLIVER_STEPS,
+            "avl_claf_per_thickness": CLAF_PER_THICKNESS,
+            "avl_roll_rate_limit": ROLL_RATE_LIMIT,
+            "avl_roll_print_floor": ROLL_PRINT_FLOOR,
+            "avl_roll_moment_tolerance": ROLL_MOMENT_TOLERANCE,
+            "avl_control_echo_tolerance": CONTROL_ECHO_TOLERANCE,
+            "avl_cl_tolerance": CL_TOLERANCE,
+            "avl_max_run_s": AVL_MAX_RUN_S,
         }
 
     async def _contours(self, airfoils: tuple[Airfoil, ...]) -> tuple[Contour, ...]:
