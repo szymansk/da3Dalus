@@ -1,7 +1,7 @@
 ---
 canon: max-lift-coefficient
 kind: quantity
-symbol: C_L,max,stall
+symbol: C_L,max,S
 unit: 1
 role: derived
 status: approved
@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - discipline/aerodynamics
   - stage/aero-model
+  - group/aero-stall
   - role/derived
 type: scalar
 ---

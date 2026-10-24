@@ -1,7 +1,7 @@
 ---
 canon: wing-loading-limit-stall
 kind: quantity
-symbol: (W/S)_max,stall
+symbol: (W/S)_max,S
 unit: N/m^2
 role: output
 status: draft

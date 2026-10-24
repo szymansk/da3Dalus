@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - discipline/aerodynamics
   - stage/aero-model
+  - group/aero-parabola
   - role/derived
 type: scalar
 ---
