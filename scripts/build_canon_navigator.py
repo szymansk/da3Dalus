@@ -145,6 +145,27 @@ def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> No
     for slug, q in quantities.items():
         t = (root / "quantities" / f"{slug}.md").read_text(encoding="utf-8")
         q["type"] = _front(t, "type") or "scalar"
+        tags = re.findall(r"^\s+-\s+(\S+)\s*$", t.split("---", 2)[1], re.M)
+        modules = [x.split("/", 1)[1] for x in tags if x.startswith("module/")]
+        if len(modules) > 1:
+            raise SystemExit(f"quantity {slug} has more than one module tag: {modules}")
+        q["module"] = modules[0] if modules else ""
+        points = [x.split("/", 1)[1] for x in tags if x.startswith("point/")]
+        if len(points) > 1:
+            raise SystemExit(f"quantity {slug} has more than one point tag: {points}")
+        q["point"] = points[0] if points else ""
+        stages = [x.split("/", 1)[1] for x in tags if x.startswith("stage/")]
+        if len(stages) > 1:
+            raise SystemExit(f"quantity {slug} has more than one stage tag: {stages}")
+        q["stage"] = stages[0] if stages else ""
+        groups = [x.split("/", 1)[1] for x in tags if x.startswith("group/")]
+        if len(groups) > 1:
+            raise SystemExit(f"quantity {slug} has more than one group tag: {groups}")
+        q["group"] = groups[0] if groups else ""
+        disciplines = [x.split("/", 1)[1] for x in tags if x.startswith("discipline/")]
+        if len(disciplines) > 1:
+            raise SystemExit(f"quantity {slug} has more than one discipline tag: {disciplines}")
+        q["discipline"] = disciplines[0] if disciplines else ""
     for slug, f in formulas.items():
         t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
         f["worlds"] = [w.strip() for w in _front(t, "worlds").strip("[]").split(",") if w.strip()]
@@ -279,6 +300,32 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
         else:
             status[q] = "open"
     data["status"] = status
+    untagged = sorted(q for q in data["inputs"] if not quantities[q]["module"])
+    if untagged:
+        raise SystemExit(f"inputs and targets without a module/<name> tag: {untagged}")
+    intermediate = set(quantities) - set(data["inputs"]) - set(data["outputs"])
+    unstaged = sorted(q for q in intermediate if not quantities[q]["stage"])
+    if unstaged:
+        raise SystemExit(f"intermediate quantities without a stage/<name> tag: {unstaged}")
+    loose = sorted(
+        q
+        for q in intermediate
+        if quantities[q]["stage"] == "references"
+        and not (quantities[q]["module"] and quantities[q]["group"])
+    )
+    if loose:
+        raise SystemExit(f"references without module/<name> and group/<name> tags: {loose}")
+    derived = set(quantities) - set(data["inputs"])
+    undisciplined = sorted(
+        q
+        for q in derived
+        if quantities[q]["stage"] != "references" and not quantities[q]["discipline"]
+    )
+    if undisciplined:
+        raise SystemExit(f"derived quantities without a discipline/<name> tag: {undisciplined}")
+    unpointed = sorted(q for q in data["outputs"] if not quantities[q]["point"])
+    if unpointed:
+        raise SystemExit(f"final results without a point/<name> tag: {unpointed}")
     design_out = {o for f in formulas.values() if f["direction"] == "design" for o in f["out"]}
     data["design"] = sorted(closure(design_out, pred))
     data["analysis"] = sorted(closure(set(quantities) - design_out - set(data["inputs"]), pred))

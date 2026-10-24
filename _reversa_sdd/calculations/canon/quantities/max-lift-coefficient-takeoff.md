@@ -7,6 +7,8 @@ role: derived
 status: draft
 tags:
   - canon/quantity
+  - discipline/aerodynamics
+  - point/takeoff
   - role/derived
 type: scalar
 ---

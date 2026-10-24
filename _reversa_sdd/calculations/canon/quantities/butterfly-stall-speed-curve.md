@@ -7,6 +7,8 @@ role: output
 status: draft
 tags:
   - canon/quantity
+  - discipline/glide
+  - point/approach
   - role/output
 type: curve
 ---

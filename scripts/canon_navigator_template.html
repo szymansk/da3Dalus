@@ -1,4 +1,4 @@
-<title>Rechenkanon-Navigator</title>
+<title>Canon Navigator</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script>window.MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]},svg:{fontCache:'global'},startup:{typeset:false}};</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
@@ -70,6 +70,13 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .faded{opacity:var(--dim)}
 .edge.up{stroke:var(--inp);stroke-width:1.9px;opacity:1}
 .edge.down{stroke:var(--out);stroke-width:1.9px;opacity:1}
+.toggles{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.sw-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink);
+  border-radius:999px;padding:3px 12px 3px 4px;font:inherit;font-size:12px;cursor:pointer;width:fit-content}
+.sw-pill .track{position:relative;width:28px;height:16px;border-radius:999px;background:var(--line-2);transition:background .15s;flex:none}
+.sw-pill .knob{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--panel);transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sw-pill[aria-checked=true] .track{background:var(--sel)}
+.sw-pill[aria-checked=true] .knob{left:14px}
 .seg{display:flex;gap:4px;flex-wrap:wrap}
 .seg button{flex:1;padding:5px 6px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink);
   border-radius:5px;font:inherit;font-size:12px;cursor:pointer}
@@ -84,6 +91,26 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .off{opacity:var(--dim)}
 .kst{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin:0 0 14px;padding:4px 9px;
   border-radius:5px;border:1px solid var(--line-2)}
+.colhead{font-family:"STIX Two Text",Georgia,serif;font-size:15px;font-weight:600;fill:var(--ink)}
+#g.noedges .edge{display:none !important}
+.edge.xedge{display:none}
+.edge.xedge.up,.edge.xedge.down{display:inline}
+.sspan{fill:var(--hub-bg);fill-opacity:.25;stroke:var(--hub);stroke-opacity:.75;stroke-width:1.3}
+.sframe{fill:var(--hub-bg);fill-opacity:.35;stroke:var(--hub);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
+.blocklab.stlab{fill:var(--hub)}
+.dmark{fill:var(--sel);font-family:"IBM Plex Mono",monospace;font-size:8px;font-weight:600}
+.dischead{font-family:"STIX Two Text",Georgia,serif;font-size:13px;font-weight:600;fill:var(--ink-2)}
+.pspan{fill:var(--out-bg);fill-opacity:.22;stroke:var(--out);stroke-opacity:.7;stroke-width:1.3}
+.pframe{fill:var(--out-bg);fill-opacity:.35;stroke:var(--out);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
+.blocklab.ptlab{fill:var(--out)}
+.blocklab.modlab{fill:var(--ink-2)}
+.blocklab.tmodlab{fill:var(--tgt)}
+.frame{fill:transparent;stroke:var(--line-2);stroke-width:1.2}
+.modsel{cursor:pointer}.modsel:hover .frame{stroke:var(--sel)}
+.modsel:hover .blocklab,.modsel:hover .dischead{fill:var(--sel)}
+.frame.framesel{stroke:var(--sel);stroke-width:2.4;stroke-dasharray:none}
+.tframe{stroke:var(--tgt);stroke-dasharray:4 3}
+.blocklab{font-weight:600;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round;font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.08em}
 .laylab{font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace}
 .hint{position:absolute;left:0;right:0;bottom:12px;text-align:center;color:var(--ink-3);
   font-size:12px;pointer-events:none}
@@ -122,73 +149,77 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 </style>
 <div class="wrap">
 <aside>
-  <h1>Rechenkanon-Navigator</h1>
+  <h1>Canon Navigator</h1>
   <p class="sub" id="counts"></p>
 
   <div class="grp">
-    <div class="lab">Umsetzung im aero_kernel</div>
-    <div class="seg" role="group" aria-label="Ansicht">
-      <button data-mode="all" aria-pressed="true">Alle</button>
+    <div class="lab">Implementation in aero_kernel</div>
+    <div class="seg" role="group" aria-label="View">
+      <button data-mode="all" aria-pressed="true">All</button>
       <button data-mode="mvp" aria-pressed="false">MVP</button>
-      <button data-mode="done" aria-pressed="false">Umgesetzt</button>
+      <button data-mode="done" aria-pressed="false">Implemented</button>
     </div>
-    <div class="seg" role="group" aria-label="Richtung" style="margin-top:6px">
-      <button data-mode="analysis" aria-pressed="false" title="Was ein gegebenes Flugzeug kann">Analyse</button>
-      <button data-mode="design" aria-pressed="false" title="Ein Ziel in eine Konstruktionsgr&#246;&#223;e umrechnen (O1)">Auslegung</button>
+    <div class="seg" role="group" aria-label="Direction" style="margin-top:6px">
+      <button data-mode="analysis" aria-pressed="false" title="What a given airplane does">Analysis</button>
+      <button data-mode="design" aria-pressed="false" title="Turn a target into a construction quantity (O1)">Design</button>
+    </div>
+    <div class="toggles">
+      <button class="sw-pill" id="edgeToggle" role="switch" aria-checked="true" title="Show or hide every connection"><span class="track"><span class="knob"></span></span>Edges</button>
+      <button class="sw-pill" id="designToggle" role="switch" aria-checked="false" title="Design quantities merged into their discipline (marked D) instead of a column of their own"><span class="track"><span class="knob"></span></span>Merge design into disciplines</button>
     </div>
     <div class="leg" style="margin-top:10px">
-      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="var(--good)"/></svg>im Kernel umgesetzt</span>
-      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>Teil des MVP, noch offen</span>
-      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>Formel umgesetzt, Gr&#246;&#223;e nicht skalar &#8212; v1 gibt sie nicht aus</span>
-      <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>geh&#246;rt zum MVP (Balken unter dem Knoten)</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="var(--good)"/></svg>implemented in the kernel</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>part of the MVP, still open</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>formula implemented, quantity not scalar &#8212; v1 does not return it</span>
+      <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>belongs to the MVP (bar under the node)</span>
     </div>
     <p class="stat" id="kstat"></p>
   </div>
 
   <div class="grp">
-    <div class="lab">Tiefe der Hervorhebung</div>
+    <div class="lab">Highlight depth</div>
     <div class="depth">
-      <input type="range" id="depth" min="0" max="12" value="1" aria-label="Tiefe">
+      <input type="range" id="depth" min="0" max="12" value="1" aria-label="Depth">
       <output id="depthOut" for="depth">1</output>
     </div>
-    <p class="sub" style="margin:7px 0 0">Wie viele Schritte vorw&#228;rts und r&#252;ckw&#228;rts von der gew&#228;hlten Gr&#246;&#223;e hervorgehoben werden. 0 zeigt nur sie selbst.</p>
+    <p class="sub" style="margin:7px 0 0">How many steps forward and backward from the selection are highlighted. 0 shows the selection only.</p>
   </div>
 
   <div class="grp">
-    <div class="lab">Gr&#246;&#223;e suchen</div>
-    <input type="search" id="q" placeholder="Name, Symbol oder Einheit" aria-label="Gr&#246;&#223;e suchen">
+    <div class="lab">Find a quantity</div>
+    <input type="search" id="q" placeholder="Name, symbol or unit" aria-label="Find a quantity">
     <ul class="hits" id="hits"></ul>
   </div>
 
   <div class="grp">
-    <div class="lab">Legende</div>
+    <div class="lab">Legend</div>
     <div class="leg">
-      <span><i class="sw" style="background:var(--inp-bg);border-color:var(--inp)"></i>Eingabe &#8212; von keiner Formel erzeugt</span>
-      <span><i class="sw" style="background:var(--tgt-bg);border-color:var(--tgt)"></i>Zielwert &#8212; Vorgabe des Nutzers</span>
-      <span><i class="sw" style="border:1.5px dashed var(--tgt)"></i>an einem Zielwert gemessen &#8212; kein reiner Rechenwert</span>
-      <span><i class="sw" style="border:2px dotted var(--unc)"></i>unscharf &#8212; Intervall &#252;ber Methodenwelten (A11), auch alles, was davon abh&#228;ngt</span>
-      <span style="display:block;margin-top:6px"><b>Werkzeug</b> (unten rechts im Knoten): OPT asb.Opti + AeroBuildup &#183; AB AeroBuildup &#183; GEO/ATM AeroSandbox-Geometrie/-Atmosph&#228;re &#183; KAT Teilekatalog &#183; APC Propellertabellen &#183; APP eigene Rechnung der App. NeuralFoil rechnet die Profile innerhalb von AeroBuildup. AVL Wirbelgitter: eine Methodenwelt von Neutralpunkt und Rollrate, die Seitenstabilit&#228;t.</span>
-      <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>tragend &#8212; vierfach oder &#246;fter gebraucht</span>
-      <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>Zwischenergebnis</span>
-      <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>Endergebnis &#8212; von nichts verbraucht</span>
-      <span><i class="sw" style="border:none;text-align:center;font-weight:600;color:var(--sel);font-size:15px;line-height:13px">*</i>Ergebnis eines Optimierungsproblems &#8212; keine geschlossene Formel</span>
+      <span><i class="sw" style="background:var(--inp-bg);border-color:var(--inp)"></i>input &#8212; produced by no formula</span>
+      <span><i class="sw" style="background:var(--tgt-bg);border-color:var(--tgt)"></i>target &#8212; set by the user</span>
+      <span><i class="sw" style="border:1.5px dashed var(--tgt)"></i>measured against a target &#8212; not a pure property of the airplane</span>
+      <span><i class="sw" style="border:2px dotted var(--unc)"></i>uncertain &#8212; interval over method worlds (A11), and everything depending on it</span>
+      <span style="display:block;margin-top:6px"><b>Tool</b> (bottom right of a node): OPT asb.Opti + AeroBuildup &#183; AB AeroBuildup &#183; GEO/ATM AeroSandbox geometry/atmosphere &#183; KAT parts catalogue &#183; APC propeller tables &#183; APP the app&#8217;s own computation. NeuralFoil computes the airfoils inside AeroBuildup. AVL vortex lattice: a method world of the neutral point and the roll rate, and the lateral stability.</span>
+      <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>hub &#8212; used four times or more</span>
+      <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>intermediate result</span>
+      <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>final result &#8212; consumed by nothing</span>
+      <span><i class="sw" style="border:none;text-align:center;font-weight:600;color:var(--sel);font-size:15px;line-height:13px">*</i>result of an optimisation problem &#8212; no closed form</span>
     </div>
   </div>
 
   <div class="grp">
-    <div class="lab">Schichten</div>
-    <p class="sub" style="margin:0">Oben stehen die Eingaben, nach unten w&#228;chst die Abh&#228;ngigkeitstiefe. Ganz unten steht, was nirgends mehr eingeht.</p>
+    <div class="lab">Layers</div>
+    <p class="sub" style="margin:0">Given values (inputs, targets) in the top row; below them one band of intermediate results clustered by stage (aerodynamic model, named operating points, propulsion state, stability and structure; the derived references stand in their own column right of the cross-cutting inputs, edges on selection only) and, at the bottom, the band of final results (they feed nothing else), clustered by operating point. Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them. Every quantity below the top row stands in the column of the module most of whose members it depends on; a quantity that depends only on cross-cutting modules stands in the column &#8220;cross-cutting only&#8221; next to them.</p>
   </div>
 </aside>
 
 <main>
   <svg id="g" role="img" aria-label="Rechengraph"><g id="cam"></g></svg>
   <div class="z">
-    <button id="zin" title="Gr&#246;&#223;er" aria-label="Gr&#246;&#223;er">+</button>
-    <button id="zout" title="Kleiner" aria-label="Kleiner">&#8722;</button>
-    <button id="zfit" title="Einpassen" aria-label="Einpassen">&#10530;</button>
+    <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+    <button id="zout" title="Zoom out" aria-label="Zoom out">&#8722;</button>
+    <button id="zfit" title="Fit" aria-label="Fit">&#10530;</button>
   </div>
-  <div class="hint">Ziehen zum Verschieben &#183; Rad zum Zoomen &#183; Gr&#246;&#223;e anklicken</div>
+  <div class="hint">Drag to pan &#183; wheel to zoom &#183; click a quantity or a module</div>
 </main>
 
 <div class="info" id="info"></div>
@@ -219,36 +250,225 @@ for(const s of TARGETS){ const seen=new Set(), st=[s]; while(st.length){ const v
 
 const NW=78, NH=30, GAPX=13, GAPY=74, PAD=48;
 const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
-// Wide layers wrap into sub-rows so the graph keeps a readable aspect ratio.
-const MAXROW=16, SUBGAP=NH+16;
-const widest=Math.min(MAXROW,Math.max(...layers.map(l=>ORDER[l].length)));
-const W=widest*(NW+GAPX)-GAPX;
-const P={}, LY={};
-let yc=0;
-for(const l of layers){
-  const all=ORDER[l], n=Math.ceil(all.length/MAXROW);
-  LY[l]=yc;
-  for(let r=0;r<n;r++){
-    const row=all.slice(r*MAXROW,(r+1)*MAXROW), off=(W-(row.length*(NW+GAPX)-GAPX))/2;
-    row.forEach((q,i)=>{ P[q]={x:off+i*(NW+GAPX), y:yc+r*SUBGAP}; });
+// Two columns: analysis left, design right (design = only reachable from a direction/design
+// entry). Layer 0 holds the given values, framed by module (canon tag module/<name>): within
+// each column the target modules come first (left), then the input modules (right); modules
+// flow left to right and wrap. Deeper layers wrap into sub-rows of the column's width.
+// Design quantities: in a separate column on the right, or merged into their discipline and
+// marked (maintainer 2026-10-24: merged is the default, it fits the canon — O1 keeps the design entries
+// as borderline cases of the analysis they invert; "#design-separate" shows the separate column).
+const DESIGN_SEP=/design-separate/.test(location.hash);
+const SIDE=q=>(DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q))?'design':'analysis';
+const MODULES={'envelope-targets':'Envelope targets','design-targets':'Design targets',
+  'construction':'Construction','mass-and-balance':'Mass and balance','atmosphere':'Atmosphere and constants',
+  'control-deflections':'Control deflections','operating-point':'Operating point'};
+const MODORDER=Object.keys(MODULES);
+// Cross-cutting modules (maintainer 2026-10-24): nearly every formula depends on them, so they
+// stand in their own column on the right instead of layer 0; their edges show only on selection.
+const XCUT=new Set(['construction','mass-and-balance','atmosphere']);
+const isX=q=>XCUT.has(Q[q].module);
+const SIDEGAP=70, SUBGAP=NH+16, HEAD=40;
+const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXCOLS=5;
+// XY split (maintainer 2026-10-24): the layer-0 modules run along the top, the cross-cutting
+// modules stand upright in a column on the far left, starting below the top row.
+const XW=NW+2*FPAD;
+// Derived references (stage/references) get their own column right of the cross-cutting one
+// (maintainer 2026-10-24): intermediate values, kept apart from the input column.
+const isRef=q=>Q[q].stage==='references';
+const isLeft=q=>isX(q)||isRef(q);
+const REFCOLS=2, REFGAP=34, RW=REFCOLS*slotW-GAPX+2*FPAD;
+// Columns are disciplines (maintainer 2026-10-24, canon tag discipline/<name>): the question a
+// quantity answers. Rows are its stage (intermediate band) or operating point (final band).
+const DISC={'aerodynamics':'Aerodynamics','glide':'Glide performance','powered':'Powered performance',
+  'longitudinal':'Longitudinal stability and trim','lateral':'Lateral-directional stability and control','structure':'Structure and loads'};
+const DORDER=Object.keys(DISC);
+const COLOF={};
+for(const l of layers){ if(l===0) continue;
+  for(const q of ORDER[l]){ if(isLeft(q)) continue; COLOF[q]=SIDE(q)==='design'?'design':Q[q].discipline; } }
+const COLS=[];
+for(const d of DORDER){ const n=Object.keys(COLOF).filter(q=>COLOF[q]===d).length;
+  if(n) COLS.push({side:'analysis',module:d,cols:Math.max(2,Math.min(MAXCOLS,n))}); }
+if(DESIGN_SEP){ const n=Object.keys(COLOF).filter(q=>COLOF[q]==='design').length;
+  if(n) COLS.push({side:'design',module:'design',cols:Math.max(2,Math.min(MAXCOLS,n))}); }
+const SX={xcut:0};
+{ let x=XW+REFGAP+RW+SIDEGAP, prev=null;
+  for(const c of COLS){
+    if(prev&&prev!==c.side) x+=SIDEGAP-MODGAP;
+    if(prev!==c.side) SX[c.side]=x;
+    c.x=x; c.w=c.cols*slotW-GAPX+2*FPAD; x+=c.w+MODGAP; prev=c.side; }
+  if(!SX.design) SX.design=x+SIDEGAP;
+}
+const P={}, LY={}, FRAMES=[], frameEls=[], COLHEADS=[];
+// Bands (maintainer 2026-10-24): below the top row all derived quantities share one band and
+// every final result sits in the bottom band; within a band a column is ordered by dependency
+// depth, then by the barycentre order. The selection keeps the graph readable.
+const BANDS=[['inter','Intermediate',q=>!OUTPUTS.has(q)],['final','Final results',q=>OUTPUTS.has(q)]];
+const RANK={}; layers.forEach(l=>ORDER[l].forEach((q,i)=>{RANK[q]=l*10000+i;}));
+const BANDY={};
+let yc=HEAD;
+{ // the top row: framed layer-0 modules, flowing left to right (targets first); with a separate
+  // design column the design targets stand above it
+  LY[0]=yc; let height=NH;
+  const mods=MODORDER.filter(m=>!XCUT.has(m)).map(m=>[m,ORDER[0].filter(q=>Q[q].module===m)]).filter(x=>x[1].length);
+  mods.sort((a,b)=>TARGETS.has(b[1][0])-TARGETS.has(a[1][0]));
+  let x=SX.analysis;
+  for(const [m,all] of mods){
+    const sideD=DESIGN_SEP&&all.every(q=>SIDE(q)==='design');
+    const qs=all; const cols=Math.min(5,qs.length), rows=Math.ceil(qs.length/cols);
+    const fw=cols*slotW-GAPX+2*FPAD, fh=(rows-1)*SUBGAP+NH+2*FPAD, y=yc+FHEAD;
+    const fx=sideD?SX.design:x;
+    qs.forEach((q,i)=>{ P[q]={x:fx+FPAD+(i%cols)*slotW, y:y+FPAD+Math.floor(i/cols)*SUBGAP}; });
+    FRAMES.push({module:m,label:MODULES[m],x:fx,y,w:fw,h:fh,target:TARGETS.has(qs[0])});
+    if(!sideD) x+=fw+MODGAP;
+    height=Math.max(height,FHEAD+fh);
   }
-  yc+= (n-1)*SUBGAP + GAPY;
+  yc+=height-NH+GAPY;
+}
+const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w));
+const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
+// Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
+// in reading order inside each column; within a cluster: values of the point, then stability,
+// then the probes (closed-form checks).
+const POINTS={'stall':'Stall, clean','takeoff':'Take-off','approach':'Landing / approach','best-glide':'Best glide (V_md)',
+  'minimum-sink':'Minimum sink (V_mp)','full-throttle':'Full throttle','cruise-target':'Cruise target',
+  'manoeuvre':'Manoeuvre / structure','free':'Free operating point','over-mass':'Over mass','none':'No operating point'};
+const PTORDER=Object.keys(POINTS);
+const STAGES={'references':'Derived references','aero-model':'Aerodynamic model','operating-points':'Named operating points',
+  'propulsion-state':'Propulsion state','stability-structure':'Stability and structure'};
+const STORDER=Object.keys(STAGES);
+const KIND=q=>/probe$/.test(q)?2:/(static-margin|pitching-moment|dihedral|weathercock|spiral)/.test(q)?1:0;
+// Both bands are clustered: the intermediate band by stage (canon tag stage/<name>), the final
+// band by operating point (point/<name>). Packing (maintainer 2026-10-24): clusters with the
+// widest coverage over the columns come first; a cluster shares a row with others when their
+// column spans do not overlap (first fit). One box per cluster spans its columns.
+const PFRAMES=[], PSPANS=[];
+const COLIX=x=>COLS.findIndex(c=>c.x===x);
+for(const [band,,inBand] of BANDS){
+  BANDY[band]=yc;
+  const keyOf=band==='final'?(q=>Q[q].point):(q=>Q[q].stage);
+  const ORD=band==='final'?PTORDER:STORDER, LAB=band==='final'?POINTS:STAGES;
+  const frames=[];
+  for(const c of COLS){
+    const qs=derived.filter(q=>inBand(q)&&SIDE(q)===c.side&&COLOF[q]===c.module);
+    for(const k of ORD){
+      const g=qs.filter(q=>keyOf(q)===k).sort((a,b)=>(band==='final'?KIND(a)-KIND(b):0)||RANK[a]-RANK[b]);
+      if(!g.length) continue;
+      const rows=Math.ceil(g.length/c.cols), fh=(rows-1)*SUBGAP+NH+2*FPAD;
+      g.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, dy:FPAD+Math.floor(i/c.cols)*SUBGAP, key:k}; });
+      frames.push({band,key:k,x:c.x,w:c.w,h:fh});
+    }
+  }
+  const span={}, kh={};
+  for(const f of frames){ const i=COLIX(f.x); const s=span[f.key]||(span[f.key]={lo:i,hi:i,n:0});
+    s.lo=Math.min(s.lo,i); s.hi=Math.max(s.hi,i); s.n++; kh[f.key]=Math.max(kh[f.key]||0,f.h); }
+  // Final results: widest coverage first. Stages: the order of the calculation chain
+  // (references -> aerodynamic model -> named operating points -> ...), packed by first fit.
+  const order=ORD.filter(k=>span[k]);
+  if(band==='final') order.sort((a,b)=>span[b].n-span[a].n||ORD.indexOf(a)-ORD.indexOf(b));
+  const ROWS=[];
+  for(const k of order){ const s=span[k];
+    let row=ROWS.find(r=>r.every(o=>span[o].hi<s.lo||span[o].lo>s.hi));
+    if(!row){ row=[]; ROWS.push(row); } row.push(k); }
+  const rowH={}, rowY={}; let y=yc+FHEAD;
+  for(const r of ROWS){ const hh=Math.max(...r.map(k=>kh[k])); for(const k of r){ rowY[k]=y; rowH[k]=hh; } y+=hh+FHEAD+8; }
+  for(const f of frames){ f.y=rowY[f.key]; PFRAMES.push(f); }
+  for(const k of ORD){ const fs=frames.filter(f=>f.key===k); if(!fs.length) continue;
+    const x0=Math.min(...fs.map(f=>f.x))-8, x1=Math.max(...fs.map(f=>f.x+f.w))+8;
+    PSPANS.push({band,key:k,label:LAB[k],x:x0,y:rowY[k]-FHEAD+2,w:x1-x0,h:rowH[k]+FHEAD+4}); }
+  for(const q of derived) if(inBand(q)&&P[q]&&P[q].key!==undefined){ P[q]={x:P[q].x, y:rowY[P[q].key]+P[q].dy}; }
+  yc=y-FHEAD-8+GAPY;
+}
+// The cross-cutting column: upright framed modules, one node per row, below the top row.
+const XTOP=BANDY.inter-GAPY/2;
+for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==='design'?'Design':DISC[c.module]});
+// Cross-cutting modules and their derived references side by side (maintainer 2026-10-24):
+// each module's inputs on the left, the references derived from them (canon tags module/ and
+// group/) on the right, on the same level, so a row reads "input -> reference". The powertrain
+// is one box with the sub-clusters motor and propeller, and battery.
+SX.refs=XW+REFGAP;
+const GROUPS={'air-state':'Air state','weight-and-loading':'Weight and loading','geometry-references':'Geometry references',
+  'configurations':'Configurations','powertrain-motor-propeller':'Motor and propeller','powertrain-battery':'Battery'};
+const GRORDER=Object.keys(GROUPS);
+{ let y=XTOP+FHEAD;
+  for(const m of MODORDER.filter(m=>XCUT.has(m))){
+    const ins=Object.keys(Q).filter(q=>Q[q].module===m&&!isRef(q)).sort();
+    const refs=Object.keys(Q).filter(q=>Q[q].module===m&&isRef(q));
+    if(!ins.length&&!refs.length) continue;
+    // left: the module's inputs
+    const lh=(ins.length-1)*SUBGAP+NH+2*FPAD;
+    ins.forEach((q,i)=>{ P[q]={x:SX.xcut+FPAD, y:y+FPAD+i*SUBGAP}; });
+    FRAMES.push({module:m,label:MODULES[m],x:SX.xcut,y,w:XW,h:lh,target:false});
+    // right: the derived references, one framed group under the other
+    let ry=y, pw=null;
+    for(const g of GRORDER){
+      const qs=refs.filter(q=>Q[q].group===g).sort((a,b)=>RANK[a]-RANK[b]);
+      if(!qs.length) continue;
+      const isPw=g.startsWith('powertrain-');
+      if(isPw&&!pw){ pw={y:ry}; ry+=FHEAD; }
+      const rows=Math.ceil(qs.length/REFCOLS), fh=(rows-1)*SUBGAP+NH+2*FPAD;
+      const gx=SX.refs, gw=RW;
+      qs.forEach((q,i)=>{ P[q]={x:gx+FPAD+(i%REFCOLS)*slotW, y:ry+FPAD+Math.floor(i/REFCOLS)*SUBGAP}; });
+      PFRAMES.push({band:'inter',key:g,x:gx,y:ry,w:gw,h:fh});
+      const t={band:'inter',key:g,label:GROUPS[g],x:gx,y:ry-FHEAD+2,w:gw,h:fh+FHEAD-2,sub:true};
+      PSPANS.push(t);
+      ry+=fh+FHEAD+4;
+      if(isPw) pw.end=ry;
+    }
+    if(pw) PSPANS.push({band:'inter',key:'powertrain',label:'Powertrain',x:SX.refs-9,y:pw.y-FHEAD+2,w:RW+18,h:pw.end-pw.y+4});
+    y=Math.max(y+lh, ry-FHEAD-4)+MODGAP+FHEAD;
+  }
+  yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
 const H=yc-GAPY+NH;
 const cam=document.getElementById('cam'), svg=document.getElementById('g');
 const NS='http://www.w3.org/2000/svg';
 const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
 
-for(const l of layers){
-  const t=el('text',{x:-26,y:LY[l]+NH/2,class:'laylab','dominant-baseline':'middle','text-anchor':'end'});
-  t.textContent='L'+l; cam.appendChild(t);
+{
+  for(const [band,label] of BANDS){ const t=el('text',{x:W,y:BANDY[band]-12,class:'colhead','text-anchor':'end'}); t.textContent=label; cam.appendChild(t); }
+  const dy=BANDY.final-GAPY/2; cam.appendChild(el('line',{x1:SX.analysis-SIDEGAP/2,y1:dy,x2:W,y2:dy,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
+}
+{ const line=(x1,y1,x2,y2)=>cam.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
+  if(DESIGN_SEP) line(SX.design-SIDEGAP/2,6,SX.design-SIDEGAP/2,H+10);
+  line(SX.analysis-SIDEGAP/2,XTOP-14,SX.analysis-SIDEGAP/2,H+10);
+  line(SX.refs-REFGAP/2,XTOP-14,SX.refs-REFGAP/2,H+10);
+  line(SX.xcut,XTOP-14,W,XTOP-14);
+  for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
+    if(side==='design'&&!DESIGN_SEP) continue;
+    const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
+  { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
+  for(const s of PSPANS){
+    const st=s.band!=='final';
+    if(!s.sub) cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
+    const kind=s.band==='final'?'point':(s.key==='powertrain'||GROUPS[s.key])?'group':'stage';
+    cam.appendChild(headingEl(s.x+(s.sub?2:8),s.y+13,'blocklab '+(st?'stlab':'ptlab'),s.label,kind,s.key)); }
+  for(const f of PFRAMES)
+    cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:f.band!=='final'?'sframe':'pframe'}));
+  for(const h of COLHEADS) cam.appendChild(headingEl(h.x,h.y,'dischead',h.label,'discipline',h.key));
+  for(const f of FRAMES){
+    const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select module '+f.label});
+    const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')});
+    const t=el('text',{x:f.x+2,y:f.y-7,class:'blocklab '+(f.target?'tmodlab':'modlab')}); t.textContent=f.label+' \u25b8';
+    g.appendChild(r); g.appendChild(t);
+    g.addEventListener('click',()=>{ if(!moved) selectModule(f.module); });
+    g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectModule(f.module);} });
+    cam.appendChild(g); frameEls.push({el:r,module:f.module}); }
 }
 const edgeEls=[];
 for(const [a,b,f] of D.edges){
   const p1=P[a], p2=P[b];
-  const x1=p1.x+NW/2, y1=p1.y+NH, x2=p2.x+NW/2, y2=p2.y;
-  const dy=Math.max(18,(y2-y1)/2);
-  const e=el('path',{class:'edge',d:`M${x1},${y1} C${x1},${y1+dy} ${x2},${y2-dy} ${x2},${y2}`});
+  let d;
+  if(isLeft(a)){ // from the right side of a cross-cutting or derived-reference node into its consumer
+    const x1=p1.x+NW, y1=p1.y+NH/2, x2=p2.x, y2=p2.y+NH/2, dx=Math.max(30,(x2-x1)/2);
+    d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
+  } else if(p2.y>=p1.y+NH){
+    const x1=p1.x+NW/2, y1=p1.y+NH, x2=p2.x+NW/2, y2=p2.y, dy=Math.max(18,(y2-y1)/2);
+    d=`M${x1},${y1} C${x1},${y1+dy} ${x2},${y2-dy} ${x2},${y2}`;
+  } else { // same row band: a side-to-side arc
+    const r=p2.x>=p1.x, x1=p1.x+(r?NW:0), y1=p1.y+NH/2, x2=p2.x+(r?0:NW), y2=p2.y+NH/2, dx=(r?1:-1)*Math.max(24,Math.abs(x2-x1)/2);
+    d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
+  }
+  const e=el('path',{class:'edge'+(isLeft(a)?' xedge':''),d});
   cam.appendChild(e); edgeEls.push({e,a,b});
 }
 function sym(q){
@@ -260,7 +480,7 @@ let moved=false;
 const isOpt=q=>(prodBy[q]||[]).some(f=>F[f].kind==='optimization');
 // Which tool computes a value (formula frontmatter `tool`). Inputs carry none.
 const TOOLS={OPT:'asb.Opti + AeroBuildup (NeuralFoil-Profile)',AB:'AeroBuildup (NeuralFoil-Profile)',AVL:'AVL',
-  GEO:'AeroSandbox-Geometrie',ATM:'AeroSandbox-Atmosph\u00e4re',KAT:'Teilekatalog (DB)',APC:'APC-Propellertabellen (DB)',APP:'App \u2014 eigene Rechnung'};
+  GEO:'AeroSandbox geometry',ATM:'AeroSandbox atmosphere',KAT:'Parts catalogue (DB)',APC:'APC propeller tables (DB)',APP:'App \u2014 own computation'};
 const toolOf=q=>[...new Set((prodBy[q]||[]).map(f=>F[f].tool||'APP'))];
 const nodeEls={};
 for(const q in Q){
@@ -283,6 +503,7 @@ for(const q in Q){
   else if(st==='open'&&MVP.has(q)) g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--mvp)','stroke-width':2}));
   else if(st==='nonscalar') g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--ink-3)','stroke-width':1.4,'stroke-dasharray':'2 1.5'}));
   if(MVP.has(q)) g.appendChild(el('rect',{x:4,y:NH+3,width:NW-8,height:3.5,rx:1.5,fill:'var(--mvp)'}));
+  if(!DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q)&&!INPUTS.has(q)){ const dt=el('text',{x:NW-4,y:9,class:'dmark','text-anchor':'end'}); dt.textContent='D'; g.appendChild(dt); }
   const tl=toolOf(q);
   if(tl.length){ const tt=el('text',{x:NW-3,y:NH-3,class:'tool','text-anchor':'end'}); tt.textContent=tl.join('/'); g.appendChild(tt); }
   g.addEventListener('click',()=>{ if(!moved) select(q); });
@@ -294,25 +515,30 @@ let depth=1, sel=null;
 const dEl=document.getElementById('depth'), dOut=document.getElementById('depthOut');
 dEl.addEventListener('input',()=>{depth=+dEl.value;dOut.value=depth;if(sel)paint();});
 
+// Reach from one quantity or from a set of them (a module), n steps along map.
 function reach(start,map,n){
-  const seen=new Set(); let front=[start];
+  const starts=start instanceof Set?start:new Set([start]);
+  const seen=new Set(); let front=[...starts];
   for(let i=0;i<n;i++){
     const nxt=[];
-    for(const q of front) for(const [o] of map[q]) if(!seen.has(o)&&o!==start){seen.add(o);nxt.push(o);}
+    for(const q of front) for(const [o] of map[q]) if(!seen.has(o)&&!starts.has(o)){seen.add(o);nxt.push(o);}
     front=nxt; if(!front.length) break;
   }
   return seen;
 }
+// The selection is one quantity (a string) or a module: {module, members: Set}.
+const selSet=()=>sel&&sel.members?sel.members:new Set([sel]);
 function paint(){
   if(!sel){ for(const q in nodeEls) nodeEls[q].classList.remove('faded');
             edgeEls.forEach(({e})=>e.classList.remove('faded','up','down')); return; }
-  const up=reach(sel,pred,depth), down=reach(sel,succ,depth);
-  const on=new Set([sel,...up,...down]);
+  const S=selSet(), up=reach(S,pred,depth), down=reach(S,succ,depth);
+  const on=new Set([...S,...up,...down]);
   for(const q in nodeEls) nodeEls[q].classList.toggle('faded',!on.has(q));
+  for(const f of frameEls) f.el.classList.toggle('framesel',!!(sel&&sel.module===f.module));
   edgeEls.forEach(({e,a,b})=>{
     e.classList.remove('up','down','faded');
-    const upE = (on.has(a)&&(b===sel||up.has(b))) && (a===sel||up.has(a));
-    const dnE = (on.has(b)&&(a===sel||down.has(a))) && (b===sel||down.has(b));
+    const upE = (on.has(a)&&(S.has(b)||up.has(b))) && (S.has(a)||up.has(a));
+    const dnE = (on.has(b)&&(S.has(a)||down.has(a))) && (S.has(b)||down.has(b));
     if(upE) e.classList.add('up'); else if(dnE) e.classList.add('down'); else e.classList.add('faded');
   });
 }
@@ -322,51 +548,119 @@ function select(q){
   sel=q; paint();
   const d=Q[q], fs=prodBy[q]||[];
   const cls = TARGETS.has(q)?'tgt' : INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
-  const role = TARGETS.has(q)?'Zielwert \u2014 Vorgabe' : INPUTS.has(q)?'Eingabe' : OUTPUTS.has(q)?'Endergebnis' : (useCount[q]>=4?'tragend':'Zwischenergebnis');
-  let h=`<h2>${esc(sym(q))}${isOpt(q)?'<span class="opt" title="Ergebnis eines Optimierungsproblems">*</span>':''}</h2>
-   <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 Schicht L${LAYER[q]}
+  const role = TARGETS.has(q)?'target' : INPUTS.has(q)?'input' : OUTPUTS.has(q)?'final result' : (useCount[q]>=4?'hub':'intermediate result');
+  let h=`<h2>${esc(sym(q))}${isOpt(q)?'<span class="opt" title="Result of an optimisation problem">*</span>':''}</h2>
+   <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 layer L${LAYER[q]}
    &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
-   <p class="desc">${esc(d.desc||'Keine Beschreibung im Katalog.')}</p>`;
+   <p class="desc">${esc(d.desc||'No description in the catalogue.')}</p>`;
   { const st=STATUS[q], impl=fs.map(f=>F[f].impl).filter(Boolean), tk=[...new Set(fs.map(f=>F[f].ticket).filter(Boolean))];
-    const txt = st==='input' ? 'Eingabe &#8212; der Aufrufer gibt sie an'+(MVP.has(q)?' (im MVP gebraucht)':'')
-      : st==='done' ? '&#10003; im Kernel umgesetzt ('+impl.map(esc).join(', ')+')'
-      : st==='nonscalar' ? 'Formel umgesetzt ('+impl.map(esc).join(', ')+'), die Gr&#246;&#223;e ist nicht skalar &#8212; v1 gibt sie nicht aus'
-      : MVP.has(q) ? 'Teil des MVP, noch offen'+(tk.length?' &#8212; '+tk.map(esc).join(', '):'')
-      : 'noch nicht im Kernel';
+    const txt = st==='input' ? 'input &#8212; given by the caller'+(MVP.has(q)?' (needed by the MVP)':'')
+      : st==='done' ? '&#10003; implemented in the kernel ('+impl.map(esc).join(', ')+')'
+      : st==='nonscalar' ? 'formula implemented ('+impl.map(esc).join(', ')+'), the quantity is not scalar &#8212; v1 does not return it'
+      : MVP.has(q) ? 'part of the MVP, still open'+(tk.length?' &#8212; '+tk.map(esc).join(', '):'')
+      : 'not in the kernel yet';
     const col = st==='done'?'var(--good)':(st==='open'&&MVP.has(q))?'var(--mvp)':'var(--line-2)';
+    if(Q[q].point) h+=`<p class="meta">Operating point: ${esc(POINTS[Q[q].point]||Q[q].point)}</p>`;
+    if(Q[q].stage) h+=`<p class="meta">Stage: ${esc(STAGES[Q[q].stage]||Q[q].stage)}${Q[q].group?' \u00b7 '+esc(GROUPS[Q[q].group]||Q[q].group):''}</p>`;
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
-  { const tl=toolOf(q); h+=`<p class="meta">Gerechnet mit: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (Eingabe)'}</p>`; }
+  { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
   if(UNC.has(q)) h+=`<p class="desc" style="border-left:3px dotted var(--unc);padding-left:8px">
-     <b>Unscharf</b> &#8212; ein Intervall [min, max] &#252;ber Methodenwelten (A11), je Welt durch die ganze Kette gerechnet;
-     ${UNCSRC.has(q)?'hier entsteht die Unsch&#228;rfe.':'h&#228;ngt an '+[...UFROM[q]].map(s=>`<a href="#" onclick="select('${s}');return false">${esc(sym(s))}</a>`).join(', ')+'.'}</p>`;
+     <b>Uncertain</b> &#8212; an interval [min, max] over method worlds (A11), each world computed through the whole chain;
+     ${UNCSRC.has(q)?'the uncertainty originates here.':'depends on '+[...UFROM[q]].map(s=>`<a href="#" onclick="select('${s}');return false">${esc(sym(s))}</a>`).join(', ')+'.'}</p>`;
   if(TBOUND.has(q)) h+=`<p class="desc" style="border-left:3px dashed var(--tgt);padding-left:8px">
-     <b>An einem Zielwert gemessen</b>, nicht allein aus dem Flugzeug gerechnet \u2014 h\u00e4ngt an
+     <b>Measured against a target</b>, not computed from the airplane alone \u2014 depends on
      ${[...TFROM[q]].map(s=>`<a href="#" onclick="select('${s}');return false">${esc(sym(s))}</a>`).join(', ')}.</p>`;
   for(const f of fs){
     const e=F[f];
-    h+=`<div class="blk"><div class="lab">Erzeugt durch \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;
+    h+=`<div class="blk"><div class="lab">Produced by \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;
     h+= e.tex ? `<div class="math">$$${e.tex}$$</div>`
               : `<div class="mono">${esc(e.form)}</div>
-                 <p class="sub" style="margin:6px 0 0">Verfahrensform \u2014 nicht als Formel setzbar.</p>`;
-    h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; nicht im Kernel'}${e.ticket?' &#183; '+esc(e.ticket):''} &#183; ${e.direction==='design'?'<b>Auslegung</b> (O1)':'Analyse'}</p>`;
-    if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Methodenwelten: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
+                 <p class="sub" style="margin:6px 0 0">Procedural form \u2014 not typeset as a formula.</p>`;
+    h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; not in the kernel'}${e.ticket?' &#183; '+esc(e.ticket):''} &#183; ${e.direction==='design'?'<b>design</b> (O1)':'analysis'}</p>`;
+    if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Method worlds: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
     const aps=(e.apps||[]).filter(a=>a.out.includes(q));
     for(const a of aps){
-      h+=`<div class="lab" style="margin-top:12px">Aus${(e.apps.length>1||a.when)?' &#183; Anwendung '+esc(a.id):''}${a.when?' &#183; wenn '+esc(a.when):''}</div><ul class="lnk">`+
+      h+=`<div class="lab" style="margin-top:12px">From${(e.apps.length>1||a.when)?' &#183; application '+esc(a.id):''}${a.when?' &#183; when '+esc(a.when):''}</div><ul class="lnk">`+
         a.ins.filter(i=>Q[i]).map(i=>`<li data-q="${esc(i)}">${esc(sym(i))}</li>`).join('')+`</ul>`;
     }
-    if(e.src) h+=`<div class="lab" style="margin-top:12px">Quelle</div><p class="src">${esc(e.src)}</p>`;
+    if(e.src) h+=`<div class="lab" style="margin-top:12px">Source</div><p class="src">${esc(e.src)}</p>`;
     h+=`</div>`;
   }
   const us=succ[q].map(([o])=>o), uniq=[...new Set(us)];
-  if(uniq.length) h+=`<div class="blk"><div class="lab">Geht ein in \u00b7 ${uniq.length}</div><ul class="lnk">`+
+  if(uniq.length) h+=`<div class="blk"><div class="lab">Feeds \u00b7 ${uniq.length}</div><ul class="lnk">`+
     uniq.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
-  else h+=`<div class="blk"><div class="lab">Geht ein in</div><p class="sub" style="margin:0">Nichts \u2014 dies ist ein Endergebnis.</p></div>`;
+  else h+=`<div class="blk"><div class="lab">Feeds</div><p class="sub" style="margin:0">Nothing \u2014 this is a final result.</p></div>`;
   info.innerHTML=h;
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
 }
-// Suche
+// Explanations of every heading, worded as in the canon README (tags module/, discipline/, stage/,
+// point/, group/); the README is the authority.
+const DESC={
+ 'module:envelope-targets':'Targets that name an operating point or bound the envelope: the stall-speed margins of approach, touchdown and take-off, the cruise-speed target and the limit load factor.',
+ 'module:design-targets':'Targets a design entry turns into a construction quantity: the static-margin target, the stall-speed target and the roll-rate targets (O1).',
+ 'module:construction':'The airplane as built and its fitted components (motor, battery, propeller), with the references derived from them: geometry references, the take-off and landing configurations and the powertrain values. Cross-cutting: nearly every formula depends on it.',
+ 'module:mass-and-balance':'The take-off mass and the centre of gravity, inputs of the canon (A6), with the weight and the wing loading derived from them. Cross-cutting.',
+ 'module:atmosphere':'Altitude and the physical constants, with the air state derived from them: density, viscosity and speed of sound. Cross-cutting.',
+ 'module:control-deflections':'Every device angle the caller sets: ailerons, elevator, rudder, flaps for take-off and landing, crow. The geometry stops are never read.',
+ 'module:operating-point':'The free variables of a flight state: flight speed, angle of attack and load factor. Named points bind them instead.',
+ 'discipline:aerodynamics':'Forces, the polar, stall, and the speeds set as a margin over the stall speed.',
+ 'discipline:glide':'Unpowered performance: best glide, minimum sink, sink rate, glide distance, crow.',
+ 'discipline:powered':'Thrust, climb, top speed, sustained turn, endurance and range on the battery, and their sweeps over the mass.',
+ 'discipline:longitudinal':'Static stability and trim about the pitch axis: neutral point, static margin, the CG for a target margin, the CG envelope.',
+ 'discipline:lateral':'Lateral-directional stability and roll control: dihedral and weathercock effect, spiral, fin volume, roll rate and the aileron deflection a roll target needs.',
+ 'discipline:structure':'Manoeuvre and dive speeds, break load factors, spanwise loads and hinge moments.',
+ 'discipline:design':'Design quantities: a target turned into a construction quantity (O1).',
+ 'stage:aero-model':'The polar independent of the operating point: lift and drag, the lift-curve slope, zero-lift angle, C_L,max, the fitted parabola.',
+ 'stage:operating-points':'Where the named speeds are born: V_S0, V_S,TO, V_md, V_mp, V_app, V_TO, V_A. Every final result of a point depends on them.',
+ 'stage:propulsion-state':'The propeller at a flight speed: rotational speed, advance ratio, thrust coefficient.',
+ 'stage:stability-structure':'The neutral point and the positive break load factor, on which the stability and structure results build.',
+ 'point:stall':'C_L,max at n = 1 or −1, clean configuration.','point:takeoff':'The take-off configuration and its speeds.',
+ 'point:approach':'The landing configuration and the approach at V_app = k_S · V_S0.',
+ 'point:best-glide':'V_md, the minimum-drag speed; also the reference point of static stability.',
+ 'point:minimum-sink':'V_mp, the minimum-sink speed.','point:full-throttle':'Power-limited points at full throttle.',
+ 'point:cruise-target':'Only when a cruise-speed target is given.','point:manoeuvre':'V_A and the load factors.',
+ 'point:free':'A state the caller sets (V, α, n); no named point yet — a visible gap against A2.',
+ 'point:over-mass':'Sweeps over the take-off mass.','point:none':'Geometry or components only, no operating point.',
+ 'group:air-state':'Density, viscosity and speed of sound at the altitude (ISA).','group:weight-and-loading':'Weight and wing loading.',
+ 'group:geometry-references':'Reference area, span, mean aerodynamic chord, aspect ratio.','group:configurations':'The airplane in its take-off and landing configuration.',
+ 'group:powertrain-motor-propeller':'Motor and propeller values from the catalogue, and the pack voltage they run on.',
+ 'group:powertrain-battery':'Battery capacity, mass and specific energy, and the predicted battery mass.',
+ 'group:powertrain':'The powertrain: motor, battery and propeller.',
+};
+const KINDNAME={module:'module',discipline:'discipline',stage:'stage',point:'operating point',group:'group'};
+function membersOf(kind,key){
+  const all=Object.keys(Q).filter(q=>P[q]);
+  if(kind==='module') return all.filter(q=>Q[q].module===key);
+  if(kind==='discipline') return all.filter(q=>key==='design'?COLOF[q]==='design':Q[q].discipline===key&&COLOF[q]!=='design');
+  if(kind==='group'&&key==='powertrain') return all.filter(q=>(Q[q].group||'').startsWith('powertrain-'));
+  return all.filter(q=>Q[q][kind]===key);
+}
+function selectGroup(kind,key,label){
+  const members=new Set(membersOf(kind,key));
+  sel={module:kind==='module'?key:kind+':'+key,members}; paint();
+  const direct=[...new Set([...members].flatMap(q=>succ[q].map(([o])=>o)))].filter(o=>!members.has(o)).sort();
+  let h=`<h2>${esc(label)}</h2><p class="meta">${KINDNAME[kind]} \u00b7 ${esc(kind)}/${esc(key)} \u00b7 ${members.size} quantities</p>
+    <p class="desc">${esc(DESC[kind+':'+key]||'')}</p>
+    <p class="sub">All its quantities are selected together; the depth slider sets how many steps of their influence are highlighted.</p>
+    <div class="blk"><div class="lab">Contains \u00b7 ${members.size}</div><ul class="lnk">`+
+    [...members].map(q=>`<li data-q="${esc(q)}">${esc(sym(q))}</li>`).join('')+`</ul></div>`;
+  h+= direct.length ? `<div class="blk"><div class="lab">Directly influences \u00b7 ${direct.length}</div><ul class="lnk">`+
+    direct.map(o=>`<li data-q="${esc(o)}" title="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`
+    : `<div class="blk"><div class="lab">Directly influences</div><p class="sub" style="margin:0">Nothing.</p></div>`;
+  info.innerHTML=h;
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+}
+function selectModule(m){ selectGroup('module',m,MODULES[m]||m); }
+// a clickable heading: SVG text with the selection behaviour of a module frame
+function headingEl(x,y,cls,label,kind,key,anchor){
+  const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select '+label});
+  const t=el('text',{x,y,class:cls,...(anchor?{'text-anchor':anchor}:{})}); t.textContent=label+' \u25b8'; g.appendChild(t);
+  g.addEventListener('click',ev=>{ ev.stopPropagation(); if(!moved) selectGroup(kind,key,label); });
+  g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectGroup(kind,key,label);} });
+  return g;
+}
+// Search
 const qi=document.getElementById('q'), hits=document.getElementById('hits');
 qi.addEventListener('input',()=>{
   const v=qi.value.trim().toLowerCase();
@@ -376,7 +670,7 @@ qi.addEventListener('input',()=>{
   hits.innerHTML=m.map(k=>`<li data-q="${esc(k)}">${esc(k)}<span class="u">${esc(Q[k].unit||'')}</span></li>`).join('');
   hits.querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{select(li.dataset.q);qi.value='';hits.innerHTML='';}));
 });
-// Kamera
+// Camera
 let k=1,tx=0,ty=0;
 const apply=()=>cam.setAttribute('transform',`translate(${tx},${ty}) scale(${k})`);
 function fit(){
@@ -402,14 +696,20 @@ document.getElementById('zout').onclick=()=>{k=Math.max(0.15,k/1.25);apply();};
 document.getElementById('zfit').onclick=fit;
 addEventListener('resize',fit);
 
+{ const bt=document.getElementById('edgeToggle');
+  bt.addEventListener('click',()=>{ const off=svg.classList.toggle('noedges');
+    bt.setAttribute('aria-checked',String(!off)); }); }
+{ const bt=document.getElementById('designToggle');
+  bt.setAttribute('aria-checked',String(!DESIGN_SEP));
+  bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'':'design-separate'; location.reload(); }); }
 let mode='all';
 function applyMode(){
   const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
   for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
   edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
-  document.querySelectorAll('.seg button').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));
+  document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));
 }
-document.querySelectorAll('.seg button').forEach(bt=>bt.addEventListener('click',()=>{mode=bt.dataset.mode;sel=null;paint();applyMode();}));
+document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.addEventListener('click',()=>{mode=bt.dataset.mode;sel=null;paint();applyMode();}));
 {
   const fAll=Object.keys(F), fDone=fAll.filter(f=>F[f].impl);
   const mvpF=[...new Set([...MVP].flatMap(q=>prodBy[q]||[]))].sort();
@@ -417,19 +717,19 @@ document.querySelectorAll('.seg button').forEach(bt=>bt.addEventListener('click'
   const res=(D.mvp_results||[]);
   const chip=(f,open)=>`<span class="${open?'open':''}" data-f="${esc(f)}">${esc(f)}${open&&F[f].ticket?' '+esc(F[f].ticket):''}</span>`;
   document.getElementById('kstat').innerHTML=
-    `Kanonmodell <b>${esc(D.stand||'')}</b>.<br>`+
-    `Formeln umgesetzt: <b>${fDone.length}</b> von <b>${fAll.length}</b>.<br>`+
+    `Canon model <b>${esc(D.stand||'')}</b>.<br>`+
+    `Formulas implemented: <b>${fDone.length}</b> of <b>${fAll.length}</b>.<br>`+
     `MVP (BRYAN, JAGUAR): ${res.map(r=>`<a href="#" data-q="${esc(r)}">${esc(sym(r))}</a>`).join(', ')} &#8212; `+
-    `<b>${mvpF.length-mvpOpen.length}</b> von <b>${mvpF.length}</b> Formeln umgesetzt.`+
+    `<b>${mvpF.length-mvpOpen.length}</b> of <b>${mvpF.length}</b> formulas implemented.`+
     `<span class="chips">${mvpF.map(f=>chip(f,!F[f].impl)).join('')}</span>`;
   const kst=document.getElementById('kstat');
   kst.querySelectorAll('[data-q]').forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();select(a.dataset.q);}));
   kst.querySelectorAll('[data-f]').forEach(c=>c.addEventListener('click',()=>select(F[c.dataset.f].out[0])));
 }
 document.getElementById('counts').textContent =
-  `${Object.keys(Q).length} Gr\u00f6\u00dfen \u00b7 ${D.edges.length} Kanten \u00b7 ${layers.length} Schichten \u00b7 `+
-  `${D.inputs.length} Eingaben, ${D.outputs.length} Endergebnisse`;
-info.innerHTML=`<p class="empty">Eine Gr\u00f6\u00dfe im Graphen anklicken \u2014 hier erscheinen Beschreibung, erzeugende Formel und Quelle.</p>`;
+  `${Object.keys(Q).length} quantities \u00b7 ${D.edges.length} edges \u00b7 ${layers.length} layers \u00b7 `+
+  `${D.inputs.length} inputs, ${D.outputs.length} final results`;
+info.innerHTML=`<p class="empty">Click a quantity or a module in the graph \u2014 its description, producing formula and source appear here.</p>`;
 select('stall-speed');
 function fitWhenSized(tries){
   const r=svg.getBoundingClientRect();

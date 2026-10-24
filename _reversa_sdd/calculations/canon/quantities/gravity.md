@@ -7,6 +7,7 @@ role: input
 status: approved
 tags:
   - canon/quantity
+  - module/atmosphere
   - role/input
 type: scalar
 positive: true

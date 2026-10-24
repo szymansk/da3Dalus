@@ -7,6 +7,7 @@ role: input
 status: draft
 tags:
   - canon/quantity
+  - module/construction
   - role/input
 type: airplane
 ---

@@ -7,6 +7,8 @@ role: output
 status: draft
 tags:
   - canon/quantity
+  - discipline/structure
+  - point/free
   - role/output
 type: per_control_surface
 ---
