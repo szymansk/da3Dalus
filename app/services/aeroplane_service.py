@@ -14,7 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import schemas
-from app.core.exceptions import NotFoundError, InternalError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError, InternalError, ValidationError
 from app.converters.model_schema_converters import (
     fuselage_model_to_fuselage_config,
     wing_model_to_wing_config,
@@ -166,6 +166,41 @@ def get_aeroplane_schema(db: Session, aeroplane_uuid) -> schemas.AeroplaneSchema
     )
 
 
+def _delete_node_with_versioning(db: Session, aeroplane: AeroplaneModel) -> None:
+    """Delete *aeroplane* according to its place in the version lineage.
+
+    - head of the main branch: the whole lineage goes (all branches, all
+      snapshots and side-branch nodes);
+    - head of a side branch: exactly ``discard_branch``, except the lineage
+      root node itself, which is refused (409);
+    - immutable snapshot: refused, snapshots are not deleted on their own;
+    - no branch (legacy row): the single node.
+    """
+    # Local import: aeroplane_version_service pulls in the clone service,
+    # which imports this module.
+    from app.services import aeroplane_version_service
+
+    if aeroplane.is_immutable:
+        raise ConflictError(
+            message="Cannot delete an immutable snapshot; delete the branch head instead",
+            details={"aeroplane_id": str(aeroplane.uuid), "is_immutable": True},
+        )
+    branch = db.get(BranchModel, aeroplane.branch_id) if aeroplane.branch_id else None
+    if branch is None:
+        aeroplane_version_service.delete_nodes(db, [aeroplane])
+    elif branch.is_main:
+        aeroplane_version_service.delete_lineage(db, branch.root_id)
+    elif aeroplane.id == branch.root_id:
+        # Other branches still use this node as their lineage root.
+        raise ConflictError(
+            message="Cannot delete the lineage root while it is not on the main branch; "
+            "delete the main branch head to remove the whole lineage",
+            details={"aeroplane_id": str(aeroplane.uuid), "root_id": branch.root_id},
+        )
+    else:
+        aeroplane_version_service.discard_branch(db, branch.id)
+
+
 def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
     """
     Delete an aeroplane.
@@ -181,7 +216,10 @@ def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
             raise NotFoundError(
                 message=_ERR_AEROPLANE_NOT_FOUND, details={"aeroplane_id": str(aeroplane_uuid)}
             )
-        db.delete(aeroplane)
+        _delete_node_with_versioning(db, aeroplane)
+        # Flush inside the try: the commit in get_db() runs after the
+        # response is sent, so a constraint violation must surface here.
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
