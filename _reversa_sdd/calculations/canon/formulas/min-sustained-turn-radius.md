@@ -6,11 +6,11 @@ tool: OPT
 shape: law
 status: draft
 output: min-sustained-turn-radius, min-sustained-turn-radius-speed
-source_status: SOURCED
+source_status: NO_SOURCE_FOUND
 dimensional_check: PROCEDURAL
 tags:
   - canon/formula
-  - source/sourced
+  - source/no-source-found
   - dim/procedural
   - shape/law
   - kind/optimization
@@ -67,7 +67,7 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
 
-**Source.** 🟡 PARTIAL (the front matter still says SOURCED). Load factor of the level turn as the vector sum of weight and centrifugal force, and the accelerated stall when the demanded C_L exceeds C_L,max: Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21. Motor model: Drela `motor1` §1.1. 🔴 NO SOURCE FOUND for the radius `r = V²/(g·sqrt(n² − 1))` and rate `ω = g·sqrt(n² − 1)/V`: point-mass kinematics, with no equation reference in the Scholz/Sadraey, Anderson or AeroSandbox material.
+**Source.** 🔴 NO SOURCE FOUND for the turn relation (below); the surrounding pieces are sourced. Load factor of the level turn as the vector sum of weight and centrifugal force, and the accelerated stall when the demanded C_L exceeds C_L,max: Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21. Motor model: Drela `motor1` §1.1. 🔴 NO SOURCE FOUND for the radius `r = V²/(g·sqrt(n² − 1))` and rate `ω = g·sqrt(n² − 1)/V`: point-mass kinematics, with no equation reference in the Scholz/Sadraey, Anderson or AeroSandbox material.
 
 **Validity in the RC/UAV regime (ADR 0028).** The kinematics are exact, with the load factor as the vector sum of weight and centrifugal force (Lennon, Ch. 21). The tightest sustained turn is flown slowly and at high `C_L`, so it sits at the lowest chord Reynolds number of manoeuvring flight — often in the bubble-sensitive band below 7·10⁴, where section C_L,max falls sharply (Lennon Ch. 1–3, see [[stall-speed]]). There the transition location sets the result: Anderson §20.3.2 shows laminar separation on both surfaces at Re_c = 10⁵ disappearing when the flow is turbulent. AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴, C_L 1.0 (Sharpe 2024 §7.2.4). Thrust at that low speed comes from the propeller table near static conditions, with its Re₀.₇₅ ≈ 15–100 k and rpm-block limits. Propeller slipstream over the wing is not modelled [no source].
 

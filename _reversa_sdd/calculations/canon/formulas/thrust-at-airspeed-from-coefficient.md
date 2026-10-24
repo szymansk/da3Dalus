@@ -38,13 +38,13 @@ T = C_T * rho * n_prop^2 * D_prop^4
 **Dimensional check.** 🟢 balances — (kg/m^3) * (1/s^2) * m^4 = kg*m/s^2 = N.
 
 **The lookup, stated separately.** `C_T = C_T(J)` with `J = V / (n_prop · D_prop)` — read from the
-measured table. The law above is evaluable and the table is not, so they are written apart:
+table. The law above is evaluable and the table is not, so they are written apart:
 folding the lookup into the canonical form made the whole entry unevaluable for the
 dimensional checker, which is a worse trade than one extra line.
 
 **Source.** 🟢 SOURCED
 
-> Definitional: C_T is *defined* as T/(rho*n^2*D^4), so the relation is the definition read backwards, and the content sits entirely in C_T(J). The advance ratio J = V/(nD) is standard propeller notation. The C_T(J) table is **measured**, not modelled: 454 APC propellers, 300 187 sample points over 45 RPM blocks each, J from 0 to about 1.17, no null coefficients.
+> Definitional: C_T is *defined* as T/(rho*n^2*D^4), so the relation is the definition read backwards, and the content sits entirely in C_T(J). The advance ratio J = V/(nD) is standard propeller notation. The C_T(J) table is **computed by APC** (PER3 files, header "AIRFOIL AERO DATA GENERATED USING: POLAR DIAGRAMS", `app/tests/fixtures/apc_props/PER3_7x4.dat:3-6`), not measured in a wind tunnel and not modelled by this app: 454 APC propellers, 300 187 sample points over 45 RPM blocks each, J from 0 to about 1.17, no null coefficients.
 
 **Why this entry exists.** The canon reached thrust at speed only through
 [[mean-thrust-derate]], a blanket factor on static thrust whose factor has no entry, no
@@ -60,7 +60,7 @@ extrapolation, which the implementation already flags.
 
 🔴 The application computes this **twice, incompatibly.**
 
-`powertrain_performance.py` implements exactly this relation from the measured tables and
+`powertrain_performance.py` implements exactly this relation from the APC tables and
 publishes `T(V)` and `P_shaft(V)`. Three services that need thrust —
 `field_length_service`, `matching_chart_service`, `mission_kpi_service` — use
 `t_static_N` instead, a hand-entered **bench** number that holds only at `V = 0`, and none

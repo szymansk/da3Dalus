@@ -124,7 +124,7 @@ points; ground effect is not modelled (optimistic in the flare); at model scale 
 at low Reynolds number, and AeroBuildup represents its deflection only as an effective-angle shift on the
 clean airfoil with a Hoerner drag factor (no flap separation, δ range of the fit unknown; `kulfan_airfoil.py:211-255`).
 
-**Source.** 🟢 Sadraey §11.6.3, §12.4, Eq. 12.90 (trim over the speed range); the level-flight
+**Source.** 🟢 Sadraey §11.6.3, §12.5.4, Eq. 12.90 (trim over the speed range); the level-flight
 and climb problems as in §3.10.
 
 **Validity in the RC/UAV regime (ADR 0028).** The sweep is regime-independent as a construction; each curve carries the limitation of the problem it embeds. `V_S(m)` inherits the Reynolds sensitivity of `C_L,max` (Anderson §4.3; Lennon Ch. 1–3), and since `V_S ∝ √m` the chord Re moves along the sweep, which the polar must follow. The trim edges rest on AeroBuildup, which ignores main-wing downwash on the horizontal tail and so over-predicts tail effectiveness (Sharpe 2024 §5.4), consistent with the declared 10.4–14.3 % MAC spread. Above about 30° of elevator deflection the flow over the horizontal tail separates (Sadraey §12.5.4, context of Eq. 12.90), which bounds the "tail not stalled" condition the entry declares. For a hand-launched model `V_TO` is the throw speed, with no ground roll and no wheel brakes; whether `T − D ≥ 0` at that speed is the right lift-off criterion for hand launch has no source [no source].

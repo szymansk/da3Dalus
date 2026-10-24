@@ -50,7 +50,7 @@ subject to:   L(V, alpha) = m * g
 
 **Kind: an optimisation problem**, the same shape as climb and turn: the highest speed at which full-throttle thrust still equals drag in level flight. Thrust and rpm from [[motor-propeller-equilibrium]] (route declared, `Q-PT-6`).
 
-**Source.** 🟢 Sadraey §4.3.3 — maximum speed where thrust available equals thrust required.
+**Source.** 🟢 Sadraey §4.3.3.2, Eq. 4.50 — maximum speed of a propeller aircraft where available power equals required power (`η_P·P_max = T·V_max`), equivalent to thrust available equals thrust required.
 
 **Validity in the RC/UAV regime (ADR 0028).** The closure, available power equal to required power, is regime-independent; Sadraey writes it with one constant `η_P` (§4.3.3.2, Eq. 4.50), where this entry uses the propeller table. At `V_max` the lift coefficient is small and drag is mostly profile drag, which depends on transition and hence on the chord Reynolds number (Anderson §4.12); Lennon (Ch. 1–3) reports it nearly doubling at low model Rn. Small-propeller efficiency spans 0.28–0.65 across designs and degrades below a blade Re of about 10⁵ (Brandt & Selig 2011 §IV). AeroBuildup's post-stall values are "order-of-magnitude correct rather than highly accurate" (AeroSandbox tutorial, AeroBuildup overview), which is why the spurious post-stall branch needs the multi-start rule. The incompressible solver is exact while `V_max` stays below M ≈ 0.3 (Anderson §1.10.3).
 

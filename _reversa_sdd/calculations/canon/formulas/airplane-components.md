@@ -6,11 +6,11 @@ tool: KAT
 shape: law
 status: draft
 output: battery-mass, battery-capacity, battery-specific-energy, propulsive-efficiency, motor-voltage-constant, motor-no-load-current, motor-circuit-resistance, battery-voltage, motor-max-power, propeller-diameter
-source_status: SOURCED
+source_status: PARTIAL
 dimensional_check: PROCEDURAL
 tags:
   - canon/formula
-  - source/sourced
+  - source/partial
   - dim/procedural
   - shape/law
   - kind/procedure
@@ -39,7 +39,7 @@ m_bat, E_bat, E_star, eta_total, K_v, I_0, R_m, U_bat, P_mot,max, D_prop := comp
 
 **Produces** [[battery-mass]] · [[battery-capacity]] · [[battery-specific-energy]] · [[propulsive-efficiency]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]  ·  **from** [[components]]
 
-**Kind: a procedure — an evaluation of the model.** Battery data, static thrust and the
+**Kind: a procedure — an evaluation of the model.** Battery data, motor and propeller data and the
 drive-train efficiency belong to the components the aircraft is built from — motor,
 propeller, battery, structure. They are read from the component tree and the parts
 catalogue, not chosen per calculation.
@@ -55,7 +55,7 @@ propeller's efficiency as a function of advance ratio. The nameplate static thru
 
 **Propeller diameter** (moved here from [[airplane-geometry]], maintainer 2026-10-16, D11 on #1174): `D_prop` is a property of the fitted propeller, the same component whose APC table [[propeller-table-lookup]] reads. The geometry format has no propeller, so a missing propeller fails only the drive-train chain, never the wing quantities.
 
-**Source.** 🟢 for the meaning of `K_v`, `I_0`, `R_m`: Drela, three-parameter DC motor model (`motor1` §1.1, §1.1.1, §1.1.2; measurement protocol §2). The values themselves are catalogue data (manufacturer figures via the committed import snapshot), not derived. 🔴 NO SOURCE FOUND for the constant `propulsive-efficiency` and for the battery quantities: catalogue or maintainer values with no cited calibration.
+**Source.** 🟡 PARTIAL. 🟢 for the meaning of `K_v`, `I_0`, `R_m`: Drela, three-parameter DC motor model (`motor1` §1.1, §1.1.1, §1.1.2; measurement protocol §2). The values themselves are catalogue data (manufacturer figures via the committed import snapshot), not derived. 🔴 NO SOURCE FOUND for the constant `propulsive-efficiency` and for the battery quantities: catalogue or maintainer values with no cited calibration.
 
 **Validity in the RC/UAV regime (ADR 0028).** Regime-independent as a read: the entry copies catalogue values and computes nothing. The data are point measurements, valid near the conditions they were measured at. In Drela's three-parameter model `R_m` rises with winding temperature, so a cold catalogue value under-predicts the voltage drop under load; `I_0` depends on shaft speed and is meaningful only when measured near the operating rpm; the model breaks down at very high current (Drela `motor1` §1.1). `propulsive-efficiency` is a single constant, while small propellers run at Re₀.₇₅ ≈ 15–100 k (ADR 0028, after Brandt & Selig 2011 §IV), where efficiency depends strongly on advance ratio and Reynolds number. Battery capacity and voltage depend on discharge rate and temperature [no source].
 

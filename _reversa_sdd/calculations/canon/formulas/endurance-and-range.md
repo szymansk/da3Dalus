@@ -6,11 +6,11 @@ tool: OPT
 shape: law
 status: draft
 output: max-endurance, max-range
-source_status: SOURCED
+source_status: PARTIAL
 dimensional_check: PROCEDURAL
 tags:
   - canon/formula
-  - source/sourced
+  - source/partial
   - dim/procedural
   - shape/law
   - kind/procedure
@@ -55,7 +55,7 @@ quantity as output — A2 — and an undeclared substitution — ADR 0020), `pow
 `endurance-from-battery` and `range-from-endurance` (`R = V_cruise · t` with `t` at an unrelated
 speed). Both results are **properties of the aircraft**, no target involved.
 
-**Source.** 🟡 PARTIAL (the front matter still says SOURCED). The closures are Sadraey's, for propeller aircraft: range is maximised at `(L/D)_max`, i.e. minimum drag (§4.2.5.2, Eq. 4.17), and endurance at maximum `C_L^{3/2}/C_D`, i.e. minimum power (§4.2.5.4, Eq. 4.22–4.23), both derived for fuel burn with constant `η_P` and SFC. The battery-electric constant-mass form `t = E_bat·η/(D·V)`, `R = E_bat·η/D` is an elementary energy balance with no textbook source [no source]; Sadraey treats electric propulsion only descriptively (§8.3.1).
+**Source.** 🟡 PARTIAL. The closures are Sadraey's, for propeller aircraft: range is maximised at `(L/D)_max`, i.e. minimum drag (§4.2.5.2, Eq. 4.17), and endurance at maximum `C_L^{3/2}/C_D`, i.e. minimum power (§4.2.5.4, Eq. 4.22–4.23), both derived for fuel burn with constant `η_P` and SFC. The battery-electric constant-mass form `t = E_bat·η/(D·V)`, `R = E_bat·η/D` is an elementary energy balance with no textbook source [no source]; Sadraey treats electric propulsion only descriptively (§8.3.1).
 
 **Validity in the RC/UAV regime (ADR 0028).** The two closures are regime-independent: range is largest at the minimum-drag speed and endurance at the minimum-power speed. The numbers carry the regime, and endurance is the more exposed: `V_mp` lies at high `C_L`, about `1.2–1.4·V_S` (Sadraey §4.2.5.4, Eq. 4.25), where the low-Re polar is least certain — NeuralFoil reports low confidence near `C_L ≈ 1` at `Re_c ≈ 8·10⁴` (Sharpe 2024 §7.2.4), and profile drag is transition-sensitive (Anderson §4.12). The single `η` stands in for a small-propeller efficiency that spans 0.28–0.65 and degrades below a blade Re of about 10⁵ (Brandt & Selig 2011 §IV); since `η` varies with the advance ratio, the true optima may shift away from `V_md` / `V_mp` [no source]. Battery sag and reserve are not modelled [no source]; Mach is no concern (Anderson §1.10.3).
 

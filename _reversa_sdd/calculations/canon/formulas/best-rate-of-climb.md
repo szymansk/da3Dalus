@@ -50,7 +50,7 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 
 **Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n² · D⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
 
-**Exact steady climb, not the small-angle form.** Sadraey writes `ROC = (T − D)·V / W` with `L = W` (Eq. 4.84). That holds for shallow climbs only. A model with a high thrust-to-weight ratio climbs steeply, and with `T > W` vertically. Stating both force balances along and across the path costs one variable and keeps the result right at every angle; at `gamma = 90°` the lift constraint gives `L = 0`, which is the honest answer.
+**Exact steady climb, not the small-angle form.** Sadraey writes `ROC = (T·V − D·V) / W` with `L = W` (Eq. 4.77–4.78, §4.3.5; the propeller form `(η_P·P − D·V)/W` is Eq. 4.84, §4.3.5.2). That holds for shallow climbs only. A model with a high thrust-to-weight ratio climbs steeply, and with `T > W` vertically. Stating both force balances along and across the path costs one variable and keeps the result right at every angle; at `gamma = 90°` the lift constraint gives `L = 0`, which is the honest answer.
 
 **Termination.** Approval asks for **no bound active at the optimum** — with one declared exception: `gamma` at its 90° bound means the aircraft climbs vertically at that speed. Any other active bound, and a failed solve, return no value (ADR 0020).
 
@@ -58,7 +58,7 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 
 **Model fidelity is declared** (`Q-PT-6`): which route of the torque balance ran, and that the battery voltage is nominal.
 
-**Source.** 🟢 Sadraey §4.3.5 (rate and angle of climb, Eq. 4.84–4.85) for the definitions; the force balances are the steady-flight equations along and normal to the path. 🟢 Drela `motor1` §1.1 for the motor model.
+**Source.** 🟢 Sadraey §4.3.5 (rate of climb, Eq. 4.77–4.78; propeller form Eq. 4.84–4.85, §4.3.5.2) for the definitions; the force balances along and normal to the path, with the small-angle form only for γ < 15°: Scholz 05_PreliminarySizing §5.3 (context of Eq. 5.13). 🟢 Drela `motor1` §1.1 for the motor model.
 
 **Validity in the RC/UAV regime (ADR 0028).** The force balances are exact at any climb angle; Scholz uses the small-angle form only for γ < 15° (05_PreliminarySizing §5.3), and the entry does not use it. Sadraey's closed form puts the propeller optimum at the minimum-power speed with a constant `η_P` of 0.5–0.6 for fixed pitch (§4.3.5.2, Eq. 4.84–4.85); this entry replaces both with the propeller table and the motor balance, so it carries no fixed-efficiency assumption. Thrust inherits that chain's limits: the coefficients depend on the propeller's Re₀.₇₅ ≈ 15–100 k (ADR 0028; Deters, Ananda & Selig 2014 §V.A–B), with nominal battery voltage and route A free-run rpm. The optimum lies at moderate `C_L`, usually away from the stall corner, so polar uncertainty near C_L,max matters less than for `V_x` [no source]. Propeller slipstream is not modelled [no source].
 

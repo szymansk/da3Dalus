@@ -41,7 +41,7 @@ points i: the solver polar along level flight (L = m * g, each point at its own 
 **Kind: a fit — a least-squares parabola over the operating `C_L` window** (window from
 BR-16). `C_D0` is the fitted zero-lift parasite drag and `e` the Oswald factor in
 Anderson's sense (§6.7.2) — comparable with literature values. Each polar point is taken at
-the speed where it flies level, so no Reynolds numbers of different speeds are mixed.
+the speed where it flies level, so each point carries its own Reynolds number; the fit spans points at different speeds and therefore at different Reynolds numbers.
 
 **Display only — never an input to performance** (ADR 0026). The analysis computes with the
 solver drag directly. These two numbers serve the user and the **calculated value** of the

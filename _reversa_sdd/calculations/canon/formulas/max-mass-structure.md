@@ -34,7 +34,7 @@ m_max,struct = n_break,pos * m
 the spar fails already at 1 g is `n_break,+ · m`. A physical limit, not a design load — anything
 above 1 g (`n_lim`, class bands) is evaluation (A10).
 
-**Source.** 🟢 Definition of the load factor (`n = L/W`).
+**Source.** 🟢 Definition of the load factor (`n = L/W`); for models, Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21 (load factor as the vector sum of weight and centripetal force).
 
 **Validity in the RC/UAV regime (ADR 0028).** Regime-independent: `n = L/W` is a definition, and its inversion contains no flow physics; Lennon (Ch. 21) describes the load factor of models the same way, as the vector sum of weight and centripetal force in g. It inherits the linear-scaling approximation of [[spar-break-load-factor]]: at `n_break,+·m` the 1 g flight point lies at a different `C_L`, so on a twisted wing the spanload shape, and with it `n_break`, is not exactly mass-invariant [no source].
 

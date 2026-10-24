@@ -19,7 +19,7 @@ inputs: {components: components, j: advance-ratio}
 outputs: {c_t: thrust-coefficient}
 ---
 
-# Thrust coefficient from the measured propeller table
+# Thrust coefficient from the propeller table
 
 **Canonical form**
 
@@ -30,8 +30,8 @@ C_T := interp( table of the chosen propeller, J )
 **Produces** [[thrust-coefficient]]  ·  **from** [[components]] · [[advance-ratio]]
 
 **Kind: a procedure — a table lookup.** The thrust coefficient of the propeller fitted to the
-airplane, interpolated at the advance ratio. 454 APC propellers with 300 187 measured
-points are in the database; extrapolation outside the measured `J` range is flagged.
+airplane, interpolated at the advance ratio. 454 APC propellers with 300 187 computed
+points (APC's own PER3 computation, not wind-tunnel measurement) are in the database; extrapolation outside the tabulated `J` range is flagged.
 
 **Source.** 🟢 Definitions `J = V/(n·D)`, `C_T = T/(ρ·n²·D⁴)`, `C_P = P/(ρ·n³·D⁵)`: Brandt & Selig 2011 §II.F. The data are APC PER3 performance files (v2022-0915); their header reads "Simulation Date" and "AIRFOIL AERO DATA GENERATED USING: POLAR DIAGRAMS" (`app/tests/fixtures/apc_props/PER3_7x4.dat:3-6`), so they are APC's own computation, not wind-tunnel measurement. 🔴 NO SOURCE FOUND for the accuracy of APC's computation at low Reynolds number.
 
