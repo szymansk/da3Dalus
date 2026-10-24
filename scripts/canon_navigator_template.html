@@ -539,7 +539,7 @@ function sym(q){
   // Greek names become letters also when a subscript follows (alpha_bg, delta_a, Delta_alpha_break).
   const g={alpha:'\u03b1',beta:'\u03b2',gamma:'\u03b3',Delta:'\u0394',delta:'\u03b4',eta:'\u03b7',lambda:'\u03bb',
     mu:'\u03bc',nu:'\u03bd',omega:'\u03c9',phi:'\u03c6',pi:'\u03c0',rho:'\u03c1',sigma:'\u03c3',tau:'\u03c4',theta:'\u03b8'};
-  return s.replace(/\bDelta_/g,'Delta').replace(/(?<![A-Za-z])(alpha|beta|gamma|Delta|delta|theta|eta|lambda|mu|nu|omega|phi|pi|rho|sigma|tau)(?![a-z])/g,m=>g[m]);
+  return s.replace(/(?<![A-Za-z])(alpha|beta|gamma|Delta|delta|theta|eta|lambda|mu|nu|omega|phi|pi|rho|sigma|tau)(?![a-z])/g,m=>g[m]).replace(/\u0394_/g,'\u0394');
 }
 let moved=false;
 const isOpt=q=>(prodBy[q]||[]).some(f=>F[f].kind==='optimization');
