@@ -2,7 +2,7 @@
 
 Used by every path that deletes aeroplane nodes (``delete_aeroplane``,
 ``discard_branch``, lineage delete), so there is exactly one implementation
-of "what a node owns" (ADR 0022).
+of "what a node owns".
 
 Rows bound by a nullable integer FK (analysis) or a plain string uuid
 (component tree, construction parts) would otherwise survive and be

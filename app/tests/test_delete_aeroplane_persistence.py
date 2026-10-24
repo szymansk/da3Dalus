@@ -272,3 +272,118 @@ def test_delete_lineage_root_on_a_side_branch_is_refused_with_409(client_and_db)
     with session_factory() as s:
         assert s.query(AeroplaneModel).filter(AeroplaneModel.id == root_id).count() == 1
         assert s.query(BranchModel).filter_by(root_id=root_id).count() == 2
+
+
+# --- Every deletion path purges rows without ORM cascade ------------------------
+
+
+def _add_op(session_factory, aircraft_id: int) -> None:
+    from app.models.analysismodels import OperatingPointModel
+
+    with session_factory() as s:
+        s.add(
+            OperatingPointModel(
+                name="op",
+                description="d",
+                aircraft_id=aircraft_id,
+                velocity=20.0,
+                alpha=0.0,
+                beta=0.0,
+                p=0.0,
+                q=0.0,
+                r=0.0,
+                xyz_ref=[0, 0, 0],
+                altitude=0.0,
+            )
+        )
+        s.commit()
+
+
+def _add_tree_node(session_factory, aeroplane_uuid: str) -> None:
+    from app.models.component_tree import ComponentTreeNodeModel
+
+    with session_factory() as s:
+        s.add(ComponentTreeNodeModel(aeroplane_id=aeroplane_uuid, node_type="group", name="g"))
+        s.commit()
+
+
+def _count(session_factory, model, **filters) -> int:
+    with session_factory() as s:
+        return s.query(model).filter_by(**filters).count()
+
+
+def test_delete_legacy_node_without_branch_purges_its_operating_point(client_and_db):
+    from app.models.analysismodels import OperatingPointModel
+
+    client, session_factory = client_and_db
+    a_uuid = _uuid_of(_create(client))
+    a_id = _id_of(session_factory, a_uuid)
+    with session_factory() as s:  # make it a pre-versioning row
+        node = s.query(AeroplaneModel).filter_by(id=a_id).one()
+        s.query(BranchModel).delete()
+        node.branch_id = None
+        s.commit()
+    _add_op(session_factory, a_id)
+
+    assert client.delete(f"/aeroplanes/{a_uuid}").status_code == 200
+
+    assert _count(session_factory, AeroplaneModel) == 0
+    assert _count(session_factory, OperatingPointModel) == 0
+
+
+def test_delete_adopted_main_head_that_is_not_the_root_removes_the_lineage(client_and_db):
+    from app.models.analysismodels import OperatingPointModel
+
+    client, session_factory = client_and_db
+    root_uuid = _uuid_of(_create(client))
+    root_id = _id_of(session_factory, root_uuid)
+    r = client.post(f"/aeroplanes/{root_id}/branch", json={"name": "next"})
+    assert r.status_code in (200, 201), r.text
+    assert client.post(f"/branches/{r.json()['id']}/adopt").status_code == 200
+    new_head_id = r.json()["head_id"]
+    assert new_head_id != root_id
+    with session_factory() as s:
+        new_head_uuid = str(s.query(AeroplaneModel).filter_by(id=new_head_id).one().uuid)
+    _add_op(session_factory, root_id)
+    _add_op(session_factory, new_head_id)
+
+    assert client.delete(f"/aeroplanes/{new_head_uuid}").status_code == 200
+
+    assert _count(session_factory, AeroplaneModel) == 0
+    assert _count(session_factory, BranchModel) == 0
+    assert _count(session_factory, OperatingPointModel) == 0
+
+
+def test_delete_side_head_purges_its_rows_then_main_head_removes_the_rest(client_and_db):
+    from app.models.analysismodels import OperatingPointModel
+    from app.models.component_tree import ComponentTreeNodeModel
+
+    client, session_factory = client_and_db
+    main_uuid = _uuid_of(_create(client))
+    root_id = _id_of(session_factory, main_uuid)
+    r = client.post(f"/aeroplanes/{root_id}/branch", json={"name": "side"})
+    assert r.status_code in (200, 201), r.text
+    side_id = r.json()["head_id"]
+    with session_factory() as s:
+        side_uuid = str(s.query(AeroplaneModel).filter_by(id=side_id).one().uuid)
+    _add_op(session_factory, side_id)
+    _add_op(session_factory, root_id)
+    _add_tree_node(session_factory, side_uuid)
+    _add_tree_node(session_factory, main_uuid)
+
+    assert client.delete(f"/aeroplanes/{side_uuid}").status_code == 200
+
+    # Side branch gone with its rows, root and its rows survive.
+    assert _count(session_factory, AeroplaneModel, id=side_id) == 0
+    assert _count(session_factory, OperatingPointModel, aircraft_id=side_id) == 0
+    assert _count(session_factory, ComponentTreeNodeModel, aeroplane_id=side_uuid) == 0
+    assert _count(session_factory, AeroplaneModel, id=root_id) == 1
+    assert _count(session_factory, OperatingPointModel, aircraft_id=root_id) == 1
+    assert _count(session_factory, ComponentTreeNodeModel, aeroplane_id=main_uuid) == 1
+
+    assert client.delete(f"/aeroplanes/{main_uuid}").status_code == 200
+
+    assert _count(session_factory, AeroplaneModel) == 0
+    assert _count(session_factory, BranchModel) == 0
+    assert _count(session_factory, OperatingPointModel) == 0
+    assert _count(session_factory, ComponentTreeNodeModel) == 0
