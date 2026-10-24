@@ -159,7 +159,10 @@ def test_two_tags_of_one_family_are_a_finding(tmp_path: Path) -> None:
 
 
 def test_a_family_the_taxonomy_leaves_empty_accepts_no_tag(tmp_path: Path) -> None:
-    changes = {"taxonomy.yaml": MINI_TAXONOMY, MASS: tag(MINI_CANON[MASS], "module/body")}
+    changes: dict[str, str | None] = {
+        "taxonomy.yaml": MINI_TAXONOMY,
+        MASS: tag(MINI_CANON[MASS], "module/body"),
+    }
     result = import_canon(write_canon(tmp_path, changes))
     assert findings(result) == [
         "quantities/aircraft-mass.md: module: 'body' is not in the taxonomy "
