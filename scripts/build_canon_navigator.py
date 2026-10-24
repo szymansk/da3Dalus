@@ -125,6 +125,7 @@ MVP_RESULTS = (
     "stall-speed",
     "neutral-point",
     "static-margin",
+    "cg-for-target-margin",
     "roll-rate-approach",
     "roll-rate-nondimensional-approach",
 )

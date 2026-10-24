@@ -45,12 +45,15 @@ async def run(
     avl: StubAvl | None = None,
     opti: StubOpti | None = None,
     cg: float | None = None,
+    target: float | None = None,
 ) -> tuple[ComputeResult, StubAvl]:
     stub = avl or StubAvl(X_NP_AVL)
     solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=opti or StubOpti(), avl=stub)
     values = {"aircraft-mass": MASS, "altitude": 0.0}
     if cg is not None:
         values["centre-of-gravity"] = cg
+    if target is not None:
+        values["static-margin-target"] = target
     aircraft = AircraftInput.model_validate(
         {"airplane": airplane or airplane_with(*CONVENTIONAL), "values": values}
     )
