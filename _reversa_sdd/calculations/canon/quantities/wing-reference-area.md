@@ -8,6 +8,8 @@ status: approved
 tags:
   - canon/quantity
   - stage/references
+  - module/construction
+  - group/geometry-references
   - role/derived
 type: scalar
 ---

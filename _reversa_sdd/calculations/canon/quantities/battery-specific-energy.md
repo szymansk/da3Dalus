@@ -8,6 +8,8 @@ status: draft
 tags:
   - canon/quantity
   - stage/references
+  - module/construction
+  - group/powertrain-battery
   - role/derived
 type: scalar
 ---

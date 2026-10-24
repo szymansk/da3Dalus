@@ -8,6 +8,8 @@ status: approved
 tags:
   - canon/quantity
   - stage/references
+  - module/mass-and-balance
+  - group/weight-and-loading
   - role/derived
 type: scalar
 ---

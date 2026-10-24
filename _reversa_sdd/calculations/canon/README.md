@@ -472,7 +472,12 @@ cross-cutting inputs turned into reference values: air state, geometry reference
 loading, the take-off and landing configurations, the propulsion catalogue values), `aero-model` (the
 polar independent of the operating point), `operating-points` (where the named speeds are born:
 V_S0, V_S,TO, V_md, V_mp, V_app, V_TO, V_A), `propulsion-state` (the propeller at a flight speed),
-`stability-structure` (neutral point, break load factor). The navigator draws `references` as its own column
+`stability-structure` (neutral point, break load factor). A `references` quantity also carries the `module/<name>` of the cross-cutting module it derives from
+and one `group/<name>`: `air-state` (atmosphere), `weight-and-loading` (mass and balance),
+`geometry-references`, `configurations`, `powertrain-motor-propeller` and `powertrain-battery`
+(construction; the powertrain is motor, battery and propeller — `battery-voltage` belongs to motor and
+propeller, the only place it is used). A module thus holds its inputs and the references derived from
+them. The navigator draws `references` as its own column
 right of the cross-cutting inputs — intermediate values, kept apart from the input column (maintainer,
 2026-10-24). The navigator build refuses an intermediate quantity without it.
 

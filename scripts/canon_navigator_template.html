@@ -381,25 +381,41 @@ for(const [band,,inBand] of BANDS){
 }
 // The cross-cutting column: upright framed modules, one node per row, below the top row.
 const XTOP=BANDY.inter-GAPY/2;
-// The derived-references column: one framed block, grouped by producing formula.
+// Cross-cutting modules and their derived references side by side (maintainer 2026-10-24):
+// each module's inputs on the left, the references derived from them (canon tags module/ and
+// group/) on the right, on the same level, so a row reads "input -> reference". The powertrain
+// is one box with the sub-clusters motor and propeller, and battery.
 SX.refs=XW+REFGAP;
-{ const prodOf=q=>(prodBy[q]||[''])[0];
-  const qs=Object.keys(Q).filter(isRef).sort((a,b)=>prodOf(a).localeCompare(prodOf(b))||RANK[a]-RANK[b]);
-  const y=XTOP+FHEAD, rows=Math.ceil(qs.length/REFCOLS), fh=(rows-1)*SUBGAP+NH+2*FPAD;
-  qs.forEach((q,i)=>{ P[q]={x:SX.refs+FPAD+(i%REFCOLS)*slotW, y:y+FPAD+Math.floor(i/REFCOLS)*SUBGAP}; });
-  PFRAMES.push({band:'inter',key:'references',x:SX.refs,y,w:RW,h:fh});
-  PSPANS.push({band:'inter',key:'references',label:'Derived references',x:SX.refs-4,y:y-FHEAD+2,w:RW+8,h:fh+FHEAD+4});
-  yc=Math.max(yc,y+fh+GAPY);
-}
+const GROUPS={'air-state':'Air state','weight-and-loading':'Weight and loading','geometry-references':'Geometry references',
+  'configurations':'Configurations','powertrain-motor-propeller':'Motor and propeller','powertrain-battery':'Battery'};
+const GRORDER=Object.keys(GROUPS);
 { let y=XTOP+FHEAD;
   for(const m of MODORDER.filter(m=>XCUT.has(m))){
-    const qs=Object.keys(Q).filter(q=>Q[q].module===m).sort();
-    if(!qs.length) continue;
-    const rows=qs.length;
-    const fw=XW, fh=(rows-1)*SUBGAP+NH+2*FPAD;
-    qs.forEach((q,i)=>{ P[q]={x:SX.xcut+FPAD, y:y+FPAD+i*SUBGAP}; });
-    FRAMES.push({module:m,label:MODULES[m],x:SX.xcut,y,w:fw,h:fh,target:false});
-    y+=fh+MODGAP+FHEAD;
+    const ins=Object.keys(Q).filter(q=>Q[q].module===m&&!isRef(q)).sort();
+    const refs=Object.keys(Q).filter(q=>Q[q].module===m&&isRef(q));
+    if(!ins.length&&!refs.length) continue;
+    // left: the module's inputs
+    const lh=(ins.length-1)*SUBGAP+NH+2*FPAD;
+    ins.forEach((q,i)=>{ P[q]={x:SX.xcut+FPAD, y:y+FPAD+i*SUBGAP}; });
+    FRAMES.push({module:m,label:MODULES[m],x:SX.xcut,y,w:XW,h:lh,target:false});
+    // right: the derived references, one framed group under the other
+    let ry=y, pw=null;
+    for(const g of GRORDER){
+      const qs=refs.filter(q=>Q[q].group===g).sort((a,b)=>RANK[a]-RANK[b]);
+      if(!qs.length) continue;
+      const isPw=g.startsWith('powertrain-');
+      if(isPw&&!pw){ pw={y:ry}; ry+=FHEAD; }
+      const rows=Math.ceil(qs.length/REFCOLS), fh=(rows-1)*SUBGAP+NH+2*FPAD;
+      const gx=SX.refs, gw=RW;
+      qs.forEach((q,i)=>{ P[q]={x:gx+FPAD+(i%REFCOLS)*slotW, y:ry+FPAD+Math.floor(i/REFCOLS)*SUBGAP}; });
+      PFRAMES.push({band:'inter',key:g,x:gx,y:ry,w:gw,h:fh});
+      const t={band:'inter',key:g,label:GROUPS[g],x:gx,y:ry-FHEAD+2,w:gw,h:fh+FHEAD-2,sub:true};
+      PSPANS.push(t);
+      ry+=fh+FHEAD+4;
+      if(isPw) pw.end=ry;
+    }
+    if(pw) PSPANS.push({band:'inter',key:'powertrain',label:'Powertrain',x:SX.refs-9,y:pw.y-FHEAD+2,w:RW+18,h:pw.end-pw.y+4});
+    y=Math.max(y+lh, ry-FHEAD-4)+MODGAP+FHEAD;
   }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
@@ -422,8 +438,8 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
   { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
   for(const s of PSPANS){
     const st=s.band!=='final';
-    cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
-    const t=el('text',{x:s.x+8,y:s.y+13,class:'blocklab '+(st?'stlab':'ptlab')}); t.textContent=s.label; cam.appendChild(t); }
+    if(!s.sub) cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
+    const t=el('text',{x:s.x+(s.sub?2:8),y:s.y+13,class:'blocklab '+(st?'stlab':'ptlab')}); t.textContent=s.label; cam.appendChild(t); }
   for(const f of PFRAMES)
     cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:f.band!=='final'?'sframe':'pframe'}));
   for(const h of COLHEADS){ const t=el('text',{x:h.x,y:h.y,class:'blocklab'}); t.textContent=h.label; cam.appendChild(t); }
@@ -542,7 +558,7 @@ function select(q){
       : 'not in the kernel yet';
     const col = st==='done'?'var(--good)':(st==='open'&&MVP.has(q))?'var(--mvp)':'var(--line-2)';
     if(Q[q].point) h+=`<p class="meta">Operating point: ${esc(POINTS[Q[q].point]||Q[q].point)}</p>`;
-    if(Q[q].stage) h+=`<p class="meta">Stage: ${esc(STAGES[Q[q].stage]||Q[q].stage)}</p>`;
+    if(Q[q].stage) h+=`<p class="meta">Stage: ${esc(STAGES[Q[q].stage]||Q[q].stage)}${Q[q].group?' \u00b7 '+esc(GROUPS[Q[q].group]||Q[q].group):''}</p>`;
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
   if(UNC.has(q)) h+=`<p class="desc" style="border-left:3px dotted var(--unc);padding-left:8px">
