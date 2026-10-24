@@ -7,6 +7,7 @@ role: input
 status: approved
 tags:
   - canon/quantity
+  - module/mass-and-balance
   - role/input
 type: scalar
 positive: true

@@ -144,6 +144,11 @@ def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> No
     for slug, q in quantities.items():
         t = (root / "quantities" / f"{slug}.md").read_text(encoding="utf-8")
         q["type"] = _front(t, "type") or "scalar"
+        tags = re.findall(r"^\s+-\s+(\S+)\s*$", t.split("---", 2)[1], re.M)
+        modules = [x.split("/", 1)[1] for x in tags if x.startswith("module/")]
+        if len(modules) > 1:
+            raise SystemExit(f"quantity {slug} has more than one module tag: {modules}")
+        q["module"] = modules[0] if modules else ""
     for slug, f in formulas.items():
         t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
         f["worlds"] = [w.strip() for w in _front(t, "worlds").strip("[]").split(",") if w.strip()]
@@ -278,6 +283,9 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
         else:
             status[q] = "open"
     data["status"] = status
+    untagged = sorted(q for q in data["inputs"] if not quantities[q]["module"])
+    if untagged:
+        raise SystemExit(f"inputs and targets without a module/<name> tag: {untagged}")
     design_out = {o for f in formulas.values() if f["direction"] == "design" for o in f["out"]}
     data["design"] = sorted(closure(design_out, pred))
     data["analysis"] = sorted(closure(set(quantities) - design_out - set(data["inputs"]), pred))

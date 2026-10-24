@@ -85,6 +85,8 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .kst{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin:0 0 14px;padding:4px 9px;
   border-radius:5px;border:1px solid var(--line-2)}
 .colhead{font-family:"STIX Two Text",Georgia,serif;font-size:15px;font-weight:600;fill:var(--ink)}
+.frame{fill:none;stroke:var(--line-2);stroke-width:1.2}
+.tframe{stroke:var(--tgt);stroke-dasharray:4 3}
 .blocklab{font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.08em}
 .laylab{font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace}
 .hint{position:absolute;left:0;right:0;bottom:12px;text-align:center;color:var(--ink-3);
@@ -222,38 +224,47 @@ for(const s of TARGETS){ const seen=new Set(), st=[s]; while(st.length){ const v
 const NW=78, NH=30, GAPX=13, GAPY=74, PAD=48;
 const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
 // Two columns: analysis left, design right (design = only reachable from a direction/design
-// entry). Within each column the given values of layer 0 split into targets (left) and
-// inputs (right). Each block wraps into sub-rows; a layer is as tall as its tallest block.
+// entry). Layer 0 holds the given values, framed by module (canon tag module/<name>): within
+// each column the target modules come first (left), then the input modules (right); modules
+// flow left to right and wrap. Deeper layers wrap into sub-rows of the column's width.
 const SIDE=q=>(DESIGN.has(q)&&!ANALYSIS.has(q))?'design':'analysis';
-const SLOTS={analysis:16, design:6}, SIDEGAP=70, BLOCKGAP=34, SUBGAP=NH+16, HEAD=46;
-const slotW=NW+GAPX;
+const MODULES={'envelope-targets':'Zielwerte Flugbereich','design-targets':'Zielwerte Auslegung',
+  'construction':'Konstruktion','mass-and-balance':'Masse und Schwerpunkt','atmosphere':'Atmosph\u00e4re und Konstanten',
+  'control-deflections':'Ruderausschl\u00e4ge','operating-point':'Betriebspunkt'};
+const MODORDER=Object.keys(MODULES);
+const SLOTS={analysis:16, design:6}, SIDEGAP=70, SUBGAP=NH+16, HEAD=40;
+const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXMODCOLS=4;
 const SX={analysis:0, design:SLOTS.analysis*slotW-GAPX+SIDEGAP};
 const W=SX.design+SLOTS.design*slotW-GAPX;
-const P={}, LY={}, BLOCKS=[];
+const P={}, LY={}, FRAMES=[];
 let yc=HEAD;
 for(const l of layers){
-  LY[l]=yc; let rowsUsed=1;
+  LY[l]=yc; let height=NH;
   for(const side of ['analysis','design']){
     const all=ORDER[l].filter(q=>SIDE(q)===side);
-    const groups = l===0
-      ? [['Zielwerte',all.filter(q=>TARGETS.has(q))],['Eingaben',all.filter(q=>!TARGETS.has(q))]]
-      : [['',all]];
-    const used=groups.filter(g=>g[1].length);
-    if(!used.length) continue;
-    // Split the side's slots between the blocks in proportion to their size (at least 1 each).
-    const total=used.reduce((n,g)=>n+g[1].length,0);
-    let free=SLOTS[side]-(used.length>1?1:0), x=SX[side];
-    used.forEach((g,gi)=>{
-      const cols = gi===used.length-1 ? free : Math.max(1,Math.min(free-1,Math.round(SLOTS[side]*g[1].length/total)));
-      free-=cols;
-      const n=Math.ceil(g[1].length/cols); rowsUsed=Math.max(rowsUsed,n);
-      const w=Math.min(cols,g[1].length)*slotW-GAPX;
-      g[1].forEach((q,i)=>{ P[q]={x:x+(i%cols)*slotW, y:yc+Math.floor(i/cols)*SUBGAP}; });
-      if(g[0]) BLOCKS.push({label:g[0],x,y:yc,w});
-      x+=cols*slotW+(gi<used.length-1?slotW-GAPX:0);
-    });
+    if(!all.length) continue;
+    if(l>0){
+      const cols=SLOTS[side];
+      all.forEach((q,i)=>{ P[q]={x:SX[side]+(i%cols)*slotW, y:yc+Math.floor(i/cols)*SUBGAP}; });
+      height=Math.max(height,(Math.ceil(all.length/cols)-1)*SUBGAP+NH);
+      continue;
+    }
+    // Layer 0: framed modules, targets first.
+    const mods=MODORDER.map(m=>[m,all.filter(q=>Q[q].module===m)]).filter(x=>x[1].length);
+    mods.sort((a,b)=>(TARGETS.has(b[1][0])-TARGETS.has(a[1][0])));
+    const right=SX[side]+SLOTS[side]*slotW-GAPX;
+    let x=SX[side], y=yc+FHEAD, lineH=0;
+    for(const [m,qs] of mods){
+      const cols=Math.min(MAXMODCOLS,qs.length,SLOTS[side]), rows=Math.ceil(qs.length/cols);
+      const fw=cols*slotW-GAPX+2*FPAD, fh=(rows-1)*SUBGAP+NH+2*FPAD;
+      if(x>SX[side] && x+fw>right+FPAD){ x=SX[side]; y+=lineH+MODGAP+FHEAD; lineH=0; }
+      qs.forEach((q,i)=>{ P[q]={x:x+FPAD+(i%cols)*slotW, y:y+FPAD+Math.floor(i/cols)*SUBGAP}; });
+      FRAMES.push({label:MODULES[m],x,y,w:fw,h:fh,target:TARGETS.has(qs[0])});
+      lineH=Math.max(lineH,fh); x+=fw+MODGAP;
+    }
+    height=Math.max(height,y+lineH-yc);
   }
-  yc+=(rowsUsed-1)*SUBGAP+GAPY;
+  yc+=height-NH+GAPY;
 }
 const H=yc-GAPY+NH;
 const cam=document.getElementById('cam'), svg=document.getElementById('g');
@@ -268,7 +279,9 @@ for(const l of layers){
   cam.appendChild(el('line',{x1:dx,y1:6,x2:dx,y2:H+10,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
   for(const [side,label] of [['analysis','Analyse \u2014 was ein gegebenes Flugzeug kann'],['design','Auslegung \u2014 Ziel \u2192 Konstruktionsgr\u00f6\u00dfe (O1)']]){
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
-  for(const b of BLOCKS){ const t=el('text',{x:b.x,y:b.y-7,class:'blocklab'}); t.textContent=b.label; cam.appendChild(t); }
+  for(const f of FRAMES){
+    cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')}));
+    const t=el('text',{x:f.x+2,y:f.y-7,class:'blocklab'}); t.textContent=f.label; cam.appendChild(t); }
 }
 const edgeEls=[];
 for(const [a,b,f] of D.edges){

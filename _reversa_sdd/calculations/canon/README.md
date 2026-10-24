@@ -465,6 +465,14 @@ nicht als unbenötigter Code" (maintainer, 2026-10-17).
 
 ### Quantity entries
 
+**Module tag.** Every quantity no formula produces — inputs and targets — carries exactly one tag
+`module/<name>` that groups it for readers and tools (the navigator frames layer 0 by module); the
+importer drops it. Modules: `construction` (the airplane and its fitted components), `mass-and-balance`,
+`atmosphere` (atmosphere and physical constants), `control-deflections` (every device angle the caller
+sets), `operating-point` (the free variables of a flight state), `envelope-targets` (targets that name an
+operating point or bound the envelope), `design-targets` (targets a design entry turns into a construction
+quantity). A new input or target needs its module tag; the navigator build refuses one without.
+
 The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `status`, `uncertainty`, `tags`)
 stay. Added:
 
