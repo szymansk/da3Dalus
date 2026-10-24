@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
@@ -143,3 +144,16 @@ async def test_bryan_at_the_approach_speed_and_twenty_degrees_converges_from_its
         )
     assert math.isclose(found.p_rad_s, 8.5546408, abs_tol=1e-4)
     assert math.isclose(found.alpha_deg, 3.9310246, abs_tol=1e-3)
+
+
+async def test_jaguar_at_forty_degrees_fails_loudly_and_never_returns_a_value() -> None:
+    """JAGUAR at V_app 8.189 m/s and 40 deg has no solution the solver reaches (measured: the start
+    is a secant, the problem stays infeasible): the answer is a declared not_converged error, never a
+    value, and the roll-rate quantity becomes an error with the other world's value in the detail."""
+    airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.JAGUAR))
+    async with SolverRuntime(max_workers=1) as runtime:
+        with pytest.raises(FormulaError) as raised:
+            await OptiAdapter(runtime).steady_roll(
+                airplane, FleetMember.JAGUAR.mass_kg, 9.80665, sea_level(), 8.188976805083124, 40.0
+            )
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED
