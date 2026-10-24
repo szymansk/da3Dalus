@@ -140,3 +140,11 @@ rolling moment held at zero (`r rm 0`), aileron `d1` = 20 deg, reference point =
    the adapter compares the trimmed p̂ with `-Cld01 * delta / Clp` of the same session (10 %).
 5. **Definition.** The first reference numbers (.2800 / .2744) were the linearised ratio on a uniform mesh, the
    kernel's number is the trimmed steady roll; on the same file they differ by 0.2 - 0.4 %.
+
+6. **Independent reference.** `poetry run python scripts/sim_export/crrcsim/avl_roll_reference.py [--strips 24 48 96]`
+   re-runs the steady roll of BRYAN and JAGUAR from the fleet's JSON and contour files alone (no `aero_kernel`
+   import, own station rule, own file writer; wing, horizontal tail and fin, `CLAF` per surface). Without the
+   tails the roll is 3 - 6 % higher. Values (C_L 0.7, delta 20 deg, 24 / 48 / 96 strips per half span): BRYAN
+   0.28644 / 0.28625 / 0.28679, JAGUAR 0.27928 / 0.28042 / 0.28077; the kernel's declared mesh (24 strips) gives
+   0.28643 and 0.27927. `aero_kernel/tests/test_solvers_avl_roll_real.py` pins the kernel against the 96-strip
+   values, rel 1 %.
