@@ -86,9 +86,19 @@ def test_a_new_avl_binary_keeps_the_aerobuildup_world_cached() -> None:
 
 
 @pytest.mark.parametrize(
-    "constant", ["ALPHA_MIN_DEG", "ALPHA_MAX_DEG", "ALPHA_STEP_DEG", "BRACKET_CL"]
+    "constant",
+    [
+        "ALPHA_MIN_DEG",
+        "ALPHA_MAX_DEG",
+        "ALPHA_STEP_DEG",
+        "BRACKET_CL",
+        "V_MIN_MS",
+        "V_MAX_MACH",
+        "MAX_ITERATIONS",
+        "ACTIVE_BOUND_FRACTION",
+    ],
 )
-def test_a_changed_alpha_sweep_setting_misses_the_cache_in_the_aerobuildup_world(
+def test_a_changed_optimisation_setting_misses_the_cache_in_the_aerobuildup_world(
     monkeypatch: pytest.MonkeyPatch, constant: str
 ) -> None:
     solvers = solvers_with()
@@ -97,6 +107,6 @@ def test_a_changed_alpha_sweep_setting_misses_the_cache_in_the_aerobuildup_world
     assert node_key(solvers, "aerobuildup") != before
 
 
-def test_the_alpha_sweep_is_part_of_the_solver_settings() -> None:
+def test_the_optimisation_constants_are_part_of_the_solver_settings() -> None:
     settings = solvers_with().settings_of("OPT")
     assert settings == OPT_SETTINGS

@@ -354,7 +354,7 @@ No internal paths or mechanisms in any field (ADR 0019).
 - solver settings (e.g. the NeuralFoil model size the adapters use: `xlarge` in v1, the author's default at the knee
   of speed versus accuracy, Sharpe 2024, PhD thesis ch. 7, Table 7.1; maintainer 2026-10-22. It is a named constant of the
   OPT adapter, recorded in `solver_settings` together with its alpha sweep (`alpha_min_deg`, `alpha_max_deg`,
-  `alpha_step_deg`, `bracket_cl`), which shapes the published polar; a caller-selectable accuracy level comes only when a caller needs it. The
+  `alpha_step_deg`, `bracket_cl`), its speed bounds, iteration limit and active-bound fraction: every constant that shapes a result; a caller-selectable accuracy level comes only when a caller needs it. The
   airfoil scoring, #821, uses `xxxlarge` on purpose: it is precomputed)
 - `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 

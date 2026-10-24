@@ -76,6 +76,10 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "alpha_max_deg": 25.0,
     "alpha_step_deg": 0.25,
     "bracket_cl": 1.0,
+    "v_min_ms": 1.0,
+    "v_max_mach": 0.6,
+    "max_iterations": 300,
+    "active_bound_fraction": 1e-6,
 }
 
 

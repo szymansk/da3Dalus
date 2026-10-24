@@ -843,13 +843,17 @@ class OptiAdapter(SolverAdapter):
     }
 
     def settings(self) -> dict[str, JsonValue]:
-        """The NeuralFoil model size and the alpha sweep that shapes the published polar."""
+        """Every constant that shapes an optimisation result: model size, alpha sweep, bounds, limits."""
         return {
             "neuralfoil_model_size": NEURALFOIL_MODEL_SIZE,
             "alpha_min_deg": ALPHA_MIN_DEG,
             "alpha_max_deg": ALPHA_MAX_DEG,
             "alpha_step_deg": ALPHA_STEP_DEG,
             "bracket_cl": BRACKET_CL,
+            "v_min_ms": V_MIN_MS,
+            "v_max_mach": V_MAX_MACH,
+            "max_iterations": MAX_ITERATIONS,
+            "active_bound_fraction": ACTIVE_BOUND_FRACTION,
         }
 
     def _request(
