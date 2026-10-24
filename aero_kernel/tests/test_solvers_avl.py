@@ -164,6 +164,7 @@ def test_the_settings_are_public_keys_with_their_values() -> None:
         "avl_core_ratio": 0.25,
         "avl_refine_factor": 2,
         "avl_refinement_tolerance_mac": 0.005,
+        "avl_roll_refinement_tolerance": 0.01,
     }
 
 

@@ -10,21 +10,49 @@ The stations are uniform: the section positions of the airplane are not stations
 interpolated linearly between them. Meshing a surface at its own section breaks gives strips of very
 different widths, and AVL's neutral point then depends on them (BRYAN: a root section stored 0.25 mm
 off the centreline gave a strip across its own mirror image and moved the neutral point by 3 % MAC).
+
+The one exception is a run that drives the roll devices (``drive_roll``): the ends of every driven
+device are stations then, because AVL controls a strip only if both bounding sections declare the
+control (``amake.f:397-399``), and the uniform stations that would leave a sliver next to such an end
+are dropped. The tail takes the wing's stations inside its span as always, so a break on the wing is
+a station on the tail too and the wing's trailing vortex there never meets a tail control point.
 """
 
+import math
 from bisect import bisect_right
 from collections.abc import Callable, Sequence
+from itertools import pairwise
 
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import Airfoil, AirplaneGeometry, Wing
+from aero_kernel.graph import AILERON_ROLES
+from aero_kernel.solvers.devices import roll_deflection, roll_segments
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 from pydantic import BaseModel, ConfigDict
 
-__all__ = ["MeshSection", "MeshSurface", "mesh_surfaces"]
+__all__ = ["MeshControl", "MeshSection", "MeshSurface", "mesh_surfaces"]
 
 # A tail station closer to the tail tip than this many wing strip widths would leave a sliver strip.
 SLIVER_STEPS = 0.3
 # Stations are merged when they agree to this many decimals (metres).
 _DECIMALS = 9
+# Two positions closer than this (metres) are the same rib: the station of a device end and the rib
+# it was read from agree to rounding.
+_JOIN_TOLERANCE_M = 1e-8
+
+
+class MeshControl(BaseModel):
+    """The roll control declared on a station (AVL ``CONTROL``).
+
+    Attributes:
+        gain: Deflection per unit of the control variable, on the side as written (+y).
+        x_hinge: Hinge position as a fraction of the local chord.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    gain: float
+    x_hinge: float
 
 
 class MeshSection(BaseModel):
@@ -37,6 +65,7 @@ class MeshSection(BaseModel):
         chord: Chord in m.
         twist: Twist in degrees.
         airfoil: Index of the airfoil, as numbered by the caller's callback.
+        control: The roll control declared here, if the station lies on a driven device.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -47,6 +76,7 @@ class MeshSection(BaseModel):
     chord: float
     twist: float
     airfoil: int
+    control: MeshControl | None = None
 
 
 class MeshSurface(BaseModel):
@@ -117,8 +147,127 @@ def _section_at(
     )
 
 
+def _with_breaks(stations: list[float], breaks: Sequence[float], step: float) -> list[float]:
+    """The stations plus the breaks, minus the stations within ``SLIVER_STEPS`` steps of a break.
+
+    Breaks are never dropped. A break at either end of the span is that end station already.
+    """
+    low, high = stations[0], stations[-1]
+    inner = sorted({round(b, _DECIMALS) for b in breaks if low < b < high})
+    kept = [y for y in stations if all(abs(y - b) >= SLIVER_STEPS * abs(step) for b in inner)]
+    return sorted({*kept, *inner})
+
+
+class _Span(BaseModel):
+    """One driven segment of the oriented main-wing chain, with its hinge line."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    y_start: float
+    y_end: float
+    x_start: float
+    x_end: float
+
+
+def _driven_spans(wing_key: str, chain: Sequence[ChainPoint]) -> list[_Span]:
+    """The driven segments of the oriented chain with the absolute hinge line of each.
+
+    The hinge line of a segment runs straight from ``x_le + h c`` at its start to the same at its
+    end (AVL interpolates the same line between sections, ``amake.f:415-419``).
+
+    Raises:
+        FormulaError: ``unsupported_configuration`` (``hinge_line_discontinuous``) if two driven
+            segments meet at a rib with different hinge lines: AVL holds one value per section.
+    """
+    spans: list[_Span] = []
+    for start, end in pairwise(chain):
+        device = start.device
+        if device is None or device.role not in AILERON_ROLES:
+            continue
+        if device.hinge_start is None or device.hinge_end is None:
+            msg = "a driven device without a hinge: roll_segments must have refused it"
+            raise ValueError(msg)
+        spans.append(
+            _Span(
+                y_start=start.y,
+                y_end=end.y,
+                x_start=start.x + device.hinge_start * start.chord,
+                x_end=end.x + device.hinge_end * end.chord,
+            )
+        )
+    for before, after in pairwise(spans):
+        joined = math.isclose(before.y_end, after.y_start, abs_tol=_JOIN_TOLERANCE_M)
+        if joined and not math.isclose(before.x_end, after.x_start, abs_tol=_JOIN_TOLERANCE_M):
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "hinge_line_discontinuous",
+                f"the roll device of the wing {wing_key!r} has a hinge line with a jump at "
+                f"y = {before.y_end:.6g} m",
+                "AVL holds one hinge position per section: make the hinge line continuous",
+                detail={"wing": wing_key, "y_m": before.y_end},
+                parameter="airplane",
+            )
+    return spans
+
+
+def _device_ends(spans: Sequence[_Span]) -> list[float]:
+    """The spanwise ends of the devices: the two ends of every run of joined driven segments.
+
+    The ribs inside a device are not breaks; like all ribs they are interpolated between stations.
+    """
+    ends: list[float] = []
+    for index, span in enumerate(spans):
+        previous = spans[index - 1] if index else None
+        if previous is None or not math.isclose(
+            previous.y_end, span.y_start, abs_tol=_JOIN_TOLERANCE_M
+        ):
+            ends.append(span.y_start)
+        following = spans[index + 1] if index + 1 < len(spans) else None
+        if following is None or not math.isclose(
+            span.y_end, following.y_start, abs_tol=_JOIN_TOLERANCE_M
+        ):
+            ends.append(span.y_end)
+    return ends
+
+
+def _control_at(y: float, spans: Sequence[_Span], section: MeshSection) -> MeshControl | None:
+    """The roll control of a station: on a driven span (ends inclusive), hinge from its line."""
+    for span in spans:
+        if span.y_start - _JOIN_TOLERANCE_M <= y <= span.y_end + _JOIN_TOLERANCE_M:
+            fraction = (y - span.y_start) / (span.y_end - span.y_start)
+            x_line = span.x_start + min(max(fraction, 0.0), 1.0) * (span.x_end - span.x_start)
+            return MeshControl(
+                gain=roll_deflection(1, 1.0), x_hinge=(x_line - section.x) / section.chord
+            )
+    return None
+
+
+def _refuse_driven_device_off(wings: dict[str, Wing], main_key: str) -> None:
+    """Refuse a roll device outside the main wing: nothing would drive it in the AVL file."""
+    for key, wing in wings.items():
+        if key == main_key:
+            continue
+        for index, section in enumerate(wing.x_secs):
+            device = section.trailing_edge_device
+            if device is not None and device.role in AILERON_ROLES:
+                label = device.name or f"device {index}"
+                raise FormulaError(
+                    ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                    "unsupported_layout",
+                    f"the roll device {label!r} (role {device.role}) sits on {key!r}, not on the "
+                    "main wing",
+                    "the steady roll is driven by devices of the main wing only",
+                    detail={"wing": key, "device": label, "role": device.role},
+                    parameter="airplane",
+                )
+
+
 def mesh_surfaces(
-    airplane: AirplaneGeometry, n_wing: int, airfoil_index: Callable[[Airfoil], int]
+    airplane: AirplaneGeometry,
+    n_wing: int,
+    airfoil_index: Callable[[Airfoil], int],
+    *,
+    drive_roll: bool = False,
 ) -> tuple[MeshSurface, ...]:
     """The aligned mesh: main wing, horizontal tail, then the other surfaces by name.
 
@@ -126,12 +275,18 @@ def mesh_surfaces(
         airplane: A geometry of a supported layout (one main wing).
         n_wing: Strips over the main wing's span.
         airfoil_index: Numbers an airfoil for the adapter's coordinate files.
+        drive_roll: Whether the devices acting as aileron are driven in this run: their ends
+            become stations of the main wing (and, inside its span, of the tail) and every station
+            on a device carries a control. ``False`` is the clean mesh.
 
     Returns:
         The surfaces with their stations.
 
     Raises:
         ValueError: If there is no ``main_wing``.
+        FormulaError: ``unsupported_configuration`` for a driven device off the main wing or with
+            a discontinuous hinge line (``drive_roll`` only); the errors of
+            :func:`aero_kernel.solvers.devices.roll_segments`.
     """
     wings = list((airplane.wings or {}).values())
     mains = [w for w in wings if w.surface_type == "main_wing"]
@@ -139,6 +294,11 @@ def mesh_surfaces(
         msg = "the aligned mesh needs a main_wing"
         raise ValueError(msg)
     main = mains[0]
+    spans: list[_Span] = []
+    main_key = next(key for key, wing in (airplane.wings or {}).items() if wing is main)
+    if drive_roll:
+        roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
+        _refuse_driven_device_off(airplane.wings or {}, main_key)
     tails = [w for w in wings if w.surface_type == "horizontal_tail"]
     rest = sorted((w for w in wings if w is not main and w not in tails), key=lambda w: w.name)
 
@@ -146,12 +306,20 @@ def mesh_surfaces(
     y_root, y_tip = _root(main, main_chain), main_chain[-1].y
     step = (y_tip - y_root) / n_wing
     main_stations = _uniform(y_root, y_tip, n_wing)
+    if drive_roll:
+        spans = _driven_spans(main_key, main_chain)
+        main_stations = _with_breaks(main_stations, _device_ends(spans), step)
+
+    def main_section(y: float) -> MeshSection:
+        section = _section_at(main_chain, 1, y, airfoil_index)
+        control = _control_at(y, spans, section)
+        return section if control is None else section.model_copy(update={"control": control})
 
     surfaces = [
         MeshSurface(
             name=main.name,
             symmetric=bool(main.symmetric),
-            sections=tuple(_section_at(main_chain, 1, y, airfoil_index) for y in main_stations),
+            sections=tuple(main_section(y) for y in main_stations),
         )
     ]
     for tail in tails:

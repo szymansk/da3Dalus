@@ -12,7 +12,26 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import Airfoil, Wing
 from pydantic import BaseModel, ConfigDict
 
-__all__ = ["ChainPoint", "oriented_chain"]
+__all__ = ["ChainDevice", "ChainPoint", "oriented_chain"]
+
+
+class ChainDevice(BaseModel):
+    """The control device of the segment that starts at a chain point, in oriented order.
+
+    Attributes:
+        name: The device's name.
+        role: Its standardised role.
+        hinge_start: Hinge position (fraction of chord) at the start of the oriented segment.
+        hinge_end: Hinge position at the end of the oriented segment; the root hinge's where the
+            format gives no tip hinge (ch. 6).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str | None
+    role: str
+    hinge_start: float | None
+    hinge_end: float | None
 
 
 class ChainPoint(BaseModel):
@@ -25,6 +44,7 @@ class ChainPoint(BaseModel):
         chord: Chord in m.
         twist: Twist in degrees.
         airfoil: The section's airfoil.
+        device: The device of the segment that starts here in oriented order, if any.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -35,6 +55,7 @@ class ChainPoint(BaseModel):
     chord: float
     twist: float
     airfoil: Airfoil
+    device: ChainDevice | None = None
 
 
 def _unsupported(wing: Wing, axis_name: str) -> FormulaError:
@@ -76,13 +97,41 @@ def oriented_chain(wing: Wing, axis: int) -> list[ChainPoint]:
         )
         for s in wing.x_secs
     ]
+    stored = list(range(len(points)))
 
     def along(point: ChainPoint) -> float:
         return point.y if axis == 1 else point.z
 
-    oriented = points[::-1] if along(points[-1]) < along(points[0]) else points
-    if axis == 1 and wing.symmetric and max(map(along, oriented), key=abs) < 0.0:
-        oriented = [p.model_copy(update={"y": -p.y}) for p in oriented][::-1]
-    if any(along(outer) < along(inner) for inner, outer in pairwise(oriented)):
+    if along(points[-1]) < along(points[0]):
+        points, stored = points[::-1], stored[::-1]
+    if axis == 1 and wing.symmetric and max(map(along, points), key=abs) < 0.0:
+        points = [p.model_copy(update={"y": -p.y}) for p in points][::-1]
+        stored = stored[::-1]
+    if any(along(outer) < along(inner) for inner, outer in pairwise(points)):
         raise _unsupported(wing, "y" if axis == 1 else "z")
-    return oriented
+    return [
+        point.model_copy(update={"device": _device(wing, stored[k], stored[k + 1])})
+        if k + 1 < len(points)
+        else point
+        for k, point in enumerate(points)
+    ]
+
+
+def _device(wing: Wing, first: int, second: int) -> ChainDevice | None:
+    """The device of the segment between two stored ribs, hinges in the order of travel.
+
+    The format puts a device on the rib the segment starts at (stored order); a chain that runs
+    against the stored order meets the segment's tip end first, so its hinges swap.
+    """
+    device = wing.x_secs[min(first, second)].trailing_edge_device
+    if device is None:
+        return None
+    root = device.rel_chord_root
+    tip = root if device.rel_chord_tip is None and root is not None else device.rel_chord_tip
+    reversed_ = first > second
+    return ChainDevice(
+        name=device.name,
+        role=device.role,
+        hinge_start=tip if reversed_ else root,
+        hinge_end=root if reversed_ else tip,
+    )

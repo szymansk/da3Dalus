@@ -108,6 +108,7 @@ class TestKernelWarning:
             "control_surface_fit_range_unknown": WarningSeverity.PRACTICE,
             "fuselage_not_modelled": WarningSeverity.DEFECT,
             "avl_mesh_not_converged": WarningSeverity.DEFECT,
+            "avl_roll_rate_beyond_range": WarningSeverity.DEFECT,
             "avl_refinement_unchecked": WarningSeverity.DEFECT,
             "precondition_unchecked": WarningSeverity.PRACTICE,
             "precondition_violated": WarningSeverity.DEFECT,

@@ -246,7 +246,9 @@ nothing failed. The category enum holds only the eight rows above.
   declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
   `roll_device_on_unmirrored_surface` — a device acting as aileron sits on a wing that is not mirrored (no
   fleet aircraft has one, ADR 0021; `detail`: wing key, device label, role); `missing_hinge`
-  (`invalid_input`) — a driven roll device without `rel_chord_root`, the tool's default hinge is never used.
+  (`invalid_input`) — a driven roll device without `rel_chord_root`, the tool's default hinge is never used;
+  `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
+  value per section; `detail`: wing key, y).
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `defect` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its

@@ -96,6 +96,7 @@ CODE_CATALOGUE: Mapping[str, ErrorCategory] = {
     "missing_hinge": ErrorCategory.INVALID_INPUT,
     "unsupported_layout": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "roll_device_on_unmirrored_surface": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+    "hinge_line_discontinuous": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "avl_array_limit": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "unknown_quantity": ErrorCategory.INVALID_INPUT,
     "not_an_input": ErrorCategory.INVALID_INPUT,

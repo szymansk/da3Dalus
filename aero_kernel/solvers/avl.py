@@ -1,14 +1,16 @@
-"""The AVL adapter: the neutral point of an airplane from the vortex lattice (ARCHITECTURE ch. 8.8).
+"""The AVL adapter: the neutral point and the steady roll of an airplane (ARCHITECTURE ch. 8.8).
 
 One run of AVL at a lift coefficient on the aligned mesh of :mod:`aero_kernel.solvers.avl_mesh`, and a
 second on a mesh refined by a fixed factor as the validity check: the adapter reports the declared
 mesh's value and declares the disagreement as a ``defect`` warning (tool validity belongs to the
 adapter). It adds no regime warning of its own: those come with the minimum-drag speed and are
-inherited (#1203, M2).
+inherited (#1203, M2). The steady roll drives the devices acting as aileron on the same mesh with
+their ends as stations, about the airplane's own reference point.
 """
 
 import asyncio
 import logging
+import math
 import time
 from collections.abc import Mapping
 from typing import ClassVar
@@ -24,19 +26,22 @@ from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces
 from aero_kernel.solvers.avl_writer import (
     GEOMETRY_FILE,
     AvlOutput,
+    RollOutput,
     airfoil_file,
     airfoil_file_name,
     avl_commands,
     avl_geometry,
+    avl_roll_commands,
     parse_avl_output,
+    parse_roll_output,
 )
 from aero_kernel.solvers.base import SolverAdapter
-from aero_kernel.solvers.devices import refuse_deflected_devices
+from aero_kernel.solvers.devices import refuse_deflected_devices, roll_segments
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["AvlAdapter", "AvlNeutralPoint", "Contour"]
+__all__ = ["AvlAdapter", "AvlNeutralPoint", "AvlRoll", "Contour"]
 
 # Mesh and vortex core, from the BRYAN mesh study (scripts/sim_export/crrcsim/AVL_CONVERGENCE.md):
 # aligned strips 10 chordwise / 24 spanwise converge to 0.3 % MAC against the next finer level;
@@ -58,6 +63,17 @@ REFINEMENT_TOLERANCE_MAC = 0.005
 AIRFOIL_POINTS_PER_SIDE = 80
 # AVL's CLAF rule (avl_doc.txt): the lift-curve-slope factor 1 + 0.77 t/c.
 CLAF_PER_THICKNESS = 0.77
+# The disagreement of the two meshes above which a roll rate is declared not converged, relative to the
+# roll rate. Fixed before any measurement (maintainer decision, #1211 D8): it is the agreement asked of
+# the independent template reference, a mesh that moves p'b/2V by more is not converged for this use.
+ROLL_REFINEMENT_TOLERANCE = 0.01
+# AVL's primer gives -0.10 < pb/2V < 0.10 as the practical limit for roll rates, beyond which results
+# "should be interpreted with caution" (Avl/avl_doc.txt:121-141).
+ROLL_RATE_LIMIT = 0.10
+# AVL prints the stability-axis rolling moment with five decimals; a larger residual is a defect of ours.
+ROLL_MOMENT_TOLERANCE = 1e-5
+# The control AVL echoes must be the commanded deflection (printed with five decimals).
+CONTROL_ECHO_TOLERANCE = 1e-4
 # AVL reaches the requested lift coefficient exactly; a larger miss is a defect of ours.
 CL_TOLERANCE = 1e-4
 # The longest one AVL run may take. The measured refined 20/48 run of BRYAN and JAGUAR takes 15 s and
@@ -81,6 +97,20 @@ class AvlNeutralPoint(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     x_np: float
+    warnings: tuple[KernelWarning, ...] = ()
+
+
+class AvlRoll(BaseModel):
+    """The steady roll AVL found, and the caveats of the run.
+
+    Attributes:
+        p_hat: ``p'b/2V`` in stability axes, positive for a roll to the right.
+        warnings: Tool validity warnings (range, mesh convergence), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    p_hat: float
     warnings: tuple[KernelWarning, ...] = ()
 
 
@@ -130,6 +160,19 @@ def contour_worker(airfoils: tuple[Airfoil, ...]) -> WorkerOutcome[tuple[Contour
     return WorkerOutcome(value=tuple(contours), diagnostics=diagnostics)
 
 
+_ORIGIN = (0.0, 0.0, 0.0)
+
+
+def _unchecked_warning(what: str, n_chord: int, n_span: int) -> KernelWarning:
+    """The refinement could not be run: the mesh is beyond the solver's array limit."""
+    return KernelWarning.of(
+        "avl_refinement_unchecked",
+        f"The refined mesh is beyond the solver's array limit, so the convergence of the {what} "
+        "could not be checked.",
+        detail={"n_chord": n_chord, "n_span": n_span},
+    )
+
+
 class AvlAdapter(SolverAdapter):
     """AVL as a subprocess in the runtime.
 
@@ -145,7 +188,7 @@ class AvlAdapter(SolverAdapter):
     }
 
     def settings(self) -> dict[str, JsonValue]:
-        """The mesh, vortex core and refinement check the neutral point is computed with."""
+        """The mesh, vortex core and refinement checks AVL is run with."""
         return {
             "avl_nchord": N_CHORD,
             "avl_nspan": N_SPAN,
@@ -153,30 +196,32 @@ class AvlAdapter(SolverAdapter):
             "avl_core_ratio": CORE_RATIO,
             "avl_refine_factor": REFINE_FACTOR,
             "avl_refinement_tolerance_mac": REFINEMENT_TOLERANCE_MAC,
+            "avl_roll_refinement_tolerance": ROLL_REFINEMENT_TOLERANCE,
         }
 
     async def _contours(self, airfoils: tuple[Airfoil, ...]) -> tuple[Contour, ...]:
         """The contours and ``CLAF`` of the airfoils, computed in a pool worker."""
         return await self.runtime.run_cpu(contour_worker, airfoils)
 
-    async def _run(
+    async def _execute(
         self,
         surfaces: tuple[MeshSurface, ...],
         contours: tuple[Contour, ...],
-        n_chord: int,
-        n_span: int,
-        cl: float,
+        mesh: tuple[int, int],
+        commands: str,
         reference: MainWingProperties,
-    ) -> AvlOutput:
-        """One AVL run on one mesh.
+        xyz_ref: tuple[float, float, float],
+    ) -> str:
+        """One AVL run on one mesh; returns the output text.
 
         Raises:
             FormulaError: ``tool_unavailable``; ``unsupported_configuration`` (``avl_array_limit``)
                 if the mesh overflows AVL's vortex array.
-            RuntimeError: If AVL fails or misses the lift coefficient (a defect of ours).
+            RuntimeError: If AVL exits with an error (a defect of ours).
         """
         from avl_binary import avl_path  # the wheel is a declared requirement
 
+        n_chord, n_span = mesh
         files: dict[str, str | bytes] = {
             GEOMETRY_FILE: avl_geometry(
                 surfaces,
@@ -185,6 +230,7 @@ class AvlAdapter(SolverAdapter):
                 s_ref=reference.s_ref,
                 c_ref=reference.c_mac,
                 b_ref=reference.b_ref,
+                xyz_ref=xyz_ref,
             ),
         }
         for index, contour in enumerate(contours):
@@ -192,10 +238,7 @@ class AvlAdapter(SolverAdapter):
         try:
             async with asyncio.timeout(AVL_MAX_RUN_S):
                 run = await self.runtime.run_process(
-                    files,
-                    avl_commands(cl, CORE_RATIO),
-                    executable=avl_path(),
-                    args=(GEOMETRY_FILE,),
+                    files, commands, executable=avl_path(), args=(GEOMETRY_FILE,)
                 )
         except TimeoutError as error:
             raise ToolRunTimeoutError("the vortex lattice run", AVL_MAX_RUN_S) from error
@@ -207,13 +250,93 @@ class AvlAdapter(SolverAdapter):
                 "the airplane has too many surfaces or sections for the neutral point by AVL",
                 detail={"n_chord": n_chord, "n_span": n_span},
             )
-        output = parse_avl_output(run.stdout)
-        if run.returncode != 0 or output is None:
+        if run.returncode != 0:
             msg = f"the vortex lattice run did not complete (exit {run.returncode})"
             logger.error("%s; stdout tail: %s", msg, run.stdout[-500:])
             raise RuntimeError(msg)
+        return run.stdout
+
+    async def _run(
+        self,
+        surfaces: tuple[MeshSurface, ...],
+        contours: tuple[Contour, ...],
+        n_chord: int,
+        n_span: int,
+        cl: float,
+        reference: MainWingProperties,
+    ) -> AvlOutput:
+        """One neutral-point run on one mesh.
+
+        Raises:
+            FormulaError: As :meth:`_execute`.
+            RuntimeError: If AVL fails or misses the lift coefficient (a defect of ours).
+        """
+        stdout = await self._execute(
+            surfaces,
+            contours,
+            (n_chord, n_span),
+            avl_commands(cl, CORE_RATIO),
+            reference,
+            _ORIGIN,
+        )
+        output = parse_avl_output(stdout)
+        if output is None:
+            msg = "the vortex lattice run did not complete (no neutral point in the output)"
+            logger.error("%s; stdout tail: %s", msg, stdout[-500:])
+            raise RuntimeError(msg)
         if abs(output.cl - cl) > CL_TOLERANCE:
             msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
+            raise RuntimeError(msg)
+        return output
+
+    async def _run_roll(
+        self,
+        surfaces: tuple[MeshSurface, ...],
+        contours: tuple[Contour, ...],
+        mesh: tuple[int, int],
+        run: tuple[float, float],
+        reference: MainWingProperties,
+        xyz_ref: tuple[float, float, float],
+    ) -> RollOutput:
+        """One steady-roll run on one mesh, and the checks of the run itself.
+
+        Args:
+            surfaces: The mesh with the roll devices driven.
+            contours: The airfoil contours.
+            mesh: Chordwise and spanwise strip counts.
+            run: The lift coefficient and the aileron command in degrees.
+            reference: The kernel's reference values.
+            xyz_ref: The airplane's reference point.
+
+        Raises:
+            FormulaError: As :meth:`_execute`.
+            RuntimeError: If AVL fails, misses the lift coefficient, leaves a rolling moment or
+                echoes another control value (a defect of ours, reported as ``internal``).
+        """
+        cl, delta = run
+        stdout = await self._execute(
+            surfaces,
+            contours,
+            mesh,
+            avl_roll_commands(cl, CORE_RATIO, delta),
+            reference,
+            xyz_ref,
+        )
+        output = parse_roll_output(stdout)
+        if output is None:
+            msg = "the vortex lattice run did not complete (no steady roll in the output)"
+            logger.error("%s; stdout tail: %s", msg, stdout[-500:])
+            raise RuntimeError(msg)
+        if abs(output.cl - cl) > CL_TOLERANCE:
+            msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
+            raise RuntimeError(msg)
+        if abs(output.cl_stability) > ROLL_MOMENT_TOLERANCE:
+            msg = (
+                f"the steady roll left a rolling moment of {output.cl_stability} in stability axes"
+            )
+            raise RuntimeError(msg)
+        if abs(output.control - delta) > CONTROL_ECHO_TOLERANCE:
+            msg = f"the vortex lattice echoed the control at {output.control}, not the commanded {delta}"
             raise RuntimeError(msg)
         return output
 
@@ -256,14 +379,7 @@ class AvlAdapter(SolverAdapter):
         except FormulaError as error:
             if error.code != "avl_array_limit":
                 raise
-            warnings.append(
-                KernelWarning.of(
-                    "avl_refinement_unchecked",
-                    "The refined mesh is beyond the solver's array limit, so the convergence "
-                    "of the neutral point could not be checked.",
-                    detail={"n_chord": n_chord, "n_span": n_span},
-                )
-            )
+            warnings.append(_unchecked_warning("neutral point", n_chord, n_span))
         else:
             delta = abs(second.x_np - first.x_np) / reference.c_mac
             if delta > REFINEMENT_TOLERANCE_MAC:
@@ -284,3 +400,97 @@ class AvlAdapter(SolverAdapter):
                     )
                 )
         return AvlNeutralPoint(x_np=first.x_np, warnings=tuple(warnings))
+
+    async def steady_roll(
+        self, airplane: AirplaneGeometry, cl: float, delta_a_deg: float
+    ) -> AvlRoll:
+        """Find the steady roll at an aileron command and a lift coefficient (canon ``roll-rate``).
+
+        AVL's default axes are the stability axes, the rotation is about the airplane's reference
+        point. Runs the declared mesh and the mesh refined by ``REFINE_FACTOR`` with the ends of
+        the driven devices as stations; the declared mesh's value is returned. The result is
+        reported against the primer's range, and a disagreement of the meshes above
+        ``ROLL_REFINEMENT_TOLERANCE`` is declared.
+
+        Args:
+            airplane: The validated geometry, devices at rest, with one main wing and at least one
+                device acting as aileron.
+            cl: The lift coefficient of the operating point.
+            delta_a_deg: The aileron command in degrees, positive = roll to the right.
+
+        Returns:
+            ``p'b/2V`` and the adapter's warnings.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``invalid_input`` for a non-finite command or a
+                device without a hinge; ``unsupported_configuration`` for a deflected geometry
+                state, a roll device on an unmirrored wing or off the main wing, a discontinuous
+                hinge line, or a declared mesh that overflows AVL's array.
+            RuntimeError: If AVL fails or breaks its own checks (a defect, reported as
+                ``internal``).
+            ValueError: If the airplane has no device acting as aileron (a defect of the caller;
+                the canon's ``has_aileron`` condition prevents it).
+        """
+        self.require_available()
+        refuse_deflected_devices(airplane, "AVL")
+        if not math.isfinite(delta_a_deg):
+            raise FormulaError(
+                ErrorCategory.INVALID_INPUT,
+                "invalid_input",
+                f"delta_a = {delta_a_deg} is not admissible",
+                "give a finite aileron deflection",
+                parameter="delta_a",
+            )
+        if not roll_segments(airplane):
+            msg = "the steady roll needs a device acting as aileron"
+            raise ValueError(msg)
+        reference = main_wing_properties(airplane)
+        numbers: dict[Airfoil, int] = {}
+
+        def number(airfoil: Airfoil) -> int:
+            return numbers.setdefault(airfoil, len(numbers))
+
+        declared = mesh_surfaces(airplane, N_SPAN, number, drive_roll=True)
+        refined = mesh_surfaces(airplane, N_SPAN * REFINE_FACTOR, number, drive_roll=True)
+        contours = await self._contours(tuple(numbers))
+        xyz_ref = airplane.xyz_ref
+        first = await self._run_roll(
+            declared, contours, (N_CHORD, N_SPAN), (cl, delta_a_deg), reference, xyz_ref
+        )
+        warnings: list[KernelWarning] = []
+        if abs(first.p_hat) > ROLL_RATE_LIMIT:
+            warnings.append(
+                KernelWarning.of(
+                    "avl_roll_rate_beyond_range",
+                    "AVL's primer gives -0.10 < pb/2V < 0.10 as the practical limit for roll "
+                    "rates, beyond which results should be interpreted with caution.",
+                    detail={"p_hat": first.p_hat, "limit": ROLL_RATE_LIMIT},
+                )
+            )
+        n_chord, n_span = N_CHORD * REFINE_FACTOR, N_SPAN * REFINE_FACTOR
+        try:
+            second = await self._run_roll(
+                refined, contours, (n_chord, n_span), (cl, delta_a_deg), reference, xyz_ref
+            )
+        except FormulaError as error:
+            if error.code != "avl_array_limit":
+                raise
+            warnings.append(_unchecked_warning("roll rate", n_chord, n_span))
+        else:
+            if abs(second.p_hat - first.p_hat) > ROLL_REFINEMENT_TOLERANCE * abs(first.p_hat):
+                warnings.append(
+                    KernelWarning.of(
+                        "avl_mesh_not_converged",
+                        "The roll rate changes by more than the tolerance when the vortex "
+                        "lattice is refined; the value is mesh-dependent.",
+                        detail={
+                            "p_hat_declared": first.p_hat,
+                            "p_hat_refined": second.p_hat,
+                            "n_chord_declared": N_CHORD,
+                            "n_span_declared": N_SPAN,
+                            "n_chord_refined": n_chord,
+                            "n_span_refined": n_span,
+                        },
+                    )
+                )
+        return AvlRoll(p_hat=first.p_hat, warnings=tuple(warnings))
