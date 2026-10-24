@@ -12,10 +12,11 @@ active bound at the optimum, a missing extremum or a failed solve is an error, n
 import logging
 import math
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
+import numpy as np
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
@@ -24,7 +25,17 @@ from aero_kernel.solvers.aerobuildup import sweep_polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
 from aero_kernel.solvers.base import SolverAdapter, regime_by_wing
-from aero_kernel.solvers.devices import refuse_deflected_devices
+from aero_kernel.solvers.devices import (
+    refuse_deflected_devices,
+    roll_hinge_warnings,
+    roll_segments,
+)
+from aero_kernel.solvers.roll_math import (
+    alpha_for_lift_coefficient,
+    body_rates,
+    control_effectiveness,
+    stability_rolling_moment,
+)
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -33,12 +44,17 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "BestGlide",
     "BestGlideSolution",
+    "DeflectionDiagnostics",
     "OptiAdapter",
+    "RollRequest",
+    "RollSolution",
     "Stall",
     "StallRequest",
     "StallSolution",
+    "SteadyRoll",
     "best_glide_worker",
     "stall_worker",
+    "steady_roll_worker",
 ]
 
 # The sweep range of the canon: "the default sweep starts at -15 deg" (stall-speed.md, inverted
@@ -152,6 +168,80 @@ class Stall(BaseModel):
     warnings: tuple[KernelWarning, ...]
 
 
+class RollRequest(BaseModel):
+    """What the worker needs for the steady-roll problem; plain data, picklable.
+
+    Attributes:
+        airplane: The geometry as evaluated (devices at rest, ch. 8.11).
+        mass_kg: Aircraft mass in kg, > 0.
+        gravity: Gravity in m/s^2, > 0.
+        air: The air state.
+        v_ms: True airspeed in m/s, > 0.
+        delta_deg: The aileron command in degrees (positive = right roll, ch. 8.8).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    mass_kg: float
+    gravity: float
+    air: AirState
+    v_ms: float
+    delta_deg: float
+
+
+class DeflectionDiagnostics(BaseModel):
+    """What the deflected evaluation tells about NeuralFoil's validity (M1, ch. 8.8).
+
+    Recorded over every section of every wing, not just the ailerons'.
+
+    Attributes:
+        min_confidence: The lowest ``analysis_confidence`` of any section call.
+        min_confidence_wing: The wing key of that section.
+        max_effective_alpha_deg: The highest angle ``alpha + sum(tau * delta)`` any section saw.
+        max_effective_alpha_wing: The wing key of that section.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    min_confidence: float
+    min_confidence_wing: str
+    max_effective_alpha_deg: float
+    max_effective_alpha_wing: str
+
+
+class RollSolution(BaseModel):
+    """The solution of the steady-roll problem.
+
+    Attributes:
+        p_rad_s: The roll rate about the stability x axis in rad/s (positive = right roll).
+        alpha_deg: The angle of attack at the optimum in degrees.
+        diagnostics: The deflected evaluation's diagnostics; ``None`` for a zero command.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    p_rad_s: float
+    alpha_deg: float
+    diagnostics: DeflectionDiagnostics | None
+
+
+class SteadyRoll(BaseModel):
+    """A steady roll and the caveats of its operating point.
+
+    Attributes:
+        p_rad_s: The roll rate about the stability x axis in rad/s (positive = right roll).
+        alpha_deg: The angle of attack at the solution in degrees.
+        warnings: The caveats (averaged hinge, deflection model, regime), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    p_rad_s: float
+    alpha_deg: float
+    warnings: tuple[KernelWarning, ...]
+
+
 def _not_converged(message: str, hint: str, **detail: float | str) -> FormulaError:
     return FormulaError(
         ErrorCategory.NOT_CONVERGED, "not_converged", message, hint, detail=dict(detail)
@@ -261,6 +351,39 @@ def _bracketed(request: StallRequest) -> _Bracketed:
     )
 
 
+def _ipopt(opti: Any, what: str) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+    """Run IPOPT on a problem; the solution is read with ``solved(variable_or_expression)``.
+
+    Raises:
+        FormulaError: ``not_converged`` if IPOPT fails.
+    """
+    try:
+        return opti.solve(verbose=False, max_iter=MAX_ITERATIONS)
+    except RuntimeError as error:  # CasADi reports a failed IPOPT solve as a RuntimeError
+        raise _not_converged(
+            f"the {what} problem did not converge: {error}",
+            "check mass, wing area and the sampled angles of attack",
+            solver_error=str(error)[:200],
+        ) from error
+
+
+def _reject_active_bound(name: str, value: float, bounds: tuple[float, float], what: str) -> None:
+    """Refuse an optimum that lies on the bound of a variable (ADR 0020).
+
+    Raises:
+        FormulaError: ``not_converged`` naming the variable.
+    """
+    lower, upper = bounds
+    margin = ACTIVE_BOUND_FRACTION * (upper - lower)
+    if value - lower < margin or upper - value < margin:
+        raise _not_converged(
+            f"the optimum of the {what} problem lies on the bound of {name}",
+            "the problem has no interior solution; a value on a bound is no optimum",
+            variable=name,
+            value=value,
+        )
+
+
 def _solve(
     problem: _Bracketed,
     air: AirState,
@@ -295,28 +418,10 @@ def _solve(
     ).run()
     opti.subject_to(aero["L"] == problem.lift)
     opti.minimize(objective(speed, aero))
-    try:
-        solved = opti.solve(verbose=False, max_iter=MAX_ITERATIONS)
-    except RuntimeError as error:  # CasADi reports a failed IPOPT solve as a RuntimeError
-        raise _not_converged(
-            f"the {what} problem did not converge: {error}",
-            "check mass, wing area and the sampled angles of attack",
-            solver_error=str(error)[:200],
-        ) from error
+    solved = _ipopt(opti, what)
     v_opt, alpha_opt = float(solved(speed)), float(solved(alpha))
-    bounds = (
-        ("V", v_opt, (problem.v_low, problem.v_high)),
-        ("alpha", alpha_opt, (problem.low, problem.high)),
-    )
-    for name, value, (lower, upper) in bounds:
-        margin = ACTIVE_BOUND_FRACTION * (upper - lower)
-        if value - lower < margin or upper - value < margin:
-            raise _not_converged(
-                f"the optimum of the {what} problem lies on the bound of {name}",
-                "the problem has no interior solution; a value on a bound is no optimum",
-                variable=name,
-                value=value,
-            )
+    _reject_active_bound("V", v_opt, (problem.v_low, problem.v_high), what)
+    _reject_active_bound("alpha", alpha_opt, (problem.low, problem.high), what)
     return _Solved(speed=v_opt, alpha=alpha_opt, aero=aero, value=lambda e: float(solved(e)))
 
 
@@ -410,6 +515,201 @@ def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
+@dataclass(frozen=True)
+class _Seen:
+    """What one section call of the recording pass saw (a wing key, a confidence, an angle)."""
+
+    wing: str
+    confidence: float
+    effective_alpha: float
+
+
+def _recording_airfoil(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    base: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    wing: str,
+    seen: list[_Seen],
+) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+    """An airfoil that behaves as ``base`` and records every NeuralFoil call (M1).
+
+    AeroBuildup calls ``get_aero_from_neuralfoil`` on the airfoil of each section with the
+    section's control surfaces (``aero_buildup.py:797-806``). The call returns the net's
+    ``analysis_confidence`` (``kulfan_airfoil.py:446``); the effective angle is the one the net is
+    given: ``alpha + sum(tau * delta)`` (``kulfan_airfoil.py:216-246``).
+    """
+
+    class Recording(asb.Airfoil):  # pyright: ignore[reportUntypedBaseClass]  # untyped aerosandbox
+        """The recording subclass."""
+
+        def get_aero_from_neuralfoil(self, **kwargs: object) -> dict[str, object]:
+            # the untyped base class: its result is the net's dict of arrays
+            result = cast(
+                "dict[str, object]",
+                super().get_aero_from_neuralfoil(**kwargs),  # pyright: ignore[reportUnknownMemberType]  # untyped base
+            )
+            # AeroBuildup passes a list of ``asb.ControlSurface`` (untyped boundary)
+            surfaces = cast("Sequence[Any]", kwargs.get("control_surfaces") or [])
+            shift = sum(
+                control_effectiveness(float(surface.hinge_point)) * float(surface.deflection)
+                for surface in surfaces
+            )
+            seen.append(
+                _Seen(
+                    wing=wing,
+                    confidence=float(np.min(np.asarray(result["analysis_confidence"]))),
+                    effective_alpha=float(np.max(np.asarray(kwargs["alpha"]))) + shift,
+                )
+            )
+            return result
+
+    return Recording(name=base.name, coordinates=base.coordinates)
+
+
+def _deflection_diagnostics(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    request: RollRequest,
+    airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    solution: tuple[float, float],
+) -> DeflectionDiagnostics:
+    """One numeric AeroBuildup run at the optimum with every section's airfoil recording (M1).
+
+    Args:
+        asb: The ``aerosandbox`` module.
+        request: The problem.
+        airplane: The ``asb.Airplane`` the problem was solved on; its airfoils are replaced here.
+        solution: The optimal stability-axis roll rate in rad/s and angle of attack in degrees.
+    """
+    seen: list[_Seen] = []
+    keys = list((request.airplane.wings or {}).keys())
+    for key, wing in zip(keys, airplane.wings, strict=True):
+        for xsec in wing.xsecs:
+            xsec.airfoil = _recording_airfoil(asb, xsec.airfoil, key, seen)
+    p_s, alpha = solution
+    p_body, r_body = body_rates(p_s, alpha, asb.numpy)
+    asb.AeroBuildup(
+        airplane,
+        asb.OperatingPoint(
+            atmosphere=FixedAtmosphere(request.air),
+            velocity=request.v_ms,
+            alpha=alpha,
+            p=p_body,
+            r=r_body,
+        ),
+        model_size=NEURALFOIL_MODEL_SIZE,
+    ).run()
+    lowest = min(seen, key=lambda record: record.confidence)
+    highest = max(seen, key=lambda record: record.effective_alpha)
+    return DeflectionDiagnostics(
+        min_confidence=lowest.confidence,
+        min_confidence_wing=lowest.wing,
+        max_effective_alpha_deg=highest.effective_alpha,
+        max_effective_alpha_wing=highest.wing,
+    )
+
+
+def _roll_window(request: RollRequest) -> tuple[float, float, float]:
+    """The window of alpha on the pre-stall branch and the start value that carries the weight.
+
+    One sweep at V on the clean airplane (D9): the window ends one step past the first C_L peak,
+    the start is where the sweep reaches the C_L that carries ``m g``. The sweep is not made on
+    the rolled airplane: with the deflection the curve has kinks (the down-going section's
+    NeuralFoil curve is shifted by tau * delta) and its first local maximum lies far below the
+    stall (measured: C_L 0.364 at 1 deg against a clean peak of 1.233 at 16 deg), so it brackets
+    nothing. The window only keeps IPOPT on the physical branch; local stall under the deflection
+    is reported by the diagnostics of the deflected evaluation (M1).
+
+    Raises:
+        FormulaError: ``not_converged`` if the sweep has no peak or never carries the weight
+            before it.
+    """
+    air = request.air
+    clean = to_asb_airplane(request.airplane)
+    polar = sweep_polar(clean, air, request.v_ms, _grid(), NEURALFOIL_MODEL_SIZE)
+    peak = _bracket(polar, upright=True)
+    area = float(clean.s_ref)
+    cl_needed = request.mass_kg * request.gravity / (0.5 * air.density * request.v_ms**2 * area)
+    start = alpha_for_lift_coefficient(polar.alpha_deg, polar.cl, peak, cl_needed)
+    if start is None:
+        raise _not_converged(
+            f"the airplane cannot carry its weight at {request.v_ms} m/s before the lift "
+            f"coefficient peaks (C_L {cl_needed:.3f} needed, peak {polar.cl[peak]:.3f})",
+            "the speed is below the stall speed; give a higher speed or a lighter airplane",
+            cl_needed=cl_needed,
+            cl_peak=polar.cl[peak],
+        )
+    return ALPHA_MIN_DEG, polar.alpha_deg[peak] + ALPHA_STEP_DEG, start
+
+
+# Start value of the roll rate as a fraction of its window: a start only, not a result.
+ROLL_START_FRACTION = 0.1
+
+
+def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
+    """Solve the steady roll in the pool worker (canon ``roll-rate``).
+
+    1. One sweep at V on the clean airplane brackets the first C_L peak (D9, see
+       :func:`_roll_window`).
+    2. IPOPT finds alpha and the stability-axis roll rate ``p`` with ``L = m g`` and the
+       stability-axis rolling moment ``Cl cos(alpha) + Cn sin(alpha) = 0`` (AVL's ``RM``,
+       ``aoper.f:1120``); the body rates are ``p cos(alpha)`` and ``p sin(alpha)``; beta, q and the
+       stability-axis yaw rate are zero. ``|p b / 2V| <= 1`` is a solver window, no physical claim.
+    3. An optimum on a bound is an error (ADR 0020).
+    4. For a non-zero command, one numeric run records the diagnostics of the deflection (M1).
+
+    Args:
+        request: The problem.
+
+    Returns:
+        The solution with the worker's diagnostics.
+
+    Raises:
+        FormulaError: ``not_converged`` if the sweep has no peak, the weight cannot be carried
+            before it, the solve fails or ends on a bound.
+    """
+    started = time.perf_counter()
+    asb = load_aerosandbox()
+    airplane = to_asb_airplane(request.airplane, request.delta_deg)
+    low, high, alpha_start = _roll_window(request)
+    p_limit = 2.0 * request.v_ms / float(airplane.b_ref)
+    opti = asb.Opti()
+    alpha = opti.variable(init_guess=alpha_start, lower_bound=low, upper_bound=high)
+    p_stability = opti.variable(
+        init_guess=math.copysign(ROLL_START_FRACTION * p_limit, request.delta_deg),
+        lower_bound=-p_limit,
+        upper_bound=p_limit,
+    )
+    p_body, r_body = body_rates(p_stability, alpha, asb.numpy)
+    aero = asb.AeroBuildup(
+        airplane,
+        asb.OperatingPoint(
+            atmosphere=FixedAtmosphere(request.air),
+            velocity=request.v_ms,
+            alpha=alpha,
+            p=p_body,
+            r=r_body,
+        ),
+        model_size=NEURALFOIL_MODEL_SIZE,
+    ).run()
+    opti.subject_to(aero["L"] == request.mass_kg * request.gravity)
+    opti.subject_to(stability_rolling_moment(aero["Cl"], aero["Cn"], alpha, asb.numpy) == 0)
+    solved = _ipopt(opti, "steady-roll")
+    p_opt, alpha_opt = float(solved(p_stability)), float(solved(alpha))
+    _reject_active_bound("p", p_opt, (-p_limit, p_limit), "steady-roll")
+    _reject_active_bound("alpha", alpha_opt, (low, high), "steady-roll")
+    recorded = (
+        _deflection_diagnostics(asb, request, airplane, (p_opt, alpha_opt))
+        if abs(request.delta_deg) > 0.0
+        else None
+    )
+    solution = RollSolution(p_rad_s=p_opt, alpha_deg=alpha_opt, diagnostics=recorded)
+    diagnostics = WorkerDiagnostics(
+        duration_s=time.perf_counter() - started,
+        solver_status="Solve_Succeeded",
+        notes=(f"alpha window {low}..{high} deg, |p| window {p_limit:.3f} rad/s",),
+    )
+    return WorkerOutcome(value=solution, diagnostics=diagnostics)
+
+
 def _admissible(value: float, *, positive: bool) -> bool:
     """Whether a finite value is > 0 (``positive``) or merely not zero (a signed load factor)."""
     if not math.isfinite(value):
@@ -420,6 +720,27 @@ def _admissible(value: float, *, positive: bool) -> bool:
 def _invalid(message: str, hint: str, parameter: str) -> FormulaError:
     return FormulaError(
         ErrorCategory.INVALID_INPUT, "invalid_input", message, hint, parameter=parameter
+    )
+
+
+def _admissible_or_zero(value: float, *, positive: bool) -> bool:
+    """Whether a value is finite and > 0 (``positive``) or merely finite (a signed command)."""
+    return math.isfinite(value) and (value > 0.0 if positive else True)
+
+
+def _fit_range_warning(found: DeflectionDiagnostics) -> KernelWarning:
+    """The declared caveat of the deflection model (ch. 8.8): its fit range is unknown."""
+    return KernelWarning.of(
+        "control_surface_fit_range_unknown",
+        "AeroBuildup models the deflection as tau * delta added to the angle of attack of the "
+        "clean airfoil, with a Hoerner drag factor; the delta range of the tau fit is unknown and "
+        "flow separation is not modelled",
+        detail={
+            "min_confidence": found.min_confidence,
+            "min_confidence_wing": found.min_confidence_wing,
+            "max_effective_alpha_deg": found.max_effective_alpha_deg,
+            "max_effective_alpha_wing": found.max_effective_alpha_wing,
+        },
     )
 
 
@@ -543,3 +864,69 @@ class OptiAdapter(SolverAdapter):
         )
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
+
+    async def steady_roll(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+        delta_a_deg: float,
+    ) -> SteadyRoll:
+        """Solve the steady roll at the aileron command ``delta_a_deg`` (canon ``roll-rate``).
+
+        Args:
+            airplane: The geometry with its devices at rest (a deflected state is refused).
+            mass_kg: Mass in kg, > 0.
+            gravity: Gravity in m/s^2, > 0.
+            air: The air state.
+            v_ms: True airspeed in m/s, > 0.
+            delta_a_deg: The aileron command in degrees, positive = roll to the right.
+
+        Returns:
+            The roll rate and the caveats: the averaged hinge, the deflection model's unknown fit
+            range for a non-zero command, and the regime at V.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``invalid_input`` for an inadmissible input or a
+                roll device without a hinge; ``unsupported_configuration`` for a deflected
+                geometry state or a roll device on an unmirrored wing; ``not_converged`` as
+                :func:`steady_roll_worker`.
+            ValueError: If a non-zero command is given to an airplane without a roll device (a
+                defect of the caller; the canon's ``has_aileron`` condition prevents it).
+        """
+        self.require_available()
+        refuse_deflected_devices(airplane, "AeroBuildup")
+        for name, value, positive in (
+            ("m", mass_kg, True),
+            ("g", gravity, True),
+            ("v", v_ms, True),
+            ("delta_a", delta_a_deg, False),
+        ):
+            if not _admissible_or_zero(value, positive=positive):
+                raise _invalid(f"{name} = {value} is not admissible", f"give a valid {name}", name)
+        driven = roll_segments(airplane) if abs(delta_a_deg) > 0.0 else []
+        if abs(delta_a_deg) > 0.0 and not driven:
+            msg = "a non-zero aileron command needs a device acting as aileron"
+            raise ValueError(msg)
+        request = RollRequest(
+            airplane=airplane,
+            mass_kg=mass_kg,
+            gravity=gravity,
+            air=air,
+            v_ms=v_ms,
+            delta_deg=delta_a_deg,
+        )
+        solution = await self.runtime.run_cpu(steady_roll_worker, request)
+        warnings = [*roll_hinge_warnings(driven)]
+        if solution.diagnostics is not None:
+            warnings.append(_fit_range_warning(solution.diagnostics))
+        chords = {
+            key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
+        }
+        warnings += regime_by_wing(chords, v_ms, air.speed_of_sound, air.kinematic_viscosity)
+        logger.debug("steady roll %.4f rad/s at %.2f deg", solution.p_rad_s, solution.alpha_deg)
+        return SteadyRoll(
+            p_rad_s=solution.p_rad_s, alpha_deg=solution.alpha_deg, warnings=tuple(warnings)
+        )
