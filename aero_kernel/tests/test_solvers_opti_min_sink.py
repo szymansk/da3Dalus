@@ -135,7 +135,7 @@ async def test_the_worker_minimises_the_sink_power_drag_times_speed(
         (V_HIGH, 7.0, "V"),
         (V_LOW, 7.0, "V"),
         (9.0, opti_module.ALPHA_MIN_DEG, "alpha"),
-        (9.0, 16.0, "alpha"),  # the window's upper edge: the first peak (15.75) plus one step
+        (9.0, 15.75, "alpha"),  # the window's upper edge: the first peak itself
     ],
 )
 async def test_an_optimum_on_a_bound_is_not_converged_and_names_the_variable(

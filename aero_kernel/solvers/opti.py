@@ -349,12 +349,18 @@ class _Solved:
     value: Callable[[Any], float]
 
 
-def _bracketed(request: StallRequest) -> _Bracketed:
+def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG) -> _Bracketed:
     """Locate the first C_L extremum and the bounds of the problem (canon K32).
 
     The first extremum moves with the Reynolds number, so the bracketing sweep is made at the speed
-    a first estimate implies (one refinement, not a loop); the window of alpha is then one sweep
-    step wide beyond that extremum, and an optimum on its edge is an error.
+    a first estimate implies (one refinement, not a loop); the window of alpha then reaches
+    ``peak_margin_deg`` beyond that extremum, and an optimum on its edge is an error.
+
+    Args:
+        request: The problem.
+        peak_margin_deg: How far the window of alpha reaches past the first extremum. The stall and
+            the best glide take one sweep step, which keeps an optimum at the extremum itself
+            interior; a problem whose optimum must lie strictly before the stall takes 0.
 
     Raises:
         FormulaError: ``not_converged`` if the sweep has no extremum.
@@ -371,9 +377,9 @@ def _bracketed(request: StallRequest) -> _Bracketed:
     bracket = sweep_polar(airplane, air, v_bracket, grid, NEURALFOIL_MODEL_SIZE)
     alpha_peak = bracket.alpha_deg[_bracket(bracket, upright)]
     if upright:
-        low, high = ALPHA_MIN_DEG, alpha_peak + ALPHA_STEP_DEG
+        low, high = ALPHA_MIN_DEG, alpha_peak + peak_margin_deg
     else:
-        low, high = alpha_peak - ALPHA_STEP_DEG, ALPHA_MAX_DEG
+        low, high = alpha_peak - peak_margin_deg, ALPHA_MAX_DEG
     return _Bracketed(
         airplane=airplane,
         lift=lift,
@@ -573,10 +579,13 @@ SINK_ALPHA_FRACTION = 0.6
 def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
     """Solve the minimum-sink problem in the pool worker (canon ``minimum-sink-speed-from-polar``).
 
-    The same bracketing as the stall (the window of alpha ends one sweep step past the first
-    C_L peak), then IPOPT minimises ``D V`` subject to ``L = n m g``. At fixed weight ``D V`` is
-    proportional to the sink rate, and AeroBuildup forms the Reynolds number from ``V`` inside the
-    constraint. A bound active at the optimum is an error, never a value.
+    The same bracketing as the stall, but the window of alpha ends at the first C_L peak itself,
+    then IPOPT minimises ``D V`` subject to ``L = n m g``. At fixed weight ``D V`` is proportional
+    to the sink rate, and AeroBuildup forms the Reynolds number from ``V`` inside the constraint.
+    The peak is the end of the pre-stall branch: a polar whose sink rate is still falling there has
+    its minimum limited by the stall, not at an interior optimum, and that optimum sits on the bound
+    of alpha. A bound active at the optimum is an error, never a value (no stall-limited
+    substitute, ADR 0020).
 
     Args:
         request: The problem; ``n_load`` must be positive.
@@ -589,7 +598,7 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
             a bound.
     """
     started = time.perf_counter()
-    problem = _bracketed(request)
+    problem = _bracketed(request, peak_margin_deg=0.0)
     optimum = _solve(
         problem,
         request.air,
