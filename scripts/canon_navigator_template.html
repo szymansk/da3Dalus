@@ -186,7 +186,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 
   <div class="grp">
     <div class="lab">Layers</div>
-    <p class="sub" style="margin:0">Inputs at the top; dependency depth grows downward; at the bottom what feeds nothing else. Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them.</p>
+    <p class="sub" style="margin:0">Inputs at the top; dependency depth grows downward; at the bottom what feeds nothing else. Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them. Every quantity below the top row stands in the column of the module most of whose members it depends on; a quantity that depends only on cross-cutting modules stands in the column &#8220;cross-cutting only&#8221; next to them.</p>
   </div>
 </aside>
 
@@ -241,42 +241,72 @@ const MODORDER=Object.keys(MODULES);
 // stand in their own column on the right instead of layer 0; their edges show only on selection.
 const XCUT=new Set(['construction','mass-and-balance','atmosphere']);
 const isX=q=>XCUT.has(Q[q].module);
-const SLOTS={analysis:16, design:6}, SIDEGAP=70, SUBGAP=NH+16, HEAD=40;
-const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXMODCOLS=4;
+const SIDEGAP=70, SUBGAP=NH+16, HEAD=40;
+const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXCOLS=5;
 // XY split (maintainer 2026-10-24): the layer-0 modules run along the top, the cross-cutting
 // modules stand upright in a column on the far left, starting below the top row.
 const XW=NW+2*FPAD;
+// Columns under the top-row modules (maintainer 2026-10-24): every quantity of layers 1-6 sits
+// under the module it is most influenced by, i.e. the module with the most members among its
+// transitive inputs. A quantity that depends on no top-row module (only on cross-cutting ones)
+// goes to the column "cross-cutting only". Ties go to the first module in reading order.
+const NONE='~none';
+const ancestors={};
+function anc(q){ if(ancestors[q]) return ancestors[q]; const s=new Set();
+  for(const [a] of pred[q]){ s.add(a); for(const x of anc(a)) s.add(x); } return ancestors[q]=s; }
+const TOPMODS={analysis:[],design:[]};
+for(const m of MODORDER){ if(XCUT.has(m)) continue;
+  for(const side of ['analysis','design'])
+    if(ORDER[0].some(q=>Q[q].module===m&&SIDE(q)===side)) TOPMODS[side].push(m); }
+// targets first (left), then inputs
+for(const side in TOPMODS) TOPMODS[side].sort((a,b)=>{
+  const ta=ORDER[0].some(q=>Q[q].module===a&&TARGETS.has(q)), tb=ORDER[0].some(q=>Q[q].module===b&&TARGETS.has(q));
+  return tb-ta; });
+const COLOF={};
+for(const l of layers){ if(l===0) continue;
+  for(const q of ORDER[l]){ if(isX(q)) continue;
+    const side=SIDE(q), A=anc(q); let best=NONE, bestN=0;
+    for(const m of TOPMODS[side]){ const n=ORDER[0].filter(x=>Q[x].module===m&&A.has(x)).length; if(n>bestN){best=m;bestN=n;} }
+    COLOF[q]=best; } }
+// Column widths: enough for the module's own frame and its widest layer, at most MAXCOLS.
+const COLS=[];
+for(const side of ['analysis','design']){
+  const mods=[...TOPMODS[side]];
+  // next to the cross-cutting column it depends on
+  if(Object.keys(COLOF).some(q=>SIDE(q)===side&&COLOF[q]===NONE)) mods.unshift(NONE);
+  for(const m of mods){
+    const top=ORDER[0].filter(q=>Q[q].module===m&&SIDE(q)===side).length;
+    let widest=0; for(const l of layers){ if(l===0) continue;
+      widest=Math.max(widest,ORDER[l].filter(q=>!isX(q)&&SIDE(q)===side&&COLOF[q]===m).length); }
+    COLS.push({side,module:m,cols:Math.max(1,Math.min(MAXCOLS,Math.max(top,widest)))});
+  }
+}
 const SX={xcut:0};
-SX.analysis=XW+SIDEGAP;
-SX.design=SX.analysis+SLOTS.analysis*slotW-GAPX+SIDEGAP;
-const W=SX.design+SLOTS.design*slotW-GAPX;
-const P={}, LY={}, FRAMES=[], frameEls=[];
+{ let x=XW+SIDEGAP, prev=null;
+  for(const c of COLS){
+    if(prev&&prev!==c.side) x+=SIDEGAP-MODGAP;
+    if(prev!==c.side) SX[c.side]=x;
+    c.x=x; c.w=c.cols*slotW-GAPX+2*FPAD; x+=c.w+MODGAP; prev=c.side; }
+}
+const W=Math.max(...COLS.map(c=>c.x+c.w));
+const P={}, LY={}, FRAMES=[], frameEls=[], COLHEADS=[];
 let yc=HEAD;
 for(const l of layers){
   LY[l]=yc; let height=NH;
-  for(const side of ['analysis','design']){
-    const all=ORDER[l].filter(q=>SIDE(q)===side&&!isX(q));
-    if(!all.length) continue;
-    if(l>0){
-      const cols=SLOTS[side];
-      all.forEach((q,i)=>{ P[q]={x:SX[side]+(i%cols)*slotW, y:yc+Math.floor(i/cols)*SUBGAP}; });
-      height=Math.max(height,(Math.ceil(all.length/cols)-1)*SUBGAP+NH);
+  for(const c of COLS){
+    const qs = l===0 ? ORDER[0].filter(q=>!isX(q)&&SIDE(q)===c.side&&Q[q].module===c.module)
+                     : ORDER[l].filter(q=>!isX(q)&&SIDE(q)===c.side&&COLOF[q]===c.module);
+    if(l===0){
+      if(c.module===NONE){ COLHEADS.push({x:c.x,y:yc+FHEAD-7,label:'Cross-cutting only'}); continue; }
+      if(!qs.length) continue;
+      const rows=Math.ceil(qs.length/c.cols), fh=(rows-1)*SUBGAP+NH+2*FPAD, y=yc+FHEAD;
+      qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:y+FPAD+Math.floor(i/c.cols)*SUBGAP}; });
+      FRAMES.push({module:c.module,label:MODULES[c.module],x:c.x,y,w:c.w,h:fh,target:TARGETS.has(qs[0])});
+      height=Math.max(height,FHEAD+fh);
       continue;
     }
-    // Layer 0: framed modules, targets first.
-    const mods=MODORDER.map(m=>[m,all.filter(q=>Q[q].module===m)]).filter(x=>x[1].length);
-    mods.sort((a,b)=>(TARGETS.has(b[1][0])-TARGETS.has(a[1][0])));
-    const right=SX[side]+SLOTS[side]*slotW-GAPX;
-    let x=SX[side], y=yc+FHEAD, lineH=0;
-    for(const [m,qs] of mods){
-      const cols=Math.min(MAXMODCOLS,qs.length,SLOTS[side]), rows=Math.ceil(qs.length/cols);
-      const fw=cols*slotW-GAPX+2*FPAD, fh=(rows-1)*SUBGAP+NH+2*FPAD;
-      if(x>SX[side] && x+fw>right+FPAD){ x=SX[side]; y+=lineH+MODGAP+FHEAD; lineH=0; }
-      qs.forEach((q,i)=>{ P[q]={x:x+FPAD+(i%cols)*slotW, y:y+FPAD+Math.floor(i/cols)*SUBGAP}; });
-      FRAMES.push({module:m,label:MODULES[m],x,y,w:fw,h:fh,target:TARGETS.has(qs[0])});
-      lineH=Math.max(lineH,fh); x+=fw+MODGAP;
-    }
-    height=Math.max(height,y+lineH-yc);
+    qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:yc+Math.floor(i/c.cols)*SUBGAP}; });
+    if(qs.length) height=Math.max(height,(Math.ceil(qs.length/c.cols)-1)*SUBGAP+NH);
   }
   yc+=height-NH+GAPY;
 }
@@ -310,6 +340,7 @@ for(const l of layers){
   for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
+  for(const h of COLHEADS){ const t=el('text',{x:h.x,y:h.y,class:'blocklab'}); t.textContent=h.label; cam.appendChild(t); }
   for(const f of FRAMES){
     const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select module '+f.label});
     const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')});
