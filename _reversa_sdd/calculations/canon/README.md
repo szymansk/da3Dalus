@@ -473,7 +473,8 @@ sets), `operating-point` (the free variables of a flight state), `envelope-targe
 operating point or bound the envelope), `design-targets` (targets a design entry turns into a construction
 quantity). A new input or target needs its module tag; the navigator build refuses one without. `construction`, `mass-and-balance` and `atmosphere` are
 **cross-cutting**: nearly every formula depends on them (maintainer, 2026-10-24); the navigator draws
-them in their own column and shows their edges only on selection.
+them upright in a column on the far left, below the top row of layer-0 modules (an XY split), and
+shows their edges only on selection.
 
 The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `status`, `uncertainty`, `tags`)
 stay. Added:

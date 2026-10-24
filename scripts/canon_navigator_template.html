@@ -186,7 +186,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 
   <div class="grp">
     <div class="lab">Layers</div>
-    <p class="sub" style="margin:0">Inputs at the top; dependency depth grows downward; at the bottom what feeds nothing else. Cross-cutting modules (construction, mass and balance, atmosphere) stand in their own column on the right; their edges show only when they are selected.</p>
+    <p class="sub" style="margin:0">Inputs at the top; dependency depth grows downward; at the bottom what feeds nothing else. Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them.</p>
   </div>
 </aside>
 
@@ -243,10 +243,13 @@ const XCUT=new Set(['construction','mass-and-balance','atmosphere']);
 const isX=q=>XCUT.has(Q[q].module);
 const SLOTS={analysis:16, design:6}, SIDEGAP=70, SUBGAP=NH+16, HEAD=40;
 const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXMODCOLS=4;
-const XSLOTS=3;
-const SX={analysis:0, design:SLOTS.analysis*slotW-GAPX+SIDEGAP};
-SX.xcut=SX.design+SLOTS.design*slotW-GAPX+SIDEGAP;
-const W=SX.xcut+XSLOTS*slotW-GAPX;
+// XY split (maintainer 2026-10-24): the layer-0 modules run along the top, the cross-cutting
+// modules stand upright in a column on the far left, starting below the top row.
+const XW=NW+2*FPAD;
+const SX={xcut:0};
+SX.analysis=XW+SIDEGAP;
+SX.design=SX.analysis+SLOTS.analysis*slotW-GAPX+SIDEGAP;
+const W=SX.design+SLOTS.design*slotW-GAPX;
 const P={}, LY={}, FRAMES=[], frameEls=[];
 let yc=HEAD;
 for(const l of layers){
@@ -277,14 +280,15 @@ for(const l of layers){
   }
   yc+=height-NH+GAPY;
 }
-// The cross-cutting column: one framed module under the other, from the top.
-{ let y=HEAD+FHEAD;
+// The cross-cutting column: upright framed modules, one node per row, below the top row.
+const XTOP=(layers.length>1?LY[layers[1]]:yc)-GAPY/2;
+{ let y=XTOP+FHEAD;
   for(const m of MODORDER.filter(m=>XCUT.has(m))){
     const qs=Object.keys(Q).filter(q=>Q[q].module===m).sort();
     if(!qs.length) continue;
-    const cols=Math.min(XSLOTS,qs.length), rows=Math.ceil(qs.length/cols);
-    const fw=cols*slotW-GAPX+2*FPAD, fh=(rows-1)*SUBGAP+NH+2*FPAD;
-    qs.forEach((q,i)=>{ P[q]={x:SX.xcut+FPAD+(i%cols)*slotW, y:y+FPAD+Math.floor(i/cols)*SUBGAP}; });
+    const rows=qs.length;
+    const fw=XW, fh=(rows-1)*SUBGAP+NH+2*FPAD;
+    qs.forEach((q,i)=>{ P[q]={x:SX.xcut+FPAD, y:y+FPAD+i*SUBGAP}; });
     FRAMES.push({module:m,label:MODULES[m],x:SX.xcut,y,w:fw,h:fh,target:false});
     y+=fh+MODGAP+FHEAD;
   }
@@ -296,13 +300,16 @@ const NS='http://www.w3.org/2000/svg';
 const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
 
 for(const l of layers){
-  const t=el('text',{x:-26,y:LY[l]+NH/2,class:'laylab','dominant-baseline':'middle','text-anchor':'end'});
+  const t=el('text',{x:SX.analysis-8,y:LY[l]+NH/2,class:'laylab','dominant-baseline':'middle','text-anchor':'end'});
   t.textContent='L'+l; cam.appendChild(t);
 }
-{ for(const dx of [SX.design-SIDEGAP/2, SX.xcut-SIDEGAP/2])
-    cam.appendChild(el('line',{x1:dx,y1:6,x2:dx,y2:H+10,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
-  for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)'],['xcut','Cross-cutting']]){
+{ const line=(x1,y1,x2,y2)=>cam.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
+  line(SX.design-SIDEGAP/2,6,SX.design-SIDEGAP/2,H+10);
+  line(SX.analysis-SIDEGAP/2,XTOP-14,SX.analysis-SIDEGAP/2,H+10);
+  line(SX.xcut,XTOP-14,W,XTOP-14);
+  for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
+  { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
   for(const f of FRAMES){
     const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select module '+f.label});
     const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')});
@@ -315,9 +322,15 @@ for(const l of layers){
 const edgeEls=[];
 for(const [a,b,f] of D.edges){
   const p1=P[a], p2=P[b];
-  const x1=p1.x+NW/2, y1=p1.y+NH, x2=p2.x+NW/2, y2=p2.y;
-  const dy=Math.max(18,(y2-y1)/2);
-  const e=el('path',{class:'edge'+(isX(a)?' xedge':''),d:`M${x1},${y1} C${x1},${y1+dy} ${x2},${y2-dy} ${x2},${y2}`});
+  let d;
+  if(isX(a)){ // from the right side of a cross-cutting node into the left side of its consumer
+    const x1=p1.x+NW, y1=p1.y+NH/2, x2=p2.x, y2=p2.y+NH/2, dx=Math.max(30,(x2-x1)/2);
+    d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
+  } else {
+    const x1=p1.x+NW/2, y1=p1.y+NH, x2=p2.x+NW/2, y2=p2.y, dy=Math.max(18,(y2-y1)/2);
+    d=`M${x1},${y1} C${x1},${y1+dy} ${x2},${y2-dy} ${x2},${y2}`;
+  }
+  const e=el('path',{class:'edge'+(isX(a)?' xedge':''),d});
   cam.appendChild(e); edgeEls.push({e,a,b});
 }
 function sym(q){
