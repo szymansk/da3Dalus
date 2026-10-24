@@ -712,6 +712,33 @@ caller's responsibility.
     `avl-binary` and `aerosandbox`. The AVL world adds no regime warning: those come with the
     minimum-drag speed and are inherited. The reference value for BRYAN under these conditions is in
     `scripts/sim_export/crrcsim/AVL_CONVERGENCE.md`.
+  - **The steady roll** (`opti.steady_roll`, `avl.steady_roll`, #1211). Both worlds solve the same roll: rotation
+    about the stability x axis through the airplane's reference point, the stability-axis rolling moment zero,
+    positive to the right.
+    - *One orientation rule.* `to_asb_airplane` builds a mirrored surface from `surface_chain.oriented_chain`
+      (y ≥ 0, root first), as the AVL writer does, so the sign helper sees the written side +1 in both tools.
+      Before #1211 ASB received the surface as stored, and a mirrored wing stored on −y or tip first was a
+      different wing to AeroBuildup (BRYAN, clean: C_D 0.246 against 0.070): a latent defect, fixed here and
+      pinned by an aero test on the clean airplane.
+    - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
+      one sweep on the **clean** (unrolled) airplane: with the deflection the curve has kinks and its first
+      local maximum lies far below the stall (trainer: C_L 0.364 at 1° against a clean peak of 1.233 at 16°),
+      so a sweep on the rolled airplane brackets nothing. The window only keeps IPOPT on the physical branch;
+      local stall under the deflection is reported by the diagnostics of the deflected evaluation. The
+      `α + τδ` it reports is the shift before NeuralFoil's 360° blend (which uses the unshifted angle for its
+      post-stall weight); the τ pin uses `include_360_deg_effects=False` for that reason.
+    - *AVL.* The controlled wing is split at the hinge line into a front and an aft SURFACE of one COMPONENT on
+      the same span stations (Drela's rule 3, `avl_doc.txt:1110-1117`): front `AFIL 0..x_h`, aft `AFIL x_h..1`,
+      the CONTROL on the aft piece with its hinge at the aft leading edge (`amake.f:418-423`), so the deflected
+      part is the whole aft strip. The aft leading edge is at `x_le + x_h c` with z unchanged (AVL tilts the
+      normals, it never rotates the lattice). Off the device the cut is the hinge fraction of the nearest
+      controlled station. Declared chordwise counts: front 12, aft 8 (`SPLIT_N_CHORD`); the refinement check
+      doubles them and the spanwise count. Reason: on one full-chord surface the control derivative at the
+      hinge carries an O(1/N_chord) discretisation error (a camber-slope jump), 4.5 % (BRYAN) and 7.5 %
+      (JAGUAR) between the declared and the refined mesh, and aligning the hinge with a panel edge does not
+      cure it. The clean file (neutral point) is unchanged. AVL's chordwise limit is 50 vortices per surface
+      (`KCMAX`, `amake.f:55`); above it AVL prints an array overflow and returns zero: the adapter refuses
+      it as `avl_array_limit` (a refined mesh beyond it is `avl_refinement_unchecked`).
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
     the quantity of the node whose call produced them.
 - Data: KAT (the fitted components) and APC (the fitted propeller's measured table) are **plain reads of

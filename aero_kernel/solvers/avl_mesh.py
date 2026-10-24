@@ -30,7 +30,7 @@ from aero_kernel.solvers.devices import roll_deflection, roll_segments
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 from pydantic import BaseModel, ConfigDict
 
-__all__ = ["MeshControl", "MeshSection", "MeshSurface", "mesh_surfaces"]
+__all__ = ["MeshControl", "MeshSection", "MeshSurface", "mesh_surfaces", "split_at_hinge"]
 
 # A tail station closer to the tail tip than this many wing strip widths would leave a sliver strip.
 SLIVER_STEPS = 0.3
@@ -66,6 +66,8 @@ class MeshSection(BaseModel):
         twist: Twist in degrees.
         airfoil: Index of the airfoil, as numbered by the caller's callback.
         control: The roll control declared here, if the station lies on a driven device.
+        chord_range: The part of the airfoil this piece of a split surface carries, as fractions
+            of the chord (AVL ``AFIL x_min x_max``); ``None`` for the whole contour.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -77,6 +79,7 @@ class MeshSection(BaseModel):
     twist: float
     airfoil: int
     control: MeshControl | None = None
+    chord_range: tuple[float, float] | None = None
 
 
 class MeshSurface(BaseModel):
@@ -86,6 +89,9 @@ class MeshSurface(BaseModel):
         name: Surface name.
         symmetric: Whether AVL mirrors it about y = 0.
         sections: Stations, root first, one strip per neighbouring pair.
+        n_chord: Chordwise vortices of this surface; ``None`` takes the run's count.
+        component: AVL ``COMPONENT``: surfaces of one component share their wake and the strips
+            of their stations (the pieces of a split surface); ``None`` for a surface of its own.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -93,6 +99,8 @@ class MeshSurface(BaseModel):
     name: str
     symmetric: bool
     sections: tuple[MeshSection, ...]
+    n_chord: int | None = None
+    component: int | None = None
 
 
 def _interp(position: Sequence[float], values: Sequence[float], at: float) -> float:
@@ -262,6 +270,73 @@ def _refuse_driven_device_off(wings: dict[str, Wing], main_key: str) -> None:
                 )
 
 
+def split_at_hinge(
+    surface: MeshSurface, n_chord: tuple[int, int]
+) -> tuple[MeshSurface, MeshSurface]:
+    """Split a driven surface at its hinge line into a front and an aft surface (Drela's rule 3).
+
+    Both pieces have the same stations, so the strips agree (``avl_doc.txt:1110-1117``: same
+    component, same spanwise spacing). The split fraction of a station is the hinge position of its
+    control; a station off the devices takes the one of the nearest controlled station, a cut that
+    is continuous and otherwise immaterial. The aft piece starts at the hinge with the leading-edge
+    z unchanged (AVL tilts the normals by the incidence, it does not rotate the lattice,
+    ``amake.f:497-511``) and carries the control with its hinge at its own leading edge, so the
+    deflected part is the whole aft strip (``amake.f:418-423``).
+
+    Args:
+        surface: The driven surface with controls on its device stations.
+        n_chord: Chordwise vortices of the front and the aft surface.
+
+    Returns:
+        The front and the aft surface.
+    """
+    controlled = [(s.y, s.control.x_hinge) for s in surface.sections if s.control is not None]
+
+    def split_of(section: MeshSection) -> float:
+        if section.control is not None:
+            return section.control.x_hinge
+        return min(controlled, key=lambda c: abs(c[0] - section.y))[1]
+
+    front: list[MeshSection] = []
+    aft: list[MeshSection] = []
+    for section in surface.sections:
+        cut = split_of(section)
+        front.append(
+            section.model_copy(
+                update={"chord": cut * section.chord, "control": None, "chord_range": (0.0, cut)}
+            )
+        )
+        control = None
+        if section.control is not None:
+            control = MeshControl(gain=section.control.gain, x_hinge=0.0)
+        aft.append(
+            section.model_copy(
+                update={
+                    "x": section.x + cut * section.chord,
+                    "chord": (1.0 - cut) * section.chord,
+                    "control": control,
+                    "chord_range": (cut, 1.0),
+                }
+            )
+        )
+    return (
+        MeshSurface(
+            name=f"{surface.name} front",
+            symmetric=surface.symmetric,
+            sections=tuple(front),
+            n_chord=n_chord[0],
+            component=1,
+        ),
+        MeshSurface(
+            name=f"{surface.name} aft",
+            symmetric=surface.symmetric,
+            sections=tuple(aft),
+            n_chord=n_chord[1],
+            component=1,
+        ),
+    )
+
+
 def mesh_surfaces(
     airplane: AirplaneGeometry,
     n_wing: int,
@@ -277,7 +352,8 @@ def mesh_surfaces(
         airfoil_index: Numbers an airfoil for the adapter's coordinate files.
         drive_roll: Whether the devices acting as aileron are driven in this run: their ends
             become stations of the main wing (and, inside its span, of the tail) and every station
-            on a device carries a control. ``False`` is the clean mesh.
+            on a device carries a control. ``False`` is the clean mesh. The main wing is the first
+            surface; :func:`split_at_hinge` splits it for the run.
 
     Returns:
         The surfaces with their stations.

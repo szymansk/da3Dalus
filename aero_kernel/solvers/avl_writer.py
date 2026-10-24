@@ -142,8 +142,10 @@ def avl_geometry(
             "SURFACE",
             surface.name,
             "#Nchordwise  Cspace",
-            f"{n_chord}   {_CHORD_SPACING}",
+            f"{surface.n_chord or n_chord}   {_CHORD_SPACING}",
         ]
+        if surface.component is not None:
+            lines += ["COMPONENT", f"{surface.component}"]
         if surface.symmetric:
             lines += ["YDUPLICATE", "0.0"]
         for section in surface.sections:
@@ -151,7 +153,9 @@ def avl_geometry(
                 "SECTION",
                 "#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace",
                 f"{section.x!r} {section.y!r} {section.z!r} {section.chord!r} {section.twist!r}   {_STRIP}",
-                "AFIL",
+                "AFIL"
+                if section.chord_range is None
+                else "AFIL {} {}".format(*section.chord_range),
                 airfoil_file_name(section.airfoil),
                 "CLAF",
                 f"{claf[section.airfoil]!r}",

@@ -65,7 +65,7 @@ def fake(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     script.write_text(SCRIPT.format(python=sys.executable))
     script.chmod(script.stat().st_mode | stat.S_IEXEC)
     monkeypatch.setattr("avl_binary.avl_path", lambda: script, raising=False)
-    configure(tmp_path, {"10": 0.05, "20": 0.05})
+    configure(tmp_path, {"12": 0.05, "24": 0.05})
     return tmp_path
 
 
@@ -95,7 +95,7 @@ async def test_roll_file_and_commands_reach_avl(fake: Path) -> None:
     its commands constrain C_L and the rolling moment and set d1."""
     await roll(cl=0.62, delta=-12.5)
     seen = json.loads((fake / "seen.json").read_text())
-    assert seen["n_chord"] == 20
+    assert seen["n_chord"] == 24
     assert "a c 0.62\nr rm 0\nd1 d1 -12.5\nx\n" in seen["commands"]
     lines = seen["geometry"].splitlines()
     assert lines[lines.index("#Xref    Yref    Zref") + 1] == "0.05 0.0 0.01"
@@ -106,7 +106,7 @@ async def test_roll_file_and_commands_reach_avl(fake: Path) -> None:
 async def test_a_disagreement_above_one_percent_is_a_defect_warning_with_both_values(
     fake: Path,
 ) -> None:
-    configure(fake, {"10": 0.05, "20": 0.05 * 1.012})
+    configure(fake, {"12": 0.05, "24": 0.05 * 1.012})
     found = await roll()
     (warning,) = found.warnings
     assert (warning.code, warning.severity) == ("avl_mesh_not_converged", WarningSeverity.DEFECT)
@@ -117,9 +117,9 @@ async def test_a_disagreement_above_one_percent_is_a_defect_warning_with_both_va
 
 @pytest.mark.asyncio
 async def test_roll_refinement_warning_and_unchecked(fake: Path) -> None:
-    configure(fake, {"10": 0.05, "20": 0.05 * 1.009})
+    configure(fake, {"12": 0.05, "24": 0.05 * 1.009})
     assert (await roll()).warnings == ()
-    configure(fake, {"10": 0.05}, overflow=["20"])
+    configure(fake, {"12": 0.05}, overflow=["24"])
     found = await roll()
     (warning,) = found.warnings
     assert (warning.code, warning.severity) == ("avl_refinement_unchecked", WarningSeverity.DEFECT)
@@ -128,7 +128,7 @@ async def test_roll_refinement_warning_and_unchecked(fake: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_roll_beyond_primer_range_is_defect_warning(fake: Path) -> None:
-    configure(fake, {"10": 0.276, "20": 0.276})
+    configure(fake, {"12": 0.276, "24": 0.276})
     found = await roll()
     (warning,) = found.warnings
     assert (warning.code, warning.severity) == (
@@ -141,27 +141,27 @@ async def test_roll_beyond_primer_range_is_defect_warning(fake: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_a_negative_roll_beyond_the_range_warns_too(fake: Path) -> None:
-    configure(fake, {"10": -0.15, "20": -0.15})
+    configure(fake, {"12": -0.15, "24": -0.15})
     assert [w.code for w in (await roll(delta=-DELTA)).warnings] == ["avl_roll_rate_beyond_range"]
 
 
 @pytest.mark.asyncio
 async def test_roll_moment_not_zero_is_internal(fake: Path) -> None:
-    configure(fake, {"10": 0.05, "20": 0.05}, cl_stab=0.001)
+    configure(fake, {"12": 0.05, "24": 0.05}, cl_stab=0.001)
     with pytest.raises(RuntimeError, match="rolling moment"):
         await roll()
 
 
 @pytest.mark.asyncio
 async def test_cl_mismatch_is_internal(fake: Path) -> None:
-    configure(fake, {"10": 0.05, "20": 0.05}, cl_offset=0.01)
+    configure(fake, {"12": 0.05, "24": 0.05}, cl_offset=0.01)
     with pytest.raises(RuntimeError, match="not the requested"):
         await roll()
 
 
 @pytest.mark.asyncio
 async def test_control_echo_mismatch_is_internal(fake: Path) -> None:
-    configure(fake, {"10": 0.05, "20": 0.05}, echo_offset=0.5)
+    configure(fake, {"12": 0.05, "24": 0.05}, echo_offset=0.5)
     with pytest.raises(RuntimeError, match="echoed the control"):
         await roll()
 
@@ -175,7 +175,7 @@ async def test_an_output_without_the_roll_is_internal(fake: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_a_declared_mesh_that_overflows_is_an_array_limit_error(fake: Path) -> None:
-    configure(fake, {}, overflow=["10"])
+    configure(fake, {}, overflow=["12"])
     with pytest.raises(FormulaError) as raised:
         await roll()
     assert raised.value.code == "avl_array_limit"
@@ -240,3 +240,38 @@ async def test_a_non_finite_command_is_invalid_input(fake: Path, delta: float) -
 def test_roll_settings_public_keys() -> None:
     settings: dict[str, Any] = AvlAdapter(SolverRuntime()).settings()
     assert settings["avl_roll_refinement_tolerance"] == 0.01
+
+
+@pytest.mark.asyncio
+async def test_the_wing_reaches_avl_as_a_front_and_an_aft_surface(fake: Path) -> None:
+    """Declared mesh: front 12, aft 8 chordwise vortices; the last (refined) run doubles both."""
+    await roll()
+    geometry = json.loads((fake / "seen.json").read_text())["geometry"]
+    lines = geometry.splitlines()
+    names = [lines[i + 1] for i, line in enumerate(lines) if line == "SURFACE"]
+    counts = [lines[i + 1] for i, line in enumerate(lines) if line == "#Nchordwise  Cspace"]
+    assert names == ["Main front", "Main aft"]
+    assert counts == ["24   1", "16   1"]
+
+
+@pytest.mark.asyncio
+async def test_more_than_fifty_chordwise_vortices_on_one_surface_are_refused(
+    fake: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AVL's KCMAX: above 50 it prints an array overflow and returns a zero roll without an error."""
+    monkeypatch.setattr("aero_kernel.solvers.avl.SPLIT_N_CHORD", (51, 8))
+    with pytest.raises(FormulaError) as raised:
+        await roll()
+    assert raised.value.code == "avl_array_limit"
+    assert raised.value.detail["n_chord"] == 51
+
+
+@pytest.mark.asyncio
+async def test_a_refined_mesh_beyond_fifty_is_unchecked_not_wrong(
+    fake: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("aero_kernel.solvers.avl.SPLIT_N_CHORD", (26, 8))
+    configure(fake, {"26": 0.05})
+    found = await roll()
+    assert found.p_hat == 0.05
+    assert [w.code for w in found.warnings] == ["avl_refinement_unchecked"]

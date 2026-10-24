@@ -22,7 +22,7 @@ from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 from aero_kernel.solvers.avl_contour import repanel
-from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces
+from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces, split_at_hinge
 from aero_kernel.solvers.avl_writer import (
     GEOMETRY_FILE,
     AvlOutput,
@@ -50,6 +50,14 @@ __all__ = ["AvlAdapter", "AvlNeutralPoint", "AvlRoll", "Contour"]
 N_CHORD = 10
 N_SPAN = 24
 CORE_RATIO = 0.25
+# A steady roll splits the controlled wing at the hinge into a front and an aft surface (Drela's rule 3,
+# avl_doc.txt:1110-1117): the discretisation error of the control derivative at the hinge falls like
+# 1/N_chord otherwise (BRYAN and JAGUAR: 4.5 % and 7.5 % between the declared and the refined mesh), and
+# aligning the hinge with a panel edge does not cure it. Chordwise vortices of the front and the aft piece.
+SPLIT_N_CHORD = (12, 8)
+# AVL's chordwise limit per surface (KCMAX, amake.f:55): above it AVL prints "MAKESURF: Array overflow"
+# and returns zero without an error.
+AVL_MAX_CHORD_VORTICES = 50
 # The check run uses this factor on both counts. 40/96 overflows AVL's vortex array on BRYAN.
 REFINE_FACTOR = 2
 # The disagreement of the two meshes above which the value is declared not converged, in mean
@@ -222,6 +230,16 @@ class AvlAdapter(SolverAdapter):
         from avl_binary import avl_path  # the wheel is a declared requirement
 
         n_chord, n_span = mesh
+        widest = max(surface.n_chord or n_chord for surface in surfaces)
+        if widest > AVL_MAX_CHORD_VORTICES:
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "avl_array_limit",
+                f"{widest} chordwise vortices on one surface are beyond the solver's limit of "
+                f"{AVL_MAX_CHORD_VORTICES}",
+                "the chordwise resolution of the vortex lattice is limited by the solver",
+                detail={"n_chord": widest, "n_span": n_span},
+            )
         files: dict[str, str | bytes] = {
             GEOMETRY_FILE: avl_geometry(
                 surfaces,
@@ -450,8 +468,14 @@ class AvlAdapter(SolverAdapter):
         def number(airfoil: Airfoil) -> int:
             return numbers.setdefault(airfoil, len(numbers))
 
-        declared = mesh_surfaces(airplane, N_SPAN, number, drive_roll=True)
-        refined = mesh_surfaces(airplane, N_SPAN * REFINE_FACTOR, number, drive_roll=True)
+        refined_split = (SPLIT_N_CHORD[0] * REFINE_FACTOR, SPLIT_N_CHORD[1] * REFINE_FACTOR)
+
+        def driven(n_span: int, split: tuple[int, int]) -> tuple[MeshSurface, ...]:
+            main, *others = mesh_surfaces(airplane, n_span, number, drive_roll=True)
+            return (*split_at_hinge(main, split), *others)
+
+        declared = driven(N_SPAN, SPLIT_N_CHORD)
+        refined = driven(N_SPAN * REFINE_FACTOR, refined_split)
         contours = await self._contours(tuple(numbers))
         xyz_ref = airplane.xyz_ref
         first = await self._run_roll(
