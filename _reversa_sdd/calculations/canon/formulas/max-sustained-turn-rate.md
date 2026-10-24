@@ -73,6 +73,10 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
 
+**Source.** 🟡 PARTIAL (the front matter still says SOURCED). Load factor of the level turn as the vector sum of weight and centrifugal force, `n = 1/cos φ`: Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21. Induced drag `C_L²/(π·e·AR)`: Anderson §6.7.2. Motor model: Drela `motor1` §1.1. 🔴 NO SOURCE FOUND for the turn rate `ω = g·sqrt(n² − 1)/V` and radius `r = V²/(g·sqrt(n² − 1))`: the point-mass kinematics of the coordinated level turn, but none of the Scholz/Sadraey, Anderson or AeroSandbox material gives them with a section or equation number.
+
+**Validity in the RC/UAV regime (ADR 0028).** The kinematics of a coordinated level turn are exact; the load factor is the vector sum of weight and centrifugal force (Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21). The fastest sustained turn sits at the stall corner, so the answer is only as good as C_L,max at the turn's own Reynolds number; Lennon (Ch. 1–3) documents a 46 % loss of section C_L,max at low model Reynolds number (see [[stall-speed]]). AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴ and C_L 1.0 (Sharpe 2024 §7.2.4). Induced drag rises with `C_L²` (Anderson §6.7.2), so at high load factor the thrust limit binds through the propeller table, with its Re₀.₇₅ and rpm-block limits. A demanded C_L above C_L,max gives an accelerated stall (Lennon Ch. 21), which is the "wing" termination.
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

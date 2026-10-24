@@ -80,6 +80,8 @@ evaluated at V = V_app;   p_hat = p * b_ref / (2 * V_app)
 
 **Source.** 🟢 Sadraey §12.4 (aileron design; steady roll from `C_l,δa · δa + C_l,p · pb/2V = 0`), with the rate requirement made scale-free per the domain expert (time-to-bank does not transfer to model scale).
 
+**Validity in the RC/UAV regime (ADR 0028).** The steady roll is scale-free: aileron moment (Sadraey §12.4.2, Eq. 12.23) against roll damping, which Sadraey writes per `pb/2V` with `C_lp` (§12.3.3) — that is why `p_hat = pb/2V` is the speed-independent statement. Mach ≤ 0.3 needs no correction (Anderson §1.10.3). The regime limit is viscous: at low chord Re laminar flow separates readily (Anderson §20.3.2), and below 7·10⁴ a deflected aileron is likely partly separated. Neither world contains that — AVL is inviscid with no stall (Budziak, Table 2.1), AeroBuildup shifts the clean section by `τ·δ` with no flap separation — so `p` is optimistic there [no source for the magnitude at model Re]. Sadraey's effectiveness loss beyond about 20–25° (§12.4.3) is transport/GA material and unchecked at model Re. Declared limitation (finding #1181): the AVL world is linear in δ, and BRYAN's `pb/2V = 0.276` lies outside AVL's stated range `−0.10 < pb/2V < 0.10` (`avl_doc.txt:121-141`) — recorded, not resolved. Aileron differential and adverse yaw are not modelled (out of the MVP).
+
 **2026-10-02:** evaluated on approach only; the cruise value moved to
 [[roll-rate-cruise-target]] and exists only when a cruise-speed target is given. New output
 `p_hat_max = p·b/2V` — nearly independent of speed, the RC character statement without a reference

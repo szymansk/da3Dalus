@@ -84,6 +84,8 @@ world avl:          linear in delta; delta_a,req solved directly
 
 **Source.** 🟢 Sadraey §12.4 (aileron design; steady roll from `C_l,δa · δa + C_l,p · pb/2V = 0`), with the rate requirement made scale-free per the domain expert (time-to-bank does not transfer to model scale).
 
+**Validity in the RC/UAV regime (ADR 0028).** The steady-roll balance is scale-free: the aileron moment `C_l = C_lδA·δA` (Sadraey §12.4.2, Eq. 12.23) balances the roll damping, and the rate enters only as `pb/2V`. Mach ≤ 0.3 needs no correction (Anderson §1.10.3). The regime bites in the deflected section, not in the relation: laminar flow at low chord Re separates readily — Anderson's laminar case at Re_c = 10⁵ separates on both surfaces (§20.3.2) — and neither world contains it. AVL is inviscid, attached and gives no stall (Budziak, Table 2.1); AeroBuildup's τ is a δ-independent XFoil fit without flap separation, and NeuralFoil signals such inputs only through its analysis confidence (Sharpe 2024 §7.2.4). Sadraey puts aileron stall beyond about 20–25° (§12.4.3, Table 12.19), transport/GA material; where it starts at model Re is [no source]. Declared limitation (finding #1181): the AVL world is linear in δ and runs outside AVL's stated range `−0.10 < pb/2V < 0.10` (`avl_doc.txt:121-141`; BRYAN 0.276) — recorded, not resolved. Aileron differential and adverse yaw are not modelled (out of the MVP).
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

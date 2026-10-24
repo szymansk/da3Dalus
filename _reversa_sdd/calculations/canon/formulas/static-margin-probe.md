@@ -46,6 +46,8 @@ Unlike `x_NP`, `C_mα` **does** depend on the reference: its sign flips exactly 
 
 **Source.** 🟢 `SM = −C_mα/C_Lα` (Anderson §4.9 / standard).
 
+**Validity in the RC/UAV regime (ADR 0028).** The relation `SM = −C_mα/C_Lα` with the moment reference at the CG holds in any regime (Sadraey Eq. 11.17, §11.6.2); its value carries AeroBuildup's limits. AeroBuildup omits main-wing downwash on the tail, over-counts tail effectiveness and returns too negative a `C_mα` (Sharpe 2024 §5.3, §5.4), so the Probe is biased toward a larger margin, consistent with the ≈ 10 % MAC aft shift recorded in GH #1154. At `V_md` small models fly at fairly high C_L, near NeuralFoil's low-confidence region (Re ≈ 8·10⁴, C_L ≈ 1.0; §7.2.4). Mach ≤ 0.3: incompressible.
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

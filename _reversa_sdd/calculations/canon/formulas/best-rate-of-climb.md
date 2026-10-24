@@ -60,6 +60,8 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 
 **Source.** 🟢 Sadraey §4.3.5 (rate and angle of climb, Eq. 4.84–4.85) for the definitions; the force balances are the steady-flight equations along and normal to the path. 🟢 Drela `motor1` §1.1 for the motor model.
 
+**Validity in the RC/UAV regime (ADR 0028).** The force balances are exact at any climb angle; Scholz uses the small-angle form only for γ < 15° (05_PreliminarySizing §5.3), and the entry does not use it. Sadraey's closed form puts the propeller optimum at the minimum-power speed with a constant `η_P` of 0.5–0.6 for fixed pitch (§4.3.5.2, Eq. 4.84–4.85); this entry replaces both with the propeller table and the motor balance, so it carries no fixed-efficiency assumption. Thrust inherits that chain's limits: the coefficients depend on the propeller's Re₀.₇₅ ≈ 15–100 k (ADR 0028; Deters, Ananda & Selig 2014 §V.A–B), with nominal battery voltage and route A free-run rpm. The optimum lies at moderate `C_L`, usually away from the stall corner, so polar uncertainty near C_L,max matters less than for `V_x` [no source]. Propeller slipstream is not modelled [no source].
+
 **Replaces** `climb-speed-for-power-loading` (`V_climb = max(1.3·V_S,target, 1 m/s)`), deleted 2026-10-01: a multiple of a *target* stall speed, with neither thrust nor polar in it.
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.

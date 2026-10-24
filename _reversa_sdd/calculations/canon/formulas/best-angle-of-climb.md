@@ -60,6 +60,8 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 
 **Source.** 🟢 Sadraey §4.3.5 (rate and angle of climb, Eq. 4.84–4.85; angle of climb §4.3.5) for the definitions; the force balances are the steady-flight equations along and normal to the path. 🟢 Drela `motor1` §1.1 for the motor model.
 
+**Validity in the RC/UAV regime (ADR 0028).** The force balances are exact steady-flight equations at any climb angle: Scholz states them along and normal to the path and uses `L ≈ m·g` only "for γ < 15°" (05_PreliminarySizing §5.3), so keeping both balances is what makes the result right for steep and vertical RC climbs. Thrust inherits the propeller-table and motor-model limits (Re₀.₇₅ ≈ 15–100 k per rpm block, nominal battery voltage, route A rpm). The optimum lies at low speed and high `C_L`, so the result depends on the polar near its maximum: AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and near Re 8·10⁴ and C_L 1.0 NeuralFoil's confidence drops (Sharpe 2024 §7.2.4). Propeller slipstream over wing and tail is not in AeroBuildup [no source]; it matters most at full throttle and low speed.
+
 **Replaces** `climb-speed-for-power-loading` (`V_climb = max(1.3·V_S,target, 1 m/s)`), deleted 2026-10-01: a multiple of a *target* stall speed, with neither thrust nor polar in it.
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.

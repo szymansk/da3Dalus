@@ -36,6 +36,8 @@ Positive is stable. Decided in §2.3.
 **Source.** 🟢 Standard definition (Anderson; Scholz, *Flugmechanik*; RC practice uses the same
 measure in % MAC).
 
+**Validity in the RC/UAV regime (ADR 0028).** Regime-independent: a definition, the non-dimensional distance between two points (Sadraey Eq. 11.18, §11.6.2), with no aerodynamic model in it. Its value inherits every limitation of [[neutral-point]]: the interval, the missing fuselage that biases x_NP aft (`fuselage_not_modelled`), and the low-Re limits of the three worlds.
+
 ## Implementations (1)
 
 | node | claimed | verified | deviation |

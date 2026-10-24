@@ -37,6 +37,8 @@ battery and parts so that the real CG lands here.
 
 **Source.** 🟢 Definition of the static margin read the other way; ADR 0011.
 
+**Validity in the RC/UAV regime (ADR 0028).** Regime-independent: the static-margin definition (Sadraey Eq. 11.18, §11.6.2) solved for the CG; the target margin is a caller parameter. The result inherits the limitations of [[neutral-point]], above all the aft bias from the missing fuselage: a CG placed from the aft end of the interval gives less real margin than the target.
+
 ## Implementations (1)
 
 | node | claimed | verified | deviation |

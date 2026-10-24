@@ -73,6 +73,10 @@ structural use.
 
 **Sensitivity.** Varying `R_m` by ×0.5 / ×2 moves thrust by 28 % static and 40 % at 10 m/s (`scripts/canon_checks/thrust_motor_resistance_sensitivity.py`). The resistance is the dominant uncertainty of thrust at airspeed.
 
+**Source.** 🟢 Drela `motor1` §1.1: the three-parameter DC motor model, `v = i·R + Ω/K_v` and `Q_m = (i − i_0)/K_Q`, with `K_Q = K_v` in the ideal case; §2 gives the bench measurement of `R`, `i_0` and `K_v` (Eq. 9–12). Propeller power from `C_P = P/(ρ·n³·D⁵)` (Brandt & Selig 2011 §II.F). The default band of `eta_mot`, 75–85 % peak efficiency for hobby brushless motors, is from Roxxy Motoren-Fibel Ch. 3 pp. 28–29. 🔴 NO SOURCE FOUND for the structural use of the torque output.
+
+**Validity in the RC/UAV regime (ADR 0028).** The torque balance itself is exact; what it is worth depends on the motor model and on `C_P(J)`. Drela's three-parameter model is valid across typical RC speeds and currents and breaks down only at very low speed or very high current (Drela `motor1` §1.1). `R_m` rises with winding temperature, so a cold catalogue value predicts too high an rpm under load (§1.1.1, §2.1). Small propellers run at Re₀.₇₅ ≈ 15–100 k (ADR 0028; Brandt & Selig 2011 §IV), where `C_T` and `C_P` change with Reynolds number (Deters, Ananda & Selig 2014 §V.A–B); the table block is chosen by nearest rpm, so the solved rpm also fixes the propeller Re the coefficients belong to. Blade tips of RC propellers typically run near Ma ≈ 0.5 (Roxxy Motoren-Fibel Ch. 1 pp. 9–10), above the airframe's M ≤ 0.3; tip compressibility is whatever the table contains. Route A runs at free-run rpm, which loaded brushless motors do not reach — about 85 % of no-load rpm in flight (Roxxy Ch. 1 pp. 9–10). Battery voltage sag under load is not modelled [no source].
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

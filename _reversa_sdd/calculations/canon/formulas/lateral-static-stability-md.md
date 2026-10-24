@@ -84,6 +84,8 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 **Source.** 🟢 Sadraey Eqs 12.5–12.6 (static signs), §12 spiral mode (criterion), §12.3.3 Tab. 12.15
 (time to double). 🟡 Etkin & Reid spiral-root approximation (to be cited by equation number).
 
+**Validity in the RC/UAV regime (ADR 0028).** The relations are scale-free: the static signs of `C_lβ` and `C_nβ` (Sadraey Eqs 12.5–12.6) and the spiral criterion, unstable when `|C_lβ·C_nr| < |C_lr·C_nβ|` (Sadraey §12.3.3). Mach ≤ 0.3 needs no correction (Anderson §1.10.3). The limit is the single tool: AVL is inviscid and attached with no stall (Budziak, Table 2.1), meant for thin surfaces "at small angles of attack and sideslip", and its slender-body fuselage has "relatively limited" experience and is to be used "with caution" (`avl_doc.txt:99-119`), consistent with the open fuselage share of `C_nβ`. At `V_md` the flow is attached, but at chord Re below 7·10⁴ laminar separation is the normal state (Anderson §20.3.2), and AVL has no viscous term to see it [no source for the effect on the derivatives]. The AeroBuildup block above judges sweep and V-tail sideslip terms, not Reynolds number; below chord Re 7·10⁴ no world is validated, and calibration against flown aircraft stays open. The Table 12.15 doubling times are MIL-F-8785C criteria for piloted aircraft, their RC applicability is [no source], and they belong to the evaluation (A10).
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

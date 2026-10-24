@@ -52,6 +52,8 @@ subject to:   L(V, alpha) = m * g
 
 **Source.** 🟢 Sadraey §4.3.3 — maximum speed where thrust available equals thrust required.
 
+**Validity in the RC/UAV regime (ADR 0028).** The closure, available power equal to required power, is regime-independent; Sadraey writes it with one constant `η_P` (§4.3.3.2, Eq. 4.50), where this entry uses the propeller table. At `V_max` the lift coefficient is small and drag is mostly profile drag, which depends on transition and hence on the chord Reynolds number (Anderson §4.12); Lennon (Ch. 1–3) reports it nearly doubling at low model Rn. Small-propeller efficiency spans 0.28–0.65 across designs and degrades below a blade Re of about 10⁵ (Brandt & Selig 2011 §IV). AeroBuildup's post-stall values are "order-of-magnitude correct rather than highly accurate" (AeroSandbox tutorial, AeroBuildup overview), which is why the spurious post-stall branch needs the multi-start rule. The incompressible solver is exact while `V_max` stays below M ≈ 0.3 (Anderson §1.10.3).
+
 **Was an input until 2026-10-01** — "maximum level-flight speed goal, defaulting to 28 m/s", the same for every aircraft. A computed property now. A *goal* for the maximum speed, if a mission needs one, is a requirement compared against this value in the Probe, not a substitute for it.
 
 **Termination.** No bound active at the optimum; a failed solve returns no value (ADR 0020). If the thrust runs past the propeller's zero-thrust advance ratio first, the propeller — not the drag — limits the speed, and that is named.

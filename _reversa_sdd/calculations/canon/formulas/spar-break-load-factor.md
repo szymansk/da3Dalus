@@ -61,6 +61,8 @@ untwisted wing in attached flow it is.
 
 **Source.** 🟢 Beam bending, `M_cap = W · sigma_allow`; the station-wise reserve is the existing sizing chain read the other way (BR-W5, #1139).
 
+**Validity in the RC/UAV regime (ADR 0028).** Beam bending, `M_cap = W·σ_allow`, is structural and independent of the flow regime; treating the wing skin as non-structural matches both build routes. The aerodynamic regime enters only through the 1 g spanload from [[spanwise-loads]] (AVL: inviscid, attached flow). At model Reynolds numbers local `c_l,max` is lower (Anderson §4.3), and narrow tips run at a lower Re than the root, which makes them prone to tip stall (Lennon Ch. 1–3); a distribution computed without local stall is valid only while every section stays below its own Re-dependent `c_l,max`. The declared linear scaling is exact only for an untwisted wing. Real model loads of 6–19 g lie far above FAR 23 category values, which are not regulation for models [no source: maintainer measurement].
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

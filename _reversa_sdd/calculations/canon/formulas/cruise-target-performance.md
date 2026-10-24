@@ -56,6 +56,10 @@ time, wind penetration). This entry answers *how long and how far at that speed*
 names cruise speed explicitly. Not a pilot's choice as a closure (§3.5): the speed is a mission
 requirement, the result is measured against it (A9).
 
+**Source.** 🟡 PARTIAL (the front matter still says SOURCED). The battery-electric form has no textbook source; its pieces are elementary: `P = D·V/η`, `t = E_bat/P`, `R = V·t` [no source]. Sadraey gives only the fuel-burning Breguet forms for propeller aircraft (§4.2.5.2, Eq. 4.17; §4.2.5.4, Eq. 4.23); with constant mass, as for a battery, they reduce to the same dependence on `η_P·L/D`. Electric propulsion appears in Sadraey only descriptively (§8.3.1). The cruise speed is a mission input, not a closure.
+
+**Validity in the RC/UAV regime (ADR 0028).** The energy balance is regime-independent; drag and propulsive efficiency carry the regime. Model-scale profile drag is Reynolds- and transition-sensitive (Anderson §4.12; Lennon Ch. 1–3). If the target speed lies near the stall, the wing works near `C_L ≈ 1`, where NeuralFoil flags a laminar separation bubble and low confidence at `Re_c ≈ 8·10⁴` (Sharpe 2024 §7.2.4). The single `η` is the dominant declared simplification: small-propeller efficiency spans 0.28–0.65 across designs and falls below a blade Re of about 10⁵ (Brandt & Selig 2011 §IV). Usable battery fraction, voltage sag and reserve are not modelled [no source]. Mach is no concern (Anderson §1.10.3).
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

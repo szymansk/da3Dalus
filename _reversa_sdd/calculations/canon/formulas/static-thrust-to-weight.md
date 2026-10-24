@@ -59,6 +59,8 @@ practice size on power loading `W/P`, not `T/W` — that belongs to the design d
 
 **Source.** 🟢 Definitional (Scholz §5.2 `T_TO/(m·g)`; Sadraey Eq. 4.47).
 
+**Validity in the RC/UAV regime (ADR 0028).** The ratio is exact; what it is worth depends on the static thrust, read from the `J = 0` row of the propeller table at the balanced rpm. Static coefficients differ from those in advancing flight, and the blade Reynolds number is lowest there (Brandt & Selig 2011 §II.B, §III); at Re₀.₇₅ ≈ 15–100 k `C_T` changes with rpm (Deters, Ananda & Selig 2014 §V.A–B). Static thrust is the relevant number for hand launch and for hanging on the propeller. On route A it inherits the free-run-rpm overestimate (loaded brushless motors run at about 85 % of no-load rpm, Roxxy Motoren-Fibel Ch. 1 pp. 9–10) unless the power limit binds. For propeller aircraft Sadraey sizes on `W/P`, not `T/W` (§4.3.5.2, Eq. 4.89), as the entry says.
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

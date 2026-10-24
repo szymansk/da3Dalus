@@ -56,6 +56,8 @@ gone with the false cycle.
 
 **Source.** 🟢 Anderson §6.7.2 (drag polar, Oswald factor); ADR 0026; window BR-16.
 
+**Validity in the RC/UAV regime (ADR 0028).** The parabola is an empirical approximation even at full scale: parasite drag varies with lift, and the Oswald factor absorbs that variation (Anderson §6.7.2). At low Reynolds number the variation is large, because laminar separation and transition change section drag with angle of attack (Anderson §20.3.2, qualitative); the polar can then depart from a parabola, and the fit residual measures how far. A low fitted `e` then partly reflects viscous drag, not induced drag: it is a display value, not a Trefftz-plane span efficiency. Along the level-flight polar Re falls as C_L rises (V ∝ C_L^-½), so the fitted C_D0 belongs to that flight path, not to one Reynolds number. Mach ≤ 0.3: no wave drag, no correction.
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

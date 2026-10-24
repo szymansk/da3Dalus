@@ -80,6 +80,8 @@ Reference fleet (np_methods.py): BRYAN [32.9, 36.9] % MAC, e-Hawk [48.8, 52.9] %
 **Source.** 🟢 derived from Sadraey Eq. 6.67 (textbook); Pappas, *Model Aviation* 10/2009; Drela, AVL. Review of the
 uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.
 
+**Validity in the RC/UAV regime (ADR 0028).** All three worlds are evaluated incompressible (Mach ≤ 0.3). The textbook world's η = 0.9 lies in Sadraey's conventional-tail range 0.85–0.95 (≈ 1 for a T-tail; §6.4.2), which is full-scale practice and states no Reynolds number. The RC literature reports a wider spread: Lennon (*Basics of R/C Model Aircraft Design*, Ch. 7) gives about 90 % for a T-tail and under 50 % for a tail in the wing's wake; lower efficiency moves the neutral point forward. This disagreement is recorded, not resolved: Sadraey's range stands as the source, Lennon bounds how far a low-set tail can fall below it. At low Re the wing's laminar separation and transition (Anderson §20.3.2) can change its wake and downwash [no source for the magnitude]. The lift slopes `2πAR/(AR+2)` assume a 2π section slope, which falls at low Re (Anderson §20.3.2, qualitative); the smaller-chord tail, at lower Re, is affected more [no source].
+
 ## Implementations (1)
 
 | node | claimed | verified | deviation |
