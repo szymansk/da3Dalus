@@ -160,6 +160,18 @@ def _not_positive(
     return [_finding(code, path, message, hint, value)]
 
 
+def _above_maximum(
+    value: float, maximum: float, path: str, slug: str, unit: str
+) -> list[KernelError]:
+    """Report ``value`` if it is finite and above the canon's ``at_most`` of the quantity."""
+    if not math.isfinite(value) or value <= maximum:
+        return []
+    message = f"Value of {slug} at {path} is {f'{value} {unit}'.rstrip()}; it must be <= {maximum}."
+    return [
+        _finding("value_above_maximum", path, message, f"Give {slug} a value <= {maximum}.", value)
+    ]
+
+
 _NACA = re.compile(r"naca(?P<digits>[0-9]{4})", re.IGNORECASE)
 
 
@@ -533,7 +545,8 @@ def validate_values(values: Mapping[str, float], model: CanonModel) -> tuple[Ker
 
     A slug must name a quantity of the model (``unknown_quantity``) that the caller supplies: a
     scalar of role ``input`` or ``target`` (``not_an_input``), and a quantity the canon declares
-    ``positive`` must be > 0 (``non_positive_value``). Non-finite numbers are
+    ``positive`` must be > 0 (``non_positive_value``) and a quantity with ``at_most`` must not
+    exceed it (``value_above_maximum``). Non-finite numbers are
     :func:`validate_aircraft`'s finding and not reported twice. The admissibility comes from the
     model; no slug is named here.
 
@@ -593,4 +606,6 @@ def validate_values(values: Mapping[str, float], model: CanonModel) -> tuple[Ker
                 quantity.unit,
                 f"Give {slug} a value > 0.",
             )
+        if quantity is not None and quantity.at_most is not None:
+            errors += _above_maximum(values[slug], quantity.at_most, path, slug, quantity.unit)
     return tuple(errors)

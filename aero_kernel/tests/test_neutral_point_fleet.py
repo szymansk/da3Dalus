@@ -40,10 +40,14 @@ CG = {
 }
 WORLDS = ("textbook", "pappas", "avl")
 # Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
+# The textbook world takes the default tail efficiency 0.65 (#1205); it was 0.9 before:
+# BRYAN 0.1441142600 -> 0.1398911924 m, JAGUAR 0.1233721388 -> 0.1180210991 m.
 GOLDEN_NP = {
-    FleetMember.BRYAN: (0.1441142600, 0.1401394435, 0.144039),
-    FleetMember.JAGUAR: (0.1233721388, 0.1238206059, 0.126344),
+    FleetMember.BRYAN: (0.1398911924, 0.1401394435, 0.144039),
+    FleetMember.JAGUAR: (0.1180210991, 0.1238206059, 0.126344),
 }
+# The textbook world with the former constant given explicitly as tail-efficiency (continuity).
+GOLDEN_TEXTBOOK_ETA_09 = {FleetMember.BRYAN: 0.1441142600, FleetMember.JAGUAR: 0.1233721388}
 C_MAC = {FleetMember.BRYAN: 0.13277219166316895, FleetMember.JAGUAR: 0.10504546518699101}
 # BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral
 # point of the template's own aligned mesh under the kernel's conditions at that C_L:
@@ -54,7 +58,8 @@ SM_TARGET = 0.10
 ABS_M = 1e-4  # the regression tolerance of the AVL world
 
 
-async def run(member: FleetMember) -> ComputeResult:
+async def run(member: FleetMember, eta: float | None = None) -> ComputeResult:
+    extra = {} if eta is None else {"tail-efficiency": eta}
     aircraft = AircraftInput.model_validate(
         {
             "airplane": reference_document(member),
@@ -62,6 +67,7 @@ async def run(member: FleetMember) -> ComputeResult:
                 "aircraft-mass": member.mass_kg,
                 "altitude": 0.0,
                 "centre-of-gravity": CG[member],
+                **extra,
             },
         }
     )
@@ -91,6 +97,23 @@ async def test_the_np_and_sm_intervals_per_world_are_the_regression_goldens(
     assert result.provenance.solver_settings["avl_nspan"] == 24
     assert result.provenance.solver_settings["avl_core_ratio"] == 0.25
     assert set(result.provenance.tool_versions) >= {"avl-binary", "aerosandbox"}
+
+
+@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.asyncio
+async def test_the_textbook_world_with_eta_09_given_reproduces_the_former_golden(
+    member: FleetMember,
+) -> None:
+    """Regression continuity across #1205: eta = 0.9 as an input gives the value of the old constant,
+    and the other two worlds do not move."""
+    result = await run(member, eta=0.9)
+    neutral = result.quantities[0]
+    assert neutral.interval is not None
+    worlds = neutral.interval.worlds
+    assert abs(worlds["neutral-point=textbook"] - GOLDEN_TEXTBOOK_ETA_09[member]) < ABS_M
+    for name, golden in zip(WORLDS[1:], GOLDEN_NP[member][1:], strict=True):
+        assert abs(worlds[f"neutral-point={name}"] - golden) < ABS_M, name
+    assert "tail-efficiency" not in [d.slug for d in result.provenance.defaults_used]
 
 
 @pytest.mark.asyncio
