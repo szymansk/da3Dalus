@@ -140,6 +140,8 @@ class Quantity(BaseModel):
         uncertainty: ``interval`` where the producer declares method worlds.
         positive: ``True`` where the quantity is strictly greater than zero by its definition,
             otherwise omitted (``None``); ``false`` is no spelling of the canon.
+        at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),
+            otherwise omitted (``None``).
     """
 
     model_config = _MODEL_CONFIG
@@ -150,6 +152,7 @@ class Quantity(BaseModel):
     type: QuantityType
     uncertainty: Literal["interval"] | None = None
     positive: Literal[True] | None = None
+    at_most: FiniteNumber | None = None
 
     @field_validator("positive", mode="before")
     @classmethod
@@ -162,14 +165,23 @@ class Quantity(BaseModel):
 
     @model_validator(mode="after")
     def _check_positive(self) -> Self:
-        """Allow ``positive`` only on supplied scalars."""
-        if self.positive is None:
-            return self
-        if self.role not in ("input", "target"):
-            msg = f"positive is only allowed on role input or target, not {self.role}"
-            raise ValueError(msg)
-        if self.type != "scalar":
-            msg = f"positive is only allowed on a scalar quantity, not {self.type}"
+        """Allow ``positive`` and ``at_most`` only on supplied scalars."""
+        for name, value in (("positive", self.positive), ("at_most", self.at_most)):
+            if value is None:
+                continue
+            if self.role not in ("input", "target"):
+                msg = f"{name} is only allowed on role input or target, not {self.role}"
+                raise ValueError(msg)
+            if self.type != "scalar":
+                msg = f"{name} is only allowed on a scalar quantity, not {self.type}"
+                raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_range(self) -> Self:
+        """Reject ``positive`` with an ``at_most`` of 0 or less: no value would be admissible."""
+        if self.positive and self.at_most is not None and self.at_most <= 0:
+            msg = f"at_most {self.at_most} leaves no value for a positive quantity"
             raise ValueError(msg)
         return self
 
@@ -466,6 +478,25 @@ class Namespace(BaseModel):
     defaults: dict[SlugKey, Default] = {}
 
 
+def _default_problem(where: str, default: Default, quantity: Quantity | None) -> str | None:
+    """Return what is wrong with a default against its quantity, or ``None``."""
+    if quantity is None:
+        return f"default of unknown quantity {where}"
+    if quantity.role not in ("input", "target"):
+        return f"default of {where}: role must be input or target, not {quantity.role}"
+    if quantity.type != "scalar":
+        return f"default of {where}: quantity must be a scalar, not {quantity.type}"
+    if default.unit != quantity.unit:
+        return (
+            f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
+        )
+    if quantity.positive and default.value <= 0:
+        return f"default of positive quantity {where} must be > 0"
+    if quantity.at_most is not None and default.value > quantity.at_most:
+        return f"default of {where} exceeds its at_most {quantity.at_most}"
+    return None
+
+
 def compute_content_hash(namespaces: Mapping[str, Namespace]) -> str:
     """Hash the canon's content: ``"sha256:"`` plus the hex SHA-256 of the canonical JSON.
 
@@ -655,18 +686,7 @@ class CanonModel(BaseModel):
         for namespace, content in self.namespaces.items():
             for slug, default in content.defaults.items():
                 quantity = content.quantities.get(slug)
-                where = f"{namespace}:{slug}"
-                text = None
-                if quantity is None:
-                    text = f"default of unknown quantity {where}"
-                elif quantity.role not in ("input", "target"):
-                    text = f"default of {where}: role must be input or target, not {quantity.role}"
-                elif quantity.type != "scalar":
-                    text = f"default of {where}: quantity must be a scalar, not {quantity.type}"
-                elif default.unit != quantity.unit:
-                    text = f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
-                elif quantity.positive and default.value <= 0:
-                    text = f"default of positive quantity {where} must be > 0"
+                text = _default_problem(f"{namespace}:{slug}", default, quantity)
                 if text is not None:
                     problems.append(
                         CanonProblem(

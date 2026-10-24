@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:ddde40d78d05e156a6d684e1a662dc91e0fc87100264aa0cd85d1b5e8b2a6c68",
+  "content_hash": "sha256:ea1bf8ca887b9b74bc50c9d0305fd5a2c9300c73c23238d376605894b472fe05",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -395,6 +395,7 @@
       },
       "quantities": {
         "air-density": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "rho",
@@ -403,6 +404,7 @@
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "m",
@@ -411,6 +413,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "airplane",
@@ -419,6 +422,7 @@
           "unit": "1"
         },
         "airplane-landing": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "airplane_ldg",
@@ -427,6 +431,7 @@
           "unit": "1"
         },
         "approach-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_app",
@@ -435,6 +440,7 @@
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
+          "at_most": null,
           "positive": null,
           "role": "target",
           "symbol": "k_S_app",
@@ -443,6 +449,7 @@
           "unit": "1"
         },
         "butterfly-speed-range": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_range",
@@ -451,6 +458,7 @@
           "unit": "m/s"
         },
         "butterfly-stall-speed-curve": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S0(s)",
@@ -459,6 +467,7 @@
           "unit": "m/s"
         },
         "cruise-speed-target": {
+          "at_most": null,
           "positive": true,
           "role": "target",
           "symbol": "V_c",
@@ -467,6 +476,7 @@
           "unit": "m/s"
         },
         "flap-deflection-landing": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_f_ldg",
@@ -475,6 +485,7 @@
           "unit": "deg"
         },
         "gravity": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "g",
@@ -483,6 +494,7 @@
           "unit": "m/s^2"
         },
         "inverted-max-lift-coefficient": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L_max_inv",
@@ -491,6 +503,7 @@
           "unit": "1"
         },
         "max-lift-coefficient": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L_max",
@@ -499,6 +512,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L_max_ldg",
@@ -507,6 +521,7 @@
           "unit": "1"
         },
         "max-mass-level-flight": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "m_max_level",
@@ -515,6 +530,7 @@
           "unit": "kg"
         },
         "neutral-point": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "x_np",
@@ -523,6 +539,7 @@
           "unit": "m"
         },
         "polar-stall": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "polar_S",
@@ -531,6 +548,7 @@
           "unit": "1"
         },
         "roll-rate-cruise": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "p_c",
@@ -539,6 +557,7 @@
           "unit": "deg/s"
         },
         "stall-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S",
@@ -547,6 +566,7 @@
           "unit": "m/s"
         },
         "stall-speed-landing": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S_ldg",

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:534fbcbe35c217a97437f2e7fc961fe81f5fdc3b830e294388bcb3c655c7878f",
+  "content_hash": "sha256:08df065f7b6823480e98b426b9f83519bd8e90443f9cf35d30204d11a00da186",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -45,6 +45,13 @@
           "source": "maintainer decision 2026-10-24 (#1219); no published value (Anderson, Sadraey, Lennon describe the stall break qualitatively and quantify it nowhere)",
           "unit": "1",
           "value": 0.1
+        },
+        "tail-efficiency": {
+          "basis": "convention",
+          "regime": "not checked at RC Reynolds number: the wing wake is thicker at low Re, by an amount no source quantifies; Lennon's model-scale value is used instead of the full-scale 0.85–0.95. The designer overrides it per airplane",
+          "source": "Lennon, Basics of R/C Model Aircraft Design (1996) Ch. 7/8: conventional tail near the wing wake 0.65 (T-tail 0.9, in the wake 0.4); Sadraey, Aircraft Design (2013) Eq. 6.28 §6.2.1: 0.85–0.95 conventional, 1 T-tail, full-scale; maintainer decision 2026-10-24 (#1205)",
+          "unit": "1",
+          "value": 0.65
         },
         "takeoff-speed-margin-target": {
           "basis": "sourced",
@@ -2017,6 +2024,7 @@
             {
               "bind": {
                 "airplane": "calc:airplane",
+                "eta_h": "calc:tail-efficiency",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
@@ -2035,6 +2043,7 @@
           "embeds_closure": [],
           "inputs": {
             "airplane": "calc:airplane",
+            "eta_h": "calc:tail-efficiency",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
@@ -3026,6 +3035,7 @@
       },
       "quantities": {
         "advance-ratio": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "J",
@@ -3034,6 +3044,7 @@
           "unit": "1"
         },
         "aileron-deflection": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_a",
@@ -3042,6 +3053,7 @@
           "unit": "deg"
         },
         "aileron-deflection-required-approach": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "delta_a,req,app",
@@ -3050,6 +3062,7 @@
           "unit": "deg"
         },
         "aileron-deflection-required-cruise": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "delta_a,req,cruise",
@@ -3058,6 +3071,7 @@
           "unit": "deg"
         },
         "air-density": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "rho",
@@ -3066,6 +3080,7 @@
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "m",
@@ -3074,6 +3089,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "airplane",
@@ -3082,6 +3098,7 @@
           "unit": "1"
         },
         "airplane-landing": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "airplane_LDG",
@@ -3090,6 +3107,7 @@
           "unit": "1"
         },
         "airplane-takeoff": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "airplane_TO",
@@ -3098,6 +3116,7 @@
           "unit": "1"
         },
         "alpha-break": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "alpha_break",
@@ -3106,6 +3125,7 @@
           "unit": "deg"
         },
         "altitude": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "h",
@@ -3114,6 +3134,7 @@
           "unit": "m"
         },
         "angle-of-attack": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "alpha",
@@ -3122,6 +3143,7 @@
           "unit": "deg"
         },
         "angle-of-attack-best-glide": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "alpha_bg",
@@ -3130,6 +3152,7 @@
           "unit": "deg"
         },
         "angle-of-attack-best-glide-probe": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "alpha_bg,probe",
@@ -3138,6 +3161,7 @@
           "unit": "deg"
         },
         "angle-of-attack-minimum-sink": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "alpha_ms",
@@ -3146,6 +3170,7 @@
           "unit": "deg"
         },
         "angle-of-attack-minimum-sink-probe": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "alpha_ms,probe",
@@ -3154,6 +3179,7 @@
           "unit": "deg"
         },
         "angle-of-attack-stall": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "alpha_S",
@@ -3162,6 +3188,7 @@
           "unit": "deg"
         },
         "approach-speed": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "V_app",
@@ -3170,6 +3197,7 @@
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
+          "at_most": null,
           "positive": true,
           "role": "target",
           "symbol": "k_S,app",
@@ -3178,6 +3206,7 @@
           "unit": "1"
         },
         "aspect-ratio": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "AR",
@@ -3186,6 +3215,7 @@
           "unit": "1"
         },
         "battery-capacity": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "E_bat",
@@ -3194,6 +3224,7 @@
           "unit": "Wh"
         },
         "battery-mass": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "m_bat",
@@ -3202,6 +3233,7 @@
           "unit": "kg"
         },
         "battery-mass-deviation": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "dev",
@@ -3210,6 +3242,7 @@
           "unit": "1"
         },
         "battery-specific-energy": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "E_star",
@@ -3218,6 +3251,7 @@
           "unit": "Wh/kg"
         },
         "battery-voltage": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "U_bat",
@@ -3226,6 +3260,7 @@
           "unit": "V"
         },
         "best-angle-of-climb-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_x",
@@ -3234,6 +3269,7 @@
           "unit": "m/s"
         },
         "best-rate-of-climb-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_y",
@@ -3242,6 +3278,7 @@
           "unit": "m/s"
         },
         "break-load-factor-negative": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "n_break,neg",
@@ -3250,6 +3287,7 @@
           "unit": "1"
         },
         "break-load-factor-positive": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "n_break,pos",
@@ -3258,6 +3296,7 @@
           "unit": "1"
         },
         "butterfly-approach-speed-curve": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_app(s)",
@@ -3266,6 +3305,7 @@
           "unit": "m/s"
         },
         "butterfly-glide-angle-curve": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "gamma(s)",
@@ -3274,6 +3314,7 @@
           "unit": "deg"
         },
         "butterfly-max-mix": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "s_max",
@@ -3282,6 +3323,7 @@
           "unit": "1"
         },
         "butterfly-stall-speed-curve": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S0(s)",
@@ -3290,6 +3332,7 @@
           "unit": "m/s"
         },
         "centre-of-gravity": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "x_CG",
@@ -3298,6 +3341,7 @@
           "unit": "m"
         },
         "cg-envelope-over-mass": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "x_fwd(m), x_aft(m)",
@@ -3306,6 +3350,7 @@
           "unit": "m"
         },
         "cg-for-target-margin": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "x_CG,SM",
@@ -3314,6 +3359,7 @@
           "unit": "m"
         },
         "climb-rate-over-mass": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "ROC_max(m)",
@@ -3322,6 +3368,7 @@
           "unit": "m/s"
         },
         "components": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "components",
@@ -3330,6 +3377,7 @@
           "unit": "1"
         },
         "crow-aileron-deflection": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_a,crow",
@@ -3338,6 +3386,7 @@
           "unit": "deg"
         },
         "crow-flap-deflection": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_f,crow",
@@ -3346,6 +3395,7 @@
           "unit": "deg"
         },
         "cruise-speed-target": {
+          "at_most": null,
           "positive": true,
           "role": "target",
           "symbol": "V_cruise,target",
@@ -3354,6 +3404,7 @@
           "unit": "m/s"
         },
         "dihedral-effect-app": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "C_l_beta,app",
@@ -3362,6 +3413,7 @@
           "unit": "1/rad"
         },
         "dihedral-effect-md": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "C_l_beta,md",
@@ -3370,6 +3422,7 @@
           "unit": "1/rad"
         },
         "dive-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_D",
@@ -3378,6 +3431,7 @@
           "unit": "m/s"
         },
         "drag-coefficient-parabolic": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_D,par",
@@ -3386,6 +3440,7 @@
           "unit": "1"
         },
         "drag-force": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "D",
@@ -3394,6 +3449,7 @@
           "unit": "N"
         },
         "dynamic-pressure": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "q",
@@ -3402,6 +3458,7 @@
           "unit": "Pa"
         },
         "dynamic-viscosity": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "mu",
@@ -3410,6 +3467,7 @@
           "unit": "Pa*s"
         },
         "elevator-deflection-down": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_e,down",
@@ -3418,6 +3476,7 @@
           "unit": "deg"
         },
         "elevator-deflection-up": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_e,up",
@@ -3426,6 +3485,7 @@
           "unit": "deg"
         },
         "endurance-at-cruise-target": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "t_cruise",
@@ -3434,6 +3494,7 @@
           "unit": "s"
         },
         "flap-deflection-landing": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_f,LDG",
@@ -3442,6 +3503,7 @@
           "unit": "deg"
         },
         "flap-deflection-takeoff": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_f,TO",
@@ -3450,6 +3512,7 @@
           "unit": "deg"
         },
         "flight-speed": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "V",
@@ -3458,6 +3521,7 @@
           "unit": "m/s"
         },
         "glide-distance": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "R_glide",
@@ -3466,6 +3530,7 @@
           "unit": "m"
         },
         "gravity": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "g",
@@ -3474,6 +3539,7 @@
           "unit": "m/s^2"
         },
         "hinge-moment": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "H",
@@ -3482,6 +3548,7 @@
           "unit": "N*m"
         },
         "induced-drag-factor": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "k",
@@ -3490,6 +3557,7 @@
           "unit": "1"
         },
         "inverted-max-lift-coefficient": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "C_L,min",
@@ -3498,6 +3566,7 @@
           "unit": "1"
         },
         "lift-coefficient": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L",
@@ -3506,6 +3575,7 @@
           "unit": "1"
         },
         "lift-coefficient-best-glide": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L,md",
@@ -3514,6 +3584,7 @@
           "unit": "1"
         },
         "lift-coefficient-minimum-sink": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L,mp",
@@ -3522,6 +3593,7 @@
           "unit": "1"
         },
         "lift-curve-slope": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_Lalpha",
@@ -3530,6 +3602,7 @@
           "unit": "1/rad"
         },
         "lift-force": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "L",
@@ -3538,6 +3611,7 @@
           "unit": "N"
         },
         "lift-to-drag-ratio": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "E",
@@ -3546,6 +3620,7 @@
           "unit": "1"
         },
         "limit-load-factor": {
+          "at_most": null,
           "positive": true,
           "role": "target",
           "symbol": "n_lim",
@@ -3554,6 +3629,7 @@
           "unit": "1"
         },
         "load-factor": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "n",
@@ -3562,6 +3638,7 @@
           "unit": "1"
         },
         "maneuvering-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_A",
@@ -3570,6 +3647,7 @@
           "unit": "m/s"
         },
         "max-climb-angle": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "gamma_max",
@@ -3578,6 +3656,7 @@
           "unit": "deg"
         },
         "max-endurance": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "t_max",
@@ -3586,6 +3665,7 @@
           "unit": "s"
         },
         "max-level-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_max",
@@ -3594,6 +3674,7 @@
           "unit": "m/s"
         },
         "max-lift-coefficient": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L,max,S",
@@ -3602,6 +3683,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L,max,LDG",
@@ -3610,6 +3692,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-takeoff": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L,max,TO",
@@ -3618,6 +3701,7 @@
           "unit": "1"
         },
         "max-lift-to-drag-probe": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "E_max,probe",
@@ -3626,6 +3710,7 @@
           "unit": "1"
         },
         "max-lift-to-drag-ratio": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "E_max",
@@ -3634,6 +3719,7 @@
           "unit": "1"
         },
         "max-mass-level-flight": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "m_max,level",
@@ -3642,6 +3728,7 @@
           "unit": "kg"
         },
         "max-mass-lift-off": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "m_max,TO",
@@ -3650,6 +3737,7 @@
           "unit": "kg"
         },
         "max-mass-structure": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "m_max,struct",
@@ -3658,6 +3746,7 @@
           "unit": "kg"
         },
         "max-range": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "R_max",
@@ -3666,6 +3755,7 @@
           "unit": "m"
         },
         "max-rate-of-climb": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "ROC_max",
@@ -3674,6 +3764,7 @@
           "unit": "m/s"
         },
         "max-sustained-turn-rate": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "omega_max",
@@ -3682,6 +3773,7 @@
           "unit": "deg/s"
         },
         "max-sustained-turn-rate-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_omega",
@@ -3690,6 +3782,7 @@
           "unit": "m/s"
         },
         "mean-aerodynamic-chord": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "c_MAC",
@@ -3698,6 +3791,7 @@
           "unit": "m"
         },
         "mean-geometric-chord": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "c_bar",
@@ -3706,6 +3800,7 @@
           "unit": "m"
         },
         "min-sustained-turn-radius": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "r_min",
@@ -3714,6 +3809,7 @@
           "unit": "m"
         },
         "min-sustained-turn-radius-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_r",
@@ -3722,6 +3818,7 @@
           "unit": "m/s"
         },
         "minimum-drag-speed": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "V_md",
@@ -3730,6 +3827,7 @@
           "unit": "m/s"
         },
         "minimum-drag-speed-probe": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_md,probe",
@@ -3738,6 +3836,7 @@
           "unit": "m/s"
         },
         "minimum-sink-speed": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "V_mp",
@@ -3746,6 +3845,7 @@
           "unit": "m/s"
         },
         "motor-circuit-resistance": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "R_m",
@@ -3754,6 +3854,7 @@
           "unit": "ohm"
         },
         "motor-efficiency": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "eta_mot",
@@ -3762,6 +3863,7 @@
           "unit": "1"
         },
         "motor-max-power": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "P_mot,max",
@@ -3770,6 +3872,7 @@
           "unit": "W"
         },
         "motor-no-load-current": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "I_0",
@@ -3778,6 +3881,7 @@
           "unit": "A"
         },
         "motor-torque": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "Q_m",
@@ -3786,6 +3890,7 @@
           "unit": "N*m"
         },
         "motor-voltage-constant": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "K_v",
@@ -3794,6 +3899,7 @@
           "unit": "rpm/V"
         },
         "neutral-point": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "x_NP",
@@ -3802,6 +3908,7 @@
           "unit": "m"
         },
         "oswald-efficiency": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "e_osw",
@@ -3810,6 +3917,7 @@
           "unit": "1"
         },
         "pitching-moment-slope": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "C_malpha",
@@ -3818,6 +3926,7 @@
           "unit": "1/rad"
         },
         "polar-stall": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "polar_S",
@@ -3826,6 +3935,7 @@
           "unit": "1"
         },
         "predicted-battery-mass": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "m_bat,pred",
@@ -3834,6 +3944,7 @@
           "unit": "kg"
         },
         "propeller-diameter": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "D_prop",
@@ -3842,6 +3953,7 @@
           "unit": "m"
         },
         "propeller-speed": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "n_prop",
@@ -3850,6 +3962,7 @@
           "unit": "1/s"
         },
         "propulsive-efficiency": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "eta_total",
@@ -3858,6 +3971,7 @@
           "unit": "1"
         },
         "range-at-cruise-target": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "R_cruise",
@@ -3866,6 +3980,7 @@
           "unit": "m"
         },
         "roll-rate-approach": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "p_app",
@@ -3874,6 +3989,7 @@
           "unit": "deg/s"
         },
         "roll-rate-cruise": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "p_cruise",
@@ -3882,6 +3998,7 @@
           "unit": "deg/s"
         },
         "roll-rate-nondimensional-approach": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "p_hat_app",
@@ -3890,6 +4007,7 @@
           "unit": "1"
         },
         "roll-rate-target-approach": {
+          "at_most": null,
           "positive": null,
           "role": "target",
           "symbol": "p_target,app",
@@ -3898,6 +4016,7 @@
           "unit": "deg/s"
         },
         "roll-rate-target-cruise": {
+          "at_most": null,
           "positive": null,
           "role": "target",
           "symbol": "p_target,cruise",
@@ -3906,6 +4025,7 @@
           "unit": "deg/s"
         },
         "rudder-deflection": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_r",
@@ -3914,6 +4034,7 @@
           "unit": "deg"
         },
         "sea-level-air-density": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "rho_0",
@@ -3922,6 +4043,7 @@
           "unit": "kg/m^3"
         },
         "sink-rate": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "w_sink",
@@ -3930,6 +4052,7 @@
           "unit": "m/s"
         },
         "spanwise-bending-moment": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "M(y)",
@@ -3938,6 +4061,7 @@
           "unit": "N*m"
         },
         "spanwise-lift-distribution": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "l(y)",
@@ -3946,6 +4070,7 @@
           "unit": "N/m"
         },
         "spanwise-shear-force": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V(y)",
@@ -3954,6 +4079,7 @@
           "unit": "N"
         },
         "speed-of-sound": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "a",
@@ -3962,6 +4088,7 @@
           "unit": "m/s"
         },
         "speed-range-over-mass": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S(m), V_max(m)",
@@ -3970,6 +4097,7 @@
           "unit": "m/s"
         },
         "spiral-criterion-app": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "E_spiral,app",
@@ -3978,6 +4106,7 @@
           "unit": "1/rad^2"
         },
         "spiral-criterion-md": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "E_spiral,md",
@@ -3986,6 +4115,7 @@
           "unit": "1/rad^2"
         },
         "spiral-doubling-time-app": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "T_2,spiral,app",
@@ -3994,6 +4124,7 @@
           "unit": "s"
         },
         "spiral-doubling-time-md": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "T_2,spiral,md",
@@ -4002,6 +4133,7 @@
           "unit": "s"
         },
         "spiral-parameter": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "B_spiral",
@@ -4010,6 +4142,7 @@
           "unit": "1"
         },
         "stall-break-fraction": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "f",
@@ -4018,6 +4151,7 @@
           "unit": "1"
         },
         "stall-break-width": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "Delta_alpha_break",
@@ -4026,6 +4160,7 @@
           "unit": "deg"
         },
         "stall-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S",
@@ -4034,6 +4169,7 @@
           "unit": "m/s"
         },
         "stall-speed-landing": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "V_S0",
@@ -4042,6 +4178,7 @@
           "unit": "m/s"
         },
         "stall-speed-takeoff": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "V_S,TO",
@@ -4050,6 +4187,7 @@
           "unit": "m/s"
         },
         "stall-speed-target": {
+          "at_most": null,
           "positive": true,
           "role": "target",
           "symbol": "V_S,target",
@@ -4058,6 +4196,7 @@
           "unit": "m/s"
         },
         "static-margin": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "SM",
@@ -4066,6 +4205,7 @@
           "unit": "1"
         },
         "static-margin-probe": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "SM_probe",
@@ -4074,6 +4214,7 @@
           "unit": "1"
         },
         "static-margin-target": {
+          "at_most": null,
           "positive": null,
           "role": "target",
           "symbol": "SM_target",
@@ -4082,6 +4223,7 @@
           "unit": "1"
         },
         "static-thrust-to-weight": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "T_0/W",
@@ -4089,7 +4231,17 @@
           "uncertainty": null,
           "unit": "1"
         },
+        "tail-efficiency": {
+          "at_most": 1.0,
+          "positive": true,
+          "role": "input",
+          "symbol": "eta_h",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
         "takeoff-speed": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "V_TO",
@@ -4098,6 +4250,7 @@
           "unit": "m/s"
         },
         "takeoff-speed-margin-target": {
+          "at_most": null,
           "positive": true,
           "role": "target",
           "symbol": "k_S,TO",
@@ -4106,6 +4259,7 @@
           "unit": "1"
         },
         "thrust-at-airspeed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "T",
@@ -4114,6 +4268,7 @@
           "unit": "N"
         },
         "thrust-coefficient": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_T",
@@ -4122,6 +4277,7 @@
           "unit": "1"
         },
         "touchdown-speed": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_TD",
@@ -4130,6 +4286,7 @@
           "unit": "m/s"
         },
         "touchdown-speed-margin-target": {
+          "at_most": null,
           "positive": true,
           "role": "target",
           "symbol": "k_S,TD",
@@ -4138,6 +4295,7 @@
           "unit": "1"
         },
         "vertical-tail-volume": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "V_V",
@@ -4146,6 +4304,7 @@
           "unit": "1"
         },
         "weathercock-stability-app": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "C_n_beta,app",
@@ -4154,6 +4313,7 @@
           "unit": "1/rad"
         },
         "weathercock-stability-md": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "C_n_beta,md",
@@ -4162,6 +4322,7 @@
           "unit": "1/rad"
         },
         "weight": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "W",
@@ -4170,6 +4331,7 @@
           "unit": "N"
         },
         "wing-loading": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "W/S",
@@ -4178,6 +4340,7 @@
           "unit": "N/m^2"
         },
         "wing-loading-limit-stall": {
+          "at_most": null,
           "positive": null,
           "role": "output",
           "symbol": "(W/S)_max,S",
@@ -4186,6 +4349,7 @@
           "unit": "N/m^2"
         },
         "wing-reference-area": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "S_ref",
@@ -4194,6 +4358,7 @@
           "unit": "m^2"
         },
         "wing-span": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "b_ref",
@@ -4202,6 +4367,7 @@
           "unit": "m"
         },
         "zero-lift-angle": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "alpha_0",
@@ -4210,6 +4376,7 @@
           "unit": "deg"
         },
         "zero-lift-drag-coefficient": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_D0",

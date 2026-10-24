@@ -24,7 +24,7 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
     content = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"]
     assert len(content.formulas) == len(list((CANON / "formulas").glob("*.md")))
     assert len(content.quantities) == len(list((CANON / "quantities").glob("*.md")))
-    assert len(content.defaults) == 8
+    assert len(content.defaults) == 9
     for default in content.defaults.values():
         assert default.source
         assert default.regime
@@ -32,13 +32,16 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
         assert default.basis
 
 
-def test_the_only_convention_of_the_real_canon_is_the_stall_break_fraction(tmp_path: Path) -> None:
+def test_the_conventions_of_the_real_canon_are_the_stall_break_fraction_and_the_tail_efficiency(
+    tmp_path: Path,
+) -> None:
     result = import_canon(CANON)
     assert result.model_json is not None
     (tmp_path / "canon_model.json").write_text(result.model_json, encoding="utf-8")
     defaults = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"].defaults
     conventions = {slug for slug, default in defaults.items() if default.basis == "convention"}
-    assert conventions == {"stall-break-fraction"}
+    assert conventions == {"stall-break-fraction", "tail-efficiency"}
+    assert defaults["tail-efficiency"].value == 0.65
     assert defaults["stall-break-fraction"].value == 0.10
     assert defaults["gravity"].basis == "standard"
     assert defaults["load-factor"].basis == "definition"

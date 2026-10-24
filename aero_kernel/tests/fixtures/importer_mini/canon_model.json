@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:9c5d294e2efb981eb18431945928df6685c766c38fe971aa60654b01c137ca39",
+  "content_hash": "sha256:19c882370a189a616a837054aa47897cb4f789d595e3354b67e1d388f7586d85",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -247,6 +247,7 @@
       },
       "quantities": {
         "aircraft-mass": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "m",
@@ -255,6 +256,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "airplane",
@@ -263,6 +265,7 @@
           "unit": "1"
         },
         "gravity": {
+          "at_most": null,
           "positive": true,
           "role": "input",
           "symbol": "g",
@@ -271,6 +274,7 @@
           "unit": "m/s^2"
         },
         "ratio": {
+          "at_most": null,
           "positive": null,
           "role": "input",
           "symbol": "r",
@@ -279,6 +283,7 @@
           "unit": "1"
         },
         "weight": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "W",
@@ -287,6 +292,7 @@
           "unit": "N"
         },
         "weight-estimate": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "W_e",
@@ -295,6 +301,7 @@
           "unit": "N"
         },
         "weight-flapped": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "W_f",
@@ -303,6 +310,7 @@
           "unit": "N"
         },
         "weight-outer": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "W_o",
@@ -311,6 +319,7 @@
           "unit": "N"
         },
         "weight-twice": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "W_2",
@@ -319,6 +328,7 @@
           "unit": "N"
         },
         "weight-weighed": {
+          "at_most": null,
           "positive": null,
           "role": "derived",
           "symbol": "W_w",
