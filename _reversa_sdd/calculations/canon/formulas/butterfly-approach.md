@@ -87,3 +87,23 @@ glider in the reference fleet.
 
 **Source.** 🟡 PARTIAL — the stall relation as in [[stall-speed]]; crow as the dominant landing
 aid for models per the RC sources (§3.7); the reading of the question is the maintainer's.
+
+**Validity in the RC/UAV regime (ADR 0028).** The stall relation is the one in [[stall-speed]] and inherits its Reynolds-number qualification. Crow is RC practice: flaps down (up to 90°) and ailerons up, the inner-wing lift gain partly cancelled by the outer-wing loss, needing slightly higher approach speeds than a minimum-speed landing (RC-Network wiki, *Landehilfen*); its braking comes mainly from the strongly non-elliptic loading and the induced drag that follows (*Butterfly*); since RC practice deflects crow flaps up to 90°, the declared limit above applies up to 90°, not only to 45–80°. AeroBuildup computes induced drag at aircraft level through a Trefftz-plane projection (Sharpe 2024 §5.3), so that mechanism is represented as far as the section lifts are right. The section lifts are where it fails: at 45–80° the flap is far outside the attached range where linear estimates hold (Anderson §4.13), and below chord Re 7·10⁴ laminar separation sets in even undeflected (§20.3.2). AeroBuildup still applies its δ-independent τ fit (AeroSandbox study "Control Surface Effectiveness") to both the lowered flap and the raised aileron; both are over-predicted, so the sign of the net error in `V_S0(s)`, and hence in `s_max`, is open [no source]. Mach ≤ 0.3 needs no correction (Anderson §1.10.3).
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

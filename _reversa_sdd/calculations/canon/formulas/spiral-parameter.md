@@ -55,3 +55,18 @@ experienced pilot; rudder-only models V_V·B = 0.10–0.20 for roll authority. B
 9/1990 (equivalent dihedral for polyhedral).
 
 **Validity in the RC/UAV regime (ADR 0028).** Stated for RC sailplanes and models; the stability threshold is empirical.
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

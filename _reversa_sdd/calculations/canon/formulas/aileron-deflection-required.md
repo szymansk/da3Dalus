@@ -82,4 +82,24 @@ world avl:          linear in delta; delta_a,req solved directly
 
 **Method premise (architect, 2026-10-14).** AeroBuildup has no flap model of its own: it evaluates the clean airfoil at `α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), with the drag times a multiplier fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, via `aero_buildup.py:784-801`). There is no flap separation: it over-predicts the effectiveness at large δ until the clean section stalls, and the δ range of the τ fit is unknown. AVL is linear in δ by construction and documented only for `|pb/2V| < 0.10`. Reference point: Sadraey §12.4.3 — beyond about 20–25° deflection, flow separates over the aileron and effectiveness drops; recommendation `|δ_A,max| ≤ 25°`. Transport and GA material, not checked at model Reynolds number (ADR 0028). Beyond 25° the formula reports a `practice` warning with the angle (ARCH §8.8); the canon sets no limit.
 
-**Source.** 🟢 Sadraey §12.4 (aileron design; steady roll from `C_l,δa · δa + C_l,p · pb/2V = 0`), with the rate requirement made scale-free per the domain expert (time-to-bank does not transfer to model scale).
+**Source.** 🟢 Sadraey §12.4 (aileron design): the aileron rolling moment `C_l = C_lδA·δA` (§12.4.2, Eq. 12.23) and the linear roll damping `C_lp` per `pb/2V` with the roll mode (§12.3.3). The linear balance `C_l,δa · δa + C_l,p · pb/2V = 0` is **not** printed by Sadraey: his §12.4.2 steady roll is a quadratic rolling-drag balance (Eq. 12.37); the linear form combines his two terms, and both worlds solve `C_roll = 0` directly, with the rate requirement made scale-free per the domain expert (time-to-bank does not transfer to model scale).
+
+**Validity in the RC/UAV regime (ADR 0028).** The steady-roll balance is scale-free: the aileron moment `C_l = C_lδA·δA` (Sadraey §12.4.2, Eq. 12.23) balances the roll damping, and the rate enters only as `pb/2V`. Mach ≤ 0.3 needs no correction (Anderson §1.10.3). The regime bites in the deflected section, not in the relation: laminar flow at low chord Re separates readily — Anderson's laminar case at Re_c = 10⁵ separates on both surfaces (§20.3.2) — and neither world contains it. AVL is inviscid, attached and gives no stall (Budziak, Table 2.1); AeroBuildup's τ is a δ-independent XFoil fit without flap separation, and NeuralFoil signals such inputs only through its analysis confidence (Sharpe 2024 §7.2.4). Sadraey puts aileron stall beyond about 20–25° (§12.4.3, Table 12.19), transport/GA material; where it starts at model Re is [no source]. Declared limitation (finding #1181): the AVL world is linear in δ and runs outside AVL's stated range `−0.10 < pb/2V < 0.10` (`avl_doc.txt:121-141`; BRYAN 0.276) — recorded, not resolved. Aileron differential and adverse yaw are not modelled (out of the MVP).
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.
