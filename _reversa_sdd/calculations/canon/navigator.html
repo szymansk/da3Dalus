@@ -85,7 +85,10 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .kst{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin:0 0 14px;padding:4px 9px;
   border-radius:5px;border:1px solid var(--line-2)}
 .colhead{font-family:"STIX Two Text",Georgia,serif;font-size:15px;font-weight:600;fill:var(--ink)}
-.frame{fill:none;stroke:var(--line-2);stroke-width:1.2}
+.frame{fill:transparent;stroke:var(--line-2);stroke-width:1.2}
+.modsel{cursor:pointer}.modsel:hover .frame{stroke:var(--sel)}
+.modsel:hover .blocklab{fill:var(--sel)}
+.frame.framesel{stroke:var(--sel);stroke-width:2.4;stroke-dasharray:none}
 .tframe{stroke:var(--tgt);stroke-dasharray:4 3}
 .blocklab{font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.08em}
 .laylab{font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace}
@@ -236,7 +239,7 @@ const SLOTS={analysis:16, design:6}, SIDEGAP=70, SUBGAP=NH+16, HEAD=40;
 const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXMODCOLS=4;
 const SX={analysis:0, design:SLOTS.analysis*slotW-GAPX+SIDEGAP};
 const W=SX.design+SLOTS.design*slotW-GAPX;
-const P={}, LY={}, FRAMES=[];
+const P={}, LY={}, FRAMES=[], frameEls=[];
 let yc=HEAD;
 for(const l of layers){
   LY[l]=yc; let height=NH;
@@ -259,7 +262,7 @@ for(const l of layers){
       const fw=cols*slotW-GAPX+2*FPAD, fh=(rows-1)*SUBGAP+NH+2*FPAD;
       if(x>SX[side] && x+fw>right+FPAD){ x=SX[side]; y+=lineH+MODGAP+FHEAD; lineH=0; }
       qs.forEach((q,i)=>{ P[q]={x:x+FPAD+(i%cols)*slotW, y:y+FPAD+Math.floor(i/cols)*SUBGAP}; });
-      FRAMES.push({label:MODULES[m],x,y,w:fw,h:fh,target:TARGETS.has(qs[0])});
+      FRAMES.push({module:m,label:MODULES[m],x,y,w:fw,h:fh,target:TARGETS.has(qs[0])});
       lineH=Math.max(lineH,fh); x+=fw+MODGAP;
     }
     height=Math.max(height,y+lineH-yc);
@@ -280,8 +283,13 @@ for(const l of layers){
   for(const [side,label] of [['analysis','Analyse \u2014 was ein gegebenes Flugzeug kann'],['design','Auslegung \u2014 Ziel \u2192 Konstruktionsgr\u00f6\u00dfe (O1)']]){
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   for(const f of FRAMES){
-    cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')}));
-    const t=el('text',{x:f.x+2,y:f.y-7,class:'blocklab'}); t.textContent=f.label; cam.appendChild(t); }
+    const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Modul '+f.label+' ausw\u00e4hlen'});
+    const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')});
+    const t=el('text',{x:f.x+2,y:f.y-7,class:'blocklab'}); t.textContent=f.label+' \u25b8';
+    g.appendChild(r); g.appendChild(t);
+    g.addEventListener('click',()=>{ if(!moved) selectModule(f.module); });
+    g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectModule(f.module);} });
+    cam.appendChild(g); frameEls.push({el:r,module:f.module}); }
 }
 const edgeEls=[];
 for(const [a,b,f] of D.edges){
@@ -334,25 +342,30 @@ let depth=1, sel=null;
 const dEl=document.getElementById('depth'), dOut=document.getElementById('depthOut');
 dEl.addEventListener('input',()=>{depth=+dEl.value;dOut.value=depth;if(sel)paint();});
 
+// Reach from one quantity or from a set of them (a module), n steps along map.
 function reach(start,map,n){
-  const seen=new Set(); let front=[start];
+  const starts=start instanceof Set?start:new Set([start]);
+  const seen=new Set(); let front=[...starts];
   for(let i=0;i<n;i++){
     const nxt=[];
-    for(const q of front) for(const [o] of map[q]) if(!seen.has(o)&&o!==start){seen.add(o);nxt.push(o);}
+    for(const q of front) for(const [o] of map[q]) if(!seen.has(o)&&!starts.has(o)){seen.add(o);nxt.push(o);}
     front=nxt; if(!front.length) break;
   }
   return seen;
 }
+// The selection is one quantity (a string) or a module: {module, members: Set}.
+const selSet=()=>sel&&sel.members?sel.members:new Set([sel]);
 function paint(){
   if(!sel){ for(const q in nodeEls) nodeEls[q].classList.remove('faded');
             edgeEls.forEach(({e})=>e.classList.remove('faded','up','down')); return; }
-  const up=reach(sel,pred,depth), down=reach(sel,succ,depth);
-  const on=new Set([sel,...up,...down]);
+  const S=selSet(), up=reach(S,pred,depth), down=reach(S,succ,depth);
+  const on=new Set([...S,...up,...down]);
   for(const q in nodeEls) nodeEls[q].classList.toggle('faded',!on.has(q));
+  for(const f of frameEls) f.el.classList.toggle('framesel',!!(sel&&sel.module===f.module));
   edgeEls.forEach(({e,a,b})=>{
     e.classList.remove('up','down','faded');
-    const upE = (on.has(a)&&(b===sel||up.has(b))) && (a===sel||up.has(a));
-    const dnE = (on.has(b)&&(a===sel||down.has(a))) && (b===sel||down.has(b));
+    const upE = (on.has(a)&&(S.has(b)||up.has(b))) && (S.has(a)||up.has(a));
+    const dnE = (on.has(b)&&(S.has(a)||down.has(a))) && (S.has(b)||down.has(b));
     if(upE) e.classList.add('up'); else if(dnE) e.classList.add('down'); else e.classList.add('faded');
   });
 }
@@ -405,6 +418,20 @@ function select(q){
   info.innerHTML=h;
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
+}
+function selectModule(m){
+  const members=new Set(Object.keys(Q).filter(q=>Q[q].module===m&&P[q]));
+  sel={module:m,members}; paint();
+  const direct=[...new Set([...members].flatMap(q=>succ[q].map(([o])=>o)))].filter(o=>!members.has(o)).sort();
+  let h=`<h2>${esc(MODULES[m]||m)}</h2><p class="meta">Modul \u00b7 module/${esc(m)} \u00b7 ${members.size} Gr\u00f6\u00dfen</p>
+    <p class="desc">Alle Gr\u00f6\u00dfen des Moduls sind gemeinsam ausgew\u00e4hlt. Der Regler \u201eTiefe\u201c bestimmt, wie viele Stufen weit ihr Einfluss hervorgehoben wird.</p>
+    <div class="blk"><div class="lab">Im Modul \u00b7 ${members.size}</div><ul class="lnk">`+
+    [...members].map(q=>`<li data-q="${esc(q)}">${esc(sym(q))}</li>`).join('')+`</ul></div>`;
+  h+= direct.length ? `<div class="blk"><div class="lab">Direkter Einfluss auf \u00b7 ${direct.length}</div><ul class="lnk">`+
+    direct.map(o=>`<li data-q="${esc(o)}" title="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`
+    : `<div class="blk"><div class="lab">Direkter Einfluss</div><p class="sub" style="margin:0">Keiner.</p></div>`;
+  info.innerHTML=h;
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
 }
 // Suche
 const qi=document.getElementById('q'), hits=document.getElementById('hits');
