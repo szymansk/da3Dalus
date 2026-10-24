@@ -13,6 +13,7 @@ from aero_kernel.solvers.opti import (
     OptiAdapter,
     Stall,
     StallSolution,
+    SteadyRoll,
 )
 
 STEP = 0.25
@@ -77,6 +78,9 @@ class StubOpti(OptiAdapter):
         self.answer = answer
         self.glide_answer: BestGlideSolution | None = None
         self.glide_calls: list[tuple[AirplaneGeometry, float, float, float, AirState]] = []
+        self.roll_rad_s = 3.0  # |p| of the stub's steady roll, signed by the command
+        self.roll_failure: Exception | None = None
+        self.roll_calls: list[tuple[AirplaneGeometry, float, float, AirState, float, float]] = []
         self.delay_s = delay_s
         self.calls: list[tuple[AirplaneGeometry, float, float, float, AirState]] = []
         self.cancelled = False
@@ -120,3 +124,20 @@ class StubOpti(OptiAdapter):
             raise
         solution = self.glide_answer or consistent_glide(airplane, mass_kg, gravity, n_load, air)
         return BestGlide(solution=solution, warnings=())
+
+    async def steady_roll(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+        delta_a_deg: float,
+    ) -> SteadyRoll:
+        """Answer the steady roll without a solver: ``roll_rad_s`` with the sign of the command."""
+        self.roll_calls.append((airplane, mass_kg, gravity, air, v_ms, delta_a_deg))
+        if self.roll_failure is not None:
+            raise self.roll_failure
+        return SteadyRoll(
+            p_rad_s=math.copysign(self.roll_rad_s, delta_a_deg), alpha_deg=4.0, warnings=()
+        )

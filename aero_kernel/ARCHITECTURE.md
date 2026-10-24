@@ -243,7 +243,12 @@ nothing failed. The category enum holds only the eight rows above.
 - **Refused layouts and tool limits** (`unsupported_configuration`): `unsupported_layout` — the neutral point
   is defined for one `main_wing` with one `horizontal_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
-  declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh.
+  declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
+  `roll_device_on_unmirrored_surface` — a device acting as aileron sits on a wing that is not mirrored (no
+  fleet aircraft has one, ADR 0021; `detail`: wing key, device label, role); `missing_hinge`
+  (`invalid_input`) — a driven roll device without `rel_chord_root`, the tool's default hinge is never used;
+  `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
+  value per section; `detail`: wing key, y).
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `defect` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
@@ -281,6 +286,9 @@ Sources:
   open (#1205)
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`defect`)
+- the averaged hinge line of a roll device (`hinge_line_averaged`, `practice`, ch. 8.8): AeroBuildup holds one
+  hinge per segment, so a tapered hinge line is replaced by the mean of its root and tip (`detail`: wing key,
+  device, `root`, `tip`, `used`)
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
@@ -700,10 +708,82 @@ caller's responsibility.
     value, and declares `avl_mesh_not_converged` if the two differ by more than
     `avl_refinement_tolerance_mac` of the mean chord, `avl_refinement_unchecked` if the refined mesh
     overflows. Settings (`Provenance.solver_settings`, public keys): `avl_nchord` 10, `avl_nspan` 24,
-    `avl_airfoil_points_per_side` 80, `avl_core_ratio` 0.25, `avl_refine_factor` 2, `avl_refinement_tolerance_mac` 0.005; tool versions
+    `avl_airfoil_points_per_side` 80, `avl_core_ratio` 0.25, `avl_refine_factor` 2, `avl_refinement_tolerance_mac` 0.005, `avl_roll_refinement_tolerance` 0.01, `avl_roll_nchord_front` 12, `avl_roll_nchord_aft` 8, `avl_roll_branch_tolerance` 0.10; tool versions
     `avl-binary` and `aerosandbox`. The AVL world adds no regime warning: those come with the
     minimum-drag speed and are inherited. The reference value for BRYAN under these conditions is in
     `scripts/sim_export/crrcsim/AVL_CONVERGENCE.md`.
+  - **The steady roll** (`opti.steady_roll`, `avl.steady_roll`, #1211). Both worlds solve the same roll: rotation
+    about the stability x axis through the airplane's reference point, the stability-axis rolling moment zero,
+    positive to the right.
+    - *One orientation rule.* `to_asb_airplane` builds a mirrored surface from `surface_chain.oriented_chain`
+      (y ≥ 0, root first), as the AVL writer does, so the sign helper sees the written side +1 in both tools.
+      Before #1211 ASB received the surface as stored, and a mirrored wing stored on −y or tip first was a
+      different wing to AeroBuildup (BRYAN, clean: C_D 0.246 against 0.070): a latent defect, fixed here and
+      pinned by an aero test on the clean airplane.
+      Scope change: every consumer of `to_asb_airplane` (the GEO properties, AeroBuildup) now refuses a mirrored
+      surface whose sections fold back along y as `unsupported_configuration`, as the AVL mesh already did.
+    - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
+      one sweep on the **clean** (unrolled) airplane: with the deflection the curve has kinks and its first
+      local maximum lies far below the stall (trainer: C_L 0.364 at 1° against a clean peak of 1.233 at 16°),
+      so a sweep on the rolled airplane brackets nothing. The window only keeps IPOPT on the physical branch;
+      local stall under the deflection is reported by the diagnostics of the deflected evaluation. The
+      `α + τδ` it reports is the shift before NeuralFoil's 360° blend (which uses the unshifted angle for its
+      post-stall weight); the τ pin uses `include_360_deg_effects=False` for that reason.
+      The start of the roll rate is the zero of the secant of the stability-axis rolling moment at the
+      weight-carrying α (two numeric runs: without roll and at a quarter of the window): IPOPT started from a
+      fixed fraction of the window ended in `Infeasible_Problem_Detected` on BRYAN at 20° (fraction 0.1; 0.25
+      failed on other cases) although the equilibrium exists. A start is no result; if the secant has no
+      damping the fixed fraction 0.1 is the start.
+    - *AVL.* The controlled wing is split at the hinge line into a front and an aft SURFACE of one COMPONENT on
+      the same span stations (Drela's rule 3, `avl_doc.txt:1110-1117`): front `AFIL 0..x_h`, aft `AFIL x_h..1`,
+      the CONTROL on the aft piece with its hinge at the aft leading edge (`amake.f:418-423`), so the deflected
+      part is the whole aft strip. The aft leading edge is at `x_le + x_h c` with z unchanged (AVL tilts the
+      normals, it never rotates the lattice). Off the device the cut is the hinge fraction of the nearest
+      controlled station. Declared chordwise counts: front 12, aft 8 (`SPLIT_N_CHORD`); the refinement check
+      doubles them and the spanwise count. Reason: on one full-chord surface the control derivative at the
+      hinge carries an O(1/N_chord) discretisation error (a camber-slope jump), 4.5 % (BRYAN) and 7.5 %
+      (JAGUAR) between the declared and the refined mesh, and aligning the hinge with a panel edge does not
+      cure it. The clean file (neutral point) is unchanged. AVL's chordwise limit is 50 vortices per surface
+      (`KCMAX`, `amake.f:55`); above it AVL prints an array overflow and returns zero: the adapter refuses
+      it as `avl_array_limit` (a refined mesh beyond it is `avl_refinement_unchecked`).
+      A refined run that is beyond the arrays or ends in `avl_roll_branch_inconsistent` leaves the declared
+      value standing (the declared run passed every check) and declares `avl_refinement_unchecked` with the
+      `reason`; a declared run off the branch is an error.
+      The other fixed arrays count too: 500 strips (`NSMAX`, mirror images and both pieces of the split
+      wing included), 100 surfaces, 6000 vortices; each overflow message is `avl_array_limit`.
+    - *Driven stations.* The main wing of a driven run has one sine-to-tip distribution over the half span,
+      `y = (b/2) sin(π/2 t)` (AVL's `Sspace` −2 from root to tip, `avl_doc.txt:1043-1048`), the device ends
+      exact: their `t` is rounded to a strip count and `t` runs evenly inside each of the three pieces
+      (inboard, device, outboard), so the strip widths stay continuous across the ends (Rule 2,
+      `avl_doc.txt:1100`); front and aft piece have the same stations, the tail takes the wing's stations
+      inside its span. Reason: with uniform strips the roll damping `Clp` has an O(1/N) error at the tip
+      (it halves on every doubling; the aileron effectiveness `Cld01` is within 0.5 % at 24 strips);
+      bunching at the device ends is no remedy (cosine inside each piece is worse than uniform).
+      Declared mesh: 24 strips, refined 48, chordwise (12, 8) and (24, 16); the 6000-vortex limit allows a
+      refined mesh of 64 strips, not one of 80. Doubling check, p̂ at C_L 0.7, δ 20°:
+
+      | N declared → refined 2N | BRYAN | JAGUAR |
+      |---|---|---|
+      | 12 → 24 | −0.88 % | +0.24 % |
+      | 16 → 32 | +0.92 % | +0.43 % |
+      | 20 → 40 | −0.09 % | +0.73 % |
+      | **24 → 48** | **+0.15 %** | **+0.69 %** |
+      | 28 → 56 | +0.20 % | +0.66 % |
+      | 32 → 64 | +0.37 % | +0.67 % |
+      | 40 → 80 | refined run beyond `NVMAX` (`avl_refinement_unchecked`) | same |
+
+      p̂ of the declared mesh is 0.28643 (BRYAN) and 0.27927 (JAGUAR). Caveat: from 48 to 96 strips `Clp` and
+      `Cld01` still move by about 0.5 % each, in opposite directions, so p̂ is flat partly by cancellation.
+      The check is on p̂, the canon output; `Clp` and `Cld01` of these runs are never exposed as converged
+      values. 24 strips was kept over 16 because 16 → 32 is within 0.1 % of the 1 % bound for BRYAN.
+    - *Branch consistency.* In the same AVL session, after the trimmed roll, the run holds `p'b/2V` and the
+      aileron at zero and prints the stability derivatives; the linearised rate `-Cld01 δ / Clp` must agree
+      with the trimmed one to 10 % (plus the print floor 2·10⁻⁴), otherwise the adapter raises
+      `avl_roll_branch_inconsistent` (`not_converged`, both values in the `detail`). A numerical sanity check
+      of the solver, no domain threshold: the nonlinearity measured on the fleet is 0.2–0.4 % (BRYAN 0.27932
+      against 0.28005; the unsplit file 0.2623 against 0.2634), whereas BRYAN at 96 spanwise strips lands
+      on a spurious branch (0.825 against 0.347, the state without roll at 7.1° instead of 4.2°) with no
+      AVL message, and every other check of the run (`C_L`, residual moment, control echo) passes.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
     the quantity of the node whose call produced them.
 - Data: KAT (the fitted components) and APC (the fitted propeller's measured table) are **plain reads of

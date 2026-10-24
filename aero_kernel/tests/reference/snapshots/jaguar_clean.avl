@@ -1,0 +1,324 @@
+airplane
+#Mach
+0.0
+#IYsym   IZsym   Zsym
+0   0   0.0
+#Sref    Cref    Bref
+0.064685203498 0.10504546518699101 0.62418
+#Xref    Yref    Zref
+0.0 0.0 0.0
+# CDp
+0.0
+#============================================================
+SURFACE
+Tragflaeche
+#Nchordwise  Cspace
+10   1
+YDUPLICATE
+0.0
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.071557 0.0 0.023912 0.120096 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07196177889972144 0.01300375 0.02392247373104302 0.11889706584648715 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07240239868498721 0.0260075 0.023933924263789597 0.11759155201023153 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.0728429074326097 0.03901125 0.023945438045189216 0.11628580391224504 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07328339848273109 0.052015 0.023955806847674187 0.11498009223397883 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07372369315232581 0.06501875 0.023953470378319026 0.11367478468756238 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07416398782192055 0.0780225 0.023951133908963865 0.11236947714114594 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07460428249151527 0.09102625 0.023948797439608704 0.11106416959472949 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.075044507840772 0.10403 0.023945130277442703 0.10975873341375152 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07548450203558504 0.11703375 0.023937025809207882 0.10845286829010857 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07592449623039807 0.1300375 0.02392892134097306 0.10714700316646562 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.0763644904252111 0.14304125 0.023920816872738237 0.10584113804282268 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07680478143712575 0.156045 0.02392105389221557 0.10453549950099801 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07724550733532934 0.16904875 0.0239335125748503 0.10323019293912176 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07768623323353294 0.1820525 0.02394597125748503 0.1019248863772455 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07812695913173653 0.19505625 0.02395842994011976 0.10061957981536926 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07856715951287682 0.20806 0.02395222958674386 0.0993141291674985 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.0790069349670593 0.22106375 0.023930941754841284 0.09800856201337592 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07944671042124177 0.2340675 0.02390965392293871 0.09670299485925334 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.07988648587542424 0.24707125 0.023888366091036135 0.09539742770513077 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.0803267597907454 0.260075 0.02389016685453337 0.09409178539842192 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.0807672463655019 0.27307875 0.02390181794994075 0.0927861110292205 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.08120773030772208 0.2860825 0.023913472808205924 0.09148045074511323 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.08164815149022643 0.29908625 0.023925217373072707 0.09017512624991936 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.106616 0.31209 0.023941 0.01647 1.5   1   1
+AFIL
+af0.dat
+CLAF
+1.09
+#============================================================
+SURFACE
+Hoehenleitwerk
+#Nchordwise  Cspace
+10   1
+YDUPLICATE
+0.0
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.3279 0.0 0.050919 0.056814 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.3293021388888889 0.01300375 0.050919 0.06793743333333334 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.33189451288244765 0.0260075 0.050919 0.064766277294686 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.3344868868760064 0.03901125 0.050919 0.06159512125603865 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.337069277875 0.052015 0.050919 0.058448773 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.33965084734375 0.06501875 0.050919 0.055304466249999996 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.3422324168125 0.0780225 0.050919 0.0521601595 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.344846789375 0.09102625 0.050919 0.048964029374999996 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.347467045 0.10403 0.050919 0.045758605 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.350087300625 0.11703375 0.050919 0.04255318062499999 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.364314 0.1269 0.050919 0.004711 0.0   1   1
+AFIL
+af1.dat
+CLAF
+1.09
+#============================================================
+SURFACE
+Seitenleitwerk
+#Nchordwise  Cspace
+10   1
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.327698 0.0 0.051919 0.065003 0.0   1   1
+AFIL
+af2.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.30777194336 0.0 0.0650952 0.08646031648 0.0   1   1
+AFIL
+af2.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.32102742388 0.0 0.0782714 0.07196870221999999 0.0   1   1
+AFIL
+af2.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.33573104723999997 0.0 0.0914476 0.05466395148 0.0   1   1
+AFIL
+af2.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.35271466204 0.0 0.1046238 0.03404038951999999 0.0   1   1
+AFIL
+af2.dat
+CLAF
+1.09
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace
+0.378339 -0.0 0.1178 0.001637 0.0   1   1
+AFIL
+af2.dat
+CLAF
+1.09

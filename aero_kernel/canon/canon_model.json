@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:2d0e3d0ea186c46689cf017f2837d7464b25ae61d1fbe81bdc7882a259f18ac9",
+  "content_hash": "sha256:6f56506815bcd98793d49befc7c4f2d5d065251d041693750f90c85a3ec3d0ac",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -2168,11 +2168,13 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "b_ref": "calc:wing-span",
                 "delta_a": "calc:aileron-deflection",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "rho": "calc:air-density",
                 "v_app": "calc:approach-speed"
               },
@@ -2189,11 +2191,13 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "b_ref": "calc:wing-span",
             "delta_a": "calc:aileron-deflection",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "rho": "calc:air-density",
             "v_app": "calc:approach-speed"
           },

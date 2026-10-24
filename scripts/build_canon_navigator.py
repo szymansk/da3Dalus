@@ -131,7 +131,7 @@ MVP_RESULTS = (
 )
 
 #: Open MVP formulas and their ticket; an entry is removed when the formula is implemented.
-OPEN_TICKETS = {"roll-rate": "#1211", "speed-from-stall-margin": "#1211"}
+OPEN_TICKETS: dict[str, str] = {}
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 CANON_DIR = REPO / "_reversa_sdd/calculations/canon"

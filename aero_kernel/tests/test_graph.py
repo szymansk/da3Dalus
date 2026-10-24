@@ -245,6 +245,7 @@ def test_the_layer_order_does_not_depend_on_the_hash_seed(package_root: Path) ->
 
 def test_public_names_of_graph_are_pinned() -> None:
     assert sorted(graph.__all__) == [
+        "AILERON_ROLES",
         "CanonGraph",
         "Edge",
         "GraphModelError",

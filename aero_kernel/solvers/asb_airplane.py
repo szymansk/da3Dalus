@@ -16,9 +16,11 @@ from aero_kernel.geometry import (
     Fuselage,
     InlineAirfoil,
     Wing,
-    WingXSec,
 )
 from aero_kernel.geometry_properties import main_wing_properties
+from aero_kernel.graph import AILERON_ROLES
+from aero_kernel.solvers.devices import roll_deflection, roll_segments
+from aero_kernel.surface_chain import ChainPoint, oriented_chain
 
 logger = logging.getLogger(__name__)
 
@@ -43,25 +45,75 @@ def _airfoil(asb: Any, airfoil: Airfoil) -> Any:  # noqa: ANN401  # untyped aero
     return asb.Airfoil(name=airfoil)
 
 
-def _section(asb: Any, section: WingXSec) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
-    """Convert one rib.
+def _section(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    point: ChainPoint,
+    roll_deg: float,
+    label: str,
+) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+    """Convert one rib of an oriented chain.
 
-    Control devices and the ``dihedral`` field are not passed: the airplane is built with every
-    device at 0 deg (ch. 8.11), and ``xyz_le`` already carries the dihedral.
+    The geometry's own control-device state and the ``dihedral`` field are not passed: the airplane
+    is built with every device at 0 deg (ch. 8.11), and ``xyz_le`` already carries the dihedral.
+    Only the roll command makes a control surface: the rib that starts a roll segment gets one
+    antisymmetric surface at the mean of the segment's hinge positions, ASB's convention for the
+    strip a -> a+1. A mirrored surface is written on the positive side, root first, as the AVL
+    writer writes it, so the sign of the deflection is that of side +1 in both tools.
     """
-    return asb.WingXSec(
-        xyz_le=list(section.xyz_le),
-        chord=section.chord,
-        twist=section.twist,
-        airfoil=_airfoil(asb, section.airfoil),
-    )
+    kwargs: dict[str, Any] = {
+        "xyz_le": [point.x, point.y, point.z],
+        "chord": point.chord,
+        "twist": point.twist,
+        "airfoil": _airfoil(asb, point.airfoil),
+    }
+    device = point.device
+    if roll_deg and device is not None and device.role in AILERON_ROLES:
+        if device.hinge_start is None or device.hinge_end is None:
+            msg = "a driven device without a hinge: roll_segments must have refused it"
+            raise ValueError(msg)
+        kwargs["control_surfaces"] = [
+            asb.ControlSurface(
+                name=device.name or label,
+                symmetric=False,
+                hinge_point=(device.hinge_start + device.hinge_end) / 2.0,
+                deflection=roll_deflection(1, roll_deg),
+            )
+        ]
+    return asb.WingXSec(**kwargs)
 
 
-def _wing(asb: Any, wing: Wing) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
-    """Convert one lifting surface."""
+def _wing(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    key: str,
+    wing: Wing,
+    roll_deg: float,
+) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+    """Convert one lifting surface.
+
+    A mirrored surface is built from the oriented chain (root first, y >= 0), the one orientation
+    rule of the kernel: ASB mirrors a surface stored on the other side or tip first into a
+    different wing (BRYAN: C_D 0.246 against 0.070). An unmirrored surface keeps its stored order.
+    """
+    if wing.symmetric:
+        chain = oriented_chain(wing, 1)
+    else:
+        chain = [
+            ChainPoint(
+                x=s.xyz_le[0],
+                y=s.xyz_le[1],
+                z=s.xyz_le[2],
+                chord=s.chord,
+                twist=s.twist,
+                airfoil=s.airfoil,
+            )
+            for s in wing.x_secs
+        ]
     return asb.Wing(
         name=wing.name,
-        xsecs=[_section(asb, section) for section in wing.x_secs],
+        xsecs=[
+            _section(asb, point, roll_deg, f"{key} device {index}")
+            for index, point in enumerate(chain)
+        ],
         symmetric=wing.symmetric,
     )
 
@@ -111,7 +163,7 @@ def _fuselage(asb: Any, fuselage: Fuselage) -> Any:  # noqa: ANN401  # untyped a
     return asb.Fuselage(name=fuselage.name, xsecs=sections)
 
 
-def to_asb_airplane(airplane: AirplaneGeometry) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Convert a geometry document to an ``asb.Airplane``.
 
     Metres and degrees as parsed (ch. 8.11). The reference area, span and chord of the airplane
@@ -122,17 +174,24 @@ def to_asb_airplane(airplane: AirplaneGeometry) -> Any:  # noqa: ANN401  # untyp
 
     Args:
         airplane: The validated geometry document (exactly one main wing).
+        roll_deg: The aileron command in degrees, positive = roll to the right (ch. 8.8). Zero
+            builds the clean airplane, bit for bit; otherwise every segment with a roll device
+            gets one antisymmetric control surface (:func:`roll_segments`).
 
     Returns:
         The ``asb.Airplane``, wings and fuselages in document order.
 
     Raises:
         ValueError: If the document does not have exactly one main wing.
-        FormulaError: ``unsupported_configuration`` for a fuselage ASB cannot represent.
+        FormulaError: ``unsupported_configuration`` for a fuselage ASB cannot represent, a roll
+            device on an unmirrored wing, or a mirrored wing whose sections fold back along y
+            (the oriented chain refuses it); ``invalid_input`` for a roll device without a hinge.
     """
     asb = load_aerosandbox()
     reference = main_wing_properties(airplane)
-    wings = [_wing(asb, wing) for wing in (airplane.wings or {}).values()]
+    if roll_deg:
+        roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
+    wings = [_wing(asb, key, wing, roll_deg) for key, wing in (airplane.wings or {}).items()]
     fuselages = [_fuselage(asb, fuselage) for fuselage in (airplane.fuselages or {}).values()]
     logger.debug(
         "converted airplane %s: %d wings, %d fuselages", airplane.name, len(wings), len(fuselages)

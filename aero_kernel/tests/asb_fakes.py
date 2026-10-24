@@ -26,6 +26,13 @@ class FakeWingXSec:
         self.kwargs = kwargs
 
 
+class FakeControlSurface:
+    """Records ``asb.ControlSurface(...)``."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.kwargs = kwargs
+
+
 class FakeWing:
     """Records ``asb.Wing(...)``."""
 
@@ -60,6 +67,7 @@ def install_fake_aerosandbox(monkeypatch: pytest.MonkeyPatch) -> types.ModuleTyp
     module.__spec__ = importlib.machinery.ModuleSpec("aerosandbox", None)
     module.Airfoil = FakeAirfoil  # pyright: ignore[reportAttributeAccessIssue]  # fake module
     module.WingXSec = FakeWingXSec  # pyright: ignore[reportAttributeAccessIssue]
+    module.ControlSurface = FakeControlSurface  # pyright: ignore[reportAttributeAccessIssue]
     module.Wing = FakeWing  # pyright: ignore[reportAttributeAccessIssue]
     module.FuselageXSec = FakeFuselageXSec  # pyright: ignore[reportAttributeAccessIssue]
     module.Fuselage = FakeFuselage  # pyright: ignore[reportAttributeAccessIssue]

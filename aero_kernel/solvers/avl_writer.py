@@ -1,7 +1,8 @@
 """The AVL input text and the reading of its output (ARCHITECTURE ch. 8.8).
 
-The one writer of ``.avl`` text in the kernel. It emits no BODY and no CONTROL: the fuselage is not
-modelled and the devices are at rest. Airfoil contours are separate files named ``af<i>.dat`` that the
+The one writer of ``.avl`` text in the kernel. It emits no BODY: the fuselage is not modelled. A
+CONTROL appears only on the stations of a mesh that drives the roll devices (the clean file has none).
+Airfoil contours are separate files named ``af<i>.dat`` that the
 caller puts beside the geometry file (nothing here touches the disk).
 """
 
@@ -13,11 +14,14 @@ from pydantic import BaseModel, ConfigDict
 
 __all__ = [
     "AvlOutput",
+    "RollOutput",
     "airfoil_file",
     "airfoil_file_name",
     "avl_commands",
     "avl_geometry",
+    "avl_roll_commands",
     "parse_avl_output",
+    "parse_roll_output",
 ]
 
 # Chordwise vortex spacing: cosine (AVL's default, 1).
@@ -25,8 +29,39 @@ _CHORD_SPACING = 1
 # One strip per neighbouring section pair; the spacing is moot for a single strip.
 _STRIP = "1   1"
 GEOMETRY_FILE = "airplane.avl"
+# The roll control: one name for every device acting as aileron, driven as AVL's control variable d1.
+# SgnDup -1 makes the mirrored half deflect the other way (avl_doc.txt:755-757, an aileron on a
+# YDUPLICATE surface); the hinge vector 0 0 0 puts the hinge along the hinge line (avl_doc.txt:737-757).
+CONTROL_NAME = "aileron"
+SGN_DUP = -1
 
 _NUMBER = r"(-?\d+\.\d*(?:[EeDd][-+]?\d+)?)"
+
+
+class RollOutput(BaseModel):
+    """What the kernel reads from a steady-roll AVL run.
+
+    Attributes:
+        p_hat: ``p'b/2V``, the roll rate in stability axes (what the constraint ``rm`` holds to
+            zero moment), positive to the right.
+        cl: The total lift coefficient AVL trimmed to.
+        cl_stability: ``Cl'tot``, the rolling moment in stability axes (zero when the run is a
+            steady roll).
+        control: The control deflection AVL echoes in degrees.
+        cl_p: ``Clp``, the stability-axis rolling-moment derivative with respect to ``p'b/2V``, at
+            the airplane's state without roll and without deflection and the same ``C_L``.
+        cl_delta: ``Cld01``, the rolling-moment derivative with respect to the aileron in
+            degrees, at that state.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    p_hat: float
+    cl: float
+    cl_stability: float
+    control: float
+    cl_p: float
+    cl_delta: float
 
 
 class AvlOutput(BaseModel):
@@ -77,8 +112,9 @@ def avl_geometry(
     s_ref: float,
     c_ref: float,
     b_ref: float,
+    xyz_ref: tuple[float, float, float] = (0.0, 0.0, 0.0),
 ) -> str:
-    """The ``.avl`` text of an airplane at Mach 0 with the reference point at the origin.
+    """The ``.avl`` text of an airplane at Mach 0.
 
     Args:
         surfaces: The aligned mesh.
@@ -87,6 +123,8 @@ def avl_geometry(
         s_ref: Reference area in m^2.
         c_ref: Reference chord in m.
         b_ref: Reference span in m.
+        xyz_ref: The moment and rotation reference point in m (the origin for the neutral point,
+            which does not depend on it; the airplane's own for a roll, which does).
 
     Returns:
         The file text.
@@ -100,7 +138,7 @@ def avl_geometry(
         "#Sref    Cref    Bref",
         f"{s_ref!r} {c_ref!r} {b_ref!r}",
         "#Xref    Yref    Zref",
-        "0.0 0.0 0.0",
+        f"{xyz_ref[0]!r} {xyz_ref[1]!r} {xyz_ref[2]!r}",
         "# CDp",
         "0.0",
     ]
@@ -110,8 +148,10 @@ def avl_geometry(
             "SURFACE",
             surface.name,
             "#Nchordwise  Cspace",
-            f"{n_chord}   {_CHORD_SPACING}",
+            f"{surface.n_chord or n_chord}   {_CHORD_SPACING}",
         ]
+        if surface.component is not None:
+            lines += ["COMPONENT", f"{surface.component}"]
         if surface.symmetric:
             lines += ["YDUPLICATE", "0.0"]
         for section in surface.sections:
@@ -119,17 +159,40 @@ def avl_geometry(
                 "SECTION",
                 "#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace",
                 f"{section.x!r} {section.y!r} {section.z!r} {section.chord!r} {section.twist!r}   {_STRIP}",
-                "AFIL",
+                "AFIL"
+                if section.chord_range is None
+                else "AFIL {} {}".format(*section.chord_range),
                 airfoil_file_name(section.airfoil),
                 "CLAF",
                 f"{claf[section.airfoil]!r}",
             ]
+            if section.control is not None:
+                lines += [
+                    "CONTROL",
+                    f"{CONTROL_NAME} {section.control.gain!r} {section.control.x_hinge!r} "
+                    f"0.0 0.0 0.0 {SGN_DUP}",
+                ]
     return "\n".join(lines) + "\n"
 
 
 def avl_commands(cl: float, core_ratio: float) -> str:
     """The OPER dialogue: vortex core ratio, ``C_L`` constraint, run, stability derivatives."""
     return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nx\nst\n\n\nquit\n"
+
+
+def avl_roll_commands(cl: float, core_ratio: float, delta_deg: float) -> str:
+    """The OPER dialogue of a steady roll.
+
+    Constrains ``C_L``, the stability-axis rolling moment to zero (``r rm 0``) and the aileron
+    control ``d1`` to the command and runs: the roll rate is the result, in AVL's default stability
+    axes (``avl.f:652``). Then it holds the roll rate (``r r 0``) and the aileron at zero, runs again
+    and prints the stability derivatives of that state, from which the adapter forms the linearised
+    roll rate ``-Cld01 * delta / Clp`` as a consistency check of the first result.
+    """
+    return (
+        f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nr rm 0\nd1 d1 {delta_deg!r}\nx\n"
+        "r r 0\nd1 d1 0\nx\nst\n\n\nquit\n"
+    )
 
 
 def _first(text: str, key: str) -> float | None:
@@ -148,3 +211,34 @@ def parse_avl_output(text: str) -> AvlOutput | None:
     if x_np is None or cl is None:
         return None
     return AvlOutput(x_np=x_np, cl=cl)
+
+
+def parse_roll_output(text: str) -> RollOutput | None:
+    """Read ``p'b/2V``, ``CLtot``, ``Cl'tot`` and the control echo from a steady-roll run.
+
+    The first hit of each key is taken: AVL also prints ``pb/2V`` (body axes) before ``p'b/2V``.
+
+    Returns:
+        The values, or ``None`` if one is missing (the run did not complete).
+    """
+    p_hat, cl = _first(text, "p'b/2V"), _first(text, "CLtot")
+    cl_stability = _first(text, "Cl'tot")
+    echo = re.search(rf"^\s*{re.escape(CONTROL_NAME)}\s*=\s*{_NUMBER}", text, re.MULTILINE)
+    cl_p, cl_delta = _first(text, "Clp"), _first(text, "Cld01")
+    if (
+        p_hat is None
+        or cl is None
+        or cl_stability is None
+        or echo is None
+        or cl_p is None
+        or cl_delta is None
+    ):
+        return None
+    return RollOutput(
+        p_hat=p_hat,
+        cl=cl,
+        cl_stability=cl_stability,
+        control=float(echo.group(1)),
+        cl_p=cl_p,
+        cl_delta=cl_delta,
+    )
