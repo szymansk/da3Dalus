@@ -105,6 +105,7 @@ class TestKernelWarning:
             "geometry_deflection_ignored": WarningSeverity.PRACTICE,
             "reference_wing_at_centreline": WarningSeverity.PRACTICE,
             "hinge_line_averaged": WarningSeverity.PRACTICE,
+            "aileron_deflection_beyond_reference": WarningSeverity.PRACTICE,
             "control_surface_fit_range_unknown": WarningSeverity.PRACTICE,
             "fuselage_not_modelled": WarningSeverity.DEFECT,
             "avl_mesh_not_converged": WarningSeverity.DEFECT,

@@ -27,6 +27,7 @@ IMPLEMENTED = {
     "calc:neutral-point",
     "calc:static-margin",
     "calc:speed-from-stall-margin",
+    "calc:roll-rate",
 }
 
 
