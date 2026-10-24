@@ -487,20 +487,27 @@ modules are drawn by the navigator in their own column; the navigator reads name
 and properties from the model and holds none of them (maintainer, 2026-10-24: the navigator is generated
 from the canon alone).
 
-**Decisions behind the values** (carried over from the former per-tag paragraphs). The disciplines name
-the question a derived quantity answers (maintainer, 2026-10-24). The stages name a quantity's role in the
-calculation chain (maintainer, 2026-10-24); the `aero-model` stage is subdivided into groups (maintainer,
-2026-10-24). The points name the operating point or configuration a final result belongs to (maintainer,
-2026-10-24). A `references` quantity carries the `module/<name>` of the cross-cutting module it derives
-from and one `group/<name>`; the powertrain is motor, battery and propeller, and `battery-voltage`
-belongs to motor and propeller, the only place it is used. A module thus holds its inputs and the
-references derived from them. The navigator draws `references` as its own column right of the
-cross-cutting inputs — intermediate values, kept apart from the input column (maintainer, 2026-10-24).
-The modules `construction`, `mass-and-balance` and `atmosphere` are **cross-cutting**: nearly every
-formula depends on them (maintainer, 2026-10-24); the navigator draws them upright in a column on the
-far left, below the top row of layer-0 modules (an XY split), and shows their edges only on selection.
-The module `conventions` holds defined values: measurement conventions with a default in
-`defaults.yaml`, neither a target nor a physical input, e.g. `stall-break-fraction`, `tail-efficiency`.
+**Decisions behind the values.** The sentences below are carried over word for word from the former
+per-tag paragraphs; they record maintainer decisions and are the authority for the corresponding
+`taxonomy.yaml` entries.
+
+- Disciplines: "`discipline/<name>` naming the question it answers (maintainer, 2026-10-24)".
+- Stages: "`stage/<name>` naming its role in the calculation chain (maintainer, 2026-10-24)".
+- Groups: "A `references` quantity also carries the `module/<name>` of the cross-cutting module it derives from
+  and one `group/<name>`: `air-state` (atmosphere), `weight-and-loading` (mass and balance),
+  `geometry-references`, `configurations`, `powertrain-motor-propeller` and `powertrain-battery`
+  (construction; the powertrain is motor, battery and propeller — `battery-voltage` belongs to motor and
+  propeller, the only place it is used). A module thus holds its inputs and the references derived from
+  them. The `aero-model` stage is subdivided the same way (maintainer, 2026-10-24): `aero-forces` (lift,
+  drag, dynamic pressure, lift coefficient, lift-to-drag ratio), `aero-lift-curve` (slope, zero-lift angle),
+  `aero-stall` (C_L,max, α_S, the stall polar), `aero-parabola` (the fitted parabola, display only). The navigator draws `references` as its own column
+  right of the cross-cutting inputs — intermediate values, kept apart from the input column (maintainer,
+  2026-10-24)."
+- Points: "`point/<name>` naming the operating point or configuration it belongs to (maintainer, 2026-10-24)".
+- Modules: "`conventions` (defined values: measurement conventions with a default in `defaults.yaml`, neither a target nor a physical input, e.g. `stall-break-fraction`, `tail-efficiency`)". "`construction`, `mass-and-balance` and `atmosphere` are
+  **cross-cutting**: nearly every formula depends on them (maintainer, 2026-10-24); the navigator draws
+  them upright in a column on the far left, below the top row of layer-0 modules (an XY split), and
+  shows their edges only on selection."
 
 **Tools and worlds.** `taxonomy.yaml` names every tool code a formula's `tool` field may hold and maps
 every method world of a formula's `worlds` field to the tool that computes it (`aerobuildup` → `OPT`,
