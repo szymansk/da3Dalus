@@ -167,3 +167,18 @@ def test_a_malformed_world_in_an_assignment_is_rejected() -> None:
     subtree = CanonGraph(two_worlds_model()).subtree(["only1"])
     with pytest.raises(ValueError, match="malformed"):
         subtree.assignment_key(node_id("u1"), {"u1": "Not A World"})
+
+
+def test_a_node_runs_under_the_assignments_of_the_uncertain_formulas_it_depends_on() -> None:
+    subtree = CanonGraph(two_worlds_model()).subtree(["only1", "tail"])
+    keys = {
+        slug: [key for key, _ in subtree.node_assignments(node_id(slug))]
+        for slug in ("head", "u1", "only1", "both", "tail")
+    }
+    assert keys["head"] == [None]  # outside every uncertain subtree: once, shared
+    assert keys["u1"] == ["u1=a", "u1=b"]
+    assert keys["only1"] == ["u1=a", "u1=b"]
+    assert len(keys["both"]) == len(keys["tail"]) == 6
+    assert keys["both"][0] == "u1=a,u2=x"
+    for key, assignment in subtree.node_assignments(node_id("both")):
+        assert key == format_world_assignment(assignment)

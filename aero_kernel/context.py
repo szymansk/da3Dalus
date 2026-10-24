@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
+from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 from pydantic import JsonValue
 
@@ -37,10 +38,12 @@ class Solvers:
     Attributes:
         atmosphere: The ATM adapter (exact ISA density).
         opti: The OPT adapter (the stall problem, IPOPT over AeroBuildup).
+        avl: The AVL adapter (the neutral point).
     """
 
     atmosphere: AtmosphereAdapter
     opti: OptiAdapter
+    avl: AvlAdapter
 
     def settings_of(self, tool: str) -> dict[str, JsonValue]:
         """Return the solver settings of the adapter of a canon tool code (``solver_settings``).
@@ -51,7 +54,7 @@ class Solvers:
         Returns:
             Name -> value; empty for a tool whose adapter fixes no setting, and for a pure tool.
         """
-        for adapter in (self.atmosphere, self.opti):
+        for adapter in (self.atmosphere, self.opti, self.avl):
             if tool == adapter.tool:
                 return adapter.settings()
         return {}
@@ -74,7 +77,7 @@ class Solvers:
         """
         if tool in _PURE_TOOLS:
             return {}
-        for adapter in (self.atmosphere, self.opti):
+        for adapter in (self.atmosphere, self.opti, self.avl):
             if tool == adapter.tool:
                 return dict(adapter.tool_versions())
         msg = f"no solver adapter for the tool {tool}"
@@ -84,15 +87,17 @@ class Solvers:
 class Context:
     """The context of one formula call."""
 
-    def __init__(self, *, origin: str, solvers: Solvers) -> None:
+    def __init__(self, *, origin: str, solvers: Solvers, world: str | None = None) -> None:
         """Create the context of one node.
 
         Args:
             origin: Slug of the quantity that warnings of this call are reported against.
             solvers: The solver adapters of the call.
+            world: The method world this formula runs in, for a formula with worlds (ch. 8.13).
         """
         self._origin = origin
         self.solvers = solvers
+        self.world = world
         self._warnings: list[KernelWarning] = []
 
     def warn(self, code: str, message: str, detail: dict[str, JsonValue] | None = None) -> None:

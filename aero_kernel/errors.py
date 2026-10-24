@@ -36,6 +36,7 @@ __all__ = [
     "ErrorCategory",
     "FormulaError",
     "KernelError",
+    "ToolRunTimeoutError",
     "aggregate_upstream",
     "check_finite_json",
     "display_slug",
@@ -92,6 +93,8 @@ CODE_CATALOGUE: Mapping[str, ErrorCategory] = {
     "control_surface_without_device": ErrorCategory.INVALID_INPUT,
     "missing_surface_type": ErrorCategory.INVALID_INPUT,
     "main_wing_count": ErrorCategory.INVALID_INPUT,
+    "unsupported_layout": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+    "avl_array_limit": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "unknown_quantity": ErrorCategory.INVALID_INPUT,
     "not_an_input": ErrorCategory.INVALID_INPUT,
     "not_requestable": ErrorCategory.INVALID_INPUT,
@@ -406,6 +409,29 @@ class KernelError(BaseModel):
             )
             raise ValueError(msg)
         return self
+
+
+class ToolRunTimeoutError(TimeoutError):
+    """An external tool run exceeded the maximum run time its adapter allows itself.
+
+    Distinct from the request's time budget, which cancels the whole call: this ends one tool run (the
+    process group is killed) and the engine reports it as a ``timeout`` error of the quantity.
+
+    Attributes:
+        what: Public name of the run, e.g. ``the vortex lattice run``.
+        limit_s: The limit that was exceeded, in seconds.
+    """
+
+    def __init__(self, what: str, limit_s: float) -> None:
+        """Create the exception.
+
+        Args:
+            what: Public name of the run (no tool file names, ADR 0019).
+            limit_s: The limit in seconds.
+        """
+        super().__init__(f"{what} exceeded its maximum run time of {limit_s} s")
+        self.what = what
+        self.limit_s = limit_s
 
 
 class FormulaError(Exception):

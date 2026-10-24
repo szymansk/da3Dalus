@@ -1,0 +1,191 @@
+"""neutral-point and static-margin of BRYAN and JAGUAR through the public compute(), real AVL.
+
+Aero tier. Except for the BRYAN reference test the goldens are **regression, not validation**
+(aero_kernel/CLAUDE.md): they pin what this build computes (AVL 3.40 from the avl-binary wheel,
+NeuralFoil xlarge for the minimum-drag speed that sets the lift coefficient) so that a change of code
+or tool is noticed. The AVL world has no fuselage, so the numbers are neutral points of the wing and
+tail, not of the airplane.
+
+The CG of BRYAN is the plan value (136.8 mm, 31.4 % MAC). JAGUAR's is the maintainer's (2026-10-23,
+#1203): 40.41 mm aft of the main wing's root leading edge, derived from the geometry below.
+"""
+
+import pytest
+from aero_kernel import compute
+from aero_kernel.geometry import AirplaneGeometry, InlineAirfoil
+from aero_kernel.runtime import SolverRuntime
+from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
+from aero_kernel.solvers.asb_airplane import load_aerosandbox
+from aero_kernel.solvers.avl import AIRFOIL_POINTS_PER_SIDE, AvlAdapter, contour_worker
+from aero_kernel.tests.engine_builders import request
+from aero_kernel.tests.formula_builders import close
+from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+
+pytestmark = [pytest.mark.aero]
+
+JAGUAR_CG_AFT_OF_ROOT_LE = 0.04041  # maintainer 2026-10-23, #1203
+
+
+def main_wing_root_le_x(member: FleetMember) -> float:
+    """x of the main wing's root leading edge in the geometry frame."""
+    wings = reference_document(member)["wings"].values()
+    (main,) = [w for w in wings if w["surface_type"] == "main_wing"]
+    return float(main["x_secs"][0]["xyz_le"][0])
+
+
+CG = {
+    FleetMember.BRYAN: 0.1368,
+    FleetMember.JAGUAR: main_wing_root_le_x(FleetMember.JAGUAR) + JAGUAR_CG_AFT_OF_ROOT_LE,
+}
+WORLDS = ("textbook", "pappas", "avl")
+# Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
+GOLDEN_NP = {
+    FleetMember.BRYAN: (0.1441142600, 0.1401394435, 0.144039),
+    FleetMember.JAGUAR: (0.1233721388, 0.1238206059, 0.126344),
+}
+C_MAC = {FleetMember.BRYAN: 0.13277219166316895, FleetMember.JAGUAR: 0.10504546518699101}
+# BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral
+# point of the template's own aligned mesh under the kernel's conditions at that C_L:
+# scripts/sim_export/crrcsim/avl_kernel_reference.py, AVL_CONVERGENCE.md "Kernel conditions".
+BRYAN_CL_MD = 0.6240228
+BRYAN_TEMPLATE_X_NP = 0.144023
+ABS_M = 1e-4  # the regression tolerance of the AVL world
+
+
+async def run(member: FleetMember) -> ComputeResult:
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": reference_document(member),
+            "values": {
+                "aircraft-mass": member.mass_kg,
+                "altitude": 0.0,
+                "centre-of-gravity": CG[member],
+            },
+        }
+    )
+    return await compute(aircraft, request("neutral-point", "static-margin"))
+
+
+@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.asyncio
+async def test_the_np_and_sm_intervals_per_world_are_the_regression_goldens(
+    member: FleetMember,
+) -> None:
+    result = await run(member)
+    assert all(q.status is QuantityStatus.OK for q in result.quantities), result
+    neutral, margin = result.quantities
+    golden_sm = tuple((x - CG[member]) / C_MAC[member] for x in GOLDEN_NP[member])
+    for quantity, golden, tolerance in (
+        (neutral, GOLDEN_NP[member], ABS_M),
+        (margin, golden_sm, ABS_M / C_MAC[member]),
+    ):
+        assert quantity.interval is not None
+        worlds = quantity.interval.worlds
+        assert set(worlds) == {f"neutral-point={w}" for w in WORLDS}
+        for name, value in zip(WORLDS, golden, strict=True):
+            assert abs(worlds[f"neutral-point={name}"] - value) < tolerance, (quantity.slug, name)
+        assert quantity.interval.min == min(worlds.values())
+        assert quantity.interval.max == max(worlds.values())
+    assert result.provenance.solver_settings["avl_nspan"] == 24
+    assert result.provenance.solver_settings["avl_core_ratio"] == 0.25
+    assert set(result.provenance.tool_versions) >= {"avl-binary", "aerosandbox"}
+
+
+@pytest.mark.asyncio
+async def test_bryan_declares_the_missing_fuselage_in_every_world_and_converges() -> None:
+    result = await run(FleetMember.BRYAN)
+    for quantity in result.quantities:
+        fuselage = [w for w in quantity.warnings if w.code == "fuselage_not_modelled"]
+        assert len(fuselage) == len(WORLDS)
+        assert "avl_mesh_not_converged" not in {w.code for w in quantity.warnings}
+
+
+@pytest.mark.asyncio
+async def test_jaguar_converges_once_its_root_is_on_the_centreline() -> None:
+    """JAGUAR's root section is stored at y = +1.1 mm. Held there, the mirrored halves left a slit and
+    the neutral point drifted by 1.9 % MAC per span doubling; on the centreline 10/24 against its
+    refinement agrees to 0.2 % MAC, below the 0.5 % tolerance, so no warning."""
+    result = await run(FleetMember.JAGUAR)
+    for quantity in result.quantities:
+        assert "avl_mesh_not_converged" not in {w.code for w in quantity.warnings}
+
+
+@pytest.mark.asyncio
+async def test_bryan_avl_world_equals_the_template_under_the_kernels_conditions() -> None:
+    """The reference value of the prototype's own mesh, to 0.1 % MAC. A miss means looking at the
+    writer, never at the tolerance."""
+    plane = AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN))
+    async with SolverRuntime() as runtime:
+        found = await AvlAdapter(runtime).neutral_point(plane, BRYAN_CL_MD)
+    assert abs(found.x_np - BRYAN_TEMPLATE_X_NP) < 1e-3 * C_MAC[FleetMember.BRYAN]
+    assert found.warnings == ()
+
+
+def test_claf_follows_the_thickness_rule_of_the_airfoil() -> None:
+    """CLAF = 1 + 0.77 t/c with t/c from AeroSandbox: NACA 0012 is 12 % thick."""
+    (contour,) = contour_worker(("naca0012",)).value
+    assert close(contour.claf, 1.0 + 0.77 * 0.12, 5e-3)
+    xs = [x for x, _ in contour.coordinates]
+    assert min(xs) >= -1e-9
+    assert max(xs) <= 1.0 + 1e-9
+
+
+@pytest.mark.asyncio
+async def test_the_neutral_point_does_not_depend_on_how_the_surfaces_are_stored() -> None:
+    """BRYAN's wing and tail stored on -y and tip first give the same AVL neutral point (the
+    same wing stored on -y once gave 8.6 % MAC less, tip first made AVL spin)."""
+    document = reference_document(FleetMember.BRYAN)
+    flipped = reference_document(FleetMember.BRYAN)
+    for wing in flipped["wings"].values():
+        if wing["symmetric"]:
+            for section in wing["x_secs"]:
+                section["xyz_le"][1] = -section["xyz_le"][1]
+            wing["x_secs"].reverse()
+    async with SolverRuntime() as runtime:
+        adapter = AvlAdapter(runtime)
+        want = await adapter.neutral_point(AirplaneGeometry.model_validate(document), BRYAN_CL_MD)
+        got = await adapter.neutral_point(AirplaneGeometry.model_validate(flipped), BRYAN_CL_MD)
+    assert abs(got.x_np - want.x_np) < 1e-6
+
+
+def test_every_contour_is_repanelled_to_the_declared_point_count() -> None:
+    """AVL stops at 399 contour points (IBX): a NACA 2412 from AeroSandbox has 399 and failed. Every
+    airfoil is repanelled, never only the ones that are too large (ADR 0020)."""
+    naca, thin = contour_worker(("naca2412", "naca0012")).value
+    expected = 2 * AIRFOIL_POINTS_PER_SIDE - 1
+    assert len(naca.coordinates) == len(thin.coordinates) == expected
+    asb = load_aerosandbox()
+    dense = asb.Airfoil("naca0012").repanel(n_points_per_side=500).coordinates
+    points = tuple((float(x), float(y)) for x, y in dense)
+    (inline,) = contour_worker((InlineAirfoil(coordinates=points),)).value
+    assert len(inline.coordinates) == expected
+
+
+@pytest.mark.asyncio
+async def test_a_naca_2412_wing_and_tail_runs_through_avl() -> None:
+    """NACA airfoils of AeroSandbox exceed AVL's contour limit unless repanelled."""
+    document = reference_document(FleetMember.BRYAN)
+    for wing in document["wings"].values():
+        for section in wing["x_secs"]:
+            section["airfoil"] = "naca2412"
+    plane = AirplaneGeometry.model_validate(document)
+    async with SolverRuntime() as runtime:
+        found = await AvlAdapter(runtime).neutral_point(plane, BRYAN_CL_MD)
+    assert 0.10 < found.x_np < 0.17
+
+
+@pytest.mark.asyncio
+async def test_a_ventral_fin_gives_the_same_neutral_point() -> None:
+    """BRYAN's fin mirrored below the wing plane (z -> -z): the fin does not enter the longitudinal
+    neutral point, whichever way it points."""
+    document = reference_document(FleetMember.BRYAN)
+    ventral = reference_document(FleetMember.BRYAN)
+    for wing in ventral["wings"].values():
+        if wing["surface_type"] == "vertical_tail":
+            for section in wing["x_secs"]:
+                section["xyz_le"][2] = -section["xyz_le"][2]
+    async with SolverRuntime() as runtime:
+        adapter = AvlAdapter(runtime)
+        want = await adapter.neutral_point(AirplaneGeometry.model_validate(document), BRYAN_CL_MD)
+        got = await adapter.neutral_point(AirplaneGeometry.model_validate(ventral), BRYAN_CL_MD)
+    assert abs(got.x_np - want.x_np) < 1e-4

@@ -22,11 +22,12 @@ def test_warn_builds_the_catalogue_warning_with_the_origin() -> None:
     )
 
 
-def test_the_context_carries_the_solvers_and_the_warnings_only() -> None:
+def test_the_context_carries_the_solvers_the_world_and_the_warnings_only() -> None:
     context = Context(origin="x", solvers=SOLVERS)
     assert context.solvers is SOLVERS
     assert context.solvers.atmosphere is SOLVERS.atmosphere
-    assert not hasattr(context, "world")
+    assert context.world is None  # a formula without worlds
+    assert Context(origin="x", solvers=SOLVERS, world="avl").world == "avl"
     assert not hasattr(context, "request")
 
 
@@ -64,7 +65,7 @@ def test_a_pure_tool_has_no_version(tool: str) -> None:
     assert SOLVERS.tool_versions_of(tool) == {}
 
 
-@pytest.mark.parametrize("tool", ["AB", "AVL"])
+@pytest.mark.parametrize("tool", ["AB"])
 def test_a_tool_without_an_adapter_is_a_defect_not_an_empty_version(tool: str) -> None:
     with pytest.raises(ValueError, match=tool):
         SOLVERS.tool_versions_of(tool)

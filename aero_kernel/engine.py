@@ -23,7 +23,9 @@ from aero_kernel.errors import (
     ErrorCategory,
     FormulaError,
     KernelError,
+    ToolRunTimeoutError,
     display_slug,
+    format_world_assignment,
     internal_error,
     internal_error_from_exception,
     join_names,
@@ -46,6 +48,7 @@ from aero_kernel.schema import (
     ComputeRequest,
     ComputeResult,
     DefaultUsed,
+    Interval,
     KernelWarning,
     Provenance,
     QuantityResult,
@@ -92,6 +95,8 @@ class _NodeRun:
         error_for: Builds the error of an ``error`` node for a quantity.
         outputs: The returned value per output parameter, for status ``ok``.
         warnings: The warnings the node's formula reported.
+        computed: Whether the failure was raised by the formula while computing (row 8 of the
+            status order, whatever its code), not decided by the engine before the call.
     """
 
     outcome: NodeOutcome
@@ -100,6 +105,7 @@ class _NodeRun:
     error_for: Callable[[str], KernelError] | None = None
     outputs: Mapping[str, object] | None = None
     warnings: tuple[KernelWarning, ...] = ()
+    computed: bool = False
 
 
 def _unit_of(build: Build, slug: str) -> str | None:
@@ -162,7 +168,10 @@ class _Call:
         self.solver_settings: dict[str, JsonValue] = {}
         self.nodes: dict[NodeId, Node] = {node.id: node for node in subtree.nodes}
         self.values = {qualify(slug): value for slug, value in aircraft.values.items()}
-        self.runs: dict[NodeId, _NodeRun] = {}
+        # One run per (node, world key): a node runs once per assignment of the uncertain formulas
+        # it depends on, and once, under the key None, if it depends on none (ch. 8.13).
+        self.runs: dict[tuple[NodeId, str | None], _NodeRun] = {}
+        self.slots = {n.id: subtree.node_assignments(n.id) for n in subtree.nodes}
         # the first requested spelling of a node's quantities names the node in its messages
         self.requested_by_node: dict[NodeId, str] = {}
         for resolved in subtree.requested:
@@ -175,15 +184,20 @@ class _Call:
         for layer in self.subtree.layers:
             async with asyncio.TaskGroup() as group:
                 for node_id in layer:
-                    group.create_task(self._finish(self.nodes[node_id]))
+                    for key, assignment in self.slots[node_id]:
+                        group.create_task(self._finish(self.nodes[node_id], key, assignment))
 
-    async def _finish(self, node: Node) -> None:
-        """Run one node and record its run the moment it is done.
+    async def _finish(self, node: Node, key: str | None, assignment: Mapping[str, str]) -> None:
+        """Run one node under one assignment and record its run the moment it is done.
 
         Recorded here and not after the layer, so that a node that finished before the time
         budget expired keeps its value even if its layer did not complete.
         """
-        self.runs[node.id] = await self._node(node)
+        self.runs[(node.id, key)] = _labelled(await self._node(node, key, assignment), key)
+
+    def _run_of(self, node_id: NodeId, assignment: Mapping[str, str]) -> _NodeRun:
+        """The run of a node under the assignment: its own key is the assignment restricted to it."""
+        return self.runs[(node_id, self.subtree.assignment_key(node_id, assignment))]
 
     def close_open_nodes(self) -> None:
         """Give every node that did not finish when the time budget expired a ``timeout`` run.
@@ -192,11 +206,15 @@ class _Call:
         (ch. 8.10).
         """
         for node_id, node in self.nodes.items():
-            if node_id not in self.runs:
-                self.runs[node_id] = self._failed(
-                    self._anchor(node),
-                    lambda slug, open_node=node: self._timeout_error(slug, open_node),
-                )
+            for key, _assignment in self.slots[node_id]:
+                if (node_id, key) not in self.runs:
+                    self.runs[(node_id, key)] = _labelled(
+                        self._failed(
+                            self._anchor(node),
+                            lambda slug, open_node=node: self._timeout_error(slug, open_node),
+                        ),
+                        key,
+                    )
 
     def _timeout_error(self, slug: str, node: Node) -> KernelError:
         """The error of a quantity still open when the time budget expired."""
@@ -212,6 +230,19 @@ class _Call:
             detail={"time_budget_s": budget},
         )
 
+    def _run_limit_error(self, slug: str, node: Node, raised: ToolRunTimeoutError) -> KernelError:
+        """The error of a quantity whose tool run exceeded the adapter's own maximum run time."""
+        return KernelError(
+            code="timeout",
+            category=ErrorCategory.TIMEOUT,
+            quantity=slug,
+            formula=display_slug(node.id.formula),
+            application=node.id.application,
+            message=f"`{slug}` did not finish: {raised.what} exceeded {raised.limit_s} s.",
+            hint="The run was stopped; check the geometry for a configuration the tool cannot solve.",
+            detail={"run_limit_s": raised.limit_s},
+        )
+
     def _anchor(self, node: Node) -> str:
         """The name of the node's quantity in its errors: the requested spelling, else its first."""
         requested = self.requested_by_node.get(node.id)
@@ -223,7 +254,7 @@ class _Call:
         assert formula is not None  # the graph was built from this very model
         return formula, display_slug(node.id.formula)
 
-    async def _node(self, node: Node) -> _NodeRun:
+    async def _node(self, node: Node, key: str | None, assignment: Mapping[str, str]) -> _NodeRun:
         """Run one node; any defect of the engine itself becomes an ``internal`` outcome."""
         extra = {
             "call_id": self.call_id,
@@ -233,7 +264,7 @@ class _Call:
         started = time.perf_counter()
         logger.debug("node started", extra=extra)
         try:
-            run = await self._evaluate_node(node)
+            run = await self._evaluate_node(node, key, assignment)
         except Exception as exc:  # a node never raises out of the call (ch. 8.1)
             anchor = self._anchor(node)
             formula = display_slug(node.id.formula)
@@ -265,13 +296,18 @@ class _Call:
 
     @staticmethod
     def _failed(
-        anchor: str, error_for: Callable[[str], KernelError], error: KernelError | None = None
+        anchor: str,
+        error_for: Callable[[str], KernelError],
+        error: KernelError | None = None,
+        *,
+        computed: bool = False,
     ) -> _NodeRun:
         """A node that failed; ``error`` is its error worded for the anchor, if already built."""
         return _NodeRun(
             outcome=NodeOutcome(status=QuantityStatus.ERROR, error=error or error_for(anchor)),
             anchor=anchor,
             error_for=error_for,
+            computed=computed,
         )
 
     @staticmethod
@@ -281,7 +317,9 @@ class _Call:
         """A node that is ``not_applicable`` or ``skipped``."""
         return _NodeRun(outcome=NodeOutcome(status=status), anchor=anchor, reason_for=reason_for)
 
-    async def _evaluate_node(self, node: Node) -> _NodeRun:
+    async def _evaluate_node(
+        self, node: Node, key: str | None, assignment: Mapping[str, str]
+    ) -> _NodeRun:
         """The status order of ch. 8.13, row by row; the first row that applies decides.
 
         1 an unmet condition, 2 a not applicable predecessor, 3 a kernel gap (no implementation,
@@ -299,7 +337,7 @@ class _Call:
             return self._without_value(
                 anchor, QuantityStatus.NOT_APPLICABLE, lambda slug, reason=condition: reason
             )
-        inherited = self._inherit(node, anchor, QuantityStatus.NOT_APPLICABLE)
+        inherited = self._inherit(node, anchor, QuantityStatus.NOT_APPLICABLE, key, assignment)
         if inherited is not None:
             return inherited
 
@@ -332,10 +370,10 @@ class _Call:
                 ),
             )
 
-        inherited = self._inherit(node, anchor, QuantityStatus.ERROR)
+        inherited = self._inherit(node, anchor, QuantityStatus.ERROR, key, assignment)
         if inherited is not None:
             return inherited
-        inputs, missing, defaults = self._inputs(node, formula)
+        inputs, missing, defaults = self._inputs(node, formula, assignment)
         if missing:
             return self._failed(
                 anchor, lambda slug: self._missing_input(node, slug, formula_slug, missing)
@@ -349,12 +387,13 @@ class _Call:
                     message=f"`{slug}` is a long run and the request does not include long runs.",
                 ),
             )
-        inherited = self._inherit(node, anchor, QuantityStatus.SKIPPED)
+        inherited = self._inherit(node, anchor, QuantityStatus.SKIPPED, key, assignment)
         if inherited is not None:
             return inherited
 
         origin = display_slug(node.produces[0].quantity)
-        warner = Context(origin=origin, solvers=self.solvers)
+        world = assignment.get(node.id.formula_slug) if node.worlds else None
+        warner = Context(origin=origin, solvers=self.solvers, world=world)
         default_warnings = self._take_defaults(defaults)
         pre_warnings, refused = self._run_checks("pre", node, formula, inputs, None, origin)
         if refused is not None:
@@ -366,6 +405,12 @@ class _Call:
         self.solver_settings.update(self.solvers.settings_of(formula.tool))
         try:
             returned = await implementation.func(inputs, warner)
+        except ToolRunTimeoutError as exc:
+            return self._failed(
+                anchor,
+                lambda slug, raised=exc: self._run_limit_error(slug, node, raised),
+                computed=True,
+            )
         except FormulaError as exc:
             path = self._input_path(node, formula, exc.parameter)
             return self._failed(
@@ -373,6 +418,7 @@ class _Call:
                 lambda slug, raised=exc: raised.to_kernel_error(
                     quantity=slug, formula=formula_slug, application=application, input_path=path
                 ),
+                computed=True,
             )
         self._check_outputs(node, formula, returned)
         post_warnings, discarded = self._run_checks("post", node, formula, inputs, returned, origin)
@@ -461,13 +507,27 @@ class _Call:
             detail={what: check_id},
         )
 
-    def _inherit(self, node: Node, anchor: str, status: QuantityStatus) -> _NodeRun | None:
-        """The run of a node that inherits ``status`` from a predecessor it reads, if it does."""
+    def _inherit(
+        self,
+        node: Node,
+        anchor: str,
+        status: QuantityStatus,
+        key: str | None,
+        assignment: Mapping[str, str],
+    ) -> _NodeRun | None:
+        """The run of a node that inherits ``status`` from a predecessor it reads, if it does.
+
+        The predecessors count as they ran under this node's assignment.
+        """
         propagated = self.subtree.propagate(
             node.id,
-            {node_id: run.outcome for node_id, run in self.runs.items()},
+            {
+                edge.predecessor: self._run_of(edge.predecessor, assignment).outcome
+                for edge in self.subtree.edges[node.id]
+            },
             quantity=anchor,
             status=status,
+            world=key,
         )
         return None if propagated is None else self._propagated(anchor, propagated)
 
@@ -517,7 +577,9 @@ class _Call:
             detail={"quantities": list[JsonValue](display_slug(slug) for slug, _ in unsupported)},
         )
 
-    def _inputs(self, node: Node, formula: Formula) -> tuple[Inputs, list[str], list[_Defaulted]]:
+    def _inputs(
+        self, node: Node, formula: Formula, assignment: Mapping[str, str]
+    ) -> tuple[Inputs, list[str], list[_Defaulted]]:
         """Bind the formula's parameters.
 
         Returns:
@@ -532,7 +594,7 @@ class _Call:
             if isinstance(binding, ConstBinding):
                 bound[parameter] = binding.const
                 continue
-            value = self._read(node, binding)
+            value = self._read(node, binding, assignment)
             if value is not None:
                 bound[parameter] = value
             elif any(edge.quantity == binding for edge in self.subtree.edges[node.id]):
@@ -597,13 +659,13 @@ class _Call:
             for shown, d in sorted((display_slug(slug), d) for slug, d in self.taken.items())
         )
 
-    def _read(self, node: Node, slug: str) -> Value | None:
+    def _read(self, node: Node, slug: str, assignment: Mapping[str, str]) -> Value | None:
         """The value of a bound quantity: a predecessor's output or a supplied input."""
         for edge in self.subtree.edges[node.id]:
             if edge.quantity == slug:
                 predecessor = self.nodes[edge.predecessor]
                 parameter = next(p.parameter for p in predecessor.produces if p.quantity == slug)
-                outputs = self.runs[edge.predecessor].outputs
+                outputs = self._run_of(edge.predecessor, assignment).outputs
                 value = None if outputs is None else outputs[parameter]
                 return value if isinstance(value, float | AirplaneGeometry) else None
         quantity = self.build.model.quantity(slug)
@@ -684,12 +746,32 @@ class _Call:
     def result_of(self, resolved: Resolved) -> QuantityResult:
         """The result of one requested quantity.
 
+        A quantity without uncertain formulas has one result. One with worlds (A11) has one result
+        per assignment, merged: all ``ok`` gives an interval over the assignments; otherwise the
+        quantity is an error or has no value, never a narrower interval (ch. 8.13).
+        """
+        assignments = self.subtree.world_assignments(resolved.requested)
+        if len(assignments) == 1 and not assignments[0]:
+            return self._result_under(resolved, {})
+        results = [
+            (
+                format_world_assignment(a),
+                self._result_under(resolved, a),
+                self._run_of(resolved.producer, a).computed,
+            )
+            for a in assignments
+        ]
+        return _merge_worlds(resolved.requested, resolved.quantity.unit, results)
+
+    def _result_under(self, resolved: Resolved, assignment: Mapping[str, str]) -> QuantityResult:
+        """The result of one requested quantity under one world assignment.
+
         An ``ok`` quantity lists, deduplicated by content and in this order: the warnings of the
         nodes of its subtree in topological order (within a node, the defaults taken before the
         formula's own warnings), then the validation warnings whose origin the subtree reads, in
         validation order.
         """
-        run = self.runs[resolved.producer]
+        run = self._run_of(resolved.producer, assignment)
         slug, unit = resolved.requested, resolved.quantity.unit
         status = run.outcome.status
         if status is QuantityStatus.ERROR:
@@ -711,7 +793,14 @@ class _Call:
             if qualify(warning.origin) in read:
                 inherited.append(warning)
         warnings = dedupe_warnings(
-            [*(w for node_id in subtree_nodes for w in self.runs[node_id].warnings), *inherited]
+            [
+                *(
+                    w
+                    for node_id in subtree_nodes
+                    for w in self._run_of(node_id, assignment).warnings
+                ),
+                *inherited,
+            ]
         )
         return QuantityResult(
             slug=slug,
@@ -722,6 +811,119 @@ class _Call:
             application=node.id.application,
             warnings=warnings,
         )
+
+
+def _labelled(run: _NodeRun, key: str | None) -> _NodeRun:
+    """The run with the world it arose in on its warnings and its error (ch. 8.13)."""
+    if key is None:
+        return run
+
+    def with_world(error: KernelError) -> KernelError:
+        return error if error.world is not None else error.model_copy(update={"world": key})
+
+    def labelled_error_for(build: Callable[[str], KernelError]) -> Callable[[str], KernelError]:
+        return lambda slug: with_world(build(slug))
+
+    error_for = run.error_for
+    outcome_error = run.outcome.error
+    return _NodeRun(
+        anchor=run.anchor,
+        reason_for=run.reason_for,
+        outputs=run.outputs,
+        computed=run.computed,
+        outcome=run.outcome.model_copy(
+            update={"error": None if outcome_error is None else with_world(outcome_error)}
+        ),
+        error_for=None if error_for is None else labelled_error_for(error_for),
+        warnings=tuple(
+            w if w.world is not None else w.model_copy(update={"world": key}) for w in run.warnings
+        ),
+    )
+
+
+# Error codes by the row of the status order (ch. 8.13) they belong to; any other error is a failed
+# computation (the last row).
+_ROW_BY_CODE = {
+    "not_implemented": 3,
+    "unsupported_value_type": 3,
+    "continuous_uncertainty": 3,
+    "non_scalar_result": 3,
+    "upstream_failed": 4,
+    "missing_input": 5,
+}
+_ROW_OF_A_COMPUTED_FAILURE = 8
+
+
+def _row(result: QuantityResult, *, computed: bool) -> int:
+    """The row of the status order (ch. 8.13) of a result that is not ``ok``.
+
+    ``computed``: the formula raised the failure while computing. That is row 8 whatever its code,
+    so a ``missing_input`` the formula raised is not the engine's row 5.
+    """
+    if result.status is QuantityStatus.NOT_APPLICABLE:
+        return 2
+    if result.status is QuantityStatus.SKIPPED:
+        return 7
+    assert result.error is not None  # status error carries an error
+    if computed:
+        return _ROW_OF_A_COMPUTED_FAILURE
+    return _ROW_BY_CODE.get(result.error.code, _ROW_OF_A_COMPUTED_FAILURE)
+
+
+def _merge_worlds(
+    slug: str, unit: str | None, results: Sequence[tuple[str, QuantityResult, bool]]
+) -> QuantityResult:
+    """Merge the results of one quantity over its world assignments (ch. 8.13, A11).
+
+    All ``ok``: an interval over the assignment values. Otherwise the failure that comes first by
+    its row of the status order, then by the assignment key; an error carries the values that did
+    compute in ``detail.worlds_ok``. A failed assignment is never dropped from the interval.
+    """
+    if all(result.status is QuantityStatus.OK for _, result, _ in results):
+        values: dict[str, float] = {}
+        for key, result, _ in results:
+            assert result.value is not None
+            values[key] = result.value
+        first = results[0][1]
+        return QuantityResult(
+            slug=slug,
+            unit=unit,
+            status=QuantityStatus.OK,
+            interval=Interval(min=min(values.values()), max=max(values.values()), worlds=values),
+            tool=first.tool,
+            application=first.application,
+            warnings=dedupe_warnings([w for _, result, _ in results for w in result.warnings]),
+        )
+    _, _, chosen = min(
+        (
+            (_row(result, computed=computed), key, result)
+            for key, result, computed in results
+            if result.status is not QuantityStatus.OK
+        ),
+        key=lambda candidate: (candidate[0], candidate[1]),
+    )
+    if chosen.error is None:
+        return chosen
+    worlds_ok = {
+        key: result.value for key, result, _ in results if result.status is QuantityStatus.OK
+    }
+    error = chosen.error
+    if _alike_in_every_world(results):
+        error = error.model_copy(update={"world": None})  # the cause is in no world
+    error = error.model_copy(update={"detail": {**error.detail, "worlds_ok": worlds_ok}})
+    return chosen.model_copy(update={"error": error})
+
+
+def _alike_in_every_world(results: Sequence[tuple[str, QuantityResult, bool]]) -> bool:
+    """Whether every assignment failed with the same error, the world label aside.
+
+    Then the cause is the airplane or a shared input, not a method world (ch. 8.13).
+    """
+    errors = [result.error for _, result, _ in results]
+    if any(error is None for error in errors):
+        return False
+    unlabelled = [error.model_copy(update={"world": None}) for error in errors if error is not None]
+    return all(error == unlabelled[0] for error in unlabelled)
 
 
 def _error_of(propagated: Propagated) -> KernelError:

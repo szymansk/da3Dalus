@@ -118,7 +118,8 @@ and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 
 2. **Geometry:** `wing-loading` via `airplane-geometry` (`S_ref`).
 3. **Solver path:** `stall-speed` — AeroBuildup/Opti adapters, applications, `when`, postconditions,
    configured airplanes, polar values.
-4. **Method worlds:** `neutral-point` (A11 intervals, AVL).
+4. **Method worlds:** `minimum-drag-speed` first (it sets the lift coefficient of the AVL world, #1204), then
+   `neutral-point` (A11 intervals, AVL) with `static-margin` (#1203).
 5. **Embedding:** the propulsion relations and the optimisers; `mass-envelope` last (embedding, worlds and
    long runs together).
 Engine features named "built with the first embedder" (or with a later step) are specified here but not
@@ -239,6 +240,10 @@ nothing failed. The category enum holds only the eight rows above.
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
+- **Refused layouts and tool limits** (`unsupported_configuration`): `unsupported_layout` — the neutral point
+  is defined for one `main_wing` with one `horizontal_tail` (any `vertical_tail` and `winglet`), decided from
+  `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
+  declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `defect` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
@@ -269,6 +274,13 @@ Sources:
   from the section chords in metres, the evaluated V and the speed of sound at the altitude. Not in input
   validation, which does not know V.
 - violated or unchecked preconditions
+- the missing fuselage (`fuselage_not_modelled`, `defect`, origin `neutral-point`, once per world): none of the
+  three neutral-point worlds models a fuselage, whose contribution is destabilising, so the interval is biased
+  aft and a static margin computed from it is over-reported (`static-margin` inherits it). Rationale for
+  `defect` and not `practice`: no accepted practice says the fuselage may be left out; the sourced term is
+  open (#1205)
+- AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
+  `avl_refinement_unchecked` (`defect`)
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
@@ -469,6 +481,11 @@ quantity.
     - **Ontology rule** (maintainer, 2026-10-17): terms that describe the aircraft's ontology — the surface
       types and the facts derived from them — are defined complete whether or not a canon entry uses them
       yet; ADR 0021 applies to mechanisms, not to the domain vocabulary.
+    - **Layout check of `neutral-point`** (#1203): decided from `surface_type`, never from the planform, in every
+      world, before AVL is started. Supported: exactly one `main_wing` and one `horizontal_tail`, plus any
+      `vertical_tail` and `winglet`. Tailless, canard, tandem and V-tail layouts are
+      `unsupported_configuration` / `unsupported_layout` (open: #1206 tailless, #1207 canard and tandem, #1208
+      V-tail). A tail-shaped surface typed `main_wing` is the main wing: the type decides.
   - `given`: a list of input quantities (`role: input` or `target`, without an entry in `defaults.yaml`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).
@@ -661,6 +678,32 @@ caller's responsibility.
     extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
     inverted trough lay about three sweep steps outside IPOPT's window. It is unconditional (never
     triggered by a failure) and not a fixed point; an optimum on the edge of the window is still an error.
+  - **The AVL adapter** (`solvers/avl.py`, #1203): `neutral_point(airplane, cl)`. One own writer
+    (`avl_writer.py`) emits the `.avl` text: no BODY (no fuselage is modelled), no CONTROL, Mach 0, `SREF`,
+    `CREF`, `BREF` from the kernel's projected geometry function (one authority, ADR 0022), the reference
+    point at the geometry origin. The aligned mesh (`avl_mesh.py`): one uniform spanwise distribution over
+    the main wing's semi-span, the horizontal tail on the wing's stations over its span plus its tip (a
+    station within 0.3 strip widths of the tip is dropped), a fin at the wing's strip width; a mirrored
+    surface starts at the centreline, its y exactly 0 with the root chord held (a root stored at −0.25 mm gave
+    a strip across its own mirror image and moved BRYAN's neutral point by 3 % MAC; one stored at +1.1 mm
+    left a slit between the halves and made JAGUAR's neutral point drift 1.9 % MAC per span doubling). Section positions are not stations. `CLAF = 1 + 0.77 t/c` with
+    the thickness from AeroSandbox `max_thickness`, computed in a pool worker. Every contour is repanelled to
+    `avl_airfoil_points_per_side` (80) cosine-spaced points per side by `solvers/avl_contour.py`, always and
+    not only when too large (AVL stops at 399 contour points; a conditional substitution would be undeclared,
+    ADR 0020); AeroSandbox's own `repanel` is not used, it leaves the chord on BRYAN's contour. The chain of
+    each surface is read through `surface_chain.oriented_chain`, the same rule as the planform values
+    (root first, a surface stored on −y or tip first gives the same mesh, ADR 0022). AVL runs through
+    `run_process`; the lift coefficient is constrained (`a c`), not trimmed. AVL exit or output that is not
+    understood, or a `CLtot` that misses the request by more than 1e-4, is `internal` (a defect of ours); a
+    vortex array overflow of the declared mesh is `avl_array_limit` (AVL signals it either by its overflow message or, on a very fine mesh, by a LAPACK "illegal value" with exit 0; both count). One AVL run never takes longer than `AVL_MAX_RUN_S` (120 s, far above the measured 15 s refined run; AVL can spin forever on a geometry it cannot solve): expiry kills the process group and is a `timeout` error of the quantity (`detail.run_limit_s`), distinct from the request's time budget. A deflected control device is refused (`unsupported_configuration`, the refusal shared with the AeroBuildup adapter), because no CONTROL is written. **Refinement check:** the adapter runs
+    the declared mesh and the same mesh refined by `avl_refine_factor` (both counts), returns the declared
+    value, and declares `avl_mesh_not_converged` if the two differ by more than
+    `avl_refinement_tolerance_mac` of the mean chord, `avl_refinement_unchecked` if the refined mesh
+    overflows. Settings (`Provenance.solver_settings`, public keys): `avl_nchord` 10, `avl_nspan` 24,
+    `avl_airfoil_points_per_side` 80, `avl_core_ratio` 0.25, `avl_refine_factor` 2, `avl_refinement_tolerance_mac` 0.005; tool versions
+    `avl-binary` and `aerosandbox`. The AVL world adds no regime warning: those come with the
+    minimum-drag speed and are inherited. The reference value for BRYAN under these conditions is in
+    `scripts/sim_export/crrcsim/AVL_CONVERGENCE.md`.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
     the quantity of the node whose call produced them.
 - Data: KAT (the fitted components) and APC (the fitted propeller's measured table) are **plain reads of
@@ -920,6 +963,8 @@ implementation, not before (ADR 0021).
   `-landing`, `aileron-deflection`, `elevator-deflection-up` / `-down`, `crow-flap-deflection` /
   `crow-aileron-deflection`; deg, geometry sign convention, no default) and the `*-target` quantities. Assumptions are values like any
   other (R1); whether a value is assumed or measured is not the kernel's concern.
+- **The frame of position quantities** (#1203): `neutral-point` and `centre-of-gravity` are x coordinates in
+  the geometry frame of `airplane`, x aft positive, in metres. The app's own CG field follows in #1209.
 - **Defaults** (maintainer, 2026-10-17, S5). A missing value is computed with its **default**, and the
   caller can set or override every value. Defaults are never hard-coded and never in a quantity entry:
   - **One settings file in the canon document**, `_reversa_sdd/calculations/canon/defaults.yaml`: a mapping
@@ -1196,6 +1241,15 @@ sampled grid and no `-static` chain.
   would be an undeclared fallback (ADR 0020). Example: `aileron-deflection-required-approach` with the target above the
   AeroBuildup maximum is an error even though AVL, linear in δ, returns an angle; the AVL value is in
   `detail.worlds_ok`.
+- **Which failure is reported.** When several assignments fail, the quantity's error is that of the failed
+  assignment whose run has the lowest row in the status order below, then the lexicographically smallest
+  assignment key. The row is the run's, not the error code's: a failure the formula raises while computing
+  is row 8 whatever its code (a `missing_input` raised by a formula is not the engine's row 5).
+  `detail.worlds_ok` holds the values that did compute. A failure that is the same in every assignment — a
+  failed node shared by all of them (outside every uncertain subtree), or a refusal every world raises
+  alike, such as the neutral point's unsupported layout — has its cause in no world: the error carries no
+  `world` and `worlds_ok` is `{}`. `upstream_failed` is decided per assignment: a dependent inside an
+  uncertain subtree is `upstream_failed` in exactly the assignments where its predecessor failed.
 - **Continuous causes** (a parameter evaluated at its bounds, A11 rule 2) and the **monotonicity check**
   (rule 4) are declared in the canon model but not in v1: such a formula returns `not_implemented`, code
   `continuous_uncertainty`. The core chain has only method worlds.

@@ -14,7 +14,7 @@ type: scalar
 
 # Neutral point · `x_NP`
 
-Longitudinal position about which the pitching moment does not change with angle of attack. **An interval** [min, max] over the method worlds textbook / Pappas / AVL (A11); a lower bound of the true uncertainty, not validated.
+Longitudinal position about which the pitching moment does not change with angle of attack; x in the geometry frame, aft positive, in m (maintainer, 2026-10-23, #1203). **An interval** [min, max] over the method worlds textbook / Pappas / AVL (A11); a lower bound of the true uncertainty, not validated.
 
 **Unit.** `m`
 
