@@ -7,6 +7,7 @@ role: derived
 status: draft
 tags:
   - canon/quantity
+  - discipline/aerodynamics
   - stage/aero-model
   - role/derived
 type: polar

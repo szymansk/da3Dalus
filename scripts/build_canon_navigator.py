@@ -161,6 +161,10 @@ def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> No
         if len(groups) > 1:
             raise SystemExit(f"quantity {slug} has more than one group tag: {groups}")
         q["group"] = groups[0] if groups else ""
+        disciplines = [x.split("/", 1)[1] for x in tags if x.startswith("discipline/")]
+        if len(disciplines) > 1:
+            raise SystemExit(f"quantity {slug} has more than one discipline tag: {disciplines}")
+        q["discipline"] = disciplines[0] if disciplines else ""
     for slug, f in formulas.items():
         t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
         f["worlds"] = [w.strip() for w in _front(t, "worlds").strip("[]").split(",") if w.strip()]
@@ -310,6 +314,14 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
     )
     if loose:
         raise SystemExit(f"references without module/<name> and group/<name> tags: {loose}")
+    derived = set(quantities) - set(data["inputs"])
+    undisciplined = sorted(
+        q
+        for q in derived
+        if quantities[q]["stage"] != "references" and not quantities[q]["discipline"]
+    )
+    if undisciplined:
+        raise SystemExit(f"derived quantities without a discipline/<name> tag: {undisciplined}")
     unpointed = sorted(q for q in data["outputs"] if not quantities[q]["point"])
     if unpointed:
         raise SystemExit(f"final results without a point/<name> tag: {unpointed}")

@@ -7,6 +7,7 @@ role: derived
 status: draft
 tags:
   - canon/quantity
+  - discipline/glide
   - stage/operating-points
   - role/derived
 type: scalar

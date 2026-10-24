@@ -7,6 +7,7 @@ role: output
 status: draft
 tags:
   - canon/quantity
+  - discipline/longitudinal
   - point/best-glide
   - role/output
 type: scalar

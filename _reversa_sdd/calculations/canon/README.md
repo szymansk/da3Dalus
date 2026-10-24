@@ -465,6 +465,14 @@ nicht als unbenötigter Code" (maintainer, 2026-10-17).
 
 ### Quantity entries
 
+**Discipline tag.** Every derived quantity except the derived references carries exactly one tag
+`discipline/<name>` naming the question it answers (maintainer, 2026-10-24): `aerodynamics` (forces,
+the polar, stall and the speeds set as a margin over it), `glide` (unpowered performance), `powered`
+(thrust, climb, top speed, turn, endurance and range on the battery, mass sweeps of them), `longitudinal`
+(static stability and trim), `lateral` (lateral-directional stability and roll control), `structure`
+(manoeuvre and dive speeds, load factors, spanwise loads, hinge moments). The navigator uses it as its
+columns; the importer drops it, the navigator build refuses a derived quantity without it.
+
 **Stage tag.** Every intermediate quantity — produced by a formula and consumed by another — carries
 exactly one tag `stage/<name>` naming its role in the calculation chain (maintainer, 2026-10-24); the
 importer drops it, the navigator clusters the intermediate band by it. Stages: `references` (the

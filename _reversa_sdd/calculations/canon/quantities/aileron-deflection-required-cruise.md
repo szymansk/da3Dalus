@@ -8,6 +8,7 @@ uncertainty: interval
 status: draft
 tags:
   - canon/quantity
+  - discipline/lateral
   - point/cruise-target
   - role/output
 type: scalar

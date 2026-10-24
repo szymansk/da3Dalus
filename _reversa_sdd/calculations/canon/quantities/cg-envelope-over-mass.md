@@ -7,6 +7,7 @@ role: output
 status: draft
 tags:
   - canon/quantity
+  - discipline/longitudinal
   - point/over-mass
   - role/output
 type: curve_pair

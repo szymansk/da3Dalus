@@ -70,6 +70,13 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .faded{opacity:var(--dim)}
 .edge.up{stroke:var(--inp);stroke-width:1.9px;opacity:1}
 .edge.down{stroke:var(--out);stroke-width:1.9px;opacity:1}
+.toggles{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.sw-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink);
+  border-radius:999px;padding:3px 12px 3px 4px;font:inherit;font-size:12px;cursor:pointer;width:fit-content}
+.sw-pill .track{position:relative;width:28px;height:16px;border-radius:999px;background:var(--line-2);transition:background .15s;flex:none}
+.sw-pill .knob{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--panel);transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sw-pill[aria-checked=true] .track{background:var(--sel)}
+.sw-pill[aria-checked=true] .knob{left:14px}
 .seg{display:flex;gap:4px;flex-wrap:wrap}
 .seg button{flex:1;padding:5px 6px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink);
   border-radius:5px;font:inherit;font-size:12px;cursor:pointer}
@@ -91,6 +98,8 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .sspan{fill:var(--hub-bg);fill-opacity:.25;stroke:var(--hub);stroke-opacity:.75;stroke-width:1.3}
 .sframe{fill:var(--hub-bg);fill-opacity:.35;stroke:var(--hub);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
 .blocklab.stlab{fill:var(--hub)}
+.dmark{fill:var(--sel);font-family:"IBM Plex Mono",monospace;font-size:8px;font-weight:600}
+.dischead{font-family:"STIX Two Text",Georgia,serif;font-size:13px;font-weight:600;fill:var(--ink-2)}
 .pspan{fill:var(--out-bg);fill-opacity:.22;stroke:var(--out);stroke-opacity:.7;stroke-width:1.3}
 .pframe{fill:var(--out-bg);fill-opacity:.35;stroke:var(--out);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
 .blocklab.ptlab{fill:var(--out)}
@@ -154,8 +163,9 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <button data-mode="analysis" aria-pressed="false" title="What a given airplane does">Analysis</button>
       <button data-mode="design" aria-pressed="false" title="Turn a target into a construction quantity (O1)">Design</button>
     </div>
-    <div class="seg" style="margin-top:6px">
-      <button id="edgeToggle" aria-pressed="false" title="Hide or show every connection">Hide edges</button>
+    <div class="toggles">
+      <button class="sw-pill" id="edgeToggle" role="switch" aria-checked="true" title="Show or hide every connection"><span class="track"><span class="knob"></span></span>Edges</button>
+      <button class="sw-pill" id="designToggle" role="switch" aria-checked="false" title="Design quantities merged into their discipline (marked D) instead of a column of their own"><span class="track"><span class="knob"></span></span>Merge design into disciplines</button>
     </div>
     <div class="leg" style="margin-top:10px">
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="var(--good)"/></svg>implemented in the kernel</span>
@@ -244,7 +254,10 @@ const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
 // entry). Layer 0 holds the given values, framed by module (canon tag module/<name>): within
 // each column the target modules come first (left), then the input modules (right); modules
 // flow left to right and wrap. Deeper layers wrap into sub-rows of the column's width.
-const SIDE=q=>(DESIGN.has(q)&&!ANALYSIS.has(q))?'design':'analysis';
+// Design quantities: in a separate column on the right, or merged into their discipline and
+// marked (maintainer 2026-10-24: to be compared; toggled by the "#design-merged" hash).
+const DESIGN_SEP=!/design-merged/.test(location.hash);
+const SIDE=q=>(DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q))?'design':'analysis';
 const MODULES={'envelope-targets':'Envelope targets','design-targets':'Design targets',
   'construction':'Construction','mass-and-balance':'Mass and balance','atmosphere':'Atmosphere and constants',
   'control-deflections':'Control deflections','operating-point':'Operating point'};
@@ -263,48 +276,27 @@ const XW=NW+2*FPAD;
 const isRef=q=>Q[q].stage==='references';
 const isLeft=q=>isX(q)||isRef(q);
 const REFCOLS=2, REFGAP=34, RW=REFCOLS*slotW-GAPX+2*FPAD;
-// Columns under the top-row modules (maintainer 2026-10-24): every quantity of layers 1-6 sits
-// under the module it is most influenced by, i.e. the module with the most members among its
-// transitive inputs. A quantity that depends on no top-row module (only on cross-cutting ones)
-// goes to the column "cross-cutting only". Ties go to the first module in reading order.
-const NONE='~none';
-const ancestors={};
-function anc(q){ if(ancestors[q]) return ancestors[q]; const s=new Set();
-  for(const [a] of pred[q]){ s.add(a); for(const x of anc(a)) s.add(x); } return ancestors[q]=s; }
-const TOPMODS={analysis:[],design:[]};
-for(const m of MODORDER){ if(XCUT.has(m)) continue;
-  for(const side of ['analysis','design'])
-    if(ORDER[0].some(q=>Q[q].module===m&&SIDE(q)===side)) TOPMODS[side].push(m); }
-// targets first (left), then inputs
-for(const side in TOPMODS) TOPMODS[side].sort((a,b)=>{
-  const ta=ORDER[0].some(q=>Q[q].module===a&&TARGETS.has(q)), tb=ORDER[0].some(q=>Q[q].module===b&&TARGETS.has(q));
-  return tb-ta; });
+// Columns are disciplines (maintainer 2026-10-24, canon tag discipline/<name>): the question a
+// quantity answers. Rows are its stage (intermediate band) or operating point (final band).
+const DISC={'aerodynamics':'Aerodynamics','glide':'Glide performance','powered':'Powered performance',
+  'longitudinal':'Longitudinal stability and trim','lateral':'Lateral-directional stability and control','structure':'Structure and loads'};
+const DORDER=Object.keys(DISC);
 const COLOF={};
 for(const l of layers){ if(l===0) continue;
-  for(const q of ORDER[l]){ if(isLeft(q)) continue;
-    const side=SIDE(q), A=anc(q); let best=NONE, bestN=0;
-    for(const m of TOPMODS[side]){ const n=ORDER[0].filter(x=>Q[x].module===m&&A.has(x)).length; if(n>bestN){best=m;bestN=n;} }
-    COLOF[q]=best; } }
-// Column widths: enough for the module's own frame and its widest layer, at most MAXCOLS.
+  for(const q of ORDER[l]){ if(isLeft(q)) continue; COLOF[q]=SIDE(q)==='design'?'design':Q[q].discipline; } }
 const COLS=[];
-for(const side of ['analysis','design']){
-  const mods=[...TOPMODS[side]];
-  // next to the cross-cutting column it depends on
-  if(Object.keys(COLOF).some(q=>SIDE(q)===side&&COLOF[q]===NONE)) mods.unshift(NONE);
-  for(const m of mods){
-    const top=ORDER[0].filter(q=>Q[q].module===m&&SIDE(q)===side).length;
-    COLS.push({side,module:m,cols:Math.max(1,Math.min(MAXCOLS,Math.max(top,
-      Object.keys(COLOF).filter(q=>SIDE(q)===side&&COLOF[q]===m).length)))});
-  }
-}
+for(const d of DORDER){ const n=Object.keys(COLOF).filter(q=>COLOF[q]===d).length;
+  if(n) COLS.push({side:'analysis',module:d,cols:Math.max(2,Math.min(MAXCOLS,n))}); }
+if(DESIGN_SEP){ const n=Object.keys(COLOF).filter(q=>COLOF[q]==='design').length;
+  if(n) COLS.push({side:'design',module:'design',cols:Math.max(2,Math.min(MAXCOLS,n))}); }
 const SX={xcut:0};
 { let x=XW+REFGAP+RW+SIDEGAP, prev=null;
   for(const c of COLS){
     if(prev&&prev!==c.side) x+=SIDEGAP-MODGAP;
     if(prev!==c.side) SX[c.side]=x;
     c.x=x; c.w=c.cols*slotW-GAPX+2*FPAD; x+=c.w+MODGAP; prev=c.side; }
+  if(!SX.design) SX.design=x+SIDEGAP;
 }
-const W=Math.max(...COLS.map(c=>c.x+c.w));
 const P={}, LY={}, FRAMES=[], frameEls=[], COLHEADS=[];
 // Bands (maintainer 2026-10-24): below the top row all derived quantities share one band and
 // every final result sits in the bottom band; within a band a column is ordered by dependency
@@ -313,19 +305,25 @@ const BANDS=[['inter','Intermediate',q=>!OUTPUTS.has(q)],['final','Final results
 const RANK={}; layers.forEach(l=>ORDER[l].forEach((q,i)=>{RANK[q]=l*10000+i;}));
 const BANDY={};
 let yc=HEAD;
-{ // the top row: framed layer-0 modules
+{ // the top row: framed layer-0 modules, flowing left to right (targets first); with a separate
+  // design column the design targets stand above it
   LY[0]=yc; let height=NH;
-  for(const c of COLS){
-    if(c.module===NONE){ COLHEADS.push({x:c.x,y:yc+FHEAD-7,label:'Cross-cutting only'}); continue; }
-    const qs=ORDER[0].filter(q=>!isX(q)&&SIDE(q)===c.side&&Q[q].module===c.module);
-    if(!qs.length) continue;
-    const rows=Math.ceil(qs.length/c.cols), fh=(rows-1)*SUBGAP+NH+2*FPAD, y=yc+FHEAD;
-    qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:y+FPAD+Math.floor(i/c.cols)*SUBGAP}; });
-    FRAMES.push({module:c.module,label:MODULES[c.module],x:c.x,y,w:c.w,h:fh,target:TARGETS.has(qs[0])});
+  const mods=MODORDER.filter(m=>!XCUT.has(m)).map(m=>[m,ORDER[0].filter(q=>Q[q].module===m)]).filter(x=>x[1].length);
+  mods.sort((a,b)=>TARGETS.has(b[1][0])-TARGETS.has(a[1][0]));
+  let x=SX.analysis;
+  for(const [m,all] of mods){
+    const sideD=DESIGN_SEP&&all.every(q=>SIDE(q)==='design');
+    const qs=all; const cols=Math.min(5,qs.length), rows=Math.ceil(qs.length/cols);
+    const fw=cols*slotW-GAPX+2*FPAD, fh=(rows-1)*SUBGAP+NH+2*FPAD, y=yc+FHEAD;
+    const fx=sideD?SX.design:x;
+    qs.forEach((q,i)=>{ P[q]={x:fx+FPAD+(i%cols)*slotW, y:y+FPAD+Math.floor(i/cols)*SUBGAP}; });
+    FRAMES.push({module:m,label:MODULES[m],x:fx,y,w:fw,h:fh,target:TARGETS.has(qs[0])});
+    if(!sideD) x+=fw+MODGAP;
     height=Math.max(height,FHEAD+fh);
   }
   yc+=height-NH+GAPY;
 }
+const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w));
 const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
 // Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
 // in reading order inside each column; within a cluster: values of the point, then stability,
@@ -381,6 +379,7 @@ for(const [band,,inBand] of BANDS){
 }
 // The cross-cutting column: upright framed modules, one node per row, below the top row.
 const XTOP=BANDY.inter-GAPY/2;
+for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,label:c.module==='design'?'Design':DISC[c.module]});
 // Cross-cutting modules and their derived references side by side (maintainer 2026-10-24):
 // each module's inputs on the left, the references derived from them (canon tags module/ and
 // group/) on the right, on the same level, so a row reads "input -> reference". The powertrain
@@ -429,11 +428,12 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
   const dy=BANDY.final-GAPY/2; cam.appendChild(el('line',{x1:SX.analysis-SIDEGAP/2,y1:dy,x2:W,y2:dy,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
 }
 { const line=(x1,y1,x2,y2)=>cam.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
-  line(SX.design-SIDEGAP/2,6,SX.design-SIDEGAP/2,H+10);
+  if(DESIGN_SEP) line(SX.design-SIDEGAP/2,6,SX.design-SIDEGAP/2,H+10);
   line(SX.analysis-SIDEGAP/2,XTOP-14,SX.analysis-SIDEGAP/2,H+10);
   line(SX.refs-REFGAP/2,XTOP-14,SX.refs-REFGAP/2,H+10);
   line(SX.xcut,XTOP-14,W,XTOP-14);
   for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
+    if(side==='design'&&!DESIGN_SEP) continue;
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
   for(const s of PSPANS){
@@ -442,7 +442,7 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
     const t=el('text',{x:s.x+(s.sub?2:8),y:s.y+13,class:'blocklab '+(st?'stlab':'ptlab')}); t.textContent=s.label; cam.appendChild(t); }
   for(const f of PFRAMES)
     cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:f.band!=='final'?'sframe':'pframe'}));
-  for(const h of COLHEADS){ const t=el('text',{x:h.x,y:h.y,class:'blocklab'}); t.textContent=h.label; cam.appendChild(t); }
+  for(const h of COLHEADS){ const t=el('text',{x:h.x,y:h.y,class:'dischead'}); t.textContent=h.label; cam.appendChild(t); }
   for(const f of FRAMES){
     const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select module '+f.label});
     const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')});
@@ -501,6 +501,7 @@ for(const q in Q){
   else if(st==='open'&&MVP.has(q)) g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--mvp)','stroke-width':2}));
   else if(st==='nonscalar') g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--ink-3)','stroke-width':1.4,'stroke-dasharray':'2 1.5'}));
   if(MVP.has(q)) g.appendChild(el('rect',{x:4,y:NH+3,width:NW-8,height:3.5,rx:1.5,fill:'var(--mvp)'}));
+  if(!DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q)&&!INPUTS.has(q)){ const dt=el('text',{x:NW-4,y:9,class:'dmark','text-anchor':'end'}); dt.textContent='D'; g.appendChild(dt); }
   const tl=toolOf(q);
   if(tl.length){ const tt=el('text',{x:NW-3,y:NH-3,class:'tool','text-anchor':'end'}); tt.textContent=tl.join('/'); g.appendChild(tt); }
   g.addEventListener('click',()=>{ if(!moved) select(q); });
@@ -643,7 +644,10 @@ addEventListener('resize',fit);
 
 { const bt=document.getElementById('edgeToggle');
   bt.addEventListener('click',()=>{ const off=svg.classList.toggle('noedges');
-    bt.setAttribute('aria-pressed',String(off)); bt.textContent=off?'Show edges':'Hide edges'; }); }
+    bt.setAttribute('aria-checked',String(!off)); }); }
+{ const bt=document.getElementById('designToggle');
+  bt.setAttribute('aria-checked',String(!DESIGN_SEP));
+  bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'design-merged':''; location.reload(); }); }
 let mode='all';
 function applyMode(){
   const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
