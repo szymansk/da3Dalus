@@ -153,6 +153,10 @@ def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> No
         if len(points) > 1:
             raise SystemExit(f"quantity {slug} has more than one point tag: {points}")
         q["point"] = points[0] if points else ""
+        stages = [x.split("/", 1)[1] for x in tags if x.startswith("stage/")]
+        if len(stages) > 1:
+            raise SystemExit(f"quantity {slug} has more than one stage tag: {stages}")
+        q["stage"] = stages[0] if stages else ""
     for slug, f in formulas.items():
         t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
         f["worlds"] = [w.strip() for w in _front(t, "worlds").strip("[]").split(",") if w.strip()]
@@ -290,6 +294,10 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
     untagged = sorted(q for q in data["inputs"] if not quantities[q]["module"])
     if untagged:
         raise SystemExit(f"inputs and targets without a module/<name> tag: {untagged}")
+    intermediate = set(quantities) - set(data["inputs"]) - set(data["outputs"])
+    unstaged = sorted(q for q in intermediate if not quantities[q]["stage"])
+    if unstaged:
+        raise SystemExit(f"intermediate quantities without a stage/<name> tag: {unstaged}")
     unpointed = sorted(q for q in data["outputs"] if not quantities[q]["point"])
     if unpointed:
         raise SystemExit(f"final results without a point/<name> tag: {unpointed}")

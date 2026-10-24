@@ -465,6 +465,16 @@ nicht als unbenötigter Code" (maintainer, 2026-10-17).
 
 ### Quantity entries
 
+**Stage tag.** Every intermediate quantity — produced by a formula and consumed by another — carries
+exactly one tag `stage/<name>` naming its role in the calculation chain (maintainer, 2026-10-24); the
+importer drops it, the navigator clusters the intermediate band by it. Stages: `references` (the
+cross-cutting inputs turned into reference values: air state, geometry references, weight and wing
+loading, the take-off and landing configurations, the propulsion catalogue values), `aero-model` (the
+polar independent of the operating point), `operating-points` (where the named speeds are born:
+V_S0, V_S,TO, V_md, V_mp, V_app, V_TO, V_A), `propulsion-state` (the propeller at a flight speed),
+`stability-structure` (neutral point, break load factor). The navigator build refuses an intermediate
+quantity without it.
+
 **Operating-point tag.** Every final result — a quantity no formula consumes — carries exactly one tag
 `point/<name>` naming the operating point or configuration it belongs to (maintainer, 2026-10-24); the
 importer drops it, the navigator clusters the final results by it. Points: `stall` (C_L,max at n = ±1,

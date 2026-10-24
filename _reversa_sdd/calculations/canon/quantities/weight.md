@@ -7,6 +7,7 @@ role: derived
 status: approved
 tags:
   - canon/quantity
+  - stage/references
   - role/derived
 type: scalar
 ---

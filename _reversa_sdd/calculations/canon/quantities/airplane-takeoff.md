@@ -7,6 +7,7 @@ role: derived
 status: draft
 tags:
   - canon/quantity
+  - stage/references
   - role/derived
 type: airplane
 ---

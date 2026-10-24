@@ -7,6 +7,7 @@ role: derived
 status: approved
 tags:
   - canon/quantity
+  - stage/aero-model
   - role/derived
 type: scalar
 ---

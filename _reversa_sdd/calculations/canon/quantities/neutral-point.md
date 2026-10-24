@@ -8,6 +8,7 @@ uncertainty: interval
 status: draft
 tags:
   - canon/quantity
+  - stage/stability-structure
   - role/derived
 type: scalar
 ---
