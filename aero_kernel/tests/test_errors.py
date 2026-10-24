@@ -582,6 +582,7 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "roll_device_on_unmirrored_surface": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "hinge_line_discontinuous": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "avl_array_limit": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "avl_roll_branch_inconsistent": ErrorCategory.NOT_CONVERGED,
         "unknown_quantity": ErrorCategory.INVALID_INPUT,
         "not_an_input": ErrorCategory.INVALID_INPUT,
         "not_requestable": ErrorCategory.INVALID_INPUT,

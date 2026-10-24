@@ -78,6 +78,16 @@ ROLL_REFINEMENT_TOLERANCE = 0.01
 # AVL's primer gives -0.10 < pb/2V < 0.10 as the practical limit for roll rates, beyond which results
 # "should be interpreted with caution" (Avl/avl_doc.txt:121-141).
 ROLL_RATE_LIMIT = 0.10
+# The trimmed roll rate must agree with the linearised one, -Cld01 * delta / Clp from the stability
+# derivatives at the state without roll and deflection, to this relative difference (plus the print
+# floor below). A numerical sanity check of the solver, no domain threshold: the nonlinearity measured
+# on the fleet is 0.2-0.4 % (BRYAN 0.27932 against 0.28005, the unsplit file 0.2623 against 0.2634),
+# whereas a mesh on which AVL's Newton iteration lands on a spurious branch is off by a factor of
+# about 3 (BRYAN at 96 spanwise strips: 0.825 against 0.347, with the state without roll at an angle
+# of attack of 7.1 deg instead of 4.2 deg).
+ROLL_BRANCH_TOLERANCE = 0.10
+# AVL prints p'b/2V with five and the derivatives with six decimals.
+ROLL_PRINT_FLOOR = 2e-4
 # AVL prints the stability-axis rolling moment with five decimals; a larger residual is a defect of ours.
 ROLL_MOMENT_TOLERANCE = 1e-5
 # The control AVL echoes must be the commanded deflection (printed with five decimals).
@@ -91,7 +101,12 @@ CL_TOLERANCE = 1e-4
 AVL_MAX_RUN_S = 120.0
 # AVL 3.40 prints the first on an overflow of its vortex arrays; on a mesh so fine that the influence
 # matrix no longer fits LAPACK's integers it exits 0 with the second (BRYAN at 20/96).
-_OVERFLOW = ("Vortex array overflow", "DGETRF parameter number")
+_OVERFLOW = (
+    "Vortex array overflow",
+    "Strip array overflow",
+    "Surface array overflow",
+    "DGETRF parameter number",
+)
 
 
 class AvlNeutralPoint(BaseModel):
@@ -356,6 +371,17 @@ class AvlAdapter(SolverAdapter):
         if abs(output.control - delta) > CONTROL_ECHO_TOLERANCE:
             msg = f"the vortex lattice echoed the control at {output.control}, not the commanded {delta}"
             raise RuntimeError(msg)
+        linear = -output.cl_delta * delta / output.cl_p
+        if abs(output.p_hat - linear) > ROLL_BRANCH_TOLERANCE * abs(linear) + ROLL_PRINT_FLOOR:
+            raise FormulaError(
+                ErrorCategory.NOT_CONVERGED,
+                "avl_roll_branch_inconsistent",
+                f"the vortex lattice gave p'b/2V = {output.p_hat:.5f} while its derivatives at the "
+                f"state without roll give {linear:.5f}: the solution is not on the branch of the "
+                "linear response",
+                "the mesh is not usable for this airplane; the result is discarded",
+                detail={"p_hat": output.p_hat, "p_hat_linear": linear},
+            )
         return output
 
     async def neutral_point(self, airplane: AirplaneGeometry, cl: float) -> AvlNeutralPoint:

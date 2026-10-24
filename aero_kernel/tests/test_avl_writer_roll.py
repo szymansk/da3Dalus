@@ -80,12 +80,11 @@ def test_the_clean_file_has_no_control() -> None:
 
 
 def test_roll_commands_cl_rm_d1() -> None:
-    """Constrain C_L, the stability-axis rolling moment to zero, the aileron to the command; run,
-    leave: no derivative output."""
+    """Constrain C_L, the stability-axis rolling moment to zero, the aileron to the command and run;
+    then hold the roll rate and the aileron at zero, run again and print the derivatives."""
     assert avl_roll_commands(0.5, 0.25, 20.0) == (
-        "oper\no\nc\n0.25\n\na c 0.5\nr rm 0\nd1 d1 20.0\nx\n\nquit\n"
+        "oper\no\nc\n0.25\n\na c 0.5\nr rm 0\nd1 d1 20.0\nx\nr r 0\nd1 d1 0\nx\nst\n\n\nquit\n"
     )
-    assert "st\n" not in avl_roll_commands(0.5, 0.25, 20.0)
     assert avl_commands(0.5, 0.25) == "oper\no\nc\n0.25\n\na c 0.5\nx\nst\n\n\nquit\n"
 
 
@@ -103,6 +102,9 @@ OUTPUT = """
 
    aileron         =  20.00000
 
+ x' mom.  Cl'|    Clp =  -0.352014    Clq =  -0.000000    Clr =   0.160788
+ x' mom.  Cl'|   Cld01 =   0.004929
+
   p'b/2V =   9.99999
 """
 
@@ -110,14 +112,23 @@ OUTPUT = """
 def test_parse_stability_axis_pb2v_cltot_and_control_echo() -> None:
     """The stability-axis value (p'b/2V, not pb/2V), the first hit of each key."""
     parsed = parse_roll_output(OUTPUT)
-    assert parsed == RollOutput(p_hat=0.24403, cl=0.8, cl_stability=0.0, control=20.0)
+    assert parsed == RollOutput(
+        p_hat=0.24403, cl=0.8, cl_stability=0.0, control=20.0, cl_p=-0.352014, cl_delta=0.004929
+    )
 
 
-@pytest.mark.parametrize("missing", ["p'b/2V", "CLtot", "Cl'tot", "aileron"])
+@pytest.mark.parametrize("missing", ["p'b/2V", "CLtot", "Cl'tot", "aileron", "Clp", "Cld01"])
 def test_an_output_without_a_value_is_none(missing: str) -> None:
     broken = OUTPUT.replace(missing, "xxxxxx")
     assert parse_roll_output(broken) is None
 
 
 def test_the_roll_output_carries_what_the_adapter_checks() -> None:
-    assert set(RollOutput.model_fields) == {"p_hat", "cl", "cl_stability", "control"}
+    assert set(RollOutput.model_fields) == {
+        "p_hat",
+        "cl",
+        "cl_stability",
+        "control",
+        "cl_p",
+        "cl_delta",
+    }

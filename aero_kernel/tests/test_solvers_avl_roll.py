@@ -1,6 +1,7 @@
 """The AVL steady roll against a fake executable through the real ``run_process`` (fast tier)."""
 
 import json
+import math
 import stat
 import sys
 from pathlib import Path
@@ -25,7 +26,7 @@ cl = float(re.search(r"a c (\\S+)", commands).group(1))
 delta = float(re.search(r"d1 d1 (\\S+)", commands).group(1))
 (here / "seen.json").write_text(json.dumps({{"n_chord": n_chord, "commands": commands, "geometry": geometry}}))
 if str(n_chord) in config.get("overflow", []):
-    print(" SDUPL: Vortex array overflow. Increase NVMAX currently")
+    print(config.get("overflow_message", " SDUPL: Vortex array overflow. Increase NVMAX currently"))
     sys.exit(0)
 if "p_hat" not in config:
     print(" nothing useful")
@@ -34,6 +35,9 @@ print("  Alpha =   7.08055     pb/2V =   0.99999     p'b/2V = %10.5f" % config["
 print("  CXtot =   0.07226     Cltot =   0.00385     Cl'tot = %10.5f" % config.get("cl_stab", 0.0))
 print("  CLtot = %10.5f" % (cl + config.get("cl_offset", 0.0)))
 print("   aileron         = %12.5f" % (delta + config.get("echo_offset", 0.0)))
+linear = config["p_hat"][str(n_chord)] * config.get("linear_ratio", 1.0)
+print(" x' mom.  Cl'|    Clp = %10.6f    Clq =  -0.000000" % -0.35)
+print(" x' mom.  Cl'|   Cld01 = %10.6f" % (0.0 if delta == 0.0 else linear * 0.35 / delta))
 """
 
 DELTA = 20.0
@@ -275,3 +279,43 @@ async def test_a_refined_mesh_beyond_fifty_is_unchecked_not_wrong(
     found = await roll()
     assert found.p_hat == 0.05
     assert [w.code for w in found.warnings] == ["avl_refinement_unchecked"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "message",
+    [
+        " SDUPL: Strip array overflow. Increase NSMAX currently          500",
+        " SDUPL: Surface array overflow. Increase NFMAX currently          100",
+    ],
+)
+async def test_a_strip_or_surface_overflow_is_an_array_limit_too(fake: Path, message: str) -> None:
+    """AVL stops at 500 strips (NSMAX) and 100 surfaces (NFMAX) with only this message: without the
+    marker the refined run would be an internal error instead of an unchecked refinement."""
+    configure(fake, {"12": 0.05}, overflow=["24"], overflow_message=message)
+    found = await roll()
+    assert [w.code for w in found.warnings] == ["avl_refinement_unchecked"]
+
+
+@pytest.mark.asyncio
+async def test_a_trimmed_roll_far_from_the_linear_response_is_a_branch_inconsistency(
+    fake: Path,
+) -> None:
+    """BRYAN at 96 spanwise strips: AVL's Newton step lands on a spurious branch (p'b/2V 0.82491,
+    alpha 10.8 deg) while its derivatives at the state without roll (Clp -0.190612, Cld01 0.003311,
+    a linear response of 0.3474) are not wrong by that factor. Every other check of the run passes."""
+    configure(fake, {"12": 0.82491, "24": 0.82491}, linear_ratio=0.3474 / 0.82491)
+    with pytest.raises(FormulaError) as raised:
+        await roll()
+    assert raised.value.code == "avl_roll_branch_inconsistent"
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED
+    assert raised.value.detail["p_hat"] == 0.82491
+    assert math.isclose(float(raised.value.detail["p_hat_linear"]), 0.3474, abs_tol=2e-4)  # pyright: ignore[reportArgumentType]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ratio", [0.93, 1.07])
+async def test_a_nonlinearity_within_ten_percent_is_accepted(fake: Path, ratio: float) -> None:
+    configure(fake, {"12": 0.276, "24": 0.276}, linear_ratio=ratio)
+    found = await roll()
+    assert found.p_hat == 0.276

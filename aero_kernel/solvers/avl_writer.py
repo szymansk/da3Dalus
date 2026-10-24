@@ -48,6 +48,10 @@ class RollOutput(BaseModel):
         cl_stability: ``Cl'tot``, the rolling moment in stability axes (zero when the run is a
             steady roll).
         control: The control deflection AVL echoes in degrees.
+        cl_p: ``Clp``, the stability-axis rolling-moment derivative with respect to ``p'b/2V``, at
+            the airplane's state without roll and without deflection and the same ``C_L``.
+        cl_delta: ``Cld01``, the rolling-moment derivative with respect to the aileron in
+            degrees, at that state.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -56,6 +60,8 @@ class RollOutput(BaseModel):
     cl: float
     cl_stability: float
     control: float
+    cl_p: float
+    cl_delta: float
 
 
 class AvlOutput(BaseModel):
@@ -178,11 +184,15 @@ def avl_roll_commands(cl: float, core_ratio: float, delta_deg: float) -> str:
     """The OPER dialogue of a steady roll.
 
     Constrains ``C_L``, the stability-axis rolling moment to zero (``r rm 0``) and the aileron
-    control ``d1`` to the command; runs, asks for no derivatives. The roll rate is the result, in
-    AVL's default stability axes (``avl.f:652``); the result is linear in ``d1``
-    (``amake.f:1184-1187``).
+    control ``d1`` to the command and runs: the roll rate is the result, in AVL's default stability
+    axes (``avl.f:652``). Then it holds the roll rate (``r r 0``) and the aileron at zero, runs again
+    and prints the stability derivatives of that state, from which the adapter forms the linearised
+    roll rate ``-Cld01 * delta / Clp`` as a consistency check of the first result.
     """
-    return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nr rm 0\nd1 d1 {delta_deg!r}\nx\n\nquit\n"
+    return (
+        f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nr rm 0\nd1 d1 {delta_deg!r}\nx\n"
+        "r r 0\nd1 d1 0\nx\nst\n\n\nquit\n"
+    )
 
 
 def _first(text: str, key: str) -> float | None:
@@ -214,6 +224,21 @@ def parse_roll_output(text: str) -> RollOutput | None:
     p_hat, cl = _first(text, "p'b/2V"), _first(text, "CLtot")
     cl_stability = _first(text, "Cl'tot")
     echo = re.search(rf"^\s*{re.escape(CONTROL_NAME)}\s*=\s*{_NUMBER}", text, re.MULTILINE)
-    if p_hat is None or cl is None or cl_stability is None or echo is None:
+    cl_p, cl_delta = _first(text, "Clp"), _first(text, "Cld01")
+    if (
+        p_hat is None
+        or cl is None
+        or cl_stability is None
+        or echo is None
+        or cl_p is None
+        or cl_delta is None
+    ):
         return None
-    return RollOutput(p_hat=p_hat, cl=cl, cl_stability=cl_stability, control=float(echo.group(1)))
+    return RollOutput(
+        p_hat=p_hat,
+        cl=cl,
+        cl_stability=cl_stability,
+        control=float(echo.group(1)),
+        cl_p=cl_p,
+        cl_delta=cl_delta,
+    )

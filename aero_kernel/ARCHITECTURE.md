@@ -739,6 +739,16 @@ caller's responsibility.
       cure it. The clean file (neutral point) is unchanged. AVL's chordwise limit is 50 vortices per surface
       (`KCMAX`, `amake.f:55`); above it AVL prints an array overflow and returns zero: the adapter refuses
       it as `avl_array_limit` (a refined mesh beyond it is `avl_refinement_unchecked`).
+      The other fixed arrays count too: 500 strips (`NSMAX`, mirror images and both pieces of the split
+      wing included), 100 surfaces, 6000 vortices; each overflow message is `avl_array_limit`.
+    - *Branch consistency.* In the same AVL session, after the trimmed roll, the run holds `p'b/2V` and the
+      aileron at zero and prints the stability derivatives; the linearised rate `-Cld01 δ / Clp` must agree
+      with the trimmed one to 10 % (plus the print floor 2·10⁻⁴), otherwise the adapter raises
+      `avl_roll_branch_inconsistent` (`not_converged`, both values in the `detail`). A numerical sanity check
+      of the solver, no domain threshold: the nonlinearity measured on the fleet is 0.2–0.4 % (BRYAN 0.27932
+      against 0.28005; the unsplit file 0.2623 against 0.2634), whereas BRYAN at 96 spanwise strips lands
+      on a spurious branch (0.825 against 0.347, the state without roll at 7.1° instead of 4.2°) with no
+      AVL message, and every other check of the run (`C_L`, residual moment, control echo) passes.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
     the quantity of the node whose call produced them.
 - Data: KAT (the fitted components) and APC (the fitted propeller's measured table) are **plain reads of
