@@ -12,7 +12,9 @@ from aero_kernel.formulas import (
     dynamic_pressure,
     mean_geometric_chord,
     minimum_drag_speed_from_polar,
+    neutral_point,
     stall_speed,
+    static_margin,
     weight_from_mass,
     wing_loading,
 )
@@ -26,7 +28,9 @@ __all__ = [
     "dynamic_pressure",
     "mean_geometric_chord",
     "minimum_drag_speed_from_polar",
+    "neutral_point",
     "stall_speed",
+    "static_margin",
     "weight_from_mass",
     "wing_loading",
 ]

@@ -9,6 +9,7 @@ from aero_kernel.errors import display_slug
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
+from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 
 # The canon formulas that have an implementation (slugs, qualified); grows with each slice.
@@ -23,6 +24,8 @@ IMPLEMENTED = {
     "calc:airplane-configuration",
     "calc:stall-speed",
     "calc:minimum-drag-speed-from-polar",
+    "calc:neutral-point",
+    "calc:static-margin",
 }
 
 
@@ -94,12 +97,15 @@ class StubAtmosphere(AtmosphereAdapter):
 
 
 def solvers_with(
-    atmosphere: AtmosphereAdapter | None = None, opti: OptiAdapter | None = None
+    atmosphere: AtmosphereAdapter | None = None,
+    opti: OptiAdapter | None = None,
+    avl: AvlAdapter | None = None,
 ) -> Solvers:
     """Solvers with the given adapters; one left out is the real one on a fresh runtime."""
     return Solvers(
         atmosphere=atmosphere or AtmosphereAdapter(SolverRuntime()),
         opti=opti or OptiAdapter(SolverRuntime()),
+        avl=avl or AvlAdapter(SolverRuntime()),
     )
 
 

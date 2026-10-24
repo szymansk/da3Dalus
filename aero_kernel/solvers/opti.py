@@ -24,6 +24,7 @@ from aero_kernel.solvers.aerobuildup import sweep_polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
 from aero_kernel.solvers.base import SolverAdapter, regime_by_wing
+from aero_kernel.solvers.devices import refuse_deflected_devices
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -422,41 +423,6 @@ def _invalid(message: str, hint: str, parameter: str) -> FormulaError:
     )
 
 
-def _refuse_deflected_devices(airplane: AirplaneGeometry) -> None:
-    """Refuse an airplane with a control device off its rest position.
-
-    The conversion does not pass devices to AeroBuildup yet (it comes with the roll-rate step, where
-    ailerons need it), so a deflected airplane would silently be evaluated as the clean one. Both
-    state fields the conversion drops are checked: the device's ``deflection_deg`` and the
-    aerodynamic view's ``control_surface.deflection``.
-
-    Raises:
-        FormulaError: ``unsupported_configuration`` naming the first deflected device and its role.
-    """
-    for key, wing in (airplane.wings or {}).items():
-        for index, section in enumerate(wing.x_secs):
-            device, surface = section.trailing_edge_device, section.control_surface
-            if device is not None and device.deflection_deg:
-                label, role, angle = (
-                    device.name or f"device {index}",
-                    device.role,
-                    device.deflection_deg,
-                )
-            elif surface is not None and surface.deflection:
-                label, role, angle = surface.name, "control_surface", surface.deflection
-            else:
-                continue
-            raise FormulaError(
-                ErrorCategory.UNSUPPORTED_CONFIGURATION,
-                "unsupported_configuration",
-                f"deflected control surfaces are not yet passed to AeroBuildup: {label!r} "
-                f"(role {role}) of the wing {key!r} is at {angle} deg",
-                "no value is computed for a deflected configuration rather than the clean one",
-                detail={"wing": key, "device": label, "role": role},
-                parameter="airplane",
-            )
-
-
 class OptiAdapter(SolverAdapter):
     """The stall and best-glide problems solved with IPOPT over AeroBuildup, in the process pool.
 
@@ -497,7 +463,7 @@ class OptiAdapter(SolverAdapter):
                 (``upright_only``: the load factor must be positive).
         """
         self.require_available()
-        _refuse_deflected_devices(airplane)
+        refuse_deflected_devices(airplane, "AeroBuildup")
         for name, value, positive in (
             ("m", mass_kg, True),
             ("g", gravity, True),
