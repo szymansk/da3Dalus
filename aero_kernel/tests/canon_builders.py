@@ -36,6 +36,7 @@ def base_namespaces() -> dict[str, Any]:
                 "gravity": {
                     "value": 9.80665,
                     "unit": "m/s^2",
+                    "basis": "standard",
                     "source": "ISO 80000-3",
                     "regime": "RC and UAV, sea level",
                 }

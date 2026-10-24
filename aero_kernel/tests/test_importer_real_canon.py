@@ -24,11 +24,24 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
     content = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"]
     assert len(content.formulas) == len(list((CANON / "formulas").glob("*.md")))
     assert len(content.quantities) == len(list((CANON / "quantities").glob("*.md")))
-    assert len(content.defaults) == 7
+    assert len(content.defaults) == 8
     for default in content.defaults.values():
         assert default.source
         assert default.regime
         assert default.unit
+        assert default.basis
+
+
+def test_the_only_convention_of_the_real_canon_is_the_stall_break_fraction(tmp_path: Path) -> None:
+    result = import_canon(CANON)
+    assert result.model_json is not None
+    (tmp_path / "canon_model.json").write_text(result.model_json, encoding="utf-8")
+    defaults = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"].defaults
+    conventions = {slug for slug, default in defaults.items() if default.basis == "convention"}
+    assert conventions == {"stall-break-fraction"}
+    assert defaults["stall-break-fraction"].value == 0.10
+    assert defaults["gravity"].basis == "standard"
+    assert defaults["load-factor"].basis == "definition"
 
 
 def test_the_real_canon_imports_byte_identically_twice() -> None:

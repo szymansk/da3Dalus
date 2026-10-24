@@ -77,7 +77,7 @@ MINI_CANON: dict[str, str] = {
         "optional: [g]\n",
     ),
     "defaults.yaml": (
-        "gravity:\n  value: 9.80665\n  unit: m/s^2\n  source: standard gravity\n"
+        "gravity:\n  value: 9.80665\n  unit: m/s^2\n  basis: standard\n  source: standard gravity\n"
         "  regime: regime-independent\n"
     ),
 }

@@ -421,7 +421,9 @@ def test_a_cycle_between_two_formulas_terminates_with_a_finite_sorted_closure(
 
 
 def defaults_text(slug: str, value: str = "9.8", unit: str = "m/s^2") -> str:
-    return f"{slug}:\n  value: {value}\n  unit: '{unit}'\n  source: s\n  regime: r\n"
+    return (
+        f"{slug}:\n  value: {value}\n  unit: '{unit}'\n  basis: sourced\n  source: s\n  regime: r\n"
+    )
 
 
 def test_a_default_of_a_hyphenated_unknown_slug_keeps_the_full_slug(tmp_path: Path) -> None:
@@ -567,7 +569,7 @@ def test_a_duplicate_key_in_front_matter_is_one_exact_finding(tmp_path: Path) ->
 
 
 def test_a_duplicate_key_inside_a_default_names_the_slug(tmp_path: Path) -> None:
-    text = "gravity:\n  value: 9.8\n  value: 9.9\n  unit: m/s^2\n  source: s\n  regime: r\n"
+    text = "gravity:\n  value: 9.8\n  value: 9.9\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n"
     assert shown(run(tmp_path, {"defaults.yaml": text})) == [
         "defaults.yaml: gravity.value: duplicate key 'value' (line 3)"
     ]
@@ -576,7 +578,7 @@ def test_a_duplicate_key_inside_a_default_names_the_slug(tmp_path: Path) -> None
 def test_a_duplicate_slug_in_defaults_is_named_by_the_slug(tmp_path: Path) -> None:
     text = MINI_CANON["defaults.yaml"] * 2
     assert shown(run(tmp_path, {"defaults.yaml": text})) == [
-        "defaults.yaml: gravity: duplicate key 'gravity' (line 6)"
+        "defaults.yaml: gravity: duplicate key 'gravity' (line 7)"
     ]
 
 
@@ -614,7 +616,7 @@ def test_a_dimensionless_default_is_folded_and_accepted(
 ) -> None:
     entry = EFFICIENCY_ENTRY.format(unit=quantity_unit)
     defaults = MINI_CANON["defaults.yaml"] + (
-        f"efficiency:\n  value: 0.75\n  unit: '{default_unit}'\n  source: s\n  regime: r\n"
+        f"efficiency:\n  value: 0.75\n  unit: '{default_unit}'\n  basis: sourced\n  source: s\n  regime: r\n"
     )
     result = run(tmp_path, {EFFICIENCY: entry, "defaults.yaml": defaults})
     assert result.model is not None, shown(result)
@@ -819,28 +821,28 @@ def test_a_formula_called_bind_reports_its_binding_faults_at_the_right_place(
 
 # --- S11, D1: a duplicate key inside a default names the right slug ----------------------------------------------
 
-DEFAULT_ENTRY = "  value: 9.8\n  unit: m/s^2\n  source: s\n  regime: r\n"
+DEFAULT_ENTRY = "  value: 9.8\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n"
 
 
 def test_a_duplicate_in_the_second_default_names_the_second_slug(tmp_path: Path) -> None:
     text = (
         MINI_CANON["defaults.yaml"]
-        + "wing-area:\n  value: 1.0\n  value: 2.0\n  unit: m\n  source: s\n  regime: r\n"
+        + "wing-area:\n  value: 1.0\n  value: 2.0\n  unit: m\n  basis: sourced\n  source: s\n  regime: r\n"
     )
     assert shown(run(tmp_path, {"defaults.yaml": text})) == [
-        "defaults.yaml: wing-area.value: duplicate key 'value' (line 8)"
+        "defaults.yaml: wing-area.value: duplicate key 'value' (line 9)"
     ]
 
 
 def test_a_duplicate_in_a_flow_style_default_names_the_slug(tmp_path: Path) -> None:
-    text = "gravity: {value: 1, value: 2, unit: m/s^2, source: s, regime: r}\n"
+    text = "gravity: {value: 1, value: 2, unit: m/s^2, basis: sourced, source: s, regime: r}\n"
     assert shown(run(tmp_path, {"defaults.yaml": text})) == [
         "defaults.yaml: gravity.value: duplicate key 'value' (line 1)"
     ]
 
 
 def test_a_quoted_slug_gives_no_quotes_in_the_field(tmp_path: Path) -> None:
-    text = '"gravity":\n  value: 1\n  value: 2\n  unit: m/s^2\n  source: s\n  regime: r\n'
+    text = '"gravity":\n  value: 1\n  value: 2\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n'
     assert shown(run(tmp_path, {"defaults.yaml": text})) == [
         "defaults.yaml: gravity.value: duplicate key 'value' (line 3)"
     ]
@@ -850,10 +852,10 @@ def test_a_comment_line_between_does_not_mislead_the_slug(tmp_path: Path) -> Non
     text = (
         "other:\n"
         + DEFAULT_ENTRY
-        + "# gravity:\ngravity:\n  value: 1\n  value: 2\n  unit: m/s^2\n  source: s\n  regime: r\n"
+        + "# gravity:\ngravity:\n  value: 1\n  value: 2\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n"
     )
     assert shown(run(tmp_path, {"defaults.yaml": text})) == [
-        "defaults.yaml: gravity.value: duplicate key 'value' (line 9)"
+        "defaults.yaml: gravity.value: duplicate key 'value' (line 10)"
     ]
 
 

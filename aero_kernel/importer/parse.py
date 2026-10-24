@@ -338,7 +338,7 @@ def _keep_default(slug: str, value: object, parsed: ParsedCanon) -> None:
             Finding(
                 file="defaults.yaml",
                 field=slug,
-                message="must be a mapping {value, unit, source, regime}",
+                message="must be a mapping {value, unit, basis, source, regime}",
             )
         )
         return

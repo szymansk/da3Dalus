@@ -3,13 +3,13 @@ canon: angle-of-attack-stall
 kind: quantity
 symbol: alpha_stall
 unit: deg
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics
-  - point/stall
-  - role/output
+  - stage/aero-model
+  - role/derived
 type: scalar
 ---
 
@@ -22,3 +22,5 @@ conditions in one quantity (A2; #1181).
 **Unit.** `deg`
 
 **Produced by.** [[stall-speed]]
+
+**Used by.** [[stall-break]]

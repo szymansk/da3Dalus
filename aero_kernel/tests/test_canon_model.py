@@ -166,6 +166,7 @@ def test_given_must_be_supplied_input_or_target_without_default(quantity: dict[s
 GRAVITY_DEFAULT: dict[str, Any] = {
     "value": 9.80665,
     "unit": "m/s^2",
+    "basis": "standard",
     "source": "ISO 80000-3",
     "regime": "RC and UAV, sea level",
 }
@@ -264,6 +265,26 @@ def test_the_default_of_a_positive_quantity_must_be_positive(value: float) -> No
 def test_a_default_needs_a_source_and_a_regime(field: str) -> None:
     with pytest.raises(ValidationError):
         build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {field: ""}))
+
+
+@pytest.mark.parametrize("basis", ["", "assumed", "Convention", None])
+def test_a_default_basis_is_one_of_the_four_terms(basis: str | None) -> None:
+    namespaces = with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"basis": basis})
+    with pytest.raises(ValidationError):
+        build(namespaces)
+
+
+def test_a_default_without_a_basis_is_rejected() -> None:
+    default = {key: value for key, value in GRAVITY_DEFAULT.items() if key != "basis"}
+    namespaces = with_defaults(base_namespaces(), gravity=default)
+    with pytest.raises(ValidationError, match="basis"):
+        build(namespaces)
+
+
+@pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention"])
+def test_every_basis_term_is_accepted(basis: str) -> None:
+    model = build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"basis": basis}))
+    assert model.namespaces["calc"].defaults["gravity"].basis == basis
 
 
 @pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
