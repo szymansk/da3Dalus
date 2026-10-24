@@ -99,6 +99,8 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .sspan{fill:var(--hub-bg);fill-opacity:.25;stroke:var(--hub);stroke-opacity:.75;stroke-width:1.3}
 .sframe{fill:var(--hub-bg);fill-opacity:.35;stroke:var(--hub);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
 .blocklab.stlab{fill:var(--hub)}
+.ichips button{flex:0 0 auto;padding:3px 7px;font-size:11.5px}
+.ichips .ic{display:inline-block;width:14px;height:14px;border-radius:50%;color:#fff;font-size:9px;font-weight:700;line-height:14px;text-align:center;margin-right:4px}
 .excl{fill:#fff;font-family:"IBM Plex Sans",sans-serif;font-size:9px;font-weight:700;pointer-events:none}
 .issue{border-left:3px solid var(--bad);padding:6px 0 6px 10px;margin:10px 0}
 .issue b{color:var(--bad)}
@@ -164,6 +166,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <button data-mode="done" aria-pressed="false">Implemented</button>
       <button data-mode="problems" aria-pressed="false" title="Quantities whose formula declares an open issue">Problems</button>
     </div>
+    <div class="seg ichips" id="issueChips" role="group" aria-label="Issue kind" style="margin-top:6px"></div>
     <div class="seg" role="group" aria-label="Direction" style="margin-top:6px">
       <button data-mode="analysis" aria-pressed="false" title="What a given airplane does">Analysis</button>
       <button data-mode="design" aria-pressed="false" title="Turn a target into a construction quantity (O1)">Design</button>
@@ -177,7 +180,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>part of the MVP, still open</span>
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>formula implemented, quantity not scalar &#8212; v1 does not return it</span>
       <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>belongs to the MVP (bar under the node)</span>
-      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="var(--bad)"/><text x="7" y="10.4" text-anchor="middle" style="fill:#fff;font-size:9px;font-weight:700">!</text></svg>open issue in the canon &#8212; blocks approval (click for why)</span>
+      <span id="issueLegend" style="display:block">open issues in the canon &#8212; block approval (click a node for why):</span>
     </div>
     <p class="stat" id="kstat"></p>
   </div>
@@ -238,6 +241,14 @@ const Q=D.Q, F=D.F, LAYER=D.layer, ORDER=D.order;
 const INPUTS=new Set(D.inputs), OUTPUTS=new Set(D.outputs);
 // Target values (role: target) are user-given goals; every quantity downstream of one is
 // measured against a goal rather than computed from the aircraft alone.
+// Issue kinds and their icons (maintainer 2026-10-24); the kind is read from the canon marker.
+const IKIND={broken:{icon:'\u2715',label:'Assumption broken in the code',col:'var(--bad)'},
+  conflict:{icon:'\u21c4',label:'Two producers disagree',col:'var(--bad)'},
+  nosource:{icon:'?',label:'No published source',col:'var(--bad)'},
+  partial:{icon:'?',label:'Only partly sourced',col:'var(--mvp)'},
+  approximation:{icon:'~',label:'Approximation where a law belongs',col:'var(--mvp)'},
+  dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
+const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
 const ISSUES={}; for(const f in D.F) for(const o of D.F[f].out) if((D.F[f].issues||[]).length) (ISSUES[o] ||= []).push(...D.F[f].issues.map(i=>({...i,formula:f})));
 const STATUS=D.status||{}, MVP=new Set(D.mvp||[]), DESIGN=new Set(D.design||[]), ANALYSIS=new Set(D.analysis||[]);
 const TARGETS=new Set(Object.keys(Q).filter(q=>Q[q].role==='target'));
@@ -510,7 +521,10 @@ for(const q in Q){
   else if(st==='open'&&MVP.has(q)) g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--mvp)','stroke-width':2}));
   else if(st==='nonscalar') g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--ink-3)','stroke-width':1.4,'stroke-dasharray':'2 1.5'}));
   if(MVP.has(q)) g.appendChild(el('rect',{x:4,y:NH+3,width:NW-8,height:3.5,rx:1.5,fill:'var(--mvp)'}));
-  if(ISSUES[q]){ g.appendChild(el('circle',{cx:7,cy:NH-7,r:5,fill:'var(--bad)'})); const ex=el('text',{x:7,y:NH-3.6,class:'excl','text-anchor':'middle'}); ex.textContent='!'; g.appendChild(ex); }
+  if(ISSUES[q]){ const ks=[...new Set(ISSUES[q].map(kindOf))];
+    ks.forEach((k,i)=>{ const cx=7+i*11;
+      g.appendChild(el('circle',{cx,cy:NH-7,r:5,fill:IKIND[k].col}));
+      const ex=el('text',{x:cx,y:NH-3.9,class:'excl','text-anchor':'middle'}); ex.textContent=IKIND[k].icon; g.appendChild(ex); }); }
   if(!DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q)&&!INPUTS.has(q)){ const dt=el('text',{x:NW-4,y:9,class:'dmark','text-anchor':'end'}); dt.textContent='D'; g.appendChild(dt); }
   const tl=toolOf(q);
   if(tl.length){ const tt=el('text',{x:NW-3,y:NH-3,class:'tool','text-anchor':'end'}); tt.textContent=tl.join('/'); g.appendChild(tt); }
@@ -572,7 +586,7 @@ function select(q){
     if(Q[q].stage) h+=`<p class="meta">Stage: ${esc(STAGES[Q[q].stage]||Q[q].stage)}${Q[q].group?' \u00b7 '+esc(GROUPS[Q[q].group]||Q[q].group):''}</p>`;
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   if(ISSUES[q]) h+=`<div class="blk"><div class="lab" style="color:var(--bad)">! Open issues \u00b7 ${ISSUES[q].length} \u2014 blocks approval</div>`+
-    ISSUES[q].map(i=>`<div class="issue"><b>${esc(i.title)}</b> <span class="sub">(${esc(i.formula)})</span><br>${esc(i.text)}</div>`).join('')+`</div>`;
+    ISSUES[q].map(i=>`<div class="issue" style="border-color:${IKIND[kindOf(i)].col}"><b style="color:${IKIND[kindOf(i)].col}">${IKIND[kindOf(i)].icon} ${esc(i.title)}</b> <span class="sub">(${esc(i.formula)})</span><br>${esc(i.text)}</div>`).join('')+`</div>`;
   { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
   if(UNC.has(q)) h+=`<p class="desc" style="border-left:3px dotted var(--unc);padding-left:8px">
      <b>Uncertain</b> &#8212; an interval [min, max] over method worlds (A11), each world computed through the whole chain;
@@ -714,12 +728,21 @@ addEventListener('resize',fit);
   bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'':'design-separate'; location.reload(); }); }
 let mode='all';
 function applyMode(){
-  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!ISSUES[q] : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
+  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!ISSUES[q] : mode.startsWith('issue:')?!!(ISSUES[q]&&ISSUES[q].some(i=>kindOf(i)===mode.slice(6))) : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
   for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
   edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
   document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));
 }
-document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.addEventListener('click',()=>{mode=bt.dataset.mode;sel=null;paint();applyMode();}));
+document.addEventListener('click',ev=>{ const bt=ev.target.closest('.seg button[data-mode]'); if(!bt) return; mode=bt.dataset.mode;sel=null;paint();applyMode(); });
+{ const counts={}; for(const q in ISSUES) for(const k of new Set(ISSUES[q].map(kindOf))) counts[k]=(counts[k]||0)+1;
+  const box=document.getElementById('issueChips'), leg=document.getElementById('issueLegend');
+  let legHtml='';
+  for(const k in IKIND){ if(!counts[k]) continue;
+    const b=document.createElement('button'); b.dataset.mode='issue:'+k; b.setAttribute('aria-pressed','false'); b.title=IKIND[k].label;
+    b.innerHTML=`<span class="ic" style="background:${IKIND[k].col}">${IKIND[k].icon}</span>${counts[k]}`; box.appendChild(b);
+    legHtml+=(`<span><span class="ic" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${IKIND[k].col};color:#fff;font-size:9px;font-weight:700;line-height:14px;text-align:center;margin:0 8px 0 4px">${IKIND[k].icon}</span>${IKIND[k].label}</span>`); }
+  leg.insertAdjacentHTML('afterend',legHtml);
+}
 {
   const fAll=Object.keys(F), fDone=fAll.filter(f=>F[f].impl);
   const mvpF=[...new Set([...MVP].flatMap(q=>prodBy[q]||[]))].sort();
