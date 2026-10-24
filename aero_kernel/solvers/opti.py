@@ -692,7 +692,7 @@ def _roll_start(
     """
     sign = math.copysign(1.0, request.delta_deg)
     fallback = sign * ROLL_START_FRACTION * p_limit
-    if not abs(request.delta_deg) > 0.0:  # no command (exactly zero): the rest, nothing to estimate
+    if abs(request.delta_deg) <= 0.0:  # no command (exactly zero): the rest, nothing to estimate
         return fallback
     probe = sign * ROLL_PROBE_FRACTION * p_limit
 
