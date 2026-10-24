@@ -113,3 +113,30 @@ Two findings from comparing the kernel's mesh with the template's:
 2. The reference point enters Xnp through the rotation into stability axes: moving it from the origin to
    BRYAN's CG (z = -6 mm) moves Xnp by +0.27 mm (0.2 % MAC). Compare neutral points only at the same
    reference point.
+
+## Steady roll, driven wing split at the hinge (gh-1211, 2026-10-24)
+
+Kernel conditions of `AvlAdapter.steady_roll`: no fuselage, Mach 0, `C_L` 0.7 constrained, the stability-axis
+rolling moment held at zero (`r rm 0`), aileron `d1` = 20 deg, reference point = `xyz_ref`, core 0.25. Values are
+`p'b/2V`. Sources: `avl_doc.txt` (rules 2 and 3 of the mesh guidance, the `Sspace` -2 recommendation) and the AVL
+3.40 source (`amake.f:397-423`, `AVL.INC:22-24`).
+
+1. **Hinge.** On one full-chord surface the control derivative at the hinge has an O(1/N_chord) discretisation
+   error (a camber-slope jump), 4.5 % (BRYAN) and 7.5 % (JAGUAR) between 10 and 20 chordwise vortices; aligning the
+   hinge with a panel edge does not cure it. Remedy: the wing is a front and an aft SURFACE of one COMPONENT on the
+   same stations, the CONTROL on the aft piece with its hinge at the aft leading edge (front 12, aft 8).
+2. **Tip.** With uniform strips the drift left is in `Clp`, the roll damping, whose error halves on every doubling
+   (BRYAN `Clp` -0.35201 / -0.34665 / -0.34397 for 1 / 2 / 4 subdivisions; `Cld01` varies by 0.5 %); roll damping
+   weights the outer span with y squared. Remedy: one sine-to-tip distribution (`Sspace` -2), device ends exact.
+   p̂ at 24 / 48 / 96 strips, (12, 8): uniform BRYAN .2802 / .2829 / .2846, JAGUAR .2740 / .2768 / .2784;
+   cosine inside each piece .2783 / .2814 / .2838, .2733 / .2754 / .2774; sine to tip .2866 / .2860 / .2862,
+   .2792 / .2799 / .2799 (independent resampling, expert). Richardson over the uniform runs: .2864 / .2801.
+3. **Kernel pairs** (declared (N, 12 / 8) against (2N, 24 / 16)), table in `aero_kernel/ARCHITECTURE.md` 8.8:
+   N = 24 gives +0.15 % (BRYAN) and +0.69 % (JAGUAR); p̂ = 0.28643 and 0.27927.
+4. **Limits.** `NVMAX` = 6000 vortices, `NSMAX` = 500 strips (mirror images and both pieces included),
+   `NFMAX` = 100 surfaces, `KCMAX` = 50 chordwise vortices per surface. A (24, 16) mesh at 80 strips overflows the
+   vortex array; BRYAN at 96 strips with (12, 8) uses 494 strips and 4940 vortices and lands on a spurious Newton
+   branch (p̂ 0.825, alpha 10.8 deg, `Clp` -0.190612, `Cld01` 0.003311, linear estimate 0.347) without any message:
+   the adapter compares the trimmed p̂ with `-Cld01 * delta / Clp` of the same session (10 %).
+5. **Definition.** The first reference numbers (.2800 / .2744) were the linearised ratio on a uniform mesh, the
+   kernel's number is the trimmed steady roll; on the same file they differ by 0.2 - 0.4 %.

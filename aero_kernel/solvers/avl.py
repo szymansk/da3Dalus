@@ -58,6 +58,12 @@ SPLIT_N_CHORD = (12, 8)
 # AVL's chordwise limit per surface (KCMAX, amake.f:55): above it AVL prints "MAKESURF: Array overflow"
 # and returns zero without an error.
 AVL_MAX_CHORD_VORTICES = 50
+# AVL's fixed arrays (AVL.INC:22-24): strips including the mirror images (NSMAX), vortices (NVMAX) and
+# surfaces including the mirror images (NFMAX). Above them AVL stops with a message and no result, or
+# worse, goes on with a corrupted lattice, so the adapter counts before it writes.
+AVL_MAX_STRIPS = 500
+AVL_MAX_VORTICES = 6000
+AVL_MAX_SURFACES = 100
 # The check run uses this factor on both counts. 40/96 overflows AVL's vortex array on BRYAN.
 REFINE_FACTOR = 2
 # The disagreement of the two meshes above which the value is declared not converged, in mean
@@ -220,6 +226,9 @@ class AvlAdapter(SolverAdapter):
             "avl_refine_factor": REFINE_FACTOR,
             "avl_refinement_tolerance_mac": REFINEMENT_TOLERANCE_MAC,
             "avl_roll_refinement_tolerance": ROLL_REFINEMENT_TOLERANCE,
+            "avl_roll_nchord_front": SPLIT_N_CHORD[0],
+            "avl_roll_nchord_aft": SPLIT_N_CHORD[1],
+            "avl_roll_branch_tolerance": ROLL_BRANCH_TOLERANCE,
         }
 
     async def _contours(self, airfoils: tuple[Airfoil, ...]) -> tuple[Contour, ...]:
@@ -254,6 +263,31 @@ class AvlAdapter(SolverAdapter):
                 f"{AVL_MAX_CHORD_VORTICES}",
                 "the chordwise resolution of the vortex lattice is limited by the solver",
                 detail={"n_chord": widest, "n_span": n_span},
+            )
+        strips = sum((len(s.sections) - 1) * (2 if s.symmetric else 1) for s in surfaces)
+        vortices = sum(
+            (len(s.sections) - 1) * (2 if s.symmetric else 1) * (s.n_chord or n_chord)
+            for s in surfaces
+        )
+        surface_count = sum(2 if s.symmetric else 1 for s in surfaces)
+        if (
+            strips > AVL_MAX_STRIPS
+            or vortices > AVL_MAX_VORTICES
+            or surface_count > AVL_MAX_SURFACES
+        ):
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "avl_array_limit",
+                f"the vortex lattice has {strips} strips, {vortices} vortices and "
+                f"{surface_count} surfaces, beyond the solver's limits of {AVL_MAX_STRIPS}, "
+                f"{AVL_MAX_VORTICES} and {AVL_MAX_SURFACES}",
+                "the airplane has too many surfaces or sections for the vortex lattice solver",
+                detail={
+                    "n_chord": n_chord,
+                    "n_span": n_span,
+                    "strips": strips,
+                    "vortices": vortices,
+                },
             )
         files: dict[str, str | bytes] = {
             GEOMETRY_FILE: avl_geometry(

@@ -31,20 +31,26 @@ async def test_a_zero_command_gives_zero_roll() -> None:
     assert "avl_roll_rate_beyond_range" not in [w.code for w in found.warnings]
 
 
-# The split-at-hinge mesh (front 12, aft 8, Nspan 24) against the expert's split file at C_L 0.7, delta
-# 20 deg, core ratio 0.25 (AVL prints five decimals), run with the kernel's own commands: the trimmed
-# steady roll (`a c 0.7`, `r rm 0`, `d1 d1 20`), which is the canon's definition. The expert's first
-# numbers, 0.2800 and 0.2744, are the linearisation -Cld01 * delta / Clp at p = 0; AVL's forces are not
-# exactly linear in p and alpha re-trims, so the trimmed values are 0.2793 and 0.2738 (0.23 % lower;
-# the unsplit file shows the same offset). The single full-chord surface at 10 chordwise vortices gave
-# 0.2623 and 0.2478. Reproduction of the expert's file, not a golden (S6); the spanwise convergence of
-# the refined check is a separate study (AVL_CONVERGENCE.md).
-SPLIT_TRIMMED = {FleetMember.BRYAN: 0.27932, FleetMember.JAGUAR: 0.27376}
+# The driven mesh (wing split at the hinge, front 12 / aft 8 chordwise, 24 strips per half span in one
+# sine-to-tip distribution with the device ends exact) against the expert's independent resampling of
+# the same geometry at C_L 0.7, delta 20 deg, core ratio 0.25, run with the kernel's own commands: the
+# trimmed steady roll (`a c 0.7`, `r rm 0`, `d1 d1 20`), which is the canon's definition. His numbers
+# for 24 / 48 / 96 strips are BRYAN .2866 / .2860 / .2862 and JAGUAR .2792 / .2799 / .2799 (flat; the
+# sine-to-tip spacing removes the O(1/N) tip error of the roll damping, which uniform strips carry:
+# Richardson over uniform runs gives .2864 / .2801). His first set, .2800 and .2744, was the linearised
+# -Cld01 * delta / Clp of a coarser, uniform mesh; this reference corrects a wrong definition. Reproduction of an
+# independent writer, not a golden (S6): abs 3e-4. Caveat: Clp and Cld01 each still move about 0.5 % in
+# opposite directions between 48 and 96 strips, so only the ratio p is converged, never quote them.
+INDEPENDENT = {FleetMember.BRYAN: 0.2866, FleetMember.JAGUAR: 0.2792}
+CONVERGENCE_CODES = {"avl_mesh_not_converged", "avl_refinement_unchecked"}
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
-async def test_the_split_mesh_reproduces_the_experts_trimmed_roll(member: FleetMember) -> None:
+async def test_the_driven_mesh_reproduces_the_independent_roll_and_passes_its_refinement_check(
+    member: FleetMember,
+) -> None:
     airplane = AirplaneGeometry.model_validate(reference_document(member))
     async with SolverRuntime(max_workers=1) as runtime:
         found = await AvlAdapter(runtime).steady_roll(airplane, 0.7, 20.0)
-    assert math.isclose(found.p_hat, SPLIT_TRIMMED[member], abs_tol=2e-5)
+    assert math.isclose(found.p_hat, INDEPENDENT[member], abs_tol=3e-4)
+    assert not CONVERGENCE_CODES & {w.code for w in found.warnings}

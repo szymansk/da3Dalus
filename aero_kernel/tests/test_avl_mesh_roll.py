@@ -1,6 +1,7 @@
 """The AVL mesh with the roll devices driven: breaks, controls, hinges (ARCHITECTURE ch. 8.8)."""
 
 import math
+from itertools import pairwise
 from typing import Any
 
 import pytest
@@ -35,33 +36,46 @@ def test_clean_mesh_and_file_unchanged(member: FleetMember) -> None:
     assert all(section.control is None for surface in clean for section in surface.sections)
 
 
-def test_device_ends_are_stations_and_close_uniform_stations_are_dropped() -> None:
-    """BRYAN, 24 strips (step 0.011371 m): the aileron ends 0.063151 and 0.2265 are stations; the
-    uniform neighbours 0.056855 and 0.068226 (0.55 / 0.45 step) stay, 0.22742 (0.08 step) goes."""
-    main = stations(surfaces(fleet(FleetMember.BRYAN), 24, drive=True)["Tragflaeche"])
-    assert len(main) == 25 + 2 - 1
-    for y in (0.063151, 0.2265, 0.056855, 0.068226):
-        assert has(main, y)
-    assert not has(main, 0.22742)
-    refined = stations(surfaces(fleet(FleetMember.BRYAN), 48, drive=True)["Tragflaeche"])
-    assert len(refined) == 49 + 2 - 2  # at 48: 0.06254 (0.11 step) and 0.22742 (0.16 step) go
-    assert has(refined, 0.063151)
-    assert not has(refined, 0.06254)
-    assert not has(refined, 0.22742)
+def widths(values: list[float]) -> list[float]:
+    return [b - a for a, b in pairwise(values)]
 
 
-def test_the_jaguar_stations() -> None:
-    """JAGUAR, 24 strips (step 0.013004 m): 0.020446 is inserted with 0.013004 and 0.026008 kept
-    (0.57 / 0.43 step), 0.285559 is inserted and 0.286088 (0.04 step) dropped."""
-    main = stations(surfaces(fleet(FleetMember.JAGUAR), 24, drive=True)["Tragflaeche"])
-    assert len(main) == 25 + 2 - 1
-    for y in (0.020446, 0.013004, 0.026008, 0.285559):
+@pytest.mark.parametrize(
+    ("member", "ends"),
+    [(FleetMember.BRYAN, (0.063151, 0.2265)), (FleetMember.JAGUAR, (0.020446, 0.285559))],
+)
+@pytest.mark.parametrize("n", [24, 48])
+def test_driven_stations_are_sine_to_tip_with_the_device_ends_exact(
+    member: FleetMember, ends: tuple[float, float], n: int
+) -> None:
+    """One sine-to-tip distribution over the half span (Sspace -2 from root to tip, avl_doc 1043-1048)
+    with n strips, the device ends exact, and strip widths that stay continuous across the ends."""
+    main = stations(surfaces(fleet(member), n, drive=True)["Tragflaeche"])
+    assert len(main) == n + 1
+    assert main[0] == 0.0
+    for y in ends:
         assert has(main, y)
-    assert not has(main, 0.286088)
-    refined = stations(surfaces(fleet(FleetMember.JAGUAR), 48, drive=True)["Tragflaeche"])
-    assert len(refined) == 49 + 2 - 2
-    assert not has(refined, 0.019506)
-    assert not has(refined, 0.286088)
+    step = widths(main)
+    assert all(w > 0.0 for w in step)
+    for y in ends:
+        index = next(i for i, v in enumerate(main) if math.isclose(v, y, abs_tol=1e-6))
+        assert 0.8 < step[index] / step[index - 1] < 1.25  # no width jump at the end (Rule 2)
+    assert step[-1] < step[0] / 3.0  # the strips bunch toward the tip
+
+
+def test_sine_to_tip_hand_values() -> None:
+    """Half span 0.6, 12 strips, device 0.2 .. 0.4: t of the ends is 2/pi asin(1/3) = 0.216321 and
+    2/pi asin(2/3) = 0.464557, so the pieces get round(2.596) = 3, round(5.575) - 3 = 3 and 6 strips,
+    t runs evenly in each, y = 0.6 sin(pi/2 t): y(1) = 0.6 sin(pi/2 0.216321/3) = 0.067822, in the
+    device t = 0.216321 + 0.248236/3 = 0.299067 gives y = 0.271625 and t = 0.381812 y = 0.338669."""
+    main = stations(surfaces(simple(), 12, drive=True)["Main"])
+    assert len(main) == 13
+    assert math.isclose(main[1], 0.067822, abs_tol=1e-6)
+    assert math.isclose(main[3], 0.2, abs_tol=1e-9)
+    assert math.isclose(main[4], 0.271625, abs_tol=1e-6)
+    assert math.isclose(main[5], 0.338669, abs_tol=1e-6)
+    assert math.isclose(main[6], 0.4, abs_tol=1e-9)
+    assert math.isclose(main[-1], 0.6, abs_tol=1e-9)
 
 
 @pytest.mark.parametrize(
@@ -143,14 +157,18 @@ def test_x_hinge_from_the_absolute_hinge_line_over_local_chord() -> None:
     x_hinge = (0.148 - 0.03) / 0.15 = 0.78666...; at the ends it is the stored hinge."""
     document = wing_document([0.0, 0.2, 0.4, 0.6], [1], [(0.78, 0.80)], chords=[0.2, 0.2, 0.1, 0.1])
     main = surfaces(AirplaneGeometry.model_validate(document), 12, drive=True)["Main"]
-    by_y = {round(s.y, 6): s for s in main.sections if s.control is not None}
+    by_y = {round(s.y, 5): s for s in main.sections if s.control is not None}
     for y, hinge in ((0.2, 0.78), (0.4, 0.80)):
         control = by_y[y].control
         assert control is not None
         assert math.isclose(control.x_hinge, hinge, rel_tol=1e-12)
-    station = by_y[0.3]  # 12 strips of 0.05 m put a station at 0.3
-    assert station.control is not None
-    assert math.isclose(station.control.x_hinge, 0.118 / 0.15, rel_tol=1e-12)
+    middle = by_y[0.27163]  # a station between the two ends (sine to tip, 12 strips)
+    assert middle.control is not None
+    fraction = (0.271625 - 0.2) / 0.2
+    line = 0.176 + fraction * (0.120 - 0.176)
+    leading_edge = 0.02 + fraction * 0.02
+    chord = 0.2 - fraction * 0.1
+    assert math.isclose(middle.control.x_hinge, (line - leading_edge) / chord, rel_tol=1e-4)
 
 
 def test_control_gain_minus_written_side() -> None:

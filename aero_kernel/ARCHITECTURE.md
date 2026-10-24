@@ -708,7 +708,7 @@ caller's responsibility.
     value, and declares `avl_mesh_not_converged` if the two differ by more than
     `avl_refinement_tolerance_mac` of the mean chord, `avl_refinement_unchecked` if the refined mesh
     overflows. Settings (`Provenance.solver_settings`, public keys): `avl_nchord` 10, `avl_nspan` 24,
-    `avl_airfoil_points_per_side` 80, `avl_core_ratio` 0.25, `avl_refine_factor` 2, `avl_refinement_tolerance_mac` 0.005; tool versions
+    `avl_airfoil_points_per_side` 80, `avl_core_ratio` 0.25, `avl_refine_factor` 2, `avl_refinement_tolerance_mac` 0.005, `avl_roll_refinement_tolerance` 0.01, `avl_roll_nchord_front` 12, `avl_roll_nchord_aft` 8, `avl_roll_branch_tolerance` 0.10; tool versions
     `avl-binary` and `aerosandbox`. The AVL world adds no regime warning: those come with the
     minimum-drag speed and are inherited. The reference value for BRYAN under these conditions is in
     `scripts/sim_export/crrcsim/AVL_CONVERGENCE.md`.
@@ -741,6 +741,31 @@ caller's responsibility.
       it as `avl_array_limit` (a refined mesh beyond it is `avl_refinement_unchecked`).
       The other fixed arrays count too: 500 strips (`NSMAX`, mirror images and both pieces of the split
       wing included), 100 surfaces, 6000 vortices; each overflow message is `avl_array_limit`.
+    - *Driven stations.* The main wing of a driven run has one sine-to-tip distribution over the half span,
+      `y = (b/2) sin(π/2 t)` (AVL's `Sspace` −2 from root to tip, `avl_doc.txt:1043-1048`), the device ends
+      exact: their `t` is rounded to a strip count and `t` runs evenly inside each of the three pieces
+      (inboard, device, outboard), so the strip widths stay continuous across the ends (Rule 2,
+      `avl_doc.txt:1100`); front and aft piece have the same stations, the tail takes the wing's stations
+      inside its span. Reason: with uniform strips the roll damping `Clp` has an O(1/N) error at the tip
+      (it halves on every doubling; the aileron effectiveness `Cld01` is within 0.5 % at 24 strips);
+      bunching at the device ends is no remedy (cosine inside each piece is worse than uniform).
+      Declared mesh: 24 strips, refined 48, chordwise (12, 8) and (24, 16); the 6000-vortex limit allows a
+      refined mesh of 64 strips, not one of 80. Doubling check, p̂ at C_L 0.7, δ 20°:
+
+      | N declared → refined 2N | BRYAN | JAGUAR |
+      |---|---|---|
+      | 12 → 24 | −0.88 % | +0.24 % |
+      | 16 → 32 | +0.92 % | +0.43 % |
+      | 20 → 40 | −0.09 % | +0.73 % |
+      | **24 → 48** | **+0.15 %** | **+0.69 %** |
+      | 28 → 56 | +0.20 % | +0.66 % |
+      | 32 → 64 | +0.37 % | +0.67 % |
+      | 40 → 80 | refined run beyond `NVMAX` (`avl_refinement_unchecked`) | same |
+
+      p̂ of the declared mesh is 0.28643 (BRYAN) and 0.27927 (JAGUAR). Caveat: from 48 to 96 strips `Clp` and
+      `Cld01` still move by about 0.5 % each, in opposite directions, so p̂ is flat partly by cancellation.
+      The check is on p̂, the canon output; `Clp` and `Cld01` of these runs are never exposed as converged
+      values. 24 strips was kept over 16 because 16 → 32 is within 0.1 % of the 1 % bound for BRYAN.
     - *Branch consistency.* In the same AVL session, after the trimmed roll, the run holds `p'b/2V` and the
       aileron at zero and prints the stability derivatives; the linearised rate `-Cld01 δ / Clp` must agree
       with the trimmed one to 10 % (plus the print floor 2·10⁻⁴), otherwise the adapter raises

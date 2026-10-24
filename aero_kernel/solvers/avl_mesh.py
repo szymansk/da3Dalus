@@ -155,15 +155,39 @@ def _section_at(
     )
 
 
-def _with_breaks(stations: list[float], breaks: Sequence[float], step: float) -> list[float]:
-    """The stations plus the breaks, minus the stations within ``SLIVER_STEPS`` steps of a break.
+def _sine_to_tip(start: float, end: float, count: int, breaks: Sequence[float]) -> list[float]:
+    """The ``count + 1`` stations of a driven surface: one sine-to-tip distribution, breaks exact.
 
-    Breaks are never dropped. A break at either end of the span is that end station already.
+    ``y = start + (end - start) sin(pi/2 t)``, ``t`` in [0, 1]: a cosine distribution over the whole
+    half span, AVL's ``Sspace`` -2 from root to tip, which Drela recommends for a wing without a
+    chord break at the centreline (``avl_doc.txt:1043-1048``). Uniform strips have an O(1/N) error
+    at the tip that shows in the roll damping (``Clp`` halves its error on every doubling). A break
+    (a device end) is a station exactly: its ``t`` is rounded to the nearest strip count and ``t``
+    runs evenly inside each piece between breaks, so the strip widths stay continuous
+    (``avl_doc.txt:1100``). The distribution does not depend on the number of breaks inside a piece.
+
+    Args:
+        start: Y of the root station.
+        end: Y of the tip station.
+        count: Strips over the half span.
+        breaks: Ys of the stations that must exist, between the ends.
+
+    Returns:
+        The stations, root first.
     """
-    low, high = stations[0], stations[-1]
-    inner = sorted({round(b, _DECIMALS) for b in breaks if low < b < high})
-    kept = [y for y in stations if all(abs(y - b) >= SLIVER_STEPS * abs(step) for b in inner)]
-    return sorted({*kept, *inner})
+    span = end - start
+    inner = sorted({round(b, _DECIMALS) for b in breaks if start < b < end})
+    # t of the breaks, exact; the strips a piece gets are the rounded difference of their cumulative
+    # counts, at least one
+    t_edges = [0.0, *(2.0 / math.pi * math.asin((b - start) / span) for b in inner), 1.0]
+    cuts = [0, *(round(count * t) for t in t_edges[1:-1]), count]
+    stations = [round(start, _DECIMALS)]
+    for (low, high), (t_low, t_high) in zip(pairwise(cuts), pairwise(t_edges), strict=True):
+        n = max(high - low, 1)
+        for k in range(1, n + 1):
+            t = t_low + (t_high - t_low) * k / n
+            stations.append(round(start + span * math.sin(0.5 * math.pi * t), _DECIMALS))
+    return stations
 
 
 class _Span(BaseModel):
@@ -384,7 +408,7 @@ def mesh_surfaces(
     main_stations = _uniform(y_root, y_tip, n_wing)
     if drive_roll:
         spans = _driven_spans(main_key, main_chain)
-        main_stations = _with_breaks(main_stations, _device_ends(spans), step)
+        main_stations = _sine_to_tip(y_root, y_tip, n_wing, _device_ends(spans))
 
     def main_section(y: float) -> MeshSection:
         section = _section_at(main_chain, 1, y, airfoil_index)

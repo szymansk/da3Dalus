@@ -244,6 +244,8 @@ async def test_a_non_finite_command_is_invalid_input(fake: Path, delta: float) -
 def test_roll_settings_public_keys() -> None:
     settings: dict[str, Any] = AvlAdapter(SolverRuntime()).settings()
     assert settings["avl_roll_refinement_tolerance"] == 0.01
+    assert (settings["avl_roll_nchord_front"], settings["avl_roll_nchord_aft"]) == (12, 8)
+    assert settings["avl_roll_branch_tolerance"] == 0.10
 
 
 @pytest.mark.asyncio
@@ -319,3 +321,22 @@ async def test_a_nonlinearity_within_ten_percent_is_accepted(fake: Path, ratio: 
     configure(fake, {"12": 0.276, "24": 0.276}, linear_ratio=ratio)
     found = await roll()
     assert found.p_hat == 0.276
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("limit", "value"),
+    [("AVL_MAX_STRIPS", 10), ("AVL_MAX_VORTICES", 100), ("AVL_MAX_SURFACES", 3)],
+)
+async def test_a_lattice_beyond_a_fixed_array_is_counted_before_it_is_written(
+    fake: Path, monkeypatch: pytest.MonkeyPatch, limit: str, value: int
+) -> None:
+    """AVL stops at 500 strips, 6000 vortices and 100 surfaces (mirror images included) and some
+    overflows do not even print a message, so the adapter counts first: here the declared mesh."""
+    monkeypatch.setattr(f"aero_kernel.solvers.avl.{limit}", value)
+    with pytest.raises(FormulaError) as raised:
+        await roll()
+    assert raised.value.code == "avl_array_limit"
+    # 24 strips on each of the two pieces, mirrored; 12 and 8 chordwise vortices
+    assert raised.value.detail["strips"] == 96
+    assert raised.value.detail["vortices"] == 24 * 2 * 12 + 24 * 2 * 8
