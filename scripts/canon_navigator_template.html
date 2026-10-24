@@ -85,6 +85,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .kst{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin:0 0 14px;padding:4px 9px;
   border-radius:5px;border:1px solid var(--line-2)}
 .colhead{font-family:"STIX Two Text",Georgia,serif;font-size:15px;font-weight:600;fill:var(--ink)}
+#g.noedges .edge{display:none !important}
 .edge.xedge{display:none}
 .edge.xedge.up,.edge.xedge.down{display:inline}
 .pframe{fill:var(--out-bg);fill-opacity:.35;stroke:var(--out);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
@@ -148,6 +149,9 @@ main{position:relative;overflow:hidden;background:var(--bg)}
     <div class="seg" role="group" aria-label="Direction" style="margin-top:6px">
       <button data-mode="analysis" aria-pressed="false" title="What a given airplane does">Analysis</button>
       <button data-mode="design" aria-pressed="false" title="Turn a target into a construction quantity (O1)">Design</button>
+    </div>
+    <div class="seg" style="margin-top:6px">
+      <button id="edgeToggle" aria-pressed="false" title="Hide or show every connection">Hide edges</button>
     </div>
     <div class="leg" style="margin-top:10px">
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="var(--good)"/></svg>implemented in the kernel</span>
@@ -583,14 +587,17 @@ document.getElementById('zout').onclick=()=>{k=Math.max(0.15,k/1.25);apply();};
 document.getElementById('zfit').onclick=fit;
 addEventListener('resize',fit);
 
+{ const bt=document.getElementById('edgeToggle');
+  bt.addEventListener('click',()=>{ const off=svg.classList.toggle('noedges');
+    bt.setAttribute('aria-pressed',String(off)); bt.textContent=off?'Show edges':'Hide edges'; }); }
 let mode='all';
 function applyMode(){
   const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
   for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
   edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
-  document.querySelectorAll('.seg button').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));
+  document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));
 }
-document.querySelectorAll('.seg button').forEach(bt=>bt.addEventListener('click',()=>{mode=bt.dataset.mode;sel=null;paint();applyMode();}));
+document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.addEventListener('click',()=>{mode=bt.dataset.mode;sel=null;paint();applyMode();}));
 {
   const fAll=Object.keys(F), fDone=fAll.filter(f=>F[f].impl);
   const mvpF=[...new Set([...MVP].flatMap(q=>prodBy[q]||[]))].sort();
