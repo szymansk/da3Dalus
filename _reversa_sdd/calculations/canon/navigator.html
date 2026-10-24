@@ -186,7 +186,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 
   <div class="grp">
     <div class="lab">Layers</div>
-    <p class="sub" style="margin:0">Inputs at the top; dependency depth grows downward; at the bottom what feeds nothing else. Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them. Every quantity below the top row stands in the column of the module most of whose members it depends on; a quantity that depends only on cross-cutting modules stands in the column &#8220;cross-cutting only&#8221; next to them.</p>
+    <p class="sub" style="margin:0">Given values (inputs, targets) in the top row; below them one band of intermediate results and, at the bottom, the band of final results (they feed nothing else). Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them. Every quantity below the top row stands in the column of the module most of whose members it depends on; a quantity that depends only on cross-cutting modules stands in the column &#8220;cross-cutting only&#8221; next to them.</p>
   </div>
 </aside>
 
@@ -276,9 +276,8 @@ for(const side of ['analysis','design']){
   if(Object.keys(COLOF).some(q=>SIDE(q)===side&&COLOF[q]===NONE)) mods.unshift(NONE);
   for(const m of mods){
     const top=ORDER[0].filter(q=>Q[q].module===m&&SIDE(q)===side).length;
-    let widest=0; for(const l of layers){ if(l===0) continue;
-      widest=Math.max(widest,ORDER[l].filter(q=>!isX(q)&&SIDE(q)===side&&COLOF[q]===m).length); }
-    COLS.push({side,module:m,cols:Math.max(1,Math.min(MAXCOLS,Math.max(top,widest)))});
+    COLS.push({side,module:m,cols:Math.max(1,Math.min(MAXCOLS,Math.max(top,
+      Object.keys(COLOF).filter(q=>SIDE(q)===side&&COLOF[q]===m).length)))});
   }
 }
 const SX={xcut:0};
@@ -290,28 +289,38 @@ const SX={xcut:0};
 }
 const W=Math.max(...COLS.map(c=>c.x+c.w));
 const P={}, LY={}, FRAMES=[], frameEls=[], COLHEADS=[];
+// Bands (maintainer 2026-10-24): below the top row all derived quantities share one band and
+// every final result sits in the bottom band; within a band a column is ordered by dependency
+// depth, then by the barycentre order. The selection keeps the graph readable.
+const BANDS=[['inter','Intermediate',q=>!OUTPUTS.has(q)],['final','Final results',q=>OUTPUTS.has(q)]];
+const RANK={}; layers.forEach(l=>ORDER[l].forEach((q,i)=>{RANK[q]=l*10000+i;}));
+const BANDY={};
 let yc=HEAD;
-for(const l of layers){
-  LY[l]=yc; let height=NH;
+{ // the top row: framed layer-0 modules
+  LY[0]=yc; let height=NH;
   for(const c of COLS){
-    const qs = l===0 ? ORDER[0].filter(q=>!isX(q)&&SIDE(q)===c.side&&Q[q].module===c.module)
-                     : ORDER[l].filter(q=>!isX(q)&&SIDE(q)===c.side&&COLOF[q]===c.module);
-    if(l===0){
-      if(c.module===NONE){ COLHEADS.push({x:c.x,y:yc+FHEAD-7,label:'Cross-cutting only'}); continue; }
-      if(!qs.length) continue;
-      const rows=Math.ceil(qs.length/c.cols), fh=(rows-1)*SUBGAP+NH+2*FPAD, y=yc+FHEAD;
-      qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:y+FPAD+Math.floor(i/c.cols)*SUBGAP}; });
-      FRAMES.push({module:c.module,label:MODULES[c.module],x:c.x,y,w:c.w,h:fh,target:TARGETS.has(qs[0])});
-      height=Math.max(height,FHEAD+fh);
-      continue;
-    }
+    if(c.module===NONE){ COLHEADS.push({x:c.x,y:yc+FHEAD-7,label:'Cross-cutting only'}); continue; }
+    const qs=ORDER[0].filter(q=>!isX(q)&&SIDE(q)===c.side&&Q[q].module===c.module);
+    if(!qs.length) continue;
+    const rows=Math.ceil(qs.length/c.cols), fh=(rows-1)*SUBGAP+NH+2*FPAD, y=yc+FHEAD;
+    qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:y+FPAD+Math.floor(i/c.cols)*SUBGAP}; });
+    FRAMES.push({module:c.module,label:MODULES[c.module],x:c.x,y,w:c.w,h:fh,target:TARGETS.has(qs[0])});
+    height=Math.max(height,FHEAD+fh);
+  }
+  yc+=height-NH+GAPY;
+}
+const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isX(q));
+for(const [band,,inBand] of BANDS){
+  BANDY[band]=yc; let height=NH;
+  for(const c of COLS){
+    const qs=derived.filter(q=>inBand(q)&&SIDE(q)===c.side&&COLOF[q]===c.module).sort((a,b)=>RANK[a]-RANK[b]);
     qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:yc+Math.floor(i/c.cols)*SUBGAP}; });
     if(qs.length) height=Math.max(height,(Math.ceil(qs.length/c.cols)-1)*SUBGAP+NH);
   }
   yc+=height-NH+GAPY;
 }
 // The cross-cutting column: upright framed modules, one node per row, below the top row.
-const XTOP=(layers.length>1?LY[layers[1]]:yc)-GAPY/2;
+const XTOP=BANDY.inter-GAPY/2;
 { let y=XTOP+FHEAD;
   for(const m of MODORDER.filter(m=>XCUT.has(m))){
     const qs=Object.keys(Q).filter(q=>Q[q].module===m).sort();
@@ -329,9 +338,9 @@ const cam=document.getElementById('cam'), svg=document.getElementById('g');
 const NS='http://www.w3.org/2000/svg';
 const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
 
-for(const l of layers){
-  const t=el('text',{x:SX.analysis-8,y:LY[l]+NH/2,class:'laylab','dominant-baseline':'middle','text-anchor':'end'});
-  t.textContent='L'+l; cam.appendChild(t);
+{
+  for(const [band,label] of BANDS){ const t=el('text',{x:W,y:BANDY[band]-12,class:'colhead','text-anchor':'end'}); t.textContent=label; cam.appendChild(t); }
+  const dy=BANDY.final-GAPY/2; cam.appendChild(el('line',{x1:SX.analysis-SIDEGAP/2,y1:dy,x2:W,y2:dy,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
 }
 { const line=(x1,y1,x2,y2)=>cam.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
   line(SX.design-SIDEGAP/2,6,SX.design-SIDEGAP/2,H+10);
@@ -357,9 +366,12 @@ for(const [a,b,f] of D.edges){
   if(isX(a)){ // from the right side of a cross-cutting node into the left side of its consumer
     const x1=p1.x+NW, y1=p1.y+NH/2, x2=p2.x, y2=p2.y+NH/2, dx=Math.max(30,(x2-x1)/2);
     d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
-  } else {
+  } else if(p2.y>=p1.y+NH){
     const x1=p1.x+NW/2, y1=p1.y+NH, x2=p2.x+NW/2, y2=p2.y, dy=Math.max(18,(y2-y1)/2);
     d=`M${x1},${y1} C${x1},${y1+dy} ${x2},${y2-dy} ${x2},${y2}`;
+  } else { // same row band: a side-to-side arc
+    const r=p2.x>=p1.x, x1=p1.x+(r?NW:0), y1=p1.y+NH/2, x2=p2.x+(r?0:NW), y2=p2.y+NH/2, dx=(r?1:-1)*Math.max(24,Math.abs(x2-x1)/2);
+    d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
   }
   const e=el('path',{class:'edge'+(isX(a)?' xedge':''),d});
   cam.appendChild(e); edgeEls.push({e,a,b});
