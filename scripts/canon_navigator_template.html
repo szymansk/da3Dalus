@@ -347,10 +347,24 @@ for(const [band,,inBand] of BANDS){
     }
   }
   if(band==='final'){
-    // The same operating point sits on the same level in every column (maintainer 2026-10-24).
-    const rowH={}; for(const f of PFRAMES) rowH[f.point]=Math.max(rowH[f.point]||0,f.h);
-    const rowY={}; let y=yc+FHEAD;
-    for(const pt of PTORDER){ if(!rowH[pt]) continue; rowY[pt]=y; y+=rowH[pt]+FHEAD+8; }
+    // Packing (maintainer 2026-10-24): operating points with the widest coverage over the columns
+    // come first; a point may share a row with others when their column spans do not overlap
+    // (e.g. "no operating point" in column 0 beside "landing / approach" in columns 1-4, never
+    // "take-off" in column 2 inside the span 1-4 of "cruise target"). First fit, in that order.
+    const COLIX=x=>COLS.findIndex(c=>c.x===x);
+    const span={}, ptH={};
+    for(const f of PFRAMES){ const i=COLIX(f.x); const s=span[f.point]||(span[f.point]={lo:i,hi:i,n:0});
+      s.lo=Math.min(s.lo,i); s.hi=Math.max(s.hi,i); s.n++; ptH[f.point]=Math.max(ptH[f.point]||0,f.h); }
+    const order=PTORDER.filter(pt=>span[pt]).sort((a,b)=>span[b].n-span[a].n||PTORDER.indexOf(a)-PTORDER.indexOf(b));
+    const ROWS=[];
+    for(const pt of order){
+      const s=span[pt];
+      let row=ROWS.find(r=>r.every(o=>span[o].hi<s.lo||span[o].lo>s.hi));
+      if(!row){ row=[]; ROWS.push(row); }
+      row.push(pt);
+    }
+    const rowH={}, rowY={}; let y=yc+FHEAD;
+    for(const r of ROWS){ const hh=Math.max(...r.map(pt=>ptH[pt])); for(const pt of r){ rowY[pt]=y; rowH[pt]=hh; } y+=hh+FHEAD+8; }
     for(const f of PFRAMES) f.y=rowY[f.point];
     // One box per operating point across all columns (maintainer 2026-10-24).
     for(const pt of PTORDER){ const fs=PFRAMES.filter(f=>f.point===pt); if(!fs.length) continue;
