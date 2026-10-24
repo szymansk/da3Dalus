@@ -1025,7 +1025,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "The interpreted canon the kernel runs on (ch. 8.9); the content of ``canon_model.json``.\n\nAttributes:\n    schema_version: Version of this model shape; ``1``.\n    content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).\n    importer_version: Version of the importer that wrote the model.\n    namespaces: Quantities and formulas per namespace; every reference inside is qualified.",
+  "description": "The interpreted canon the kernel runs on (ch. 8.9); the content of ``canon_model.json``.\n\nAttributes:\n    schema_version: Version of this model shape; ``2``.\n    content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).\n    importer_version: Version of the importer that wrote the model.\n    namespaces: Quantities and formulas per namespace; every reference inside is qualified.",
   "properties": {
     "content_hash": {
       "pattern": "^sha256:[0-9a-f]{64}$",
@@ -1048,7 +1048,7 @@
       "type": "object"
     },
     "schema_version": {
-      "const": 1,
+      "const": 2,
       "title": "Schema Version",
       "type": "integer"
     }

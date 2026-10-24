@@ -584,7 +584,7 @@ class CanonModel(BaseModel):
     """The interpreted canon the kernel runs on (ch. 8.9); the content of ``canon_model.json``.
 
     Attributes:
-        schema_version: Version of this model shape; ``1``.
+        schema_version: Version of this model shape; ``2``.
         content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).
         importer_version: Version of the importer that wrote the model.
         namespaces: Quantities and formulas per namespace; every reference inside is qualified.
@@ -592,7 +592,7 @@ class CanonModel(BaseModel):
 
     model_config = _MODEL_CONFIG
 
-    schema_version: Literal[1]
+    schema_version: Literal[2]
     content_hash: Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
     importer_version: str = Field(min_length=1)
     namespaces: Annotated[dict[NamespaceKey, Namespace], Field(min_length=1)]
@@ -602,7 +602,7 @@ class CanonModel(BaseModel):
     def _reject_bool_version(cls, value: object) -> object:
         """Reject ``true``: Python reads it as ``1``, JSON Schema does not."""
         if isinstance(value, bool):
-            msg = "schema_version must be the integer 1, not a boolean"
+            msg = "schema_version must be the integer 2, not a boolean"
             raise ValueError(msg)
         return value
 
