@@ -7,6 +7,9 @@ role: derived
 status: approved
 tags:
   - canon/quantity
+  - stage/references
+  - module/atmosphere
+  - group/air-state
   - role/derived
 type: scalar
 ---

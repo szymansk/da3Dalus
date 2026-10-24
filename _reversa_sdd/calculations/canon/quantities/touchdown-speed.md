@@ -7,14 +7,16 @@ role: output
 status: draft
 tags:
   - canon/quantity
+  - discipline/aerodynamics
+  - point/approach
   - role/output
 type: scalar
 ---
 
 # touchdown speed · `V_TD`
 
-Die benannte Geschwindigkeit eines Betriebspunkts: die Geschwindigkeit beim Aufsetzen, knapp über der Abrissgeschwindigkeit in Landekonfiguration — physical touchdown after the flare (maintainer, 2026-10-17). Es gibt keine generische
-Betriebspunktgeschwindigkeit — jede trägt ihren Punkt im Namen (A2).
+The named speed of an operating point: the speed at touchdown, just above the stall speed in the landing configuration — physical touchdown after the flare (maintainer, 2026-10-17). There is no generic
+operating-point speed — each carries its point in its name (A2).
 
 **Unit.** `m/s`
 

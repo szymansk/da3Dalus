@@ -28,6 +28,7 @@ IMPLEMENTED = {
     "calc:static-margin",
     "calc:speed-from-stall-margin",
     "calc:roll-rate",
+    "calc:cg-for-target-margin",
 }
 
 

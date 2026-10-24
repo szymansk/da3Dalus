@@ -8,6 +8,8 @@ uncertainty: interval
 status: draft
 tags:
   - canon/quantity
+  - discipline/lateral
+  - point/cruise-target
   - role/output
 type: scalar
 ---
@@ -20,4 +22,4 @@ Steady roll rate at the given aileron deflection at the cruise-speed target — 
 
 **Produced by.** [[roll-rate-cruise-target]]
 
-**Unschärfe (A11).** Intervall über die Methodenwelten AeroBuildup und AVL (Rollrate: Streuung 23 % beim BRYAN).
+**Uncertainty (A11).** Interval over the method worlds AeroBuildup and AVL (roll rate: 23 % spread on BRYAN in the prototype).

@@ -13,7 +13,7 @@ class TestDeleteAeroplane(unittest.TestCase):
         test_id = uuid.uuid4()
         mock_db = MagicMock()
         # simulate found object
-        mock_model = MagicMock()
+        mock_model = MagicMock(is_immutable=False, branch_id=None)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
         # context manager for transaction
         begin_cm = mock_db.begin.return_value
@@ -51,7 +51,7 @@ class TestDeleteAeroplane(unittest.TestCase):
         test_id = uuid.uuid4()
         mock_db = MagicMock()
         # found model but delete blows up
-        mock_model = MagicMock()
+        mock_model = MagicMock(is_immutable=False, branch_id=None)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
         begin_cm = mock_db.begin.return_value
         begin_cm.__enter__.return_value = None

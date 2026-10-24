@@ -7,6 +7,8 @@ role: derived
 status: draft
 tags:
   - canon/quantity
+  - discipline/structure
+  - stage/stability-structure
   - role/derived
 type: scalar
 ---

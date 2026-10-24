@@ -7,6 +7,8 @@ role: output
 status: draft
 tags:
   - canon/quantity
+  - discipline/powered
+  - point/over-mass
   - role/output
 type: scalar
 ---

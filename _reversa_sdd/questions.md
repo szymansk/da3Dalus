@@ -5650,6 +5650,31 @@ carried by the parent/child edges, which are equally expressible over UUIDs.
   merge: no external API consumers (ADR 0024). It must land **before** TypeScript client
   generation (`Q-CC-11`).
 
+## Q-VS-9 — What does deleting an aeroplane do to its version lineage?
+
+**Context:** `DELETE /aeroplanes/{id}` answered 200 while nothing was deleted (#1151):
+branch rows were nulled against NOT NULL columns, several owned tables had no cascade. Fixing
+it raises what a delete means once an aeroplane has a lineage of nodes and branches.
+**Spec affected:** [`_reversa_sdd/state-machines.md`] lines 134 and 164,
+`aeroplane-core/aeroplane-crud/requirements.md` BR-AC5, `versioning/` BR-VR9.
+**Question:** Which nodes does a delete remove, and which deletes are refused?
+
+**Answer:** _maintainer, 2026-10-22 (answer A on #1151) and 2026-10-24 (confirmation)._
+
+- Deleting the head of the **main** branch removes the whole lineage: all branches, all nodes
+  with that root and everything they own
+  (https://github.com/szymansk/da3Dalus/issues/1151#issuecomment-6340052195).
+- Deleting the head of a **side** branch is `discard_branch`.
+- An **immutable snapshot** is refused (409).
+- A **lineage root that is no longer on the main branch** (after an adopt) is refused (409):
+  deleting it any other way would orphan the other branches; the lineage is removed through
+  its main head (maintainer, 2026-10-24: "beides ok", PR #1196).
+- A row without a branch (pre-versioning) deletes the single node.
+
+**Consequences:** supersedes the single-node "ORM cascade" transition at
+`state-machines.md:134/164`; implemented by PR #1196, addendum
+`addenda/gh-1151-aeroplane-delete-cascade.md`.
+
 ---
 
 # ai-copilot
