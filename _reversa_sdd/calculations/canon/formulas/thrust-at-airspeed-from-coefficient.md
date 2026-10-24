@@ -42,7 +42,7 @@ table. The law above is evaluable and the table is not, so they are written apar
 folding the lookup into the canonical form made the whole entry unevaluable for the
 dimensional checker, which is a worse trade than one extra line.
 
-**Source.** 🟢 SOURCED
+**Source.** 🟢 Definitional: `C_T = T/(ρ·n²·D⁴)` and `J = V/(n·D)` (Brandt & Selig 2011 §II.F), so the relation is the definition read backwards and its content sits in the table `C_T(J)`. The table is APC's computed PER3 data (see [[propeller-table-lookup]]); no source was found for the accuracy of that computation at low Reynolds number.
 
 > Definitional: C_T is *defined* as T/(rho*n^2*D^4), so the relation is the definition read backwards, and the content sits entirely in C_T(J). The advance ratio J = V/(nD) is standard propeller notation. The C_T(J) table is **computed by APC** (PER3 files, header "AIRFOIL AERO DATA GENERATED USING: POLAR DIAGRAMS", `app/tests/fixtures/apc_props/PER3_7x4.dat:3-6`), not measured in a wind tunnel and not modelled by this app: 454 APC propellers, 300 187 sample points over 45 RPM blocks each, J from 0 to about 1.17, no null coefficients.
 
