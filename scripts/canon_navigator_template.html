@@ -443,7 +443,7 @@ for(const [band,,inBand] of BANDS){
 }
 // The cross-cutting column: upright framed modules, one node per row, below the top row.
 const XTOP=BANDY.inter-GAPY/2;
-for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==='design'?'Design':DISC[c.module]});
+for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==='design'?DIR.design.label:DISC[c.module]});
 // Cross-cutting modules and their derived references side by side (maintainer 2026-10-24):
 // each module's inputs on the left, the references derived from them (canon tags module/ and
 // group/) on the right, on the same level, so a row reads "input -> reference". The powertrain

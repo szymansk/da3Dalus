@@ -191,7 +191,9 @@ def test_a_derived_quantity_without_a_discipline_is_a_finding(tmp_path: Path) ->
     ]
 
 
-def test_a_reference_needs_a_module_and_a_group_and_no_discipline(tmp_path: Path) -> None:
+def test_a_reference_lacking_module_group_and_discipline_misses_only_module_and_group(
+    tmp_path: Path,
+) -> None:
     result = run(tmp_path, retag(WEIGHT, "stage/refs", drop="discipline/forces"))
     assert findings(result) == [
         "quantities/weight.md: group: missing: a reference needs a group tag",

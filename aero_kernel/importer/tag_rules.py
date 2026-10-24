@@ -13,10 +13,9 @@ from collections.abc import Sequence
 from aero_kernel.canon.model import Namespace, Quantity
 from aero_kernel.canon.taxonomy import Taxonomy
 from aero_kernel.importer.findings import Finding
+from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES
 
 __all__ = ["check_tags"]
-
-_QUANTITY_FAMILIES = ("module", "point", "stage", "group", "discipline")
 
 
 def _file(slug: str) -> str:
@@ -54,7 +53,7 @@ def _known_values(content: Namespace) -> list[Finding]:
     findings: list[Finding] = []
     families = _family_ids(content.taxonomy)
     for slug, quantity in sorted(content.quantities.items()):
-        for family in _QUANTITY_FAMILIES:
+        for family in QUANTITY_TAG_FAMILIES:
             value: str | None = getattr(quantity, family)
             if value is not None and value not in families[family]:
                 findings.append(
@@ -187,11 +186,19 @@ def _group_agrees(slug: str, quantity: Quantity, taxonomy: Taxonomy) -> list[Fin
     ]
 
 
+def _groups(content: Namespace) -> list[Finding]:
+    """Every quantity's group agrees with its stage and module."""
+    return [
+        finding
+        for slug, quantity in sorted(content.quantities.items())
+        for finding in _group_agrees(slug, quantity, content.taxonomy)
+    ]
+
+
 def _probes(content: Namespace) -> list[Finding]:
     """A probe names an existing quantity other than itself."""
     findings: list[Finding] = []
     for slug, quantity in sorted(content.quantities.items()):
-        findings.extend(_group_agrees(slug, quantity, content.taxonomy))
         if quantity.checks is None:
             continue
         if quantity.checks == slug:
@@ -217,5 +224,6 @@ def check_tags(content: Namespace) -> list[Finding]:
         *_known_values(content),
         *_missing_tags(content),
         *_targets(content),
+        *_groups(content),
         *_probes(content),
     ]

@@ -5,9 +5,11 @@ import runpy
 import subprocess
 import sys
 from pathlib import Path
+from typing import get_args
 
 import pytest
 from aero_kernel.canon.load import load_canon_model
+from aero_kernel.canon.taxonomy import Tool
 from aero_kernel.importer.pipeline import import_canon
 from aero_kernel.tests.importer_builders import write_canon
 
@@ -148,3 +150,11 @@ def test_the_committed_model_is_current_with_the_real_canon(
     committed = load_canon_model().namespaces["calc"]
     assert len(committed.formulas) == len(list((CANON / "formulas").glob("*.md")))
     assert len(committed.quantities) == len(list((CANON / "quantities").glob("*.md")))
+
+
+def test_the_real_taxonomy_names_every_tool_code_of_the_model() -> None:
+    """The kernel's tool vocabulary (a model type) and the canon's tool names agree."""
+    result = import_canon(CANON)
+    assert result.model is not None
+    named = {tool.id for tool in result.model.namespaces["calc"].taxonomy.tools}
+    assert named == set(get_args(Tool))

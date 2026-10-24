@@ -17,7 +17,6 @@ def value(identifier: str, **extra: object) -> dict[str, object]:
 def test_an_empty_taxonomy_is_valid_and_has_no_default_direction() -> None:
     taxonomy = Taxonomy()
     assert taxonomy.modules == ()
-    assert taxonomy.default_direction() is None
 
 
 def test_the_list_order_is_the_display_order() -> None:
@@ -70,7 +69,7 @@ def test_exactly_one_direction_is_the_default() -> None:
             {"directions": [value("a", default=True), value("b", default=True)]}
         )
     taxonomy = Taxonomy.model_validate({"directions": [value("a", default=True), value("b")]})
-    assert taxonomy.default_direction() == "a"
+    assert [d.id for d in taxonomy.directions if d.default] == ["a"]
 
 
 def test_an_unknown_field_and_a_blank_text_are_rejected() -> None:

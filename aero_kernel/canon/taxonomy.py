@@ -237,7 +237,3 @@ class Taxonomy(BaseModel):
             msg = f"directions: exactly one must be the default, found {defaults}"
             raise ValueError(msg)
         return self
-
-    def default_direction(self) -> str | None:
-        """Return the id of the default direction, or ``None`` if there are no directions."""
-        return next((value.id for value in self.directions if value.default), None)

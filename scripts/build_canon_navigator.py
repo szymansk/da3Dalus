@@ -27,8 +27,10 @@ import pathlib
 import re
 import sys
 
-#: The tag families a quantity carries as fields of the canon model.
-TAG_FAMILIES = ("module", "point", "stage", "group", "discipline")
+REPO = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))  # the script runs from scripts/, the package sits at the root
+
+from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES  # noqa: E402
 
 #: Edges the layering breaks, with the reason. A naming collapse, not a fixed point: one
 #: name covering a swept measurement and a modelled value. (The second one, a generic
@@ -119,7 +121,7 @@ def read_canon(root: pathlib.Path, model: dict) -> tuple[dict, dict]:
             "unc": mq["uncertainty"] or "",
             "desc": " ".join(m.group(1).split()) if m else "",
             "type": mq["type"],
-            **{family: mq[family] or "" for family in TAG_FAMILIES},
+            **{family: mq[family] or "" for family in QUANTITY_TAG_FAMILIES},
             "checks": mq["checks"] or "",
         }
     formulas = {}
@@ -158,7 +160,6 @@ MVP_RESULTS = (
 #: Open MVP formulas and their ticket; an entry is removed when the formula is implemented.
 OPEN_TICKETS: dict[str, str] = {}
 
-REPO = pathlib.Path(__file__).resolve().parent.parent
 CANON_DIR = REPO / "_reversa_sdd/calculations/canon"
 OUT_PATH = CANON_DIR / "navigator.html"
 MODEL_PATH = REPO / "aero_kernel/canon/canon_model.json"
