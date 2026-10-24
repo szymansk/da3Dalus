@@ -22,6 +22,8 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   v_app: approach-speed
   b_ref: wing-span
   delta_a: aileron-deflection
@@ -45,6 +47,12 @@ worlds: [aerobuildup, avl]
 
 **AVL world, outside its own stated range (finding #1181).** AVL is linear in δ by construction (`Avl/src/amake.f:1184-1187`, "linearize about zero deflection"), and its primer gives `−0.10 < pb/2V < 0.10` as the practical limit for roll rates, beyond which results "should be interpreted with caution" (`Avl/avl_doc.txt:121-141`). The BRYAN AVL value `pb/2V = 0.276` lies outside it. The interval decision (A11) is unchanged; this is recorded, not resolved.
 
+**Steady roll, defined once (maintainer decision on #1211, 2026-10-24; this entry and the two that reference it).** Both worlds solve the same steady roll: rotation about the stability x axis through the airplane's reference point `xyz_ref`, the stability-axis rolling moment zero, β = 0, pitch and stability-axis yaw rate zero, no yaw balance — AVL's default axes (`Avl/src/avl.f:652`, `aoper.f:1120`); in AeroBuildup `p_b = p cos α`, `r_b = p sin α`.
+
+**Sign.** A positive δ_a commands a roll to the right (right trailing edge up); the roll rate is then positive, a negative δ_a gives the mirrored result.
+
+**Hinge and roles.** AeroBuildup holds one hinge per segment; the kernel uses the mean of the device's root and tip hinge and declares it (`hinge_line_averaged`). AVL interpolates the hinge line. Every surface acting as aileron (`aileron`, `flaperon`, `elevon`) deflects at ±δ_a, the angle itself; mixing gains are not read.
+
 **Canonical form**
 
 ```
@@ -52,7 +60,7 @@ solve for alpha, p (steady roll at V, at the given aileron deflection):   L(V, a
 evaluated at V = V_app;   p_hat = p * b_ref / (2 * V_app)
 ```
 
-**Produces** [[roll-rate-approach]] · [[roll-rate-nondimensional-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[approach-speed]] · [[wing-span]] · [[aileron-deflection]]
+**Produces** [[roll-rate-approach]] · [[roll-rate-nondimensional-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[approach-speed]] · [[wing-span]] · [[aileron-deflection]]
 
 **Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. One symmetric aileron angle ±δ_a; an up/down differential is not modelled (out of the MVP, maintainer 2026-10-01).
 
@@ -68,7 +76,7 @@ evaluated at V = V_app;   p_hat = p * b_ref / (2 * V_app)
 
 **AeroBuildup is adequate here** — unlike for adverse yaw. Aileron rolling moment (section lift from NeuralFoil on the clean airfoil at `α + τ·δ`) and roll damping (roll rate in the local onset flow, `aero_buildup.py:719-731`) both come from lift, not from induced drag. AVL can cross-check.
 
-**Method premise (architect, 2026-10-14).** AeroBuildup has no flap model of its own: it evaluates the clean airfoil at `α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), with the drag times a multiplier fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, via `aero_buildup.py:784-801`). There is no flap separation: it over-predicts the effectiveness at large δ until the clean section stalls, and the δ range of the τ fit is unknown. AVL is linear in δ by construction and documented only for `|pb/2V| < 0.10`. Reference point: Sadraey §12.4.3 — beyond about 20–25° deflection, flow separates over the aileron and effectiveness drops; recommendation `|δ_A,max| ≤ 25°`. Transport and GA material, not checked at model Reynolds number (ADR 0028). Beyond it the solver adapter reports a warning with the angle; the canon sets no limit.
+**Method premise (architect, 2026-10-14).** AeroBuildup has no flap model of its own: it evaluates the clean airfoil at `α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), with the drag times a multiplier fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, via `aero_buildup.py:784-801`). There is no flap separation: it over-predicts the effectiveness at large δ until the clean section stalls, and the δ range of the τ fit is unknown. AVL is linear in δ by construction and documented only for `|pb/2V| < 0.10`. Reference point: Sadraey §12.4.3 — beyond about 20–25° deflection, flow separates over the aileron and effectiveness drops; recommendation `|δ_A,max| ≤ 25°`. Transport and GA material, not checked at model Reynolds number (ADR 0028). Beyond 25° the formula reports a `practice` warning with the angle (ARCH §8.8); the canon sets no limit.
 
 **Source.** 🟢 Sadraey §12.4 (aileron design; steady roll from `C_l,δa · δa + C_l,p · pb/2V = 0`), with the rate requirement made scale-free per the domain expert (time-to-bank does not transfer to model scale).
 
