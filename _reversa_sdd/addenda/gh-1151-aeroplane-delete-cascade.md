@@ -53,13 +53,9 @@ error response.
 
 ## Approved departures
 
-The decision above supersedes `state-machines.md:134` and `:164`. It is recorded only as
-an issue comment on #1151, **not yet in `questions.md` or an ADR**, which this README
-requires for a departure. Open item for the maintainer or the next `/reversa` pass.
-
-The 409 for a lineage root that is no longer on the main branch is the implementer's
-choice for a case the answer did not cover (deleting it any other way would orphan the
-other branches); it needs the maintainer's confirmation.
+- `state-machines.md:134` and `:164` (single-node delete with ORM cascade) no longer hold →
+  superseded by **`Q-VS-9`** (`questions.md`): maintainer answer A on #1151 (2026-10-22) and the
+  confirmation of the 409 for a lineage root off main (2026-10-24).
 
 ## Marker candidates for the next re-extraction
 
