@@ -15,7 +15,7 @@ from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import StallRequest
 from aero_kernel.tests.engine_builders import request
-from aero_kernel.tests.formula_builders import close
+from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
@@ -67,7 +67,7 @@ def assert_goldens_are_pinned_to_their_tools(result: ComputeResult) -> None:
         "aerosandbox": importlib.metadata.version("aerosandbox"),
         "neuralfoil": importlib.metadata.version("neuralfoil"),
     }
-    assert result.provenance.solver_settings == {"neuralfoil_model_size": "xlarge"}
+    assert result.provenance.solver_settings == OPT_SETTINGS
 
 
 async def test_bryan_stalls_where_the_prototype_found_it_with_the_small_model(

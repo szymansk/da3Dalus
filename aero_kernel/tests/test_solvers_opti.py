@@ -104,7 +104,7 @@ async def test_the_adapter_declares_the_neuralfoil_model_size_it_passes() -> Non
     ch. 7, Table 7.1; maintainer decision 2026-10-22). The airfoil scoring (#821) uses xxxlarge,
     precomputed, on purpose."""
     adapter = OptiAdapter(InProcessRuntime())
-    assert adapter.settings() == {"neuralfoil_model_size": opti_module.NEURALFOIL_MODEL_SIZE}
+    assert adapter.settings()["neuralfoil_model_size"] == opti_module.NEURALFOIL_MODEL_SIZE
     assert opti_module.NEURALFOIL_MODEL_SIZE == "xlarge"
 
 

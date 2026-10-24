@@ -18,6 +18,7 @@ def _key(**overrides: Any) -> str:
         "inputs": {"mass": 2.5, "area": 0.4},
         "build_digest": "sha256:aa",
         "tool_versions": {"aerosandbox": "4.2.8"},
+        "solver_settings": {"avl_nspan": 24},
     }
     args.update(overrides)
     return cache_key(**args)
@@ -49,6 +50,8 @@ def test_negative_zero_equals_zero_in_the_key() -> None:
         {"world": "neutral-point=avl"},
         {"build_digest": "sha256:bb"},
         {"tool_versions": {"aerosandbox": "4.2.9"}},
+        {"solver_settings": {"avl_nspan": 25}},
+        {"solver_settings": {}},
     ],
 )
 def test_every_component_changes_the_key(override: dict[str, JsonValue]) -> None:
@@ -73,6 +76,7 @@ def test_the_key_document_has_exactly_these_fields() -> None:
             "inputs": {"mass": 2.5, "area": 0.4},
             "build_digest": "sha256:aa",
             "tool_versions": {"aerosandbox": "4.2.8"},
+            "solver_settings": {"avl_nspan": 24},
         }
     )
 

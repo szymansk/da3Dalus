@@ -843,8 +843,14 @@ class OptiAdapter(SolverAdapter):
     }
 
     def settings(self) -> dict[str, JsonValue]:
-        """The NeuralFoil model size AeroBuildup is evaluated with."""
-        return {"neuralfoil_model_size": NEURALFOIL_MODEL_SIZE}
+        """The NeuralFoil model size and the alpha sweep that shapes the published polar."""
+        return {
+            "neuralfoil_model_size": NEURALFOIL_MODEL_SIZE,
+            "alpha_min_deg": ALPHA_MIN_DEG,
+            "alpha_max_deg": ALPHA_MAX_DEG,
+            "alpha_step_deg": ALPHA_STEP_DEG,
+            "bracket_cl": BRACKET_CL,
+        }
 
     def _request(
         self,

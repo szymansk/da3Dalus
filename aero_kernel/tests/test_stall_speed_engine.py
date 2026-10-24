@@ -22,7 +22,7 @@ from aero_kernel.schema import (
 )
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import OptiAdapter, StallRequest, StallSolution
-from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
+from aero_kernel.tests.formula_builders import OPT_SETTINGS, StubAtmosphere, close, solvers_with
 from aero_kernel.tests.solver_builders import InProcessRuntime
 from aero_kernel.tests.stall_stubs import (
     INVERTED_TROUGH,
@@ -113,7 +113,7 @@ async def test_clean_stall_speed_from_the_shipped_canon() -> None:
 async def test_the_provenance_names_the_optimiser_tool_versions_and_settings() -> None:
     result, _ = await run("stall-speed")
     assert set(result.provenance.tool_versions) == {"aerosandbox", "neuralfoil"}
-    assert result.provenance.solver_settings == {"neuralfoil_model_size": "xlarge"}
+    assert result.provenance.solver_settings == OPT_SETTINGS
 
 
 async def test_a_request_that_runs_no_solver_has_no_solver_settings() -> None:

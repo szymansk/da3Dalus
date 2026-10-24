@@ -11,6 +11,7 @@ from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
+from pydantic import JsonValue
 
 # The canon formulas that have an implementation (slugs, qualified); grows with each slice.
 IMPLEMENTED = {
@@ -66,6 +67,16 @@ def inputs_from_model(
 # Sea-level ISA viscosity and speed of sound, the stub's constants next to its table of densities.
 STUB_VISCOSITY = 1.7894e-5
 STUB_SPEED_OF_SOUND = 340.294
+
+
+# What the OPT adapter reports as its settings (provenance, cache key).
+OPT_SETTINGS: dict[str, JsonValue] = {
+    "neuralfoil_model_size": "xlarge",
+    "alpha_min_deg": -15.0,
+    "alpha_max_deg": 25.0,
+    "alpha_step_deg": 0.25,
+    "bracket_cl": 1.0,
+}
 
 
 class StubAtmosphere(AtmosphereAdapter):

@@ -40,9 +40,15 @@ def model_of(
     formulas: dict[str, dict[str, Any]],
     namespace: str = "calc",
     defaults: dict[str, dict[str, Any]] | None = None,
+    taxonomy: dict[str, Any] | None = None,
 ) -> CanonModel:
-    """Validate a one-namespace model of the given quantities, formulas and defaults."""
-    namespaces = {
-        namespace: {"quantities": quantities, "formulas": formulas, "defaults": defaults or {}}
+    """Validate a one-namespace model of the given quantities, formulas, defaults and taxonomy."""
+    content: dict[str, Any] = {
+        "quantities": quantities,
+        "formulas": formulas,
+        "defaults": defaults or {},
     }
+    if taxonomy is not None:
+        content["taxonomy"] = taxonomy
+    namespaces = {namespace: content}
     return CanonModel.model_validate(with_hash(namespaces))

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b7670419b36eba3d655005c6203d17ece64d197672404c9e97c6fcfb9ef2e31e",
+  "content_hash": "sha256:91c7cebc92a20a0c76f2e142517b7d1e2ccb149fd51cbf81797820b3f352e4b0",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -689,8 +689,26 @@
         "modules": [],
         "points": [],
         "stages": [],
-        "tools": [],
-        "worlds": []
+        "tools": [
+          {
+            "id": "AVL",
+            "name": "AVL"
+          }
+        ],
+        "worlds": [
+          {
+            "id": "textbook",
+            "tool": "AVL"
+          },
+          {
+            "id": "pappas",
+            "tool": "AVL"
+          },
+          {
+            "id": "avl",
+            "tool": "AVL"
+          }
+        ]
       }
     }
   },
