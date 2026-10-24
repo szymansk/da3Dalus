@@ -28,6 +28,7 @@ SM_TARGET = 0.08
 async def test_the_law_is_the_neutral_point_minus_the_margin_in_chords() -> None:
     """Hand value: 0.30 m - 0.10 * 0.20 m = 0.28 m."""
     x = inputs_from_model(
+        MODEL,
         "cg-for-target-margin",
         {"neutral-point": 0.30, "static-margin-target": 0.10, "mean-aerodynamic-chord": 0.20},
     )
