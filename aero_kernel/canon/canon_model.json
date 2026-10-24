@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:da95680d0abcafd874552378753975cc8238cb0564b6f00a16a26046c5c8c860",
+  "content_hash": "sha256:652adf58c082a0a82c0ed85d713b657bac561d72e58d28d31fac79eec5648722",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1328,7 +1328,14 @@
             "alpha": null
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "cl_within_linear_range",
+              "on_violation": "error",
+              "parameter": "cl"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
@@ -2269,7 +2276,14 @@
             "w_sink": "calc:sink-rate"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "small_glide_angle",
+              "on_violation": "warning",
+              "parameter": "cd"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
