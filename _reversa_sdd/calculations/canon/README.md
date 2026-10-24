@@ -465,6 +465,16 @@ nicht als unbenötigter Code" (maintainer, 2026-10-17).
 
 ### Quantity entries
 
+**Operating-point tag.** Every final result — a quantity no formula consumes — carries exactly one tag
+`point/<name>` naming the operating point or configuration it belongs to (maintainer, 2026-10-24); the
+importer drops it, the navigator clusters the final results by it. Points: `stall` (C_L,max at n = ±1,
+clean), `takeoff` and `approach` (the configurations and their speeds), `best-glide` (V_md, also the
+reference point of static stability), `minimum-sink` (V_mp), `full-throttle` (power-limited points),
+`cruise-target` (only with a cruise-speed target), `manoeuvre` (V_A, load factors), `free` (a state the
+caller sets — V, α, n — no named point yet; a gap against A2, kept visible), `over-mass` (sweeps over the
+take-off mass), `none` (geometry or components only). The navigator build refuses a final result without
+it.
+
 **Module tag.** Every quantity no formula produces — inputs and targets — carries exactly one tag
 `module/<name>` that groups it for readers and tools (the navigator frames layer 0 by module); the
 importer drops it. Modules: `construction` (the airplane and its fitted components), `mass-and-balance`,

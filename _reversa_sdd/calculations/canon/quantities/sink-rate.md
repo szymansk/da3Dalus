@@ -7,6 +7,7 @@ role: output
 status: draft
 tags:
   - canon/quantity
+  - point/free
   - role/output
 type: scalar
 ---

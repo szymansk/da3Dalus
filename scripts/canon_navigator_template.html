@@ -87,6 +87,8 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .colhead{font-family:"STIX Two Text",Georgia,serif;font-size:15px;font-weight:600;fill:var(--ink)}
 .edge.xedge{display:none}
 .edge.xedge.up,.edge.xedge.down{display:inline}
+.pframe{fill:var(--out-bg);fill-opacity:.35;stroke:var(--out);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
+.ptlab{fill:var(--out)}
 .frame{fill:transparent;stroke:var(--line-2);stroke-width:1.2}
 .modsel{cursor:pointer}.modsel:hover .frame{stroke:var(--sel)}
 .modsel:hover .blocklab{fill:var(--sel)}
@@ -186,7 +188,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 
   <div class="grp">
     <div class="lab">Layers</div>
-    <p class="sub" style="margin:0">Given values (inputs, targets) in the top row; below them one band of intermediate results and, at the bottom, the band of final results (they feed nothing else). Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them. Every quantity below the top row stands in the column of the module most of whose members it depends on; a quantity that depends only on cross-cutting modules stands in the column &#8220;cross-cutting only&#8221; next to them.</p>
+    <p class="sub" style="margin:0">Given values (inputs, targets) in the top row; below them one band of intermediate results and, at the bottom, the band of final results (they feed nothing else), clustered by operating point. Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them. Every quantity below the top row stands in the column of the module most of whose members it depends on; a quantity that depends only on cross-cutting modules stands in the column &#8220;cross-cutting only&#8221; next to them.</p>
   </div>
 </aside>
 
@@ -310,12 +312,34 @@ let yc=HEAD;
   yc+=height-NH+GAPY;
 }
 const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isX(q));
+// Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
+// in reading order inside each column; within a cluster: values of the point, then stability,
+// then the probes (closed-form checks).
+const POINTS={'stall':'Stall, clean','takeoff':'Take-off','approach':'Landing / approach','best-glide':'Best glide (V_md)',
+  'minimum-sink':'Minimum sink (V_mp)','full-throttle':'Full throttle','cruise-target':'Cruise target',
+  'manoeuvre':'Manoeuvre / structure','free':'Free operating point','over-mass':'Over mass','none':'No operating point'};
+const PTORDER=Object.keys(POINTS);
+const KIND=q=>/probe$/.test(q)?2:/(static-margin|pitching-moment|dihedral|weathercock|spiral)/.test(q)?1:0;
+const PFRAMES=[];
 for(const [band,,inBand] of BANDS){
   BANDY[band]=yc; let height=NH;
   for(const c of COLS){
     const qs=derived.filter(q=>inBand(q)&&SIDE(q)===c.side&&COLOF[q]===c.module).sort((a,b)=>RANK[a]-RANK[b]);
-    qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:yc+Math.floor(i/c.cols)*SUBGAP}; });
-    if(qs.length) height=Math.max(height,(Math.ceil(qs.length/c.cols)-1)*SUBGAP+NH);
+    if(band!=='final'){
+      qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:yc+Math.floor(i/c.cols)*SUBGAP}; });
+      if(qs.length) height=Math.max(height,(Math.ceil(qs.length/c.cols)-1)*SUBGAP+NH);
+      continue;
+    }
+    let y=yc+FHEAD;
+    for(const pt of PTORDER){
+      const g=qs.filter(q=>Q[q].point===pt).sort((a,b)=>KIND(a)-KIND(b)||RANK[a]-RANK[b]);
+      if(!g.length) continue;
+      const rows=Math.ceil(g.length/c.cols), fh=(rows-1)*SUBGAP+NH+2*FPAD;
+      g.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, y:y+FPAD+Math.floor(i/c.cols)*SUBGAP}; });
+      PFRAMES.push({point:pt,label:POINTS[pt],x:c.x,y,w:c.w,h:fh});
+      y+=fh+FHEAD+8;
+    }
+    height=Math.max(height,y-FHEAD-8-yc);
   }
   yc+=height-NH+GAPY;
 }
@@ -349,6 +373,9 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
   for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
+  for(const f of PFRAMES){
+    cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'pframe'}));
+    const t=el('text',{x:f.x+2,y:f.y-6,class:'blocklab ptlab'}); t.textContent=f.label; cam.appendChild(t); }
   for(const h of COLHEADS){ const t=el('text',{x:h.x,y:h.y,class:'blocklab'}); t.textContent=h.label; cam.appendChild(t); }
   for(const f of FRAMES){
     const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select module '+f.label});
@@ -464,6 +491,7 @@ function select(q){
       : MVP.has(q) ? 'part of the MVP, still open'+(tk.length?' &#8212; '+tk.map(esc).join(', '):'')
       : 'not in the kernel yet';
     const col = st==='done'?'var(--good)':(st==='open'&&MVP.has(q))?'var(--mvp)':'var(--line-2)';
+    if(Q[q].point) h+=`<p class="meta">Operating point: ${esc(POINTS[Q[q].point]||Q[q].point)}</p>`;
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
   if(UNC.has(q)) h+=`<p class="desc" style="border-left:3px dotted var(--unc);padding-left:8px">

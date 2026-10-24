@@ -7,6 +7,7 @@ role: output
 status: approved
 tags:
   - canon/quantity
+  - point/stall
   - role/output
 type: scalar
 ---
