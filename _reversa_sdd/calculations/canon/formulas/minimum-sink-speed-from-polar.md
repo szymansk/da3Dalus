@@ -113,6 +113,4 @@ polar instead of a closed form.
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
-
 > **Approved** (maintainer, 2026-10-24, approval block 1). This is the relation the implementations are measured against.
