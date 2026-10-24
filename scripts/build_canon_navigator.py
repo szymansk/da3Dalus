@@ -148,6 +148,8 @@ def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> No
     for slug, f in formulas.items():
         t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
         f["worlds"] = [w.strip() for w in _front(t, "worlds").strip("[]").split(",") if w.strip()]
+        tags = re.findall(r"^\s+-\s+(\S+)\s*$", t.split("---", 2)[1], re.M)
+        f["direction"] = "design" if "direction/design" in tags else "analysis"
 
 
 def application_edges(formulas: dict, quantities: dict, model: dict) -> list:
@@ -229,6 +231,18 @@ def layout(quantities: dict, formulas: dict, edges: list) -> dict:
     }
 
 
+def closure(start: set, pred: dict) -> set:
+    """The quantities in ``start`` and everything upstream of them."""
+    seen: set = set()
+    stack = list(start)
+    while stack:
+        q = stack.pop()
+        if q not in seen:
+            seen.add(q)
+            stack.extend(pred[q])
+    return seen
+
+
 def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
     """Mark per formula its aero_kernel implementation, per quantity its status and the MVP."""
     quantities, formulas = data["Q"], data["F"]
@@ -249,13 +263,7 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
     pred = {q: set() for q in quantities}
     for a, b, _ in data["edges"]:
         pred[b].add(a)
-    mvp: set = set()
-    stack = list(MVP_RESULTS)
-    while stack:
-        q = stack.pop()
-        if q not in mvp:
-            mvp.add(q)
-            stack.extend(pred[q])
+    mvp = closure(set(MVP_RESULTS), pred)
 
     produced_by: dict = {}
     for slug, f in formulas.items():
@@ -271,6 +279,9 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
         else:
             status[q] = "open"
     data["status"] = status
+    design_out = {o for f in formulas.values() if f["direction"] == "design" for o in f["out"]}
+    data["design"] = sorted(closure(design_out, pred))
+    data["analysis"] = sorted(closure(set(quantities) - design_out - set(data["inputs"]), pred))
     data["mvp"] = sorted(mvp)
     data["mvp_results"] = list(MVP_RESULTS)
 
