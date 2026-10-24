@@ -50,6 +50,10 @@ panels and differ by up to about 2 % at 8° dihedral.
 change to the wing changes all of them, and the graph has to say so, or invalidation (A1)
 would leave every number computed from them standing after a geometry edit.
 
+**Source.** 🟢 Scholz, *Flugzeugentwurf*, Wing Design §7.1: `c_MAC = (2/S)·∫₀^{b/2} c(y)² dy`, and the reference wing area as a definitional convention. The projection and centreline rules (x-y projection, twist-independent, root extended to y = 0 with the root chord, b_ref = 2·max|y|) have no textbook source; they are adopted on the maintainer's authority (definition, 2026-10-22).
+
+**Validity in the RC/UAV regime (ADR 0028).** Regime-independent: S_ref, b_ref and c_MAC are geometric properties of the planform, and no Reynolds number, Mach number or equipment enters them. The reference area is a convention: Scholz (Wing Design §7.1) shows that manufacturers define it differently and that changing it changes only the coefficients. The one regime requirement is consistency: every coefficient in the chain must use the S_ref and c_MAC this entry produces.
+
 ## Implementations (1)
 
 | node | claimed | verified | deviation |
