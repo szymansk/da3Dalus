@@ -4,7 +4,7 @@ entry: formula
 kind: rating
 tool: APP
 shape: approximation
-status: draft
+status: approved
 output: approach-speed, touchdown-speed, takeoff-speed
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/approximation
   - kind/rating
-  - status/draft
+  - status/approved
 inputs: {v_s_cfg: null, k_s: null}
 outputs: {v: null}
 applications:
@@ -107,13 +107,15 @@ operating point, which has been computed since 2026-10-01 (§3.10).
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Ownership** — the weighting is the maintainer's decision, recorded as such
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Ownership** — the weighting is the maintainer's decision, recorded as such
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
-
+> **Approved as a declared rating, not as a law** (maintainer, 2026-10-24): the rule
+> `V = k_S · V_S,cfg` with the sourced defaults approach 1.3, touchdown 1.1, take-off 1.1
+> (`defaults.yaml`, overridable targets). The shape stays an approximation and the RC caution above stands:
+> at model Reynolds number the 1.3 is a lower bound.

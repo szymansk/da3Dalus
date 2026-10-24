@@ -116,8 +116,6 @@ polar instead of a closed form.
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
-
 **Second output since 2026-10-02 (ADR 0026): `(L/D)max = m·g / D(V_md)`** — the lift-to-drag
 ratio at this optimum. With `L = W` enforced at the correct Reynolds number the old reason
 against an argmax (a sweep mixing Reynolds numbers) does not apply. The parabolic closed form
