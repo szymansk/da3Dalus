@@ -88,6 +88,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 #g.noedges .edge{display:none !important}
 .edge.xedge{display:none}
 .edge.xedge.up,.edge.xedge.down{display:inline}
+.pspan{fill:var(--out-bg);fill-opacity:.22;stroke:var(--out);stroke-opacity:.7;stroke-width:1.3}
 .pframe{fill:var(--out-bg);fill-opacity:.35;stroke:var(--out);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
 .blocklab.ptlab{fill:var(--out)}
 .blocklab.modlab{fill:var(--ink-2)}
@@ -326,7 +327,7 @@ const POINTS={'stall':'Stall, clean','takeoff':'Take-off','approach':'Landing / 
   'manoeuvre':'Manoeuvre / structure','free':'Free operating point','over-mass':'Over mass','none':'No operating point'};
 const PTORDER=Object.keys(POINTS);
 const KIND=q=>/probe$/.test(q)?2:/(static-margin|pitching-moment|dihedral|weathercock|spiral)/.test(q)?1:0;
-const PFRAMES=[];
+const PFRAMES=[], PSPANS=[];
 for(const [band,,inBand] of BANDS){
   BANDY[band]=yc; let height=NH;
   for(const c of COLS){
@@ -351,6 +352,10 @@ for(const [band,,inBand] of BANDS){
     const rowY={}; let y=yc+FHEAD;
     for(const pt of PTORDER){ if(!rowH[pt]) continue; rowY[pt]=y; y+=rowH[pt]+FHEAD+8; }
     for(const f of PFRAMES) f.y=rowY[f.point];
+    // One box per operating point across all columns (maintainer 2026-10-24).
+    for(const pt of PTORDER){ const fs=PFRAMES.filter(f=>f.point===pt); if(!fs.length) continue;
+      const x0=Math.min(...fs.map(f=>f.x))-8, x1=Math.max(...fs.map(f=>f.x+f.w))+8;
+      PSPANS.push({point:pt,label:POINTS[pt],x:x0,y:rowY[pt]-FHEAD+2,w:x1-x0,h:rowH[pt]+FHEAD+4}); }
     for(const q in P) if(P[q].pt!==undefined){ P[q]={x:P[q].x, y:rowY[P[q].pt]+P[q].dy}; }
     height=Math.max(height,y-FHEAD-8-yc);
   }
@@ -386,9 +391,11 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
   for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
-  for(const f of PFRAMES){
+  for(const s of PSPANS){
+    cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:'pspan'}));
+    const t=el('text',{x:s.x+8,y:s.y+13,class:'blocklab ptlab'}); t.textContent=s.label; cam.appendChild(t); }
+  for(const f of PFRAMES)
     cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'pframe'}));
-    const t=el('text',{x:f.x+2,y:f.y-6,class:'blocklab ptlab'}); t.textContent=f.label; cam.appendChild(t); }
   for(const h of COLHEADS){ const t=el('text',{x:h.x,y:h.y,class:'blocklab'}); t.textContent=h.label; cam.appendChild(t); }
   for(const f of FRAMES){
     const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select module '+f.label});
