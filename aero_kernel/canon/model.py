@@ -177,6 +177,14 @@ class Quantity(BaseModel):
                 raise ValueError(msg)
         return self
 
+    @model_validator(mode="after")
+    def _check_range(self) -> Self:
+        """Reject ``positive`` with an ``at_most`` of 0 or less: no value would be admissible."""
+        if self.positive and self.at_most is not None and self.at_most <= 0:
+            msg = f"at_most {self.at_most} leaves no value for a positive quantity"
+            raise ValueError(msg)
+        return self
+
 
 # --- formulas -------------------------------------------------------------------------------
 

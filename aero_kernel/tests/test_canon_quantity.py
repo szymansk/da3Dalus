@@ -57,6 +57,13 @@ def test_at_most_only_on_a_scalar() -> None:
         make_quantity(type="airplane", at_most=1.0)
 
 
+@pytest.mark.parametrize("maximum", [0.0, -1.0])
+def test_a_positive_quantity_with_an_empty_range_is_rejected(maximum: float) -> None:
+    """``positive`` (> 0) and ``at_most`` <= 0 admit no value."""
+    with pytest.raises(ValidationError, match="at_most"):
+        make_quantity(positive=True, at_most=maximum)
+
+
 def test_unknown_type_is_rejected() -> None:
     with pytest.raises(ValidationError):
         make_quantity(type="vector")

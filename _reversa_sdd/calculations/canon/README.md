@@ -771,7 +771,7 @@ positive: true
 - a quantity is produced by at most one application of a formula — counted on each application's effective outputs (explicit `produce` and inherited defaults) — unless its type is `per_control_surface`; `optional` names input parameters;
 - every quantity has a `role` from the closed set and a `type` from the set above, and no `default:`
   in its front matter; `positive` is `true` (never `false`) and `at_most` a number, each only on `type: scalar` with role `input`
-  or `target`, and its default in `defaults.yaml`, if any, is a number > 0;
+  or `target`, and its default in `defaults.yaml`, if any, is a number > 0 and, with `at_most`, not above it; `positive` together with an `at_most` <= 0 is an error (no admissible value);
 - every `defaults.yaml` entry names an existing quantity with role `input` or `target`, carries
   non-empty `value`, `unit`, `source` and `regime`, repeats the quantity's unit, and no slug appears
   twice;
