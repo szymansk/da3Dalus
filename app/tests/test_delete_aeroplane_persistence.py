@@ -1,0 +1,389 @@
+"""gh-1151: DELETE /aeroplanes/{id} must really delete, not just answer 200.
+
+The commit runs in ``get_db`` after the response is built, so a constraint
+violation there is invisible to the client. These tests use a real SQLite
+schema and check the rows, not just the status code.
+"""
+
+import uuid
+from datetime import datetime, timezone
+
+from app.models.aeroplanemodel import AeroplaneModel, BranchModel
+from app.models.flight_envelope_model import FlightEnvelopeModel
+from app.models.tessellation_cache import TessellationCacheModel
+
+
+def _create(client) -> dict:
+    resp = client.post("/aeroplanes", params={"name": "delete-me"})
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+def _uuid_of(created: dict) -> str:
+    return str(created.get("id") or created["uuid"])
+
+
+def _row(session_factory, aeroplane_uuid: str) -> AeroplaneModel | None:
+    with session_factory() as s:
+        return s.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
+
+
+def test_delete_removes_aeroplane_and_its_versioning_branch(client_and_db):
+    client, session_factory = client_and_db
+    aeroplane_uuid = _uuid_of(_create(client))
+
+    resp = client.delete(f"/aeroplanes/{aeroplane_uuid}")
+
+    assert resp.status_code == 200, resp.text
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).count() == 0
+        assert s.query(BranchModel).count() == 0
+
+
+def test_delete_removes_flight_envelope_and_tessellation_cache(client_and_db):
+    client, session_factory = client_and_db
+    aeroplane_uuid = _uuid_of(_create(client))
+    with session_factory() as s:
+        aeroplane_id = (
+            s.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).one().id
+        )
+        s.add(
+            FlightEnvelopeModel(
+                aeroplane_id=aeroplane_id,
+                vn_curve_json={},
+                kpis_json={},
+                markers_json={},
+                assumptions_snapshot={},
+                computed_at=datetime.now(timezone.utc),
+            )
+        )
+        s.add(
+            TessellationCacheModel(
+                aeroplane_id=aeroplane_id,
+                component_type="wing",
+                component_name="w",
+                geometry_hash="h",
+                tessellation_json={},
+            )
+        )
+        s.commit()
+
+    resp = client.delete(f"/aeroplanes/{aeroplane_uuid}")
+
+    assert resp.status_code == 200, resp.text
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).count() == 0
+        assert s.query(FlightEnvelopeModel).count() == 0
+        assert s.query(TessellationCacheModel).count() == 0
+
+
+def test_delete_unknown_aeroplane_is_404(client_and_db):
+    client, _ = client_and_db
+    resp = client.delete(f"/aeroplanes/{uuid.uuid4()}")
+    assert resp.status_code == 404
+
+
+def _id_of(session_factory, aeroplane_uuid: str) -> int:
+    with session_factory() as s:
+        return s.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).one().id
+
+
+def test_delete_removes_operating_points_so_a_new_aeroplane_does_not_inherit_them(
+    client_and_db,
+):
+    from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
+
+    client, session_factory = client_and_db
+    a_uuid = _uuid_of(_create(client))
+    a_id = _id_of(session_factory, a_uuid)
+    with session_factory() as s:
+        s.add(
+            OperatingPointModel(
+                name="op",
+                description="d",
+                aircraft_id=a_id,
+                velocity=20.0,
+                alpha=0.0,
+                beta=0.0,
+                p=0.0,
+                q=0.0,
+                r=0.0,
+                xyz_ref=[0, 0, 0],
+                altitude=0.0,
+            )
+        )
+        s.add(
+            OperatingPointSetModel(
+                name="set", description="d", aircraft_id=a_id, operating_points=[]
+            )
+        )
+        s.commit()
+
+    assert client.delete(f"/aeroplanes/{a_uuid}").status_code == 200
+
+    b_uuid = _uuid_of(_create(client))
+    b_id = _id_of(session_factory, b_uuid)
+    assert b_id == a_id, "SQLite reuses the freed integer id; the test relies on it"
+    with session_factory() as s:
+        assert s.query(OperatingPointModel).filter_by(aircraft_id=b_id).count() == 0
+        assert s.query(OperatingPointSetModel).filter_by(aircraft_id=b_id).count() == 0
+
+
+def test_delete_removes_component_tree_and_construction_parts(client_and_db):
+    from app.models.component_tree import ComponentTreeNodeModel
+    from app.models.construction_part import ConstructionPartModel
+
+    client, session_factory = client_and_db
+    a_uuid = _uuid_of(_create(client))
+    other_uuid = str(uuid.uuid4())
+    with session_factory() as s:
+        part = ConstructionPartModel(aeroplane_id=a_uuid, name="p")
+        keep_part = ConstructionPartModel(aeroplane_id=other_uuid, name="keep")
+        s.add_all([part, keep_part])
+        s.flush()
+        root = ComponentTreeNodeModel(aeroplane_id=a_uuid, node_type="group", name="root")
+        s.add(root)
+        s.flush()
+        s.add(
+            ComponentTreeNodeModel(
+                aeroplane_id=a_uuid,
+                node_type="cad_shape",
+                name="child",
+                parent_id=root.id,
+                construction_part_id=part.id,
+            )
+        )
+        s.add(ComponentTreeNodeModel(aeroplane_id=other_uuid, node_type="group", name="keep"))
+        s.commit()
+
+    assert client.delete(f"/aeroplanes/{a_uuid}").status_code == 200
+
+    with session_factory() as s:
+        assert s.query(ComponentTreeNodeModel).filter_by(aeroplane_id=a_uuid).count() == 0
+        assert s.query(ConstructionPartModel).filter_by(aeroplane_id=a_uuid).count() == 0
+        # Other aeroplanes' rows are untouched.
+        assert s.query(ComponentTreeNodeModel).filter_by(aeroplane_id=other_uuid).count() == 1
+        assert s.query(ConstructionPartModel).filter_by(aeroplane_id=other_uuid).count() == 1
+
+
+# --- Versioning semantics (maintainer decision on gh-1151, option A) ------------
+
+
+def _node_id(session_factory, aeroplane_uuid: str) -> int:
+    return _id_of(session_factory, aeroplane_uuid)
+
+
+def _lineage_with_two_side_branches(client, session_factory):
+    """Main head with two snapshots plus two side branches; returns ids."""
+    main_uuid = _uuid_of(_create(client))
+    root_id = _node_id(session_factory, main_uuid)
+    for label in ("v1", "v2"):
+        r = client.post(f"/aeroplanes/{root_id}/snapshot", json={"label": label})
+        assert r.status_code in (200, 201), r.text
+    side_heads = []
+    for name in ("side-a", "side-b"):
+        r = client.post(f"/aeroplanes/{root_id}/branch", json={"name": name})
+        assert r.status_code in (200, 201), r.text
+        side_heads.append(r.json()["head_id"])
+    return main_uuid, root_id, side_heads
+
+
+def test_delete_with_two_snapshots_leaves_no_orphan_nodes(client_and_db):
+    client, session_factory = client_and_db
+    a_uuid = _uuid_of(_create(client))
+    node_id = _node_id(session_factory, a_uuid)
+    for label in ("v1", "v2"):
+        r = client.post(f"/aeroplanes/{node_id}/snapshot", json={"label": label})
+        assert r.status_code in (200, 201), r.text
+
+    assert client.delete(f"/aeroplanes/{a_uuid}").status_code == 200
+
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).count() == 0
+        assert s.query(BranchModel).count() == 0
+
+
+def test_delete_main_head_removes_the_whole_lineage(client_and_db):
+    client, session_factory = client_and_db
+    main_uuid, root_id, _ = _lineage_with_two_side_branches(client, session_factory)
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).filter_by(root_id=root_id).count() > 3
+
+    assert client.delete(f"/aeroplanes/{main_uuid}").status_code == 200
+
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).filter_by(root_id=root_id).count() == 0
+        assert s.query(AeroplaneModel).count() == 0
+        assert s.query(BranchModel).filter_by(root_id=root_id).count() == 0
+        assert s.query(BranchModel).count() == 0
+
+
+def test_delete_side_branch_head_discards_only_that_branch(client_and_db):
+    client, session_factory = client_and_db
+    main_uuid, root_id, side_heads = _lineage_with_two_side_branches(client, session_factory)
+    with session_factory() as s:
+        side = s.query(AeroplaneModel).filter_by(id=side_heads[0]).one()
+        side_uuid, side_branch_id = str(side.uuid), side.branch_id
+        total_before = s.query(AeroplaneModel).count()
+
+    resp = client.delete(f"/aeroplanes/{side_uuid}")
+
+    assert resp.status_code == 200, resp.text
+    with session_factory() as s:
+        assert s.query(BranchModel).filter_by(id=side_branch_id).count() == 0
+        assert s.query(AeroplaneModel).filter_by(branch_id=side_branch_id).count() == 0
+        assert s.query(BranchModel).filter_by(root_id=root_id).count() == 2  # main + other side
+        assert s.query(AeroplaneModel).count() < total_before
+        assert s.query(AeroplaneModel).filter_by(id=side_heads[1]).count() == 1
+        assert s.query(AeroplaneModel).filter_by(id=root_id).count() == 1
+    assert client.get(f"/lineages/{root_id}/tree").status_code == 200
+
+
+def test_delete_snapshot_node_is_refused_with_409(client_and_db):
+    client, session_factory = client_and_db
+    a_uuid = _uuid_of(_create(client))
+    node_id = _node_id(session_factory, a_uuid)
+    r = client.post(f"/aeroplanes/{node_id}/snapshot", json={"label": "v1"})
+    snapshot_uuid = r.json()["uuid"]
+
+    resp = client.delete(f"/aeroplanes/{snapshot_uuid}")
+
+    assert resp.status_code == 409, resp.text
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).filter(AeroplaneModel.uuid == snapshot_uuid).count() == 1
+
+
+def test_delete_lineage_root_on_a_side_branch_is_refused_with_409(client_and_db):
+    """After adopting another branch the original root node heads a side branch.
+
+    Other branches still reference it as their lineage root, so it cannot go
+    without taking the lineage with it; that is only allowed via the main head.
+    """
+    client, session_factory = client_and_db
+    root_uuid = _uuid_of(_create(client))
+    root_id = _node_id(session_factory, root_uuid)
+    r = client.post(f"/aeroplanes/{root_id}/branch", json={"name": "next"})
+    assert r.status_code in (200, 201), r.text
+    assert client.post(f"/branches/{r.json()['id']}/adopt").status_code == 200
+
+    resp = client.delete(f"/aeroplanes/{root_uuid}")
+
+    assert resp.status_code == 409, resp.text
+    with session_factory() as s:
+        assert s.query(AeroplaneModel).filter(AeroplaneModel.id == root_id).count() == 1
+        assert s.query(BranchModel).filter_by(root_id=root_id).count() == 2
+
+
+# --- Every deletion path purges rows without ORM cascade ------------------------
+
+
+def _add_op(session_factory, aircraft_id: int) -> None:
+    from app.models.analysismodels import OperatingPointModel
+
+    with session_factory() as s:
+        s.add(
+            OperatingPointModel(
+                name="op",
+                description="d",
+                aircraft_id=aircraft_id,
+                velocity=20.0,
+                alpha=0.0,
+                beta=0.0,
+                p=0.0,
+                q=0.0,
+                r=0.0,
+                xyz_ref=[0, 0, 0],
+                altitude=0.0,
+            )
+        )
+        s.commit()
+
+
+def _add_tree_node(session_factory, aeroplane_uuid: str) -> None:
+    from app.models.component_tree import ComponentTreeNodeModel
+
+    with session_factory() as s:
+        s.add(ComponentTreeNodeModel(aeroplane_id=aeroplane_uuid, node_type="group", name="g"))
+        s.commit()
+
+
+def _count(session_factory, model, **filters) -> int:
+    with session_factory() as s:
+        return s.query(model).filter_by(**filters).count()
+
+
+def test_delete_legacy_node_without_branch_purges_its_operating_point(client_and_db):
+    from app.models.analysismodels import OperatingPointModel
+
+    client, session_factory = client_and_db
+    a_uuid = _uuid_of(_create(client))
+    a_id = _id_of(session_factory, a_uuid)
+    with session_factory() as s:  # make it a pre-versioning row
+        node = s.query(AeroplaneModel).filter_by(id=a_id).one()
+        s.query(BranchModel).delete()
+        node.branch_id = None
+        s.commit()
+    _add_op(session_factory, a_id)
+
+    assert client.delete(f"/aeroplanes/{a_uuid}").status_code == 200
+
+    assert _count(session_factory, AeroplaneModel) == 0
+    assert _count(session_factory, OperatingPointModel) == 0
+
+
+def test_delete_adopted_main_head_that_is_not_the_root_removes_the_lineage(client_and_db):
+    from app.models.analysismodels import OperatingPointModel
+
+    client, session_factory = client_and_db
+    root_uuid = _uuid_of(_create(client))
+    root_id = _id_of(session_factory, root_uuid)
+    r = client.post(f"/aeroplanes/{root_id}/branch", json={"name": "next"})
+    assert r.status_code in (200, 201), r.text
+    assert client.post(f"/branches/{r.json()['id']}/adopt").status_code == 200
+    new_head_id = r.json()["head_id"]
+    assert new_head_id != root_id
+    with session_factory() as s:
+        new_head_uuid = str(s.query(AeroplaneModel).filter_by(id=new_head_id).one().uuid)
+    _add_op(session_factory, root_id)
+    _add_op(session_factory, new_head_id)
+
+    assert client.delete(f"/aeroplanes/{new_head_uuid}").status_code == 200
+
+    assert _count(session_factory, AeroplaneModel) == 0
+    assert _count(session_factory, BranchModel) == 0
+    assert _count(session_factory, OperatingPointModel) == 0
+
+
+def test_delete_side_head_purges_its_rows_then_main_head_removes_the_rest(client_and_db):
+    from app.models.analysismodels import OperatingPointModel
+    from app.models.component_tree import ComponentTreeNodeModel
+
+    client, session_factory = client_and_db
+    main_uuid = _uuid_of(_create(client))
+    root_id = _id_of(session_factory, main_uuid)
+    r = client.post(f"/aeroplanes/{root_id}/branch", json={"name": "side"})
+    assert r.status_code in (200, 201), r.text
+    side_id = r.json()["head_id"]
+    with session_factory() as s:
+        side_uuid = str(s.query(AeroplaneModel).filter_by(id=side_id).one().uuid)
+    _add_op(session_factory, side_id)
+    _add_op(session_factory, root_id)
+    _add_tree_node(session_factory, side_uuid)
+    _add_tree_node(session_factory, main_uuid)
+
+    assert client.delete(f"/aeroplanes/{side_uuid}").status_code == 200
+
+    # Side branch gone with its rows, root and its rows survive.
+    assert _count(session_factory, AeroplaneModel, id=side_id) == 0
+    assert _count(session_factory, OperatingPointModel, aircraft_id=side_id) == 0
+    assert _count(session_factory, ComponentTreeNodeModel, aeroplane_id=side_uuid) == 0
+    assert _count(session_factory, AeroplaneModel, id=root_id) == 1
+    assert _count(session_factory, OperatingPointModel, aircraft_id=root_id) == 1
+    assert _count(session_factory, ComponentTreeNodeModel, aeroplane_id=main_uuid) == 1
+
+    assert client.delete(f"/aeroplanes/{main_uuid}").status_code == 200
+
+    assert _count(session_factory, AeroplaneModel) == 0
+    assert _count(session_factory, BranchModel) == 0
+    assert _count(session_factory, OperatingPointModel) == 0
+    assert _count(session_factory, ComponentTreeNodeModel) == 0

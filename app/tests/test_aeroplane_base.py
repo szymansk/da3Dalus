@@ -221,7 +221,7 @@ class TestDeleteAeroplane(unittest.TestCase):
         mock_db = MagicMock()
 
         # Simulate found object
-        mock_model = MagicMock()
+        mock_model = MagicMock(is_immutable=False, branch_id=None)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
 
         result = asyncio.run(delete_aeroplane(aeroplane_id=test_id, db=mock_db))
@@ -258,7 +258,7 @@ class TestDeleteAeroplane(unittest.TestCase):
         mock_db = MagicMock()
 
         # Found model but delete blows up
-        mock_model = MagicMock()
+        mock_model = MagicMock(is_immutable=False, branch_id=None)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
         begin_cm = mock_db.begin.return_value
         begin_cm.__enter__.return_value = None
