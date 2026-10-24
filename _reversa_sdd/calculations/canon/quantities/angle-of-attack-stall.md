@@ -3,13 +3,13 @@ canon: angle-of-attack-stall
 kind: quantity
 symbol: alpha_stall
 unit: deg
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics
   - stage/aero-model
-  - role/output
+  - role/derived
 type: scalar
 ---
 
