@@ -16,7 +16,7 @@ tags:
   - kind/optimization
   - status/approved
 tex: \begin{aligned}V_mp = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha)\,V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {v_mp: minimum-sink-speed, alpha_mp: angle-of-attack-minimum-sink, cl_mp: lift-coefficient-minimum-sink}
 applications:
   - id: level_flight
@@ -32,7 +32,7 @@ minimize over V, alpha:   D(V, alpha) * V
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[minimum-sink-speed]] · [[angle-of-attack-minimum-sink]] · [[lift-coefficient-minimum-sink]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]]
+**Produces** [[minimum-sink-speed]] · [[angle-of-attack-minimum-sink]] · [[lift-coefficient-minimum-sink]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
 
 **Autorität.** Einziger Erzeuger dieser Größe, seit die Faustformel gestrichen ist. Eine geschlossene Gegenprobe wie bei der Geschwindigkeit geringsten Widerstands gibt es hier nicht.
 

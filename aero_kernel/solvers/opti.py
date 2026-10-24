@@ -45,6 +45,8 @@ __all__ = [
     "BestGlide",
     "BestGlideSolution",
     "DeflectionDiagnostics",
+    "MinSink",
+    "MinSinkSolution",
     "OptiAdapter",
     "RollRequest",
     "RollSolution",
@@ -53,6 +55,7 @@ __all__ = [
     "StallSolution",
     "SteadyRoll",
     "best_glide_worker",
+    "min_sink_worker",
     "stall_worker",
     "steady_roll_worker",
 ]
@@ -151,6 +154,36 @@ class BestGlide(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     solution: BestGlideSolution
+    warnings: tuple[KernelWarning, ...]
+
+
+class MinSinkSolution(BaseModel):
+    """The solution of the minimum-sink problem (canon ``minimum-sink-speed-from-polar``).
+
+    Attributes:
+        v_mp: Minimum-sink speed in m/s.
+        alpha_mp: The angle of attack at the optimum in degrees.
+        cl_mp: The lift coefficient at the optimum.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    v_mp: float
+    alpha_mp: float
+    cl_mp: float
+
+
+class MinSink(BaseModel):
+    """A minimum-sink solution and the caveats of its operating point.
+
+    Attributes:
+        solution: The solved problem.
+        warnings: Regime warnings (ADR 0028), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    solution: MinSinkSolution
     warnings: tuple[KernelWarning, ...]
 
 
@@ -530,6 +563,51 @@ def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
+# The first guess of the minimum-sink solve: for a parabolic polar V_mp = V_md / 3^(1/4) = 0.76 V_md,
+# so it lies between the stall speed and the best-glide start; IPOPT only needs to start on the
+# pre-stall branch. Start values only, not results or bounds.
+SINK_SPEED_FACTOR = 1.15
+SINK_ALPHA_FRACTION = 0.6
+
+
+def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
+    """Solve the minimum-sink problem in the pool worker (canon ``minimum-sink-speed-from-polar``).
+
+    The same bracketing as the stall (the window of alpha ends one sweep step past the first
+    C_L peak), then IPOPT minimises ``D V`` subject to ``L = n m g``. At fixed weight ``D V`` is
+    proportional to the sink rate, and AeroBuildup forms the Reynolds number from ``V`` inside the
+    constraint. A bound active at the optimum is an error, never a value.
+
+    Args:
+        request: The problem; ``n_load`` must be positive.
+
+    Returns:
+        The solution with the worker's diagnostics.
+
+    Raises:
+        FormulaError: ``not_converged`` if the sweep has no extremum, the solve fails or ends on
+            a bound.
+    """
+    started = time.perf_counter()
+    problem = _bracketed(request)
+    optimum = _solve(
+        problem,
+        request.air,
+        lambda speed, aero: aero["D"] * speed,
+        (SINK_SPEED_FACTOR * problem.v_bracket, SINK_ALPHA_FRACTION * problem.alpha_peak),
+        "minimum-sink",
+    )
+    solution = MinSinkSolution(
+        v_mp=optimum.speed,
+        alpha_mp=optimum.alpha,
+        cl_mp=optimum.value(optimum.aero["CL"]),
+    )
+    diagnostics = WorkerDiagnostics(
+        duration_s=time.perf_counter() - started, solver_status="Solve_Succeeded"
+    )
+    return WorkerOutcome(value=solution, diagnostics=diagnostics)
+
+
 @dataclass(frozen=True)
 class _Seen:
     """What one section call of the recording pass saw (a wing key, a confidence, an angle)."""
@@ -825,11 +903,11 @@ def _fit_range_warning(found: DeflectionDiagnostics) -> KernelWarning:
 
 
 class OptiAdapter(SolverAdapter):
-    """The stall and best-glide problems solved with IPOPT over AeroBuildup, in the process pool.
+    """The stall, best-glide and minimum-sink problems solved with IPOPT over AeroBuildup, in the process pool.
 
-    ``stall`` minimises V and ``best_glide`` minimises D subject to the lift balance, both on the
-    pre-stall branch bracketed by an alpha sweep (canon ``stall-speed`` and
-    ``minimum-drag-speed-from-polar``).
+    ``stall`` minimises V, ``best_glide`` minimises D and ``min_sink`` minimises D V subject to the
+    lift balance, all on the pre-stall branch bracketed by an alpha sweep (canon ``stall-speed``,
+    ``minimum-drag-speed-from-polar`` and ``minimum-sink-speed-from-polar``).
 
     Attributes:
         tool: ``OPT``.
@@ -944,6 +1022,42 @@ class OptiAdapter(SolverAdapter):
         )
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
+
+    async def min_sink(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        n_load: float,
+        air: AirState,
+    ) -> MinSink:
+        """Solve ``min D V s.t. L(V, alpha) = n m g`` on the branch before the first C_L peak.
+
+        Args:
+            airplane: The geometry with its devices as they are to be evaluated.
+            mass_kg: Mass in kg, > 0.
+            gravity: Gravity in m/s^2, > 0.
+            n_load: Load factor, > 0 (the problem lives on the upright branch).
+            air: The air state.
+
+        Returns:
+            The solution and the regime warnings of its speed.
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for
+                an inadmissible input; ``unsupported_configuration`` for a deflected control
+                surface; ``not_converged`` as :func:`min_sink_worker`.
+        """
+        request = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
+        solution = await self.runtime.run_cpu(min_sink_worker, request)
+        chords = {
+            key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
+        }
+        warnings = regime_by_wing(
+            chords, solution.v_mp, air.speed_of_sound, air.kinematic_viscosity
+        )
+        logger.debug("minimum-sink speed %.4f m/s at %.2f deg", solution.v_mp, solution.alpha_mp)
+        return MinSink(solution=solution, warnings=tuple(warnings))
 
     async def steady_roll(
         self,
