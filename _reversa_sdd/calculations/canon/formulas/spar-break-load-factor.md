@@ -60,3 +60,23 @@ untwisted wing in attached flow it is.
 **Where it enters.** The structural edges of the V-n envelope: `n_break,+` above, `n_break,−` below, against the user's requirement `n_lim` in the Probe. The negative stall edge comes from [[inverted-max-lift-coefficient]].
 
 **Source.** 🟢 Beam bending, `M_cap = W · sigma_allow`; the station-wise reserve is the existing sizing chain read the other way (BR-W5, #1139).
+
+**Validity in the RC/UAV regime (ADR 0028).** Beam bending, `M_cap = W·σ_allow`, is structural and independent of the flow regime; treating the wing skin as non-structural matches both build routes. The aerodynamic regime enters only through the 1 g spanload from [[spanwise-loads]] (AVL: inviscid, attached flow). At model Reynolds numbers local `c_l,max` is lower (Anderson §4.3), and narrow tips run at a lower Re than the root, which makes them prone to tip stall (Lennon Ch. 1–3); a distribution computed without local stall is valid only while every section stays below its own Re-dependent `c_l,max`. The declared linear scaling is exact only for an untwisted wing. Real model loads of 6–19 g lie far above FAR 23 category values, which are not regulation for models [no source: maintainer measurement].
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

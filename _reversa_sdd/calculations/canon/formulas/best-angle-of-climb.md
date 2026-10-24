@@ -50,7 +50,7 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 
 **Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n² · D⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
 
-**Exact steady climb, not the small-angle form.** Sadraey writes `ROC = (T − D)·V / W` with `L = W` (Eq. 4.84). That holds for shallow climbs only. A model with a high thrust-to-weight ratio climbs steeply, and with `T > W` vertically. Stating both force balances along and across the path costs one variable and keeps the result right at every angle; at `gamma = 90°` the lift constraint gives `L = 0`, which is the honest answer.
+**Exact steady climb, not the small-angle form.** Sadraey writes `ROC = (T·V − D·V) / W` with `L = W` (Eq. 4.77–4.78, §4.3.5; the propeller form `(η_P·P − D·V)/W` is Eq. 4.84, §4.3.5.2). That holds for shallow climbs only. A model with a high thrust-to-weight ratio climbs steeply, and with `T > W` vertically. Stating both force balances along and across the path costs one variable and keeps the result right at every angle; at `gamma = 90°` the lift constraint gives `L = 0`, which is the honest answer.
 
 **Termination.** Approval asks for **no bound active at the optimum** — with one declared exception: `gamma` at its 90° bound means the aircraft climbs vertically at that speed. Any other active bound, and a failed solve, return no value (ADR 0020).
 
@@ -58,10 +58,30 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 
 **Model fidelity is declared** (`Q-PT-6`): which route of the torque balance ran, and that the battery voltage is nominal.
 
-**Source.** 🟢 Sadraey §4.3.5 (rate and angle of climb, Eq. 4.84–4.85; angle of climb §4.3.5) for the definitions; the force balances are the steady-flight equations along and normal to the path. 🟢 Drela `motor1` §1.1 for the motor model.
+**Source.** 🟢 Sadraey §4.3.5 (rate of climb, Eq. 4.77–4.78; propeller form Eq. 4.84–4.85, §4.3.5.2) for the definitions — no explicit Sadraey angle-of-climb equation was found; the force balances along and normal to the path, with the small-angle form only for γ < 15°: Scholz 05_PreliminarySizing §5.3 (context of Eq. 5.13). 🟢 Drela `motor1` §1.1 for the motor model.
+
+**Validity in the RC/UAV regime (ADR 0028).** The force balances are exact steady-flight equations at any climb angle: Scholz states them along and normal to the path and uses `L ≈ m·g` only "for γ < 15°" (05_PreliminarySizing §5.3), so keeping both balances is what makes the result right for steep and vertical RC climbs. Thrust inherits the propeller-table and motor-model limits (Re₀.₇₅ ≈ 15–100 k per rpm block, nominal battery voltage, route A rpm). The optimum lies at low speed and high `C_L`, so the result depends on the polar near its maximum: AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and near Re 8·10⁴ and C_L 1.0 NeuralFoil's confidence drops (Sharpe 2024 §7.2.4). Propeller slipstream over wing and tail is not in AeroBuildup [no source]; it matters most at full throttle and low speed.
 
 **Replaces** `climb-speed-for-power-loading` (`V_climb = max(1.3·V_S,target, 1 m/s)`), deleted 2026-10-01: a multiple of a *target* stall speed, with neither thrust nor polar in it.
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
 
 **When the answer is vertical, `V_x` is not unique.** With thrust above weight the climb angle reaches 90° over a whole speed range (BRYAN: from about 3 m/s — hanging on the propeller). Then the result is "climbs vertically", with the range if wanted, and no single `V_x`.
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

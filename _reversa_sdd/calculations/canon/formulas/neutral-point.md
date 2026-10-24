@@ -46,8 +46,8 @@ carried through the whole downstream chain (A11 rule 4). One entry, one producer
 
 - **Textbook world:** the barycentre form is the exact form of `h_n = h_ac + eta*V_H*(a_h/a)*(1 - de/da)`
   with `K = eta*(a_h/a)*(1 - de/da)`, lift slopes `a = 2 pi AR/(AR+2)`, downwash `de/da = 2 a_w/(pi AR_w)`
-  (**derived from** Sadraey Eq. 6.67, §6.7.4 — the barycentre is a rearrangement, not the printed form);
-  `eta = 0.9` (Sadraey §6, 0.85–0.95 conventional), **not checked for the RC regime (ADR 0028)**
+  (**derived from** Sadraey Eq. 6.67, §6.7.12 "Final Check", p. 316/317 — the barycentre is a rearrangement, not the printed form);
+  `eta = 0.9` (Sadraey Eq. 6.28, §6.2.1, p. 276: 0.85–0.95 conventional, 1 for a T-tail), **not checked for the RC regime (ADR 0028)**
   (maintainer, 2026-10-23). Pappas implies `η = 1`; part of the textbook–Pappas gap is this choice.
   Aerodynamic centres at 25 % of each surface's MAC.
 - **Pappas world:** Dean Pappas, "If It Flies", *Model Aviation* 10/2009 (after von Mises/Prager/Kuerti),
@@ -79,3 +79,25 @@ Reference fleet (np_methods.py): BRYAN [32.9, 36.9] % MAC, e-Hawk [48.8, 52.9] %
 
 **Source.** 🟢 derived from Sadraey Eq. 6.67 (textbook); Pappas, *Model Aviation* 10/2009; Drela, AVL. Review of the
 uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.
+
+**Validity in the RC/UAV regime (ADR 0028).** All three worlds are evaluated incompressible (Mach ≤ 0.3). The textbook world's η = 0.9 lies in Sadraey's conventional-tail range 0.85–0.95 (1 for a T-tail; Eq. 6.28, §6.2.1, p. 276), which is full-scale practice and states no Reynolds number. The RC literature reports a wider spread: Lennon (*Basics of R/C Model Aircraft Design*, Ch. 7) gives about 90 % for a T-tail and under 50 % for a tail in the wing's wake; lower efficiency moves the neutral point forward. This disagreement is recorded, not resolved: Sadraey's range stands as the source, Lennon bounds how far a low-set tail can fall below it. At low Re the wing's laminar separation and transition (Anderson §20.3.2) can change its wake and downwash [no source for the magnitude]. The lift slopes `2πAR/(AR+2)` assume a 2π section slope, which falls at low Re (Anderson §20.3.2, qualitative); the smaller-chord tail, at lower Re, is affected more [no source].
+
+## Implementations (1)
+
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/neutral_point.py` | EXACT | 🟢 | textbook and Pappas barycentres as written; the AVL world calls the AVL adapter at C_L = m·g/(q·S_ref); every world declares `fuselage_not_modelled`; the interval over the worlds is formed by the engine (A11) |
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

@@ -45,10 +45,11 @@ The regulation names it only as a symbol definition inside the gust-load paragra
 
 **Validity in the RC/UAV regime (ADR 0028).** Valid. The deliberate choice of MGC over MAC is correct and matches the regulation - keep it, and keep the comment saying why, because it will otherwise be 'fixed' to MAC by a future reviewer. For a rectangular RC wing MGC and MAC coincide, so the distinction only bites on tapered wings.
 
-## Implementations (1)
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/mean_geometric_chord.py` | EXACT | 🟢 |  |
 | [[fe_c_mgc]] | EXACT | 🟢 |  |
 
 ## Approval
