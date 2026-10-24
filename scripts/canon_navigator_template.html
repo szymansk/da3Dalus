@@ -132,6 +132,10 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <button data-mode="mvp" aria-pressed="false">MVP</button>
       <button data-mode="done" aria-pressed="false">Umgesetzt</button>
     </div>
+    <div class="seg" role="group" aria-label="Richtung" style="margin-top:6px">
+      <button data-mode="analysis" aria-pressed="false" title="Was ein gegebenes Flugzeug kann">Analyse</button>
+      <button data-mode="design" aria-pressed="false" title="Ein Ziel in eine Konstruktionsgr&#246;&#223;e umrechnen (O1)">Auslegung</button>
+    </div>
     <div class="leg" style="margin-top:10px">
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="var(--good)"/></svg>im Kernel umgesetzt</span>
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>Teil des MVP, noch offen</span>
@@ -197,7 +201,7 @@ const Q=D.Q, F=D.F, LAYER=D.layer, ORDER=D.order;
 const INPUTS=new Set(D.inputs), OUTPUTS=new Set(D.outputs);
 // Target values (role: target) are user-given goals; every quantity downstream of one is
 // measured against a goal rather than computed from the aircraft alone.
-const STATUS=D.status||{}, MVP=new Set(D.mvp||[]);
+const STATUS=D.status||{}, MVP=new Set(D.mvp||[]), DESIGN=new Set(D.design||[]), ANALYSIS=new Set(D.analysis||[]);
 const TARGETS=new Set(Object.keys(Q).filter(q=>Q[q].role==='target'));
 
 const pred={}, succ={}, prodBy={}, useCount={};
@@ -344,7 +348,7 @@ function select(q){
     h+= e.tex ? `<div class="math">$$${e.tex}$$</div>`
               : `<div class="mono">${esc(e.form)}</div>
                  <p class="sub" style="margin:6px 0 0">Verfahrensform \u2014 nicht als Formel setzbar.</p>`;
-    h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; nicht im Kernel'}${e.ticket?' &#183; '+esc(e.ticket):''}</p>`;
+    h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; nicht im Kernel'}${e.ticket?' &#183; '+esc(e.ticket):''} &#183; ${e.direction==='design'?'<b>Auslegung</b> (O1)':'Analyse'}</p>`;
     if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Methodenwelten: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
     const aps=(e.apps||[]).filter(a=>a.out.includes(q));
     for(const a of aps){
@@ -400,7 +404,7 @@ addEventListener('resize',fit);
 
 let mode='all';
 function applyMode(){
-  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q):STATUS[q]==='done');
+  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
   for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
   edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
   document.querySelectorAll('.seg button').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));

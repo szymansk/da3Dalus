@@ -398,6 +398,13 @@ The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `outpu
 | `worlds` | with `uncertainty: interval` | the method worlds, as the entry names them, in snake_case |
 | `cost` | optional, interim (O14 question 3 is open) | `instant`, `seconds` or `minutes`; set only where the entry says the computation takes minutes. Without it the importer derives `instant` or `seconds` from `tool` (ARCHITECTURE §8.7) |
 
+**Direction tag.** The tag `direction/design` marks the entries that turn a target into a
+construction quantity — the borderline cases kept in this canon by O1 (maintainer, 2026-10-05):
+`cg-for-target-margin`, `stall-wing-loading-limit`, `aileron-deflection-required` (then
+`aileron-throw-fraction`). Every other entry is analysis: what a given airplane does. Further design
+calculations belong to the design canon (K31), not here. Like all tags it is for readers and tools (the
+navigator's Analysis / Design filter); the importer drops it.
+
 **Parameters.** A parameter name is snake_case and local to the formula (`cl_max`, `rho`,
 `v_s_cfg`), taken from the canonical form's symbols where it has them. Quantity slugs are
 kebab-case and appear only as binding targets. Every input and every output of the formula has
