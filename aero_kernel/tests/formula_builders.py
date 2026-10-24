@@ -26,6 +26,7 @@ IMPLEMENTED = {
     "calc:minimum-drag-speed-from-polar",
     "calc:neutral-point",
     "calc:static-margin",
+    "calc:speed-from-stall-margin",
 }
 
 
