@@ -512,12 +512,9 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     polar = sweep_polar(problem.airplane, request.air, optimum.speed, angles, NEURALFOIL_MODEL_SIZE)
     cl_max = polar.cl[polar.alpha_deg.index(optimum.alpha)]
     solution = StallSolution(v_s=optimum.speed, cl_max=cl_max, alpha_s=optimum.alpha, polar=polar)
-    diagnostics = WorkerDiagnostics(
-        duration_s=time.perf_counter() - started,
-        solver_status="Solve_Succeeded",
-        notes=(
-            f"bracketed at {problem.alpha_peak} deg with a sweep at {problem.v_bracket:.3f} m/s",
-        ),
+    diagnostics = _diagnostics(
+        started,
+        (f"bracketed at {problem.alpha_peak} deg with a sweep at {problem.v_bracket:.3f} m/s",),
     )
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
@@ -563,9 +560,7 @@ def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]
         alpha_md=optimum.alpha,
         cl_md=optimum.value(optimum.aero["CL"]),
     )
-    diagnostics = WorkerDiagnostics(
-        duration_s=time.perf_counter() - started, solver_status="Solve_Succeeded"
-    )
+    diagnostics = _diagnostics(started)
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
@@ -611,9 +606,7 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
         alpha_mp=optimum.alpha,
         cl_mp=optimum.value(optimum.aero["CL"]),
     )
-    diagnostics = WorkerDiagnostics(
-        duration_s=time.perf_counter() - started, solver_status="Solve_Succeeded"
-    )
+    diagnostics = _diagnostics(started)
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
@@ -869,10 +862,8 @@ def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
         else None
     )
     solution = RollSolution(p_rad_s=p_opt, alpha_deg=alpha_opt, diagnostics=recorded)
-    diagnostics = WorkerDiagnostics(
-        duration_s=time.perf_counter() - started,
-        solver_status="Solve_Succeeded",
-        notes=(f"alpha window {low}..{high} deg, |p| window {p_limit:.3f} rad/s",),
+    diagnostics = _diagnostics(
+        started, (f"alpha window {low}..{high} deg, |p| window {p_limit:.3f} rad/s",)
     )
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
@@ -908,6 +899,19 @@ def _fit_range_warning(found: DeflectionDiagnostics) -> KernelWarning:
             "max_effective_alpha_deg": found.max_effective_alpha_deg,
             "max_effective_alpha_wing": found.max_effective_alpha_wing,
         },
+    )
+
+
+def _regime_warnings(airplane: AirplaneGeometry, v_ms: float, air: AirState) -> list[KernelWarning]:
+    """The regime warnings (ADR 0028) of every wing of the airplane at a speed."""
+    chords = {key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()}
+    return regime_by_wing(chords, v_ms, air.speed_of_sound, air.kinematic_viscosity)
+
+
+def _diagnostics(started: float, notes: tuple[str, ...] = ()) -> WorkerDiagnostics:
+    """The diagnostics of a worker whose IPOPT run succeeded."""
+    return WorkerDiagnostics(
+        duration_s=time.perf_counter() - started, solver_status="Solve_Succeeded", notes=notes
     )
 
 
@@ -989,10 +993,7 @@ class OptiAdapter(SolverAdapter):
         """
         request = self._request(airplane, mass_kg, gravity, n_load, air)
         solution = await self.runtime.run_cpu(stall_worker, request)
-        chords = {
-            key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
-        }
-        warnings = regime_by_wing(chords, solution.v_s, air.speed_of_sound, air.kinematic_viscosity)
+        warnings = _regime_warnings(airplane, solution.v_s, air)
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)
         return Stall(solution=solution, warnings=tuple(warnings))
 
@@ -1023,12 +1024,7 @@ class OptiAdapter(SolverAdapter):
         """
         request = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(best_glide_worker, request)
-        chords = {
-            key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
-        }
-        warnings = regime_by_wing(
-            chords, solution.v_md, air.speed_of_sound, air.kinematic_viscosity
-        )
+        warnings = _regime_warnings(airplane, solution.v_md, air)
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
 
@@ -1059,12 +1055,7 @@ class OptiAdapter(SolverAdapter):
         """
         request = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(min_sink_worker, request)
-        chords = {
-            key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
-        }
-        warnings = regime_by_wing(
-            chords, solution.v_mp, air.speed_of_sound, air.kinematic_viscosity
-        )
+        warnings = _regime_warnings(airplane, solution.v_mp, air)
         logger.debug("minimum-sink speed %.4f m/s at %.2f deg", solution.v_mp, solution.alpha_mp)
         return MinSink(solution=solution, warnings=tuple(warnings))
 
@@ -1125,10 +1116,7 @@ class OptiAdapter(SolverAdapter):
         warnings = [*roll_hinge_warnings(driven)]
         if solution.diagnostics is not None:
             warnings.append(_fit_range_warning(solution.diagnostics))
-        chords = {
-            key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()
-        }
-        warnings += regime_by_wing(chords, v_ms, air.speed_of_sound, air.kinematic_viscosity)
+        warnings += _regime_warnings(airplane, v_ms, air)
         logger.debug("steady roll %.4f rad/s at %.2f deg", solution.p_rad_s, solution.alpha_deg)
         return SteadyRoll(
             p_rad_s=solution.p_rad_s, alpha_deg=solution.alpha_deg, warnings=tuple(warnings)

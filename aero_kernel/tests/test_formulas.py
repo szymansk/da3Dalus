@@ -382,7 +382,8 @@ async def test_minimum_sink_speed_asks_the_optimiser_with_the_bound_air_and_retu
     assert (mass, gravity, n_load) == (1.5, 9.81, 1.0)
     assert (air.density, air.dynamic_viscosity, air.speed_of_sound) == (1.225, 1.7894e-5, 340.294)
     assert set(result) == {"v_mp", "alpha_mp", "cl_mp"}
-    # hand value: V_mp = sqrt(2 m g / (rho S)) (k / (3 CD0))^(1/4) with S = 0.28, k = 0.05, CD0 = 0.03
+    # plumbing only: the stub answers V_mp = sqrt(2 m g / (rho S)) (k / (3 CD0))^(1/4); the maths
+    # of the optimum is verified against real IPOPT in test_solvers_opti_min_sink_real.py
     expected = math.sqrt(2 * 1.5 * 9.81 / (1.225 * 0.28)) * (0.05 / 0.09) ** 0.25
     assert close(result["v_mp"], expected, 1e-12)
     assert close(result["cl_mp"], math.sqrt(3 * 0.03 / 0.05), 1e-12)

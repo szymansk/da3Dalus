@@ -19,7 +19,8 @@ SLUGS = (
     "angle-of-attack-minimum-sink",
     "lift-coefficient-minimum-sink",
 )
-# Hand values (parabolic polar, 1.4 m x 0.2 m wing, S_ref = 0.28 m^2, sea level, m = 1.5 kg):
+# Stub answers, plumbing only (the maths is verified in the _real aero test): parabolic polar,
+# 1.4 m x 0.2 m wing, S_ref = 0.28 m^2, sea level, m = 1.5 kg:
 # V_mp = sqrt(2 W / (rho S)) (k / (3 CD0))^(1/4); CL_mp = sqrt(3 CD0 / k).
 V_MP = math.sqrt(2 * MASS * 9.80665 / (RHO * 0.28)) * (K / (3 * CD0)) ** 0.25
 
@@ -56,7 +57,10 @@ async def test_level_flight_minimum_sink_from_the_shipped_canon() -> None:
 async def test_the_minimum_sink_speed_is_the_minimum_drag_speed_over_the_fourth_root_of_three() -> (
     None
 ):
-    """Hand identity of a parabolic polar (Sadraey 4.3.5.2): V_mp = V_md / 3^(1/4)."""
+    """Plumbing: both stub answers are the closed forms of one parabolic polar, so V_mp = V_md / 3^(1/4).
+
+    The maths of the optimum is verified against real IPOPT in test_solvers_opti_min_sink_real.py.
+    """
     result, _ = await run("minimum-sink-speed", "minimum-drag-speed")
     quantities = by_slug(result)
     sink, drag = quantities["minimum-sink-speed"].value, quantities["minimum-drag-speed"].value
