@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: law
-status: draft
+status: approved
 output: stall-speed, max-lift-coefficient, angle-of-attack-stall, polar-stall, inverted-max-lift-coefficient, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,8 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/optimization
-  - status/draft
-  - flag/conflict
+  - status/approved
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {v_s: null, cl_max: null, alpha_s: null, polar: null}
@@ -128,10 +127,9 @@ multiplicative flap factor `C_L,max,cfg = f · C_L,max,clean` (`high-lift-clmax`
 
 (c) THE REAL ONE — the configuration fallback. field_length_service:367-368 and operating_point_generator_service:355-356 substitute the clean V_S when the per-configuration value is absent, asserting C_L,max,LDG := C_L,max,clean. Seven lines earlier, at field_length_service:361, the same function multiplies C_L,max by up to 1.6 for that same configuration. One function assumes the flaps work and do not work at once; on the fallback branch the approach speed is up to 26 % too high while the landing distance is computed with the raised C_L,max. Verified.
 
-The applications above dissolve (c) structurally rather than by correction: `stall-speed-landing` always exists and comes from this problem with the airplane in its landing configuration ([[airplane-landing]]); without flaps that configuration is the same aircraft, so it equals the clean stall speed by definition, not by a fallback (maintainer, 2026-10-14). What remains to decide is only (a): which density.
+The applications above dissolve (c) structurally rather than by correction: `stall-speed-landing` always exists and comes from this problem with the airplane in its landing configuration ([[airplane-landing]]); without flaps that configuration is the same aircraft, so it equals the clean stall speed by definition, not by a fallback (maintainer, 2026-10-14). (a) is **decided** (maintainer, 2026-10-24): the density is `air-density` from [[air-density-isa]] at the given altitude, as the canon binds it; the app's fixed 1.225 default is an Ist defect against the canon.
 
-> Two or more implementations use **genuinely different laws** for this quantity.
-> This is the entry that must be decided, not merely read.
+> Decided 2026-10-24 — no open conflict remains; the departures above are declared deviations of the legacy app.
 
 ## Inverted application — `C_L,min` (maintainer, 2026-10-14, D4)
 
@@ -234,14 +232,17 @@ can never fire is inert (ADR 0021). The Ist finding below is what the binding re
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> **The relation was approved** (Sadraey Eq. 4.30). **The method — the optimisation that
-> replaced the closed form on 2026-10-01 — is not yet approved:** it waits for the
-> reference-fleet comparison (ANFORDERUNGEN §3.4.1). Hence `status: draft`.
+> **The relation was approved** (Sadraey Eq. 4.30). **The method is approved too** (maintainer,
+> 2026-10-24): the optimisation agreed with the former fixed-point iteration to 0.004 % on a 1.5 kg
+> trainer (ANFORDERUNGEN §3.4.1, 2026-10-01), and the reference-fleet comparison is the aero_kernel run of
+> #1202 (BRYAN V_S 5.2454 m/s, JAGUAR 6.2992 m/s; against the prototype's 5.2894 m/s for BRYAN the 0.8 %
+> difference is the NeuralFoil model size, xlarge vs small) — regression, not validation against flight.
+> This is the relation and the method the implementations are measured against.
 
