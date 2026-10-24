@@ -4,7 +4,7 @@
 |---|---|
 | Issue | [#1151](https://github.com/szymansk/da3Dalus/issues/1151) |
 | PR | [#1196](https://github.com/szymansk/da3Dalus/pull/1196) |
-| Merged | pending (fill in at merge) |
+| Merged | adf8cd3a, 2026-10-24 |
 
 ## Vigência
 
