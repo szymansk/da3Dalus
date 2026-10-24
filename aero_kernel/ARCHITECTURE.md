@@ -119,7 +119,7 @@ and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 
 3. **Solver path:** `stall-speed` — AeroBuildup/Opti adapters, applications, `when`, postconditions,
    configured airplanes, polar values.
 4. **Method worlds:** `minimum-drag-speed` first (it sets the lift coefficient of the AVL world, #1204), then
-   `neutral-point` (A11 intervals, AVL) with `static-margin` (#1203).
+   `neutral-point` (A11 intervals, AVL) with `static-margin` (#1203) and `cg-for-target-margin` (#1214).
 5. **Embedding:** the propulsion relations and the optimisers; `mass-envelope` last (embedding, worlds and
    long runs together).
 Engine features named "built with the first embedder" (or with a later step) are specified here but not

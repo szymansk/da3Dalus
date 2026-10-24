@@ -189,3 +189,28 @@ async def test_a_ventral_fin_gives_the_same_neutral_point() -> None:
         want = await adapter.neutral_point(AirplaneGeometry.model_validate(document), BRYAN_CL_MD)
         got = await adapter.neutral_point(AirplaneGeometry.model_validate(ventral), BRYAN_CL_MD)
     assert abs(got.x_np - want.x_np) < 1e-4
+
+
+@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.asyncio
+async def test_cg_for_target_margin_returns_the_plan_cg_per_world(member: FleetMember) -> None:
+    """Round trip: with SM_target = the margin each world computes for the plan CG, the CG that gives
+    that margin is the plan CG again, per world (x_NP - SM c_MAC with SM = (x_NP - CG) / c_MAC)."""
+    margin = (await run(member)).quantities[1]
+    assert margin.interval is not None
+    for world, sm in margin.interval.worlds.items():
+        aircraft = AircraftInput.model_validate(
+            {
+                "airplane": reference_document(member),
+                "values": {
+                    "aircraft-mass": member.mass_kg,
+                    "altitude": 0.0,
+                    "static-margin-target": sm,
+                },
+            }
+        )
+        result = await compute(aircraft, request("cg-for-target-margin"))
+        (quantity,) = result.quantities
+        assert quantity.status is QuantityStatus.OK, quantity
+        assert quantity.interval is not None
+        assert abs(quantity.interval.worlds[world] - CG[member]) < 1e-9, (member, world)
