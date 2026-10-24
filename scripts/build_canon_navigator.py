@@ -333,6 +333,39 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
     data["mvp_results"] = list(MVP_RESULTS)
 
 
+def convention_marks(data: dict, model: dict) -> None:
+    """Mark what rests on a defined value: a ``convention`` default and its whole downstream closure.
+
+    The basis is read from the defaults of the canon model (``defaults.yaml``), never typed in
+    here. ``conventions`` holds the defined values (value, unit, source); ``conv`` maps every
+    quantity that rests on at least one of them to the slugs of those values.
+    """
+    defaults = model["namespaces"]["calc"]["defaults"]
+    conventions = {s: d for s, d in sorted(defaults.items()) if d["basis"] == "convention"}
+    unknown = sorted(set(conventions) - set(data["Q"]))
+    if unknown:
+        raise SystemExit(f"defaults for quantities the canon lacks: {unknown}")
+    succ: dict = {q: [] for q in data["Q"]}
+    for a, b, _ in data["edges"]:
+        succ[a].append(b)
+    conv: dict = {}
+    for slug in conventions:
+        seen: set = set()
+        stack = [slug]
+        while stack:
+            q = stack.pop()
+            if q not in seen:
+                seen.add(q)
+                stack.extend(succ[q])
+        for q in seen:
+            conv.setdefault(q, []).append(slug)
+    data["conventions"] = {
+        s: {"value": d["value"], "unit": d["unit"], "source": d["source"]}
+        for s, d in conventions.items()
+    }
+    data["conv"] = {q: sorted(v) for q, v in sorted(conv.items())}
+
+
 def to_ascii(html: str) -> str:
     """Escape per region: \\uXXXX in script, CSS escapes in style, refs elsewhere.
 
@@ -368,6 +401,7 @@ def build() -> tuple[str, dict]:
     edges = application_edges(formulas, quantities, model)
     data = layout(quantities, formulas, edges)
     kernel_status(data, KERNEL_FORMULAS)
+    convention_marks(data, model)
     data["stand"] = model["content_hash"][:12]
     template = pathlib.Path(__file__).with_name("canon_navigator_template.html")
     payload = json.dumps(data, ensure_ascii=True, separators=(",", ":")).replace("</", "<\\/")

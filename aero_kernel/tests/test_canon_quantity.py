@@ -26,7 +26,9 @@ def test_minimal_quantity_defaults() -> None:
 def test_a_quantity_carries_no_default() -> None:
     """The defaults live in the namespace table (S5)."""
     with pytest.raises(ValidationError, match="default"):
-        make_quantity(default={"value": 1.0, "unit": "kg", "source": "s", "regime": "r"})
+        make_quantity(
+            default={"value": 1.0, "unit": "kg", "basis": "sourced", "source": "s", "regime": "r"}
+        )
 
 
 def test_positive_quantity() -> None:

@@ -103,12 +103,19 @@ Unit = Literal[
 _MODEL_CONFIG = ConfigDict(extra="forbid", frozen=True)
 
 
+DefaultBasis = Literal["definition", "standard", "sourced", "convention"]
+"""What kind of value a default is; ``convention`` marks a chosen value without a published source."""
+
+
 class Default(BaseModel):
-    """A value the canon states for a supplied quantity, with its unit, source and regime.
+    """A value the canon states for a supplied quantity, with its unit, basis, source and regime.
 
     Attributes:
         value: The value, in ``unit``.
         unit: The unit of ``value``; it must equal the unit of the quantity.
+        basis: ``definition`` (true by definition), ``standard`` (a published standard value),
+            ``sourced`` (taken from a cited source) or ``convention`` (chosen, no published source,
+            adopted on the maintainer's word).
         source: Citation of where the value comes from (ADR 0028).
         regime: The flight regime the value is valid for (ADR 0028).
     """
@@ -117,6 +124,7 @@ class Default(BaseModel):
 
     value: FiniteNumber
     unit: Unit
+    basis: DefaultBasis
     source: NonBlank
     regime: NonBlank
 

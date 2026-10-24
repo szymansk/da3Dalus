@@ -1,6 +1,12 @@
 # Defaults of the calculation canon (#1174, maintainer 2026-10-17).
-# <slug>: {value, unit, source, regime}
+# <slug>: {value, unit, basis, source, regime}
 #   value  — in the quantity's canon unit
+#   basis  — what kind of value it is (README, "Machine-readable fields"):
+#              definition  true by definition of the quantity
+#              standard    a published standard value (ISA, standard gravity)
+#              sourced     taken from a cited source
+#              convention  a chosen value with no published source, adopted on the maintainer's
+#                          word; the navigator marks every calculation that rests on one
 #   source — the citation
 #   regime — ADR 0028: why the value holds for RC/UAV (chord Re 3e4–1e6, Mach <= 0.3, no wheel
 #            brakes), or "regime-independent"
@@ -9,41 +15,55 @@
 approach-speed-margin-target:
   value: 1.3
   unit: "1"
+  basis: sourced
   source: "Lennon, Basics of R/C Model Aircraft Design, Ch. 20 (FAR 23 reasoning, scaled); CS 25.125 as transport-category reference"
   regime: "transport rule taken as the lower bound: at low wing loading and low speed a gust changes the angle of attack and load factor more (Scholz Wing Design §7.3), so RC needs at least this margin; a larger RC margin has no source"
 
 gravity:
   value: 9.80665
   unit: "m/s^2"
+  basis: standard
   source: "standard gravity, CGPM 1901 / U.S. Standard Atmosphere 1976"
   regime: "regime-independent"
 
 load-factor:
   value: 1
   unit: "1"
+  basis: definition
   source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
   regime: "regime-independent"
 
 motor-efficiency:
   value: 0.75
   unit: "1"
+  basis: sourced
   source: "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point"
   regime: "RC brushless motors (the source's subject); at P_max copper loss grows with I², so the efficiency lies below the peak band and the lower bound fits"
 
 sea-level-air-density:
   value: 1.225
   unit: "kg/m^3"
+  basis: standard
   source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa"
   regime: "regime-independent (a high or hot field lies below it; field density stays an input)"
 
 takeoff-speed-margin-target:
   value: 1.1
   unit: "1"
+  basis: sourced
   source: "Sadraey, Aircraft Design (2013), §4.3.4: V_TO = 1.1–1.3 V_s (lower edge)"
   regime: "rise-off-ground without wheel brakes has no decision-speed logic; Sadraey's ground roll rotates at about 1.1 V_s (§4.3.4.2 Eq. 4.76); hand launch: no source"
 
 touchdown-speed-margin-target:
   value: 1.1
   unit: "1"
+  basis: sourced
   source: "Sadraey, Aircraft Design (2013), §4.3.2: take-off and landing speeds are typically 1.1–1.3 V_s; §9.3.10: flare to minimum speed"
   regime: "RC models flare to near V_min and have no wheel brakes, so the low end of the band applies; the old 1.2 (Lennon) is a landing speed with a safety margin, which approach 1.3 covers. Maintainer decision 2026-10-17"
+
+stall-break-fraction:
+  value: 0.10
+  unit: "1"
+  basis: convention
+  source: "maintainer decision 2026-10-24 (#1219); no published value (Anderson, Sadraey, Lennon describe the stall break qualitatively and quantify it nowhere)"
+  regime: "a measurement convention on the computed polar, not a flight regime: clearly above solver noise (a 1-3 % drop can be one non-monotone sample) and close enough to the peak that the 360 deg blend of the polar does not dominate; applies at the stall Reynolds number of the polar"

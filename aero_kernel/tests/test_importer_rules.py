@@ -310,9 +310,7 @@ def test_an_embedded_input_that_the_embedder_lists_as_variable_is_supplied(tmp_p
 
 def defaults(slug: str, value: str, unit: str, *, source: str = "s", regime: str = "r") -> str:
     """A defaults.yaml with one entry."""
-    return (
-        f"{slug}:\n  value: {value}\n  unit: '{unit}'\n  source: '{source}'\n  regime: '{regime}'\n"
-    )
+    return f"{slug}:\n  value: {value}\n  unit: '{unit}'\n  basis: sourced\n  source: '{source}'\n  regime: '{regime}'\n"
 
 
 @pytest.mark.parametrize(
@@ -358,6 +356,18 @@ def test_a_default_states_its_source_and_regime(tmp_path: Path, field: str) -> N
     text = defaults("gravity", "9.8", "m/s^2", **kwargs)
     result = run(tmp_path, {"defaults.yaml": text})
     assert [(f.file, f.field) for f in result.findings] == [("defaults.yaml", f"gravity.{field}")]
+
+
+def test_a_default_states_its_basis(tmp_path: Path) -> None:
+    text = defaults("gravity", "9.8", "m/s^2").replace("basis: sourced", "basis: guessed")
+    result = run(tmp_path, {"defaults.yaml": text})
+    assert [(f.file, f.field) for f in result.findings] == [("defaults.yaml", "gravity.basis")]
+
+
+def test_a_default_without_a_basis_is_a_finding(tmp_path: Path) -> None:
+    text = defaults("gravity", "9.8", "m/s^2").replace("  basis: sourced\n", "")
+    result = run(tmp_path, {"defaults.yaml": text})
+    assert [(f.file, f.field) for f in result.findings] == [("defaults.yaml", "gravity.basis")]
 
 
 # --- S3 (b) amendment 2: cycles ---------------------------------------------------------------------------------

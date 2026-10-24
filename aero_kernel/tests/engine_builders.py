@@ -39,12 +39,14 @@ DEFAULTS: dict[str, dict[str, Any]] = {
     "air-density": {
         "value": 1.225,
         "unit": "kg/m^3",
+        "basis": "standard",
         "source": "us standard atmosphere",
         "regime": "RC and UAV, sea level",
     },
     "margin-target": {
         "value": 1.3,
         "unit": "1",
+        "basis": "convention",
         "source": "test margin",
         "regime": "RC and UAV, test value",
     },

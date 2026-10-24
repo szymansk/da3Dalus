@@ -1,46 +1,60 @@
 {
-  "content_hash": "sha256:da95680d0abcafd874552378753975cc8238cb0564b6f00a16a26046c5c8c860",
+  "content_hash": "sha256:0293bbb00e27ed5c93cfd850e2cdf7d1272f308fd52e81bfef1483ca1d22292f",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
       "defaults": {
         "approach-speed-margin-target": {
+          "basis": "sourced",
           "regime": "transport rule taken as the lower bound: at low wing loading and low speed a gust changes the angle of attack and load factor more (Scholz Wing Design §7.3), so RC needs at least this margin; a larger RC margin has no source",
           "source": "Lennon, Basics of R/C Model Aircraft Design, Ch. 20 (FAR 23 reasoning, scaled); CS 25.125 as transport-category reference",
           "unit": "1",
           "value": 1.3
         },
         "gravity": {
+          "basis": "standard",
           "regime": "regime-independent",
           "source": "standard gravity, CGPM 1901 / U.S. Standard Atmosphere 1976",
           "unit": "m/s^2",
           "value": 9.80665
         },
         "load-factor": {
+          "basis": "definition",
           "regime": "regime-independent",
           "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W",
           "unit": "1",
           "value": 1.0
         },
         "motor-efficiency": {
+          "basis": "sourced",
           "regime": "RC brushless motors (the source's subject); at P_max copper loss grows with I², so the efficiency lies below the peak band and the lower bound fits",
           "source": "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point",
           "unit": "1",
           "value": 0.75
         },
         "sea-level-air-density": {
+          "basis": "standard",
           "regime": "regime-independent (a high or hot field lies below it; field density stays an input)",
           "source": "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa",
           "unit": "kg/m^3",
           "value": 1.225
         },
+        "stall-break-fraction": {
+          "basis": "convention",
+          "regime": "a measurement convention on the computed polar, not a flight regime: clearly above solver noise (a 1-3 % drop can be one non-monotone sample) and close enough to the peak that the 360 deg blend of the polar does not dominate; applies at the stall Reynolds number of the polar",
+          "source": "maintainer decision 2026-10-24 (#1219); no published value (Anderson, Sadraey, Lennon describe the stall break qualitatively and quantify it nowhere)",
+          "unit": "1",
+          "value": 0.1
+        },
         "takeoff-speed-margin-target": {
+          "basis": "sourced",
           "regime": "rise-off-ground without wheel brakes has no decision-speed logic; Sadraey's ground roll rotates at about 1.1 V_s (§4.3.4.2 Eq. 4.76); hand launch: no source",
           "source": "Sadraey, Aircraft Design (2013), §4.3.4: V_TO = 1.1–1.3 V_s (lower edge)",
           "unit": "1",
           "value": 1.1
         },
         "touchdown-speed-margin-target": {
+          "basis": "sourced",
           "regime": "RC models flare to near V_min and have no wheel brakes, so the low end of the band applies; the old 1.2 (Lennon) is a landing speed with a safety margin, which approach 1.3 covers. Maintainer decision 2026-10-17",
           "source": "Sadraey, Aircraft Design (2013), §4.3.2: take-off and landing speeds are typically 1.1–1.3 V_s; §9.3.10: flare to minimum speed",
           "unit": "1",
@@ -2468,34 +2482,42 @@
           "variables": [],
           "worlds": []
         },
-        "stall-onset-detection": {
+        "stall-break": {
           "applications": [
             {
               "bind": {
-                "polar": "calc:polar-stall"
+                "alpha_s": "calc:angle-of-attack-stall",
+                "cl_max": "calc:max-lift-coefficient",
+                "f": "calc:stall-break-fraction",
+                "polar_s": "calc:polar-stall"
               },
               "given": null,
               "id": "default",
               "produce": {
-                "i_stall": "calc:stall-onset-index"
+                "alpha_break": "calc:alpha-break",
+                "width": "calc:stall-break-width"
               },
               "when": null
             }
           ],
-          "cost": "seconds",
+          "cost": "instant",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
-            "polar": "calc:polar-stall"
+            "alpha_s": "calc:angle-of-attack-stall",
+            "cl_max": "calc:max-lift-coefficient",
+            "f": "calc:stall-break-fraction",
+            "polar_s": "calc:polar-stall"
           },
           "kind": "procedure",
           "optional": [],
           "outputs": {
-            "i_stall": "calc:stall-onset-index"
+            "alpha_break": "calc:alpha-break",
+            "width": "calc:stall-break-width"
           },
           "postconditions": [],
           "preconditions": [],
-          "tool": "AB",
+          "tool": "APP",
           "uncertainty": null,
           "variables": [],
           "worlds": []
@@ -3052,6 +3074,14 @@
           "type": "airplane",
           "uncertainty": null,
           "unit": "1"
+        },
+        "alpha-break": {
+          "positive": null,
+          "role": "output",
+          "symbol": "alpha_break",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
         },
         "altitude": {
           "positive": null,
@@ -3957,13 +3987,21 @@
           "uncertainty": null,
           "unit": "1"
         },
-        "stall-onset-index": {
+        "stall-break-fraction": {
           "positive": null,
-          "role": "output",
-          "symbol": "i_stall",
+          "role": "input",
+          "symbol": "f",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
+        },
+        "stall-break-width": {
+          "positive": null,
+          "role": "output",
+          "symbol": "Delta_alpha_break",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
         },
         "stall-speed": {
           "positive": null,

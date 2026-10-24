@@ -8,7 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics
-  - point/stall
+  - stage/aero-model
   - role/output
 type: scalar
 ---
@@ -22,3 +22,5 @@ conditions in one quantity (A2; #1181).
 **Unit.** `deg`
 
 **Produced by.** [[stall-speed]]
+
+**Used by.** [[stall-break]]
