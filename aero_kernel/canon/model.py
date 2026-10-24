@@ -470,6 +470,25 @@ class Namespace(BaseModel):
     defaults: dict[SlugKey, Default] = {}
 
 
+def _default_problem(where: str, default: Default, quantity: Quantity | None) -> str | None:
+    """Return what is wrong with a default against its quantity, or ``None``."""
+    if quantity is None:
+        return f"default of unknown quantity {where}"
+    if quantity.role not in ("input", "target"):
+        return f"default of {where}: role must be input or target, not {quantity.role}"
+    if quantity.type != "scalar":
+        return f"default of {where}: quantity must be a scalar, not {quantity.type}"
+    if default.unit != quantity.unit:
+        return (
+            f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
+        )
+    if quantity.positive and default.value <= 0:
+        return f"default of positive quantity {where} must be > 0"
+    if quantity.at_most is not None and default.value > quantity.at_most:
+        return f"default of {where} exceeds its at_most {quantity.at_most}"
+    return None
+
+
 def compute_content_hash(namespaces: Mapping[str, Namespace]) -> str:
     """Hash the canon's content: ``"sha256:"`` plus the hex SHA-256 of the canonical JSON.
 
@@ -659,20 +678,7 @@ class CanonModel(BaseModel):
         for namespace, content in self.namespaces.items():
             for slug, default in content.defaults.items():
                 quantity = content.quantities.get(slug)
-                where = f"{namespace}:{slug}"
-                text = None
-                if quantity is None:
-                    text = f"default of unknown quantity {where}"
-                elif quantity.role not in ("input", "target"):
-                    text = f"default of {where}: role must be input or target, not {quantity.role}"
-                elif quantity.type != "scalar":
-                    text = f"default of {where}: quantity must be a scalar, not {quantity.type}"
-                elif default.unit != quantity.unit:
-                    text = f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
-                elif quantity.positive and default.value <= 0:
-                    text = f"default of positive quantity {where} must be > 0"
-                elif quantity.at_most is not None and default.value > quantity.at_most:
-                    text = f"default of {where} exceeds its at_most {quantity.at_most}"
+                text = _default_problem(f"{namespace}:{slug}", default, quantity)
                 if text is not None:
                     problems.append(
                         CanonProblem(
