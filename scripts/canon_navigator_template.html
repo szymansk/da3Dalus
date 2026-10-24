@@ -242,12 +242,15 @@ const INPUTS=new Set(D.inputs), OUTPUTS=new Set(D.outputs);
 // Target values (role: target) are user-given goals; every quantity downstream of one is
 // measured against a goal rather than computed from the aircraft alone.
 // Issue kinds and their icons (maintainer 2026-10-24); the kind is read from the canon marker.
-const IKIND={broken:{icon:'\u2715',label:'Assumption broken in the code',col:'var(--bad)'},
+// broken: the legacy app code departs from the canon (Ist \u2260 Soll) — information, not a canon problem
+// (maintainer 2026-10-24: the canon is built independently of the code to fix exactly these defects).
+const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \u2260 Soll) \u2014 information',col:'var(--ink-3)',info:true},
   conflict:{icon:'\u21c4',label:'Two producers disagree',col:'var(--bad)'},
   nosource:{icon:'?',label:'No published source',col:'var(--bad)'},
   partial:{icon:'?',label:'Only partly sourced',col:'var(--mvp)'},
   approximation:{icon:'~',label:'Approximation where a law belongs',col:'var(--mvp)'},
   dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
+const BLOCKING=i=>!IKIND[kindOf(i)].info;
 const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
 const ISSUES={}; for(const f in D.F) for(const o of D.F[f].out) if((D.F[f].issues||[]).length) (ISSUES[o] ||= []).push(...D.F[f].issues.map(i=>({...i,formula:f})));
 const STATUS=D.status||{}, MVP=new Set(D.mvp||[]), DESIGN=new Set(D.design||[]), ANALYSIS=new Set(D.analysis||[]);
@@ -585,7 +588,7 @@ function select(q){
     if(Q[q].point) h+=`<p class="meta">Operating point: ${esc(POINTS[Q[q].point]||Q[q].point)}</p>`;
     if(Q[q].stage) h+=`<p class="meta">Stage: ${esc(STAGES[Q[q].stage]||Q[q].stage)}${Q[q].group?' \u00b7 '+esc(GROUPS[Q[q].group]||Q[q].group):''}</p>`;
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
-  if(ISSUES[q]) h+=`<div class="blk"><div class="lab" style="color:var(--bad)">! Open issues \u00b7 ${ISSUES[q].length} \u2014 blocks approval</div>`+
+  if(ISSUES[q]) h+=`<div class="blk"><div class="lab" style="color:var(--bad)">${ISSUES[q].some(BLOCKING)?'! Open issues \u00b7 '+ISSUES[q].filter(BLOCKING).length+' \u2014 block approval':'Notes'}</div>`+
     ISSUES[q].map(i=>`<div class="issue" style="border-color:${IKIND[kindOf(i)].col}"><b style="color:${IKIND[kindOf(i)].col}">${IKIND[kindOf(i)].icon} ${esc(i.title)}</b> <span class="sub">(${esc(i.formula)})</span><br>${esc(i.text)}</div>`).join('')+`</div>`;
   { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
   if(UNC.has(q)) h+=`<p class="desc" style="border-left:3px dotted var(--unc);padding-left:8px">
@@ -728,7 +731,7 @@ addEventListener('resize',fit);
   bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'':'design-separate'; location.reload(); }); }
 let mode='all';
 function applyMode(){
-  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!ISSUES[q] : mode.startsWith('issue:')?!!(ISSUES[q]&&ISSUES[q].some(i=>kindOf(i)===mode.slice(6))) : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
+  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!(ISSUES[q]&&ISSUES[q].some(BLOCKING)) : mode.startsWith('issue:')?!!(ISSUES[q]&&ISSUES[q].some(i=>kindOf(i)===mode.slice(6))) : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
   for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
   edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
   document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));
@@ -753,7 +756,7 @@ document.addEventListener('click',ev=>{ const bt=ev.target.closest('.seg button[
     `Canon model <b>${esc(D.stand||'')}</b>.<br>`+
     `Formulas implemented: <b>${fDone.length}</b> of <b>${fAll.length}</b>.<br>`+
     `Formulas approved: <b>${fAll.filter(f=>F[f].status==='approved').length}</b> of <b>${fAll.length}</b>; `+
-    `<span style="color:var(--bad)">with open issues: <b>${fAll.filter(f=>(F[f].issues||[]).length).length}</b></span>.<br>`+
+    `<span style="color:var(--bad)">with open issues: <b>${fAll.filter(f=>(F[f].issues||[]).some(BLOCKING)).length}</b></span>.<br>`+
     `MVP (BRYAN, JAGUAR): ${res.map(r=>`<a href="#" data-q="${esc(r)}">${esc(sym(r))}</a>`).join(', ')} &#8212; `+
     `<b>${mvpF.length-mvpOpen.length}</b> of <b>${mvpF.length}</b> formulas implemented.`+
     `<span class="chips">${mvpF.map(f=>chip(f,!F[f].impl)).join('')}</span>`;
