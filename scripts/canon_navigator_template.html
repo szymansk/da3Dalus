@@ -198,7 +198,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 
   <div class="grp">
     <div class="lab">Layers</div>
-    <p class="sub" style="margin:0">Given values (inputs, targets) in the top row; below them one band of intermediate results clustered by stage (derived references, aerodynamic model, named operating points, propulsion state, stability and structure) and, at the bottom, the band of final results (they feed nothing else), clustered by operating point. Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them. Every quantity below the top row stands in the column of the module most of whose members it depends on; a quantity that depends only on cross-cutting modules stands in the column &#8220;cross-cutting only&#8221; next to them.</p>
+    <p class="sub" style="margin:0">Given values (inputs, targets) in the top row; below them one band of intermediate results clustered by stage (aerodynamic model, named operating points, propulsion state, stability and structure; the derived references stand in their own column right of the cross-cutting inputs, edges on selection only) and, at the bottom, the band of final results (they feed nothing else), clustered by operating point. Cross-cutting modules (construction, mass and balance, atmosphere) stand upright on the far left, below the top row; their edges show only when a selection involves them. Every quantity below the top row stands in the column of the module most of whose members it depends on; a quantity that depends only on cross-cutting modules stands in the column &#8220;cross-cutting only&#8221; next to them.</p>
   </div>
 </aside>
 
@@ -258,6 +258,11 @@ const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXCOLS=5;
 // XY split (maintainer 2026-10-24): the layer-0 modules run along the top, the cross-cutting
 // modules stand upright in a column on the far left, starting below the top row.
 const XW=NW+2*FPAD;
+// Derived references (stage/references) get their own column right of the cross-cutting one
+// (maintainer 2026-10-24): intermediate values, kept apart from the input column.
+const isRef=q=>Q[q].stage==='references';
+const isLeft=q=>isX(q)||isRef(q);
+const REFCOLS=2, REFGAP=34, RW=REFCOLS*slotW-GAPX+2*FPAD;
 // Columns under the top-row modules (maintainer 2026-10-24): every quantity of layers 1-6 sits
 // under the module it is most influenced by, i.e. the module with the most members among its
 // transitive inputs. A quantity that depends on no top-row module (only on cross-cutting ones)
@@ -276,7 +281,7 @@ for(const side in TOPMODS) TOPMODS[side].sort((a,b)=>{
   return tb-ta; });
 const COLOF={};
 for(const l of layers){ if(l===0) continue;
-  for(const q of ORDER[l]){ if(isX(q)) continue;
+  for(const q of ORDER[l]){ if(isLeft(q)) continue;
     const side=SIDE(q), A=anc(q); let best=NONE, bestN=0;
     for(const m of TOPMODS[side]){ const n=ORDER[0].filter(x=>Q[x].module===m&&A.has(x)).length; if(n>bestN){best=m;bestN=n;} }
     COLOF[q]=best; } }
@@ -293,7 +298,7 @@ for(const side of ['analysis','design']){
   }
 }
 const SX={xcut:0};
-{ let x=XW+SIDEGAP, prev=null;
+{ let x=XW+REFGAP+RW+SIDEGAP, prev=null;
   for(const c of COLS){
     if(prev&&prev!==c.side) x+=SIDEGAP-MODGAP;
     if(prev!==c.side) SX[c.side]=x;
@@ -321,7 +326,7 @@ let yc=HEAD;
   }
   yc+=height-NH+GAPY;
 }
-const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isX(q));
+const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
 // Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
 // in reading order inside each column; within a cluster: values of the point, then stability,
 // then the probes (closed-form checks).
@@ -376,6 +381,16 @@ for(const [band,,inBand] of BANDS){
 }
 // The cross-cutting column: upright framed modules, one node per row, below the top row.
 const XTOP=BANDY.inter-GAPY/2;
+// The derived-references column: one framed block, grouped by producing formula.
+SX.refs=XW+REFGAP;
+{ const prodOf=q=>(prodBy[q]||[''])[0];
+  const qs=Object.keys(Q).filter(isRef).sort((a,b)=>prodOf(a).localeCompare(prodOf(b))||RANK[a]-RANK[b]);
+  const y=XTOP+FHEAD, rows=Math.ceil(qs.length/REFCOLS), fh=(rows-1)*SUBGAP+NH+2*FPAD;
+  qs.forEach((q,i)=>{ P[q]={x:SX.refs+FPAD+(i%REFCOLS)*slotW, y:y+FPAD+Math.floor(i/REFCOLS)*SUBGAP}; });
+  PFRAMES.push({band:'inter',key:'references',x:SX.refs,y,w:RW,h:fh});
+  PSPANS.push({band:'inter',key:'references',label:'Derived references',x:SX.refs-4,y:y-FHEAD+2,w:RW+8,h:fh+FHEAD+4});
+  yc=Math.max(yc,y+fh+GAPY);
+}
 { let y=XTOP+FHEAD;
   for(const m of MODORDER.filter(m=>XCUT.has(m))){
     const qs=Object.keys(Q).filter(q=>Q[q].module===m).sort();
@@ -400,6 +415,7 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
 { const line=(x1,y1,x2,y2)=>cam.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
   line(SX.design-SIDEGAP/2,6,SX.design-SIDEGAP/2,H+10);
   line(SX.analysis-SIDEGAP/2,XTOP-14,SX.analysis-SIDEGAP/2,H+10);
+  line(SX.refs-REFGAP/2,XTOP-14,SX.refs-REFGAP/2,H+10);
   line(SX.xcut,XTOP-14,W,XTOP-14);
   for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
@@ -424,7 +440,7 @@ const edgeEls=[];
 for(const [a,b,f] of D.edges){
   const p1=P[a], p2=P[b];
   let d;
-  if(isX(a)){ // from the right side of a cross-cutting node into the left side of its consumer
+  if(isLeft(a)){ // from the right side of a cross-cutting or derived-reference node into its consumer
     const x1=p1.x+NW, y1=p1.y+NH/2, x2=p2.x, y2=p2.y+NH/2, dx=Math.max(30,(x2-x1)/2);
     d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
   } else if(p2.y>=p1.y+NH){
@@ -434,7 +450,7 @@ for(const [a,b,f] of D.edges){
     const r=p2.x>=p1.x, x1=p1.x+(r?NW:0), y1=p1.y+NH/2, x2=p2.x+(r?0:NW), y2=p2.y+NH/2, dx=(r?1:-1)*Math.max(24,Math.abs(x2-x1)/2);
     d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
   }
-  const e=el('path',{class:'edge'+(isX(a)?' xedge':''),d});
+  const e=el('path',{class:'edge'+(isLeft(a)?' xedge':''),d});
   cam.appendChild(e); edgeEls.push({e,a,b});
 }
 function sym(q){
