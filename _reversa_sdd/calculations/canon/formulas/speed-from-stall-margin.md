@@ -114,8 +114,6 @@ operating point, which has been computed since 2026-10-01 (§3.10).
 - [x] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
-
 > **Approved as a declared rating, not as a law** (maintainer, 2026-10-24): the rule
 > `V = k_S · V_S,cfg` with the sourced defaults approach 1.3, touchdown 1.1, take-off 1.1
 > (`defaults.yaml`, overridable targets). The shape stays an approximation and the RC caution above stands:
