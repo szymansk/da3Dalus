@@ -15,7 +15,6 @@ tags:
   - shape/law
   - kind/law
   - status/draft
-  - flag/conflict
 inputs: {e_osw: oswald-efficiency, ar: aspect-ratio, cd0: zero-lift-drag-coefficient}
 outputs: {e_max_probe: max-lift-to-drag-probe}
 ---
@@ -50,8 +49,9 @@ Identical in all three. Both Anderson and Scholz also give the companion result 
 
 One user-visible number, two different laws behind it. mission_kpi_service reports the empirical max(C_L/C_D) taken from the AeroBuildup sweep when the polar fit produced an ld_max, and the parabolic closed form otherwise. These agree only if the real polar is parabolic. The formula string rendered next to the KPI is unconditionally the closed form, so in the common case the displayed derivation does not describe the displayed value.
 
-> Two or more implementations use **genuinely different laws** for this quantity.
-> This is the entry that must be decided, not merely read.
+> **Decided** (ADR 0026, 2026-10-02; confirmed by the maintainer 2026-10-24): the authority for E_max is
+> `W/D(V_md)` from [[minimum-drag-speed-from-polar]]; this closed form is its **Probe** only. The app's
+> mixing of the two in `mission_kpi_service` is an Ist deviation against the canon, not an open conflict.
 
 ## Implementations (1)
 
