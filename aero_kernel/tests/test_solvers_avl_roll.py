@@ -235,8 +235,9 @@ async def test_a_discontinuous_hinge_of_a_driven_device_is_unsupported(fake: Pat
         "rel_chord_root": 0.70,
         "rel_chord_tip": 0.80,
     }
+    airplane = AirplaneGeometry.model_validate(document)
     with pytest.raises(FormulaError) as raised:
-        await roll(AirplaneGeometry.model_validate(document))
+        await roll(airplane)
     assert raised.value.code == "hinge_line_discontinuous"
 
 

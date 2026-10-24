@@ -107,6 +107,8 @@ CL_TOLERANCE = 1e-4
 AVL_MAX_RUN_S = 120.0
 # AVL 3.40 prints the first on an overflow of its vortex arrays; on a mesh so fine that the influence
 # matrix no longer fits LAPACK's integers it exits 0 with the second (BRYAN at 20/96).
+# the log line of a run whose output was not understood
+_FAILED_RUN_LOG = "%s; stdout tail: %s"
 _OVERFLOW = (
     "Vortex array overflow",
     "Strip array overflow",
@@ -331,7 +333,7 @@ class AvlAdapter(SolverAdapter):
             )
         if run.returncode != 0:
             msg = f"the vortex lattice run did not complete (exit {run.returncode})"
-            logger.error("%s; stdout tail: %s", msg, run.stdout[-500:])
+            logger.error(_FAILED_RUN_LOG, msg, run.stdout[-500:])
             raise RuntimeError(msg)
         return run.stdout
 
@@ -361,7 +363,7 @@ class AvlAdapter(SolverAdapter):
         output = parse_avl_output(stdout)
         if output is None:
             msg = "the vortex lattice run did not complete (no neutral point in the output)"
-            logger.error("%s; stdout tail: %s", msg, stdout[-500:])
+            logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])
             raise RuntimeError(msg)
         if abs(output.cl - cl) > CL_TOLERANCE:
             msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
@@ -404,7 +406,7 @@ class AvlAdapter(SolverAdapter):
         output = parse_roll_output(stdout)
         if output is None:
             msg = "the vortex lattice run did not complete (no steady roll in the output)"
-            logger.error("%s; stdout tail: %s", msg, stdout[-500:])
+            logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])
             raise RuntimeError(msg)
         if abs(output.cl - cl) > CL_TOLERANCE:
             msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"

@@ -75,8 +75,11 @@ def codes(quantity: QuantityResult, world: str | None = None) -> list[str]:
 @pytest.mark.parametrize("member", list(FleetMember))
 async def test_roll_rate_goldens_per_world(member: FleetMember) -> None:
     p, p_hat = (await run(member)).quantities
-    assert (p.slug, p_hat.slug) == SLUGS
-    assert (p.unit, p_hat.unit, p.tool) == ("deg/s", "1", "OPT")
+    assert p.slug == SLUGS[0]
+    assert p_hat.slug == SLUGS[1]
+    assert p.unit == "deg/s"
+    assert p_hat.unit == "1"
+    assert p.tool == "OPT"
     for quantity, golden, rel, absolute in (
         (p, GOLDEN_P[member], 1e-4, None),
         (p_hat, GOLDEN_P_HAT[member], None, 1e-4),

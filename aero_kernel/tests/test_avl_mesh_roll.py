@@ -263,7 +263,8 @@ def test_a_roll_device_off_the_main_wing_is_unsupported() -> None:
         "symmetric": True,
         "x_secs": tail,
     }
+    airplane = AirplaneGeometry.model_validate(document)
     with pytest.raises(FormulaError) as raised:
-        mesh_surfaces(AirplaneGeometry.model_validate(document), 12, lambda _a: 0, drive_roll=True)
+        mesh_surfaces(airplane, 12, lambda _a: 0, drive_roll=True)
     assert raised.value.code == "unsupported_layout"
     assert raised.value.detail["wing"] == "Tail"

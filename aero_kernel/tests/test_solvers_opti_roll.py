@@ -139,8 +139,9 @@ async def test_deflected_geometry_state_still_refused(
         if field == "device"
         else wing_geometry((0.0, 0.2, 0.4), 1, surface_deflection=2.0)
     )
+    adapter = OptiAdapter(InProcessRuntime())
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).steady_roll(plane, MASS, GRAVITY, AIR, SPEED, 20.0)
+        await adapter.steady_roll(plane, MASS, GRAVITY, AIR, SPEED, 20.0)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
     assert called == []
 
@@ -150,8 +151,9 @@ async def test_roll_device_on_unmirrored_surface_is_unsupported(
 ) -> None:
     monkeypatch.setattr(opti_module, "steady_roll_worker", canned(solution()))
     plane = wing_geometry((0.0, 0.2, 0.4), 1, symmetric=False)
+    adapter = OptiAdapter(InProcessRuntime())
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).steady_roll(plane, MASS, GRAVITY, AIR, SPEED, 20.0)
+        await adapter.steady_roll(plane, MASS, GRAVITY, AIR, SPEED, 20.0)
     assert raised.value.code == "roll_device_on_unmirrored_surface"
 
 
@@ -170,10 +172,10 @@ async def test_an_inadmissible_input_is_invalid_input(
     monkeypatch: pytest.MonkeyPatch, mass: float, gravity: float, speed: float, delta: float
 ) -> None:
     monkeypatch.setattr(opti_module, "steady_roll_worker", canned(solution()))
+    adapter = OptiAdapter(InProcessRuntime())
+    airplane = rolling_airplane()
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).steady_roll(
-            rolling_airplane(), mass, gravity, AIR, speed, delta
-        )
+        await adapter.steady_roll(airplane, mass, gravity, AIR, speed, delta)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 

@@ -151,9 +151,11 @@ async def test_jaguar_at_forty_degrees_fails_loudly_and_never_returns_a_value() 
     is a secant, the problem stays infeasible): the answer is a declared not_converged error, never a
     value, and the roll-rate quantity becomes an error with the other world's value in the detail."""
     airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.JAGUAR))
+    air = sea_level()
     async with SolverRuntime(max_workers=1) as runtime:
+        adapter = OptiAdapter(runtime)
         with pytest.raises(FormulaError) as raised:
-            await OptiAdapter(runtime).steady_roll(
-                airplane, FleetMember.JAGUAR.mass_kg, 9.80665, sea_level(), 8.188976805083124, 40.0
+            await adapter.steady_roll(
+                airplane, FleetMember.JAGUAR.mass_kg, 9.80665, air, 8.188976805083124, 40.0
             )
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
