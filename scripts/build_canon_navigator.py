@@ -140,6 +140,60 @@ MODEL_PATH = REPO / "aero_kernel/canon/canon_model.json"
 KERNEL_FORMULAS = REPO / "aero_kernel/formulas"
 
 
+def _clip(text: str, limit: int = 700) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "\u2026"
+
+
+def entry_issues(text: str) -> list:
+    """The open issues an entry declares itself, read from its markers (never typed in by hand).
+
+    - a broken assumption in the code: the "> 🔴 **...**" callout and its blockquote;
+    - a conflict: the "flag/conflict" tag and its "## ⚠️ Conflict" section;
+    - a missing or partial source: source_status NO_SOURCE_FOUND / PARTIAL and the Source paragraph;
+    - an approximation standing where a law belongs: shape approximation;
+    - a dimensional check that cannot be run: dimensional_check UNPARSEABLE.
+    """
+    front, body = text.split("---", 2)[1], text.split("---", 2)[2]
+    issues = []
+    for m in re.finditer(r"^> 🔴 \*\*(.+?)\*\*\s*\n((?:>.*\n?)+)", body, re.M):
+        quote = "\n".join(line[1:].strip() for line in m.group(2).splitlines())
+        issues.append({"kind": "broken", "title": m.group(1).strip(), "text": _clip(quote)})
+    if "flag/conflict" in front:
+        m = re.search(r"^## ⚠️ Conflict\s*\n(.*?)(?=^## |\Z)", body, re.S | re.M)
+        issues.append(
+            {
+                "kind": "conflict",
+                "title": "Two producers disagree (flag/conflict).",
+                "text": _clip(m.group(1)) if m else "",
+            }
+        )
+    status = _front(text, "source_status")
+    if status in ("NO_SOURCE_FOUND", "PARTIAL"):
+        m = re.search(r"^\*\*Source\.\*\*(.*?)(?=\n\n\*\*|\n## |\Z)", body, re.S | re.M)
+        title = (
+            "No published source found." if status == "NO_SOURCE_FOUND" else "Only partly sourced."
+        )
+        issues.append({"kind": "source", "title": title, "text": _clip(m.group(1)) if m else ""})
+    if _front(text, "shape") == "approximation":
+        issues.append(
+            {
+                "kind": "approximation",
+                "title": "An approximation stands where a law belongs.",
+                "text": "A rule of thumb in place of a law: it may be right to show, but it is never approved as the law for this quantity.",
+            }
+        )
+    if _front(text, "dimensional_check") == "UNPARSEABLE":
+        issues.append(
+            {
+                "kind": "dimensions",
+                "title": "The dimensional check cannot be run.",
+                "text": "The canonical form is not machine-checkable as written, so its units are unverified.",
+            }
+        )
+    return issues
+
+
 def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> None:
     """Quantity type and formula worlds, which the navigator shows."""
     for slug, q in quantities.items():
@@ -169,6 +223,7 @@ def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> No
     for slug, f in formulas.items():
         t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
         f["worlds"] = [w.strip() for w in _front(t, "worlds").strip("[]").split(",") if w.strip()]
+        f["issues"] = entry_issues(t)
         tags = re.findall(r"^\s+-\s+(\S+)\s*$", t.split("---", 2)[1], re.M)
         f["direction"] = "design" if "direction/design" in tags else "analysis"
 
