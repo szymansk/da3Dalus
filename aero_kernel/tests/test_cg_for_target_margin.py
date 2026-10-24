@@ -2,6 +2,7 @@
 
 import pytest
 from aero_kernel.build import shipped_build
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.cg_for_target_margin import cg_for_target_margin
 from aero_kernel.schema import QuantityStatus, WarningSeverity
 from aero_kernel.tests.formula_builders import (
@@ -10,6 +11,7 @@ from aero_kernel.tests.formula_builders import (
     context_with,
     inputs_from_model,
 )
+from aero_kernel.tests.np_builders import StubAvl
 from aero_kernel.tests.test_neutral_point import (
     C_MAC,
     X_NP_AVL,
@@ -77,3 +79,16 @@ async def test_the_missing_fuselage_is_inherited_in_every_world() -> None:
         "neutral-point=textbook",
     ]
     assert all(w.severity is WarningSeverity.DEFECT for w in fuselage)
+
+
+async def test_a_failing_avl_world_is_an_error_with_the_worlds_that_computed() -> None:
+    """Pins the existing merge behaviour (ARCH 8.13) for this formula; it passes without new code."""
+    avl = StubAvl(X_NP_AVL)
+    avl.failure = FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "avl failed", "retry")
+    quantity = only((await run("cg-for-target-margin", target=SM_TARGET, avl=avl))[0])
+    assert quantity.status is QuantityStatus.ERROR
+    assert quantity.interval is None
+    assert quantity.error is not None
+    worlds_ok = quantity.error.detail["worlds_ok"]
+    assert isinstance(worlds_ok, dict)
+    assert set(worlds_ok) == {"neutral-point=textbook", "neutral-point=pappas"}

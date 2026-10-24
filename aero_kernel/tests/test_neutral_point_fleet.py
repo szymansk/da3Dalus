@@ -12,13 +12,14 @@ The CG of BRYAN is the plan value (136.8 mm, 31.4 % MAC). JAGUAR's is the mainta
 
 import pytest
 from aero_kernel import compute
+from aero_kernel.formulas.cg_for_target_margin import cg_for_target_margin
 from aero_kernel.geometry import AirplaneGeometry, InlineAirfoil
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 from aero_kernel.solvers.avl import AIRFOIL_POINTS_PER_SIDE, AvlAdapter, contour_worker
 from aero_kernel.tests.engine_builders import request
-from aero_kernel.tests.formula_builders import close
+from aero_kernel.tests.formula_builders import StubAtmosphere, close, context_with
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 pytestmark = [pytest.mark.aero]
@@ -49,6 +50,7 @@ C_MAC = {FleetMember.BRYAN: 0.13277219166316895, FleetMember.JAGUAR: 0.105045465
 # scripts/sim_export/crrcsim/avl_kernel_reference.py, AVL_CONVERGENCE.md "Kernel conditions".
 BRYAN_CL_MD = 0.6240228
 BRYAN_TEMPLATE_X_NP = 0.144023
+SM_TARGET = 0.10
 ABS_M = 1e-4  # the regression tolerance of the AVL world
 
 
@@ -193,24 +195,35 @@ async def test_a_ventral_fin_gives_the_same_neutral_point() -> None:
 
 @pytest.mark.parametrize("member", list(FleetMember))
 @pytest.mark.asyncio
-async def test_cg_for_target_margin_returns_the_plan_cg_per_world(member: FleetMember) -> None:
-    """Round trip: with SM_target = the margin each world computes for the plan CG, the CG that gives
-    that margin is the plan CG again, per world (x_NP - SM c_MAC with SM = (x_NP - CG) / c_MAC)."""
-    margin = (await run(member)).quantities[1]
+async def test_cg_for_target_margin_is_the_neutral_point_less_the_target_per_world(
+    member: FleetMember,
+) -> None:
+    """One compute: x_CG,SM = x_NP - SM_target c_MAC per world, and its margin is the target."""
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": reference_document(member),
+            "values": {
+                "aircraft-mass": member.mass_kg,
+                "altitude": 0.0,
+                "centre-of-gravity": CG[member],
+                "static-margin-target": SM_TARGET,
+            },
+        }
+    )
+    result = await compute(
+        aircraft, request("neutral-point", "static-margin", "cg-for-target-margin")
+    )
+    assert all(q.status is QuantityStatus.OK for q in result.quantities), result
+    neutral, margin, target_cg = result.quantities
+    assert neutral.interval is not None
     assert margin.interval is not None
-    for world, sm in margin.interval.worlds.items():
-        aircraft = AircraftInput.model_validate(
-            {
-                "airplane": reference_document(member),
-                "values": {
-                    "aircraft-mass": member.mass_kg,
-                    "altitude": 0.0,
-                    "static-margin-target": sm,
-                },
-            }
-        )
-        result = await compute(aircraft, request("cg-for-target-margin"))
-        (quantity,) = result.quantities
-        assert quantity.status is QuantityStatus.OK, quantity
-        assert quantity.interval is not None
-        assert abs(quantity.interval.worlds[world] - CG[member]) < 1e-9, (member, world)
+    assert target_cg.interval is not None
+    assert set(target_cg.interval.worlds) == set(neutral.interval.worlds)
+    for world, x_np in neutral.interval.worlds.items():
+        x_cg_sm = target_cg.interval.worlds[world]
+        assert abs(x_cg_sm - (x_np - SM_TARGET * C_MAC[member])) < 1e-9, (member, world)
+        assert abs((x_np - x_cg_sm) / C_MAC[member] - SM_TARGET) < 1e-9, (member, world)
+        # Round trip: the target is the margin this world computes for the plan CG
+        x = {"x_np": x_np, "sm_target": margin.interval.worlds[world], "c_mac": C_MAC[member]}
+        back = await cg_for_target_margin(x, context_with(StubAtmosphere({})))
+        assert abs(back["x_cg_sm"] - CG[member]) < 1e-9, (member, world)
