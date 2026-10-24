@@ -487,6 +487,21 @@ modules are drawn by the navigator in their own column; the navigator reads name
 and properties from the model and holds none of them (maintainer, 2026-10-24: the navigator is generated
 from the canon alone).
 
+**Decisions behind the values** (carried over from the former per-tag paragraphs). The disciplines name
+the question a derived quantity answers (maintainer, 2026-10-24). The stages name a quantity's role in the
+calculation chain (maintainer, 2026-10-24); the `aero-model` stage is subdivided into groups (maintainer,
+2026-10-24). The points name the operating point or configuration a final result belongs to (maintainer,
+2026-10-24). A `references` quantity carries the `module/<name>` of the cross-cutting module it derives
+from and one `group/<name>`; the powertrain is motor, battery and propeller, and `battery-voltage`
+belongs to motor and propeller, the only place it is used. A module thus holds its inputs and the
+references derived from them. The navigator draws `references` as its own column right of the
+cross-cutting inputs — intermediate values, kept apart from the input column (maintainer, 2026-10-24).
+The modules `construction`, `mass-and-balance` and `atmosphere` are **cross-cutting**: nearly every
+formula depends on them (maintainer, 2026-10-24); the navigator draws them upright in a column on the
+far left, below the top row of layer-0 modules (an XY split), and shows their edges only on selection.
+The module `conventions` holds defined values: measurement conventions with a default in
+`defaults.yaml`, neither a target nor a physical input, e.g. `stall-break-fraction`, `tail-efficiency`.
+
 **Tools and worlds.** `taxonomy.yaml` names every tool code a formula's `tool` field may hold and maps
 every method world of a formula's `worlds` field to the tool that computes it (`aerobuildup` → `OPT`,
 `avl` → `AVL`, `textbook` and `pappas` → `APP`), so that the result of a world can be tied to the
