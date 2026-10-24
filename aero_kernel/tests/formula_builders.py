@@ -23,6 +23,7 @@ IMPLEMENTED = {
     "calc:airplane-geometry",
     "calc:airplane-configuration",
     "calc:stall-speed",
+    "calc:stall-break",
     "calc:minimum-drag-speed-from-polar",
     "calc:neutral-point",
     "calc:static-margin",

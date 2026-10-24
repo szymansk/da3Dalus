@@ -23,4 +23,4 @@ level). With the speed it forms the Mach number `Ma = V/a`.
 
 **Produced by.** [[air-density-isa]]
 
-**Used by.** [[aerobuildup-evaluation]] · [[mass-envelope]] · [[minimum-drag-speed-from-polar]] · [[roll-rate]] · [[stall-speed]]
+**Used by.** [[aerobuildup-evaluation]] · [[mass-envelope]] · [[minimum-drag-speed-from-polar]] · [[roll-rate]] · [[stall-break]] · [[stall-speed]]

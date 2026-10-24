@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:80a43bff663ea2d47d77b085d3c8874f513e5a8c5926140f4b55045f884e6bec",
+  "content_hash": "sha256:f16d1d931276ae4e90498ccba93b4bffaf9fbf5882dee353bdf41641e6cd9346",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -2504,10 +2504,15 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
+                "airplane": "calc:airplane",
                 "alpha_s": "calc:angle-of-attack-stall",
                 "cl_max": "calc:max-lift-coefficient",
                 "f": "calc:stall-break-fraction",
-                "polar_s": "calc:polar-stall"
+                "mu": "calc:dynamic-viscosity",
+                "polar_s": "calc:polar-stall",
+                "rho": "calc:air-density",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -2518,14 +2523,19 @@
               "when": null
             }
           ],
-          "cost": "instant",
+          "cost": "seconds",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
+            "airplane": "calc:airplane",
             "alpha_s": "calc:angle-of-attack-stall",
             "cl_max": "calc:max-lift-coefficient",
             "f": "calc:stall-break-fraction",
-            "polar_s": "calc:polar-stall"
+            "mu": "calc:dynamic-viscosity",
+            "polar_s": "calc:polar-stall",
+            "rho": "calc:air-density",
+            "v_s": "calc:stall-speed"
           },
           "kind": "procedure",
           "optional": [],
@@ -2535,7 +2545,7 @@
           },
           "postconditions": [],
           "preconditions": [],
-          "tool": "APP",
+          "tool": "OPT",
           "uncertainty": null,
           "variables": [],
           "worlds": []

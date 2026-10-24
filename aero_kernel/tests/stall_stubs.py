@@ -1,6 +1,7 @@
 """A stub OPT adapter that answers the stall problem from a closed-form lift curve."""
 
 import math
+from collections.abc import Callable, Sequence
 
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import main_wing_properties
@@ -25,7 +26,11 @@ INVERTED_TROUGH = (-10.0, -0.70)
 
 def lift_curve(peak: tuple[float, float], upright: bool) -> Polar:
     """A sweep -15..25 deg with a first extremum at ``peak`` and a second branch behind it."""
-    alphas = [-15.0 + k * STEP for k in range(161)]
+    return lift_curve_at(peak, upright, [-15.0 + k * STEP for k in range(161)])
+
+
+def lift_curve_at(peak: tuple[float, float], upright: bool, alphas: Sequence[float]) -> Polar:
+    """The stub's lift curve sampled at ``alphas``: linear up to ``peak``, 0.2 per degree down."""
     at, top = peak
 
     def cl(alpha: float) -> float:
@@ -78,6 +83,8 @@ class StubOpti(OptiAdapter):
         self.answer = answer
         self.glide_answer: BestGlideSolution | None = None
         self.glide_calls: list[tuple[AirplaneGeometry, float, float, float, AirState]] = []
+        self.sweep_answer: Callable[[Sequence[float]], Polar] | None = None
+        self.sweep_calls: list[tuple[AirplaneGeometry, AirState, float, tuple[float, ...]]] = []
         self.roll_rad_s = 3.0  # |p| of the stub's steady roll, signed by the command
         self.roll_failure: Exception | None = None
         self.roll_calls: list[tuple[AirplaneGeometry, float, float, AirState, float, float]] = []
@@ -124,6 +131,15 @@ class StubOpti(OptiAdapter):
             raise
         solution = self.glide_answer or consistent_glide(airplane, mass_kg, gravity, n_load, air)
         return BestGlide(solution=solution, warnings=())
+
+    async def sweep(
+        self, airplane: AirplaneGeometry, air: AirState, v_ms: float, alphas_deg: Sequence[float]
+    ) -> Polar:
+        """Answer an alpha sweep without a solver: the stub's own lift curve, or ``sweep_answer``."""
+        self.sweep_calls.append((airplane, air, v_ms, tuple(alphas_deg)))
+        if self.sweep_answer is not None:
+            return self.sweep_answer(alphas_deg)
+        return lift_curve_at(UPRIGHT_PEAK, True, alphas_deg)
 
     async def steady_roll(
         self,

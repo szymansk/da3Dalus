@@ -11,7 +11,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.graph import CanonGraph
 from aero_kernel.registry import Registry
 from aero_kernel.runtime import SolverRuntime
-from aero_kernel.schema import AircraftInput, ComputeRequest
+from aero_kernel.schema import AircraftInput, ComputeRequest, Polar
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
@@ -115,6 +115,7 @@ def fixture_model() -> CanonModel:
         "two-na-q": quantity("output"),
         "twice-na-q": quantity("output"),
         "polar-q": quantity("derived", type="polar"),
+        "pair-q": quantity("input", type="curve_pair"),
         "polar-scalar-q": quantity("output"),
         "polar-read-q": quantity("output"),
         "na-when-q": quantity("output"),
@@ -216,9 +217,9 @@ def fixture_model() -> CanonModel:
             {"r": "two-givens-q"},
             given=["calc:target-t", "calc:target-u"],
         ),
-        "two-uncarried": formula({"c": "curve-q", "p": "polar-q"}, {"r": "two-uncarried-q"}),
+        "two-uncarried": formula({"c": "curve-q", "k": "components"}, {"r": "two-uncarried-q"}),
         "three-uncarried": formula(
-            {"c": "curve-q", "p": "polar-q", "k": "components"}, {"r": "three-uncarried-q"}
+            {"c": "curve-q", "k": "components", "q": "pair-q"}, {"r": "three-uncarried-q"}
         ),
         "density-user": formula({"rho": "air-density"}, {"r": "density-q"}),
         "margin-user": formula({"k": "margin-target"}, {"r": "margin-q"}),
@@ -338,12 +339,16 @@ async def _pair(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"a": 1.0, "b": 2.0}
 
 
+# A real polar: the engine type-checks a polar output (stall-break is the first reader).
+A_POLAR = Polar(alpha_deg=(0.0, 1.0), cl=(0.1, 0.2), cd=(0.01, 0.01), cm=(0.0, 0.0))
+
+
 async def _one(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"r": 1.0}
 
 
 async def _polar_twin(x: Inputs, ctx: Context) -> Mapping[str, object]:
-    return {"pol": "not a value v1 carries", "s": 5.0}
+    return {"pol": A_POLAR, "s": 5.0}
 
 
 async def _unexposed(x: Inputs, ctx: Context) -> Mapping[str, object]:

@@ -1556,7 +1556,7 @@ model (part of `IMPORT_REPORT.md`).
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
 | `spiral-parameter` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
-| `stall-break` | procedure | APP | law | 4 → 2 | 1 | – | – | instant | later |
+| `stall-break` | procedure | OPT | law | 7 → 2 | 1 | – | – | seconds | later |
 | `stall-speed` | optimization | OPT | law | 5 → 4 | 4 | yes | – | seconds | core chain |
 | `stall-wing-loading-limit` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `static-margin-probe` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain |

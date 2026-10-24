@@ -14,6 +14,7 @@ import math
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import Any, ClassVar, cast
 
 import numpy as np
@@ -52,9 +53,11 @@ __all__ = [
     "StallRequest",
     "StallSolution",
     "SteadyRoll",
+    "SweepRequest",
     "best_glide_worker",
     "stall_worker",
     "steady_roll_worker",
+    "sweep_worker",
 ]
 
 # The sweep range of the canon: "the default sweep starts at -15 deg" (stall-speed.md, inverted
@@ -120,6 +123,24 @@ class StallSolution(BaseModel):
     cl_max: float
     alpha_s: float
     polar: Polar
+
+
+class SweepRequest(BaseModel):
+    """What the worker needs for one alpha sweep; plain data, picklable.
+
+    Attributes:
+        airplane: The geometry as evaluated (devices as configured).
+        air: The air state.
+        v_ms: True airspeed in m/s, > 0.
+        alphas_deg: Angles of attack in degrees, strictly rising.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    air: AirState
+    v_ms: float
+    alphas_deg: tuple[float, ...]
 
 
 class BestGlideSolution(BaseModel):
@@ -481,6 +502,27 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
         ),
     )
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
+
+
+def sweep_worker(request: SweepRequest) -> WorkerOutcome[Polar]:
+    """Run AeroBuildup over the angles of one request in the pool worker (canon ``stall-break``).
+
+    Args:
+        request: The airplane, air state, speed and angles.
+
+    Returns:
+        The polar at that speed, with the worker's diagnostics.
+    """
+    started = time.perf_counter()
+    polar = sweep_polar(
+        to_asb_airplane(request.airplane),
+        request.air,
+        request.v_ms,
+        request.alphas_deg,
+        NEURALFOIL_MODEL_SIZE,
+    )
+    diagnostics = WorkerDiagnostics(duration_s=time.perf_counter() - started)
+    return WorkerOutcome(value=polar, diagnostics=diagnostics)
 
 
 # The first guess of the best-glide solve: V_md lies above the stall speed (1.48 times it for the
@@ -944,6 +986,46 @@ class OptiAdapter(SolverAdapter):
         )
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
+
+    async def sweep(
+        self,
+        airplane: AirplaneGeometry,
+        air: AirState,
+        v_ms: float,
+        alphas_deg: Sequence[float],
+    ) -> Polar:
+        """Run AeroBuildup over the given angles of attack at a fixed speed.
+
+        Args:
+            airplane: The geometry with its devices as they are to be evaluated.
+            air: The air state.
+            v_ms: True airspeed in m/s, > 0.
+            alphas_deg: Angles of attack in degrees, finite and strictly rising.
+
+        Returns:
+            The polar at that speed (the solver's own values).
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for an
+                inadmissible speed or angle series; ``unsupported_configuration`` for a deflected
+                control surface.
+        """
+        self.require_available()
+        refuse_deflected_devices(airplane, "AeroBuildup")
+        if not _admissible(v_ms, positive=True):
+            raise _invalid(f"V = {v_ms} is not admissible", "give a finite speed above 0", "v_s")
+        angles = tuple(alphas_deg)
+        rising = all(b > a for a, b in pairwise(angles))
+        if not angles or not rising or not all(math.isfinite(a) for a in angles):
+            raise _invalid(
+                "the angles of attack must be finite and strictly rising",
+                "give at least one angle, rising",
+                "alphas_deg",
+            )
+        request = SweepRequest(airplane=airplane, air=air, v_ms=v_ms, alphas_deg=angles)
+        polar = await self.runtime.run_cpu(sweep_worker, request)
+        logger.debug("sweep of %d angles at %.4f m/s", len(angles), v_ms)
+        return polar
 
     async def steady_roll(
         self,

@@ -66,6 +66,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "avl_mesh_not_converged": WarningSeverity.DEFECT,
     "avl_roll_rate_beyond_range": WarningSeverity.DEFECT,
     "avl_refinement_unchecked": WarningSeverity.DEFECT,
+    "stall_break_resolution": WarningSeverity.DEFECT,
     "precondition_unchecked": WarningSeverity.PRACTICE,
     "precondition_violated": WarningSeverity.DEFECT,
     "postcondition_unchecked": WarningSeverity.PRACTICE,
