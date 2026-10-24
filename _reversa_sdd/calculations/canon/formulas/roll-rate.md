@@ -84,3 +84,23 @@ evaluated at V = V_app;   p_hat = p * b_ref / (2 * V_app)
 [[roll-rate-cruise-target]] and exists only when a cruise-speed target is given. New output
 `p_hat_max = p·b/2V` — nearly independent of speed, the RC character statement without a reference
 speed.
+
+## Implementations (1)
+
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/roll_rate.py` | EXACT | 🟢 | both worlds as written; declares `hinge_line_averaged` (AeroBuildup) and a deflection beyond the reference range; the interval over the worlds is formed by the engine (A11) |
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

@@ -43,3 +43,21 @@ subject to:               L(V, alpha) = n_lim * m * g
 **It is only as good as `n_lim`.** The limit load factor is a user input (default 3); real models carry far more (measured 6–19 g, see the spar sizing). The statement reads: "above V_A, a full pull exceeds the load the user declared".
 
 **Source.** 🟢 FAR 23.335(c) for the definition; the lift balance as in [[stall-speed]] (Sadraey Eq. 4.30).
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

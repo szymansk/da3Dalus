@@ -70,6 +70,10 @@ So the field length, the sizing chart and the mission KPI axes are computed with
 the aircraft only has while standing still, while the correct curve sits one module away.
 ADR 0022: one authority per user-facing quantity.
 
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
@@ -78,3 +82,5 @@ ADR 0022: one authority per user-facing quantity.
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

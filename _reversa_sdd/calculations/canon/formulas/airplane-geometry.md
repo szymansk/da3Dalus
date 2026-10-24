@@ -49,3 +49,19 @@ panels and differ by up to about 2 % at 8° dihedral.
 **Why this entry exists.** These quantities used to stand as free inputs. They are not: a
 change to the wing changes all of them, and the graph has to say so, or invalidation (A1)
 would leave every number computed from them standing after a geometry edit.
+
+## Implementations (1)
+
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/airplane_geometry.py` | EXACT | 🟢 | the reference planform carried to the centreline is declared (`reference_wing_at_centreline`, ADR 0020); the integration is `aero_kernel/geometry_properties.py` |
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.
