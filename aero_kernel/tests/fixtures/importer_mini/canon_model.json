@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:9c5d294e2efb981eb18431945928df6685c766c38fe971aa60654b01c137ca39",
+  "content_hash": "sha256:45bc524bbe64798ecc7a92976d73baa70d4d55ad8beb17f36eaa55dbdfa68272",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -29,6 +29,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -66,6 +67,7 @@
             }
           ],
           "cost": "minutes",
+          "direction": null,
           "embeds": [
             "calc:weigh-twice.default"
           ],
@@ -110,6 +112,7 @@
             }
           ],
           "cost": "instant",
+          "direction": null,
           "embeds": [
             "calc:weight-from-mass.default",
             "calc:weighing.clean"
@@ -169,6 +172,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -212,6 +216,7 @@
             }
           ],
           "cost": "instant",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -247,85 +252,197 @@
       },
       "quantities": {
         "aircraft-mass": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "m",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "airplane": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "airplane",
           "type": "airplane",
           "uncertainty": null,
           "unit": "1"
         },
         "gravity": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "g",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s^2"
         },
         "ratio": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "r",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "weight": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         },
         "weight-estimate": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_e",
           "type": "scalar",
           "uncertainty": "interval",
           "unit": "N"
         },
         "weight-flapped": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_f",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         },
         "weight-outer": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_o",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         },
         "weight-twice": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_2",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         },
         "weight-weighed": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_w",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         }
+      },
+      "taxonomy": {
+        "directions": [],
+        "disciplines": [],
+        "groups": [],
+        "modules": [],
+        "points": [],
+        "stages": [],
+        "tools": [
+          {
+            "id": "APP",
+            "name": "App"
+          },
+          {
+            "id": "AB",
+            "name": "AeroBuildup"
+          },
+          {
+            "id": "AVL",
+            "name": "AVL"
+          },
+          {
+            "id": "OPT",
+            "name": "Optimisation"
+          },
+          {
+            "id": "ATM",
+            "name": "Atmosphere"
+          },
+          {
+            "id": "GEO",
+            "name": "Geometry"
+          },
+          {
+            "id": "KAT",
+            "name": "Catalogue"
+          },
+          {
+            "id": "APC",
+            "name": "Propeller tables"
+          }
+        ],
+        "worlds": [
+          {
+            "id": "simple",
+            "tool": "APP"
+          },
+          {
+            "id": "detailed",
+            "tool": "AVL"
+          }
+        ]
       }
     }
   },

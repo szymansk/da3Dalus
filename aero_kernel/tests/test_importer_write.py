@@ -172,10 +172,9 @@ def test_a_non_ascii_symbol_is_written_raw(tmp_path: Path) -> None:
 def test_the_report_carries_no_date(tmp_path: Path) -> None:
     out = tmp_path / "out"
     import_to(write_canon(tmp_path), out)
-    assert (
-        re.search(r"\d{4}-\d{2}-\d{2}|\d{2}:\d{2}", (out / REPORT).read_text(encoding="utf-8"))
-        is None
-    )
+    # A time of day, not the digits after the "sha256:" of the content hash.
+    pattern = r"\d{4}-\d{2}-\d{2}|(?<![0-9a-z])\d{2}:\d{2}"
+    assert re.search(pattern, (out / REPORT).read_text(encoding="utf-8")) is None
 
 
 # --- where and how the files are written (S17, S18) ----------------------------------------------

@@ -8,6 +8,7 @@ they are canon-model types, not input types.
 from collections.abc import Iterator, Mapping
 from typing import Annotated, Literal, NamedTuple, Self, TypedDict
 
+from aero_kernel.canon.taxonomy import NonBlank, Slug, Taxonomy, Tool
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import (
     DEFAULT_NAMESPACE,
@@ -51,9 +52,6 @@ __all__ = [
     "WhenTerm",
     "compute_content_hash",
 ]
-
-# Text the canon must state (a symbol, a source, a regime): at least one non-blank character.
-NonBlank = Annotated[str, StringConstraints(min_length=1, pattern=r"\S")]
 
 # Numbers in the model are finite (a model with NaN would not survive its JSON form).
 FiniteNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
@@ -140,6 +138,12 @@ class Quantity(BaseModel):
         uncertainty: ``interval`` where the producer declares method worlds.
         positive: ``True`` where the quantity is strictly greater than zero by its definition,
             otherwise omitted (``None``); ``false`` is no spelling of the canon.
+        module: The taxonomy module of an input, target or reference; ``None`` where the quantity has none.
+        point: The taxonomy operating point of a final result.
+        stage: The taxonomy stage of an intermediate quantity.
+        group: The taxonomy group of a quantity inside its stage.
+        discipline: The taxonomy discipline of a derived quantity.
+        checks: The slug of the quantity this one verifies (a probe); ``None`` for any other.
     """
 
     model_config = _MODEL_CONFIG
@@ -150,6 +154,12 @@ class Quantity(BaseModel):
     type: QuantityType
     uncertainty: Literal["interval"] | None = None
     positive: Literal[True] | None = None
+    module: Slug | None = None
+    point: Slug | None = None
+    stage: Slug | None = None
+    group: Slug | None = None
+    discipline: Slug | None = None
+    checks: Slug | None = None
 
     @field_validator("positive", mode="before")
     @classmethod
@@ -177,7 +187,6 @@ class Quantity(BaseModel):
 # --- formulas -------------------------------------------------------------------------------
 
 FormulaKind = Literal["law", "procedure", "optimization", "fit", "rating"]
-Tool = Literal["APP", "ATM", "GEO", "AB", "AVL", "OPT", "KAT", "APC"]
 CostClass = Literal["instant", "seconds", "minutes"]
 WhenTerm = Literal[
     "has_aileron",
@@ -329,6 +338,7 @@ class Formula(BaseModel):
         embeds: Directly embedded applications, ``<ns>:<slug>.<application-id>``.
         variables: Quantities the embedder solves for or sweeps itself, exactly with ``embeds``.
         embeds_closure: Sorted, unique embeds reachable through ``embeds``, direct ones included.
+        direction: The taxonomy direction (analysis or design); ``None`` only if the taxonomy has none.
     """
 
     model_config = _MODEL_CONFIG
@@ -347,6 +357,7 @@ class Formula(BaseModel):
     embeds: tuple[QualifiedApplication, ...] = ()
     variables: tuple[QualifiedSlug, ...] = ()
     embeds_closure: tuple[QualifiedApplication, ...] = ()
+    direction: Slug | None = None
 
     def application(self, application_id: str) -> Application:
         """Return the application with the given id.
@@ -457,6 +468,7 @@ class Namespace(BaseModel):
         quantities: The quantity vocabulary.
         formulas: The formulas.
         defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.
+        taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.
     """
 
     model_config = _MODEL_CONFIG
@@ -464,6 +476,7 @@ class Namespace(BaseModel):
     quantities: dict[SlugKey, Quantity]
     formulas: dict[SlugKey, Formula]
     defaults: dict[SlugKey, Default] = {}
+    taxonomy: Taxonomy = Taxonomy()
 
 
 def compute_content_hash(namespaces: Mapping[str, Namespace]) -> str:

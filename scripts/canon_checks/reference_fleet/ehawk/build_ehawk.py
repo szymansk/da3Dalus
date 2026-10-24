@@ -50,26 +50,61 @@ for x in wing["x_secs"]:
         x["control_surface"]["symmetric"] = ted["symmetric"]
 
 # pod stations from the STEP sections: x, width, height, z-centre  [mm]
-POD = [(-298, 1.4, 1.4, -19.2), (-290, 6.7, 6.6, -19.2), (-270, 17.6, 17.4, -19.2),
-       (-240, 28.7, 28.3, -19.2), (-200, 34.0, 33.5, -19.2), (-60, 34.0, 33.5, -19.2),
-       (0, 33.4, 34.0, -17.2), (40, 32.4, 27.0, -18.2), (80, 30.6, 24.5, -16.8),
-       (120, 28.1, 22.6, -15.8), (160, 24.6, 22.0, -15.4), (200, 19.7, 13.8, -18.7),
-       (240, 10.0, 10.0, -19.0), (680, 10.0, 10.0, -19.0)]
-fuselage = {"x_secs": [{"xyz": [x / 1000, 0.0, zc / 1000], "a": w / 2000, "b": h / 2000, "n": 2.0}
-                       for x, w, h, zc in POD]}
+POD = [
+    (-298, 1.4, 1.4, -19.2),
+    (-290, 6.7, 6.6, -19.2),
+    (-270, 17.6, 17.4, -19.2),
+    (-240, 28.7, 28.3, -19.2),
+    (-200, 34.0, 33.5, -19.2),
+    (-60, 34.0, 33.5, -19.2),
+    (0, 33.4, 34.0, -17.2),
+    (40, 32.4, 27.0, -18.2),
+    (80, 30.6, 24.5, -16.8),
+    (120, 28.1, 22.6, -15.8),
+    (160, 24.6, 22.0, -15.4),
+    (200, 19.7, 13.8, -18.7),
+    (240, 10.0, 10.0, -19.0),
+    (680, 10.0, 10.0, -19.0),
+]
+fuselage = {
+    "x_secs": [
+        {"xyz": [x / 1000, 0.0, zc / 1000], "a": w / 2000, "b": h / 2000, "n": 2.0}
+        for x, w, h, zc in POD
+    ]
+}
 
 ROOT, TIP = (0.6232, 0.0105, -0.0113, 0.087), (0.6446, 0.1940, 0.1306, 0.057)
 rudder = {"name": "ruddervator", "hinge_point": 0.65, "symmetric": False, "deflection": 0.0}
-vtail = {"symmetric": True, "x_secs": [
-    {"xyz_le": list(ROOT[:3]), "chord": ROOT[3], "twist": 0.0, "airfoil": "./platte_2mm.dat",
-     "control_surface": rudder,
-     "trailing_edge_device": {"name": "ruddervator", "role": "ruddervator", "rel_chord_root": 0.65,
-                              "rel_chord_tip": 0.63, "positive_deflection_deg": 28,
-                              "negative_deflection_deg": 28, "symmetric": False}},
-    {"xyz_le": list(TIP[:3]), "chord": TIP[3], "twist": 0.0, "airfoil": "./platte_2mm.dat"}]}
+vtail = {
+    "symmetric": True,
+    "x_secs": [
+        {
+            "xyz_le": list(ROOT[:3]),
+            "chord": ROOT[3],
+            "twist": 0.0,
+            "airfoil": "./platte_2mm.dat",
+            "control_surface": rudder,
+            "trailing_edge_device": {
+                "name": "ruddervator",
+                "role": "ruddervator",
+                "rel_chord_root": 0.65,
+                "rel_chord_tip": 0.63,
+                "positive_deflection_deg": 28,
+                "negative_deflection_deg": 28,
+                "symmetric": False,
+            },
+        },
+        {"xyz_le": list(TIP[:3]), "chord": TIP[3], "twist": 0.0, "airfoil": "./platte_2mm.dat"},
+    ],
+}
 
-out = {"name": "e-Hawk", "total_mass_kg": 0.280, "xyz_ref": [0.0564, 0.0, -0.015],
-       "wings": {"Tragflaeche": wing, "V-Leitwerk": vtail}, "fuselages": {"Rumpf": fuselage},
-       "herkunft": __doc__.strip().splitlines()[0]}
+out = {
+    "name": "e-Hawk",
+    "total_mass_kg": 0.280,
+    "xyz_ref": [0.0564, 0.0, -0.015],
+    "wings": {"Tragflaeche": wing, "V-Leitwerk": vtail},
+    "fuselages": {"Rumpf": fuselage},
+    "herkunft": __doc__.strip().splitlines()[0],
+}
 (HERE / "ehawk.airplane.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n")
 print("-> ehawk.airplane.json")

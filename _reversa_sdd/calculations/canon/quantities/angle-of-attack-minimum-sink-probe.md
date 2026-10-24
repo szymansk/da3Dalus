@@ -11,6 +11,7 @@ tags:
   - point/minimum-sink
   - role/output
 type: scalar
+checks: angle-of-attack-minimum-sink
 ---
 
 # Angle of attack at minimum sink, Probe · `alpha_ms,probe`

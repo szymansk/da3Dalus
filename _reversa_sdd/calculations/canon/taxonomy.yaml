@@ -1,0 +1,221 @@
+# The vocabulary of the canon's tag families (#1218).
+#
+# One home for what the tags `module/`, `point/`, `stage/`, `group/`, `discipline/` (quantities) and
+# `direction/` (formulas) mean: label, explanation and properties of every value. The importer validates
+# the tags of the entries against it and carries it into `aero_kernel/canon/canon_model.json`; the
+# navigator and the kernel read it from there. The list order of a family is its display order; the
+# order of `stages` is the order of the calculation chain.
+#
+# Properties: module `cross_cutting` (nearly every formula depends on it), module `holds_targets` (its
+# quantities are targets, and only these), stage `reference` (its quantities are values derived from a
+# module's inputs and carry module and group instead of a discipline), group `parent` / `stage` /
+# `module`, discipline `stability`, direction `default` (a formula without a `direction/` tag).
+# `tools` names the tool codes of a formula's `tool` field; `worlds` maps each method world of a
+# formula's `worlds` field to the tool that computes it.
+
+modules:
+- id: envelope-targets
+  label: Envelope targets
+  explanation: 'Targets that name an operating point or bound the envelope: the stall-speed margins of
+    approach, touchdown and take-off, the cruise-speed target and the limit load factor.'
+  holds_targets: true
+- id: design-targets
+  label: Design targets
+  explanation: 'Targets a design entry turns into a construction quantity: the static-margin target, the
+    stall-speed target and the roll-rate targets (O1).'
+  holds_targets: true
+- id: construction
+  label: Construction
+  explanation: 'The airplane as built and its fitted components (motor, battery, propeller), with the
+    references derived from them: geometry references, the take-off and landing configurations and the
+    powertrain values. Cross-cutting: nearly every formula depends on it.'
+  cross_cutting: true
+- id: mass-and-balance
+  label: Mass and balance
+  explanation: The take-off mass and the centre of gravity, inputs of the canon (A6), with the weight
+    and the wing loading derived from them. Cross-cutting.
+  cross_cutting: true
+- id: atmosphere
+  label: Atmosphere and constants
+  explanation: 'Altitude and the physical constants, with the air state derived from them: density, viscosity
+    and speed of sound. Cross-cutting.'
+  cross_cutting: true
+- id: control-deflections
+  label: Control deflections
+  explanation: 'Every device angle the caller sets: ailerons, elevator, rudder, flaps for take-off and
+    landing, crow. The geometry stops are never read.'
+- id: operating-point
+  label: Operating point
+  explanation: 'The free variables of a flight state: flight speed, angle of attack and load factor. Named
+    points bind them instead.'
+- id: conventions
+  label: Defined values
+  explanation: 'Defined values: measurement conventions with a default but no published source, adopted
+    on the maintainer’s word. Every quantity that rests on one carries the ≈ mark.'
+points:
+- id: stall
+  label: Stall, clean
+  explanation: C_L,max at n = 1 or −1, clean configuration.
+- id: takeoff
+  label: Take-off
+  explanation: The take-off configuration and its speeds.
+- id: approach
+  label: Landing / approach
+  explanation: The landing configuration and the approach at V_app = k_S · V_S0.
+- id: best-glide
+  label: Best glide (V_md)
+  explanation: V_md, the minimum-drag speed; also the reference point of static stability.
+- id: minimum-sink
+  label: Minimum sink (V_mp)
+  explanation: V_mp, the minimum-sink speed.
+- id: full-throttle
+  label: Full throttle
+  explanation: Power-limited points at full throttle.
+- id: cruise-target
+  label: Cruise target
+  explanation: Only when a cruise-speed target is given.
+- id: manoeuvre
+  label: Manoeuvre / structure
+  explanation: V_A and the load factors.
+- id: free
+  label: Free operating point
+  explanation: A state the caller sets (V, α, n); no named point yet — a visible gap against A2.
+- id: over-mass
+  label: Over mass
+  explanation: Sweeps over the take-off mass.
+- id: none
+  label: No operating point
+  explanation: Geometry or components only, no operating point.
+stages:
+- id: references
+  label: Derived references
+  explanation: 'The cross-cutting inputs turned into reference values: air state, geometry references,
+    weight and wing loading, the take-off and landing configurations, the propulsion catalogue values.'
+  reference: true
+- id: aero-model
+  label: Aerodynamic model
+  explanation: 'The polar independent of the operating point: lift and drag, the lift-curve slope, zero-lift
+    angle, C_L,max, the fitted parabola.'
+- id: operating-points
+  label: Named operating points
+  explanation: 'Where the named speeds are born: V_S0, V_S,TO, V_md, V_mp, V_app, V_TO, V_A. Every final
+    result of a point depends on them.'
+- id: propulsion-state
+  label: Propulsion state
+  explanation: 'The propeller at a flight speed: rotational speed, advance ratio, thrust coefficient.'
+- id: stability-structure
+  label: Stability and structure
+  explanation: The neutral point and the positive break load factor, on which the stability and structure
+    results build.
+groups:
+- id: air-state
+  label: Air state
+  explanation: Density, viscosity and speed of sound at the altitude (ISA).
+  stage: references
+  module: atmosphere
+- id: weight-and-loading
+  label: Weight and loading
+  explanation: Weight and wing loading.
+  stage: references
+  module: mass-and-balance
+- id: geometry-references
+  label: Geometry references
+  explanation: Reference area, span, mean aerodynamic chord, aspect ratio.
+  stage: references
+  module: construction
+- id: configurations
+  label: Configurations
+  explanation: The airplane in its take-off and landing configuration.
+  stage: references
+  module: construction
+- id: powertrain
+  label: Powertrain
+  explanation: 'The powertrain: motor, battery and propeller.'
+- id: powertrain-motor-propeller
+  label: Motor and propeller
+  explanation: Motor and propeller values from the catalogue, and the pack voltage they run on.
+  parent: powertrain
+  stage: references
+  module: construction
+- id: powertrain-battery
+  label: Battery
+  explanation: Battery capacity, mass and specific energy, and the predicted battery mass.
+  parent: powertrain
+  stage: references
+  module: construction
+- id: aero-forces
+  label: Forces and state
+  explanation: Lift, drag, dynamic pressure, the required lift coefficient and the lift-to-drag ratio
+    at a state.
+  stage: aero-model
+- id: aero-lift-curve
+  label: Linear lift curve
+  explanation: 'The linear part of the lift curve: slope and zero-lift angle.'
+  stage: aero-model
+- id: aero-stall
+  label: Stall
+  explanation: 'The stall: C_L,max, the stall angle of attack and the polar at the stall Reynolds number.'
+  stage: aero-model
+- id: aero-parabola
+  label: Fitted parabola (display)
+  explanation: 'The parabola fitted to the solver polar (C_D0, Oswald e, k): display only, never an input
+    to performance (ADR 0026).'
+  stage: aero-model
+disciplines:
+- id: aerodynamics
+  label: Aerodynamics
+  explanation: Forces, the polar, stall, and the speeds set as a margin over the stall speed.
+- id: glide
+  label: Glide performance
+  explanation: 'Unpowered performance: best glide, minimum sink, sink rate, glide distance, crow.'
+- id: powered
+  label: Powered performance
+  explanation: Thrust, climb, top speed, sustained turn, endurance and range on the battery, and their
+    sweeps over the mass.
+- id: longitudinal
+  label: Longitudinal stability and trim
+  explanation: 'Static stability and trim about the pitch axis: neutral point, static margin, the CG for
+    a target margin, the CG envelope.'
+  stability: true
+- id: lateral
+  label: Lateral-directional stability and control
+  explanation: 'Lateral-directional stability and roll control: dihedral and weathercock effect, spiral,
+    fin volume, roll rate and the aileron deflection a roll target needs.'
+  stability: true
+- id: structure
+  label: Structure and loads
+  explanation: Manoeuvre and dive speeds, break load factors, spanwise loads and hinge moments.
+directions:
+- id: analysis
+  label: Analysis
+  explanation: What a given airplane does.
+  default: true
+- id: design
+  label: Design
+  explanation: 'Design quantities: a target turned into a construction quantity (O1).'
+tools:
+- id: OPT
+  name: asb.Opti + AeroBuildup (NeuralFoil-Profile)
+- id: AB
+  name: AeroBuildup (NeuralFoil-Profile)
+- id: AVL
+  name: AVL
+- id: GEO
+  name: AeroSandbox geometry
+- id: ATM
+  name: AeroSandbox atmosphere
+- id: KAT
+  name: Parts catalogue (DB)
+- id: APC
+  name: APC propeller tables (DB)
+- id: APP
+  name: App — own computation
+worlds:
+- id: aerobuildup
+  tool: OPT
+- id: avl
+  tool: AVL
+- id: textbook
+  tool: APP
+- id: pappas
+  tool: APP

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:80a43bff663ea2d47d77b085d3c8874f513e5a8c5926140f4b55045f884e6bec",
+  "content_hash": "sha256:6c0644c9ae9335c289cf42b5bab3964056c6a6578780c87ba4bffc08438fddfe",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -79,6 +79,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -121,6 +122,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -187,6 +189,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "design",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -229,6 +232,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -272,6 +276,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -326,6 +331,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -363,6 +369,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -398,6 +405,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -432,6 +440,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -477,6 +486,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
@@ -547,6 +557,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
@@ -615,6 +626,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -666,6 +678,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "design",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -791,6 +804,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -838,6 +852,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -888,6 +903,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
@@ -947,6 +963,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -982,6 +999,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1023,6 +1041,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1064,6 +1083,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1111,6 +1131,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1152,6 +1173,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1200,6 +1222,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1244,6 +1267,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1281,6 +1305,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1329,6 +1354,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1374,6 +1400,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1434,6 +1461,7 @@
             }
           ],
           "cost": "minutes",
+          "direction": "analysis",
           "embeds": [
             "calc:stall-speed.clean",
             "calc:stall-speed.landing",
@@ -1526,6 +1554,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
@@ -1585,6 +1614,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1620,6 +1650,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1666,6 +1697,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
@@ -1726,6 +1758,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1772,6 +1805,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
@@ -1834,6 +1868,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1881,6 +1916,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1931,6 +1967,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -1979,6 +2016,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2027,6 +2065,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2073,6 +2112,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2112,6 +2152,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2146,6 +2187,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2188,6 +2230,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2239,6 +2282,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2281,6 +2325,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2329,6 +2374,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2373,6 +2419,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [
             "calc:spanwise-loads.default"
           ],
@@ -2442,6 +2489,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2479,6 +2527,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2519,6 +2568,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2636,6 +2686,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2714,6 +2765,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "design",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2750,6 +2802,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2790,6 +2843,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2838,6 +2892,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
@@ -2897,6 +2952,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2932,6 +2988,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -2965,6 +3022,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -3000,6 +3058,7 @@
             }
           ],
           "cost": "instant",
+          "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -3022,1197 +3081,2434 @@
       },
       "quantities": {
         "advance-ratio": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "propulsion-state",
           "symbol": "J",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "aileron-deflection": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_a",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "aileron-deflection-required-approach": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "delta_a,req,app",
           "type": "scalar",
           "uncertainty": "interval",
           "unit": "deg"
         },
         "aileron-deflection-required-cruise": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "cruise-target",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "delta_a,req,cruise",
           "type": "scalar",
           "uncertainty": "interval",
           "unit": "deg"
         },
         "air-density": {
+          "checks": null,
+          "discipline": null,
+          "group": "air-state",
+          "module": "atmosphere",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "rho",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "mass-and-balance",
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "m",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "airplane": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "airplane",
           "type": "airplane",
           "uncertainty": null,
           "unit": "1"
         },
         "airplane-landing": {
+          "checks": null,
+          "discipline": null,
+          "group": "configurations",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "airplane_LDG",
           "type": "airplane",
           "uncertainty": null,
           "unit": "1"
         },
         "airplane-takeoff": {
+          "checks": null,
+          "discipline": null,
+          "group": "configurations",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "airplane_TO",
           "type": "airplane",
           "uncertainty": null,
           "unit": "1"
         },
         "alpha-break": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": "stall",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "alpha_break",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "altitude": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "atmosphere",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "h",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "angle-of-attack": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "operating-point",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "alpha",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "angle-of-attack-best-glide": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "alpha_bg",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "angle-of-attack-best-glide-probe": {
+          "checks": "angle-of-attack-best-glide",
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "alpha_bg,probe",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "angle-of-attack-minimum-sink": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "alpha_ms",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "angle-of-attack-minimum-sink-probe": {
+          "checks": "angle-of-attack-minimum-sink",
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "alpha_ms,probe",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "angle-of-attack-stall": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-stall",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "alpha_S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "approach-speed": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "operating-points",
           "symbol": "V_app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "envelope-targets",
+          "point": null,
           "positive": true,
           "role": "target",
+          "stage": null,
           "symbol": "k_S,app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "aspect-ratio": {
+          "checks": null,
+          "discipline": null,
+          "group": "geometry-references",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "AR",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "battery-capacity": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "E_bat",
           "type": "scalar",
           "uncertainty": null,
           "unit": "Wh"
         },
         "battery-mass": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "m_bat",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "battery-mass-deviation": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "none",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "dev",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "battery-specific-energy": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "E_star",
           "type": "scalar",
           "uncertainty": null,
           "unit": "Wh/kg"
         },
         "battery-voltage": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-motor-propeller",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "U_bat",
           "type": "scalar",
           "uncertainty": null,
           "unit": "V"
         },
         "best-angle-of-climb-speed": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_x",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "best-rate-of-climb-speed": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_y",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "break-load-factor-negative": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": "manoeuvre",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "n_break,neg",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "break-load-factor-positive": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "stability-structure",
           "symbol": "n_break,pos",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "butterfly-approach-speed-curve": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_app(s)",
           "type": "curve",
           "uncertainty": null,
           "unit": "m/s"
         },
         "butterfly-glide-angle-curve": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "gamma(s)",
           "type": "curve",
           "uncertainty": null,
           "unit": "deg"
         },
         "butterfly-max-mix": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "s_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "butterfly-stall-speed-curve": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_S0(s)",
           "type": "curve",
           "uncertainty": null,
           "unit": "m/s"
         },
         "centre-of-gravity": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "mass-and-balance",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "x_CG",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "cg-envelope-over-mass": {
+          "checks": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "over-mass",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "x_fwd(m), x_aft(m)",
           "type": "curve_pair",
           "uncertainty": null,
           "unit": "m"
         },
         "cg-for-target-margin": {
+          "checks": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "x_CG,SM",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "climb-rate-over-mass": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "over-mass",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "ROC_max(m)",
           "type": "curve",
           "uncertainty": null,
           "unit": "m/s"
         },
         "components": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "components",
           "type": "components",
           "uncertainty": null,
           "unit": "1"
         },
         "crow-aileron-deflection": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_a,crow",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "crow-flap-deflection": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_f,crow",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "cruise-speed-target": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "envelope-targets",
+          "point": null,
           "positive": true,
           "role": "target",
+          "stage": null,
           "symbol": "V_cruise,target",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "dihedral-effect-app": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "C_l_beta,app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad"
         },
         "dihedral-effect-md": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "C_l_beta,md",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad"
         },
         "dive-speed": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_D",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "drag-coefficient-parabolic": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-parabola",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "C_D,par",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "drag-force": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-forces",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "D",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         },
         "dynamic-pressure": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-forces",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "q",
           "type": "scalar",
           "uncertainty": null,
           "unit": "Pa"
         },
         "dynamic-viscosity": {
+          "checks": null,
+          "discipline": null,
+          "group": "air-state",
+          "module": "atmosphere",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "mu",
           "type": "scalar",
           "uncertainty": null,
           "unit": "Pa*s"
         },
         "elevator-deflection-down": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_e,down",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "elevator-deflection-up": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_e,up",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "endurance-at-cruise-target": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "cruise-target",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "t_cruise",
           "type": "scalar",
           "uncertainty": null,
           "unit": "s"
         },
         "flap-deflection-landing": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_f,LDG",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "flap-deflection-takeoff": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_f,TO",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "flight-speed": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "operating-point",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "V",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "glide-distance": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "R_glide",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "gravity": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "atmosphere",
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "g",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s^2"
         },
         "hinge-moment": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "H",
           "type": "per_control_surface",
           "uncertainty": null,
           "unit": "N*m"
         },
         "induced-drag-factor": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-parabola",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "k",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "inverted-max-lift-coefficient": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": "stall",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "C_L,min",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "lift-coefficient": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-forces",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "C_L",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "lift-coefficient-best-glide": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "operating-points",
           "symbol": "C_L,md",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "lift-coefficient-minimum-sink": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "operating-points",
           "symbol": "C_L,mp",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "lift-curve-slope": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-lift-curve",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "C_Lalpha",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad"
         },
         "lift-force": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-forces",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "L",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         },
         "lift-to-drag-ratio": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-forces",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "E",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "limit-load-factor": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "envelope-targets",
+          "point": null,
           "positive": true,
           "role": "target",
+          "stage": null,
           "symbol": "n_lim",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "load-factor": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "operating-point",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "n",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "maneuvering-speed": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": "operating-points",
           "symbol": "V_A",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "max-climb-angle": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "gamma_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "max-endurance": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "t_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "s"
         },
         "max-level-speed": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "max-lift-coefficient": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-stall",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "C_L,max,S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "C_L,max,LDG",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "max-lift-coefficient-takeoff": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": "takeoff",
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "C_L,max,TO",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "max-lift-to-drag-probe": {
+          "checks": "max-lift-to-drag-ratio",
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "E_max,probe",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "max-lift-to-drag-ratio": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "E_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "max-mass-level-flight": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "over-mass",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "m_max,level",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "max-mass-lift-off": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "over-mass",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "m_max,TO",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "max-mass-structure": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": "manoeuvre",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "m_max,struct",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "max-range": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "R_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "max-rate-of-climb": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "ROC_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "max-sustained-turn-rate": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "omega_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg/s"
         },
         "max-sustained-turn-rate-speed": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_omega",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "mean-aerodynamic-chord": {
+          "checks": null,
+          "discipline": null,
+          "group": "geometry-references",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "c_MAC",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "mean-geometric-chord": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": "none",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "c_bar",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "min-sustained-turn-radius": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "r_min",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "min-sustained-turn-radius-speed": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_r",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "minimum-drag-speed": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "operating-points",
           "symbol": "V_md",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "minimum-drag-speed-probe": {
+          "checks": "minimum-drag-speed",
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_md,probe",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "minimum-sink-speed": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "operating-points",
           "symbol": "V_mp",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "motor-circuit-resistance": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-motor-propeller",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "R_m",
           "type": "scalar",
           "uncertainty": null,
           "unit": "ohm"
         },
         "motor-efficiency": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "construction",
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "eta_mot",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "motor-max-power": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-motor-propeller",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "P_mot,max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "W"
         },
         "motor-no-load-current": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-motor-propeller",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "I_0",
           "type": "scalar",
           "uncertainty": null,
           "unit": "A"
         },
         "motor-torque": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "Q_m",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N*m"
         },
         "motor-voltage-constant": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-motor-propeller",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "K_v",
           "type": "scalar",
           "uncertainty": null,
           "unit": "rpm/V"
         },
         "neutral-point": {
+          "checks": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "stability-structure",
           "symbol": "x_NP",
           "type": "scalar",
           "uncertainty": "interval",
           "unit": "m"
         },
         "oswald-efficiency": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-parabola",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "e_osw",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "pitching-moment-slope": {
+          "checks": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "C_malpha",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad"
         },
         "polar-stall": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-stall",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "polar_S",
           "type": "polar",
           "uncertainty": null,
           "unit": "1"
         },
         "predicted-battery-mass": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "m_bat,pred",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "propeller-diameter": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-motor-propeller",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "D_prop",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "propeller-speed": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "propulsion-state",
           "symbol": "n_prop",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/s"
         },
         "propulsive-efficiency": {
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-motor-propeller",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "eta_total",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "range-at-cruise-target": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "cruise-target",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "R_cruise",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "roll-rate-approach": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "p_app",
           "type": "scalar",
           "uncertainty": "interval",
           "unit": "deg/s"
         },
         "roll-rate-cruise": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "cruise-target",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "p_cruise",
           "type": "scalar",
           "uncertainty": "interval",
           "unit": "deg/s"
         },
         "roll-rate-nondimensional-approach": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "p_hat_app",
           "type": "scalar",
           "uncertainty": "interval",
           "unit": "1"
         },
         "roll-rate-target-approach": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "design-targets",
+          "point": null,
           "positive": null,
           "role": "target",
+          "stage": null,
           "symbol": "p_target,app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg/s"
         },
         "roll-rate-target-cruise": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "design-targets",
+          "point": null,
           "positive": null,
           "role": "target",
+          "stage": null,
           "symbol": "p_target,cruise",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg/s"
         },
         "rudder-deflection": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_r",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "sea-level-air-density": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "atmosphere",
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "rho_0",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg/m^3"
         },
         "sink-rate": {
+          "checks": null,
+          "discipline": "glide",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "w_sink",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "spanwise-bending-moment": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "M(y)",
           "type": "curve",
           "uncertainty": null,
           "unit": "N*m"
         },
         "spanwise-lift-distribution": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "l(y)",
           "type": "curve",
           "uncertainty": null,
           "unit": "N/m"
         },
         "spanwise-shear-force": {
+          "checks": null,
+          "discipline": "structure",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V(y)",
           "type": "curve",
           "uncertainty": null,
           "unit": "N"
         },
         "speed-of-sound": {
+          "checks": null,
+          "discipline": null,
+          "group": "air-state",
+          "module": "atmosphere",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "a",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "speed-range-over-mass": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "over-mass",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_S(m), V_max(m)",
           "type": "curve_pair",
           "uncertainty": null,
           "unit": "m/s"
         },
         "spiral-criterion-app": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "E_spiral,app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad^2"
         },
         "spiral-criterion-md": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "E_spiral,md",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad^2"
         },
         "spiral-doubling-time-app": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "T_2,spiral,app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "s"
         },
         "spiral-doubling-time-md": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "T_2,spiral,md",
           "type": "scalar",
           "uncertainty": null,
           "unit": "s"
         },
         "spiral-parameter": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "B_spiral",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "stall-break-fraction": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "conventions",
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "f",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "stall-break-width": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": "stall",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "Delta_alpha_break",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "stall-speed": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": "stall",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "stall-speed-landing": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "operating-points",
           "symbol": "V_S0",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "stall-speed-takeoff": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "operating-points",
           "symbol": "V_S,TO",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "stall-speed-target": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "design-targets",
+          "point": null,
           "positive": true,
           "role": "target",
+          "stage": null,
           "symbol": "V_S,target",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "static-margin": {
+          "checks": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "SM",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "static-margin-probe": {
+          "checks": "static-margin",
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "SM_probe",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "static-margin-target": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "design-targets",
+          "point": null,
           "positive": null,
           "role": "target",
+          "stage": null,
           "symbol": "SM_target",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "static-thrust-to-weight": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "full-throttle",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "T_0/W",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "takeoff-speed": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "operating-points",
           "symbol": "V_TO",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "takeoff-speed-margin-target": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "envelope-targets",
+          "point": null,
           "positive": true,
           "role": "target",
+          "stage": null,
           "symbol": "k_S,TO",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "thrust-at-airspeed": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "T",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         },
         "thrust-coefficient": {
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "propulsion-state",
           "symbol": "C_T",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "touchdown-speed": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_TD",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "touchdown-speed-margin-target": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "envelope-targets",
+          "point": null,
           "positive": true,
           "role": "target",
+          "stage": null,
           "symbol": "k_S,TD",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "vertical-tail-volume": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "none",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_V",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "weathercock-stability-app": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "approach",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "C_n_beta,app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad"
         },
         "weathercock-stability-md": {
+          "checks": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "C_n_beta,md",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad"
         },
         "weight": {
+          "checks": null,
+          "discipline": null,
+          "group": "weight-and-loading",
+          "module": "mass-and-balance",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "W",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         },
         "wing-loading": {
+          "checks": null,
+          "discipline": null,
+          "group": "weight-and-loading",
+          "module": "mass-and-balance",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "W/S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N/m^2"
         },
         "wing-loading-limit-stall": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": null,
+          "module": null,
+          "point": "stall",
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "(W/S)_max,S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N/m^2"
         },
         "wing-reference-area": {
+          "checks": null,
+          "discipline": null,
+          "group": "geometry-references",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "S_ref",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m^2"
         },
         "wing-span": {
+          "checks": null,
+          "discipline": null,
+          "group": "geometry-references",
+          "module": "construction",
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "references",
           "symbol": "b_ref",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
         "zero-lift-angle": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-lift-curve",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "alpha_0",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "zero-lift-drag-coefficient": {
+          "checks": null,
+          "discipline": "aerodynamics",
+          "group": "aero-parabola",
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": "aero-model",
           "symbol": "C_D0",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         }
+      },
+      "taxonomy": {
+        "directions": [
+          {
+            "default": true,
+            "explanation": "What a given airplane does.",
+            "id": "analysis",
+            "label": "Analysis"
+          },
+          {
+            "default": false,
+            "explanation": "Design quantities: a target turned into a construction quantity (O1).",
+            "id": "design",
+            "label": "Design"
+          }
+        ],
+        "disciplines": [
+          {
+            "explanation": "Forces, the polar, stall, and the speeds set as a margin over the stall speed.",
+            "id": "aerodynamics",
+            "label": "Aerodynamics",
+            "stability": false
+          },
+          {
+            "explanation": "Unpowered performance: best glide, minimum sink, sink rate, glide distance, crow.",
+            "id": "glide",
+            "label": "Glide performance",
+            "stability": false
+          },
+          {
+            "explanation": "Thrust, climb, top speed, sustained turn, endurance and range on the battery, and their sweeps over the mass.",
+            "id": "powered",
+            "label": "Powered performance",
+            "stability": false
+          },
+          {
+            "explanation": "Static stability and trim about the pitch axis: neutral point, static margin, the CG for a target margin, the CG envelope.",
+            "id": "longitudinal",
+            "label": "Longitudinal stability and trim",
+            "stability": true
+          },
+          {
+            "explanation": "Lateral-directional stability and roll control: dihedral and weathercock effect, spiral, fin volume, roll rate and the aileron deflection a roll target needs.",
+            "id": "lateral",
+            "label": "Lateral-directional stability and control",
+            "stability": true
+          },
+          {
+            "explanation": "Manoeuvre and dive speeds, break load factors, spanwise loads and hinge moments.",
+            "id": "structure",
+            "label": "Structure and loads",
+            "stability": false
+          }
+        ],
+        "groups": [
+          {
+            "explanation": "Density, viscosity and speed of sound at the altitude (ISA).",
+            "id": "air-state",
+            "label": "Air state",
+            "module": "atmosphere",
+            "parent": null,
+            "stage": "references"
+          },
+          {
+            "explanation": "Weight and wing loading.",
+            "id": "weight-and-loading",
+            "label": "Weight and loading",
+            "module": "mass-and-balance",
+            "parent": null,
+            "stage": "references"
+          },
+          {
+            "explanation": "Reference area, span, mean aerodynamic chord, aspect ratio.",
+            "id": "geometry-references",
+            "label": "Geometry references",
+            "module": "construction",
+            "parent": null,
+            "stage": "references"
+          },
+          {
+            "explanation": "The airplane in its take-off and landing configuration.",
+            "id": "configurations",
+            "label": "Configurations",
+            "module": "construction",
+            "parent": null,
+            "stage": "references"
+          },
+          {
+            "explanation": "The powertrain: motor, battery and propeller.",
+            "id": "powertrain",
+            "label": "Powertrain",
+            "module": null,
+            "parent": null,
+            "stage": null
+          },
+          {
+            "explanation": "Motor and propeller values from the catalogue, and the pack voltage they run on.",
+            "id": "powertrain-motor-propeller",
+            "label": "Motor and propeller",
+            "module": "construction",
+            "parent": "powertrain",
+            "stage": "references"
+          },
+          {
+            "explanation": "Battery capacity, mass and specific energy, and the predicted battery mass.",
+            "id": "powertrain-battery",
+            "label": "Battery",
+            "module": "construction",
+            "parent": "powertrain",
+            "stage": "references"
+          },
+          {
+            "explanation": "Lift, drag, dynamic pressure, the required lift coefficient and the lift-to-drag ratio at a state.",
+            "id": "aero-forces",
+            "label": "Forces and state",
+            "module": null,
+            "parent": null,
+            "stage": "aero-model"
+          },
+          {
+            "explanation": "The linear part of the lift curve: slope and zero-lift angle.",
+            "id": "aero-lift-curve",
+            "label": "Linear lift curve",
+            "module": null,
+            "parent": null,
+            "stage": "aero-model"
+          },
+          {
+            "explanation": "The stall: C_L,max, the stall angle of attack and the polar at the stall Reynolds number.",
+            "id": "aero-stall",
+            "label": "Stall",
+            "module": null,
+            "parent": null,
+            "stage": "aero-model"
+          },
+          {
+            "explanation": "The parabola fitted to the solver polar (C_D0, Oswald e, k): display only, never an input to performance (ADR 0026).",
+            "id": "aero-parabola",
+            "label": "Fitted parabola (display)",
+            "module": null,
+            "parent": null,
+            "stage": "aero-model"
+          }
+        ],
+        "modules": [
+          {
+            "cross_cutting": false,
+            "explanation": "Targets that name an operating point or bound the envelope: the stall-speed margins of approach, touchdown and take-off, the cruise-speed target and the limit load factor.",
+            "holds_targets": true,
+            "id": "envelope-targets",
+            "label": "Envelope targets"
+          },
+          {
+            "cross_cutting": false,
+            "explanation": "Targets a design entry turns into a construction quantity: the static-margin target, the stall-speed target and the roll-rate targets (O1).",
+            "holds_targets": true,
+            "id": "design-targets",
+            "label": "Design targets"
+          },
+          {
+            "cross_cutting": true,
+            "explanation": "The airplane as built and its fitted components (motor, battery, propeller), with the references derived from them: geometry references, the take-off and landing configurations and the powertrain values. Cross-cutting: nearly every formula depends on it.",
+            "holds_targets": false,
+            "id": "construction",
+            "label": "Construction"
+          },
+          {
+            "cross_cutting": true,
+            "explanation": "The take-off mass and the centre of gravity, inputs of the canon (A6), with the weight and the wing loading derived from them. Cross-cutting.",
+            "holds_targets": false,
+            "id": "mass-and-balance",
+            "label": "Mass and balance"
+          },
+          {
+            "cross_cutting": true,
+            "explanation": "Altitude and the physical constants, with the air state derived from them: density, viscosity and speed of sound. Cross-cutting.",
+            "holds_targets": false,
+            "id": "atmosphere",
+            "label": "Atmosphere and constants"
+          },
+          {
+            "cross_cutting": false,
+            "explanation": "Every device angle the caller sets: ailerons, elevator, rudder, flaps for take-off and landing, crow. The geometry stops are never read.",
+            "holds_targets": false,
+            "id": "control-deflections",
+            "label": "Control deflections"
+          },
+          {
+            "cross_cutting": false,
+            "explanation": "The free variables of a flight state: flight speed, angle of attack and load factor. Named points bind them instead.",
+            "holds_targets": false,
+            "id": "operating-point",
+            "label": "Operating point"
+          },
+          {
+            "cross_cutting": false,
+            "explanation": "Defined values: measurement conventions with a default but no published source, adopted on the maintainer’s word. Every quantity that rests on one carries the ≈ mark.",
+            "holds_targets": false,
+            "id": "conventions",
+            "label": "Defined values"
+          }
+        ],
+        "points": [
+          {
+            "explanation": "C_L,max at n = 1 or −1, clean configuration.",
+            "id": "stall",
+            "label": "Stall, clean"
+          },
+          {
+            "explanation": "The take-off configuration and its speeds.",
+            "id": "takeoff",
+            "label": "Take-off"
+          },
+          {
+            "explanation": "The landing configuration and the approach at V_app = k_S · V_S0.",
+            "id": "approach",
+            "label": "Landing / approach"
+          },
+          {
+            "explanation": "V_md, the minimum-drag speed; also the reference point of static stability.",
+            "id": "best-glide",
+            "label": "Best glide (V_md)"
+          },
+          {
+            "explanation": "V_mp, the minimum-sink speed.",
+            "id": "minimum-sink",
+            "label": "Minimum sink (V_mp)"
+          },
+          {
+            "explanation": "Power-limited points at full throttle.",
+            "id": "full-throttle",
+            "label": "Full throttle"
+          },
+          {
+            "explanation": "Only when a cruise-speed target is given.",
+            "id": "cruise-target",
+            "label": "Cruise target"
+          },
+          {
+            "explanation": "V_A and the load factors.",
+            "id": "manoeuvre",
+            "label": "Manoeuvre / structure"
+          },
+          {
+            "explanation": "A state the caller sets (V, α, n); no named point yet — a visible gap against A2.",
+            "id": "free",
+            "label": "Free operating point"
+          },
+          {
+            "explanation": "Sweeps over the take-off mass.",
+            "id": "over-mass",
+            "label": "Over mass"
+          },
+          {
+            "explanation": "Geometry or components only, no operating point.",
+            "id": "none",
+            "label": "No operating point"
+          }
+        ],
+        "stages": [
+          {
+            "explanation": "The cross-cutting inputs turned into reference values: air state, geometry references, weight and wing loading, the take-off and landing configurations, the propulsion catalogue values.",
+            "id": "references",
+            "label": "Derived references",
+            "reference": true
+          },
+          {
+            "explanation": "The polar independent of the operating point: lift and drag, the lift-curve slope, zero-lift angle, C_L,max, the fitted parabola.",
+            "id": "aero-model",
+            "label": "Aerodynamic model",
+            "reference": false
+          },
+          {
+            "explanation": "Where the named speeds are born: V_S0, V_S,TO, V_md, V_mp, V_app, V_TO, V_A. Every final result of a point depends on them.",
+            "id": "operating-points",
+            "label": "Named operating points",
+            "reference": false
+          },
+          {
+            "explanation": "The propeller at a flight speed: rotational speed, advance ratio, thrust coefficient.",
+            "id": "propulsion-state",
+            "label": "Propulsion state",
+            "reference": false
+          },
+          {
+            "explanation": "The neutral point and the positive break load factor, on which the stability and structure results build.",
+            "id": "stability-structure",
+            "label": "Stability and structure",
+            "reference": false
+          }
+        ],
+        "tools": [
+          {
+            "id": "OPT",
+            "name": "asb.Opti + AeroBuildup (NeuralFoil-Profile)"
+          },
+          {
+            "id": "AB",
+            "name": "AeroBuildup (NeuralFoil-Profile)"
+          },
+          {
+            "id": "AVL",
+            "name": "AVL"
+          },
+          {
+            "id": "GEO",
+            "name": "AeroSandbox geometry"
+          },
+          {
+            "id": "ATM",
+            "name": "AeroSandbox atmosphere"
+          },
+          {
+            "id": "KAT",
+            "name": "Parts catalogue (DB)"
+          },
+          {
+            "id": "APC",
+            "name": "APC propeller tables (DB)"
+          },
+          {
+            "id": "APP",
+            "name": "App — own computation"
+          }
+        ],
+        "worlds": [
+          {
+            "id": "aerobuildup",
+            "tool": "OPT"
+          },
+          {
+            "id": "avl",
+            "tool": "AVL"
+          },
+          {
+            "id": "textbook",
+            "tool": "APP"
+          },
+          {
+            "id": "pappas",
+            "tool": "APP"
+          }
+        ]
       }
     }
   },

@@ -6,7 +6,7 @@ once against the real canon document.
 
 from pathlib import Path
 
-__all__ = ["MINI_CANON", "write_canon"]
+__all__ = ["MINI_CANON", "MINI_TAXONOMY", "write_canon"]
 
 
 def _quantity(
@@ -27,7 +27,23 @@ def _formula(slug: str, body: str) -> str:
     )
 
 
+MINI_TAXONOMY = """\
+tools:
+  - {id: APP, name: App}
+  - {id: AB, name: AeroBuildup}
+  - {id: AVL, name: AVL}
+  - {id: OPT, name: Optimisation}
+  - {id: ATM, name: Atmosphere}
+  - {id: GEO, name: Geometry}
+  - {id: KAT, name: Catalogue}
+  - {id: APC, name: Propeller tables}
+worlds:
+  - {id: simple, tool: APP}
+  - {id: detailed, tool: AVL}
+"""
+
 MINI_CANON: dict[str, str] = {
+    "taxonomy.yaml": MINI_TAXONOMY,
     "quantities/aircraft-mass.md": _quantity(
         "aircraft-mass", "m", "kg", "input", "positive: true\n"
     ),

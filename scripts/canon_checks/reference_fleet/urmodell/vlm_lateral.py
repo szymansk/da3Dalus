@@ -25,10 +25,18 @@ def vlm(plane, atm, v, alpha, stab=False):
     from app.services.vlm_strip_forces import _remesh_airplane
 
     m = _remesh_airplane(plane)
-    solver = asb.VortexLatticeMethod(airplane=m, op_point=asb.OperatingPoint(atm, velocity=v, alpha=alpha),
-                                     spanwise_resolution=1, chordwise_resolution=8,
-                                     spanwise_spacing_function=np.linspace)
-    return solver.run_with_stability_derivatives(alpha=False, beta=True, p=True, q=False, r=True) if stab else solver.run()
+    solver = asb.VortexLatticeMethod(
+        airplane=m,
+        op_point=asb.OperatingPoint(atm, velocity=v, alpha=alpha),
+        spanwise_resolution=1,
+        chordwise_resolution=8,
+        spanwise_spacing_function=np.linspace,
+    )
+    return (
+        solver.run_with_stability_derivatives(alpha=False, beta=True, p=True, q=False, r=True)
+        if stab
+        else solver.run()
+    )
 
 
 def one(row):
@@ -40,13 +48,19 @@ def one(row):
     d = json.loads((HERE / "fleet" / f"{row['id']}.airplane.json").read_text())
     atm = asb.Atmosphere(altitude=0)
     v = float(row["V_md"])
-    cl_t = d["total_mass_kg"] * 9.80665 / (0.5 * float(atm.density()) * v * v * d["urmodell"]["S_m2"])
+    cl_t = (
+        d["total_mass_kg"] * 9.80665 / (0.5 * float(atm.density()) * v * v * d["urmodell"]["S_m2"])
+    )
     p = fe.asb_plane(d)
     a0, a1 = 0.0, 4.0
     c0, c1 = (float(np.ravel(vlm(p, atm, v, a)["CL"])[0]) for a in (a0, a1))
     a = a0 + (cl_t - c0) * (a1 - a0) / (c1 - c0)
     r = vlm(p, atm, v, a, stab=True)
-    res = {"id": row["id"], "alpha_VLM": round(a, 2), "CL_VLM": round(float(np.ravel(r["CL"])[0]), 3)}
+    res = {
+        "id": row["id"],
+        "alpha_VLM": round(a, 2),
+        "CL_VLM": round(float(np.ravel(r["CL"])[0]), 3),
+    }
     for k in ("Clb", "Cnb", "Clr", "Cnr", "Clp"):
         res[k + "_VLM"] = float(np.ravel(r[k])[0])
     res["E_VLM"] = res["Clb_VLM"] * res["Cnr_VLM"] - res["Cnb_VLM"] * res["Clr_VLM"]

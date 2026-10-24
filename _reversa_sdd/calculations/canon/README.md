@@ -403,7 +403,7 @@ construction quantity — the borderline cases kept in this canon by O1 (maintai
 `cg-for-target-margin`, `stall-wing-loading-limit`, `aileron-deflection-required` (then
 `aileron-throw-fraction`). Every other entry is analysis: what a given airplane does. Further design
 calculations belong to the design canon (K31), not here. Like all tags it is for readers and tools (the
-navigator's Analysis / Design filter); the importer drops it.
+navigator's Analysis / Design filter). The importer carries it as the formula's `direction`; an entry without the tag has the default direction of the taxonomy.
 
 **Parameters.** A parameter name is snake_case and local to the formula (`cl_max`, `rho`,
 `v_s_cfg`), taken from the canonical form's symbols where it has them. Quantity slugs are
@@ -465,52 +465,36 @@ nicht als unbenötigter Code" (maintainer, 2026-10-17).
 
 ### Quantity entries
 
-**Discipline tag.** Every derived quantity except the derived references carries exactly one tag
-`discipline/<name>` naming the question it answers (maintainer, 2026-10-24): `aerodynamics` (forces,
-the polar, stall and the speeds set as a margin over it), `glide` (unpowered performance), `powered`
-(thrust, climb, top speed, turn, endurance and range on the battery, mass sweeps of them), `longitudinal`
-(static stability and trim), `lateral` (lateral-directional stability and roll control), `structure`
-(manoeuvre and dive speeds, load factors, spanwise loads, hinge moments). The navigator uses it as its
-columns; the importer drops it, the navigator build refuses a derived quantity without it.
+**Tags and the taxonomy.** Five tag families classify the quantities, one the formulas. Their values —
+label, order, explanation and properties of each — are stated once, in [`taxonomy.yaml`](taxonomy.yaml)
+(#1218); this README does not repeat them. The importer validates every tag against it and writes both
+into the canon model (`module`, `point`, `stage`, `group`, `discipline` on a quantity, `direction` on a
+formula, the taxonomy itself in the namespace). A quantity carries at most one tag per family (more is a
+finding), and the importer requires the tags its place in the calculation asks for:
 
-**Stage tag.** Every intermediate quantity — produced by a formula and consumed by another — carries
-exactly one tag `stage/<name>` naming its role in the calculation chain (maintainer, 2026-10-24); the
-importer drops it, the navigator clusters the intermediate band by it. Stages: `references` (the
-cross-cutting inputs turned into reference values: air state, geometry references, weight and wing
-loading, the take-off and landing configurations, the propulsion catalogue values), `aero-model` (the
-polar independent of the operating point), `operating-points` (where the named speeds are born:
-V_S0, V_S,TO, V_md, V_mp, V_app, V_TO, V_A), `propulsion-state` (the propeller at a flight speed),
-`stability-structure` (neutral point, break load factor). A `references` quantity also carries the `module/<name>` of the cross-cutting module it derives from
-and one `group/<name>`: `air-state` (atmosphere), `weight-and-loading` (mass and balance),
-`geometry-references`, `configurations`, `powertrain-motor-propeller` and `powertrain-battery`
-(construction; the powertrain is motor, battery and propeller — `battery-voltage` belongs to motor and
-propeller, the only place it is used). A module thus holds its inputs and the references derived from
-them. The `aero-model` stage is subdivided the same way (maintainer, 2026-10-24): `aero-forces` (lift,
-drag, dynamic pressure, lift coefficient, lift-to-drag ratio), `aero-lift-curve` (slope, zero-lift angle),
-`aero-stall` (C_L,max, α_S, the stall polar), `aero-parabola` (the fitted parabola, display only). The navigator draws `references` as its own column
-right of the cross-cutting inputs — intermediate values, kept apart from the input column (maintainer,
-2026-10-24). The navigator build refuses an intermediate quantity without it.
+| family | which quantities carry exactly one |
+|---|---|
+| `module/<name>` | every quantity no formula produces (inputs and targets), and every reference |
+| `stage/<name>` | every intermediate quantity — produced by a formula and consumed by another |
+| `point/<name>` | every final result — a quantity no formula consumes |
+| `discipline/<name>` | every derived quantity except the references |
+| `group/<name>` | every reference (a quantity of a stage the taxonomy marks `reference`); inside other stages optional |
 
-**Operating-point tag.** Every final result — a quantity no formula consumes — carries exactly one tag
-`point/<name>` naming the operating point or configuration it belongs to (maintainer, 2026-10-24); the
-importer drops it, the navigator clusters the final results by it. Points: `stall` (C_L,max at n = ±1,
-clean), `takeoff` and `approach` (the configurations and their speeds), `best-glide` (V_md, also the
-reference point of static stability), `minimum-sink` (V_mp), `full-throttle` (power-limited points),
-`cruise-target` (only with a cruise-speed target), `manoeuvre` (V_A, load factors), `free` (a state the
-caller sets — V, α, n — no named point yet; a gap against A2, kept visible), `over-mass` (sweeps over the
-take-off mass), `none` (geometry or components only). The navigator build refuses a final result without
-it.
+A target stands in a module that holds targets, and only a target does; a group agrees with the stage
+and module the taxonomy gives it. A family the taxonomy leaves empty is not used by the canon and
+accepts no tag. A new tag value is a new entry in `taxonomy.yaml`, with its explanation. The cross-cutting
+modules are drawn by the navigator in their own column; the navigator reads names, order, explanations
+and properties from the model and holds none of them (maintainer, 2026-10-24: the navigator is generated
+from the canon alone).
 
-**Module tag.** Every quantity no formula produces — inputs and targets — carries exactly one tag
-`module/<name>` that groups it for readers and tools (the navigator frames layer 0 by module); the
-importer drops it. Modules: `construction` (the airplane and its fitted components), `mass-and-balance`,
-`atmosphere` (atmosphere and physical constants), `control-deflections` (every device angle the caller
-sets), `operating-point` (the free variables of a flight state), `envelope-targets` (targets that name an
-operating point or bound the envelope), `design-targets` (targets a design entry turns into a construction
-quantity), `conventions` (defined values: measurement conventions with a default in `defaults.yaml`, neither a target nor a physical input, e.g. `stall-break-fraction`). A new input or target needs its module tag; the navigator build refuses one without. `construction`, `mass-and-balance` and `atmosphere` are
-**cross-cutting**: nearly every formula depends on them (maintainer, 2026-10-24); the navigator draws
-them upright in a column on the far left, below the top row of layer-0 modules (an XY split), and
-shows their edges only on selection.
+**Tools and worlds.** `taxonomy.yaml` names every tool code a formula's `tool` field may hold and maps
+every method world of a formula's `worlds` field to the tool that computes it (`aerobuildup` → `OPT`,
+`avl` → `AVL`, `textbook` and `pappas` → `APP`), so that the result of a world can be tied to the
+version and settings of its tool (#1221). A tool or world the taxonomy lacks is a finding.
+
+**Probe.** A quantity that only verifies another carries `checks: <slug>` — the quantity whose value it
+checks (`static-margin-probe` checks `static-margin`). The importer carries it; the navigator links
+probe and value. The slug of a probe says nothing.
 
 The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `status`, `uncertainty`, `tags`)
 stay. Added:
@@ -518,6 +502,7 @@ stay. Added:
 | field | required | what it holds |
 |---|---|---|
 | `type` | always | the kind of value, from the closed set below |
+| `checks` | only on a probe | the slug of the quantity the probe verifies (see Probe above); must be another quantity of the canon |
 | `positive` | optional, only on `type: scalar` with role `input` or `target` (positivity is a property of a number) | `true` when the quantity is strictly greater than zero **by its definition**; omit otherwise (`false` is an error — one spelling). A default of such a quantity (`defaults.yaml`) must be > 0 (a mass, a density, gravity) — a fact about the quantity, not a design judgement (A10). A supplied value ≤ 0 is rejected. Not set where zero or a negative value is meaningful (angles, deflections, altitude, a speed that may be 0). Example: `aircraft-mass` carries `positive: true` |
 
 #### Defaults — `defaults.yaml`

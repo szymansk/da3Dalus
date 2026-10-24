@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:ddde40d78d05e156a6d684e1a662dc91e0fc87100264aa0cd85d1b5e8b2a6c68",
+  "content_hash": "sha256:b7670419b36eba3d655005c6203d17ece64d197672404c9e97c6fcfb9ef2e31e",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -43,6 +43,7 @@
             }
           ],
           "cost": "instant",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -82,6 +83,7 @@
             }
           ],
           "cost": "minutes",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -128,6 +130,7 @@
             }
           ],
           "cost": "minutes",
+          "direction": null,
           "embeds": [
             "calc:stall-speed.clean"
           ],
@@ -172,6 +175,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -214,6 +218,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -248,6 +253,7 @@
             }
           ],
           "cost": "instant",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -330,6 +336,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -395,165 +402,295 @@
       },
       "quantities": {
         "air-density": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "rho",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "m",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "airplane": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "airplane",
           "type": "airplane",
           "uncertainty": null,
           "unit": "1"
         },
         "airplane-landing": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "airplane_ldg",
           "type": "airplane",
           "uncertainty": null,
           "unit": "1"
         },
         "approach-speed": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "target",
+          "stage": null,
           "symbol": "k_S_app",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "butterfly-speed-range": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_range",
           "type": "curve_pair",
           "uncertainty": null,
           "unit": "m/s"
         },
         "butterfly-stall-speed-curve": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_S0(s)",
           "type": "curve",
           "uncertainty": null,
           "unit": "m/s"
         },
         "cruise-speed-target": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": true,
           "role": "target",
+          "stage": null,
           "symbol": "V_c",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "flap-deflection-landing": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "delta_f_ldg",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
         },
         "gravity": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "g",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s^2"
         },
         "inverted-max-lift-coefficient": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "C_L_max_inv",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "max-lift-coefficient": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "C_L_max",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "C_L_max_ldg",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "max-mass-level-flight": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "m_max_level",
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
         },
         "neutral-point": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "x_np",
           "type": "scalar",
           "uncertainty": "interval",
           "unit": "m"
         },
         "polar-stall": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "polar_S",
           "type": "polar",
           "uncertainty": null,
           "unit": "1"
         },
         "roll-rate-cruise": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "p_c",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg/s"
         },
         "stall-speed": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "stall-speed-landing": {
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "output",
+          "stage": null,
           "symbol": "V_S_ldg",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         }
+      },
+      "taxonomy": {
+        "directions": [],
+        "disciplines": [],
+        "groups": [],
+        "modules": [],
+        "points": [],
+        "stages": [],
+        "tools": [],
+        "worlds": []
       }
     }
   },

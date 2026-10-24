@@ -828,12 +828,21 @@ fields the README keeps for readers and for approval are dropped, and this is th
 any other README field is carried: `canon` (it becomes the dict key, the slug), `entry` and the quantity's
 `kind: quantity` (document-structure markers; the container says which it is), `output` (a readable copy
 of `outputs` / `produce`, checked equal by `check_canon.py`), `status` (the approval state; it changes no
-value, every result is `validated: false`), `shape` (an approval classification), `tags`, `tex`,
+value, every result is `validated: false`), `shape` (an approval classification), `tags` (except the six taxonomy families, below), `tex`,
 `source_status` and `dimensional_check`. A new README field is carried unless this list is extended.
 Normalisation adds nothing but: `bind` values become a quantity reference or `{const, source}`; absent
 optional fields get their stated default (`when`/`given` absent = always, precondition `applications`
 absent = all, `cost` derived, ch. 8.7); the default application is written out explicitly; the `embeds`
-closure (ch. 8.5) is stored alongside the listed embeds. Fixture models in
+closure (ch. 8.5) is stored alongside the listed embeds. **Taxonomy (#1218).** The tags of the families `module/`, `point/`, `stage/`, `group/`, `discipline/`
+(quantities) and `direction/` (formulas) are carried as the structured fields `module`, `point`, `stage`,
+`group`, `discipline` and `direction`, and a probe quantity's `checks: <slug>`. The values of the families
+are stated once, in `taxonomy.yaml` (label, explanation, order, properties; tool codes with names; the
+world-to-tool mapping), and the model carries it as the namespace's `taxonomy`. Stage 3 validates the tags
+against it (`importer/tag_rules.py`): an unknown value, a missing tag where the quantity's place in the
+calculation requires one, a target outside a target module, a group that disagrees with its stage or
+module, an undeclared tool or world, a probe that checks nothing. A quantity has at most one tag per family
+(stage 2). The navigator and the kernel read the vocabulary from the model.
+Fixture models in
 `tests/fixtures/` follow exactly this shape and are validated against `canon_model.schema.json`. The model
 also holds `schema_version`, `content_hash` and `importer_version`. References are slugs; namespaces are written `<namespace>:<slug>` (`calc:stall-speed`,
 later `sizing:…`), and a bare slug in a request means `calc:`.

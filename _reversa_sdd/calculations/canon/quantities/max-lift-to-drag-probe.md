@@ -11,6 +11,7 @@ tags:
   - point/best-glide
   - role/output
 type: scalar
+checks: max-lift-to-drag-ratio
 ---
 
 # Maximum lift-to-drag ratio, parabolic Probe · `E_max,probe`

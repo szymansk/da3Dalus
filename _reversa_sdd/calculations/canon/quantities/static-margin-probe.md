@@ -11,6 +11,7 @@ tags:
   - point/best-glide
   - role/output
 type: scalar
+checks: static-margin
 ---
 
 # Static margin, Probe · `SM_probe`

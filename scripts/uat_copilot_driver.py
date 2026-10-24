@@ -69,12 +69,12 @@ def _parse_sse(raw: str) -> list[tuple[str, dict]]:
     for line in raw.splitlines():
         line = line.strip()
         if line.startswith("event:"):
-            ev = line[len("event:"):].strip()
+            ev = line[len("event:") :].strip()
         elif line.startswith("data:") and ev is not None:
             try:
-                data = json.loads(line[len("data:"):].strip())
+                data = json.loads(line[len("data:") :].strip())
             except json.JSONDecodeError:
-                data = {"raw": line[len("data:"):].strip()}
+                data = {"raw": line[len("data:") :].strip()}
             events.append((ev, data))
             ev = None
     return events
@@ -105,7 +105,9 @@ def run_question(client: TestClient, uuid: str, question: str) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("uuid")
-    ap.add_argument("--out", default=os.path.join(tempfile.gettempdir(), "uat_copilot_transcript.json"))
+    ap.add_argument(
+        "--out", default=os.path.join(tempfile.gettempdir(), "uat_copilot_transcript.json")
+    )
     args = ap.parse_args()
 
     if not settings.COPILOT_API_KEY or not settings.COPILOT_BASE_URL:
@@ -121,8 +123,10 @@ def main() -> int:
     for i, q in enumerate(QUESTIONS, 1):
         print(f"=== Q{i}: {q[:70]}...")
         rec = run_question(client, args.uuid, q)
-        print(f"    tools={rec['tools_called']} truncated={rec['truncated']} "
-              f"errors={len(rec['errors'])} answer_chars={len(rec['answer'])}")
+        print(
+            f"    tools={rec['tools_called']} truncated={rec['truncated']} "
+            f"errors={len(rec['errors'])} answer_chars={len(rec['answer'])}"
+        )
         transcript.append(rec)
 
     with open(args.out, "w") as f:
