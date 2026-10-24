@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:6f56506815bcd98793d49befc7c4f2d5d065251d041693750f90c85a3ec3d0ac",
+  "content_hash": "sha256:80a43bff663ea2d47d77b085d3c8874f513e5a8c5926140f4b55045f884e6bec",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -3152,7 +3152,7 @@
         "angle-of-attack-stall": {
           "positive": null,
           "role": "derived",
-          "symbol": "alpha_stall",
+          "symbol": "alpha_S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
@@ -3592,7 +3592,7 @@
         "max-lift-coefficient": {
           "positive": null,
           "role": "derived",
-          "symbol": "C_L,max,stall",
+          "symbol": "C_L,max,S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
@@ -4176,7 +4176,7 @@
         "wing-loading-limit-stall": {
           "positive": null,
           "role": "output",
-          "symbol": "(W/S)_max,stall",
+          "symbol": "(W/S)_max,S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N/m^2"

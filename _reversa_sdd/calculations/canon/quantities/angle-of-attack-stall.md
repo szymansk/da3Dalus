@@ -1,7 +1,7 @@
 ---
 canon: angle-of-attack-stall
 kind: quantity
-symbol: alpha_stall
+symbol: alpha_S
 unit: deg
 role: derived
 status: draft
@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - discipline/aerodynamics
   - stage/aero-model
+  - group/aero-stall
   - role/derived
 type: scalar
 ---

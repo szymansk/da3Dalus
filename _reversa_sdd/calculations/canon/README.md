@@ -485,7 +485,9 @@ and one `group/<name>`: `air-state` (atmosphere), `weight-and-loading` (mass and
 `geometry-references`, `configurations`, `powertrain-motor-propeller` and `powertrain-battery`
 (construction; the powertrain is motor, battery and propeller — `battery-voltage` belongs to motor and
 propeller, the only place it is used). A module thus holds its inputs and the references derived from
-them. The navigator draws `references` as its own column
+them. The `aero-model` stage is subdivided the same way (maintainer, 2026-10-24): `aero-forces` (lift,
+drag, dynamic pressure, lift coefficient, lift-to-drag ratio), `aero-lift-curve` (slope, zero-lift angle),
+`aero-stall` (C_L,max, α_S, the stall polar), `aero-parabola` (the fitted parabola, display only). The navigator draws `references` as its own column
 right of the cross-cutting inputs — intermediate values, kept apart from the input column (maintainer,
 2026-10-24). The navigator build refuses an intermediate quantity without it.
 

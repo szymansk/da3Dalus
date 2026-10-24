@@ -31,15 +31,22 @@ import sys
 BROKEN_EDGES: set = set()
 
 GREEK = {
-    "rho": r"\rho",
     "alpha": r"\alpha",
+    "beta": r"\beta",
     "gamma": r"\gamma",
+    "Delta": r"\Delta",
+    "delta": r"\delta",
     "eta": r"\eta",
-    "mu": r"\mu",
-    "pi": r"\pi",
-    "sigma": r"\sigma",
     "lambda": r"\lambda",
+    "mu": r"\mu",
+    "nu": r"\nu",
+    "omega": r"\omega",
     "phi": r"\phi",
+    "pi": r"\pi",
+    "rho": r"\rho",
+    "sigma": r"\sigma",
+    "tau": r"\tau",
+    "theta": r"\theta",
 }
 
 #: A canonical form containing any of these is a procedure, not an expression, and is

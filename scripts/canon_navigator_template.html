@@ -106,8 +106,12 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .issue b{color:var(--bad)}
 .cblk{border-left:3px solid var(--sel);padding:6px 0 6px 10px;margin:10px 0}
 .cblk b{color:var(--sel)}
+.runmark{fill:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:7.5px;font-weight:600}
+.node.sib rect{stroke:var(--sel);stroke-width:2.2;stroke-dasharray:4 2}
 .dmark{fill:var(--sel);font-family:"IBM Plex Mono",monospace;font-size:8px;font-weight:600}
 .dischead{font-family:"STIX Two Text",Georgia,serif;font-size:13px;font-weight:600;fill:var(--ink-2)}
+.subframe{fill:none;stroke:var(--hub);stroke-opacity:.5;stroke-width:1;stroke-dasharray:3 3}
+.blocklab.sublab{font-size:9px}
 .pspan{fill:var(--out-bg);fill-opacity:.22;stroke:var(--out);stroke-opacity:.7;stroke-width:1.3}
 .pframe{fill:var(--out-bg);fill-opacity:.35;stroke:var(--out);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
 .blocklab.ptlab{fill:var(--out)}
@@ -182,6 +186,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>part of the MVP, still open</span>
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>formula implemented, quantity not scalar &#8212; v1 does not return it</span>
       <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>belongs to the MVP (bar under the node)</span>
+      <span><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--ink-3);margin:0 6px 0 2px">2/4</span>one of several outputs of the same calculation (top right); selecting it outlines the others</span>
       <span id="issueLegend" style="display:block">marks at the bottom left of a node (click it for why) &#8212; open issues block approval; notes and defined values do not:</span>
     </div>
     <p class="stat" id="kstat"></p>
@@ -266,6 +271,14 @@ const pred={}, succ={}, prodBy={}, useCount={};
 for(const q in Q){pred[q]=[];succ[q]=[];useCount[q]=0;}
 for(const [a,b,f] of D.edges){ pred[b].push([a,f]); succ[a].push([b,f]); useCount[a]++; }
 for(const f in F){ for(const o of [].concat(F[f].out)) (prodBy[o] ||= []).push(f); }
+// Outputs computed together (maintainer 2026-10-24): the same formula in the same application is one
+// run; the same formula in another application is a separate run of the same relation.
+const RUN={}, OTHERRUNS={};
+for(const f in F) for(const a of (F[f].apps||[])) for(const o of a.out){
+  if(!Q[o]) continue;
+  RUN[o]={formula:f,app:a.id,outs:a.out.filter(x=>Q[x])};
+  OTHERRUNS[o]=(F[f].apps||[]).filter(b=>b.id!==a.id&&b.out.some(x=>Q[x])).map(b=>({app:b.id,outs:b.out.filter(x=>Q[x])}));
+}
 const UNCSRC=new Set(Object.keys(Q).filter(q=>Q[q].unc==='interval'));
 const UNC=new Set(UNCSRC), UFROM={};
 for(const s of UNCSRC){ const seen=new Set(), st=[s]; while(st.length){ const v=st.pop();
@@ -369,7 +382,8 @@ const KIND=q=>/probe$/.test(q)?2:/(static-margin|pitching-moment|dihedral|weathe
 // band by operating point (point/<name>). Packing (maintainer 2026-10-24): clusters with the
 // widest coverage over the columns come first; a cluster shares a row with others when their
 // column spans do not overlap (first fit). One box per cluster spans its columns.
-const PFRAMES=[], PSPANS=[];
+const PFRAMES=[], PSPANS=[], SUBFRAMES=[];
+const SUBORDER=['aero-forces','aero-lift-curve','aero-stall','aero-parabola'], SUBHEAD=16;
 const COLIX=x=>COLS.findIndex(c=>c.x===x);
 for(const [band,,inBand] of BANDS){
   BANDY[band]=yc;
@@ -381,8 +395,24 @@ for(const [band,,inBand] of BANDS){
     for(const k of ORD){
       const g=qs.filter(q=>keyOf(q)===k).sort((a,b)=>(band==='final'?KIND(a)-KIND(b):0)||RANK[a]-RANK[b]);
       if(!g.length) continue;
-      const rows=Math.ceil(g.length/c.cols), fh=(rows-1)*SUBGAP+NH+2*FPAD;
-      g.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, dy:FPAD+Math.floor(i/c.cols)*SUBGAP, key:k}; });
+      // sub-groups (canon tag group/) inside a stage cluster: each starts a new row block, framed
+      const subs=band==='final'?[]:[...new Set(g.map(q=>Q[q].group).filter(Boolean))].sort((a,b)=>SUBORDER.indexOf(a)-SUBORDER.indexOf(b));
+      let fh;
+      if(subs.length){
+        let dy=FPAD;
+        const blocks=[...subs.map(sg=>[sg,g.filter(q=>Q[q].group===sg)]), ['',g.filter(q=>!Q[q].group)]].filter(b=>b[1].length);
+        for(const [sg,qs] of blocks){
+          if(sg) dy+=SUBHEAD;
+          const rows=Math.ceil(qs.length/c.cols);
+          qs.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, dy:dy+Math.floor(i/c.cols)*SUBGAP, key:k}; });
+          if(sg) SUBFRAMES.push({key:k,sg,x:c.x+4,dy:dy-SUBHEAD+4,w:c.w-8,h:(rows-1)*SUBGAP+NH+SUBHEAD+2});
+          dy+=(rows-1)*SUBGAP+NH+12;
+        }
+        fh=dy-12+FPAD;
+      } else {
+        const rows=Math.ceil(g.length/c.cols); fh=(rows-1)*SUBGAP+NH+2*FPAD;
+        g.forEach((q,i)=>{ P[q]={x:c.x+FPAD+(i%c.cols)*slotW, dy:FPAD+Math.floor(i/c.cols)*SUBGAP, key:k}; });
+      }
       frames.push({band,key:k,x:c.x,w:c.w,h:fh});
     }
   }
@@ -403,6 +433,7 @@ for(const [band,,inBand] of BANDS){
   for(const k of ORD){ const fs=frames.filter(f=>f.key===k); if(!fs.length) continue;
     const x0=Math.min(...fs.map(f=>f.x))-8, x1=Math.max(...fs.map(f=>f.x+f.w))+8;
     PSPANS.push({band,key:k,label:LAB[k],x:x0,y:rowY[k]-FHEAD+2,w:x1-x0,h:rowH[k]+FHEAD+4}); }
+  for(const sf of SUBFRAMES) if(sf.y===undefined&&rowY[sf.key]!==undefined&&band!=='final') sf.y=rowY[sf.key]+sf.dy;
   for(const q of derived) if(inBand(q)&&P[q]&&P[q].key!==undefined){ P[q]={x:P[q].x, y:rowY[P[q].key]+P[q].dy}; }
   yc=y-FHEAD-8+GAPY;
 }
@@ -415,7 +446,8 @@ for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==
 // is one box with the sub-clusters motor and propeller, and battery.
 SX.refs=XW+REFGAP;
 const GROUPS={'air-state':'Air state','weight-and-loading':'Weight and loading','geometry-references':'Geometry references',
-  'configurations':'Configurations','powertrain-motor-propeller':'Motor and propeller','powertrain-battery':'Battery'};
+  'configurations':'Configurations','powertrain-motor-propeller':'Motor and propeller','powertrain-battery':'Battery',
+  'aero-forces':'Forces and state','aero-lift-curve':'Linear lift curve','aero-stall':'Stall','aero-parabola':'Fitted parabola (display)'};
 const GRORDER=Object.keys(GROUPS);
 { let y=XTOP+FHEAD;
   for(const m of MODORDER.filter(m=>XCUT.has(m))){
@@ -470,6 +502,9 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
     if(!s.sub) cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
     const kind=s.band==='final'?'point':(s.key==='powertrain'||GROUPS[s.key])?'group':'stage';
     cam.appendChild(headingEl(s.x+(s.sub?2:8),s.y+13,'blocklab '+(st?'stlab':'ptlab'),s.label,kind,s.key)); }
+  for(const sf of SUBFRAMES){ if(sf.y===undefined) continue;
+    cam.appendChild(el('rect',{x:sf.x,y:sf.y,width:sf.w,height:sf.h,rx:6,class:'subframe'}));
+    cam.appendChild(headingEl(sf.x+4,sf.y+11,'blocklab stlab sublab',GROUPS[sf.sg]||sf.sg,'group',sf.sg)); }
   for(const f of PFRAMES)
     cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:f.band!=='final'?'sframe':'pframe'}));
   for(const h of COLHEADS) cam.appendChild(headingEl(h.x,h.y,'dischead',h.label,'discipline',h.key));
@@ -501,8 +536,10 @@ for(const [a,b,f] of D.edges){
 }
 function sym(q){
   const s=(Q[q].symbol||q).replace(/\\/g,'').trim();
-  const g={rho:'\u03c1',alpha:'\u03b1',gamma:'\u03b3',eta:'\u03b7',mu:'\u03bc',pi:'\u03c0',sigma:'\u03c3',phi:'\u03c6',lambda:'\u03bb'};
-  return s.replace(/\b(rho|alpha|gamma|eta|mu|pi|sigma|phi|lambda)\b/g,m=>g[m]);
+  // Greek names become letters also when a subscript follows (alpha_bg, delta_a, Delta_alpha_break).
+  const g={alpha:'\u03b1',beta:'\u03b2',gamma:'\u03b3',Delta:'\u0394',delta:'\u03b4',eta:'\u03b7',lambda:'\u03bb',
+    mu:'\u03bc',nu:'\u03bd',omega:'\u03c9',phi:'\u03c6',pi:'\u03c0',rho:'\u03c1',sigma:'\u03c3',tau:'\u03c4',theta:'\u03b8'};
+  return s.replace(/(?<![A-Za-z])(alpha|beta|gamma|Delta|delta|theta|eta|lambda|mu|nu|omega|phi|pi|rho|sigma|tau)(?![a-z])/g,m=>g[m]).replace(/\u0394_/g,'\u0394');
 }
 let moved=false;
 const isOpt=q=>(prodBy[q]||[]).some(f=>F[f].kind==='optimization');
@@ -535,7 +572,9 @@ for(const q in Q){
     ks.forEach((k,i)=>{ const cx=7+i*11;
       g.appendChild(el('circle',{cx,cy:NH-7,r:5,fill:IKIND[k].col}));
       const ex=el('text',{x:cx,y:NH-3.9,class:'excl','text-anchor':'middle'}); ex.textContent=IKIND[k].icon; g.appendChild(ex); }); }
-  if(!DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q)&&!INPUTS.has(q)){ const dt=el('text',{x:NW-4,y:9,class:'dmark','text-anchor':'end'}); dt.textContent='D'; g.appendChild(dt); }
+  const run=RUN[q], multi=run&&run.outs.length>1;
+  if(multi){ const ct=el('text',{x:NW-4,y:9,class:'runmark','text-anchor':'end'}); ct.textContent=`${run.outs.indexOf(q)+1}/${run.outs.length}`; g.appendChild(ct); }
+  if(!DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q)&&!INPUTS.has(q)){ const dt=el('text',{x:multi?NW-22:NW-4,y:9,class:'dmark','text-anchor':'end'}); dt.textContent='D'; g.appendChild(dt); }
   const tl=toolOf(q);
   if(tl.length){ const tt=el('text',{x:NW-3,y:NH-3,class:'tool','text-anchor':'end'}); tt.textContent=tl.join('/'); g.appendChild(tt); }
   g.addEventListener('click',()=>{ if(!moved) select(q); });
@@ -561,11 +600,12 @@ function reach(start,map,n){
 // The selection is one quantity (a string) or a module: {module, members: Set}.
 const selSet=()=>sel&&sel.members?sel.members:new Set([sel]);
 function paint(){
-  if(!sel){ for(const q in nodeEls) nodeEls[q].classList.remove('faded');
+  if(!sel){ for(const q in nodeEls) nodeEls[q].classList.remove('faded','sib');
             edgeEls.forEach(({e})=>e.classList.remove('faded','up','down')); return; }
   const S=selSet(), up=reach(S,pred,depth), down=reach(S,succ,depth);
-  const on=new Set([...S,...up,...down]);
-  for(const q in nodeEls) nodeEls[q].classList.toggle('faded',!on.has(q));
+  const sibs=new Set(typeof sel==='string'&&RUN[sel]?RUN[sel].outs.filter(x=>x!==sel):[]);
+  const on=new Set([...S,...up,...down,...sibs]);
+  for(const q in nodeEls){ nodeEls[q].classList.toggle('faded',!on.has(q)); nodeEls[q].classList.toggle('sib',sibs.has(q)); }
   for(const f of frameEls) f.el.classList.toggle('framesel',!!(sel&&sel.module===f.module));
   edgeEls.forEach(({e,a,b})=>{
     e.classList.remove('up','down','faded');
@@ -622,6 +662,11 @@ function select(q){
     if(e.src) h+=`<div class="lab" style="margin-top:12px">Source</div><p class="src">${esc(e.src)}</p>`;
     h+=`</div>`;
   }
+  { const run=RUN[q];
+    if(run&&run.outs.length>1) h+=`<div class="blk"><div class="lab">Computed together with \u00b7 ${run.outs.length-1} \u2014 ${esc(run.formula)}${(F[run.formula].apps||[]).length>1?' \u00b7 application '+esc(run.app):''}</div><ul class="lnk">`+
+      run.outs.filter(x=>x!==q).map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
+    if(run&&OTHERRUNS[q].length) h+=`<div class="blk"><div class="lab">Same formula, other applications (separate runs)</div>`+
+      OTHERRUNS[q].map(r=>`<p class="sub" style="margin:4px 0 2px">${esc(r.app)}</p><ul class="lnk">`+r.outs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul>`).join('')+`</div>`; }
   const us=succ[q].map(([o])=>o), uniq=[...new Set(us)];
   if(uniq.length) h+=`<div class="blk"><div class="lab">Feeds \u00b7 ${uniq.length}</div><ul class="lnk">`+
     uniq.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
@@ -664,6 +709,10 @@ const DESC={
  'group:powertrain-motor-propeller':'Motor and propeller values from the catalogue, and the pack voltage they run on.',
  'group:powertrain-battery':'Battery capacity, mass and specific energy, and the predicted battery mass.',
  'group:powertrain':'The powertrain: motor, battery and propeller.',
+ 'group:aero-forces':'Lift, drag, dynamic pressure, the required lift coefficient and the lift-to-drag ratio at a state.',
+ 'group:aero-lift-curve':'The linear part of the lift curve: slope and zero-lift angle.',
+ 'group:aero-stall':'The stall: C_L,max, the stall angle of attack and the polar at the stall Reynolds number.',
+ 'group:aero-parabola':'The parabola fitted to the solver polar (C_D0, Oswald e, k): display only, never an input to performance (ADR 0026).',
 };
 const KINDNAME={module:'module',discipline:'discipline',stage:'stage',point:'operating point',group:'group'};
 function membersOf(kind,key){
