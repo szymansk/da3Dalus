@@ -22,7 +22,14 @@ from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 from aero_kernel.solvers.avl_contour import repanel
-from aero_kernel.solvers.avl_mesh import SLIVER_STEPS, MeshSurface, mesh_surfaces, split_at_hinge
+from aero_kernel.solvers.avl_mesh import (
+    JOIN_TOLERANCE_M,
+    MESH_DECIMALS,
+    SLIVER_STEPS,
+    MeshSurface,
+    mesh_surfaces,
+    split_at_hinge,
+)
 from aero_kernel.solvers.avl_writer import (
     CHORD_SPACING,
     GEOMETRY_FILE,
@@ -232,7 +239,10 @@ class AvlAdapter(SolverAdapter):
     }
 
     def settings(self) -> dict[str, JsonValue]:
-        """Every constant that shapes an AVL result or decides value versus error: mesh, core, checks."""
+        """Every constant that shapes an AVL result or decides value versus error: mesh, core, checks.
+
+        Not listed: the AVL compile limits (``AVL_MAX_*``). They only gate a refusal before the run.
+        """
         return {
             "avl_nchord": N_CHORD,
             "avl_nspan": N_SPAN,
@@ -253,6 +263,8 @@ class AvlAdapter(SolverAdapter):
             "avl_control_echo_tolerance": CONTROL_ECHO_TOLERANCE,
             "avl_cl_tolerance": CL_TOLERANCE,
             "avl_max_run_s": AVL_MAX_RUN_S,
+            "avl_mesh_decimals": MESH_DECIMALS,
+            "avl_join_tolerance_m": JOIN_TOLERANCE_M,
         }
 
     async def _contours(self, airfoils: tuple[Airfoil, ...]) -> tuple[Contour, ...]:

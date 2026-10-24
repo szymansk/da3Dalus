@@ -30,15 +30,24 @@ from aero_kernel.solvers.devices import roll_deflection, roll_segments
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 from pydantic import BaseModel, ConfigDict
 
-__all__ = ["MeshControl", "MeshSection", "MeshSurface", "mesh_surfaces", "split_at_hinge"]
+__all__ = [
+    "JOIN_TOLERANCE_M",
+    "MESH_DECIMALS",
+    "SLIVER_STEPS",
+    "MeshControl",
+    "MeshSection",
+    "MeshSurface",
+    "mesh_surfaces",
+    "split_at_hinge",
+]
 
 # A tail station closer to the tail tip than this many wing strip widths would leave a sliver strip.
 SLIVER_STEPS = 0.3
 # Stations are merged when they agree to this many decimals (metres).
-_DECIMALS = 9
+MESH_DECIMALS = 9
 # Two positions closer than this (metres) are the same rib: the station of a device end and the rib
 # it was read from agree to rounding.
-_JOIN_TOLERANCE_M = 1e-8
+JOIN_TOLERANCE_M = 1e-8
 
 
 class MeshControl(BaseModel):
@@ -136,7 +145,7 @@ def _root(wing: Wing, chain: Sequence[ChainPoint]) -> float:
 
 def _uniform(start: float, end: float, count: int) -> list[float]:
     """``count`` equal strips from ``start`` to ``end``: the ``count + 1`` stations."""
-    return [round(start + k * (end - start) / count, _DECIMALS) for k in range(count + 1)]
+    return [round(start + k * (end - start) / count, MESH_DECIMALS) for k in range(count + 1)]
 
 
 def _section_at(
@@ -176,17 +185,17 @@ def _sine_to_tip(start: float, end: float, count: int, breaks: Sequence[float]) 
         The stations, root first.
     """
     span = end - start
-    inner = sorted({round(b, _DECIMALS) for b in breaks if start < b < end})
+    inner = sorted({round(b, MESH_DECIMALS) for b in breaks if start < b < end})
     # t of the breaks, exact; the strips a piece gets are the rounded difference of their cumulative
     # counts, at least one
     t_edges = [0.0, *(2.0 / math.pi * math.asin((b - start) / span) for b in inner), 1.0]
     cuts = [0, *(round(count * t) for t in t_edges[1:-1]), count]
-    stations = [round(start, _DECIMALS)]
+    stations = [round(start, MESH_DECIMALS)]
     for (low, high), (t_low, t_high) in zip(pairwise(cuts), pairwise(t_edges), strict=True):
         n = max(high - low, 1)
         for k in range(1, n + 1):
             t = t_low + (t_high - t_low) * k / n
-            stations.append(round(start + span * math.sin(0.5 * math.pi * t), _DECIMALS))
+            stations.append(round(start + span * math.sin(0.5 * math.pi * t), MESH_DECIMALS))
     return stations
 
 
@@ -228,8 +237,8 @@ def _driven_spans(wing_key: str, chain: Sequence[ChainPoint]) -> list[_Span]:
             )
         )
     for before, after in pairwise(spans):
-        joined = math.isclose(before.y_end, after.y_start, abs_tol=_JOIN_TOLERANCE_M)
-        if joined and not math.isclose(before.x_end, after.x_start, abs_tol=_JOIN_TOLERANCE_M):
+        joined = math.isclose(before.y_end, after.y_start, abs_tol=JOIN_TOLERANCE_M)
+        if joined and not math.isclose(before.x_end, after.x_start, abs_tol=JOIN_TOLERANCE_M):
             raise FormulaError(
                 ErrorCategory.UNSUPPORTED_CONFIGURATION,
                 "hinge_line_discontinuous",
@@ -251,12 +260,12 @@ def _device_ends(spans: Sequence[_Span]) -> list[float]:
     for index, span in enumerate(spans):
         previous = spans[index - 1] if index else None
         if previous is None or not math.isclose(
-            previous.y_end, span.y_start, abs_tol=_JOIN_TOLERANCE_M
+            previous.y_end, span.y_start, abs_tol=JOIN_TOLERANCE_M
         ):
             ends.append(span.y_start)
         following = spans[index + 1] if index + 1 < len(spans) else None
         if following is None or not math.isclose(
-            span.y_end, following.y_start, abs_tol=_JOIN_TOLERANCE_M
+            span.y_end, following.y_start, abs_tol=JOIN_TOLERANCE_M
         ):
             ends.append(span.y_end)
     return ends
@@ -265,7 +274,7 @@ def _device_ends(spans: Sequence[_Span]) -> list[float]:
 def _control_at(y: float, spans: Sequence[_Span], section: MeshSection) -> MeshControl | None:
     """The roll control of a station: on a driven span (ends inclusive), hinge from its line."""
     for span in spans:
-        if span.y_start - _JOIN_TOLERANCE_M <= y <= span.y_end + _JOIN_TOLERANCE_M:
+        if span.y_start - JOIN_TOLERANCE_M <= y <= span.y_end + JOIN_TOLERANCE_M:
             fraction = (y - span.y_start) / (span.y_end - span.y_start)
             x_line = span.x_start + min(max(fraction, 0.0), 1.0) * (span.x_end - span.x_start)
             return MeshControl(

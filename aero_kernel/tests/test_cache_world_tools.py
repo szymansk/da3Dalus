@@ -96,6 +96,7 @@ def test_a_new_avl_binary_keeps_the_aerobuildup_world_cached() -> None:
         "V_MAX_MACH",
         "MAX_ITERATIONS",
         "ACTIVE_BOUND_FRACTION",
+        "EFFECTIVENESS_EXPONENT",
     ],
 )
 def test_a_changed_optimisation_setting_misses_the_cache_in_the_aerobuildup_world(
@@ -119,6 +120,8 @@ def test_a_changed_optimisation_setting_misses_the_cache_in_the_aerobuildup_worl
         "CONTROL_ECHO_TOLERANCE",
         "CL_TOLERANCE",
         "AVL_MAX_RUN_S",
+        "MESH_DECIMALS",
+        "JOIN_TOLERANCE_M",
     ],
 )
 def test_a_changed_avl_constant_misses_the_cache_in_the_avl_world(

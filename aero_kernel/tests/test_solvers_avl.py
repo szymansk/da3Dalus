@@ -177,6 +177,8 @@ def test_the_settings_are_public_keys_with_their_values() -> None:
         "avl_control_echo_tolerance": 1e-4,
         "avl_cl_tolerance": 1e-4,
         "avl_max_run_s": 120.0,
+        "avl_mesh_decimals": 9,
+        "avl_join_tolerance_m": 1e-8,
     }
 
 

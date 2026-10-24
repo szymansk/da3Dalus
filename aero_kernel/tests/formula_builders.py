@@ -80,6 +80,7 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_v_max_mach": 0.6,
     "opt_max_iterations": 300,
     "opt_active_bound_fraction": 1e-6,
+    "opt_effectiveness_exponent": 2.751428551177291,
 }
 
 

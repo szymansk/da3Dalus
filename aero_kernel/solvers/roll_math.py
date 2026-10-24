@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from typing import Any, Protocol
 
 __all__ = [
+    "EFFECTIVENESS_EXPONENT",
     "AngleFunctions",
     "alpha_for_lift_coefficient",
     "body_rates",
@@ -32,7 +33,7 @@ class AngleFunctions(Protocol):
 # The exponent of ASB's fit to an XFoil study, ``tau = 1 - h^n``
 # (aerosandbox/geometry/airfoil/kulfan_airfoil.py:216-219, AeroSandbox 4.2.9). The one kernel copy;
 # pinned against ASB by ``test_effective_alpha_shift_matches_asb``.
-_EFFECTIVENESS_EXPONENT = 2.751428551177291
+EFFECTIVENESS_EXPONENT = 2.751428551177291
 
 
 def control_effectiveness(hinge: float) -> float:
@@ -44,7 +45,7 @@ def control_effectiveness(hinge: float) -> float:
     Returns:
         ``1 - h^2.7514``: the effective angle of attack added is ``tau * deflection``.
     """
-    return 1.0 - max(0.0, hinge + 1e-16) ** _EFFECTIVENESS_EXPONENT
+    return 1.0 - max(0.0, hinge + 1e-16) ** EFFECTIVENESS_EXPONENT
 
 
 # ``Any`` below: a CasADi expression in the optimiser, a float in the fast tier; AeroSandbox ships no

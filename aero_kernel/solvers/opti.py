@@ -31,6 +31,7 @@ from aero_kernel.solvers.devices import (
     roll_segments,
 )
 from aero_kernel.solvers.roll_math import (
+    EFFECTIVENESS_EXPONENT,
     alpha_for_lift_coefficient,
     body_rates,
     control_effectiveness,
@@ -860,6 +861,7 @@ class OptiAdapter(SolverAdapter):
             "opt_v_max_mach": V_MAX_MACH,
             "opt_max_iterations": MAX_ITERATIONS,
             "opt_active_bound_fraction": ACTIVE_BOUND_FRACTION,
+            "opt_effectiveness_exponent": EFFECTIVENESS_EXPONENT,
         }
 
     def _request(
