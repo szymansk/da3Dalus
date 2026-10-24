@@ -504,6 +504,7 @@ stay. Added:
 | `type` | always | the kind of value, from the closed set below |
 | `checks` | only on a probe | the slug of the quantity the probe verifies (see Probe above); must be another quantity of the canon |
 | `positive` | optional, only on `type: scalar` with role `input` or `target` (positivity is a property of a number) | `true` when the quantity is strictly greater than zero **by its definition**; omit otherwise (`false` is an error — one spelling). A default of such a quantity (`defaults.yaml`) must be > 0 (a mass, a density, gravity) — a fact about the quantity, not a design judgement (A10). A supplied value ≤ 0 is rejected. Not set where zero or a negative value is meaningful (angles, deflections, altitude, a speed that may be 0). Example: `aircraft-mass` carries `positive: true` |
+| `at_most` | optional, only on `type: scalar` with role `input` or `target` | the largest admissible value, a number (an efficiency is at most 1). A supplied value above it is rejected (`value_above_maximum`); a default of such a quantity must not exceed it. Example: `tail-efficiency` carries `positive: true` and `at_most: 1` |
 
 #### Defaults — `defaults.yaml`
 
@@ -516,7 +517,7 @@ as a mapping `<slug>: {value, unit, basis, source, regime}` (maintainer, 2026-10
   e.g. load factor 1 in level flight), `standard` (a published standard value: ISA, standard gravity),
   `sourced` (taken from a cited source, also where the source offers a band and the entry picks an edge)
   and `convention` (a chosen value **without a published source**, adopted on the maintainer's word,
-  e.g. `stall-break-fraction`). The navigator marks every quantity whose computation rests on a
+  e.g. `stall-break-fraction`, `tail-efficiency`). The navigator marks every quantity whose computation rests on a
   `convention` default, and its whole downstream closure (the "Conventions" view);
 - `source` — the citation;
 - `regime` — the ADR 0028 check of why the value holds for RC/UAV (chord Re 3·10⁴–1·10⁶, Mach ≤ 0.3,
@@ -569,6 +570,7 @@ inputs:
   g: gravity
   rho: air-density
   v_md: minimum-drag-speed
+  eta_h: tail-efficiency
 outputs: {x_np: neutral-point}
 worlds: [textbook, pappas, avl]
 ```
@@ -753,8 +755,8 @@ positive: true
   warning (it may be swept or solved), never as an error — unless the embedder passes it straight through, under the same parameter name the embedded application binds it to;
 - a quantity is produced by at most one application of a formula — counted on each application's effective outputs (explicit `produce` and inherited defaults) — unless its type is `per_control_surface`; `optional` names input parameters;
 - every quantity has a `role` from the closed set and a `type` from the set above, and no `default:`
-  in its front matter; `positive` is `true` (never `false`), only on `type: scalar` with role `input`
-  or `target`, and its default in `defaults.yaml`, if any, is a number > 0;
+  in its front matter; `positive` is `true` (never `false`) and `at_most` a number, each only on `type: scalar` with role `input`
+  or `target`, and its default in `defaults.yaml`, if any, is a number > 0 and, with `at_most`, not above it; `positive` together with an `at_most` <= 0 is an error (no admissible value);
 - every `defaults.yaml` entry names an existing quantity with role `input` or `target`, carries
   non-empty `value`, `unit`, `source` and `regime`, repeats the quantity's unit, and no slug appears
   twice;

@@ -46,7 +46,7 @@ T_2,spiral  = ln 2 / lambda_s    if lambda_s > 0   (time to double; stable spira
 **Kind: a procedure — derivatives from one solver evaluation.** The dihedral effect `C_lβ`
 (roll stability; negative rights the aircraft), the weathercock stability `C_nβ` (positive turns
 the nose into the wind) and the spiral criterion `E_spiral` (positive: the spiral is stable — a
-banked aircraft levels itself; Sadraey §12 spiral mode, the constant term of the lateral
+banked aircraft levels itself; Sadraey §12.3.3 spiral mode, the constant term of the lateral
 quartic). All of them need derivatives only, no inertias: the spiral mode is quasi-static, its root
 follows from the derivatives alone (Etkin & Reid, spiral approximation 🟡 equation to be cited from the
 book). Dutch roll and roll time constant need inertias and stay out (dynamics later).
@@ -74,12 +74,32 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 - **AeroBuildup is outside its validity** for `C_lβ` of swept wings (no sweep term; plain wing at C_L 0.4:
   +0.001 at 0/17/30° sweep, AVL −0.032/−0.057/−0.076) and for `C_nβ` of V-tails (≈ 2× AVL; physics: side
   force ∝ sin²ν with panel interference, which AVL contains). Sweep is no small effect: 17° at C_L 0.3–0.5
-  ≈ 1.5–2° dihedral (Scholz §7.3: 10° sweep ≈ 1° dihedral; Sadraey §5.11: ∝ sin 2Λ). On conventional, T and
+  ≈ 1.5–2° dihedral (Scholz §7.1: 10° sweep ≈ 1° dihedral; Sadraey §5.11: ∝ sin 2Λ). On conventional, T and
   cross tails AeroBuildup agrees with AVL (spiral verdict 38 of 39) and stays as a cross-check there.
 - **ASB's VLM is no substitute:** it has the sweep term but misses the base term of `C_lβ` (0.000 vs AVL
   −0.032 on the plain unswept wing) and has no fuselage; spiral verdict vs AVL differs on 46 of 74.
 - Not uncertain in the A11 sense any more: only one valid world remains. Being the only one, AVL is
   unvalidated — calibration against flown aircraft (spiral test, Lennon) is open.
 
-**Source.** 🟢 Sadraey Eqs 12.5–12.6 (static signs), §12 spiral mode (criterion), §12.3.3 Tab. 12.15
+**Source.** 🟢 Sadraey Eqs 12.5–12.6 (static signs), §12.3.3 spiral mode (criterion), §12.3.3 Tab. 12.15
 (time to double). 🟡 Etkin & Reid spiral-root approximation (to be cited by equation number).
+
+**Validity in the RC/UAV regime (ADR 0028).** The relations are scale-free: the static signs of `C_lβ` and `C_nβ` (Sadraey Eqs 12.5–12.6) and the spiral criterion, unstable when `|C_lβ·C_nr| < |C_lr·C_nβ|` (Sadraey §12.3.3). Mach ≤ 0.3 needs no correction (Anderson §1.10.3). The limit is the single tool: AVL is inviscid and attached with no stall (Budziak, Table 2.1), meant for thin surfaces "at small angles of attack and sideslip", and its slender-body fuselage has "relatively limited" experience and is to be used "with caution" (`avl_doc.txt:99-119`), consistent with the open fuselage share of `C_nβ`. At `V_md` the flow is attached, but at chord Re below 7·10⁴ laminar separation is the normal state (Anderson §20.3.2), and AVL has no viscous term to see it [no source for the effect on the derivatives]. The AeroBuildup block above judges sweep and V-tail sideslip terms, not Reynolds number; below chord Re 7·10⁴ no world is validated, and calibration against flown aircraft stays open. The Table 12.15 doubling times are MIL-F-8785C criteria for piloted aircraft, their RC applicability is [no source], and they belong to the evaluation (A10).
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

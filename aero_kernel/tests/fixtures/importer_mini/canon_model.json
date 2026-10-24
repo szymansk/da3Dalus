@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:45bc524bbe64798ecc7a92976d73baa70d4d55ad8beb17f36eaa55dbdfa68272",
+  "content_hash": "sha256:376e8cd2c7a25f8467f88b0c7e473219cb0fa0fc5a097001bbf47042d80608fa",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -252,6 +252,7 @@
       },
       "quantities": {
         "aircraft-mass": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -266,6 +267,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -280,6 +282,7 @@
           "unit": "1"
         },
         "gravity": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -294,6 +297,7 @@
           "unit": "m/s^2"
         },
         "ratio": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -308,6 +312,7 @@
           "unit": "1"
         },
         "weight": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -322,6 +327,7 @@
           "unit": "N"
         },
         "weight-estimate": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -336,6 +342,7 @@
           "unit": "N"
         },
         "weight-flapped": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -350,6 +357,7 @@
           "unit": "N"
         },
         "weight-outer": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -364,6 +372,7 @@
           "unit": "N"
         },
         "weight-twice": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -378,6 +387,7 @@
           "unit": "N"
         },
         "weight-weighed": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,

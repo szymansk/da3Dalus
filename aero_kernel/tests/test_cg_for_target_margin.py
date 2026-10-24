@@ -78,7 +78,7 @@ async def test_the_missing_fuselage_is_inherited_in_every_world() -> None:
         "neutral-point=pappas",
         "neutral-point=textbook",
     ]
-    assert all(w.severity is WarningSeverity.DEFECT for w in fuselage)
+    assert all(w.severity is WarningSeverity.PRACTICE for w in fuselage)
 
 
 async def test_a_failing_avl_world_is_an_error_with_the_worlds_that_computed() -> None:

@@ -94,10 +94,11 @@ on the stall speed alone, as a margin over stall should.
 they contained no climb relation — no thrust, no excess power. Their home is the climb
 operating point, which has been computed since 2026-10-01 (§3.10).
 
-## Implementations (5)
+## Implementations (6)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/speed_from_stall_margin.py` | EXACT | 🟢 |  |
 | [[v_approach]] | EXACT | 🟢 |  |
 | [[v_stall_near_clean]] | EXACT | 🟢 |  |
 | [[v_stall_with_flaps]] | DEVIATES | 🟢 | k_op = 1.05 over V_S0 leaves only a 10% load-factor margin to stall (1.05^2 = 1.10 g); the |

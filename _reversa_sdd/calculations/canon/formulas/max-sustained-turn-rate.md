@@ -72,3 +72,25 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 **Not here: the instantaneous turn.** Pulling beyond the sustained limit trades speed or height for a tighter turn, bounded by stall and structure. Its key number, the corner speed `V* = V_S·sqrt(n_lim)` — above it a full elevator input can break the aircraft — belongs to the flight envelope (§3.10, dive) and is noted there.
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
+
+**Source.** 🟢 Turn rate and radius of the coordinated level turn: Sadraey §12.6.2 (coordinated turn, pp. 705–707): centrifugal force `F_C = m·U₁²/R_t` (Eq. 12.129), yaw rate `R₁ = ψ̇·cos φ = g·sin φ/U₁` (Eq. 12.134), hence the rate of turn `ψ̇ = g·tan φ/U₁`, and the load factor `n = L/W = 1/cos φ` (Eq. 12.135–12.136). Eliminating the bank angle with `tan φ = sqrt(n² − 1)` gives `ω = g·sqrt(n² − 1)/V` and `r = V/ω = V²/(g·sqrt(n² − 1))` — **derived from** these equations; Sadraey does not print the `n` form. Load factor as the vector sum of weight and centrifugal force for models: Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21. Induced drag `C_L²/(π·e·AR)`: Anderson §6.7.2. Motor model: Drela `motor1` §1.1.
+
+**Validity in the RC/UAV regime (ADR 0028).** The kinematics of a coordinated level turn are exact; the load factor is the vector sum of weight and centrifugal force (Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21). The fastest sustained turn sits at the stall corner, so the answer is only as good as C_L,max at the turn's own Reynolds number; Lennon (Ch. 1–3) documents a 46 % loss of section C_L,max at low model Reynolds number (see [[stall-speed]]). AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴ and C_L 1.0 (Sharpe 2024 §7.2.4). Induced drag rises with `C_L²` (Anderson §6.7.2), so at high load factor the thrust limit binds through the propeller table, with its Re₀.₇₅ and rpm-block limits. A demanded C_L above C_L,max gives an accelerated stall (Lennon Ch. 21), which is the "wing" termination.
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.
