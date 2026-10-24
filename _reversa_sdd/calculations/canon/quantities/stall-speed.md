@@ -9,7 +9,6 @@ tags:
   - canon/quantity
   - discipline/aerodynamics
   - point/stall
-  - stage/aero-model
   - role/output
 type: scalar
 ---
@@ -21,5 +20,3 @@ Minimum flyable speed, the lift-balance speed at C_L,max; V_S1 clean, V_S0 landi
 **Unit.** `m/s`
 
 **Produced by.** [[stall-speed]]
-
-**Used by.** [[stall-break]]

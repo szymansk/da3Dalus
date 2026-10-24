@@ -29,9 +29,11 @@ S_W, S_H, AR_W, AR_H = 0.28, 0.04, 7.0, 4.0
 X_AC_W, X_AC_H, C_MAC = 0.10, 0.625, 0.2
 WEIGHT_AT_G = MASS * 9.80665
 
-# Hand values. Textbook (Sadraey Eq. 6.67, eta = 0.9): K = 0.9 (1 - 4/9) (4/6) / (7/9) = 3/7;
-# x_NP = (0.28 * 0.10 + 3/7 * 0.04 * 0.625) / (0.28 + 3/7 * 0.04) = 0.0387142857 / 0.2971428571.
-K_TEXTBOOK = 0.9 * (1 - 4 / (AR_W + 2)) * (AR_H / (AR_H + 2)) / (AR_W / (AR_W + 2))
+# Hand values. Textbook (derived from Sadraey Eq. 6.67, eta = the default 0.65 of tail-efficiency):
+# K = 0.65 (1 - 4/9) (4/6) / (7/9) = 0.65 * 10/21 = 0.3095238;
+# x_NP = (0.28 * 0.10 + K * 0.04 * 0.625) / (0.28 + K * 0.04) = 0.0357738095 / 0.2923809524.
+ETA_DEFAULT = 0.65
+K_TEXTBOOK = ETA_DEFAULT * (1 - 4 / (AR_W + 2)) * (AR_H / (AR_H + 2)) / (AR_W / (AR_W + 2))
 X_NP_TEXTBOOK = (S_W * X_AC_W + K_TEXTBOOK * S_H * X_AC_H) / (S_W + K_TEXTBOOK * S_H)
 # Pappas (10/2009): K = (1 - 3.24/7) (1/(1+2/4)) / (1/(1+2/7)) = 0.5371429 * 6/7.
 K_PAPPAS = (1 - 3.24 / AR_W) * (1 / (1 + 2 / AR_H)) / (1 / (1 + 2 / AR_W))
@@ -46,6 +48,7 @@ async def run(
     opti: StubOpti | None = None,
     cg: float | None = None,
     target: float | None = None,
+    eta: float | None = None,
 ) -> tuple[ComputeResult, StubAvl]:
     stub = avl or StubAvl(X_NP_AVL)
     solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=opti or StubOpti(), avl=stub)
@@ -54,6 +57,8 @@ async def run(
         values["centre-of-gravity"] = cg
     if target is not None:
         values["static-margin-target"] = target
+    if eta is not None:
+        values["tail-efficiency"] = eta
     aircraft = AircraftInput.model_validate(
         {"airplane": airplane or airplane_with(*CONVENTIONAL), "values": values}
     )
@@ -84,8 +89,8 @@ async def test_the_three_worlds_give_the_interval_with_the_hand_values() -> None
     assert worlds["neutral-point=avl"] == X_NP_AVL
     assert quantity.interval.min == min(worlds.values())
     assert quantity.interval.max == max(worlds.values())
-    assert 0.13028 < X_NP_TEXTBOOK < 0.13029  # 0.0387142857 / 0.2971428571
-    assert abs(K_TEXTBOOK - 3 / 7) < 1e-12
+    assert 0.12223 < X_NP_TEXTBOOK < 0.12224  # 0.0357738095 / 0.2923809524
+    assert abs(K_TEXTBOOK - 0.65 * 10 / 21) < 1e-12
 
 
 async def test_the_avl_world_is_asked_for_the_lift_coefficient_at_the_minimum_drag_speed() -> None:
@@ -122,7 +127,7 @@ async def test_every_world_carries_the_fuselage_warning_and_so_does_the_static_m
         "neutral-point=textbook",
     ]
     assert all(
-        w.severity is WarningSeverity.DEFECT and w.origin == "neutral-point" for w in fuselage
+        w.severity is WarningSeverity.PRACTICE and w.origin == "neutral-point" for w in fuselage
     )
     assert all(not w.detail for w in fuselage)
     margin = only((await run("static-margin", cg=CG))[0])
@@ -223,7 +228,7 @@ async def test_the_layout_is_decided_by_surface_type_not_by_planform() -> None:
     quantity = only((await run("neutral-point", airplane=swapped))[0])
     assert quantity.interval is not None
     # main = the small surface (AR 4, x_ac 0.625), tail = the big one (AR 7, x_ac 0.10)
-    k = 0.9 * (1 - 4 / (4 + 2)) * (7 / (7 + 2)) / (4 / (4 + 2))
+    k = ETA_DEFAULT * (1 - 4 / (4 + 2)) * (7 / (7 + 2)) / (4 / (4 + 2))
     expected = (0.04 * 0.625 + k * 0.28 * 0.10) / (0.04 + k * 0.28)
     assert close(quantity.interval.worlds["neutral-point=textbook"], expected, 1e-12)
 

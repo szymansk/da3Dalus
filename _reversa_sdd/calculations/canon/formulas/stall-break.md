@@ -15,7 +15,7 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-inputs: {polar_s: polar-stall, alpha_s: angle-of-attack-stall, cl_max: max-lift-coefficient, f: stall-break-fraction, airplane: airplane, v_s: stall-speed, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
+inputs: {polar_s: polar-stall, alpha_s: angle-of-attack-stall, cl_max: max-lift-coefficient, f: stall-break-fraction, airplane: airplane}
 outputs: {alpha_break: alpha-break, width: stall-break-width}
 ---
 
@@ -29,7 +29,7 @@ alpha_break = crossing of C_L(alpha) with (1 - f) * C_L,max on the branch past a
 width       = alpha_break - alpha_S
 ```
 
-**Produces** [[alpha-break]] · [[stall-break-width]]  ·  **from** [[polar-stall]] · [[angle-of-attack-stall]] · [[max-lift-coefficient]] · [[stall-break-fraction]] · [[airplane]] · [[stall-speed]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
+**Produces** [[alpha-break]] · [[stall-break-width]]  ·  **from** [[polar-stall]] · [[angle-of-attack-stall]] · [[max-lift-coefficient]] · [[stall-break-fraction]] · [[airplane]]
 
 **Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
 
@@ -49,11 +49,11 @@ width       = alpha_break - alpha_S
 
 **Assumptions.** (1) The polar runs far enough past the peak to bracket the crossing ([[polar-stall]] is swept past the first peak for this purpose). (2) The α spacing resolves the post-peak fall; **this is checked, not assumed** (resolution check below). (3) The polar is the one at the stall Reynolds number — `alpha_break` is only meaningful for the Reynolds number the polar was computed at.
 
-**Resolution check** (maintainer, 2026-10-24: raise the resolution, never loosen a threshold). The crossing is computed a second time from a sweep at **half the published step** (0.125°), from α_S to the end of the range, at the same airplane, speed `V_S` and air state — which is why the entry takes `airplane`, `v_s` and the ISA air state besides the polar, and why its tool is the OPT adapter (one more AeroBuildup sweep). The two angles are compared against **one published step, 0.25°**. Basis: linear interpolation between samples cannot be trusted below the sample spacing, so a finer sweep that moves the break by more than one published step shows the grid, not the polar, resolves the value. The tolerance is fixed from the sweep's own step before any measurement; it is a convention, not a sourced number — none exists for a computed polar (open question for the maintainer). A difference above it is a `DesignWarning` of severity *defect* (`stall_break_resolution`) carrying both angles; the value of the published sweep stands.
+**Resolution check** (maintainer, 2026-10-24: raise the resolution, never loosen a threshold). The crossing is computed a second time from a sweep at **half the published step** (0.125°), from α_S to the end of the range, at the same airplane and at the flow conditions the polar was computed at (speed `V_S`, density, viscosity and speed of sound, carried by the polar value itself) — which is why the entry takes `airplane` besides the polar, and why its tool is the OPT adapter (one more AeroBuildup sweep). The two angles are compared against **one published step, 0.25°**. Basis: linear interpolation between samples cannot be trusted below the sample spacing, so a finer sweep that moves the break by more than one published step shows the grid, not the polar, resolves the value. The tolerance is fixed from the sweep's own step before any measurement; it is a convention, not a sourced number — none exists for a computed polar (open question for the maintainer). A difference above it is a `DesignWarning` of severity *defect* (`stall_break_resolution`) carrying both angles; the value of the published sweep stands.
 
 **Convergence.** None: a single pass with no iteration; the only tolerance is that of the resolution check.
 
-**On failure.** If the polar never falls to `(1 - f) * C_L,max` past `alpha_S` (the event is not bracketed), there is **no value**: both outputs are absent and a `DesignWarning` of severity *defect* is raised. The last sample and the peak sample are never substituted (ADR 0020).
+**On failure.** If the polar never falls to `(1 - f) * C_L,max` past `alpha_S` (the event is not bracketed), there is **no value**: the kernel returns a `not_converged` error (an error carries no warning, ARCHITECTURE §8.1) and runs no further sweep. If the sweep at half the step does not bracket the break that the published sweep found, the result is likewise a `not_converged` error. The last sample and the peak sample are never substituted (ADR 0020). On the success path, a resolution check that fails (difference above one published step) is the `DesignWarning` of severity *defect* `stall_break_resolution`, with both angles.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 

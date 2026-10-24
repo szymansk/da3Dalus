@@ -10,7 +10,7 @@ from aero_kernel.build import shipped_build
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.stall_break import RESOLUTION_TOLERANCE_DEG, stall_break
-from aero_kernel.schema import ComputeRequest, Polar, QuantityStatus
+from aero_kernel.schema import ComputeRequest, FlowConditions, Polar, QuantityStatus
 from aero_kernel.solvers.opti import ALPHA_MAX_DEG, ALPHA_STEP_DEG
 from aero_kernel.solvers.stall_math import first_crossing_below
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, context_with, solvers_with
@@ -25,19 +25,20 @@ FRACTION = 0.10
 # Hand values of the stub curve (0.2 per degree down from the peak): C_L = 0.9 * 1.19 = 1.071 at
 # 15.75 + (1.19 - 1.071) / 0.2 = 16.345 deg, a width of 0.595 deg.
 ALPHA_BREAK, WIDTH = 16.345, 0.595
+# The flow the stub polar was computed at (the stall_x air state and a stall speed of 10 m/s).
+FLOW = FlowConditions(v_ms=10.0, density=1.225, dynamic_viscosity=1.7894e-5, speed_of_sound=340.294)
 
 
 def break_x(polar: Polar | None = None, **change: object) -> dict[str, Any]:
     """``x`` of stall-break: the stall-speed stub's polar at its peak, f = 0.10, the trainer wing."""
-    x = stall_x()
-    del x["n_load"]
-    x.update(
-        polar_s=polar or lift_curve(UPRIGHT_PEAK, upright=True),
-        alpha_s=ALPHA_S,
-        cl_max=CL_MAX,
-        f=FRACTION,
-        v_s=10.0,
-    )
+    given = polar or lift_curve(UPRIGHT_PEAK, upright=True)
+    x: dict[str, Any] = {
+        "airplane": stall_x()["airplane"],
+        "polar_s": given if given.conditions else given.model_copy(update={"conditions": FLOW}),
+        "alpha_s": ALPHA_S,
+        "cl_max": CL_MAX,
+        "f": FRACTION,
+    }
     x.update(change)
     return x
 
@@ -105,7 +106,7 @@ async def test_the_half_step_sweep_runs_from_alpha_s_to_the_end_of_the_range() -
     ((plane, air, speed, alphas),) = stub.sweep_calls
     assert plane is x["airplane"]
     assert (air.density, air.dynamic_viscosity, air.speed_of_sound) == (1.225, 1.7894e-5, 340.294)
-    assert speed == 10.0
+    assert speed == FLOW.v_ms
     assert alphas[0] == ALPHA_S
     assert alphas[-1] == ALPHA_MAX_DEG
     steps = {round(b - a, 9) for a, b in pairwise(alphas)}
@@ -173,6 +174,29 @@ async def test_a_half_step_sweep_that_disagrees_is_a_declared_defect_with_both_v
 async def test_the_tolerance_is_one_step_of_the_published_sweep() -> None:
     """Below the sample spacing the interpolation cannot be trusted; fixed before measuring."""
     assert RESOLUTION_TOLERANCE_DEG == ALPHA_STEP_DEG == 0.25
+
+
+async def test_a_finer_sweep_that_does_not_bracket_the_break_is_not_converged() -> None:
+    """The published sweep found a break, the finer one never falls to the level: an error."""
+    stub = StubOpti()
+    stub.sweep_answer = lambda alphas: lift_curve_at((ALPHA_S, CL_MAX), True, alphas).model_copy(
+        update={"cl": (CL_MAX,) * len(alphas)}
+    )
+    context = context_with(StubAtmosphere({}), opti=stub)
+    with pytest.raises(FormulaError) as raised:
+        await stall_break(break_x(), context)
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED
+    assert close(float(str(raised.value.detail["alpha_break_published_deg"])), ALPHA_BREAK, 1e-12)
+    assert context.warnings == ()
+
+
+async def test_a_polar_without_flow_conditions_is_invalid_input() -> None:
+    bare = lift_curve(UPRIGHT_PEAK, upright=True)
+    x = break_x()
+    x["polar_s"] = bare
+    with pytest.raises(FormulaError) as raised:
+        await stall_break(x, context_with(StubAtmosphere({}), opti=StubOpti()))
+    assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
 async def test_a_failed_half_step_sweep_is_passed_on_without_a_value() -> None:

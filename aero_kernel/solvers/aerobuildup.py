@@ -7,7 +7,7 @@ with ``aerobuildup-evaluation``, the first formula that calls AeroBuildup itself
 from collections.abc import Sequence
 
 import numpy as np
-from aero_kernel.schema import Polar
+from aero_kernel.schema import FlowConditions, Polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 
@@ -52,4 +52,10 @@ def sweep_polar(
         cl=tuple(float(v) for v in result["CL"]),
         cd=tuple(float(v) for v in result["CD"]),
         cm=tuple(float(v) for v in result["Cm"]),
+        conditions=FlowConditions(
+            v_ms=velocity_ms,
+            density=air.density,
+            dynamic_viscosity=air.dynamic_viscosity,
+            speed_of_sound=air.speed_of_sound,
+        ),
     )

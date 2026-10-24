@@ -6,7 +6,7 @@ from collections.abc import Callable, Sequence
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.runtime import SolverRuntime
-from aero_kernel.schema import Polar
+from aero_kernel.schema import FlowConditions, Polar
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import (
     BestGlide,
@@ -52,9 +52,15 @@ def consistent_stall(
     """The self-consistent answer: V_S from the closed form with the lift curve's extremum."""
     upright = n_load > 0.0
     alpha_s, cl_max = UPRIGHT_PEAK if upright else INVERTED_TROUGH
-    polar = lift_curve((alpha_s, cl_max), upright)
     area = main_wing_properties(airplane).s_ref
     v_s = math.sqrt(2.0 * abs(n_load) * mass * gravity / (air.density * area * abs(cl_max)))
+    flow = FlowConditions(
+        v_ms=v_s,
+        density=air.density,
+        dynamic_viscosity=air.dynamic_viscosity,
+        speed_of_sound=air.speed_of_sound,
+    )
+    polar = lift_curve((alpha_s, cl_max), upright).model_copy(update={"conditions": flow})
     return StallSolution(v_s=v_s, cl_max=cl_max, alpha_s=alpha_s, polar=polar)
 
 

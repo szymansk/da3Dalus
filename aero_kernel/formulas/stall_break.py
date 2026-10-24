@@ -24,9 +24,10 @@ from collections.abc import Mapping
 
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.formulas.values import air_state, airplane_of, number
+from aero_kernel.formulas.values import airplane_of, number
 from aero_kernel.registry import formula
 from aero_kernel.schema import Polar
+from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import ALPHA_MAX_DEG, ALPHA_MIN_DEG, ALPHA_STEP_DEG
 from aero_kernel.solvers.stall_math import first_crossing_below
 
@@ -70,9 +71,8 @@ async def stall_break(x: Inputs, ctx: Context) -> dict[str, float]:
     Args:
         x: ``polar_s`` the sweep at ``V_S`` with ``alpha_s`` among its samples, ``alpha_s`` in
             degrees, ``cl_max`` the lift coefficient there, ``f`` the break fraction (0 < f < 1),
-            ``airplane`` and ``v_s`` in m/s (the sweep of the resolution check is re-run at the
-            same airplane and speed), and the ISA air state ``rho`` in kg/m^3, ``mu`` in Pa s and
-            ``a`` in m/s.
+            ``airplane`` (the sweep of the resolution check is re-run at the same airplane and at the
+            flow conditions the polar carries: speed and air state).
         ctx: The formula context; ``ctx.solvers.opti`` runs the finer sweep.
 
     Returns:
@@ -83,7 +83,8 @@ async def stall_break(x: Inputs, ctx: Context) -> dict[str, float]:
         TypeError: If ``polar_s`` is not a polar, ``airplane`` is not the geometry or a number is
             not a number.
         FormulaError: ``invalid_input`` for ``f`` outside (0, 1), a non-positive ``cl_max`` or an
-            ``alpha_s`` that is no sample of the polar; ``not_converged`` if the polar never falls
+            ``alpha_s`` that is no sample of the polar or a polar without flow conditions;
+            ``not_converged`` if the polar never falls
             to the level (or the finer sweep does not) and from the adapter, unchanged.
     """
     polar = _polar(x)
@@ -98,6 +99,13 @@ async def stall_break(x: Inputs, ctx: Context) -> dict[str, float]:
             f"alpha_S = {alpha_s} deg is not a sample of the polar",
             "give the polar published with alpha_S",
         )
+    flow = polar.conditions
+    if flow is None:
+        raise _invalid(
+            "polar_s",
+            "the polar does not say which flow it was computed at",
+            "give the polar published by stall-speed",
+        )
     level = (1.0 - fraction) * cl_max
     published = first_crossing_below(polar.alpha_deg, polar.cl, alpha_s, level)
     if published is None:
@@ -109,9 +117,12 @@ async def stall_break(x: Inputs, ctx: Context) -> dict[str, float]:
             "the stall break is not bracketed by the sampled angles of attack",
             detail={"alpha_s": alpha_s, "level": level, "alpha_max_deg": polar.alpha_deg[-1]},
         )
-    finer = await ctx.solvers.opti.sweep(
-        airplane_of(x), air_state(x), number(x, "v_s"), _half_step_grid(alpha_s)
+    air = AirState(
+        density=flow.density,
+        dynamic_viscosity=flow.dynamic_viscosity,
+        speed_of_sound=flow.speed_of_sound,
     )
+    finer = await ctx.solvers.opti.sweep(airplane_of(x), air, flow.v_ms, _half_step_grid(alpha_s))
     refined = first_crossing_below(finer.alpha_deg, finer.cl, alpha_s, level)
     if refined is None:
         raise FormulaError(

@@ -58,6 +58,10 @@ windmilling propeller adds substantial drag, a stopped one less, a folded one al
 is applied. The distance this formula gives is therefore an **upper bound** for a model
 whose propeller keeps turning.
 
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
@@ -66,3 +70,5 @@ whose propeller keeps turning.
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

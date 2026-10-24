@@ -61,6 +61,10 @@ check that gave 2.9 % median and 33 % worst case on the stall.
 The solver sweep has no canon entry of its own — it is a `procedure`, and writing it up is
 outstanding.
 
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
@@ -69,6 +73,8 @@ outstanding.
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.
 
 **Renamed 2026-10-02 (A2).** The parabola's value is `C_D,par`, not `C_D`. `C_D` is the
 coefficient the solver computes; the two shared one name, which is what made the graph
