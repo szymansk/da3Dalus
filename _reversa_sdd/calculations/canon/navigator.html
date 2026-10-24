@@ -106,6 +106,8 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .issue b{color:var(--bad)}
 .cblk{border-left:3px solid var(--sel);padding:6px 0 6px 10px;margin:10px 0}
 .cblk b{color:var(--sel)}
+.runmark{fill:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:7.5px;font-weight:600}
+.node.sib rect{stroke:var(--sel);stroke-width:2.2;stroke-dasharray:4 2}
 .dmark{fill:var(--sel);font-family:"IBM Plex Mono",monospace;font-size:8px;font-weight:600}
 .dischead{font-family:"STIX Two Text",Georgia,serif;font-size:13px;font-weight:600;fill:var(--ink-2)}
 .pspan{fill:var(--out-bg);fill-opacity:.22;stroke:var(--out);stroke-opacity:.7;stroke-width:1.3}
@@ -182,6 +184,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>part of the MVP, still open</span>
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>formula implemented, quantity not scalar &#8212; v1 does not return it</span>
       <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>belongs to the MVP (bar under the node)</span>
+      <span><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--ink-3);margin:0 6px 0 2px">2/4</span>one of several outputs of the same calculation (top right); selecting it outlines the others</span>
       <span id="issueLegend" style="display:block">marks at the bottom left of a node (click it for why) &#8212; open issues block approval; notes and defined values do not:</span>
     </div>
     <p class="stat" id="kstat"></p>
@@ -266,6 +269,14 @@ const pred={}, succ={}, prodBy={}, useCount={};
 for(const q in Q){pred[q]=[];succ[q]=[];useCount[q]=0;}
 for(const [a,b,f] of D.edges){ pred[b].push([a,f]); succ[a].push([b,f]); useCount[a]++; }
 for(const f in F){ for(const o of [].concat(F[f].out)) (prodBy[o] ||= []).push(f); }
+// Outputs computed together (maintainer 2026-10-24): the same formula in the same application is one
+// run; the same formula in another application is a separate run of the same relation.
+const RUN={}, OTHERRUNS={};
+for(const f in F) for(const a of (F[f].apps||[])) for(const o of a.out){
+  if(!Q[o]) continue;
+  RUN[o]={formula:f,app:a.id,outs:a.out.filter(x=>Q[x])};
+  OTHERRUNS[o]=(F[f].apps||[]).filter(b=>b.id!==a.id&&b.out.some(x=>Q[x])).map(b=>({app:b.id,outs:b.out.filter(x=>Q[x])}));
+}
 const UNCSRC=new Set(Object.keys(Q).filter(q=>Q[q].unc==='interval'));
 const UNC=new Set(UNCSRC), UFROM={};
 for(const s of UNCSRC){ const seen=new Set(), st=[s]; while(st.length){ const v=st.pop();
@@ -535,7 +546,9 @@ for(const q in Q){
     ks.forEach((k,i)=>{ const cx=7+i*11;
       g.appendChild(el('circle',{cx,cy:NH-7,r:5,fill:IKIND[k].col}));
       const ex=el('text',{x:cx,y:NH-3.9,class:'excl','text-anchor':'middle'}); ex.textContent=IKIND[k].icon; g.appendChild(ex); }); }
-  if(!DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q)&&!INPUTS.has(q)){ const dt=el('text',{x:NW-4,y:9,class:'dmark','text-anchor':'end'}); dt.textContent='D'; g.appendChild(dt); }
+  const run=RUN[q], multi=run&&run.outs.length>1;
+  if(multi){ const ct=el('text',{x:NW-4,y:9,class:'runmark','text-anchor':'end'}); ct.textContent=`${run.outs.indexOf(q)+1}/${run.outs.length}`; g.appendChild(ct); }
+  if(!DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q)&&!INPUTS.has(q)){ const dt=el('text',{x:multi?NW-22:NW-4,y:9,class:'dmark','text-anchor':'end'}); dt.textContent='D'; g.appendChild(dt); }
   const tl=toolOf(q);
   if(tl.length){ const tt=el('text',{x:NW-3,y:NH-3,class:'tool','text-anchor':'end'}); tt.textContent=tl.join('/'); g.appendChild(tt); }
   g.addEventListener('click',()=>{ if(!moved) select(q); });
@@ -561,11 +574,12 @@ function reach(start,map,n){
 // The selection is one quantity (a string) or a module: {module, members: Set}.
 const selSet=()=>sel&&sel.members?sel.members:new Set([sel]);
 function paint(){
-  if(!sel){ for(const q in nodeEls) nodeEls[q].classList.remove('faded');
+  if(!sel){ for(const q in nodeEls) nodeEls[q].classList.remove('faded','sib');
             edgeEls.forEach(({e})=>e.classList.remove('faded','up','down')); return; }
   const S=selSet(), up=reach(S,pred,depth), down=reach(S,succ,depth);
-  const on=new Set([...S,...up,...down]);
-  for(const q in nodeEls) nodeEls[q].classList.toggle('faded',!on.has(q));
+  const sibs=new Set(typeof sel==='string'&&RUN[sel]?RUN[sel].outs.filter(x=>x!==sel):[]);
+  const on=new Set([...S,...up,...down,...sibs]);
+  for(const q in nodeEls){ nodeEls[q].classList.toggle('faded',!on.has(q)); nodeEls[q].classList.toggle('sib',sibs.has(q)); }
   for(const f of frameEls) f.el.classList.toggle('framesel',!!(sel&&sel.module===f.module));
   edgeEls.forEach(({e,a,b})=>{
     e.classList.remove('up','down','faded');
@@ -622,6 +636,11 @@ function select(q){
     if(e.src) h+=`<div class="lab" style="margin-top:12px">Source</div><p class="src">${esc(e.src)}</p>`;
     h+=`</div>`;
   }
+  { const run=RUN[q];
+    if(run&&run.outs.length>1) h+=`<div class="blk"><div class="lab">Computed together with \u00b7 ${run.outs.length-1} \u2014 ${esc(run.formula)}${(F[run.formula].apps||[]).length>1?' \u00b7 application '+esc(run.app):''}</div><ul class="lnk">`+
+      run.outs.filter(x=>x!==q).map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
+    if(run&&OTHERRUNS[q].length) h+=`<div class="blk"><div class="lab">Same formula, other applications (separate runs)</div>`+
+      OTHERRUNS[q].map(r=>`<p class="sub" style="margin:4px 0 2px">${esc(r.app)}</p><ul class="lnk">`+r.outs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul>`).join('')+`</div>`; }
   const us=succ[q].map(([o])=>o), uniq=[...new Set(us)];
   if(uniq.length) h+=`<div class="blk"><div class="lab">Feeds \u00b7 ${uniq.length}</div><ul class="lnk">`+
     uniq.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
