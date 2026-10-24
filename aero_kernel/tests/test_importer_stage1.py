@@ -35,7 +35,9 @@ STAGE_1_CASES = {
         "string",
     ),
     "non-string default slug": (
-        {"defaults.yaml": "1:\n  value: 9.8\n  unit: m/s^2\n  source: s\n  regime: r\n"},
+        {
+            "defaults.yaml": "1:\n  value: 9.8\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n"
+        },
         "defaults.yaml",
         "1",
         "string",
@@ -176,7 +178,7 @@ STAGE_1_CASES = {
     ),
     "default without regime": (
         {
-            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  source: s\n",
+            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  basis: sourced\n  source: s\n",
         },
         "defaults.yaml",
         "gravity.regime",
@@ -184,7 +186,7 @@ STAGE_1_CASES = {
     ),
     "default with an empty source": (
         {
-            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  source: ''\n  regime: r\n",
+            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  basis: sourced\n  source: ''\n  regime: r\n",
         },
         "defaults.yaml",
         "gravity.source",
@@ -192,7 +194,7 @@ STAGE_1_CASES = {
     ),
     "default value is infinite": (
         {
-            "defaults.yaml": "gravity:\n  value: .inf\n  unit: m/s^2\n  source: s\n  regime: r\n",
+            "defaults.yaml": "gravity:\n  value: .inf\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n",
         },
         "defaults.yaml",
         "gravity.value",
@@ -200,7 +202,7 @@ STAGE_1_CASES = {
     ),
     "default with a blank regime": (
         {
-            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  source: s\n  regime: '  '\n",
+            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: '  '\n",
         },
         "defaults.yaml",
         "gravity.regime",
@@ -208,7 +210,7 @@ STAGE_1_CASES = {
     ),
     "default value is no number": (
         {
-            "defaults.yaml": "gravity:\n  value: high\n  unit: m/s^2\n  source: s\n  regime: r\n",
+            "defaults.yaml": "gravity:\n  value: high\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n",
         },
         "defaults.yaml",
         "gravity.value",
@@ -216,7 +218,7 @@ STAGE_1_CASES = {
     ),
     "default value is a boolean": (
         {
-            "defaults.yaml": "gravity:\n  value: true\n  unit: m/s^2\n  source: s\n  regime: r\n",
+            "defaults.yaml": "gravity:\n  value: true\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n",
         },
         "defaults.yaml",
         "gravity.value",
@@ -224,7 +226,7 @@ STAGE_1_CASES = {
     ),
     "default with an extra key": (
         {
-            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  source: s\n  regime: r\n  note: x\n",
+            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n  note: x\n",
         },
         "defaults.yaml",
         "gravity.note",
@@ -329,7 +331,7 @@ DUPLICATE_KEY_CASES = {
         WEIGHING, "    when: has_aileron\n", "    when: has_aileron\n    when: null\n"
     ),
     "inside a default": {
-        "defaults.yaml": "gravity:\n  value: 9.8\n  value: 9.9\n  unit: m/s^2\n  source: s\n  regime: r\n"
+        "defaults.yaml": "gravity:\n  value: 9.8\n  value: 9.9\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n"
     },
 }
 

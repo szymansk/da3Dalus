@@ -58,7 +58,7 @@ __all__ = [
 ]
 
 # The sweep range of the canon: "the default sweep starts at -15 deg" (stall-speed.md, inverted
-# application); the upper end leaves room past the stall for stall-onset-detection (D4).
+# application); the upper end leaves room past the stall for stall-break (D4).
 ALPHA_MIN_DEG = -15.0
 ALPHA_MAX_DEG = 25.0
 # Sample spacing of the sweep (the prototype's 0.25 deg, scripts/canon_checks/*).

@@ -70,18 +70,21 @@ defaults = {
     "gravity": {
         "value": 9.80665,
         "unit": "m/s^2",
+        "basis": "standard",
         "source": "ISO 80000-3, standard acceleration of gravity",
         "regime": "RC and UAV, sea level",
     },
     "air-density": {
         "value": 1.225,
         "unit": "kg/m^3",
+        "basis": "standard",
         "source": "U.S. Standard Atmosphere 1976, sea-level density",
         "regime": "RC and UAV, sea level",
     },
     "approach-speed-margin-target": {
         "value": 1.3,
         "unit": "1",
+        "basis": "sourced",
         "source": "Sadraey 2013, ch. 10: approach speed 1.3 V_S (fixture value)",
         "regime": "RC and UAV, fixture value",
     },

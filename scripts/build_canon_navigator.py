@@ -140,6 +140,60 @@ MODEL_PATH = REPO / "aero_kernel/canon/canon_model.json"
 KERNEL_FORMULAS = REPO / "aero_kernel/formulas"
 
 
+def _clip(text: str, limit: int = 700) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "\u2026"
+
+
+def entry_issues(text: str) -> list:
+    """The open issues an entry declares itself, read from its markers (never typed in by hand).
+
+    - a broken assumption in the code: the "> 🔴 **...**" callout and its blockquote;
+    - a conflict: the "flag/conflict" tag and its "## ⚠️ Conflict" section;
+    - a missing or partial source: source_status NO_SOURCE_FOUND / PARTIAL and the Source paragraph;
+    - an approximation standing where a law belongs: shape approximation;
+    - a dimensional check that cannot be run: dimensional_check UNPARSEABLE.
+    """
+    front, body = text.split("---", 2)[1], text.split("---", 2)[2]
+    issues = []
+    for m in re.finditer(r"^> 🔴 \*\*(.+?)\*\*\s*\n((?:>.*\n?)+)", body, re.M):
+        quote = "\n".join(line[1:].strip() for line in m.group(2).splitlines())
+        issues.append({"kind": "broken", "title": m.group(1).strip(), "text": _clip(quote)})
+    if "flag/conflict" in front:
+        m = re.search(r"^## ⚠️ Conflict\s*\n(.*?)(?=^## |\Z)", body, re.S | re.M)
+        issues.append(
+            {
+                "kind": "conflict",
+                "title": "Two producers disagree (flag/conflict).",
+                "text": _clip(m.group(1)) if m else "",
+            }
+        )
+    status = _front(text, "source_status")
+    if status in ("NO_SOURCE_FOUND", "PARTIAL"):
+        m = re.search(r"^\*\*Source\.\*\*(.*?)(?=\n\n\*\*|\n## |\Z)", body, re.S | re.M)
+        title = (
+            "No published source found." if status == "NO_SOURCE_FOUND" else "Only partly sourced."
+        )
+        issues.append({"kind": "source", "title": title, "text": _clip(m.group(1)) if m else ""})
+    if _front(text, "shape") == "approximation":
+        issues.append(
+            {
+                "kind": "approximation",
+                "title": "An approximation stands where a law belongs.",
+                "text": "A rule of thumb in place of a law: it may be right to show, but it is never approved as the law for this quantity.",
+            }
+        )
+    if _front(text, "dimensional_check") == "UNPARSEABLE":
+        issues.append(
+            {
+                "kind": "dimensions",
+                "title": "The dimensional check cannot be run.",
+                "text": "The canonical form is not machine-checkable as written, so its units are unverified.",
+            }
+        )
+    return issues
+
+
 def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> None:
     """Quantity type and formula worlds, which the navigator shows."""
     for slug, q in quantities.items():
@@ -169,6 +223,7 @@ def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> No
     for slug, f in formulas.items():
         t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
         f["worlds"] = [w.strip() for w in _front(t, "worlds").strip("[]").split(",") if w.strip()]
+        f["issues"] = entry_issues(t)
         tags = re.findall(r"^\s+-\s+(\S+)\s*$", t.split("---", 2)[1], re.M)
         f["direction"] = "design" if "direction/design" in tags else "analysis"
 
@@ -333,6 +388,39 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
     data["mvp_results"] = list(MVP_RESULTS)
 
 
+def convention_marks(data: dict, model: dict) -> None:
+    """Mark what rests on a defined value: a ``convention`` default and its whole downstream closure.
+
+    The basis is read from the defaults of the canon model (``defaults.yaml``), never typed in
+    here. ``conventions`` holds the defined values (value, unit, source); ``conv`` maps every
+    quantity that rests on at least one of them to the slugs of those values.
+    """
+    defaults = model["namespaces"]["calc"]["defaults"]
+    conventions = {s: d for s, d in sorted(defaults.items()) if d["basis"] == "convention"}
+    unknown = sorted(set(conventions) - set(data["Q"]))
+    if unknown:
+        raise SystemExit(f"defaults for quantities the canon lacks: {unknown}")
+    succ: dict = {q: [] for q in data["Q"]}
+    for a, b, _ in data["edges"]:
+        succ[a].append(b)
+    conv: dict = {}
+    for slug in conventions:
+        seen: set = set()
+        stack = [slug]
+        while stack:
+            q = stack.pop()
+            if q not in seen:
+                seen.add(q)
+                stack.extend(succ[q])
+        for q in seen:
+            conv.setdefault(q, []).append(slug)
+    data["conventions"] = {
+        s: {"value": d["value"], "unit": d["unit"], "source": d["source"]}
+        for s, d in conventions.items()
+    }
+    data["conv"] = {q: sorted(v) for q, v in sorted(conv.items())}
+
+
 def to_ascii(html: str) -> str:
     """Escape per region: \\uXXXX in script, CSS escapes in style, refs elsewhere.
 
@@ -368,6 +456,7 @@ def build() -> tuple[str, dict]:
     edges = application_edges(formulas, quantities, model)
     data = layout(quantities, formulas, edges)
     kernel_status(data, KERNEL_FORMULAS)
+    convention_marks(data, model)
     data["stand"] = model["content_hash"][:12]
     template = pathlib.Path(__file__).with_name("canon_navigator_template.html")
     payload = json.dumps(data, ensure_ascii=True, separators=(",", ":")).replace("</", "<\\/")

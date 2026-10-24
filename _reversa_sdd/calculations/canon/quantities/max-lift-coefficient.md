@@ -21,4 +21,4 @@ Maximum lift coefficient at the stall condition — the second output of the [[s
 
 **Produced by.** [[stall-speed]]
 
-**Used by.** [[parabolic-polar-fit]] · [[stall-wing-loading-limit]]
+**Used by.** [[parabolic-polar-fit]] · [[stall-break]] · [[stall-wing-loading-limit]]

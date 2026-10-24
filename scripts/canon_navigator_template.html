@@ -4,6 +4,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
 <style>
 :root{
+  --bad:#C0392B;
   --bg:#FBFAF7; --panel:#FFFFFF; --ink:#23211C; --ink-2:#6B675E; --ink-3:#9A958A;
   --line:#E2DED4; --line-2:#CFC9BC;
   --inp:#4C7198; --mid:#8A8579; --out:#35754D; --hub:#A67C3C; --sel:#6B4FA0;
@@ -17,7 +18,7 @@
     --line:#332F26; --line-2:#474034;
     --inp:#7FA6CC; --mid:#9C968A; --out:#6FB98B; --hub:#D6AA63; --sel:#A78BDB;
     --good:#6FCF97; --mvp:#F0A35A; --inp-bg:#1C2530; --tgt:#E08AB5; --tgt-bg:#2E1B26; --unc:#7CC0E2; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
-    --dim:0.16;
+    --dim:0.16; --bad:#FF6B5E;
   }
 }
 :root[data-theme="dark"]{
@@ -26,7 +27,7 @@
   --line:#332F26; --line-2:#474034;
   --inp:#7FA6CC; --mid:#9C968A; --out:#6FB98B; --hub:#D6AA63; --sel:#A78BDB;
   --good:#6FCF97; --mvp:#F0A35A; --inp-bg:#1C2530; --tgt:#E08AB5; --tgt-bg:#2E1B26; --unc:#7CC0E2; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
-  --dim:0.16;
+  --dim:0.16; --bad:#FF6B5E;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -98,6 +99,13 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .sspan{fill:var(--hub-bg);fill-opacity:.25;stroke:var(--hub);stroke-opacity:.75;stroke-width:1.3}
 .sframe{fill:var(--hub-bg);fill-opacity:.35;stroke:var(--hub);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
 .blocklab.stlab{fill:var(--hub)}
+.ichips button{flex:0 0 auto;padding:3px 7px;font-size:11.5px}
+.ichips .ic{display:inline-block;width:14px;height:14px;border-radius:50%;color:#fff;font-size:9px;font-weight:700;line-height:14px;text-align:center;margin-right:4px}
+.excl{fill:#fff;font-family:"IBM Plex Sans",sans-serif;font-size:9px;font-weight:700;pointer-events:none}
+.issue{border-left:3px solid var(--bad);padding:6px 0 6px 10px;margin:10px 0}
+.issue b{color:var(--bad)}
+.cblk{border-left:3px solid var(--sel);padding:6px 0 6px 10px;margin:10px 0}
+.cblk b{color:var(--sel)}
 .dmark{fill:var(--sel);font-family:"IBM Plex Mono",monospace;font-size:8px;font-weight:600}
 .dischead{font-family:"STIX Two Text",Georgia,serif;font-size:13px;font-weight:600;fill:var(--ink-2)}
 .pspan{fill:var(--out-bg);fill-opacity:.22;stroke:var(--out);stroke-opacity:.7;stroke-width:1.3}
@@ -158,7 +166,9 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <button data-mode="all" aria-pressed="true">All</button>
       <button data-mode="mvp" aria-pressed="false">MVP</button>
       <button data-mode="done" aria-pressed="false">Implemented</button>
+      <button data-mode="problems" aria-pressed="false" title="Quantities whose formula declares an open issue">Problems</button>
     </div>
+    <div class="seg ichips" id="issueChips" role="group" aria-label="Issue kind" style="margin-top:6px"></div>
     <div class="seg" role="group" aria-label="Direction" style="margin-top:6px">
       <button data-mode="analysis" aria-pressed="false" title="What a given airplane does">Analysis</button>
       <button data-mode="design" aria-pressed="false" title="Turn a target into a construction quantity (O1)">Design</button>
@@ -172,6 +182,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>part of the MVP, still open</span>
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>formula implemented, quantity not scalar &#8212; v1 does not return it</span>
       <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>belongs to the MVP (bar under the node)</span>
+      <span id="issueLegend" style="display:block">marks at the bottom left of a node (click it for why) &#8212; open issues block approval; notes and defined values do not:</span>
     </div>
     <p class="stat" id="kstat"></p>
   </div>
@@ -232,6 +243,22 @@ const Q=D.Q, F=D.F, LAYER=D.layer, ORDER=D.order;
 const INPUTS=new Set(D.inputs), OUTPUTS=new Set(D.outputs);
 // Target values (role: target) are user-given goals; every quantity downstream of one is
 // measured against a goal rather than computed from the aircraft alone.
+// Issue kinds and their icons (maintainer 2026-10-24); the kind is read from the canon marker.
+// broken: the legacy app code departs from the canon (Ist \u2260 Soll) — information, not a canon problem
+// (maintainer 2026-10-24: the canon is built independently of the code to fix exactly these defects).
+const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \u2260 Soll) \u2014 information',col:'var(--ink-3)',info:true},
+  conflict:{icon:'\u21c4',label:'Two producers disagree',col:'var(--bad)'},
+  nosource:{icon:'?',label:'No published source',col:'var(--bad)'},
+  partial:{icon:'?',label:'Only partly sourced',col:'var(--mvp)'},
+  approximation:{icon:'~',label:'Approximation where a law belongs',col:'var(--mvp)'},
+  dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
+IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
+const CONV=D.conv||{}, CONVS=D.conventions||{};
+const BLOCKING=i=>!IKIND[kindOf(i)].info;
+const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
+const ISSUES={}; for(const f in D.F) for(const o of D.F[f].out) if((D.F[f].issues||[]).length) (ISSUES[o] ||= []).push(...D.F[f].issues.map(i=>({...i,formula:f})));
+// every mark a node carries: its issue kinds, then the defined value (not a problem, never blocking)
+const KINDS=q=>[...new Set((ISSUES[q]||[]).map(kindOf))].concat(CONV[q]?['convention']:[]);
 const STATUS=D.status||{}, MVP=new Set(D.mvp||[]), DESIGN=new Set(D.design||[]), ANALYSIS=new Set(D.analysis||[]);
 const TARGETS=new Set(Object.keys(Q).filter(q=>Q[q].role==='target'));
 
@@ -261,7 +288,8 @@ const DESIGN_SEP=/design-separate/.test(location.hash);
 const SIDE=q=>(DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q))?'design':'analysis';
 const MODULES={'envelope-targets':'Envelope targets','design-targets':'Design targets',
   'construction':'Construction','mass-and-balance':'Mass and balance','atmosphere':'Atmosphere and constants',
-  'control-deflections':'Control deflections','operating-point':'Operating point'};
+  'control-deflections':'Control deflections','operating-point':'Operating point',
+  'conventions':'Defined values'};
 const MODORDER=Object.keys(MODULES);
 // Cross-cutting modules (maintainer 2026-10-24): nearly every formula depends on them, so they
 // stand in their own column on the right instead of layer 0; their edges show only on selection.
@@ -503,6 +531,10 @@ for(const q in Q){
   else if(st==='open'&&MVP.has(q)) g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--mvp)','stroke-width':2}));
   else if(st==='nonscalar') g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--ink-3)','stroke-width':1.4,'stroke-dasharray':'2 1.5'}));
   if(MVP.has(q)) g.appendChild(el('rect',{x:4,y:NH+3,width:NW-8,height:3.5,rx:1.5,fill:'var(--mvp)'}));
+  { const ks=KINDS(q);
+    ks.forEach((k,i)=>{ const cx=7+i*11;
+      g.appendChild(el('circle',{cx,cy:NH-7,r:5,fill:IKIND[k].col}));
+      const ex=el('text',{x:cx,y:NH-3.9,class:'excl','text-anchor':'middle'}); ex.textContent=IKIND[k].icon; g.appendChild(ex); }); }
   if(!DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q)&&!INPUTS.has(q)){ const dt=el('text',{x:NW-4,y:9,class:'dmark','text-anchor':'end'}); dt.textContent='D'; g.appendChild(dt); }
   const tl=toolOf(q);
   if(tl.length){ const tt=el('text',{x:NW-3,y:NH-3,class:'tool','text-anchor':'end'}); tt.textContent=tl.join('/'); g.appendChild(tt); }
@@ -563,6 +595,10 @@ function select(q){
     if(Q[q].point) h+=`<p class="meta">Operating point: ${esc(POINTS[Q[q].point]||Q[q].point)}</p>`;
     if(Q[q].stage) h+=`<p class="meta">Stage: ${esc(STAGES[Q[q].stage]||Q[q].stage)}${Q[q].group?' \u00b7 '+esc(GROUPS[Q[q].group]||Q[q].group):''}</p>`;
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
+  if(CONV[q]) h+=`<div class="blk"><div class="lab" style="color:var(--sel)">&#8776; Rests on a defined value \u00b7 ${CONV[q].length}</div>`+
+    CONV[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(CONVS[c].value)} ${esc(CONVS[c].unit==='1'?'':CONVS[c].unit)}</b> <span class="sub">(${esc(c)}, convention)</span><br>${esc(CONVS[c].source)}<br><span class="sub">A value chosen without a published source, adopted on the maintainer&#8217;s word &#8212; the result is only as good as this choice.</span></div>`).join('')+`</div>`;
+  if(ISSUES[q]) h+=`<div class="blk"><div class="lab" style="color:var(--bad)">${ISSUES[q].some(BLOCKING)?'! Open issues \u00b7 '+ISSUES[q].filter(BLOCKING).length+' \u2014 block approval':'Notes'}</div>`+
+    ISSUES[q].map(i=>`<div class="issue" style="border-color:${IKIND[kindOf(i)].col}"><b style="color:${IKIND[kindOf(i)].col}">${IKIND[kindOf(i)].icon} ${esc(i.title)}</b> <span class="sub">(${esc(i.formula)})</span><br>${esc(i.text)}</div>`).join('')+`</div>`;
   { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
   if(UNC.has(q)) h+=`<p class="desc" style="border-left:3px dotted var(--unc);padding-left:8px">
      <b>Uncertain</b> &#8212; an interval [min, max] over method worlds (A11), each world computed through the whole chain;
@@ -602,6 +638,7 @@ const DESC={
  'module:construction':'The airplane as built and its fitted components (motor, battery, propeller), with the references derived from them: geometry references, the take-off and landing configurations and the powertrain values. Cross-cutting: nearly every formula depends on it.',
  'module:mass-and-balance':'The take-off mass and the centre of gravity, inputs of the canon (A6), with the weight and the wing loading derived from them. Cross-cutting.',
  'module:atmosphere':'Altitude and the physical constants, with the air state derived from them: density, viscosity and speed of sound. Cross-cutting.',
+ 'module:conventions':'Defined values: measurement conventions with a default but no published source, adopted on the maintainer\u2019s word. Every quantity that rests on one carries the \u2248 mark.',
  'module:control-deflections':'Every device angle the caller sets: ailerons, elevator, rudder, flaps for take-off and landing, crow. The geometry stops are never read.',
  'module:operating-point':'The free variables of a flight state: flight speed, angle of attack and load factor. Named points bind them instead.',
  'discipline:aerodynamics':'Forces, the polar, stall, and the speeds set as a margin over the stall speed.',
@@ -704,12 +741,21 @@ addEventListener('resize',fit);
   bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'':'design-separate'; location.reload(); }); }
 let mode='all';
 function applyMode(){
-  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
+  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!(ISSUES[q]&&ISSUES[q].some(BLOCKING)) : mode.startsWith('issue:')?KINDS(q).includes(mode.slice(6)) : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
   for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
   edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
   document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));
 }
-document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.addEventListener('click',()=>{mode=bt.dataset.mode;sel=null;paint();applyMode();}));
+document.addEventListener('click',ev=>{ const bt=ev.target.closest('.seg button[data-mode]'); if(!bt) return; mode=bt.dataset.mode;sel=null;paint();applyMode(); });
+{ const counts={}; for(const q in Q) for(const k of KINDS(q)) counts[k]=(counts[k]||0)+1;
+  const box=document.getElementById('issueChips'), leg=document.getElementById('issueLegend');
+  let legHtml='';
+  for(const k in IKIND){ if(!counts[k]) continue;
+    const b=document.createElement('button'); b.dataset.mode='issue:'+k; b.setAttribute('aria-pressed','false'); b.title=IKIND[k].label;
+    b.innerHTML=`<span class="ic" style="background:${IKIND[k].col}">${IKIND[k].icon}</span>${counts[k]}`; box.appendChild(b);
+    legHtml+=(`<span><span class="ic" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${IKIND[k].col};color:#fff;font-size:9px;font-weight:700;line-height:14px;text-align:center;margin:0 8px 0 4px">${IKIND[k].icon}</span>${IKIND[k].label}</span>`); }
+  leg.insertAdjacentHTML('afterend',legHtml);
+}
 {
   const fAll=Object.keys(F), fDone=fAll.filter(f=>F[f].impl);
   const mvpF=[...new Set([...MVP].flatMap(q=>prodBy[q]||[]))].sort();
@@ -719,6 +765,8 @@ document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.addEventListe
   document.getElementById('kstat').innerHTML=
     `Canon model <b>${esc(D.stand||'')}</b>.<br>`+
     `Formulas implemented: <b>${fDone.length}</b> of <b>${fAll.length}</b>.<br>`+
+    `Formulas approved: <b>${fAll.filter(f=>F[f].status==='approved').length}</b> of <b>${fAll.length}</b>; `+
+    `<span style="color:var(--bad)">with open issues: <b>${fAll.filter(f=>(F[f].issues||[]).some(BLOCKING)).length}</b></span>.<br>`+
     `MVP (BRYAN, JAGUAR): ${res.map(r=>`<a href="#" data-q="${esc(r)}">${esc(sym(r))}</a>`).join(', ')} &#8212; `+
     `<b>${mvpF.length-mvpOpen.length}</b> of <b>${mvpF.length}</b> formulas implemented.`+
     `<span class="chips">${mvpF.map(f=>chip(f,!F[f].impl)).join('')}</span>`;

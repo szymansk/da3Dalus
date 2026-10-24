@@ -286,7 +286,7 @@ STAGE_2_CASES = {
     ),
     "default with an unknown unit": (
         {
-            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: furlong\n  source: s\n  regime: r\n",
+            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: furlong\n  basis: sourced\n  source: s\n  regime: r\n",
         },
         "defaults.yaml",
         "gravity.unit",
@@ -300,7 +300,7 @@ STAGE_2_CASES = {
     ),
     "default of an unknown quantity": (
         {
-            "defaults.yaml": "nothing:\n  value: 9.8\n  unit: m/s^2\n  source: s\n  regime: r\n",
+            "defaults.yaml": "nothing:\n  value: 9.8\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n",
         },
         "defaults.yaml",
         "nothing",
@@ -448,7 +448,7 @@ def test_defaults_become_the_namespace_table(tmp_path: Path) -> None:
 def test_integer_numbers_become_floats(tmp_path: Path) -> None:
     overrides = {
         **mutate(WEIGHING, "const: 9.81", "const: 10"),
-        "defaults.yaml": "gravity:\n  value: 10\n  unit: m/s^2\n  source: s\n  regime: r\n",
+        "defaults.yaml": "gravity:\n  value: 10\n  unit: m/s^2\n  basis: sourced\n  source: s\n  regime: r\n",
     }
     result = run(tmp_path, overrides)
     assert result.model is not None

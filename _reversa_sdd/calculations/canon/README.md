@@ -505,7 +505,7 @@ importer drops it. Modules: `construction` (the airplane and its fitted componen
 `atmosphere` (atmosphere and physical constants), `control-deflections` (every device angle the caller
 sets), `operating-point` (the free variables of a flight state), `envelope-targets` (targets that name an
 operating point or bound the envelope), `design-targets` (targets a design entry turns into a construction
-quantity). A new input or target needs its module tag; the navigator build refuses one without. `construction`, `mass-and-balance` and `atmosphere` are
+quantity), `conventions` (defined values: measurement conventions with a default in `defaults.yaml`, neither a target nor a physical input, e.g. `stall-break-fraction`). A new input or target needs its module tag; the navigator build refuses one without. `construction`, `mass-and-balance` and `atmosphere` are
 **cross-cutting**: nearly every formula depends on them (maintainer, 2026-10-24); the navigator draws
 them upright in a column on the far left, below the top row of layer-0 modules (an XY split), and
 shows their edges only on selection.
@@ -521,10 +521,16 @@ stay. Added:
 #### Defaults — `defaults.yaml`
 
 Defaults do not live in the quantity entries. They live in one file, `defaults.yaml` in the canon root,
-as a mapping `<slug>: {value, unit, source, regime}` (maintainer, 2026-10-17, #1174):
+as a mapping `<slug>: {value, unit, basis, source, regime}` (maintainer, 2026-10-17, #1174; `basis` added 2026-10-24, #1219):
 
 - `value` — in the quantity's canon unit;
 - `unit` — that unit, repeated so the file reads on its own;
+- `basis` — what kind of value it is, one of four terms: `definition` (true by definition of the quantity,
+  e.g. load factor 1 in level flight), `standard` (a published standard value: ISA, standard gravity),
+  `sourced` (taken from a cited source, also where the source offers a band and the entry picks an edge)
+  and `convention` (a chosen value **without a published source**, adopted on the maintainer's word,
+  e.g. `stall-break-fraction`). The navigator marks every quantity whose computation rests on a
+  `convention` default, and its whole downstream closure (the "Conventions" view);
 - `source` — the citation;
 - `regime` — the ADR 0028 check of why the value holds for RC/UAV (chord Re 3·10⁴–1·10⁶, Mach ≤ 0.3,
   no wheel brakes), or `regime-independent`.
