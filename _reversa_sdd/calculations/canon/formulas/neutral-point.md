@@ -76,9 +76,15 @@ ratio and miss by 5–11 % MAC on the reference fleet; Lennon's fixed 35 %.
 **Not validated (A11 rule 5).** The interval is a **lower bound** of the true uncertainty: all three
 worlds share blind spots, above all the fuselage (only rcplanedesigner's flat −5 % and Lennon's "up to
 15 %" are sourced; Raymer's formula is unchecked). A validation margin needs flown CGs of the reference
-fleet. **No fuselage in any world** (maintainer, 2026-10-23, #1203): the kernel models none, and every
-result carries the declared warning `fuselage_not_modelled` (`defect`, ADR 0020) — a fuselage moves the
-neutral point forward, so the interval is biased aft. The sourced fuselage term is open in #1205.
+fleet. **No fuselage in any world** (maintainer, 2026-10-23, #1203; decided 2026-10-24, #1205): the kernel
+models none, deliberately (KISS), and every result carries the declared warning `fuselage_not_modelled`
+(`practice`, a declared simplification, ADR 0020). A fuselage moves the neutral point forward, so the
+interval is biased slightly aft. Sourced magnitude: USAF DATCOM 1978 §4.2.2.1 Method 1 (Multhopp,
+Eq. 4.2.2.1-a; Hoak et al., AFWAL-TR-83-3048, DTIC ADB072483, printed pp. 4.2.2.1-1 to -4) gives about
+1.5–2.1 % MAC forward for BRYAN and 0.7–1.0 % for JAGUAR, inside Sadraey's "about ±5 % c̄" (§6.2.1
+footnote). That is smaller than the spread of the three worlds and outweighed by the η default 0.65
+(3–5 % MAC forward against 0.9). It is larger for a fat fuselage or a long nose, hence the warning.
+DATCOM Method 1 is a possible later extension, not scheduled.
 Reference fleet (np_methods.py): BRYAN [32.9, 36.9] % MAC, e-Hawk [48.8, 52.9] % MAC.
 
 **Source.** 🟢 derived from Sadraey Eq. 6.67, §6.7.12 (textbook); η from Lennon Ch. 7/8 and Sadraey Eq. 6.28, §6.2.1; Pappas, *Model Aviation* 10/2009; Drela, AVL. Review of the

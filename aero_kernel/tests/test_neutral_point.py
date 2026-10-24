@@ -127,7 +127,7 @@ async def test_every_world_carries_the_fuselage_warning_and_so_does_the_static_m
         "neutral-point=textbook",
     ]
     assert all(
-        w.severity is WarningSeverity.DEFECT and w.origin == "neutral-point" for w in fuselage
+        w.severity is WarningSeverity.PRACTICE and w.origin == "neutral-point" for w in fuselage
     )
     assert all(not w.detail for w in fuselage)
     margin = only((await run("static-margin", cg=CG))[0])

@@ -279,11 +279,11 @@ Sources:
   from the section chords in metres, the evaluated V and the speed of sound at the altitude. Not in input
   validation, which does not know V.
 - violated or unchecked preconditions
-- the missing fuselage (`fuselage_not_modelled`, `defect`, origin `neutral-point`, once per world): none of the
+- the missing fuselage (`fuselage_not_modelled`, `practice`, origin `neutral-point`, once per world): none of the
   three neutral-point worlds models a fuselage, whose contribution is destabilising, so the interval is biased
-  aft and a static margin computed from it is over-reported (`static-margin` inherits it). Rationale for
-  `defect` and not `practice`: no accepted practice says the fuselage may be left out; the sourced term is
-  open (#1205)
+  aft and a static margin computed from it is over-reported (`static-margin` inherits it). `practice`: a
+  deliberate, declared simplification (maintainer 2026-10-24, #1205): USAF DATCOM 1978 §4.2.2.1 Method 1
+  gives about 1.5-2.1 % MAC forward (BRYAN) and 0.7-1.0 % (JAGUAR), inside Sadraey's "about ±5 % c̄"
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`defect`)
 - the averaged hinge line of a roll device (`hinge_line_averaged`, `practice`, ch. 8.8): AeroBuildup holds one

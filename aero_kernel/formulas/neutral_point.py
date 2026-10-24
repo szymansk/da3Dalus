@@ -97,8 +97,9 @@ async def neutral_point(x: Inputs, ctx: Context) -> dict[str, float]:
     main, tail = _layout(airplane)
     ctx.warn(
         "fuselage_not_modelled",
-        "The fuselage's destabilising contribution is not included in the neutral point, so the "
-        "neutral point is too far aft and a static margin computed from it is over-reported.",
+        "The fuselage's destabilising contribution is not included in the neutral point (a declared "
+        "simplification: about 1-2 % MAC on the reference fleet, USAF DATCOM 4.2.2.1), so the neutral "
+        "point is slightly too far aft; larger for a fat fuselage or a long nose.",
     )
     world = ctx.world
     if world == "textbook":
