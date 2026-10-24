@@ -59,6 +59,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "deflection_without_flap": WarningSeverity.PRACTICE,
     "geometry_deflection_ignored": WarningSeverity.PRACTICE,
     "reference_wing_at_centreline": WarningSeverity.PRACTICE,
+    "hinge_line_averaged": WarningSeverity.PRACTICE,
     "fuselage_not_modelled": WarningSeverity.DEFECT,
     "avl_mesh_not_converged": WarningSeverity.DEFECT,
     "avl_refinement_unchecked": WarningSeverity.DEFECT,

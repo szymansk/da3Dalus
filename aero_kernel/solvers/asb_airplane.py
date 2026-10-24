@@ -19,6 +19,7 @@ from aero_kernel.geometry import (
     WingXSec,
 )
 from aero_kernel.geometry_properties import main_wing_properties
+from aero_kernel.solvers.devices import RollSegment, roll_deflection, roll_segments
 
 logger = logging.getLogger(__name__)
 
@@ -43,25 +44,51 @@ def _airfoil(asb: Any, airfoil: Airfoil) -> Any:  # noqa: ANN401  # untyped aero
     return asb.Airfoil(name=airfoil)
 
 
-def _section(asb: Any, section: WingXSec) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+def _section(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    section: WingXSec,
+    roll: RollSegment | None,
+    roll_deg: float,
+) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Convert one rib.
 
-    Control devices and the ``dihedral`` field are not passed: the airplane is built with every
-    device at 0 deg (ch. 8.11), and ``xyz_le`` already carries the dihedral.
+    The geometry's own control-device state and the ``dihedral`` field are not passed: the airplane
+    is built with every device at 0 deg (ch. 8.11), and ``xyz_le`` already carries the dihedral.
+    Only the roll command makes a control surface: the rib that starts a roll segment gets one
+    antisymmetric surface at the segment's hinge, ASB's convention for the strip a -> a+1.
     """
-    return asb.WingXSec(
-        xyz_le=list(section.xyz_le),
-        chord=section.chord,
-        twist=section.twist,
-        airfoil=_airfoil(asb, section.airfoil),
-    )
+    kwargs: dict[str, Any] = {
+        "xyz_le": list(section.xyz_le),
+        "chord": section.chord,
+        "twist": section.twist,
+        "airfoil": _airfoil(asb, section.airfoil),
+    }
+    if roll is not None:
+        kwargs["control_surfaces"] = [
+            asb.ControlSurface(
+                name=roll.device,
+                symmetric=False,
+                hinge_point=roll.hinge,
+                deflection=roll_deflection(roll.side, roll_deg),
+            )
+        ]
+    return asb.WingXSec(**kwargs)
 
 
-def _wing(asb: Any, wing: Wing) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+def _wing(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    key: str,
+    wing: Wing,
+    rolls: dict[tuple[str, int], RollSegment],
+    roll_deg: float,
+) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Convert one lifting surface."""
     return asb.Wing(
         name=wing.name,
-        xsecs=[_section(asb, section) for section in wing.x_secs],
+        xsecs=[
+            _section(asb, section, rolls.get((key, index)), roll_deg)
+            for index, section in enumerate(wing.x_secs)
+        ],
         symmetric=wing.symmetric,
     )
 
@@ -111,7 +138,7 @@ def _fuselage(asb: Any, fuselage: Fuselage) -> Any:  # noqa: ANN401  # untyped a
     return asb.Fuselage(name=fuselage.name, xsecs=sections)
 
 
-def to_asb_airplane(airplane: AirplaneGeometry) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Convert a geometry document to an ``asb.Airplane``.
 
     Metres and degrees as parsed (ch. 8.11). The reference area, span and chord of the airplane
@@ -122,17 +149,22 @@ def to_asb_airplane(airplane: AirplaneGeometry) -> Any:  # noqa: ANN401  # untyp
 
     Args:
         airplane: The validated geometry document (exactly one main wing).
+        roll_deg: The aileron command in degrees, positive = roll to the right (ch. 8.8). Zero
+            builds the clean airplane, bit for bit; otherwise every segment with a roll device
+            gets one antisymmetric control surface (:func:`roll_segments`).
 
     Returns:
         The ``asb.Airplane``, wings and fuselages in document order.
 
     Raises:
         ValueError: If the document does not have exactly one main wing.
-        FormulaError: ``unsupported_configuration`` for a fuselage ASB cannot represent.
+        FormulaError: ``unsupported_configuration`` for a fuselage ASB cannot represent or a roll
+            device on an unmirrored wing; ``invalid_input`` for a roll device without a hinge.
     """
     asb = load_aerosandbox()
     reference = main_wing_properties(airplane)
-    wings = [_wing(asb, wing) for wing in (airplane.wings or {}).values()]
+    rolls = {(r.wing, r.index): r for r in roll_segments(airplane)} if roll_deg else {}
+    wings = [_wing(asb, key, wing, rolls, roll_deg) for key, wing in (airplane.wings or {}).items()]
     fuselages = [_fuselage(asb, fuselage) for fuselage in (airplane.fuselages or {}).values()]
     logger.debug(
         "converted airplane %s: %d wings, %d fuselages", airplane.name, len(wings), len(fuselages)

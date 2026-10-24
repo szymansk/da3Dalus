@@ -243,7 +243,10 @@ nothing failed. The category enum holds only the eight rows above.
 - **Refused layouts and tool limits** (`unsupported_configuration`): `unsupported_layout` — the neutral point
   is defined for one `main_wing` with one `horizontal_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
-  declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh.
+  declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
+  `roll_device_on_unmirrored_surface` — a device acting as aileron sits on a wing that is not mirrored (no
+  fleet aircraft has one, ADR 0021; `detail`: wing key, device label, role); `missing_hinge`
+  (`invalid_input`) — a driven roll device without `rel_chord_root`, the tool's default hinge is never used.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `defect` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
@@ -281,6 +284,9 @@ Sources:
   open (#1205)
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`defect`)
+- the averaged hinge line of a roll device (`hinge_line_averaged`, `practice`, ch. 8.8): AeroBuildup holds one
+  hinge per segment, so a tapered hinge line is replaced by the mean of its root and tip (`detail`: wing key,
+  device, `root`, `tip`, `used`)
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites

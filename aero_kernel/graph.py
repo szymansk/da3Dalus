@@ -36,6 +36,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "AILERON_ROLES",
     "PENDING_WHEN_TERMS",
     "CanonGraph",
     "Edge",
@@ -801,13 +802,13 @@ class WhenFacts(BaseModel):
 
 # Terms of the closed vocabulary whose fact is not implemented yet, with the ticket that brings it.
 PENDING_WHEN_TERMS: Mapping[str, str] = {"has_horizontal_tail": "#1187"}
-_AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
+AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
 # The hinge-moment terms: a device that has a hinge and acts in that role (a stabilator has none).
 _ELEVATOR_ROLES = frozenset({"elevator", "elevon", "ruddervator"})
 _FLAP_ROLES = frozenset({"flap", "flaperon"})
 # A butterfly layout (D10) needs a flap and a distinct aileron or elevon; a flaperon is neither.
 _BUTTERFLY_FLAP_ROLES = frozenset({"flap"})
-_BUTTERFLY_AILERON_ROLES = frozenset({"aileron", "elevon"})
+_BUTTERFLYAILERON_ROLES = frozenset({"aileron", "elevon"})
 _RUDDER_ROLES = frozenset({"rudder", "ruddervator"})
 
 
@@ -875,13 +876,13 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
         if x_sec.trailing_edge_device is not None
     ]
     return WhenFacts(
-        has_aileron=any(role in _AILERON_ROLES for _, role in devices),
+        has_aileron=any(role in AILERON_ROLES for _, role in devices),
         has_elevator=any(role in _ELEVATOR_ROLES for _, role in devices),
         has_flap=any(role in _FLAP_ROLES for _, role in devices),
         has_rudder=any(role in _RUDDER_ROLES for _, role in devices),
         has_separate_flap_and_aileron=any(
             flap_role in _BUTTERFLY_FLAP_ROLES
-            and aileron_role in _BUTTERFLY_AILERON_ROLES
+            and aileron_role in _BUTTERFLYAILERON_ROLES
             and flap != aileron
             for flap, flap_role in devices
             for aileron, aileron_role in devices
