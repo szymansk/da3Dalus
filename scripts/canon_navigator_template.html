@@ -7,7 +7,7 @@
   --bg:#FBFAF7; --panel:#FFFFFF; --ink:#23211C; --ink-2:#6B675E; --ink-3:#9A958A;
   --line:#E2DED4; --line-2:#CFC9BC;
   --inp:#4C7198; --mid:#8A8579; --out:#35754D; --hub:#A67C3C; --sel:#6B4FA0;
-  --inp-bg:#EBF1F7; --tgt:#B0457A; --tgt-bg:#F8E9F0; --unc:#2F7FA8; --out-bg:#E7F2EB; --hub-bg:#FAF2E4; --sel-bg:#F0EBF8;
+  --good:#2E8B57; --mvp:#D9822B; --inp-bg:#EBF1F7; --tgt:#B0457A; --tgt-bg:#F8E9F0; --unc:#2F7FA8; --out-bg:#E7F2EB; --hub-bg:#FAF2E4; --sel-bg:#F0EBF8;
   --dim:0.13;
 }
 @media (prefers-color-scheme:dark){
@@ -16,7 +16,7 @@
     --bg:#16150F; --panel:#1F1D16; --ink:#EDEAE1; --ink-2:#A7A294; --ink-3:#777266;
     --line:#332F26; --line-2:#474034;
     --inp:#7FA6CC; --mid:#9C968A; --out:#6FB98B; --hub:#D6AA63; --sel:#A78BDB;
-    --inp-bg:#1C2530; --tgt:#E08AB5; --tgt-bg:#2E1B26; --unc:#7CC0E2; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
+    --good:#6FCF97; --mvp:#F0A35A; --inp-bg:#1C2530; --tgt:#E08AB5; --tgt-bg:#2E1B26; --unc:#7CC0E2; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
     --dim:0.16;
   }
 }
@@ -25,7 +25,7 @@
   --bg:#16150F; --panel:#1F1D16; --ink:#EDEAE1; --ink-2:#A7A294; --ink-3:#777266;
   --line:#332F26; --line-2:#474034;
   --inp:#7FA6CC; --mid:#9C968A; --out:#6FB98B; --hub:#D6AA63; --sel:#A78BDB;
-  --inp-bg:#1C2530; --tgt:#E08AB5; --tgt-bg:#2E1B26; --unc:#7CC0E2; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
+  --good:#6FCF97; --mvp:#F0A35A; --inp-bg:#1C2530; --tgt:#E08AB5; --tgt-bg:#2E1B26; --unc:#7CC0E2; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
   --dim:0.16;
 }
 *{box-sizing:border-box}
@@ -70,6 +70,20 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .faded{opacity:var(--dim)}
 .edge.up{stroke:var(--inp);stroke-width:1.9px;opacity:1}
 .edge.down{stroke:var(--out);stroke-width:1.9px;opacity:1}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{flex:1;padding:5px 6px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink);
+  border-radius:5px;font:inherit;font-size:12px;cursor:pointer}
+.seg button[aria-pressed=true]{border-color:var(--mvp);background:var(--hub-bg);font-weight:600}
+.stat{font-size:12.5px;color:var(--ink-2);margin:8px 0 0;line-height:1.55}
+.stat b{color:var(--ink);font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.chips span{border:1px solid var(--line-2);border-radius:4px;padding:1px 6px;font-size:11.5px;cursor:pointer;
+  font-family:"IBM Plex Mono",monospace;background:var(--bg)}
+.chips span:hover{border-color:var(--sel)}
+.chips span.open{border-color:var(--mvp);color:var(--mvp)}
+.off{opacity:var(--dim)}
+.kst{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin:0 0 14px;padding:4px 9px;
+  border-radius:5px;border:1px solid var(--line-2)}
 .laylab{font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace}
 .hint{position:absolute;left:0;right:0;bottom:12px;text-align:center;color:var(--ink-3);
   font-size:12px;pointer-events:none}
@@ -112,6 +126,26 @@ main{position:relative;overflow:hidden;background:var(--bg)}
   <p class="sub" id="counts"></p>
 
   <div class="grp">
+    <div class="lab">Umsetzung im aero_kernel</div>
+    <div class="seg" role="group" aria-label="Ansicht">
+      <button data-mode="all" aria-pressed="true">Alle</button>
+      <button data-mode="mvp" aria-pressed="false">MVP</button>
+      <button data-mode="done" aria-pressed="false">Umgesetzt</button>
+    </div>
+    <div class="seg" role="group" aria-label="Richtung" style="margin-top:6px">
+      <button data-mode="analysis" aria-pressed="false" title="Was ein gegebenes Flugzeug kann">Analyse</button>
+      <button data-mode="design" aria-pressed="false" title="Ein Ziel in eine Konstruktionsgr&#246;&#223;e umrechnen (O1)">Auslegung</button>
+    </div>
+    <div class="leg" style="margin-top:10px">
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="var(--good)"/></svg>im Kernel umgesetzt</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>Teil des MVP, noch offen</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>Formel umgesetzt, Gr&#246;&#223;e nicht skalar &#8212; v1 gibt sie nicht aus</span>
+      <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>geh&#246;rt zum MVP (Balken unter dem Knoten)</span>
+    </div>
+    <p class="stat" id="kstat"></p>
+  </div>
+
+  <div class="grp">
     <div class="lab">Tiefe der Hervorhebung</div>
     <div class="depth">
       <input type="range" id="depth" min="0" max="12" value="1" aria-label="Tiefe">
@@ -133,7 +167,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><i class="sw" style="background:var(--tgt-bg);border-color:var(--tgt)"></i>Zielwert &#8212; Vorgabe des Nutzers</span>
       <span><i class="sw" style="border:1.5px dashed var(--tgt)"></i>an einem Zielwert gemessen &#8212; kein reiner Rechenwert</span>
       <span><i class="sw" style="border:2px dotted var(--unc)"></i>unscharf &#8212; Intervall &#252;ber Methodenwelten (A11), auch alles, was davon abh&#228;ngt</span>
-      <span style="display:block;margin-top:6px"><b>Werkzeug</b> (unten rechts im Knoten): OPT asb.Opti + AeroBuildup &#183; AB AeroBuildup &#183; GEO/ATM AeroSandbox-Geometrie/-Atmosph&#228;re &#183; KAT Teilekatalog &#183; APC Propellertabellen &#183; APP eigene Rechnung der App. NeuralFoil rechnet die Profile innerhalb von AeroBuildup. AVL rechnet im Kanon nichts.</span>
+      <span style="display:block;margin-top:6px"><b>Werkzeug</b> (unten rechts im Knoten): OPT asb.Opti + AeroBuildup &#183; AB AeroBuildup &#183; GEO/ATM AeroSandbox-Geometrie/-Atmosph&#228;re &#183; KAT Teilekatalog &#183; APC Propellertabellen &#183; APP eigene Rechnung der App. NeuralFoil rechnet die Profile innerhalb von AeroBuildup. AVL Wirbelgitter: eine Methodenwelt von Neutralpunkt und Rollrate, die Seitenstabilit&#228;t.</span>
       <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>tragend &#8212; vierfach oder &#246;fter gebraucht</span>
       <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>Zwischenergebnis</span>
       <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>Endergebnis &#8212; von nichts verbraucht</span>
@@ -167,6 +201,7 @@ const Q=D.Q, F=D.F, LAYER=D.layer, ORDER=D.order;
 const INPUTS=new Set(D.inputs), OUTPUTS=new Set(D.outputs);
 // Target values (role: target) are user-given goals; every quantity downstream of one is
 // measured against a goal rather than computed from the aircraft alone.
+const STATUS=D.status||{}, MVP=new Set(D.mvp||[]), DESIGN=new Set(D.design||[]), ANALYSIS=new Set(D.analysis||[]);
 const TARGETS=new Set(Object.keys(Q).filter(q=>Q[q].role==='target'));
 
 const pred={}, succ={}, prodBy={}, useCount={};
@@ -184,19 +219,28 @@ for(const s of TARGETS){ const seen=new Set(), st=[s]; while(st.length){ const v
 
 const NW=78, NH=30, GAPX=13, GAPY=74, PAD=48;
 const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
-const widest=Math.max(...layers.map(l=>ORDER[l].length));
-const W=widest*(NW+GAPX)-GAPX, H=(layers.length-1)*GAPY+NH;
-const P={};
+// Wide layers wrap into sub-rows so the graph keeps a readable aspect ratio.
+const MAXROW=16, SUBGAP=NH+16;
+const widest=Math.min(MAXROW,Math.max(...layers.map(l=>ORDER[l].length)));
+const W=widest*(NW+GAPX)-GAPX;
+const P={}, LY={};
+let yc=0;
 for(const l of layers){
-  const row=ORDER[l], off=(W-(row.length*(NW+GAPX)-GAPX))/2;
-  row.forEach((q,i)=>{ P[q]={x:off+i*(NW+GAPX), y:l*GAPY}; });
+  const all=ORDER[l], n=Math.ceil(all.length/MAXROW);
+  LY[l]=yc;
+  for(let r=0;r<n;r++){
+    const row=all.slice(r*MAXROW,(r+1)*MAXROW), off=(W-(row.length*(NW+GAPX)-GAPX))/2;
+    row.forEach((q,i)=>{ P[q]={x:off+i*(NW+GAPX), y:yc+r*SUBGAP}; });
+  }
+  yc+= (n-1)*SUBGAP + GAPY;
 }
+const H=yc-GAPY+NH;
 const cam=document.getElementById('cam'), svg=document.getElementById('g');
 const NS='http://www.w3.org/2000/svg';
 const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
 
 for(const l of layers){
-  const t=el('text',{x:-26,y:l*GAPY+NH/2,class:'laylab','dominant-baseline':'middle','text-anchor':'end'});
+  const t=el('text',{x:-26,y:LY[l]+NH/2,class:'laylab','dominant-baseline':'middle','text-anchor':'end'});
   t.textContent='L'+l; cam.appendChild(t);
 }
 const edgeEls=[];
@@ -234,6 +278,11 @@ for(const q in Q){
   if(parts[1]){ const s=el('tspan',{dy:'4',style:'font-size:10px'}); s.textContent=parts.slice(1).join('_'); t.appendChild(s); }
   if(isOpt(q)){ const s=el('tspan',{dy:parts[1]?'-6':'-4',class:'opt'}); s.textContent='*'; t.appendChild(s); }
   g.appendChild(t);
+  const st=STATUS[q];
+  if(st==='done') g.appendChild(el('circle',{cx:7,cy:7,r:4,fill:'var(--good)'}));
+  else if(st==='open'&&MVP.has(q)) g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--mvp)','stroke-width':2}));
+  else if(st==='nonscalar') g.appendChild(el('circle',{cx:7,cy:7,r:3.5,fill:'none',stroke:'var(--ink-3)','stroke-width':1.4,'stroke-dasharray':'2 1.5'}));
+  if(MVP.has(q)) g.appendChild(el('rect',{x:4,y:NH+3,width:NW-8,height:3.5,rx:1.5,fill:'var(--mvp)'}));
   const tl=toolOf(q);
   if(tl.length){ const tt=el('text',{x:NW-3,y:NH-3,class:'tool','text-anchor':'end'}); tt.textContent=tl.join('/'); g.appendChild(tt); }
   g.addEventListener('click',()=>{ if(!moved) select(q); });
@@ -278,6 +327,14 @@ function select(q){
    <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 Schicht L${LAYER[q]}
    &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
    <p class="desc">${esc(d.desc||'Keine Beschreibung im Katalog.')}</p>`;
+  { const st=STATUS[q], impl=fs.map(f=>F[f].impl).filter(Boolean), tk=[...new Set(fs.map(f=>F[f].ticket).filter(Boolean))];
+    const txt = st==='input' ? 'Eingabe &#8212; der Aufrufer gibt sie an'+(MVP.has(q)?' (im MVP gebraucht)':'')
+      : st==='done' ? '&#10003; im Kernel umgesetzt ('+impl.map(esc).join(', ')+')'
+      : st==='nonscalar' ? 'Formel umgesetzt ('+impl.map(esc).join(', ')+'), die Gr&#246;&#223;e ist nicht skalar &#8212; v1 gibt sie nicht aus'
+      : MVP.has(q) ? 'Teil des MVP, noch offen'+(tk.length?' &#8212; '+tk.map(esc).join(', '):'')
+      : 'noch nicht im Kernel';
+    const col = st==='done'?'var(--good)':(st==='open'&&MVP.has(q))?'var(--mvp)':'var(--line-2)';
+    h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   { const tl=toolOf(q); h+=`<p class="meta">Gerechnet mit: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (Eingabe)'}</p>`; }
   if(UNC.has(q)) h+=`<p class="desc" style="border-left:3px dotted var(--unc);padding-left:8px">
      <b>Unscharf</b> &#8212; ein Intervall [min, max] &#252;ber Methodenwelten (A11), je Welt durch die ganze Kette gerechnet;
@@ -291,8 +348,13 @@ function select(q){
     h+= e.tex ? `<div class="math">$$${e.tex}$$</div>`
               : `<div class="mono">${esc(e.form)}</div>
                  <p class="sub" style="margin:6px 0 0">Verfahrensform \u2014 nicht als Formel setzbar.</p>`;
-    if(e.ins.length) h+=`<div class="lab" style="margin-top:12px">Aus</div><ul class="lnk">`+
-      e.ins.map(i=>`<li data-q="${esc(i)}">${esc(sym(i))}</li>`).join('')+`</ul>`;
+    h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; nicht im Kernel'}${e.ticket?' &#183; '+esc(e.ticket):''} &#183; ${e.direction==='design'?'<b>Auslegung</b> (O1)':'Analyse'}</p>`;
+    if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Methodenwelten: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
+    const aps=(e.apps||[]).filter(a=>a.out.includes(q));
+    for(const a of aps){
+      h+=`<div class="lab" style="margin-top:12px">Aus${(e.apps.length>1||a.when)?' &#183; Anwendung '+esc(a.id):''}${a.when?' &#183; wenn '+esc(a.when):''}</div><ul class="lnk">`+
+        a.ins.filter(i=>Q[i]).map(i=>`<li data-q="${esc(i)}">${esc(sym(i))}</li>`).join('')+`</ul>`;
+    }
     if(e.src) h+=`<div class="lab" style="margin-top:12px">Quelle</div><p class="src">${esc(e.src)}</p>`;
     h+=`</div>`;
   }
@@ -340,6 +402,30 @@ document.getElementById('zout').onclick=()=>{k=Math.max(0.15,k/1.25);apply();};
 document.getElementById('zfit').onclick=fit;
 addEventListener('resize',fit);
 
+let mode='all';
+function applyMode(){
+  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
+  for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
+  edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
+  document.querySelectorAll('.seg button').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));
+}
+document.querySelectorAll('.seg button').forEach(bt=>bt.addEventListener('click',()=>{mode=bt.dataset.mode;sel=null;paint();applyMode();}));
+{
+  const fAll=Object.keys(F), fDone=fAll.filter(f=>F[f].impl);
+  const mvpF=[...new Set([...MVP].flatMap(q=>prodBy[q]||[]))].sort();
+  const mvpOpen=mvpF.filter(f=>!F[f].impl);
+  const res=(D.mvp_results||[]);
+  const chip=(f,open)=>`<span class="${open?'open':''}" data-f="${esc(f)}">${esc(f)}${open&&F[f].ticket?' '+esc(F[f].ticket):''}</span>`;
+  document.getElementById('kstat').innerHTML=
+    `Kanonmodell <b>${esc(D.stand||'')}</b>.<br>`+
+    `Formeln umgesetzt: <b>${fDone.length}</b> von <b>${fAll.length}</b>.<br>`+
+    `MVP (BRYAN, JAGUAR): ${res.map(r=>`<a href="#" data-q="${esc(r)}">${esc(sym(r))}</a>`).join(', ')} &#8212; `+
+    `<b>${mvpF.length-mvpOpen.length}</b> von <b>${mvpF.length}</b> Formeln umgesetzt.`+
+    `<span class="chips">${mvpF.map(f=>chip(f,!F[f].impl)).join('')}</span>`;
+  const kst=document.getElementById('kstat');
+  kst.querySelectorAll('[data-q]').forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();select(a.dataset.q);}));
+  kst.querySelectorAll('[data-f]').forEach(c=>c.addEventListener('click',()=>select(F[c.dataset.f].out[0])));
+}
 document.getElementById('counts').textContent =
   `${Object.keys(Q).length} Gr\u00f6\u00dfen \u00b7 ${D.edges.length} Kanten \u00b7 ${layers.length} Schichten \u00b7 `+
   `${D.inputs.length} Eingaben, ${D.outputs.length} Endergebnisse`;

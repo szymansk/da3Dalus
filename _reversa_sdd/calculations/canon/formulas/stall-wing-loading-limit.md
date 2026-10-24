@@ -10,6 +10,7 @@ source_status: SOURCED
 dimensional_check: BALANCES
 tags:
   - canon/formula
+  - direction/design
   - source/sourced
   - dim/balances
   - shape/law

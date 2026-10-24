@@ -11,6 +11,7 @@ source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
   - canon/formula
+  - direction/design
   - source/sourced
   - dim/procedural
   - shape/law

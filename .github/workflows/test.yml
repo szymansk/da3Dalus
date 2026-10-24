@@ -115,6 +115,11 @@ jobs:
         # longer matches it. A canon change re-imports the model in the same change.
         run: poetry run python -m aero_kernel.importer _reversa_sdd/calculations/canon --check
 
+      - name: Canon navigator is current (build_canon_navigator --check)
+        # The navigator is derived from the canon, the canon model and the aero_kernel formulas
+        # (implementation status, MVP). A change to any of them regenerates it in the same change.
+        run: poetry run python scripts/build_canon_navigator.py --check
+
       - name: Canon authoring checks (prose, links, README examples)
         # The structural rules are the importer's; this keeps what it never reads (#1174).
         run: poetry run python scripts/check_canon.py
