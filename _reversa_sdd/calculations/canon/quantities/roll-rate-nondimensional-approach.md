@@ -20,4 +20,4 @@ type: scalar
 
 **Produced by.** [[roll-rate]]
 
-**Unschärfe (A11).** Intervall über die Methodenwelten AeroBuildup und AVL (Rollrate: Streuung 23 % beim BRYAN).
+**Uncertainty (A11).** Interval over the method worlds AeroBuildup and AVL (roll rate: 23 % spread on BRYAN in the prototype).

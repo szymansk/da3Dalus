@@ -1,4 +1,4 @@
-<title>Rechenkanon-Navigator</title>
+<title>Canon Navigator</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script>window.MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]},svg:{fontCache:'global'},startup:{typeset:false}};</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
@@ -85,6 +85,8 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .kst{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin:0 0 14px;padding:4px 9px;
   border-radius:5px;border:1px solid var(--line-2)}
 .colhead{font-family:"STIX Two Text",Georgia,serif;font-size:15px;font-weight:600;fill:var(--ink)}
+.edge.xedge{display:none}
+.edge.xedge.up,.edge.xedge.down{display:inline}
 .frame{fill:transparent;stroke:var(--line-2);stroke-width:1.2}
 .modsel{cursor:pointer}.modsel:hover .frame{stroke:var(--sel)}
 .modsel:hover .blocklab{fill:var(--sel)}
@@ -129,73 +131,73 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 </style>
 <div class="wrap">
 <aside>
-  <h1>Rechenkanon-Navigator</h1>
+  <h1>Canon Navigator</h1>
   <p class="sub" id="counts"></p>
 
   <div class="grp">
-    <div class="lab">Umsetzung im aero_kernel</div>
-    <div class="seg" role="group" aria-label="Ansicht">
-      <button data-mode="all" aria-pressed="true">Alle</button>
+    <div class="lab">Implementation in aero_kernel</div>
+    <div class="seg" role="group" aria-label="View">
+      <button data-mode="all" aria-pressed="true">All</button>
       <button data-mode="mvp" aria-pressed="false">MVP</button>
-      <button data-mode="done" aria-pressed="false">Umgesetzt</button>
+      <button data-mode="done" aria-pressed="false">Implemented</button>
     </div>
-    <div class="seg" role="group" aria-label="Richtung" style="margin-top:6px">
-      <button data-mode="analysis" aria-pressed="false" title="Was ein gegebenes Flugzeug kann">Analyse</button>
-      <button data-mode="design" aria-pressed="false" title="Ein Ziel in eine Konstruktionsgr&#246;&#223;e umrechnen (O1)">Auslegung</button>
+    <div class="seg" role="group" aria-label="Direction" style="margin-top:6px">
+      <button data-mode="analysis" aria-pressed="false" title="What a given airplane does">Analysis</button>
+      <button data-mode="design" aria-pressed="false" title="Turn a target into a construction quantity (O1)">Design</button>
     </div>
     <div class="leg" style="margin-top:10px">
-      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="var(--good)"/></svg>im Kernel umgesetzt</span>
-      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>Teil des MVP, noch offen</span>
-      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>Formel umgesetzt, Gr&#246;&#223;e nicht skalar &#8212; v1 gibt sie nicht aus</span>
-      <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>geh&#246;rt zum MVP (Balken unter dem Knoten)</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="var(--good)"/></svg>implemented in the kernel</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--mvp)" stroke-width="2"/></svg>part of the MVP, still open</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>formula implemented, quantity not scalar &#8212; v1 does not return it</span>
+      <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>belongs to the MVP (bar under the node)</span>
     </div>
     <p class="stat" id="kstat"></p>
   </div>
 
   <div class="grp">
-    <div class="lab">Tiefe der Hervorhebung</div>
+    <div class="lab">Highlight depth</div>
     <div class="depth">
-      <input type="range" id="depth" min="0" max="12" value="1" aria-label="Tiefe">
+      <input type="range" id="depth" min="0" max="12" value="1" aria-label="Depth">
       <output id="depthOut" for="depth">1</output>
     </div>
-    <p class="sub" style="margin:7px 0 0">Wie viele Schritte vorw&#228;rts und r&#252;ckw&#228;rts von der gew&#228;hlten Gr&#246;&#223;e hervorgehoben werden. 0 zeigt nur sie selbst.</p>
+    <p class="sub" style="margin:7px 0 0">How many steps forward and backward from the selection are highlighted. 0 shows the selection only.</p>
   </div>
 
   <div class="grp">
-    <div class="lab">Gr&#246;&#223;e suchen</div>
-    <input type="search" id="q" placeholder="Name, Symbol oder Einheit" aria-label="Gr&#246;&#223;e suchen">
+    <div class="lab">Find a quantity</div>
+    <input type="search" id="q" placeholder="Name, symbol or unit" aria-label="Find a quantity">
     <ul class="hits" id="hits"></ul>
   </div>
 
   <div class="grp">
-    <div class="lab">Legende</div>
+    <div class="lab">Legend</div>
     <div class="leg">
-      <span><i class="sw" style="background:var(--inp-bg);border-color:var(--inp)"></i>Eingabe &#8212; von keiner Formel erzeugt</span>
-      <span><i class="sw" style="background:var(--tgt-bg);border-color:var(--tgt)"></i>Zielwert &#8212; Vorgabe des Nutzers</span>
-      <span><i class="sw" style="border:1.5px dashed var(--tgt)"></i>an einem Zielwert gemessen &#8212; kein reiner Rechenwert</span>
-      <span><i class="sw" style="border:2px dotted var(--unc)"></i>unscharf &#8212; Intervall &#252;ber Methodenwelten (A11), auch alles, was davon abh&#228;ngt</span>
-      <span style="display:block;margin-top:6px"><b>Werkzeug</b> (unten rechts im Knoten): OPT asb.Opti + AeroBuildup &#183; AB AeroBuildup &#183; GEO/ATM AeroSandbox-Geometrie/-Atmosph&#228;re &#183; KAT Teilekatalog &#183; APC Propellertabellen &#183; APP eigene Rechnung der App. NeuralFoil rechnet die Profile innerhalb von AeroBuildup. AVL Wirbelgitter: eine Methodenwelt von Neutralpunkt und Rollrate, die Seitenstabilit&#228;t.</span>
-      <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>tragend &#8212; vierfach oder &#246;fter gebraucht</span>
-      <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>Zwischenergebnis</span>
-      <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>Endergebnis &#8212; von nichts verbraucht</span>
-      <span><i class="sw" style="border:none;text-align:center;font-weight:600;color:var(--sel);font-size:15px;line-height:13px">*</i>Ergebnis eines Optimierungsproblems &#8212; keine geschlossene Formel</span>
+      <span><i class="sw" style="background:var(--inp-bg);border-color:var(--inp)"></i>input &#8212; produced by no formula</span>
+      <span><i class="sw" style="background:var(--tgt-bg);border-color:var(--tgt)"></i>target &#8212; set by the user</span>
+      <span><i class="sw" style="border:1.5px dashed var(--tgt)"></i>measured against a target &#8212; not a pure property of the airplane</span>
+      <span><i class="sw" style="border:2px dotted var(--unc)"></i>uncertain &#8212; interval over method worlds (A11), and everything depending on it</span>
+      <span style="display:block;margin-top:6px"><b>Tool</b> (bottom right of a node): OPT asb.Opti + AeroBuildup &#183; AB AeroBuildup &#183; GEO/ATM AeroSandbox geometry/atmosphere &#183; KAT parts catalogue &#183; APC propeller tables &#183; APP the app&#8217;s own computation. NeuralFoil computes the airfoils inside AeroBuildup. AVL vortex lattice: a method world of the neutral point and the roll rate, and the lateral stability.</span>
+      <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>hub &#8212; used four times or more</span>
+      <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>intermediate result</span>
+      <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>final result &#8212; consumed by nothing</span>
+      <span><i class="sw" style="border:none;text-align:center;font-weight:600;color:var(--sel);font-size:15px;line-height:13px">*</i>result of an optimisation problem &#8212; no closed form</span>
     </div>
   </div>
 
   <div class="grp">
-    <div class="lab">Schichten</div>
-    <p class="sub" style="margin:0">Oben stehen die Eingaben, nach unten w&#228;chst die Abh&#228;ngigkeitstiefe. Ganz unten steht, was nirgends mehr eingeht.</p>
+    <div class="lab">Layers</div>
+    <p class="sub" style="margin:0">Inputs at the top; dependency depth grows downward; at the bottom what feeds nothing else. Cross-cutting modules (construction, mass and balance, atmosphere) stand in their own column on the right; their edges show only when they are selected.</p>
   </div>
 </aside>
 
 <main>
   <svg id="g" role="img" aria-label="Rechengraph"><g id="cam"></g></svg>
   <div class="z">
-    <button id="zin" title="Gr&#246;&#223;er" aria-label="Gr&#246;&#223;er">+</button>
-    <button id="zout" title="Kleiner" aria-label="Kleiner">&#8722;</button>
-    <button id="zfit" title="Einpassen" aria-label="Einpassen">&#10530;</button>
+    <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+    <button id="zout" title="Zoom out" aria-label="Zoom out">&#8722;</button>
+    <button id="zfit" title="Fit" aria-label="Fit">&#10530;</button>
   </div>
-  <div class="hint">Ziehen zum Verschieben &#183; Rad zum Zoomen &#183; Gr&#246;&#223;e anklicken</div>
+  <div class="hint">Drag to pan &#183; wheel to zoom &#183; click a quantity or a module</div>
 </main>
 
 <div class="info" id="info"></div>
@@ -231,20 +233,26 @@ const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
 // each column the target modules come first (left), then the input modules (right); modules
 // flow left to right and wrap. Deeper layers wrap into sub-rows of the column's width.
 const SIDE=q=>(DESIGN.has(q)&&!ANALYSIS.has(q))?'design':'analysis';
-const MODULES={'envelope-targets':'Zielwerte Flugbereich','design-targets':'Zielwerte Auslegung',
-  'construction':'Konstruktion','mass-and-balance':'Masse und Schwerpunkt','atmosphere':'Atmosph\u00e4re und Konstanten',
-  'control-deflections':'Ruderausschl\u00e4ge','operating-point':'Betriebspunkt'};
+const MODULES={'envelope-targets':'Envelope targets','design-targets':'Design targets',
+  'construction':'Construction','mass-and-balance':'Mass and balance','atmosphere':'Atmosphere and constants',
+  'control-deflections':'Control deflections','operating-point':'Operating point'};
 const MODORDER=Object.keys(MODULES);
+// Cross-cutting modules (maintainer 2026-10-24): nearly every formula depends on them, so they
+// stand in their own column on the right instead of layer 0; their edges show only on selection.
+const XCUT=new Set(['construction','mass-and-balance','atmosphere']);
+const isX=q=>XCUT.has(Q[q].module);
 const SLOTS={analysis:16, design:6}, SIDEGAP=70, SUBGAP=NH+16, HEAD=40;
 const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXMODCOLS=4;
+const XSLOTS=3;
 const SX={analysis:0, design:SLOTS.analysis*slotW-GAPX+SIDEGAP};
-const W=SX.design+SLOTS.design*slotW-GAPX;
+SX.xcut=SX.design+SLOTS.design*slotW-GAPX+SIDEGAP;
+const W=SX.xcut+XSLOTS*slotW-GAPX;
 const P={}, LY={}, FRAMES=[], frameEls=[];
 let yc=HEAD;
 for(const l of layers){
   LY[l]=yc; let height=NH;
   for(const side of ['analysis','design']){
-    const all=ORDER[l].filter(q=>SIDE(q)===side);
+    const all=ORDER[l].filter(q=>SIDE(q)===side&&!isX(q));
     if(!all.length) continue;
     if(l>0){
       const cols=SLOTS[side];
@@ -269,6 +277,19 @@ for(const l of layers){
   }
   yc+=height-NH+GAPY;
 }
+// The cross-cutting column: one framed module under the other, from the top.
+{ let y=HEAD+FHEAD;
+  for(const m of MODORDER.filter(m=>XCUT.has(m))){
+    const qs=Object.keys(Q).filter(q=>Q[q].module===m).sort();
+    if(!qs.length) continue;
+    const cols=Math.min(XSLOTS,qs.length), rows=Math.ceil(qs.length/cols);
+    const fw=cols*slotW-GAPX+2*FPAD, fh=(rows-1)*SUBGAP+NH+2*FPAD;
+    qs.forEach((q,i)=>{ P[q]={x:SX.xcut+FPAD+(i%cols)*slotW, y:y+FPAD+Math.floor(i/cols)*SUBGAP}; });
+    FRAMES.push({module:m,label:MODULES[m],x:SX.xcut,y,w:fw,h:fh,target:false});
+    y+=fh+MODGAP+FHEAD;
+  }
+  yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
+}
 const H=yc-GAPY+NH;
 const cam=document.getElementById('cam'), svg=document.getElementById('g');
 const NS='http://www.w3.org/2000/svg';
@@ -278,12 +299,12 @@ for(const l of layers){
   const t=el('text',{x:-26,y:LY[l]+NH/2,class:'laylab','dominant-baseline':'middle','text-anchor':'end'});
   t.textContent='L'+l; cam.appendChild(t);
 }
-{ const dx=SX.design-SIDEGAP/2;
-  cam.appendChild(el('line',{x1:dx,y1:6,x2:dx,y2:H+10,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
-  for(const [side,label] of [['analysis','Analyse \u2014 was ein gegebenes Flugzeug kann'],['design','Auslegung \u2014 Ziel \u2192 Konstruktionsgr\u00f6\u00dfe (O1)']]){
+{ for(const dx of [SX.design-SIDEGAP/2, SX.xcut-SIDEGAP/2])
+    cam.appendChild(el('line',{x1:dx,y1:6,x2:dx,y2:H+10,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
+  for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)'],['xcut','Cross-cutting']]){
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   for(const f of FRAMES){
-    const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Modul '+f.label+' ausw\u00e4hlen'});
+    const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select module '+f.label});
     const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')});
     const t=el('text',{x:f.x+2,y:f.y-7,class:'blocklab'}); t.textContent=f.label+' \u25b8';
     g.appendChild(r); g.appendChild(t);
@@ -296,7 +317,7 @@ for(const [a,b,f] of D.edges){
   const p1=P[a], p2=P[b];
   const x1=p1.x+NW/2, y1=p1.y+NH, x2=p2.x+NW/2, y2=p2.y;
   const dy=Math.max(18,(y2-y1)/2);
-  const e=el('path',{class:'edge',d:`M${x1},${y1} C${x1},${y1+dy} ${x2},${y2-dy} ${x2},${y2}`});
+  const e=el('path',{class:'edge'+(isX(a)?' xedge':''),d:`M${x1},${y1} C${x1},${y1+dy} ${x2},${y2-dy} ${x2},${y2}`});
   cam.appendChild(e); edgeEls.push({e,a,b});
 }
 function sym(q){
@@ -308,7 +329,7 @@ let moved=false;
 const isOpt=q=>(prodBy[q]||[]).some(f=>F[f].kind==='optimization');
 // Which tool computes a value (formula frontmatter `tool`). Inputs carry none.
 const TOOLS={OPT:'asb.Opti + AeroBuildup (NeuralFoil-Profile)',AB:'AeroBuildup (NeuralFoil-Profile)',AVL:'AVL',
-  GEO:'AeroSandbox-Geometrie',ATM:'AeroSandbox-Atmosph\u00e4re',KAT:'Teilekatalog (DB)',APC:'APC-Propellertabellen (DB)',APP:'App \u2014 eigene Rechnung'};
+  GEO:'AeroSandbox geometry',ATM:'AeroSandbox atmosphere',KAT:'Parts catalogue (DB)',APC:'APC propeller tables (DB)',APP:'App \u2014 own computation'};
 const toolOf=q=>[...new Set((prodBy[q]||[]).map(f=>F[f].tool||'APP'))];
 const nodeEls={};
 for(const q in Q){
@@ -375,46 +396,46 @@ function select(q){
   sel=q; paint();
   const d=Q[q], fs=prodBy[q]||[];
   const cls = TARGETS.has(q)?'tgt' : INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
-  const role = TARGETS.has(q)?'Zielwert \u2014 Vorgabe' : INPUTS.has(q)?'Eingabe' : OUTPUTS.has(q)?'Endergebnis' : (useCount[q]>=4?'tragend':'Zwischenergebnis');
-  let h=`<h2>${esc(sym(q))}${isOpt(q)?'<span class="opt" title="Ergebnis eines Optimierungsproblems">*</span>':''}</h2>
-   <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 Schicht L${LAYER[q]}
+  const role = TARGETS.has(q)?'target' : INPUTS.has(q)?'input' : OUTPUTS.has(q)?'final result' : (useCount[q]>=4?'hub':'intermediate result');
+  let h=`<h2>${esc(sym(q))}${isOpt(q)?'<span class="opt" title="Result of an optimisation problem">*</span>':''}</h2>
+   <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 layer L${LAYER[q]}
    &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
-   <p class="desc">${esc(d.desc||'Keine Beschreibung im Katalog.')}</p>`;
+   <p class="desc">${esc(d.desc||'No description in the catalogue.')}</p>`;
   { const st=STATUS[q], impl=fs.map(f=>F[f].impl).filter(Boolean), tk=[...new Set(fs.map(f=>F[f].ticket).filter(Boolean))];
-    const txt = st==='input' ? 'Eingabe &#8212; der Aufrufer gibt sie an'+(MVP.has(q)?' (im MVP gebraucht)':'')
-      : st==='done' ? '&#10003; im Kernel umgesetzt ('+impl.map(esc).join(', ')+')'
-      : st==='nonscalar' ? 'Formel umgesetzt ('+impl.map(esc).join(', ')+'), die Gr&#246;&#223;e ist nicht skalar &#8212; v1 gibt sie nicht aus'
-      : MVP.has(q) ? 'Teil des MVP, noch offen'+(tk.length?' &#8212; '+tk.map(esc).join(', '):'')
-      : 'noch nicht im Kernel';
+    const txt = st==='input' ? 'input &#8212; given by the caller'+(MVP.has(q)?' (needed by the MVP)':'')
+      : st==='done' ? '&#10003; implemented in the kernel ('+impl.map(esc).join(', ')+')'
+      : st==='nonscalar' ? 'formula implemented ('+impl.map(esc).join(', ')+'), the quantity is not scalar &#8212; v1 does not return it'
+      : MVP.has(q) ? 'part of the MVP, still open'+(tk.length?' &#8212; '+tk.map(esc).join(', '):'')
+      : 'not in the kernel yet';
     const col = st==='done'?'var(--good)':(st==='open'&&MVP.has(q))?'var(--mvp)':'var(--line-2)';
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
-  { const tl=toolOf(q); h+=`<p class="meta">Gerechnet mit: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (Eingabe)'}</p>`; }
+  { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
   if(UNC.has(q)) h+=`<p class="desc" style="border-left:3px dotted var(--unc);padding-left:8px">
-     <b>Unscharf</b> &#8212; ein Intervall [min, max] &#252;ber Methodenwelten (A11), je Welt durch die ganze Kette gerechnet;
-     ${UNCSRC.has(q)?'hier entsteht die Unsch&#228;rfe.':'h&#228;ngt an '+[...UFROM[q]].map(s=>`<a href="#" onclick="select('${s}');return false">${esc(sym(s))}</a>`).join(', ')+'.'}</p>`;
+     <b>Uncertain</b> &#8212; an interval [min, max] over method worlds (A11), each world computed through the whole chain;
+     ${UNCSRC.has(q)?'the uncertainty originates here.':'depends on '+[...UFROM[q]].map(s=>`<a href="#" onclick="select('${s}');return false">${esc(sym(s))}</a>`).join(', ')+'.'}</p>`;
   if(TBOUND.has(q)) h+=`<p class="desc" style="border-left:3px dashed var(--tgt);padding-left:8px">
-     <b>An einem Zielwert gemessen</b>, nicht allein aus dem Flugzeug gerechnet \u2014 h\u00e4ngt an
+     <b>Measured against a target</b>, not computed from the airplane alone \u2014 depends on
      ${[...TFROM[q]].map(s=>`<a href="#" onclick="select('${s}');return false">${esc(sym(s))}</a>`).join(', ')}.</p>`;
   for(const f of fs){
     const e=F[f];
-    h+=`<div class="blk"><div class="lab">Erzeugt durch \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;
+    h+=`<div class="blk"><div class="lab">Produced by \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;
     h+= e.tex ? `<div class="math">$$${e.tex}$$</div>`
               : `<div class="mono">${esc(e.form)}</div>
-                 <p class="sub" style="margin:6px 0 0">Verfahrensform \u2014 nicht als Formel setzbar.</p>`;
-    h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; nicht im Kernel'}${e.ticket?' &#183; '+esc(e.ticket):''} &#183; ${e.direction==='design'?'<b>Auslegung</b> (O1)':'Analyse'}</p>`;
-    if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Methodenwelten: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
+                 <p class="sub" style="margin:6px 0 0">Procedural form \u2014 not typeset as a formula.</p>`;
+    h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; not in the kernel'}${e.ticket?' &#183; '+esc(e.ticket):''} &#183; ${e.direction==='design'?'<b>design</b> (O1)':'analysis'}</p>`;
+    if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Method worlds: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
     const aps=(e.apps||[]).filter(a=>a.out.includes(q));
     for(const a of aps){
-      h+=`<div class="lab" style="margin-top:12px">Aus${(e.apps.length>1||a.when)?' &#183; Anwendung '+esc(a.id):''}${a.when?' &#183; wenn '+esc(a.when):''}</div><ul class="lnk">`+
+      h+=`<div class="lab" style="margin-top:12px">From${(e.apps.length>1||a.when)?' &#183; application '+esc(a.id):''}${a.when?' &#183; when '+esc(a.when):''}</div><ul class="lnk">`+
         a.ins.filter(i=>Q[i]).map(i=>`<li data-q="${esc(i)}">${esc(sym(i))}</li>`).join('')+`</ul>`;
     }
-    if(e.src) h+=`<div class="lab" style="margin-top:12px">Quelle</div><p class="src">${esc(e.src)}</p>`;
+    if(e.src) h+=`<div class="lab" style="margin-top:12px">Source</div><p class="src">${esc(e.src)}</p>`;
     h+=`</div>`;
   }
   const us=succ[q].map(([o])=>o), uniq=[...new Set(us)];
-  if(uniq.length) h+=`<div class="blk"><div class="lab">Geht ein in \u00b7 ${uniq.length}</div><ul class="lnk">`+
+  if(uniq.length) h+=`<div class="blk"><div class="lab">Feeds \u00b7 ${uniq.length}</div><ul class="lnk">`+
     uniq.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
-  else h+=`<div class="blk"><div class="lab">Geht ein in</div><p class="sub" style="margin:0">Nichts \u2014 dies ist ein Endergebnis.</p></div>`;
+  else h+=`<div class="blk"><div class="lab">Feeds</div><p class="sub" style="margin:0">Nothing \u2014 this is a final result.</p></div>`;
   info.innerHTML=h;
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
@@ -423,17 +444,17 @@ function selectModule(m){
   const members=new Set(Object.keys(Q).filter(q=>Q[q].module===m&&P[q]));
   sel={module:m,members}; paint();
   const direct=[...new Set([...members].flatMap(q=>succ[q].map(([o])=>o)))].filter(o=>!members.has(o)).sort();
-  let h=`<h2>${esc(MODULES[m]||m)}</h2><p class="meta">Modul \u00b7 module/${esc(m)} \u00b7 ${members.size} Gr\u00f6\u00dfen</p>
-    <p class="desc">Alle Gr\u00f6\u00dfen des Moduls sind gemeinsam ausgew\u00e4hlt. Der Regler \u201eTiefe\u201c bestimmt, wie viele Stufen weit ihr Einfluss hervorgehoben wird.</p>
-    <div class="blk"><div class="lab">Im Modul \u00b7 ${members.size}</div><ul class="lnk">`+
+  let h=`<h2>${esc(MODULES[m]||m)}</h2><p class="meta">module \u00b7 module/${esc(m)} \u00b7 ${members.size} quantities</p>
+    <p class="desc">All quantities of the module are selected together. The depth slider sets how many steps of their influence are highlighted.</p>
+    <div class="blk"><div class="lab">In the module \u00b7 ${members.size}</div><ul class="lnk">`+
     [...members].map(q=>`<li data-q="${esc(q)}">${esc(sym(q))}</li>`).join('')+`</ul></div>`;
-  h+= direct.length ? `<div class="blk"><div class="lab">Direkter Einfluss auf \u00b7 ${direct.length}</div><ul class="lnk">`+
+  h+= direct.length ? `<div class="blk"><div class="lab">Directly influences \u00b7 ${direct.length}</div><ul class="lnk">`+
     direct.map(o=>`<li data-q="${esc(o)}" title="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`
-    : `<div class="blk"><div class="lab">Direkter Einfluss</div><p class="sub" style="margin:0">Keiner.</p></div>`;
+    : `<div class="blk"><div class="lab">Directly influences</div><p class="sub" style="margin:0">Nothing.</p></div>`;
   info.innerHTML=h;
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
 }
-// Suche
+// Search
 const qi=document.getElementById('q'), hits=document.getElementById('hits');
 qi.addEventListener('input',()=>{
   const v=qi.value.trim().toLowerCase();
@@ -443,7 +464,7 @@ qi.addEventListener('input',()=>{
   hits.innerHTML=m.map(k=>`<li data-q="${esc(k)}">${esc(k)}<span class="u">${esc(Q[k].unit||'')}</span></li>`).join('');
   hits.querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{select(li.dataset.q);qi.value='';hits.innerHTML='';}));
 });
-// Kamera
+// Camera
 let k=1,tx=0,ty=0;
 const apply=()=>cam.setAttribute('transform',`translate(${tx},${ty}) scale(${k})`);
 function fit(){
@@ -484,19 +505,19 @@ document.querySelectorAll('.seg button').forEach(bt=>bt.addEventListener('click'
   const res=(D.mvp_results||[]);
   const chip=(f,open)=>`<span class="${open?'open':''}" data-f="${esc(f)}">${esc(f)}${open&&F[f].ticket?' '+esc(F[f].ticket):''}</span>`;
   document.getElementById('kstat').innerHTML=
-    `Kanonmodell <b>${esc(D.stand||'')}</b>.<br>`+
-    `Formeln umgesetzt: <b>${fDone.length}</b> von <b>${fAll.length}</b>.<br>`+
+    `Canon model <b>${esc(D.stand||'')}</b>.<br>`+
+    `Formulas implemented: <b>${fDone.length}</b> of <b>${fAll.length}</b>.<br>`+
     `MVP (BRYAN, JAGUAR): ${res.map(r=>`<a href="#" data-q="${esc(r)}">${esc(sym(r))}</a>`).join(', ')} &#8212; `+
-    `<b>${mvpF.length-mvpOpen.length}</b> von <b>${mvpF.length}</b> Formeln umgesetzt.`+
+    `<b>${mvpF.length-mvpOpen.length}</b> of <b>${mvpF.length}</b> formulas implemented.`+
     `<span class="chips">${mvpF.map(f=>chip(f,!F[f].impl)).join('')}</span>`;
   const kst=document.getElementById('kstat');
   kst.querySelectorAll('[data-q]').forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();select(a.dataset.q);}));
   kst.querySelectorAll('[data-f]').forEach(c=>c.addEventListener('click',()=>select(F[c.dataset.f].out[0])));
 }
 document.getElementById('counts').textContent =
-  `${Object.keys(Q).length} Gr\u00f6\u00dfen \u00b7 ${D.edges.length} Kanten \u00b7 ${layers.length} Schichten \u00b7 `+
-  `${D.inputs.length} Eingaben, ${D.outputs.length} Endergebnisse`;
-info.innerHTML=`<p class="empty">Eine Gr\u00f6\u00dfe im Graphen anklicken \u2014 hier erscheinen Beschreibung, erzeugende Formel und Quelle.</p>`;
+  `${Object.keys(Q).length} quantities \u00b7 ${D.edges.length} edges \u00b7 ${layers.length} layers \u00b7 `+
+  `${D.inputs.length} inputs, ${D.outputs.length} final results`;
+info.innerHTML=`<p class="empty">Click a quantity or a module in the graph \u2014 its description, producing formula and source appear here.</p>`;
 select('stall-speed');
 function fitWhenSized(tries){
   const r=svg.getBoundingClientRect();

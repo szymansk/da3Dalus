@@ -22,4 +22,4 @@ maximum roll rate a method reaches, there is no value in that world but the erro
 
 **Produced by.** [[aileron-deflection-required]]
 
-**Unschärfe (A11).** Intervall über die Methodenwelten AeroBuildup und AVL (Rollrate: Streuung 23 % beim BRYAN).
+**Uncertainty (A11).** Interval over the method worlds AeroBuildup and AVL (roll rate: 23 % spread on BRYAN in the prototype).

@@ -471,7 +471,9 @@ importer drops it. Modules: `construction` (the airplane and its fitted componen
 `atmosphere` (atmosphere and physical constants), `control-deflections` (every device angle the caller
 sets), `operating-point` (the free variables of a flight state), `envelope-targets` (targets that name an
 operating point or bound the envelope), `design-targets` (targets a design entry turns into a construction
-quantity). A new input or target needs its module tag; the navigator build refuses one without.
+quantity). A new input or target needs its module tag; the navigator build refuses one without. `construction`, `mass-and-balance` and `atmosphere` are
+**cross-cutting**: nearly every formula depends on them (maintainer, 2026-10-24); the navigator draws
+them in their own column and shows their edges only on selection.
 
 The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `status`, `uncertainty`, `tags`)
 stay. Added:

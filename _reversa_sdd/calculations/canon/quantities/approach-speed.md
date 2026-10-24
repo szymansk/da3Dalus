@@ -13,8 +13,8 @@ type: scalar
 
 # approach speed · `V_app`
 
-Die benannte Geschwindigkeit eines Betriebspunkts: die Geschwindigkeit im Endanflug, mit Reserve über der Abrissgeschwindigkeit in Landekonfiguration. Es gibt keine generische
-Betriebspunktgeschwindigkeit — jede trägt ihren Punkt im Namen (A2).
+The named speed of an operating point: the speed on final approach, with a reserve over the stall speed in the landing configuration. There is no generic
+operating-point speed — each carries its point in its name (A2).
 
 **Unit.** `m/s`
 
