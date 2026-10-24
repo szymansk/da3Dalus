@@ -16,10 +16,11 @@ from aero_kernel.geometry import (
     Fuselage,
     InlineAirfoil,
     Wing,
-    WingXSec,
 )
 from aero_kernel.geometry_properties import main_wing_properties
-from aero_kernel.solvers.devices import RollSegment, roll_deflection, roll_segments
+from aero_kernel.graph import AILERON_ROLES
+from aero_kernel.solvers.devices import roll_deflection, roll_segments
+from aero_kernel.surface_chain import ChainPoint, oriented_chain
 
 logger = logging.getLogger(__name__)
 
@@ -46,30 +47,36 @@ def _airfoil(asb: Any, airfoil: Airfoil) -> Any:  # noqa: ANN401  # untyped aero
 
 def _section(
     asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
-    section: WingXSec,
-    roll: RollSegment | None,
+    point: ChainPoint,
     roll_deg: float,
+    label: str,
 ) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
-    """Convert one rib.
+    """Convert one rib of an oriented chain.
 
     The geometry's own control-device state and the ``dihedral`` field are not passed: the airplane
     is built with every device at 0 deg (ch. 8.11), and ``xyz_le`` already carries the dihedral.
     Only the roll command makes a control surface: the rib that starts a roll segment gets one
-    antisymmetric surface at the segment's hinge, ASB's convention for the strip a -> a+1.
+    antisymmetric surface at the mean of the segment's hinge positions, ASB's convention for the
+    strip a -> a+1. A mirrored surface is written on the positive side, root first, as the AVL
+    writer writes it, so the sign of the deflection is that of side +1 in both tools.
     """
     kwargs: dict[str, Any] = {
-        "xyz_le": list(section.xyz_le),
-        "chord": section.chord,
-        "twist": section.twist,
-        "airfoil": _airfoil(asb, section.airfoil),
+        "xyz_le": [point.x, point.y, point.z],
+        "chord": point.chord,
+        "twist": point.twist,
+        "airfoil": _airfoil(asb, point.airfoil),
     }
-    if roll is not None:
+    device = point.device
+    if roll_deg and device is not None and device.role in AILERON_ROLES:
+        if device.hinge_start is None or device.hinge_end is None:
+            msg = "a driven device without a hinge: roll_segments must have refused it"
+            raise ValueError(msg)
         kwargs["control_surfaces"] = [
             asb.ControlSurface(
-                name=roll.device,
+                name=device.name or label,
                 symmetric=False,
-                hinge_point=roll.hinge,
-                deflection=roll_deflection(roll.side, roll_deg),
+                hinge_point=(device.hinge_start + device.hinge_end) / 2.0,
+                deflection=roll_deflection(1, roll_deg),
             )
         ]
     return asb.WingXSec(**kwargs)
@@ -79,15 +86,33 @@ def _wing(
     asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
     key: str,
     wing: Wing,
-    rolls: dict[tuple[str, int], RollSegment],
     roll_deg: float,
 ) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
-    """Convert one lifting surface."""
+    """Convert one lifting surface.
+
+    A mirrored surface is built from the oriented chain (root first, y >= 0), the one orientation
+    rule of the kernel: ASB mirrors a surface stored on the other side or tip first into a
+    different wing (BRYAN: C_D 0.246 against 0.070). An unmirrored surface keeps its stored order.
+    """
+    if wing.symmetric:
+        chain = oriented_chain(wing, 1)
+    else:
+        chain = [
+            ChainPoint(
+                x=s.xyz_le[0],
+                y=s.xyz_le[1],
+                z=s.xyz_le[2],
+                chord=s.chord,
+                twist=s.twist,
+                airfoil=s.airfoil,
+            )
+            for s in wing.x_secs
+        ]
     return asb.Wing(
         name=wing.name,
         xsecs=[
-            _section(asb, section, rolls.get((key, index)), roll_deg)
-            for index, section in enumerate(wing.x_secs)
+            _section(asb, point, roll_deg, f"{key} device {index}")
+            for index, point in enumerate(chain)
         ],
         symmetric=wing.symmetric,
     )
@@ -163,8 +188,9 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
     """
     asb = load_aerosandbox()
     reference = main_wing_properties(airplane)
-    rolls = {(r.wing, r.index): r for r in roll_segments(airplane)} if roll_deg else {}
-    wings = [_wing(asb, key, wing, rolls, roll_deg) for key, wing in (airplane.wings or {}).items()]
+    if roll_deg:
+        roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
+    wings = [_wing(asb, key, wing, roll_deg) for key, wing in (airplane.wings or {}).items()]
     fuselages = [_fuselage(asb, fuselage) for fuselage in (airplane.fuselages or {}).values()]
     logger.debug(
         "converted airplane %s: %d wings, %d fuselages", airplane.name, len(wings), len(fuselages)

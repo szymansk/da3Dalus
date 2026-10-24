@@ -101,19 +101,24 @@ def test_roll_sign_from_the_side_as_written(side: int, delta: float, expected: f
     assert roll_deflection(side, delta) == expected
 
 
-def test_minus_y_stored_wing_gives_the_mirrored_asb_airplane() -> None:
-    plus = control_surfaces(converted(wing_geometry((0.0, 0.2, 0.4), 1), 20.0))
-    minus = control_surfaces(converted(wing_geometry((0.0, -0.2, -0.4), 1), 20.0))
-    assert plus[1][0].kwargs["deflection"] == -20.0
-    assert minus[1][0].kwargs["deflection"] == 20.0
+def test_minus_y_stored_wing_is_written_on_the_positive_side_like_the_avl_writer() -> None:
+    """One orientation rule: a mirrored wing stored on -y reaches ASB at +y, root first, so the
+    sign helper sees side +1 in both tools and the airplane is the +y one."""
+    plus_model = converted(wing_geometry((0.0, 0.2, 0.4), 1), 20.0)
+    minus_model = converted(wing_geometry((0.0, -0.2, -0.4), 1), 20.0)
+    assert control_surfaces(minus_model)[1][0].kwargs["deflection"] == -20.0
+    assert [x.kwargs["xyz_le"] for x in minus_model.kwargs["wings"][0].kwargs["xsecs"]] == [
+        x.kwargs["xyz_le"] for x in plus_model.kwargs["wings"][0].kwargs["xsecs"]
+    ]
 
 
 def test_tip_first_stored_wing_maps_each_device_to_its_own_segment() -> None:
-    """Stored tip first at +y, the device on the stored section 1 (segment 0.2 -> 0.0)."""
+    """Stored tip first at +y, the device on the stored section 1 (segment 0.2 -> 0.0): the wing
+    is written root first, so the control sits on the first section (segment 0.0 -> 0.2)."""
     model = wing_geometry((0.4, 0.2, 0.0), 1)
     per_section = control_surfaces(converted(model, 20.0))
-    assert [len(c) for c in per_section] == [0, 1, 0]
-    assert per_section[1][0].kwargs["deflection"] == -20.0
+    assert [len(c) for c in per_section] == [1, 0, 0]
+    assert per_section[0][0].kwargs["deflection"] == -20.0
 
 
 def test_no_roll_command_gives_todays_airplane() -> None:

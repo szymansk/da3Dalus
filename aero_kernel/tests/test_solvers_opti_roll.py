@@ -451,3 +451,30 @@ async def test_a_zero_deflection_runs_no_recording_pass(monkeypatch: pytest.Monk
     outcome = opti_module.steady_roll_worker(request)
     assert outcome.value.diagnostics is None
     assert boundary.numeric_runs == 0
+
+
+async def test_the_window_of_alpha_comes_from_the_clean_sweep(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D9: the sweep that brackets the first C_L peak and sets the start is made on the clean
+    airplane. With the deflection the curve has kinks and its first local maximum lies far below the
+    stall, so a sweep on the rolled airplane would bracket nothing (trainer: C_L 0.364 at 1 deg
+    against a clean peak of 1.233 at 16 deg)."""
+    boundary = Boundary(p_opt=2.0, alpha_opt=4.0)
+    request = install(monkeypatch, boundary)
+    swept: list[object] = []
+    built: list[float] = []
+
+    def convert(_airplane: object, roll: float = 0.0) -> SimpleNamespace:
+        built.append(roll)
+        return SimpleNamespace(s_ref=0.28, b_ref=1.4, wings=[plain_wing()], roll=roll)
+
+    def sweep_stub(airplane: SimpleNamespace, *_: object) -> Polar:
+        swept.append(airplane.roll)
+        return lift_curve(UPRIGHT_PEAK, upright=True)
+
+    monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
+    monkeypatch.setattr(opti_module, "sweep_polar", sweep_stub)
+    opti_module.steady_roll_worker(request)
+    assert swept == [0.0]
+    assert 20.0 in built  # the optimised and the recorded evaluation use the rolled airplane

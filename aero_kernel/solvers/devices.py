@@ -84,7 +84,6 @@ class RollSegment(BaseModel):
         index: Index of the rib the segment starts on, in stored order.
         device: Label of the device.
         role: Its role.
-        side: +1 if the segment is stored on the positive y side, -1 on the negative one.
         hinge_root: Hinge position at the segment start as a fraction of chord.
         hinge_tip: Hinge position at the segment end (the root's when the format gives none).
         hinge: The hinge AeroBuildup is given, the mean of the two.
@@ -96,25 +95,9 @@ class RollSegment(BaseModel):
     index: int
     device: str
     role: str
-    side: int
     hinge_root: float
     hinge_tip: float
     hinge: float
-
-
-def _side(wing: Wing, index: int, key: str) -> int:
-    """The side of y a stored segment lies on: the sign of the sum of its end ribs' y."""
-    total = wing.x_secs[index].xyz_le[1] + wing.x_secs[index + 1].xyz_le[1]
-    if total == 0.0:
-        raise FormulaError(
-            ErrorCategory.UNSUPPORTED_CONFIGURATION,
-            "unsupported_layout",
-            f"the roll device of the wing {key!r} starting on rib {index} lies in the plane y = 0",
-            "a roll device needs a side of the centre plane",
-            detail={"wing": key},
-            parameter="airplane",
-        )
-    return 1 if total > 0.0 else -1
 
 
 def _roll_segment(key: str, wing: Wing, index: int, device: TrailingEdgeDevice) -> RollSegment:
@@ -145,7 +128,6 @@ def _roll_segment(key: str, wing: Wing, index: int, device: TrailingEdgeDevice) 
         index=index,
         device=label,
         role=device.role,
-        side=_side(wing, index, key),
         hinge_root=root,
         hinge_tip=tip,
         hinge=(root + tip) / 2.0,

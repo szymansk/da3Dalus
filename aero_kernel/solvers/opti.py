@@ -198,7 +198,9 @@ class DeflectionDiagnostics(BaseModel):
     Attributes:
         min_confidence: The lowest ``analysis_confidence`` of any section call.
         min_confidence_wing: The wing key of that section.
-        max_effective_alpha_deg: The highest angle ``alpha + sum(tau * delta)`` any section saw.
+        max_effective_alpha_deg: The highest angle ``alpha + sum(tau * delta)`` any section saw:
+            the shift before NeuralFoil's 360-degree blend, which uses the unshifted angle for its
+            post-stall weight and is no part of tau.
         max_effective_alpha_wing: The wing key of that section.
     """
 
