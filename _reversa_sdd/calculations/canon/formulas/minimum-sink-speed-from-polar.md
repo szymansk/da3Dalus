@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: law
-status: draft
+status: approved
 output: minimum-sink-speed, angle-of-attack-minimum-sink, lift-coefficient-minimum-sink
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/optimization
-  - status/draft
+  - status/approved
 tex: \begin{aligned}V_mp = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha)\,V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
 outputs: {v_mp: minimum-sink-speed, alpha_mp: angle-of-attack-minimum-sink, cl_mp: lift-coefficient-minimum-sink}
@@ -115,3 +115,4 @@ polar instead of a closed form.
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
+> **Approved** (maintainer, 2026-10-24, approval block 1). This is the relation the implementations are measured against.

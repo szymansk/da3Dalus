@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: route
-status: draft
+status: approved
 output: minimum-drag-speed, max-lift-to-drag-ratio, angle-of-attack-best-glide, lift-coefficient-best-glide
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/route
   - kind/optimization
-  - status/draft
+  - status/approved
 tex: \begin{aligned}V_md = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha) \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs:
@@ -122,3 +122,5 @@ polar instead of a closed form.
 ratio at this optimum. With `L = W` enforced at the correct Reynolds number the old reason
 against an argmax (a sweep mixing Reynolds numbers) does not apply. The parabolic closed form
 is its Probe ([[max-lift-to-drag-parabolic]]).
+
+> **Approved** (maintainer, 2026-10-24, approval block 1). This is the relation the implementations are measured against.

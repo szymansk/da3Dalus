@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: dynamic-pressure
 source_status: SOURCED
 dimensional_check: BALANCES
@@ -14,7 +14,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 inputs: {rho: air-density, v: flight-speed}
 outputs: {q: dynamic-pressure}
 ---
@@ -56,3 +56,4 @@ q = 0.5 * rho * V^2
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
+> **Approved** (maintainer, 2026-10-24, approval block 1). This is the relation the implementations are measured against.
