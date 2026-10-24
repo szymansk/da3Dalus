@@ -35,12 +35,21 @@ print("  Alpha =   7.08055     pb/2V =   0.99999     p'b/2V = %10.5f" % config["
 print("  CXtot =   0.07226     Cltot =   0.00385     Cl'tot = %10.5f" % config.get("cl_stab", 0.0))
 print("  CLtot = %10.5f" % (cl + config.get("cl_offset", 0.0)))
 print("   aileron         = %12.5f" % (delta + config.get("echo_offset", 0.0)))
-linear = config["p_hat"][str(n_chord)] * config.get("linear_ratio", 1.0)
+ratio = config.get("linear_ratio", 1.0)
+if isinstance(ratio, dict):
+    ratio = ratio[str(n_chord)]
+linear = config["p_hat"][str(n_chord)] * ratio
 print(" x' mom.  Cl'|    Clp = %10.6f    Clq =  -0.000000" % -0.35)
 print(" x' mom.  Cl'|   Cld01 = %10.6f" % (0.0 if delta == 0.0 else linear * 0.35 / delta))
 """
 
 DELTA = 20.0
+
+
+def as_float(value: object) -> float:
+    """A number out of a ``detail`` value."""
+    assert isinstance(value, (int, float))
+    return float(value)
 
 
 class FakeAvl(AvlAdapter):
@@ -89,7 +98,7 @@ async def test_the_declared_meshs_value_is_returned_without_warning_when_the_mes
     fake: Path,
 ) -> None:
     found = await roll()
-    assert found.p_hat == 0.05
+    assert math.isclose(found.p_hat, 0.05, rel_tol=1e-12)
     assert found.warnings == ()
 
 
@@ -114,9 +123,9 @@ async def test_a_disagreement_above_one_percent_is_a_defect_warning_with_both_va
     found = await roll()
     (warning,) = found.warnings
     assert (warning.code, warning.severity) == ("avl_mesh_not_converged", WarningSeverity.DEFECT)
-    assert warning.detail["p_hat_declared"] == 0.05
+    assert math.isclose(as_float(warning.detail["p_hat_declared"]), 0.05, rel_tol=1e-12)
     assert warning.detail["p_hat_refined"] == pytest.approx(0.0506, abs=1e-9)  # pyright: ignore[reportUnknownMemberType]
-    assert found.p_hat == 0.05
+    assert math.isclose(found.p_hat, 0.05, rel_tol=1e-12)
 
 
 @pytest.mark.asyncio
@@ -127,7 +136,7 @@ async def test_roll_refinement_warning_and_unchecked(fake: Path) -> None:
     found = await roll()
     (warning,) = found.warnings
     assert (warning.code, warning.severity) == ("avl_refinement_unchecked", WarningSeverity.DEFECT)
-    assert found.p_hat == 0.05
+    assert math.isclose(found.p_hat, 0.05, rel_tol=1e-12)
 
 
 @pytest.mark.asyncio
@@ -140,7 +149,7 @@ async def test_roll_beyond_primer_range_is_defect_warning(fake: Path) -> None:
         WarningSeverity.DEFECT,
     )
     assert warning.detail == {"p_hat": 0.276, "limit": 0.10}
-    assert found.p_hat == 0.276  # a value with a caveat, never clipped
+    assert math.isclose(found.p_hat, 0.276, rel_tol=1e-12)  # a value with a caveat, never clipped
 
 
 @pytest.mark.asyncio
@@ -243,9 +252,9 @@ async def test_a_non_finite_command_is_invalid_input(fake: Path, delta: float) -
 
 def test_roll_settings_public_keys() -> None:
     settings: dict[str, Any] = AvlAdapter(SolverRuntime()).settings()
-    assert settings["avl_roll_refinement_tolerance"] == 0.01
+    assert math.isclose(settings["avl_roll_refinement_tolerance"], 0.01, rel_tol=1e-12)
     assert (settings["avl_roll_nchord_front"], settings["avl_roll_nchord_aft"]) == (12, 8)
-    assert settings["avl_roll_branch_tolerance"] == 0.10
+    assert math.isclose(settings["avl_roll_branch_tolerance"], 0.10, rel_tol=1e-12)
 
 
 @pytest.mark.asyncio
@@ -279,7 +288,7 @@ async def test_a_refined_mesh_beyond_fifty_is_unchecked_not_wrong(
     monkeypatch.setattr("aero_kernel.solvers.avl.SPLIT_N_CHORD", (26, 8))
     configure(fake, {"26": 0.05})
     found = await roll()
-    assert found.p_hat == 0.05
+    assert math.isclose(found.p_hat, 0.05, rel_tol=1e-12)
     assert [w.code for w in found.warnings] == ["avl_refinement_unchecked"]
 
 
@@ -311,7 +320,7 @@ async def test_a_trimmed_roll_far_from_the_linear_response_is_a_branch_inconsist
         await roll()
     assert raised.value.code == "avl_roll_branch_inconsistent"
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
-    assert raised.value.detail["p_hat"] == 0.82491
+    assert math.isclose(as_float(raised.value.detail["p_hat"]), 0.82491, rel_tol=1e-12)
     assert math.isclose(float(raised.value.detail["p_hat_linear"]), 0.3474, abs_tol=2e-4)  # pyright: ignore[reportArgumentType]
 
 
@@ -320,7 +329,7 @@ async def test_a_trimmed_roll_far_from_the_linear_response_is_a_branch_inconsist
 async def test_a_nonlinearity_within_ten_percent_is_accepted(fake: Path, ratio: float) -> None:
     configure(fake, {"12": 0.276, "24": 0.276}, linear_ratio=ratio)
     found = await roll()
-    assert found.p_hat == 0.276
+    assert math.isclose(found.p_hat, 0.276, rel_tol=1e-12)
 
 
 @pytest.mark.asyncio
@@ -340,3 +349,23 @@ async def test_a_lattice_beyond_a_fixed_array_is_counted_before_it_is_written(
     # 24 strips on each of the two pieces, mirrored; 12 and 8 chordwise vortices
     assert raised.value.detail["strips"] == 96
     assert raised.value.detail["vortices"] == 24 * 2 * 12 + 24 * 2 * 8
+
+
+@pytest.mark.asyncio
+async def test_a_refined_run_off_the_linear_branch_leaves_the_declared_value_unchecked(
+    fake: Path,
+) -> None:
+    """The declared run passed every check; the refined lattice's Newton iteration lands on a spurious
+    branch (BRYAN at 96 strips did): the value stands, the refinement is declared unchecked and
+    names the reason. A declared run off the branch stays an error (the test above)."""
+    configure(
+        fake,
+        {"12": 0.276, "24": 0.82491},
+        linear_ratio={"12": 1.0, "24": 0.3474 / 0.82491},
+    )
+    found = await roll()
+    assert math.isclose(found.p_hat, 0.276, rel_tol=1e-12)
+    (warning,) = [w for w in found.warnings if w.code == "avl_refinement_unchecked"]
+    assert warning.severity is WarningSeverity.DEFECT
+    assert warning.detail["reason"] == "avl_roll_branch_inconsistent"
+    assert "no consistent solution" in warning.message

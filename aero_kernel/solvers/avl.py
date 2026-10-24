@@ -192,13 +192,25 @@ def contour_worker(airfoils: tuple[Airfoil, ...]) -> WorkerOutcome[tuple[Contour
 _ORIGIN = (0.0, 0.0, 0.0)
 
 
-def _unchecked_warning(what: str, n_chord: int, n_span: int) -> KernelWarning:
-    """The refinement could not be run: the mesh is beyond the solver's array limit."""
+def _unchecked_warning(what: str, n_chord: int, n_span: int, reason: str) -> KernelWarning:
+    """The refinement could not be run: the solver refused or did not solve the refined mesh.
+
+    Args:
+        what: The checked quantity, for the message.
+        n_chord: Chordwise count of the refined mesh.
+        n_span: Spanwise count of the refined mesh.
+        reason: The error code of the refined run: ``avl_array_limit`` (beyond the solver's fixed
+            arrays) or ``avl_roll_branch_inconsistent`` (the lattice left the linear branch).
+    """
+    cause = (
+        "is beyond the solver's array limit"
+        if reason == "avl_array_limit"
+        else "gave no consistent solution"
+    )
     return KernelWarning.of(
         "avl_refinement_unchecked",
-        f"The refined mesh is beyond the solver's array limit, so the convergence of the {what} "
-        "could not be checked.",
-        detail={"n_chord": n_chord, "n_span": n_span},
+        f"The refined mesh {cause}, so the convergence of the {what} could not be checked.",
+        detail={"n_chord": n_chord, "n_span": n_span, "reason": reason},
     )
 
 
@@ -457,7 +469,7 @@ class AvlAdapter(SolverAdapter):
         except FormulaError as error:
             if error.code != "avl_array_limit":
                 raise
-            warnings.append(_unchecked_warning("neutral point", n_chord, n_span))
+            warnings.append(_unchecked_warning("neutral point", n_chord, n_span, error.code))
         else:
             delta = abs(second.x_np - first.x_np) / reference.c_mac
             if delta > REFINEMENT_TOLERANCE_MAC:
@@ -557,9 +569,11 @@ class AvlAdapter(SolverAdapter):
                 refined, contours, (n_chord, n_span), (cl, delta_a_deg), reference, xyz_ref
             )
         except FormulaError as error:
-            if error.code != "avl_array_limit":
+            # the declared run passed every check: a refined run that is beyond the arrays or off the
+            # linear branch leaves the value standing and the refinement unchecked, declared
+            if error.code not in ("avl_array_limit", "avl_roll_branch_inconsistent"):
                 raise
-            warnings.append(_unchecked_warning("roll rate", n_chord, n_span))
+            warnings.append(_unchecked_warning("roll rate", n_chord, n_span, error.code))
         else:
             if abs(second.p_hat - first.p_hat) > ROLL_REFINEMENT_TOLERANCE * abs(first.p_hat):
                 warnings.append(

@@ -183,8 +183,9 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
 
     Raises:
         ValueError: If the document does not have exactly one main wing.
-        FormulaError: ``unsupported_configuration`` for a fuselage ASB cannot represent or a roll
-            device on an unmirrored wing; ``invalid_input`` for a roll device without a hinge.
+        FormulaError: ``unsupported_configuration`` for a fuselage ASB cannot represent, a roll
+            device on an unmirrored wing, or a mirrored wing whose sections fold back along y
+            (the oriented chain refuses it); ``invalid_input`` for a roll device without a hinge.
     """
     asb = load_aerosandbox()
     reference = main_wing_properties(airplane)

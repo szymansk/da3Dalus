@@ -1,5 +1,6 @@
 """The AVL file and commands of the steady roll, and the reading of its output (ch. 8.8)."""
 
+import math
 from pathlib import Path
 
 import pytest
@@ -69,9 +70,9 @@ def test_control_lines_follow_the_section_they_belong_to() -> None:
         assert lines[index - 2 : index] == ["CLAF", "1.09"]
         name, gain, hinge, *vector, sgn = lines[index + 1].split()
         assert name == "aileron"
-        assert float(gain) == -1.0
+        assert math.isclose(float(gain), -1.0, rel_tol=1e-12)
         assert 0.7 < float(hinge) < 0.8
-        assert [float(v) for v in vector] == [0.0, 0.0, 0.0]
+        assert all(math.isclose(float(v), 0.0, abs_tol=1e-15) for v in vector)
         assert sgn == "-1"
 
 

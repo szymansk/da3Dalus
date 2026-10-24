@@ -395,6 +395,8 @@ async def test_an_ipopt_failure_is_not_converged(monkeypatch: pytest.MonkeyPatch
         opti_module.steady_roll_worker(request)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
     assert "Infeasible_Problem_Detected" in raised.value.message
+    assert raised.value.hint == opti_module.ROLL_HINT
+    assert "sampled angles of attack" not in raised.value.hint  # the stall problem's hint
 
 
 async def test_the_weight_cannot_be_carried_before_the_stall_is_not_converged(

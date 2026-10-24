@@ -353,8 +353,21 @@ def _bracketed(request: StallRequest) -> _Bracketed:
     )
 
 
-def _ipopt(opti: Any, what: str) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+# What the caller can do when IPOPT fails, per problem.
+SPEED_HINT = "check mass, wing area and the sampled angles of attack"
+ROLL_HINT = (
+    "check mass and speed, or give a smaller aileron deflection: the roll equilibrium may not "
+    "exist, or the solver may not reach it, at this command"
+)
+
+
+def _ipopt(opti: Any, what: str, hint: str) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Run IPOPT on a problem; the solution is read with ``solved(variable_or_expression)``.
+
+    Args:
+        opti: The problem.
+        what: The problem's name in the message.
+        hint: What the caller can do, specific to the problem.
 
     Raises:
         FormulaError: ``not_converged`` if IPOPT fails.
@@ -364,7 +377,7 @@ def _ipopt(opti: Any, what: str) -> Any:  # noqa: ANN401  # untyped aerosandbox 
     except RuntimeError as error:  # CasADi reports a failed IPOPT solve as a RuntimeError
         raise _not_converged(
             f"the {what} problem did not converge: {error}",
-            "check mass, wing area and the sampled angles of attack",
+            hint,
             solver_error=str(error)[:200],
         ) from error
 
@@ -420,7 +433,7 @@ def _solve(
     ).run()
     opti.subject_to(aero["L"] == problem.lift)
     opti.minimize(objective(speed, aero))
-    solved = _ipopt(opti, what)
+    solved = _ipopt(opti, what, SPEED_HINT)
     v_opt, alpha_opt = float(solved(speed)), float(solved(alpha))
     _reject_active_bound("V", v_opt, (problem.v_low, problem.v_high), what)
     _reject_active_bound("alpha", alpha_opt, (problem.low, problem.high), what)
@@ -759,7 +772,7 @@ def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
     ).run()
     opti.subject_to(aero["L"] == request.mass_kg * request.gravity)
     opti.subject_to(stability_rolling_moment(aero["Cl"], aero["Cn"], alpha, asb.numpy) == 0)
-    solved = _ipopt(opti, "steady-roll")
+    solved = _ipopt(opti, "steady-roll", ROLL_HINT)
     p_opt, alpha_opt = float(solved(p_stability)), float(solved(alpha))
     _reject_active_bound("p", p_opt, (-p_limit, p_limit), "steady-roll")
     _reject_active_bound("alpha", alpha_opt, (low, high), "steady-roll")

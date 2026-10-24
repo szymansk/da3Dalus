@@ -12,6 +12,7 @@ import math
 
 import pytest
 from aero_kernel import compute
+from aero_kernel.errors import ErrorCategory
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.schema import (
@@ -187,3 +188,37 @@ async def test_the_regression_values_of_the_fit_range_warning() -> None:
         assert fit.detail["min_confidence_wing"] == low_wing
         assert close(_detail(fit, "max_effective_alpha_deg"), alpha, 1e-5)
         assert fit.detail["max_effective_alpha_wing"] == high_wing
+
+
+async def test_a_world_that_does_not_converge_is_an_error_with_the_other_value_in_the_detail() -> (
+    None
+):
+    """JAGUAR at 40 deg: the AeroBuildup world has no solution the solver reaches (a declared
+    not_converged error, never a value), the AVL world computes. The quantity is an error, its value
+    and interval are None, the failing world is named and the AVL value is only in detail.worlds_ok
+    (A11: a failed world is never dropped from the interval, never narrowed). An error carries no
+    warnings: ARCHITECTURE 8.1 ("An error means no value") and Engine._result_under, which lists the
+    warnings of an ok quantity only, so aileron_deflection_beyond_reference (40 > 25 deg) is not
+    on it."""
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": reference_document(FleetMember.JAGUAR),
+            "values": {
+                "aircraft-mass": FleetMember.JAGUAR.mass_kg,
+                "altitude": 0.0,
+                "aileron-deflection": 40.0,
+            },
+        }
+    )
+    for quantity in (await compute(aircraft, request(*SLUGS))).quantities:
+        assert quantity.status is QuantityStatus.ERROR
+        assert quantity.value is None
+        assert quantity.interval is None
+        assert quantity.warnings == ()
+        error = quantity.error
+        assert error is not None
+        assert error.category is ErrorCategory.NOT_CONVERGED
+        assert error.world == AB
+        worlds_ok = error.detail["worlds_ok"]
+        assert isinstance(worlds_ok, dict)
+        assert list(worlds_ok) == [AVL]

@@ -89,8 +89,10 @@ def test_roll_devices_map_antisymmetric_on_their_segment_start_xsec(role: str) -
     assert per_section[2] == []
     (surface,) = per_section[1]
     assert surface.kwargs["symmetric"] is False
-    assert surface.kwargs["hinge_point"] == 0.8
-    assert surface.kwargs["deflection"] == -20.0  # positive command: right trailing edge up
+    assert math.isclose(surface.kwargs["hinge_point"], 0.8, rel_tol=1e-12)
+    assert math.isclose(
+        surface.kwargs["deflection"], -20.0, rel_tol=1e-12
+    )  # positive command: right trailing edge up
     assert surface.kwargs["name"] == "Querruder"
 
 
@@ -106,7 +108,9 @@ def test_minus_y_stored_wing_is_written_on_the_positive_side_like_the_avl_writer
     sign helper sees side +1 in both tools and the airplane is the +y one."""
     plus_model = converted(wing_geometry((0.0, 0.2, 0.4), 1), 20.0)
     minus_model = converted(wing_geometry((0.0, -0.2, -0.4), 1), 20.0)
-    assert control_surfaces(minus_model)[1][0].kwargs["deflection"] == -20.0
+    assert math.isclose(
+        control_surfaces(minus_model)[1][0].kwargs["deflection"], -20.0, rel_tol=1e-12
+    )
     assert [x.kwargs["xyz_le"] for x in minus_model.kwargs["wings"][0].kwargs["xsecs"]] == [
         x.kwargs["xyz_le"] for x in plus_model.kwargs["wings"][0].kwargs["xsecs"]
     ]
@@ -118,7 +122,7 @@ def test_tip_first_stored_wing_maps_each_device_to_its_own_segment() -> None:
     model = wing_geometry((0.4, 0.2, 0.0), 1)
     per_section = control_surfaces(converted(model, 20.0))
     assert [len(c) for c in per_section] == [1, 0, 0]
-    assert per_section[0][0].kwargs["deflection"] == -20.0
+    assert math.isclose(per_section[0][0].kwargs["deflection"], -20.0, rel_tol=1e-12)
 
 
 def test_no_roll_command_gives_todays_airplane() -> None:
@@ -148,7 +152,7 @@ def test_hinge_is_mean_of_root_and_tip_with_declared_warning() -> None:
 def test_a_missing_tip_hinge_takes_the_root_and_declares_nothing() -> None:
     model = wing_geometry((0.0, 0.2, 0.4), 1, aileron(0.8, None))
     (surface,) = control_surfaces(converted(model, 20.0))[1]
-    assert surface.kwargs["hinge_point"] == 0.8
+    assert math.isclose(surface.kwargs["hinge_point"], 0.8, rel_tol=1e-12)
     assert roll_hinge_warnings(roll_segments(model)) == []
 
 

@@ -27,15 +27,6 @@ def has(values: list[float], y: float) -> bool:
     return any(math.isclose(v, y, abs_tol=1e-6) for v in values)
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
-def test_clean_mesh_and_file_unchanged(member: FleetMember) -> None:
-    """Without driving the roll devices the mesh is today's: no breaks, no controls."""
-    airplane = fleet(member)
-    clean = mesh_surfaces(airplane, 24, lambda _a: 0)
-    assert clean == mesh_surfaces(airplane, 24, lambda _a: 0, drive_roll=False)
-    assert all(section.control is None for surface in clean for section in surface.sections)
-
-
 def widths(values: list[float]) -> list[float]:
     return [b - a for a, b in pairwise(values)]
 

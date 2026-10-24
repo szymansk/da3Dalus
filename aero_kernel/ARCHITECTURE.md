@@ -720,6 +720,8 @@ caller's responsibility.
       Before #1211 ASB received the surface as stored, and a mirrored wing stored on −y or tip first was a
       different wing to AeroBuildup (BRYAN, clean: C_D 0.246 against 0.070): a latent defect, fixed here and
       pinned by an aero test on the clean airplane.
+      Scope change: every consumer of `to_asb_airplane` (the GEO properties, AeroBuildup) now refuses a mirrored
+      surface whose sections fold back along y as `unsupported_configuration`, as the AVL mesh already did.
     - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
       one sweep on the **clean** (unrolled) airplane: with the deflection the curve has kinks and its first
       local maximum lies far below the stall (trainer: C_L 0.364 at 1° against a clean peak of 1.233 at 16°),
@@ -744,6 +746,9 @@ caller's responsibility.
       cure it. The clean file (neutral point) is unchanged. AVL's chordwise limit is 50 vortices per surface
       (`KCMAX`, `amake.f:55`); above it AVL prints an array overflow and returns zero: the adapter refuses
       it as `avl_array_limit` (a refined mesh beyond it is `avl_refinement_unchecked`).
+      A refined run that is beyond the arrays or ends in `avl_roll_branch_inconsistent` leaves the declared
+      value standing (the declared run passed every check) and declares `avl_refinement_unchecked` with the
+      `reason`; a declared run off the branch is an error.
       The other fixed arrays count too: 500 strips (`NSMAX`, mirror images and both pieces of the split
       wing included), 100 surfaces, 6000 vortices; each overflow message is `avl_array_limit`.
     - *Driven stations.* The main wing of a driven run has one sine-to-tip distribution over the half span,
