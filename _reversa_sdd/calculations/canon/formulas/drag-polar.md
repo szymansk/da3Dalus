@@ -38,7 +38,7 @@ C_D,par = C_D0 + k * C_L^2
 > Anderson, Fundamentals of Aerodynamics 6e, §6.7.2, writes the polar as C_D = C_D,0 + r*C_L^2 with C_D,0 the zero-lift (parasite) drag coefficient. Scholz (Flugzeugentwurf) and Sadraey (§4.3) use the same parabolic form with k = 1/(pi*A*e).
 
 **Why this entry exists.** Three formulas in this canon consume a drag coefficient —
-[[lift-to-drag-ratio]], [[sink-rate]] and [[stall-onset-detection]] — and until this entry
+[[lift-to-drag-ratio]], [[sink-rate]] and [[stall-break]] — and until this entry
 none produced one. The relation was present exactly once, **inlined** inside
 [[power-required-electrical]], where the other three cannot reach it. A producer hidden
 inside a consumer is not a missing law; it is an unfactored one.

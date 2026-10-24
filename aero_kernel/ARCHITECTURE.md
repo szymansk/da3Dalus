@@ -968,13 +968,13 @@ implementation, not before (ADR 0021).
 - **Defaults** (maintainer, 2026-10-17, S5). A missing value is computed with its **default**, and the
   caller can set or override every value. Defaults are never hard-coded and never in a quantity entry:
   - **One settings file in the canon document**, `_reversa_sdd/calculations/canon/defaults.yaml`: a mapping
-    `<quantity slug>: {value, source, regime}` — `value` in the quantity's canon unit, `source` the citation,
+    `<quantity slug>: {value, unit, basis, source, regime}` — `value` in the quantity's canon unit, `basis` what kind of value it is (`definition`, `standard`, `sourced` or `convention`; a `convention` is a chosen value without a published source, adopted on the maintainer's word, #1219), `source` the citation,
     `regime` the RC/UAV check (ADR 0028: why the value holds for chord Re 3·10⁴–1·10⁶ and Mach ≤ 0.3, or
     that it is regime-independent, e.g. standard gravity). The quantity entries carry no `default:` field.
   - **The importer** validates it (stage 3: every slug exists, has role `input` or `target` and type
-    `scalar`; `value` finite and, for a `positive` quantity, > 0; `source` and `regime` non-empty; no slug
+    `scalar`; `value` finite and, for a `positive` quantity, > 0; `basis` one of the four terms, `source` and `regime` non-empty; no slug
     twice) and writes it **into the one model artefact**, `canon_model.json`, as
-    `namespaces.calc.defaults: {<slug>: {value, unit, source, regime}}`. There is no second file and no
+    `namespaces.calc.defaults: {<slug>: {value, unit, basis, source, regime}}`. There is no second file and no
     second loader: the defaults load, hash and check with the model (`content_hash`, the build digest,
     `importer --check`), and the model's own validators cover them (ch. 8.9).
   - **When a default counts as taken:** a node whose implementation is actually **called** binds a supplied
@@ -1204,7 +1204,7 @@ deflection gives the unchanged aircraft (no warning); with flaps it is `missing_
 `upstream_failed`. A deflection given for an aircraft without flaps has nothing to act on: unchanged
 aircraft plus a `practice` warning `deflection_without_flap`, because a supplied value is not used. A sampled curve over angle of attack is a quantity of type `polar`
 whose slug names its evaluation condition (A2): `polar-stall`, the clean sweep at `V_S` with solver
-drag, an output of `stall-speed` read by `stall-onset-detection`. The negative extremum `C_L,min` is not
+drag, an output of `stall-speed` read by `stall-break`. The negative extremum `C_L,min` is not
 read off that polar but is `stall-speed`'s `inverted` application (`n` bound to `{const: -1, source}`)
 at its own Reynolds number. The engine needs nothing beyond applications for any of
 these.
@@ -1476,7 +1476,7 @@ model (part of `IMPORT_REPORT.md`).
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
 | `spiral-parameter` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
-| `stall-onset-detection` | procedure | AB | law | 3 → 1 | 1 | – | – | seconds | core chain |
+| `stall-break` | procedure | APP | law | 4 → 2 | 1 | – | – | instant | later |
 | `stall-speed` | optimization | OPT | law | 5 → 4 | 4 | yes | – | seconds | core chain |
 | `stall-wing-loading-limit` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `static-margin-probe` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain |
