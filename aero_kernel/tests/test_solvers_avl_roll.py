@@ -2,6 +2,7 @@
 
 import json
 import math
+import re
 import stat
 import sys
 from pathlib import Path
@@ -10,9 +11,13 @@ from typing import Any
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.geometry_properties import MainWingProperties
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
+from aero_kernel.solvers import avl as avl_module
 from aero_kernel.solvers.avl import AvlAdapter, AvlRoll, Contour
+from aero_kernel.solvers.avl_mesh import MeshSurface
+from aero_kernel.solvers.avl_writer import RollOutput
 from aero_kernel.tests.test_solvers_roll_devices import aileron, wing_geometry
 
 SCRIPT = """#!{python}
@@ -369,3 +374,99 @@ async def test_a_refined_run_off_the_linear_branch_leaves_the_declared_value_unc
     assert warning.severity is WarningSeverity.DEFECT
     assert warning.detail["reason"] == "avl_roll_branch_inconsistent"
     assert "no consistent solution" in warning.message
+
+
+class RefinedRunFails(FakeAvl):
+    """The adapter whose refined run (twice the spanwise count) raises ``error``."""
+
+    error: Exception
+
+    async def _run_roll(
+        self,
+        surfaces: tuple[MeshSurface, ...],
+        contours: tuple[Contour, ...],
+        mesh: tuple[int, int],
+        run: tuple[float, float],
+        reference: MainWingProperties,
+        xyz_ref: tuple[float, float, float],
+    ) -> RollOutput:
+        if mesh[1] > 24:
+            raise self.error
+        return await super()._run_roll(surfaces, contours, mesh, run, reference, xyz_ref)
+
+
+async def refined_fails(error: Exception) -> AvlRoll:
+    class Failing(RefinedRunFails):
+        pass
+
+    Failing.error = error
+    async with SolverRuntime() as runtime:
+        return await Failing(runtime).steady_roll(rolling_airplane(), 0.5, DELTA)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("category", "code"),
+    [
+        (ErrorCategory.UNSUPPORTED_CONFIGURATION, "avl_array_limit"),
+        (ErrorCategory.NOT_CONVERGED, "avl_roll_branch_inconsistent"),
+    ],
+)
+async def test_a_refined_run_beyond_the_arrays_or_off_the_branch_is_an_unchecked_refinement(
+    fake: Path, category: ErrorCategory, code: str
+) -> None:
+    found = await refined_fails(FormulaError(category, code, "refined", "none"))
+    assert found.p_hat == 0.05
+    (warning,) = [w for w in found.warnings if w.code == "avl_refinement_unchecked"]
+    assert warning.detail["reason"] == code
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "refined", "none"),
+        FormulaError(ErrorCategory.INVALID_INPUT, "invalid_input", "refined", "none"),
+        RuntimeError("the vortex lattice run did not complete"),
+    ],
+    ids=["not_converged", "invalid_input", "internal"],
+)
+async def test_any_other_error_of_the_refined_run_propagates(fake: Path, error: Exception) -> None:
+    with pytest.raises(type(error)):
+        await refined_fails(error)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("ratio", "outcome"), [(0.25 / 0.2775, "raises"), (0.25 / 0.2255, "ok")])
+async def test_the_branch_guard_measures_against_the_linear_rate(
+    fake: Path, ratio: float, outcome: str
+) -> None:
+    """Linear 0.25: p_hat 0.2775 differs by 11 % of it and is refused; 0.2255 differs by 9.8 % and is
+    accepted. Measured against p_hat instead, the two would be decided the other way round."""
+    p_hat = 0.25 / ratio
+    configure(fake, {"12": p_hat, "24": p_hat}, linear_ratio=ratio)
+    if outcome == "raises":
+        with pytest.raises(FormulaError) as raised:
+            await roll()
+        assert raised.value.code == "avl_roll_branch_inconsistent"
+    else:
+        assert math.isclose((await roll()).p_hat, p_hat, rel_tol=1e-12)
+
+
+def test_the_array_limits_are_those_of_the_avl_source() -> None:
+    """The adapter's constants are AVL 3.40's own: NSMAX, NVMAX and NFMAX of Avl/src/AVL.INC and
+    KCMAX of Avl/src/amake.f (the tests above monkeypatch them)."""
+    source = Path(__file__).resolve().parents[2] / "Avl" / "src"
+    include = (source / "AVL.INC").read_text()
+    found = {
+        name: int(re.search(rf"{name}\s*=\s*(\d+)", include).group(1))  # type: ignore[union-attr]
+        for name in ("NVMAX", "NSMAX", "NFMAX")
+    }
+    kcmax = int(re.search(r"KCMAX\s*=\s*(\d+)", (source / "amake.f").read_text()).group(1))  # type: ignore[union-attr]
+    assert (found["NSMAX"], found["NVMAX"], found["NFMAX"], kcmax) == (500, 6000, 100, 50)
+    assert (
+        avl_module.AVL_MAX_STRIPS,
+        avl_module.AVL_MAX_VORTICES,
+        avl_module.AVL_MAX_SURFACES,
+        avl_module.AVL_MAX_CHORD_VORTICES,
+    ) == (500, 6000, 100, 50)

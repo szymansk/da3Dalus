@@ -1,6 +1,10 @@
 """The AVL steady roll against the real AVL binary (aero tier); fleet goldens are in S6's module."""
 
+import asyncio
 import math
+import re
+import sys
+from pathlib import Path
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry
@@ -56,3 +60,29 @@ async def test_the_driven_mesh_agrees_with_the_independent_reference_and_passes_
         found = await AvlAdapter(runtime).steady_roll(airplane, 0.7, 20.0)
     assert math.isclose(found.p_hat, INDEPENDENT[member], rel_tol=1e-2)
     assert not CONVERGENCE_CODES & {w.code for w in found.warnings}
+
+
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts/sim_export/crrcsim/avl_roll_reference.py"
+
+
+async def test_the_constants_are_what_the_reference_script_prints() -> None:
+    """The constants above cannot drift from their source: run the script (96 strips) and compare to
+    the printed five decimals."""
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-I",
+        str(SCRIPT),
+        "--strips",
+        "96",
+        stdout=asyncio.subprocess.PIPE,
+    )
+    async with asyncio.timeout(600):
+        stdout, _ = await process.communicate()
+    assert process.returncode == 0
+    found = {
+        match.group(1): float(match.group(2))
+        for match in re.finditer(r"^(BRYAN|JAGUAR) 96:(\d\.\d+)$", stdout.decode(), re.MULTILINE)
+    }
+    assert set(found) == {"BRYAN", "JAGUAR"}
+    for member in FleetMember:
+        assert math.isclose(found[member.name], INDEPENDENT[member], abs_tol=1e-5), member

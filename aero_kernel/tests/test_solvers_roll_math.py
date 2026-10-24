@@ -46,3 +46,12 @@ def test_alpha_for_lift_interpolates_between_the_enclosing_samples() -> None:
     assert alpha_for_lift_coefficient(alphas, cl, 4, 0.9) is None
     assert close(alpha_for_lift_coefficient(alphas, cl, 4, 0.1) or math.nan, -1.0 / 3.0, 1e-12)
     assert alpha_for_lift_coefficient(alphas, cl, 4, -0.5) is None
+
+
+def test_alpha_for_lift_takes_the_crossing_nearest_the_peak_on_a_non_monotonic_curve() -> None:
+    """cl = 0.5, 0.3, 0.6, 0.8, 0.7 with the peak at index 3 and C_L 0.5 wanted: the scan from the
+    peak finds the pair (1, 2) first (0.3 <= 0.5 <= 0.6), at 1 + (0.5 - 0.3) / 0.3 = 1.6667; the
+    sample 0 (0.5) is an earlier, farther crossing that must not be returned."""
+    alphas = [0.0, 1.0, 2.0, 3.0, 4.0]
+    cl = [0.5, 0.3, 0.6, 0.8, 0.7]
+    assert close(alpha_for_lift_coefficient(alphas, cl, 3, 0.5) or math.nan, 1.0 + 2.0 / 3.0, 1e-12)
