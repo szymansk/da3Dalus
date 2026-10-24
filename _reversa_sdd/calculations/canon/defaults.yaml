@@ -67,3 +67,10 @@ stall-break-fraction:
   basis: convention
   source: "maintainer decision 2026-10-24 (#1219); no published value (Anderson, Sadraey, Lennon describe the stall break qualitatively and quantify it nowhere)"
   regime: "a measurement convention on the computed polar, not a flight regime: clearly above solver noise (a 1-3 % drop can be one non-monotone sample) and close enough to the peak that the 360 deg blend of the polar does not dominate; applies at the stall Reynolds number of the polar"
+
+tail-efficiency:
+  value: 0.65
+  unit: "1"
+  basis: convention
+  source: "Lennon, Basics of R/C Model Aircraft Design (1996) Ch. 7/8: conventional tail near the wing wake 0.65 (T-tail 0.9, in the wake 0.4); Sadraey, Aircraft Design (2013) Eq. 6.28 §6.2.1: 0.85–0.95 conventional, 1 T-tail, full-scale; maintainer decision 2026-10-24 (#1205)"
+  regime: "not checked at RC Reynolds number: the wing wake is thicker at low Re, by an amount no source quantifies; Lennon's model-scale value is used instead of the full-scale 0.85–0.95. The designer overrides it per airplane"

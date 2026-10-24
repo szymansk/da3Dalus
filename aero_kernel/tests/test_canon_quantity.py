@@ -41,6 +41,29 @@ def test_positive_only_on_input_or_target(role: str) -> None:
         make_quantity(role=role, positive=True)
 
 
+def test_at_most_bounds_a_scalar_input() -> None:
+    assert make_quantity(at_most=1.0).at_most == 1.0
+    assert make_quantity().at_most is None
+
+
+@pytest.mark.parametrize("role", ["derived", "output"])
+def test_at_most_only_on_input_or_target(role: str) -> None:
+    with pytest.raises(ValidationError, match="at_most"):
+        make_quantity(role=role, at_most=1.0)
+
+
+def test_at_most_only_on_a_scalar() -> None:
+    with pytest.raises(ValidationError, match="at_most"):
+        make_quantity(type="airplane", at_most=1.0)
+
+
+@pytest.mark.parametrize("maximum", [0.0, -1.0])
+def test_a_positive_quantity_with_an_empty_range_is_rejected(maximum: float) -> None:
+    """``positive`` (> 0) and ``at_most`` <= 0 admit no value."""
+    with pytest.raises(ValidationError, match="at_most"):
+        make_quantity(positive=True, at_most=maximum)
+
+
 def test_unknown_type_is_rejected() -> None:
     with pytest.raises(ValidationError):
         make_quantity(type="vector")

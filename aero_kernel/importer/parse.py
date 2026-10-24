@@ -55,7 +55,9 @@ FORMULA_DROPPED = frozenset(
         "dimensional_check",
     }
 )
-QUANTITY_CARRIED = frozenset({"symbol", "unit", "role", "type", "positive", "uncertainty"})
+QUANTITY_CARRIED = frozenset(
+    {"symbol", "unit", "role", "type", "positive", "at_most", "uncertainty"}
+)
 QUANTITY_DROPPED = frozenset({"canon", "kind", "status", "tags"})
 
 # Container type of each field: str, mapping or list. Required fields are listed apart.

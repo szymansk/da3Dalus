@@ -72,7 +72,7 @@ def _quantity(entry: Entry) -> JsonDict:
     return {
         name: _unit(value) if name == "unit" else value
         for name, value in entry.front.items()
-        if name in ("symbol", "unit", "role", "type", "uncertainty", "positive")
+        if name in ("symbol", "unit", "role", "type", "uncertainty", "positive", "at_most")
     }
 
 
