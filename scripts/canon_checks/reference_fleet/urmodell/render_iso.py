@@ -10,7 +10,6 @@ OUT = HERE / "renders"
 
 def render(path):
     import matplotlib
-
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
@@ -25,9 +24,7 @@ def render(path):
     P = pts
     fig = plt.figure(figsize=(4, 3.2), dpi=110)
     ax = fig.add_subplot(projection="3d", proj_type="ortho")
-    poly = Poly3DCollection(
-        [P[f] for f in faces], facecolor="#c9ccd3", edgecolor="none", linewidths=0
-    )
+    poly = Poly3DCollection([P[f] for f in faces], facecolor="#c9ccd3", edgecolor="none", linewidths=0)
     # simple shading by face normal
     n = np.cross(P[faces[:, 1]] - P[faces[:, 0]], P[faces[:, 2]] - P[faces[:, 0]])
     n /= np.linalg.norm(n, axis=1, keepdims=True) + 1e-12

@@ -25,21 +25,9 @@ AVL_XSEC = dict(spanwise_resolution=3, spanwise_spacing="uniform")
 
 
 def with_opts(w):
-    return asb.Wing(
-        name=w.name,
-        symmetric=w.symmetric,
-        analysis_specific_options={asb.AVL: AVL_WING},
-        xsecs=[
-            asb.WingXSec(
-                xyz_le=x.xyz_le,
-                chord=x.chord,
-                twist=x.twist,
-                airfoil=x.airfoil,
-                analysis_specific_options={asb.AVL: AVL_XSEC},
-            )
-            for x in w.xsecs
-        ],
-    )
+    return asb.Wing(name=w.name, symmetric=w.symmetric, analysis_specific_options={asb.AVL: AVL_WING},
+                    xsecs=[asb.WingXSec(xyz_le=x.xyz_le, chord=x.chord, twist=x.twist, airfoil=x.airfoil,
+                                        analysis_specific_options={asb.AVL: AVL_XSEC}) for x in w.xsecs])
 
 
 wings = [with_opts(w) for w in ns["wings"]]
@@ -47,28 +35,18 @@ W0 = wings[0]
 
 
 def plane(with_fuselage):
-    return asb.Airplane(
-        name="BRYAN",
-        xyz_ref=d_geo["xyz_ref"],
-        wings=wings,
-        fuselages=fus(True) if with_fuselage else [],
-        s_ref=W0.area(),
-        c_ref=W0.mean_aerodynamic_chord(),
-        b_ref=W0.span(),
-    )
+    return asb.Airplane(name="BRYAN", xyz_ref=d_geo["xyz_ref"], wings=wings,
+                        fuselages=fus(True) if with_fuselage else [],
+                        s_ref=W0.area(), c_ref=W0.mean_aerodynamic_chord(), b_ref=W0.span())
 
 
 V = 7.82
 o = asb.Opti()
 a = o.variable(init_guess=1, lower_bound=-5, upper_bound=10)
-o.subject_to(
-    asb.AeroBuildup(plane(True), asb.OperatingPoint(atm, velocity=V, alpha=a)).run()["L"] == m * g
-)
+o.subject_to(asb.AeroBuildup(plane(True), asb.OperatingPoint(atm, velocity=V, alpha=a)).run()["L"] == m * g)
 alpha = float(o.solve(verbose=False)(a))
 op = asb.OperatingPoint(atm, velocity=V, alpha=alpha)
-print(
-    f"Punkt: V = {V} m/s, alpha = {alpha:.2f}°, Bezug = Plan-Schwerpunkt x = {d_geo['xyz_ref'][0] * 1000:.1f} mm\n"
-)
+print(f"Punkt: V = {V} m/s, alpha = {alpha:.2f}°, Bezug = Plan-Schwerpunkt x = {d_geo['xyz_ref'][0]*1000:.1f} mm\n")
 
 KEYS = ("CL", "Clb", "Cnb", "Clp", "Cnr", "Clr", "Cnp", "Cyb")
 
@@ -78,23 +56,11 @@ def sc(v):
 
 
 rows = {}
-for label, p in (
-    ("AeroBuildup (mit Rumpf)", plane(True)),
-    ("AeroBuildup (ohne Rumpf)", plane(False)),
-):
+for label, p in (("AeroBuildup (mit Rumpf)", plane(True)), ("AeroBuildup (ohne Rumpf)", plane(False))):
     r = asb.AeroBuildup(p, op).run_with_stability_derivatives()
     rows[label] = {k: sc(r[k]) for k in KEYS if k in r}
-AVL_MAP = {
-    "Clb": "Clb",
-    "Cnb": "Cnb",
-    "Clp": "Clp",
-    "Cnr": "Cnr",
-    "Clr": "Clr",
-    "Cnp": "Cnp",
-    "Cyb": "CYb",
-    "CL": "CLtot",
-    "Xnp": "Xnp",
-}
+AVL_MAP = {"Clb": "Clb", "Cnb": "Cnb", "Clp": "Clp", "Cnr": "Cnr", "Clr": "Clr", "Cnp": "Cnp",
+           "Cyb": "CYb", "CL": "CLtot", "Xnp": "Xnp"}
 
 
 def run_avl(p, cl_target):
@@ -106,32 +72,12 @@ def run_avl(p, cl_target):
     src = pathlib.Path(__file__).parent / "bryan"
     parts = geom.read_text().split("SURFACE")
     for k in range(1, len(parts)):
-        dat = src / (
-            "bryan_profil.dat" if parts[k].strip().startswith("Tragflaeche") else "bryan_platte.dat"
-        )
+        dat = src / ("bryan_profil.dat" if parts[k].strip().startswith("Tragflaeche") else "bryan_platte.dat")
         parts[k] = re.sub(r"\nAFIL\n[^\n]+\n", "\nAFIL\n" + str(dat) + "\n", parts[k])
     geom.write_text("SURFACE".join(parts))
-    cmds = [
-        "oper",
-        f"a c {cl_target}",
-        "b b 0",
-        "r r 0",
-        "p p 0",
-        "y y 0",
-        "x",
-        "st",
-        "",
-        "",
-        "quit",
-    ]
-    out = subprocess.run(
-        [str(avl_path()), str(geom)],
-        input="\n".join(cmds) + "\n",
-        capture_output=True,
-        text=True,
-        cwd=work,
-        timeout=60,
-    ).stdout
+    cmds = ["oper", f"a c {cl_target}", "b b 0", "r r 0", "p p 0", "y y 0", "x", "st", "", "", "quit"]
+    out = subprocess.run([str(avl_path()), str(geom)], input="\n".join(cmds) + "\n",
+                         capture_output=True, text=True, cwd=work, timeout=60).stdout
 
     def get(key):
         f = re.findall(rf"\b{re.escape(key)}\s*=\s*(-?[\d.]+(?:E[-+]?\d+)?)", out)
@@ -161,7 +107,5 @@ W = plane(True).wings[0]
 mac = W.mean_aerodynamic_chord()
 x_le = W.aerodynamic_center()[0] - 0.25 * mac
 x_np_ab = sc(asb.AeroBuildup(plane(True), op).run_with_stability_derivatives()["x_np"])
-print(
-    f"\nNeutralpunkt: AeroBuildup {100 * (x_np_ab - x_le) / mac:.1f} % MAC, "
-    f"AVL {100 * (rows['AVL (mit Rumpf)']['Xnp'] - x_le) / mac:.1f} % MAC"
-)
+print(f"\nNeutralpunkt: AeroBuildup {100*(x_np_ab-x_le)/mac:.1f} % MAC, "
+      f"AVL {100*(rows['AVL (mit Rumpf)']['Xnp']-x_le)/mac:.1f} % MAC")

@@ -101,13 +101,8 @@ def correct_reference_to_main_wing(asb_airplane) -> dict:
             flush=True,
         )
     # No longer mutate the airplane — the converter now sets the correct refs.
-    return {
-        "s_ref": float(asb_airplane.s_ref),
-        "b_ref": float(asb_airplane.b_ref),
-        "c_ref": float(asb_airplane.c_ref),
-        "corrected": corrected,
-        "main_wing": main.name,
-    }
+    return {"s_ref": float(asb_airplane.s_ref), "b_ref": float(asb_airplane.b_ref),
+            "c_ref": float(asb_airplane.c_ref), "corrected": corrected, "main_wing": main.name}
 
 
 def _sanitize_airfoils(asb_airplane) -> int:

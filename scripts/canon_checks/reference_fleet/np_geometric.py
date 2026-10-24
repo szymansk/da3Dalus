@@ -20,13 +20,8 @@ def surfaces(path, af):
     d = json.loads(path.read_text())
     out = []
     for name, w in d["wings"].items():
-        wing = asb.Wing(
-            name=name,
-            symmetric=w["symmetric"],
-            xsecs=[
-                asb.WingXSec(xyz_le=x["xyz_le"], chord=x["chord"], airfoil=af) for x in w["x_secs"]
-            ],
-        )
+        wing = asb.Wing(name=name, symmetric=w["symmetric"],
+                        xsecs=[asb.WingXSec(xyz_le=x["xyz_le"], chord=x["chord"], airfoil=af) for x in w["x_secs"]])
         out.append(wing)
     return d, out
 
@@ -52,15 +47,9 @@ main, vt = ws[0], ws[1]
 z = [x["xyz_le"][2] for x in d["wings"]["V-Leitwerk"]["x_secs"]]
 y = [x["xyz_le"][1] for x in d["wings"]["V-Leitwerk"]["x_secs"]]
 nu = np.arctan2(z[-1] - z[0], y[-1] - y[0])
-rows.append(
-    ("e-Hawk", d["xyz_ref"][0], np_rc(main, [(vt, vt.area() * np.cos(nu) ** 2)]), 58.4, 48.8)
-)
+rows.append(("e-Hawk", d["xyz_ref"][0], np_rc(main, [(vt, vt.area() * np.cos(nu) ** 2)]), 58.4, 48.8))
 
-print(
-    f"{'':8s} {'RC-Methode':>11s} {'AVL':>6s} {'AeroBuildup':>12s} {'Plan-SP':>8s}  SM (RC-Methode)"
-)
+print(f"{'':8s} {'RC-Methode':>11s} {'AVL':>6s} {'AeroBuildup':>12s} {'Plan-SP':>8s}  SM (RC-Methode)")
 for name, x_cg, (x_np, mac, le), ab, avl in rows:
     pn, pc = 100 * (x_np - le) / mac, 100 * (x_cg - le) / mac
-    print(
-        f"{name:8s} {pn:10.1f}% {avl:5.1f}% {ab:11.1f}% {pc:7.1f}%   {100 * (x_np - x_cg) / mac:5.1f} %"
-    )
+    print(f"{name:8s} {pn:10.1f}% {avl:5.1f}% {ab:11.1f}% {pc:7.1f}%   {100*(x_np-x_cg)/mac:5.1f} %")

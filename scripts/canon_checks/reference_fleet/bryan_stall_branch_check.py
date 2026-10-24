@@ -61,16 +61,9 @@ a_pk1 = stall_branch_alpha(M0)
 a_pkn = stall_branch_alpha(N_LIM * M0)
 print(f"erstes C_L-Maximum: alpha = {a_pk1:.1f}° bei 1 g, {a_pkn:.1f}° bei {N_LIM:.0f} g\n")
 print(f"{'Problem':30s} {'A: V / alpha':>18s} {'B: V / alpha':>18s}  Befund")
-for kind in (
-    "V_A (Manöver)",
-    "r_min (engste Kurve)",
-    "omega_max (schnellste Kurve)",
-    "V_x (steilstes Steigen)",
-    "V_y (bestes Steigen)",
-    "V_mp (geringstes Sinken)",
-    "V_md (geringster Widerstand)",
-    "V_max",
-):
+for kind in ("V_A (Manöver)", "r_min (engste Kurve)", "omega_max (schnellste Kurve)",
+             "V_x (steilstes Steigen)", "V_y (bestes Steigen)", "V_mp (geringstes Sinken)",
+             "V_md (geringster Widerstand)", "V_max"):
     a_pk = a_pkn if kind.startswith(("V_A", "r_min", "omega")) else a_pk1
     res = {}
     for tag, a_max in (("A", 25.0), ("B", a_pk + 1.0)):

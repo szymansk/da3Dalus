@@ -38,58 +38,23 @@ def asb_plane(d, delta_a=0.0, with_avl_opts=False):
             afs[p] = asb.Airfoil(pathlib.Path(p).stem, coordinates=str(FLEET / p[2:]))
         return afs[p]
 
-    ow = (
-        {asb.AVL: dict(wing_level_spanwise_spacing=False, chordwise_resolution=8)}
-        if with_avl_opts
-        else {}
-    )
+    ow = {asb.AVL: dict(wing_level_spanwise_spacing=False, chordwise_resolution=8)} if with_avl_opts else {}
     ox = {asb.AVL: dict(spanwise_resolution=4, spanwise_spacing="uniform")} if with_avl_opts else {}
     wings = []
     for name, w in d["wings"].items():
         xs = []
         for x in w["x_secs"]:
-            surfs = [
-                asb.ControlSurface(
-                    name=c["name"],
-                    symmetric=c["symmetric"],
-                    hinge_point=c["hinge_point"],
-                    deflection=delta_a if c["name"] in ROLL else 0.0,
-                )
-                for c in x.get("control_surfaces", [])
-            ]
-            xs.append(
-                asb.WingXSec(
-                    xyz_le=x["xyz_le"],
-                    chord=x["chord"],
-                    twist=x["twist"],
-                    airfoil=af(x["airfoil"]),
-                    control_surfaces=surfs,
-                    analysis_specific_options=ox,
-                )
-            )
-        wings.append(
-            asb.Wing(name=name, symmetric=w["symmetric"], xsecs=xs, analysis_specific_options=ow)
-        )
-    fus = [
-        asb.Fuselage(
-            name=n,
-            xsecs=[
-                asb.FuselageXSec(xyz_c=x["xyz"], width=2 * x["a"], height=2 * x["b"], shape=x["n"])
-                for x in f["x_secs"]
-            ],
-        )
-        for n, f in d["fuselages"].items()
-    ]
+            surfs = [asb.ControlSurface(name=c["name"], symmetric=c["symmetric"], hinge_point=c["hinge_point"],
+                                        deflection=delta_a if c["name"] in ROLL else 0.0)
+                     for c in x.get("control_surfaces", [])]
+            xs.append(asb.WingXSec(xyz_le=x["xyz_le"], chord=x["chord"], twist=x["twist"], airfoil=af(x["airfoil"]),
+                                   control_surfaces=surfs, analysis_specific_options=ox))
+        wings.append(asb.Wing(name=name, symmetric=w["symmetric"], xsecs=xs, analysis_specific_options=ow))
+    fus = [asb.Fuselage(name=n, xsecs=[asb.FuselageXSec(xyz_c=x["xyz"], width=2 * x["a"], height=2 * x["b"], shape=x["n"])
+                                        for x in f["x_secs"]]) for n, f in d["fuselages"].items()]
     w0 = wings[0]
-    return asb.Airplane(
-        name=d["name"][:30],
-        xyz_ref=d["xyz_ref"],
-        wings=wings,
-        fuselages=fus,
-        s_ref=d["urmodell"]["S_m2"],
-        c_ref=d["urmodell"]["mac_m"],
-        b_ref=w0.span(),
-    )
+    return asb.Airplane(name=d["name"][:30], xyz_ref=d["xyz_ref"], wings=wings, fuselages=fus,
+                        s_ref=d["urmodell"]["S_m2"], c_ref=d["urmodell"]["mac_m"], b_ref=w0.span())
 
 
 def avl_run(plane, op, xyz_ref, cmds):
@@ -101,28 +66,11 @@ def avl_run(plane, op, xyz_ref, cmds):
     asb.AVL(airplane=plane, op_point=op, xyz_ref=xyz_ref).write_avl(geom)
     txt = geom.read_text()
     # point AFIL at the original coordinate files (ASB's re-panelled export can write x > 1)
-    txt = re.sub(
-        r"\nAFIL\n([^\n]+)\n",
-        lambda m: (
-            "\nAFIL\n"
-            + str(FLEET / "airfoils" / (pathlib.Path(m.group(1)).stem.split("_")[0] + ".dat"))
-            + "\n"
-            if (
-                FLEET / "airfoils" / (pathlib.Path(m.group(1)).stem.split("_")[0] + ".dat")
-            ).exists()
-            else m.group(0)
-        ),
-        txt,
-    )
+    txt = re.sub(r"\nAFIL\n([^\n]+)\n", lambda m: "\nAFIL\n" + str(FLEET / "airfoils" / (pathlib.Path(m.group(1)).stem.split("_")[0] + ".dat")) + "\n"
+                 if (FLEET / "airfoils" / (pathlib.Path(m.group(1)).stem.split("_")[0] + ".dat")).exists() else m.group(0), txt)
     geom.write_text(txt)
-    out = subprocess.run(
-        [str(avl_path()), str(geom)],
-        input="\n".join(cmds) + "\n",
-        capture_output=True,
-        text=True,
-        cwd=work,
-        timeout=120,
-    ).stdout
+    out = subprocess.run([str(avl_path()), str(geom)], input="\n".join(cmds) + "\n", capture_output=True,
+                         text=True, cwd=work, timeout=120).stdout
     controls = []
     for nm in re.findall(r"\nCONTROL\n#?[^\n]*\n?([A-Za-z_][^\s]*)", txt):
         if nm not in controls:
@@ -131,7 +79,7 @@ def avl_run(plane, op, xyz_ref, cmds):
 
 
 def get(out, key):
-    out = out[out.find("Vortex Lattice Output") :] if "Vortex Lattice Output" in out else out
+    out = out[out.find("Vortex Lattice Output"):] if "Vortex Lattice Output" in out else out
     f = re.findall(rf"\b{re.escape(key)}\s*=\s*(-?[\d.]+(?:E[-+]?\d+)?)", out)
     if not f:
         raise RuntimeError(f"AVL output lacks {key}")
@@ -148,14 +96,8 @@ def evaluate(path: pathlib.Path) -> dict:
     d = json.loads(path.read_text())
     u = d["urmodell"]
     row = {k: u[k] for k in ("motor", "mission", "trag", "lage", "leitwerk", "steuerung")}
-    row.update(
-        id=d["name"],
-        span_m=u["span_m"],
-        mass_kg=d["total_mass_kg"],
-        S_dm2=round(u["S_m2"] * 100, 2),
-        AR=round(u["AR"], 2),
-        WS_g_dm2=round(d["total_mass_kg"] * 1000 / (u["S_m2"] * 100), 1),
-    )
+    row.update(id=d["name"], span_m=u["span_m"], mass_kg=d["total_mass_kg"], S_dm2=round(u["S_m2"] * 100, 2),
+               AR=round(u["AR"], 2), WS_g_dm2=round(d["total_mass_kg"] * 1000 / (u["S_m2"] * 100), 1))
     try:
         atm = asb.Atmosphere(altitude=0)
         rho, g, m = float(atm.density()), 9.80665, d["total_mass_kg"]
@@ -177,10 +119,7 @@ def evaluate(path: pathlib.Path) -> dict:
         for _ in range(3):
             al = np.arange(-4, 26, 0.5)
             cl = np.ravel(aero(V, al)["CL"])
-            i = next(
-                (k for k in range(1, len(cl) - 1) if cl[k] >= cl[k - 1] and cl[k] > cl[k + 1]),
-                int(np.argmax(cl)),
-            )
+            i = next((k for k in range(1, len(cl) - 1) if cl[k] >= cl[k - 1] and cl[k] > cl[k + 1]), int(np.argmax(cl)))
             V = math.sqrt(2 * m * g / (rho * S * cl[i]))
         a_pk = float(al[i])
 
@@ -197,37 +136,22 @@ def evaluate(path: pathlib.Path) -> dict:
         vs, _a, _d = level("VS")
         vmd, a_md, dmd = level("Vmd")
         vmp, _a2, dmp = level("Vmp")
-        row.update(
-            V_S=round(vs, 2),
-            CLmax=round(float(cl[i]), 3),
-            V_md=round(vmd, 2),
-            LD_max=round(m * g / dmd, 2),
-            V_mp=round(vmp, 2),
-            sink_min=round(dmp * vmp / (m * g), 3),
-        )
+        row.update(V_S=round(vs, 2), CLmax=round(float(cl[i]), 3), V_md=round(vmd, 2), LD_max=round(m * g / dmd, 2),
+                   V_mp=round(vmp, 2), sink_min=round(dmp * vmp / (m * g), 3))
 
         # neutral point worlds
-        rd = asb.AeroBuildup(
-            plane, asb.OperatingPoint(atm, velocity=vmd, alpha=a_md)
-        ).run_with_stability_derivatives()
+        rd = asb.AeroBuildup(plane, asb.OperatingPoint(atm, velocity=vmd, alpha=a_md)).run_with_stability_derivatives()
         row["NP_AeroBuildup"] = round(pct(sc(rd["x_np"])), 1)
         row["NP_Lehrbuch"], row["NP_Pappas"] = (round(pct(x), 1) for x in ref["worlds"])
-        cl_md = m * g / (0.5 * rho * vmd**2 * S)
+        cl_md = m * g / (0.5 * rho * vmd ** 2 * S)
         pa = asb_plane(d, with_avl_opts=True)
-        out, _ = avl_run(
-            pa,
-            asb.OperatingPoint(atm, velocity=vmd, alpha=a_md),
-            d["xyz_ref"],
-            ["oper", f"a c {cl_md}", "x", "st", "", "", "quit"],
-        )
+        out, _ = avl_run(pa, asb.OperatingPoint(atm, velocity=vmd, alpha=a_md), d["xyz_ref"],
+                         ["oper", f"a c {cl_md}", "x", "st", "", "", "quit"])
         row["NP_AVL"] = round(pct(get(out, "Xnp")), 1)
         worlds = [row[k] for k in ("NP_Lehrbuch", "NP_Pappas", "NP_AVL")]
         row["NP_min"], row["NP_max"] = min(worlds), max(worlds)
         row["CG"] = round(pct(d["xyz_ref"][0]), 1)
-        row["SM_min"], row["SM_max"] = (
-            round(row["NP_min"] - row["CG"], 1),
-            round(row["NP_max"] - row["CG"], 1),
-        )
+        row["SM_min"], row["SM_max"] = round(row["NP_min"] - row["CG"], 1), round(row["NP_max"] - row["CG"], 1)
         row["SM_target"] = round(100 * u["sm_target"], 1)
 
         # lateral (AeroBuildup)
@@ -246,27 +170,13 @@ def evaluate(path: pathlib.Path) -> dict:
             s = o.solve(verbose=False, max_iter=600)
             row["roll_AB"] = round(abs(float(s(p))) * pr.b_ref / (2 * va), 4)
             pav = asb_plane(d, with_avl_opts=True)
-            cl_app = m * g / (0.5 * rho * va**2 * S)
-            out0, controls = avl_run(
-                pav, asb.OperatingPoint(atm, velocity=va, alpha=4), d["xyz_ref"], ["quit"]
-            )
+            cl_app = m * g / (0.5 * rho * va ** 2 * S)
+            out0, controls = avl_run(pav, asb.OperatingPoint(atm, velocity=va, alpha=4), d["xyz_ref"], ["quit"])
             name = "aileron" if "aileron" in controls else "elevon_roll"
             if name in controls:
                 idx = controls.index(name) + 1
-                out, _ = avl_run(
-                    pav,
-                    asb.OperatingPoint(atm, velocity=va, alpha=4),
-                    d["xyz_ref"],
-                    [
-                        "oper",
-                        f"a c {cl_app}",
-                        f"d{idx} d{idx} {DELTA_A}",
-                        "r rm 0",
-                        "x",
-                        "",
-                        "quit",
-                    ],
-                )
+                out, _ = avl_run(pav, asb.OperatingPoint(atm, velocity=va, alpha=4), d["xyz_ref"],
+                                 ["oper", f"a c {cl_app}", f"d{idx} d{idx} {DELTA_A}", "r rm 0", "x", "", "quit"])
                 row["roll_AVL"] = round(abs(get(out, "pb/2V")), 4)
         row["status"] = "ok"
     except Exception as e:  # noqa: BLE001 — record, never drop silently

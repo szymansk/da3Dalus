@@ -15,8 +15,7 @@ def _holds(c, p):
 
 def _ok(o, p):
     return (not o.get("wenn") or _holds(o["wenn"], p)) and not any(
-        p.get(k) in v for k, v in (o.get("wenn_nicht") or {}).items()
-    )
+        p.get(k) in v for k, v in (o.get("wenn_nicht") or {}).items())
 
 
 def rating(o, p):
@@ -53,18 +52,7 @@ def combos(only_typical=True):
 
 if __name__ == "__main__":
     import collections
-
     c = combos()
     print(len(c))
     for m, n in collections.Counter(x["mission"] for x in c).items():
-        print(
-            m,
-            n,
-            sorted(
-                {
-                    (x["trag"], str(x["lage"]), x["leitwerk"], x["steuerung"])
-                    for x in c
-                    if x["mission"] == m
-                }
-            ),
-        )
+        print(m, n, sorted({(x["trag"], str(x["lage"]), x["leitwerk"], x["steuerung"]) for x in c if x["mission"] == m}))

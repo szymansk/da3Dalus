@@ -6,62 +6,22 @@ import json
 import pathlib
 
 HERE = pathlib.Path(__file__).parent
-ORDER = [
-    "trainer",
-    "park",
-    "sport",
-    "kunstflug",
-    "3d",
-    "speed",
-    "elektrosegler",
-    "segel_trainer",
-    "thermik",
-    "hang",
-    "wurf",
-]
-LABEL = {
-    "trainer": "Trainer",
-    "park": "Park",
-    "sport": "Sport",
-    "kunstflug": "Kunstflug",
-    "3d": "3D",
-    "speed": "Speed",
-    "elektrosegler": "Elektrosegler",
-    "segel_trainer": "Segeltrainer",
-    "thermik": "Thermik",
-    "hang": "Hang",
-    "wurf": "Wurf",
-}
-LW = {
-    "normal": "Normalleitwerk",
-    "t": "T-Leitwerk",
-    "kreuz": "Kreuzleitwerk",
-    "v": "V-Leitwerk",
-    "nf_mitte": "Nurflügel, Mittelflosse",
-    "nf_winglet": "Nurflügel, Winglets",
-    "nf_ohne": "Nurflügel ohne Flosse",
-}
-ST = {
-    "hs": "Höhe + Seite",
-    "hsq": "Höhe + Seite + Quer",
-    "hsqk": "Höhe + Seite + Quer + Wölbklappen",
-    "elevon": "Elevons (Höhe + Quer gemischt)",
-}
-LAGE = {
-    "hochdecker": "Hochdecker",
-    "schulterdecker": "Schulterdecker",
-    "mitteldecker": "Mitteldecker",
-    "tiefdecker": "Tiefdecker",
-    "ohne_rumpf": "ohne Rumpf",
-    None: "Doppeldecker",
-}
-
+ORDER = ["trainer", "park", "sport", "kunstflug", "3d", "speed", "elektrosegler",
+         "segel_trainer", "thermik", "hang", "wurf"]
+LABEL = {"trainer": "Trainer", "park": "Park", "sport": "Sport", "kunstflug": "Kunstflug", "3d": "3D",
+         "speed": "Speed", "elektrosegler": "Elektrosegler", "segel_trainer": "Segeltrainer",
+         "thermik": "Thermik", "hang": "Hang", "wurf": "Wurf"}
+LW = {"normal": "Normalleitwerk", "t": "T-Leitwerk", "kreuz": "Kreuzleitwerk", "v": "V-Leitwerk",
+      "nf_mitte": "Nurflügel, Mittelflosse", "nf_winglet": "Nurflügel, Winglets", "nf_ohne": "Nurflügel ohne Flosse"}
+ST = {"hs": "Höhe + Seite", "hsq": "Höhe + Seite + Quer", "hsqk": "Höhe + Seite + Quer + Wölbklappen",
+      "elevon": "Elevons (Höhe + Quer gemischt)"}
+LAGE = {"hochdecker": "Hochdecker", "schulterdecker": "Schulterdecker", "mitteldecker": "Mitteldecker",
+        "tiefdecker": "Tiefdecker", "ohne_rumpf": "ohne Rumpf", None: "Doppeldecker"}
 
 def _jpeg(path):
     import io
 
     from PIL import Image
-
     im = Image.open(path).convert("RGB")
     im = im.resize((720, round(720 * im.height / im.width)), Image.LANCZOS)
     buf = io.BytesIO()
@@ -79,16 +39,16 @@ for m in ORDER:
         img = _jpeg(HERE / "renders_construction" / f"{d['name']}.png")
         ws = d["total_mass_kg"] * 1000 / (u["S_m2"] * 100)
         cards.append(f'''<figure class="card" data-m="{m}">
-<img alt="Isometrie {html.escape(d["name"])}" loading="lazy" src="data:image/jpeg;base64,{img}">
-<figcaption><b>{LAGE[u["lage"]] if u["trag"] == "eindecker" else "Doppeldecker"}</b>
-<span>{LW[u["leitwerk"]]} · {ST[u["steuerung"]].replace("Höhe + Seite", "Höhe/Seite gemischt (Ruddervator)") if u["leitwerk"] == "v" else ST[u["steuerung"]]}</span>
-<span class="num">b {u["span_m"] * 1000:.0f} mm · {d["total_mass_kg"] * 1000:.0f} g · {ws:.0f} g/dm² · AR {u["AR"]:.1f}</span></figcaption></figure>''')
+<img alt="Isometrie {html.escape(d['name'])}" loading="lazy" src="data:image/jpeg;base64,{img}">
+<figcaption><b>{LAGE[u['lage']] if u['trag'] == 'eindecker' else 'Doppeldecker'}</b>
+<span>{LW[u['leitwerk']]} · {ST[u['steuerung']].replace('Höhe + Seite', 'Höhe/Seite gemischt (Ruddervator)') if u['leitwerk'] == 'v' else ST[u['steuerung']]}</span>
+<span class="num">b {u['span_m']*1000:.0f} mm · {d['total_mass_kg']*1000:.0f} g · {ws:.0f} g/dm² · AR {u['AR']:.1f}</span></figcaption></figure>''')
     motor = "Motor" if group[0]["urmodell"]["motor"] == "ja" else "Segler"
     sections.append(f'''<section id="{m}"><h2>{LABEL[m]} <small>{motor} · {len(group)}</small></h2>
-<div class="grid">{"".join(cards)}</div></section>''')
+<div class="grid">{''.join(cards)}</div></section>''')
 chips = "".join(f'<a href="#{m}">{LABEL[m]}</a>' for m in ORDER)
 
-page = f"""<title>Urmodell-Flotte</title>
+page = f'''<title>Urmodell-Flotte</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -125,8 +85,8 @@ Ruder grün (Scharnierlinie dick), Holme lila (Hauptholm am Dickenmaximum, Hilfs
 Elevons und Ruddervators sind Mischer aus Höhe und Quer bzw. Höhe und Seite. Holme sind zur Anschauung
 nach den Vorgaben des App-Holmplaners gesetzt; die App bemisst sie selbst.</p></header>
 <nav aria-label="Missionen">{chips}</nav>
-{"".join(sections)}
+{''.join(sections)}
 </div>
-"""
+'''
 (HERE / "galerie.html").write_text(page)
 print(len(page) // 1024, "KB")

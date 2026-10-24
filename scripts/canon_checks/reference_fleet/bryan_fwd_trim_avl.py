@@ -47,65 +47,32 @@ print(f"AeroBuildup: C_L {cl:.3f}, Cm(Plan-SP) {cm:+.4f} -> x_fwd = {pct(x_ab):.
 AVL_WING = {asb.AVL: dict(wing_level_spanwise_spacing=False, chordwise_resolution=10)}
 AVL_XSEC = {asb.AVL: dict(spanwise_resolution=3, spanwise_spacing="uniform")}
 p_avl = asb.Airplane(
-    name="BRYAN",
-    xyz_ref=p_ab.xyz_ref,
-    fuselages=p_ab.fuselages,
-    s_ref=p_ab.s_ref,
-    c_ref=p_ab.c_ref,
-    b_ref=p_ab.b_ref,
-    wings=[
-        asb.Wing(
-            name=w.name,
-            symmetric=w.symmetric,
-            analysis_specific_options=AVL_WING,
-            xsecs=[
-                asb.WingXSec(
-                    xyz_le=x.xyz_le,
-                    chord=x.chord,
-                    twist=x.twist,
-                    airfoil=x.airfoil,
-                    control_surfaces=x.control_surfaces,
-                    analysis_specific_options=AVL_XSEC,
-                )
-                for x in w.xsecs
-            ],
-        )
-        for w in p_ab.wings
-    ],
-)
+    name="BRYAN", xyz_ref=p_ab.xyz_ref, fuselages=p_ab.fuselages,
+    s_ref=p_ab.s_ref, c_ref=p_ab.c_ref, b_ref=p_ab.b_ref,
+    wings=[asb.Wing(name=w.name, symmetric=w.symmetric, analysis_specific_options=AVL_WING,
+                    xsecs=[asb.WingXSec(xyz_le=x.xyz_le, chord=x.chord, twist=x.twist, airfoil=x.airfoil,
+                                        control_surfaces=x.control_surfaces, analysis_specific_options=AVL_XSEC)
+                           for x in w.xsecs]) for w in p_ab.wings])
 
 
 def avl_xfwd(claf_wing, claf_tail):
     work = pathlib.Path(tempfile.mkdtemp(prefix="fwd_"))
     geom = work / "b.avl"
-    asb.AVL(
-        airplane=p_avl,
-        op_point=asb.OperatingPoint(atm, velocity=V, alpha=a_s),
-        xyz_ref=list(p_ab.xyz_ref),
-    ).write_avl(geom)
+    asb.AVL(airplane=p_avl, op_point=asb.OperatingPoint(atm, velocity=V, alpha=a_s),
+            xyz_ref=list(p_ab.xyz_ref)).write_avl(geom)
     parts = geom.read_text().split("SURFACE")
     for k in range(1, len(parts)):
         main = parts[k].strip().startswith("Tragflaeche")
         dat = HERE / "bryan" / ("bryan_profil.dat" if main else "bryan_platte.dat")
         parts[k] = re.sub(r"\nAFIL\n[^\n]+\n", "\nAFIL\n" + str(dat) + "\n", parts[k])
         if claf_wing is not None:
-            parts[k] = re.sub(
-                r"\nCLAF\n[^\n]+\n",
-                "\nCLAF\n" + str(claf_wing if main else claf_tail) + "\n",
-                parts[k],
-            )
+            parts[k] = re.sub(r"\nCLAF\n[^\n]+\n", "\nCLAF\n" + str(claf_wing if main else claf_tail) + "\n", parts[k])
     geom.write_text("SURFACE".join(parts))
     if "CONTROL" not in geom.read_text():
         raise RuntimeError("no CONTROL in the AVL geometry — elevator not exported")
     cmds = ["oper", f"a a {a_s}", f"d1 d1 {DE}", "x", "", "quit"]
-    out = subprocess.run(
-        [str(avl_path()), str(geom)],
-        input="\n".join(cmds) + "\n",
-        capture_output=True,
-        text=True,
-        cwd=work,
-        timeout=60,
-    ).stdout
+    out = subprocess.run([str(avl_path()), str(geom)], input="\n".join(cmds) + "\n",
+                         capture_output=True, text=True, cwd=work, timeout=60).stdout
 
     def get(k):
         f = re.findall(rf"\b{re.escape(k)}\s*=\s*(-?[\d.]+(?:E[-+]?\d+)?)", out)

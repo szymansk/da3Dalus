@@ -23,15 +23,11 @@ def one(row):
     atm = asb.Atmosphere(altitude=0)
     v = float(row["V_md"])
     cl = d["total_mass_kg"] * 9.80665 / (0.5 * float(atm.density()) * v * v * d["urmodell"]["S_m2"])
-    out, _ = fe.avl_run(
-        fe.asb_plane(d, with_avl_opts=True),
-        asb.OperatingPoint(atm, velocity=v, alpha=3),
-        d["xyz_ref"],
-        ["oper", f"a c {cl}", "x", "st", "", "", "quit"],
-    )
+    out, _ = fe.avl_run(fe.asb_plane(d, with_avl_opts=True), asb.OperatingPoint(atm, velocity=v, alpha=3),
+                        d["xyz_ref"], ["oper", f"a c {cl}", "x", "st", "", "", "quit"])
     res = {"id": row["id"]}
     try:
-        der = out[out.find("Stability-axis derivatives") :]
+        der = out[out.find("Stability-axis derivatives"):]
         for k in ("Clb", "Cnb", "Clr", "Cnr"):
             res[k + "_AVL"] = float(re.findall(rf"\b{k}\s*=\s*(-?[\d.]+(?:E[-+]?\d+)?)", der)[0])
         res["E_AVL"] = res["Clb_AVL"] * res["Cnr_AVL"] - res["Cnb_AVL"] * res["Clr_AVL"]
@@ -56,12 +52,8 @@ if __name__ == "__main__":
     agree_cnb = sum((r["Cnb_AVL"] > 0) == (r["Cnb_AB"] > 0) for r in good)
     agree_sp = sum((r["E_AVL"] > 0) == (r["E_spiral_AB"] > 0) for r in good)
     print(f"{len(good)} ok, {len(bad)} Fehler")
-    print(
-        f"Vorzeichen C_nβ gleich: {agree_cnb}/{len(good)};  Spiralurteil gleich: {agree_sp}/{len(good)}"
-    )
+    print(f"Vorzeichen C_nβ gleich: {agree_cnb}/{len(good)};  Spiralurteil gleich: {agree_sp}/{len(good)}")
     for r in good:
         if (r["E_AVL"] > 0) != (r["E_spiral_AB"] > 0) or (r["Cnb_AVL"] > 0) != (r["Cnb_AB"] > 0):
-            print(
-                f"  {r['id']}: Cnb AB {r['Cnb_AB']:+.4f} AVL {r['Cnb_AVL']:+.4f} | "
-                f"E AB {r['E_spiral_AB']:+.5f} AVL {r['E_AVL']:+.5f}"
-            )
+            print(f"  {r['id']}: Cnb AB {r['Cnb_AB']:+.4f} AVL {r['Cnb_AVL']:+.4f} | "
+                  f"E AB {r['E_spiral_AB']:+.5f} AVL {r['E_AVL']:+.5f}")
