@@ -15,6 +15,7 @@ from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
 from aero_kernel.solvers.opti import OptiAdapter, SteadyRoll
 from aero_kernel.solvers.roll_math import body_rates, control_effectiveness
+from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -126,3 +127,19 @@ async def test_effective_alpha_shift_matches_asb() -> None:
     assert np.isclose(
         float(np.ravel(with_surface["CL"])[0]), float(np.ravel(shifted["CL"])[0]), rtol=1e-9
     )
+
+
+async def test_bryan_at_the_approach_speed_and_twenty_degrees_converges_from_its_secant_start() -> (
+    None
+):
+    """BRYAN at V_app 6.819 m/s, 20 deg: IPOPT, started from a fixed fraction (0.1) of the roll-rate
+    window, ended in 'Infeasible_Problem_Detected' although the equilibrium exists (a fraction of 0.2
+    to 0.5 reaches p = 8.5546 rad/s, p_hat 0.3424, alpha 3.93 deg). The start is the zero of the
+    secant of the rolling moment at the weight-carrying alpha."""
+    airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN))
+    async with SolverRuntime(max_workers=1) as runtime:
+        found = await OptiAdapter(runtime).steady_roll(
+            airplane, FleetMember.BRYAN.mass_kg, 9.80665, sea_level(), 6.818986359246604, 20.0
+        )
+    assert math.isclose(found.p_rad_s, 8.5546408, abs_tol=1e-4)
+    assert math.isclose(found.alpha_deg, 3.9310246, abs_tol=1e-3)

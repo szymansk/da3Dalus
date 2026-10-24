@@ -727,6 +727,11 @@ caller's responsibility.
       local stall under the deflection is reported by the diagnostics of the deflected evaluation. The
       `α + τδ` it reports is the shift before NeuralFoil's 360° blend (which uses the unshifted angle for its
       post-stall weight); the τ pin uses `include_360_deg_effects=False` for that reason.
+      The start of the roll rate is the zero of the secant of the stability-axis rolling moment at the
+      weight-carrying α (two numeric runs: without roll and at a quarter of the window): IPOPT started from a
+      fixed fraction of the window ended in `Infeasible_Problem_Detected` on BRYAN at 20° (fraction 0.1; 0.25
+      failed on other cases) although the equilibrium exists. A start is no result; if the secant has no
+      damping the fixed fraction 0.1 is the start.
     - *AVL.* The controlled wing is split at the hinge line into a front and an aft SURFACE of one COMPONENT on
       the same span stations (Drela's rule 3, `avl_doc.txt:1110-1117`): front `AFIL 0..x_h`, aft `AFIL x_h..1`,
       the CONTROL on the aft piece with its hinge at the aft leading edge (`amake.f:418-423`), so the deflected

@@ -642,8 +642,73 @@ def _roll_window(request: RollRequest) -> tuple[float, float, float]:
     return ALPHA_MIN_DEG, polar.alpha_deg[peak] + ALPHA_STEP_DEG, start
 
 
-# Start value of the roll rate as a fraction of its window: a start only, not a result.
+# Start value of the roll rate as a fraction of its window, used only if the secant estimate of the
+# start below is degenerate: a start only, not a result.
 ROLL_START_FRACTION = 0.1
+# The probe of the secant estimate of the start: this fraction of the window of the roll rate.
+ROLL_PROBE_FRACTION = 0.25
+# The start never lies closer to the bound of the window than this fraction of it.
+ROLL_START_LIMIT_FRACTION = 0.9
+
+
+def _roll_start(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    request: RollRequest,
+    airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    alpha_start: float,
+    p_limit: float,
+) -> float:
+    """The start of the stability-axis roll rate: the zero of the rolling moment at ``alpha_start``.
+
+    Two numeric AeroBuildup runs at the start angle of attack, without roll and at a probe rate,
+    give the stability-axis rolling moment at both; the secant through them has its zero at the
+    start. IPOPT started from a fixed fraction of the window failed on BRYAN at 20 deg although the
+    equilibrium exists and a start fraction of 0.2 to 0.5 reaches it (fractions 0.1 and 0.25 failed on
+    other cases): the feasibility problem is start-dependent. The start is no result and changes
+    none; if the secant is degenerate (no damping), the fixed fraction is the start.
+
+    Args:
+        asb: The ``aerosandbox`` module.
+        request: The problem.
+        airplane: The ``asb.Airplane`` with the deflection.
+        alpha_start: The angle of attack that carries the weight on the clean sweep, in degrees.
+        p_limit: The window of the roll rate in rad/s.
+
+    Returns:
+        The start of the stability-axis roll rate in rad/s, with the sign of the command.
+    """
+    sign = math.copysign(1.0, request.delta_deg)
+    fallback = sign * ROLL_START_FRACTION * p_limit
+    if request.delta_deg == 0.0:
+        return fallback  # the equilibrium is the rest; nothing to estimate
+    probe = sign * ROLL_PROBE_FRACTION * p_limit
+
+    def moment(p_stability: float) -> float:
+        p_body, r_body = body_rates(p_stability, alpha_start, asb.numpy)
+        result = asb.AeroBuildup(
+            airplane,
+            asb.OperatingPoint(
+                atmosphere=FixedAtmosphere(request.air),
+                velocity=request.v_ms,
+                alpha=alpha_start,
+                p=p_body,
+                r=r_body,
+            ),
+            model_size=NEURALFOIL_MODEL_SIZE,
+        ).run()
+        return float(
+            np.ravel(stability_rolling_moment(result["Cl"], result["Cn"], alpha_start, asb.numpy))[
+                0
+            ]
+        )
+
+    at_zero, at_probe = moment(0.0), moment(probe)
+    slope = (at_probe - at_zero) / probe
+    if not (math.isfinite(slope) and slope < 0.0):
+        return fallback
+    start = -at_zero / slope
+    limit = ROLL_START_LIMIT_FRACTION * p_limit
+    return sign * min(abs(start), limit) if start * sign > 0.0 else fallback
 
 
 def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
@@ -676,7 +741,7 @@ def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
     opti = asb.Opti()
     alpha = opti.variable(init_guess=alpha_start, lower_bound=low, upper_bound=high)
     p_stability = opti.variable(
-        init_guess=math.copysign(ROLL_START_FRACTION * p_limit, request.delta_deg),
+        init_guess=_roll_start(asb, request, airplane, alpha_start, p_limit),
         lower_bound=-p_limit,
         upper_bound=p_limit,
     )

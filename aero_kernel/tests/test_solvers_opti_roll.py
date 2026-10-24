@@ -5,6 +5,7 @@ The solver boundary is faked as in the stall tests; the real AeroBuildup and IPO
 """
 
 import math
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import Any, ClassVar
 
@@ -212,6 +213,8 @@ class Boundary:
         self.variables: list[dict[str, Any]] = []
         self.error: Exception | None = None
         self.numeric_runs = 0
+        # (alpha, p_body) -> (Cl, Cn) of the fake airplane, for the secant start
+        self.moments: Callable[[float, float], tuple[float, float]] = lambda _a, _p: (0.0, 0.0)
 
     def namespace(self) -> SimpleNamespace:
         boundary = self
@@ -250,7 +253,13 @@ class Boundary:
                         xsec.airfoil.get_aero_from_neuralfoil(
                             alpha=5.0, Re=1e5, control_surfaces=xsec.control_surfaces
                         )
-                return {"L": 0.0, "Cl": 0.0, "Cn": 0.0}
+                cl, cn = (
+                    boundary.moments(op_point.alpha, op_point.p)
+                    if isinstance(op_point.alpha, float)
+                    and not isinstance(op_point.alpha, Variable)
+                    else (0.0, 0.0)
+                )
+                return {"L": 0.0, "Cl": cl, "Cn": cn}
 
             return SimpleNamespace(run=run)
 
@@ -312,7 +321,7 @@ async def test_the_worker_rotates_about_the_stability_axis(monkeypatch: pytest.M
         opti_module.ALPHA_MIN_DEG,
         UPRIGHT_PEAK[0] + opti_module.ALPHA_STEP_DEG,
     )
-    first = boundary.operating_points[0]
+    first = next(op for op in boundary.operating_points if isinstance(op["alpha"], Variable))
     alpha, p_s = alpha_variable["init_guess"], p_variable["init_guess"]
     assert first["velocity"] == SPEED
     assert first["alpha"] == alpha
@@ -441,7 +450,7 @@ async def test_the_worker_records_min_confidence_and_max_effective_alpha_over_al
     tau = control_effectiveness(0.78)
     assert math.isclose(recorded.max_effective_alpha_deg, 5.0 + tau * 20.0, rel_tol=1e-12)
     assert recorded.max_effective_alpha_wing == "Main"
-    assert boundary.numeric_runs == 1
+    assert boundary.numeric_runs == 3  # two for the start of the roll rate, one recording pass
 
 
 async def test_a_zero_deflection_runs_no_recording_pass(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -478,3 +487,57 @@ async def test_the_window_of_alpha_comes_from_the_clean_sweep(
     opti_module.steady_roll_worker(request)
     assert swept == [0.0]
     assert 20.0 in built  # the optimised and the recorded evaluation use the rolled airplane
+
+
+def start_of_p(boundary: Boundary) -> float:
+    return boundary.variables[1]["init_guess"]
+
+
+async def test_the_start_of_the_roll_rate_is_the_zero_of_the_rolling_moment_at_the_start_alpha(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two numeric runs at the start angle of attack (no roll and a probe at a quarter of the window)
+    give the secant through the stability-axis rolling moment; its zero is the start. The fake
+    airplane has Cl = 0.01 - 0.002 p_body and no Cn, so the moment is
+    (0.01 - 0.002 p cos(alpha)) cos(alpha) and vanishes at p = 5 / cos(alpha)."""
+    boundary = Boundary(2.0, 4.0)
+    boundary.moments = lambda _alpha, p_body: (0.01 - 0.002 * p_body, 0.0)
+    request = install(monkeypatch, boundary)
+    opti_module.steady_roll_worker(request)
+    alpha = boundary.variables[0]["init_guess"]
+    assert math.isclose(start_of_p(boundary), 5.0 / math.cos(math.radians(alpha)), rel_tol=1e-9)
+    probes = [op["p"] for op in boundary.operating_points[:2]]
+    p_limit = 2.0 * SPEED / 1.4
+    assert probes[0] == 0.0
+    assert math.isclose(probes[1], 0.25 * p_limit * math.cos(math.radians(alpha)), rel_tol=1e-12)
+
+
+async def test_the_start_is_negative_for_a_negative_command(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    boundary = Boundary(-2.0, 4.0)
+    boundary.moments = lambda _alpha, p_body: (-0.01 - 0.002 * p_body, 0.0)
+    request = install(monkeypatch, boundary).model_copy(update={"delta_deg": -20.0})
+    opti_module.steady_roll_worker(request)
+    assert start_of_p(boundary) < 0.0
+
+
+async def test_the_start_stays_inside_the_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A zero beyond 90 % of the window is cut to it: the start is no bound hit."""
+    boundary = Boundary(2.0, 4.0)
+    boundary.moments = lambda _alpha, p_body: (10.0 - 0.002 * p_body, 0.0)
+    request = install(monkeypatch, boundary)
+    opti_module.steady_roll_worker(request)
+    assert math.isclose(start_of_p(boundary), 0.9 * P_LIMIT, rel_tol=1e-12)
+
+
+async def test_a_roll_without_damping_starts_from_the_fixed_fraction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No slope (or the wrong sign): the secant says nothing, the fixed fraction is the start."""
+    boundary = Boundary(2.0, 4.0)
+    request = install(monkeypatch, boundary)
+    opti_module.steady_roll_worker(request)
+    assert math.isclose(
+        start_of_p(boundary), opti_module.ROLL_START_FRACTION * P_LIMIT, rel_tol=1e-12
+    )
