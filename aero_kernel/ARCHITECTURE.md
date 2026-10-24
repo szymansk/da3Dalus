@@ -279,11 +279,11 @@ Sources:
   from the section chords in metres, the evaluated V and the speed of sound at the altitude. Not in input
   validation, which does not know V.
 - violated or unchecked preconditions
-- the missing fuselage (`fuselage_not_modelled`, `defect`, origin `neutral-point`, once per world): none of the
+- the missing fuselage (`fuselage_not_modelled`, `practice`, origin `neutral-point`, once per world): none of the
   three neutral-point worlds models a fuselage, whose contribution is destabilising, so the interval is biased
-  aft and a static margin computed from it is over-reported (`static-margin` inherits it). Rationale for
-  `defect` and not `practice`: no accepted practice says the fuselage may be left out; the sourced term is
-  open (#1205)
+  aft and a static margin computed from it is over-reported (`static-margin` inherits it). `practice`: a
+  deliberate, declared simplification (maintainer 2026-10-24, #1205): USAF DATCOM 1978 §4.2.2.1 Method 1
+  gives about 1.5-2.1 % MAC forward (BRYAN) and 0.7-1.0 % (JAGUAR), inside Sadraey's "about ±5 % c̄"
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`defect`)
 - the averaged hinge line of a roll device (`hinge_line_averaged`, `practice`, ch. 8.8): AeroBuildup holds one
@@ -889,8 +889,8 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   every reference resolves; every application binds every input and produces every output (`null` =
   unexposed); a precondition names an input, a postcondition an output; `worlds` (≥ 2, unique, snake_case)
   exactly with `uncertainty: interval`; `given` slugs are bound by their application, role input/target,
-  and have no entry in `defaults`; `positive` only on input/target, and for a `positive` quantity its
-  default is > 0; `variables` exactly with `embeds`;
+  and have no entry in `defaults`; `positive` and `at_most` only on input/target scalars, `positive` with an `at_most` > 0, and a default
+  is > 0 for a `positive` quantity and not above `at_most`; `variables` exactly with `embeds`;
   `embeds` ⊆ `embeds_closure` and every closure item resolves. **Cross-formula rules stay with the
   importer** (ch. 8.6): one producer per quantity, unit consistency, closure correctness and acyclicity,
   cost derivation. The implicit application is written out with id `default`.
@@ -900,7 +900,7 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   the same types; `jsonschema` is a test dependency only, used to validate fixtures against the committed
   schema), and — once a registry exists — that every registered implementation and check has its slug and
   id in the model (ch. 8.6).
-- **`values` against the canon** — `unknown_quantity`, `not_an_input`, `non_positive_value` (ch. 8.11) —
+- **`values` against the canon** — `unknown_quantity`, `not_an_input`, `non_positive_value`, `value_above_maximum` (ch. 8.11) —
   are `validate.validate_values(values, model)`, built with the model types (unit 6), called next to
   `validate_aircraft` in step 1.
 
@@ -1061,7 +1061,7 @@ implementation, not before (ADR 0021).
     `regime` the RC/UAV check (ADR 0028: why the value holds for chord Re 3·10⁴–1·10⁶ and Mach ≤ 0.3, or
     that it is regime-independent, e.g. standard gravity). The quantity entries carry no `default:` field.
   - **The importer** validates it (stage 3: every slug exists, has role `input` or `target` and type
-    `scalar`; `value` finite and, for a `positive` quantity, > 0; `basis` one of the four terms, `source` and `regime` non-empty; no slug
+    `scalar`; `value` finite, for a `positive` quantity > 0 and not above its `at_most`; `basis` one of the four terms, `source` and `regime` non-empty; no slug
     twice) and writes it **into the one model artefact**, `canon_model.json`, as
     `namespaces.calc.defaults: {<slug>: {value, unit, basis, source, regime}}`. There is no second file and no
     second loader: the defaults load, hash and check with the model (`content_hash`, the build digest,
@@ -1142,7 +1142,8 @@ one code, one test:
 from a slug written in code:** a quantity entry may declare `positive: true` (strictly > 0 by definition —
 a mass, a density, gravity; a fact, not a design judgement, A10), and the canon-loader unit checks every
 supplied value of such a quantity, code `non_positive_value`, `input_path = values.<slug>`, together with
-`unknown_quantity` and `not_an_input`. `validate_aircraft` names no quantity slug except in the two
+`unknown_quantity` and `not_an_input`. A quantity may also declare `at_most: <number>` (an efficiency is at
+most 1); a supplied value above it is `value_above_maximum`, same path. `validate_aircraft` names no quantity slug except in the two
 input-fact warnings, whose origins §8.11 fixes (`aircraft-mass`, `airplane`). A dict key is the identity of a wing or fuselage (paths use
 it); a differing `name` is a label and no finding. The geometry's `total_mass_kg` is never used, so only its
 finiteness is checked. `detail` carries `{"value": …}`: the number, or `"nan"` / `"inf"` / `"-inf"` as a

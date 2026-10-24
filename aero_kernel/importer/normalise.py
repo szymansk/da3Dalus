@@ -95,7 +95,17 @@ def _quantity(entry: Entry, findings: list[Finding]) -> JsonDict:
     document: JsonDict = {
         name: _unit(value) if name == "unit" else value
         for name, value in entry.front.items()
-        if name in ("symbol", "unit", "role", "type", "uncertainty", "positive", "checks")
+        if name
+        in (
+            "symbol",
+            "unit",
+            "role",
+            "type",
+            "uncertainty",
+            "positive",
+            "at_most",
+            "checks",
+        )
     }
     for family in QUANTITY_TAG_FAMILIES:
         values = _tag_values(entry, family, findings)

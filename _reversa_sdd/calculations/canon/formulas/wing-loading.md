@@ -45,10 +45,11 @@ Scholz/Sadraey normally write the MASS loading m/S in kg/m^2 (or lb/ft^2), not t
 
 **Validity in the RC/UAV regime (ADR 0028).** Fully valid at 0.5-15 kg; wing loading is arguably the single most used RC design number. Caveat is presentational: RC users read g/dm^2 or oz/ft^2, and Lennon's mission bands are the ones they benchmark against. Producing this quantity in three places with two different g values (as the skeleton notes) is an ADR 0022 violation with no defence in either source.
 
-## Implementations (3)
+## Implementations (4)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/wing_loading.py` | EXACT | 🟢 |  |
 | [[fe_wing_loading]] | EXACT | 🟢 |  |
 | [[wing_loading_fl]] | EXACT | 🟢 |  |
 | [[mkpi_wing_loading]] | EXACT | 🟢 |  |

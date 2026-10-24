@@ -39,3 +39,25 @@ Mach number as `V/a`, both from the bound atmosphere (#1201): the solver gets `�
 **Why this entry exists.** These were inputs, though they are the most airplane-dependent
 quantities of all: they are what the solver says about this aircraft at this operating
 point. Verified against the installed AeroSandbox 4.2.9 source.
+
+**Source.** 🟢 Sharpe, PhD thesis 2024: AeroBuildup §5.3, validation §5.4, NeuralFoil analysis confidence §7.2.4, training data §7.2.5. Nita & Scholz (2012), "Estimating the Oswald Factor from Basic Aircraft Geometrical Parameters", Section 5, as cited and implemented in AeroSandbox 4.2.9 `library/aerodynamics/inviscid.py`.
+
+**Validity in the RC/UAV regime (ADR 0028).** NeuralFoil supplies the section data; its training data cover Re_c of 1.9·10³ to 2.6·10⁸ (95 %; Sharpe 2024 §7.2.5), so the whole regime is inside the trained range. AeroBuildup calls NeuralFoil with its defaults — free transition, `n_crit = 9`, `xtr = 1` (`airfoil.py:651-653`, not overridden in `aero_buildup.py:795-803`) — so the polar is a smooth-surface polar: a turbulator or a rough printed surface is not represented, which matters below Re 7·10⁴. NeuralFoil's own analysis confidence drops sharply near Re_c ≈ 8·10⁴ at C_L ≈ 1.0, where a laminar separation bubble forms (Sharpe 2024 §7.2.4). AeroBuildup was cross-validated on an RC sailplane at Re_c = 1.55·10⁵, M = 0.044 (§5.4): lift and drag polars agree with nonlinear lifting line. Main-wing downwash on the tail is omitted for lift (§5.3), so tail lift is over-counted. The internal `e` uses a viscous factor averaged over full-scale classes (`inviscid.py:66-73`) and is not checked at RC Reynolds numbers [no source for its RC error]. Mach ≤ 0.3: compressibility is negligible.
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

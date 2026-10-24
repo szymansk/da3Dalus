@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b7670419b36eba3d655005c6203d17ece64d197672404c9e97c6fcfb9ef2e31e",
+  "content_hash": "sha256:d385f88512d0efef9221f95de15e6398739bff96b84db8b7745ced1577903298",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -402,6 +402,7 @@
       },
       "quantities": {
         "air-density": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -416,6 +417,7 @@
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -430,6 +432,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -444,6 +447,7 @@
           "unit": "1"
         },
         "airplane-landing": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -458,6 +462,7 @@
           "unit": "1"
         },
         "approach-speed": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -472,6 +477,7 @@
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -486,6 +492,7 @@
           "unit": "1"
         },
         "butterfly-speed-range": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -500,6 +507,7 @@
           "unit": "m/s"
         },
         "butterfly-stall-speed-curve": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -514,6 +522,7 @@
           "unit": "m/s"
         },
         "cruise-speed-target": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -528,6 +537,7 @@
           "unit": "m/s"
         },
         "flap-deflection-landing": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -542,6 +552,7 @@
           "unit": "deg"
         },
         "gravity": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -556,6 +567,7 @@
           "unit": "m/s^2"
         },
         "inverted-max-lift-coefficient": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -570,6 +582,7 @@
           "unit": "1"
         },
         "max-lift-coefficient": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -584,6 +597,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -598,6 +612,7 @@
           "unit": "1"
         },
         "max-mass-level-flight": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -612,6 +627,7 @@
           "unit": "kg"
         },
         "neutral-point": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -626,6 +642,7 @@
           "unit": "m"
         },
         "polar-stall": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -640,6 +657,7 @@
           "unit": "1"
         },
         "roll-rate-cruise": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -654,6 +672,7 @@
           "unit": "deg/s"
         },
         "stall-speed": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,
@@ -668,6 +687,7 @@
           "unit": "m/s"
         },
         "stall-speed-landing": {
+          "at_most": null,
           "checks": null,
           "discipline": null,
           "group": null,

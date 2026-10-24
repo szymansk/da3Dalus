@@ -45,10 +45,11 @@ Sadraey §5.6 is explicit that AR = b^2/S is "only valid when area equals span x
 
 **Validity in the RC/UAV regime (ADR 0028).** Valid for the trapezoidal wings this app builds. Sadraey's caveat is live for RC flying wings and delta/elliptical planforms, which are common at model scale. The separate 7.0 literal fallback noted in the skeleton has no source in any of the three authorities and is an undeclared substitution (ADR 0020).
 
-## Implementations (1)
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/aspect_ratio.py` | EXACT | 🟢 |  |
 | [[fe_aspect_ratio]] | EXACT | 🟢 |  |
 
 ## Approval
