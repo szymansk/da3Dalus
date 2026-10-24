@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: GEO
 shape: law
-status: draft
+status: approved
 output: airplane-takeoff, airplane-landing
 source_status: NO_SOURCE_FOUND
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs: {airplane: airplane, flap_deflection: null}
 outputs: {airplane_cfg: null}
 optional: [flap_deflection]
@@ -72,4 +72,25 @@ The limitation was first noted in ANFORDERUNGEN.md, § "Rollwirkung gegen die ge
 confirm (#1181). Landing settings typically lie above that range.
 
 **Source.** 🔴 NO SOURCE FOUND — a construction step, adopted on the maintainer's statement in
-[[stall-speed]] (2026-10-02).
+[[stall-speed]] (2026-10-02). No published source exists for a construction step; the rules
+above are **adopted on the maintainer's authority** (statement 2026-10-02, confirmed 2026-10-24).
+
+**Validity in the RC/UAV regime (ADR 0028).** Regime-independent as a construction step. The tool limit
+is the one declared above: AeroBuildup's τ·δ shift without flap separation over-predicts the flap at large
+deflections; landing settings of RC models lie above the unverified 15–25° range.
+
+## Implementations (1)
+
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/airplane_configuration.py` | EXACT | 🟢 | flaps reaching AeroBuildup/AVL are refused until #1212; without flaps the configured airplane is the airplane |
+
+## Approval
+
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Inputs approved** — no formula is approvable before its inputs are
+
+> **Approved** (maintainer, 2026-10-24). This is the relation the implementations are measured against.

@@ -169,7 +169,9 @@ def entry_issues(text: str) -> list:
             }
         )
     status = _front(text, "source_status")
-    if status in ("NO_SOURCE_FOUND", "PARTIAL"):
+    # An approved entry has passed the source gate: a missing source adopted on the maintainer's
+    # authority is a legitimate outcome (canon README, "Three gates before approved").
+    if status in ("NO_SOURCE_FOUND", "PARTIAL") and _front(text, "status") != "approved":
         m = re.search(r"^\*\*Source\.\*\*(.*?)(?=\n\n\*\*|\n## |\Z)", body, re.S | re.M)
         title = (
             "No published source found." if status == "NO_SOURCE_FOUND" else "Only partly sourced."
