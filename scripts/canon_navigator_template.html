@@ -107,7 +107,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .blocklab.tmodlab{fill:var(--tgt)}
 .frame{fill:transparent;stroke:var(--line-2);stroke-width:1.2}
 .modsel{cursor:pointer}.modsel:hover .frame{stroke:var(--sel)}
-.modsel:hover .blocklab{fill:var(--sel)}
+.modsel:hover .blocklab,.modsel:hover .dischead{fill:var(--sel)}
 .frame.framesel{stroke:var(--sel);stroke-width:2.4;stroke-dasharray:none}
 .tframe{stroke:var(--tgt);stroke-dasharray:4 3}
 .blocklab{font-weight:600;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round;font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.08em}
@@ -255,8 +255,9 @@ const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
 // each column the target modules come first (left), then the input modules (right); modules
 // flow left to right and wrap. Deeper layers wrap into sub-rows of the column's width.
 // Design quantities: in a separate column on the right, or merged into their discipline and
-// marked (maintainer 2026-10-24: to be compared; toggled by the "#design-merged" hash).
-const DESIGN_SEP=!/design-merged/.test(location.hash);
+// marked (maintainer 2026-10-24: merged is the default, it fits the canon — O1 keeps the design entries
+// as borderline cases of the analysis they invert; "#design-separate" shows the separate column).
+const DESIGN_SEP=/design-separate/.test(location.hash);
 const SIDE=q=>(DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q))?'design':'analysis';
 const MODULES={'envelope-targets':'Envelope targets','design-targets':'Design targets',
   'construction':'Construction','mass-and-balance':'Mass and balance','atmosphere':'Atmosphere and constants',
@@ -379,7 +380,7 @@ for(const [band,,inBand] of BANDS){
 }
 // The cross-cutting column: upright framed modules, one node per row, below the top row.
 const XTOP=BANDY.inter-GAPY/2;
-for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,label:c.module==='design'?'Design':DISC[c.module]});
+for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==='design'?'Design':DISC[c.module]});
 // Cross-cutting modules and their derived references side by side (maintainer 2026-10-24):
 // each module's inputs on the left, the references derived from them (canon tags module/ and
 // group/) on the right, on the same level, so a row reads "input -> reference". The powertrain
@@ -439,10 +440,11 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
   for(const s of PSPANS){
     const st=s.band!=='final';
     if(!s.sub) cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
-    const t=el('text',{x:s.x+(s.sub?2:8),y:s.y+13,class:'blocklab '+(st?'stlab':'ptlab')}); t.textContent=s.label; cam.appendChild(t); }
+    const kind=s.band==='final'?'point':(s.key==='powertrain'||GROUPS[s.key])?'group':'stage';
+    cam.appendChild(headingEl(s.x+(s.sub?2:8),s.y+13,'blocklab '+(st?'stlab':'ptlab'),s.label,kind,s.key)); }
   for(const f of PFRAMES)
     cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:f.band!=='final'?'sframe':'pframe'}));
-  for(const h of COLHEADS){ const t=el('text',{x:h.x,y:h.y,class:'dischead'}); t.textContent=h.label; cam.appendChild(t); }
+  for(const h of COLHEADS) cam.appendChild(headingEl(h.x,h.y,'dischead',h.label,'discipline',h.key));
   for(const f of FRAMES){
     const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select module '+f.label});
     const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.target?' tframe':'')});
@@ -592,19 +594,71 @@ function select(q){
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
 }
-function selectModule(m){
-  const members=new Set(Object.keys(Q).filter(q=>Q[q].module===m&&P[q]));
-  sel={module:m,members}; paint();
+// Explanations of every heading, worded as in the canon README (tags module/, discipline/, stage/,
+// point/, group/); the README is the authority.
+const DESC={
+ 'module:envelope-targets':'Targets that name an operating point or bound the envelope: the stall-speed margins of approach, touchdown and take-off, the cruise-speed target and the limit load factor.',
+ 'module:design-targets':'Targets a design entry turns into a construction quantity: the static-margin target, the stall-speed target and the roll-rate targets (O1).',
+ 'module:construction':'The airplane as built and its fitted components (motor, battery, propeller), with the references derived from them: geometry references, the take-off and landing configurations and the powertrain values. Cross-cutting: nearly every formula depends on it.',
+ 'module:mass-and-balance':'The take-off mass and the centre of gravity, inputs of the canon (A6), with the weight and the wing loading derived from them. Cross-cutting.',
+ 'module:atmosphere':'Altitude and the physical constants, with the air state derived from them: density, viscosity and speed of sound. Cross-cutting.',
+ 'module:control-deflections':'Every device angle the caller sets: ailerons, elevator, rudder, flaps for take-off and landing, crow. The geometry stops are never read.',
+ 'module:operating-point':'The free variables of a flight state: flight speed, angle of attack and load factor. Named points bind them instead.',
+ 'discipline:aerodynamics':'Forces, the polar, stall, and the speeds set as a margin over the stall speed.',
+ 'discipline:glide':'Unpowered performance: best glide, minimum sink, sink rate, glide distance, crow.',
+ 'discipline:powered':'Thrust, climb, top speed, sustained turn, endurance and range on the battery, and their sweeps over the mass.',
+ 'discipline:longitudinal':'Static stability and trim about the pitch axis: neutral point, static margin, the CG for a target margin, the CG envelope.',
+ 'discipline:lateral':'Lateral-directional stability and roll control: dihedral and weathercock effect, spiral, fin volume, roll rate and the aileron deflection a roll target needs.',
+ 'discipline:structure':'Manoeuvre and dive speeds, break load factors, spanwise loads and hinge moments.',
+ 'discipline:design':'Design quantities: a target turned into a construction quantity (O1).',
+ 'stage:aero-model':'The polar independent of the operating point: lift and drag, the lift-curve slope, zero-lift angle, C_L,max, the fitted parabola.',
+ 'stage:operating-points':'Where the named speeds are born: V_S0, V_S,TO, V_md, V_mp, V_app, V_TO, V_A. Every final result of a point depends on them.',
+ 'stage:propulsion-state':'The propeller at a flight speed: rotational speed, advance ratio, thrust coefficient.',
+ 'stage:stability-structure':'The neutral point and the positive break load factor, on which the stability and structure results build.',
+ 'point:stall':'C_L,max at n = 1 or −1, clean configuration.','point:takeoff':'The take-off configuration and its speeds.',
+ 'point:approach':'The landing configuration and the approach at V_app = k_S · V_S0.',
+ 'point:best-glide':'V_md, the minimum-drag speed; also the reference point of static stability.',
+ 'point:minimum-sink':'V_mp, the minimum-sink speed.','point:full-throttle':'Power-limited points at full throttle.',
+ 'point:cruise-target':'Only when a cruise-speed target is given.','point:manoeuvre':'V_A and the load factors.',
+ 'point:free':'A state the caller sets (V, α, n); no named point yet — a visible gap against A2.',
+ 'point:over-mass':'Sweeps over the take-off mass.','point:none':'Geometry or components only, no operating point.',
+ 'group:air-state':'Density, viscosity and speed of sound at the altitude (ISA).','group:weight-and-loading':'Weight and wing loading.',
+ 'group:geometry-references':'Reference area, span, mean aerodynamic chord, aspect ratio.','group:configurations':'The airplane in its take-off and landing configuration.',
+ 'group:powertrain-motor-propeller':'Motor and propeller values from the catalogue, and the pack voltage they run on.',
+ 'group:powertrain-battery':'Battery capacity, mass and specific energy, and the predicted battery mass.',
+ 'group:powertrain':'The powertrain: motor, battery and propeller.',
+};
+const KINDNAME={module:'module',discipline:'discipline',stage:'stage',point:'operating point',group:'group'};
+function membersOf(kind,key){
+  const all=Object.keys(Q).filter(q=>P[q]);
+  if(kind==='module') return all.filter(q=>Q[q].module===key);
+  if(kind==='discipline') return all.filter(q=>key==='design'?COLOF[q]==='design':Q[q].discipline===key&&COLOF[q]!=='design');
+  if(kind==='group'&&key==='powertrain') return all.filter(q=>(Q[q].group||'').startsWith('powertrain-'));
+  return all.filter(q=>Q[q][kind]===key);
+}
+function selectGroup(kind,key,label){
+  const members=new Set(membersOf(kind,key));
+  sel={module:kind==='module'?key:kind+':'+key,members}; paint();
   const direct=[...new Set([...members].flatMap(q=>succ[q].map(([o])=>o)))].filter(o=>!members.has(o)).sort();
-  let h=`<h2>${esc(MODULES[m]||m)}</h2><p class="meta">module \u00b7 module/${esc(m)} \u00b7 ${members.size} quantities</p>
-    <p class="desc">All quantities of the module are selected together. The depth slider sets how many steps of their influence are highlighted.</p>
-    <div class="blk"><div class="lab">In the module \u00b7 ${members.size}</div><ul class="lnk">`+
+  let h=`<h2>${esc(label)}</h2><p class="meta">${KINDNAME[kind]} \u00b7 ${esc(kind)}/${esc(key)} \u00b7 ${members.size} quantities</p>
+    <p class="desc">${esc(DESC[kind+':'+key]||'')}</p>
+    <p class="sub">All its quantities are selected together; the depth slider sets how many steps of their influence are highlighted.</p>
+    <div class="blk"><div class="lab">Contains \u00b7 ${members.size}</div><ul class="lnk">`+
     [...members].map(q=>`<li data-q="${esc(q)}">${esc(sym(q))}</li>`).join('')+`</ul></div>`;
   h+= direct.length ? `<div class="blk"><div class="lab">Directly influences \u00b7 ${direct.length}</div><ul class="lnk">`+
     direct.map(o=>`<li data-q="${esc(o)}" title="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`
     : `<div class="blk"><div class="lab">Directly influences</div><p class="sub" style="margin:0">Nothing.</p></div>`;
   info.innerHTML=h;
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+}
+function selectModule(m){ selectGroup('module',m,MODULES[m]||m); }
+// a clickable heading: SVG text with the selection behaviour of a module frame
+function headingEl(x,y,cls,label,kind,key,anchor){
+  const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select '+label});
+  const t=el('text',{x,y,class:cls,...(anchor?{'text-anchor':anchor}:{})}); t.textContent=label+' \u25b8'; g.appendChild(t);
+  g.addEventListener('click',ev=>{ ev.stopPropagation(); if(!moved) selectGroup(kind,key,label); });
+  g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectGroup(kind,key,label);} });
+  return g;
 }
 // Search
 const qi=document.getElementById('q'), hits=document.getElementById('hits');
@@ -647,7 +701,7 @@ addEventListener('resize',fit);
     bt.setAttribute('aria-checked',String(!off)); }); }
 { const bt=document.getElementById('designToggle');
   bt.setAttribute('aria-checked',String(!DESIGN_SEP));
-  bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'design-merged':''; location.reload(); }); }
+  bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'':'design-separate'; location.reload(); }); }
 let mode='all';
 function applyMode(){
   const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
