@@ -323,7 +323,7 @@ def build_flight_canon() -> str:
     # The model file holds the normalised form: every absent optional field is written out.
     normalised = {name: namespace.model_dump(mode="json") for name, namespace in parsed.items()}
     model = {
-        "schema_version": 1,
+        "schema_version": 2,
         "content_hash": compute_content_hash(parsed),
         "importer_version": "0.0.0-fixture",
         "namespaces": normalised,

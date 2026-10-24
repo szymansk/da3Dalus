@@ -113,7 +113,7 @@ def test_a_different_schema_version_makes_the_model_stale(
     canon, out = write_canon(tmp_path), tmp_path / "out"
     import_to(canon, out)
     document = json.loads((out / MODEL).read_text(encoding="utf-8"))
-    document["schema_version"] = 2
+    document["schema_version"] = 1
     (out / MODEL).write_text(json.dumps(document), encoding="utf-8")
     capsys.readouterr()
     assert check(canon, out) == 1

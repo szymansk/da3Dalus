@@ -199,7 +199,7 @@ def assemble(namespace: dict[str, object]) -> tuple[CanonModel | None, list[Find
         content = {DEFAULT_NAMESPACE: validated}
         model = CanonModel.model_validate(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "content_hash": compute_content_hash(content),
                 "importer_version": IMPORTER_VERSION,
                 "namespaces": {DEFAULT_NAMESPACE: validated.model_dump(mode="json")},
