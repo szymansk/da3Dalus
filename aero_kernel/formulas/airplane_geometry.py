@@ -41,10 +41,10 @@ async def airplane_geometry(x: Inputs, ctx: Context) -> dict[str, float]:
     """Reference area, span and mean aerodynamic chord of the main wing, as AeroSandbox measures them.
 
     The wing is chosen by ``surface_type`` ``main_wing``, never by list position. The values are
-    ``Wing.area()``, ``Wing.span(include_centerline_distance=True)`` and
-    ``Wing.mean_aerodynamic_chord()``, what ``asb.Airplane`` infers when the main wing is its first
-    wing (maintainer, 2026-10-25). ``area()`` excludes the gap at the centreline while the span
-    includes it.
+    ``Wing.area(type="planform", include_centerline_distance=True)``,
+    ``Wing.span(type="yz", include_centerline_distance=True)`` and
+    ``Wing.mean_aerodynamic_chord()`` (maintainer, 2026-10-25, gh-1262). Area and span both include
+    the gap at the centreline; the flags are set in code, never left to ASB's defaults.
 
     Args:
         x: ``airplane`` the geometry document.

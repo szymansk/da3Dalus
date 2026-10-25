@@ -55,8 +55,10 @@ carried through the whole downstream chain (A11 rule 4). One entry, one producer
   are unchanged: they imply `eta = 1`, so part of the textbook–Pappas gap is the choice of `eta_h`.
   Aerodynamic centres at 25 % of each surface's MAC.
 - **Geometry of the textbook and Pappas worlds (maintainer 2026-10-25, #1253).** Area, aspect ratio and MAC of
-  the main wing and of the horizontal tail are AeroSandbox's: `Wing.area()`, `AR = b²/S` with
-  `b = Wing.span(include_centerline_distance=True)`, and `Wing.mean_aerodynamic_chord()`; the leading edge of the MAC is
+  the main wing and of the horizontal tail are AeroSandbox's: `Wing.area(type="planform", include_centerline_distance=True)`,
+  `AR = b²/S` with `b = Wing.span(type="yz", include_centerline_distance=True)`, and `Wing.mean_aerodynamic_chord()`
+  (#1262: the flags are set in code, for both surfaces: each is a mirrored surface carried through the fuselage
+  to the centreline, as the reference wing is, and for a root on y = 0 the flag changes nothing); the leading edge of the MAC is
   `x_le,MAC = x_AC − 0.25·c_MAC` with `x_AC` from `Wing.aerodynamic_center()` (the same MAC definition), so the
   surface's aerodynamic centre is ASB's. The same route as [[airplane-geometry]] (one producer, ADR 0022); the
   kernel's earlier own integration of the sections is gone. Quote: "Um ASB-konform zu sein, rechnen wir aus dem

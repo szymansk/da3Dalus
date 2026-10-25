@@ -485,10 +485,10 @@ quantity.
       - `main_wing` — exactly one (biplanes are out of v1; a second `main_wing` is `main_wing_count`);
         `S_ref`, `b_ref`, `c_MAC` come from it alone, chosen by type and never by list position, and are
         AeroSandbox's own values of that wing (maintainer 2026-10-25, superseding the own integration of
-        2026-10-22): `Wing.area()`, `Wing.span(include_centerline_distance=True)` and
-        `Wing.mean_aerodynamic_chord()`, i.e. what `asb.Airplane` infers when the main wing is its first
-        wing. `area()` excludes the centreline gap while the span includes it (declared in the canon entry,
-        not changed). The GEO adapter (`solvers/geometry.py`) measures them on the wing the one conversion
+        2026-10-22): `Wing.area(type="planform", include_centerline_distance=True)`,
+        `Wing.span(type="yz", include_centerline_distance=True)` and `Wing.mean_aerodynamic_chord()`; area and
+        span both include the centreline gap, and the flags are set in code, never left to ASB's defaults
+        (#1262). The GEO adapter (`solvers/geometry.py`) measures them on the wing the one conversion
         `to_asb_airplane` builds; its tool versions are AeroSandbox's;
       - `horizontal_tail`;
       - `vertical_tail` — also tip fins and centre fins that carry a rudder or serve directional stability;

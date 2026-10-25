@@ -44,8 +44,9 @@ FAKE_REFERENCE: dict[str, tuple[float, float, float]] = {
 # x of the aerodynamic centre the fake wing reports by name.
 FAKE_AC_X: dict[str, float] = {"Main": 0.12, "Fin": 0.55}
 FAKE_DEFAULT_REFERENCE = (1.0, 2.0, 0.5)
-# The span without the centreline distance is this much shorter than the one with it.
+# Without the centreline distance the span is this much shorter, and the area this much smaller.
 FAKE_CENTRELINE_GAP = 0.1
+FAKE_CENTRELINE_AREA = 0.02
 
 
 class FakeWing:
@@ -59,15 +60,20 @@ class FakeWing:
     def _reference(self) -> tuple[float, float, float]:
         return FAKE_REFERENCE.get(str(self.name), FAKE_DEFAULT_REFERENCE)
 
-    def area(self, **options: Any) -> float:
-        """The planform area (centreline gap excluded, as ASB does)."""
-        self.calls.append(("area", options))
-        return self._reference()[0]
+    def area(self, *, type: str, include_centerline_distance: bool) -> float:  # noqa: A002
+        """The area; both arguments are required, so a call that relies on ASB's defaults fails."""
+        self.calls.append(
+            ("area", {"type": type, "include_centerline_distance": include_centerline_distance})
+        )
+        extra = FAKE_CENTRELINE_AREA if include_centerline_distance else 0.0
+        return self._reference()[0] + extra
 
-    def span(self, **options: Any) -> float:
-        """The span; the one with the centreline distance is the longer."""
-        self.calls.append(("span", options))
-        gap = FAKE_CENTRELINE_GAP if options.get("include_centerline_distance") else 0.0
+    def span(self, *, type: str, include_centerline_distance: bool) -> float:  # noqa: A002
+        """The span; both arguments are required, so a call that relies on ASB's defaults fails."""
+        self.calls.append(
+            ("span", {"type": type, "include_centerline_distance": include_centerline_distance})
+        )
+        gap = FAKE_CENTRELINE_GAP if include_centerline_distance else 0.0
         return self._reference()[1] + gap
 
     def aerodynamic_center(self, **options: Any) -> list[float]:
