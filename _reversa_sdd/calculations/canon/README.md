@@ -550,6 +550,12 @@ as a mapping `<slug>: {value, unit, basis, source, regime}` (maintainer, 2026-10
 Only a value the canon states with its source gets an entry. Taking a default is visible
 (INFO, `provenance.defaults_used`).
 
+The navigator shows every default, whatever its basis (#1239): the "Defaults" view lists the quantities that carry one;
+on the quantity it gives value, unit, basis, source, regime and the quantities and formulas that rest on it. The
+generator fails if a default maps to no quantity of the navigator. A constant bound in an application (`{const, source}`,
+e.g. `n_load` = ±1 in the stall-speed applications) is not a default: it is fixed by the application, cannot be overridden,
+and is shown at the binding as a "fixed constant (not overridable)" with its source.
+
 #### Quantity types
 
 Closed. The unit is the unit of the values. A dimensionless quantity is written `unit: 1` — one spelling
@@ -568,17 +574,16 @@ column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` fie
 
 ### One example per kind
 
-A **law** with preconditions and the single default application (`glide-distance-from-ratio`):
+A **law** with a precondition and the single default application (`sink-rate`):
 
 ```yaml
 kind: law
 tool: APP
-output: glide-distance
-inputs: {e: lift-to-drag-ratio, h: altitude}
-outputs: {r_glide: glide-distance}
+output: sink-rate
+inputs: {v: flight-speed, cl: lift-coefficient, cd: drag-coefficient-parabolic}
+outputs: {w_sink: sink-rate}
 preconditions:
-  - {id: lift_to_drag_of_flown_configuration, parameter: e, on_violation: warning}
-  - {id: propeller_drag_not_in_polar, parameter: e, on_violation: warning}
+  - {id: small_glide_angle, parameter: cd, on_violation: warning}
 ```
 
 A **procedure** with declared uncertainty (`neutral-point`):

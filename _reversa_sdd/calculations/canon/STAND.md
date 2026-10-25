@@ -530,7 +530,7 @@ Maintainer; `check_canon.py` meldet es als *open*.
 - `stall-onset-detection`: bindet `drag-coefficient-parabolic` (C_D,par), tastet aber das C_D der Solver-Polare ab (`drag-polar`, Umbenennung 02.10.2026). **Behoben mit dem Typ `polar` (#1181)** — die Bindung an C_D,par entfällt.
 - `sink-rate`: die Form nennt C_D, gebunden ist C_D,par.
 - `stall-wing-loading-limit`: die Form sagt C_L,max,clean, gebunden ist `max-lift-coefficient` (C_L,max,stall aus der Stall-Optimierung, braucht ein Flugzeug), der O12-Text sagt „aus dem gewählten Profil“ — drei verschiedene C_L,max.
-- `glide-distance-from-ratio`: bindet `altitude` (Auswertehöhe der Atmosphäre) als Gleithöhe über Grund — eine Größe, zwei Bedeutungen.
+- `glide-distance-from-ratio`: bindet `altitude` (Auswertehöhe der Atmosphäre) als Gleithöhe über Grund — eine Größe, zwei Bedeutungen. **Entschieden (Maintainer, 25.10.2026, #1239):** „die Höhe kennen wir gar nicht, das passiert beim Fliegen“ — die Gleitstrecke aus einer Höhe ist eine Flugsituation, keine Entwurfseigenschaft; die allgemeine Aussage ist die beste Gleitzahl (`lift-to-drag-ratio`, `max-lift-to-drag-ratio`). Formel `glide-distance-from-ratio` und Größe `glide-distance` gelöscht (ADR 0021); `altitude` ist nur noch die Höhe über MSL der Atmosphäre (Default 0 m, `convention`). Der Anforderungstext „Ausschweben `R_glide = E · h`“ in ANFORDERUNGEN.md ist damit überholt.
 - `cg-for-target-margin`, `static-margin`: hängen vom Intervall `x_NP` ab (A11: was von einer unscharfen Größe abhängt, ist unscharf), weder Eintrag noch Größe sagt es; `uncertainty` nicht gesetzt.
 
 **Werte und Quellen**

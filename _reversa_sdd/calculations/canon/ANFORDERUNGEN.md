@@ -1280,7 +1280,9 @@ setzt man es ein, und Polare, Gleitzahl und Sinkgeschwindigkeit laufen unveränd
 Die bekannte Skalierung fällt dabei heraus, statt hineingeschrieben zu werden — ein
 Betriebspunkt mit anderer Bindung, kein neues Gesetz.
 
-#### Eine Lücke, geschlossen: die Gleitstrecke
+#### ~~Eine Lücke, geschlossen: die Gleitstrecke~~ (überholt)
+
+> **ÜBERHOLT (Maintainer, 2026-10-25, #1239 / PR #1244):** „die Höhe kennen wir gar nicht, das passiert beim Fliegen“. Die Gleitstrecke aus einer Höhe ist eine Flugsituation, keine Entwurfseigenschaft; Formel `glide-distance-from-ratio` und Größe `glide-distance` sind gelöscht (ADR 0021). Die allgemeine Aussage ist die beste Gleitzahl (`lift-to-drag-ratio`, `max-lift-to-drag-ratio`). Der folgende Abschnitt steht als Entstehungsgeschichte, nicht als gültige Anforderung; siehe STAND.md.
 
 Sie fehlte, und sie ist die Zahl, nach der dein Notfall fragt — *komme ich noch zum Platz*.
 `R_glide = E · h`, einzeilig aus Vorhandenem. Mit zwei Vorbedingungen, die beide in die
@@ -1318,7 +1320,7 @@ Punkt.
 |---|---|---|
 | **Anfluggeschwindigkeit** | `V_app = k_S · V_S0` (Ist-Befund: damals `V_op = k · V_S,cfg`, an nichts gebunden) | Landekonfiguration — Klappen, wie gebaut (A3-Entscheidung 02.10.2026) |
 | **Abstand zum Abriss** | `V / V_S` | den **Reiseflug** — siehe Defekt ① |
-| **Ausschweben** | `R_glide = E · h` in Anflugkonfiguration | noch nicht gebunden |
+| ~~**Ausschweben**~~ | ~~`R_glide = E · h` in Anflugkonfiguration~~ | **überholt 2026-10-25** (Maintainer: „die Höhe kennen wir gar nicht, das passiert beim Fliegen“; Formel gelöscht, #1244, STAND.md) |
 
 #### Der Umkehrpunkt: hier ist eine hohe Gleitzahl schlecht
 

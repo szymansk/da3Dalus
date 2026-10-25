@@ -26,7 +26,7 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
     content = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"]
     assert len(content.formulas) == len(list((CANON / "formulas").glob("*.md")))
     assert len(content.quantities) == len(list((CANON / "quantities").glob("*.md")))
-    assert len(content.defaults) == 11
+    assert len(content.defaults) == 13
     for default in content.defaults.values():
         assert default.source
         assert default.regime
@@ -42,12 +42,17 @@ def test_the_conventions_of_the_real_canon_are_stall_break_fraction_specific_ene
     (tmp_path / "canon_model.json").write_text(result.model_json, encoding="utf-8")
     defaults = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"].defaults
     conventions = {slug for slug, default in defaults.items() if default.basis == "convention"}
-    assert conventions == {"battery-specific-energy", "limit-load-factor", "stall-break-fraction"}
+    assert conventions == {
+        "battery-specific-energy",
+        "limit-load-factor",
+        "stall-break-fraction",
+    }
     assert defaults["limit-load-factor"].value == 10
     assert defaults["tail-efficiency"].basis == "sourced"
     assert defaults["battery-specific-energy"].value == 140
     assert defaults["tail-efficiency"].value == 0.65
     assert defaults["stall-break-fraction"].value == 0.10
+    assert defaults["altitude"].basis == "definition"
     assert defaults["gravity"].basis == "standard"
     assert defaults["load-factor"].basis == "definition"
 

@@ -171,6 +171,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <button data-mode="mvp" aria-pressed="false">MVP</button>
       <button data-mode="done" aria-pressed="false">Implemented</button>
       <button data-mode="problems" aria-pressed="false" title="Quantities whose formula declares an open issue">Problems</button>
+      <button data-mode="defaults" aria-pressed="false" title="Quantities that carry a default (defaults.yaml)">Defaults</button>
     </div>
     <div class="seg ichips" id="issueChips" role="group" aria-label="Issue kind" style="margin-top:6px"></div>
     <div class="seg" role="group" aria-label="Direction" style="margin-top:6px">
@@ -258,7 +259,7 @@ const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \
   approximation:{icon:'~',label:'Approximation where a law belongs',col:'var(--mvp)'},
   dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
 IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
-const CONV=D.conv||{}, CONVS=D.conventions||{};
+const CONV=D.conv||{}, CONVS=D.conventions||{}, DEFS=D.defaults||{};
 const BLOCKING=i=>!IKIND[kindOf(i)].info;
 const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
 const ISSUES={}; for(const f in D.F) for(const o of D.F[f].out) if((D.F[f].issues||[]).length) (ISSUES[o] ||= []).push(...D.F[f].issues.map(i=>({...i,formula:f})));
@@ -637,6 +638,13 @@ function select(q){
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   if(CONV[q]) h+=`<div class="blk"><div class="lab" style="color:var(--sel)">&#8776; Rests on a defined value \u00b7 ${CONV[q].length}</div>`+
     CONV[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(CONVS[c].value)} ${esc(CONVS[c].unit==='1'?'':CONVS[c].unit)}</b> <span class="sub">(${esc(c)}, convention)</span><br>${esc(CONVS[c].source)}<br><span class="sub">A value chosen without a published source, adopted on the maintainer&#8217;s word &#8212; the result is only as good as this choice.</span></div>`).join('')+`</div>`;
+  if(DEFS[q]){ const d=DEFS[q], link=x=>`<li data-q="${esc(x)}" title="${esc(x)}">${esc(sym(x))}</li>`;
+    h+=`<div class="blk"><div class="lab">Default \u00b7 ${esc(d.basis)}</div>`+
+      `<div class="cblk"><b>${esc(sym(q))} = ${esc(d.value)} ${esc(d.unit==='1'?'':d.unit)}</b> <span class="sub">(${esc(q)}, overridable by the caller; taking it is declared)</span><br>`+
+      `<b>Source.</b> ${esc(d.source)}<br><b>Regime.</b> ${esc(d.regime)}</div>`+
+      `<div class="lab" style="margin-top:8px">Rests on it \u00b7 ${d.quantities.length} quantities, ${d.formulas.length} formulas</div>`+
+      `<ul class="lnk">${d.quantities.map(link).join('')}</ul>`+
+      `<p class="sub" style="margin:6px 0 0">Formulas: ${d.formulas.map(esc).join(' \u00b7 ')}</p></div>`; }
   if(ISSUES[q]) h+=`<div class="blk"><div class="lab" style="color:var(--bad)">${ISSUES[q].some(BLOCKING)?'! Open issues \u00b7 '+ISSUES[q].filter(BLOCKING).length+' \u2014 block approval':'Notes'}</div>`+
     ISSUES[q].map(i=>`<div class="issue" style="border-color:${IKIND[kindOf(i)].col}"><b style="color:${IKIND[kindOf(i)].col}">${IKIND[kindOf(i)].icon} ${esc(i.title)}</b> <span class="sub">(${esc(i.formula)})</span><br>${esc(i.text)}</div>`).join('')+`</div>`;
   { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
@@ -656,6 +664,8 @@ function select(q){
     if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Method worlds: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
     const aps=(e.apps||[]).filter(a=>a.out.includes(q));
     for(const a of aps){
+      if(a.consts&&a.consts.length) h+=`<div class="lab" style="margin-top:12px">Fixed constants (not overridable)${e.apps.length>1?' \u00b7 application '+esc(a.id):''}</div>`+
+        a.consts.map(c=>`<div class="cblk"><b>${esc(c.param)} = ${esc(c.value)}</b><br>${esc(c.source)}</div>`).join('');
       h+=`<div class="lab" style="margin-top:12px">From${(e.apps.length>1||a.when)?' &#183; application '+esc(a.id):''}${a.when?' &#183; when '+esc(a.when):''}</div><ul class="lnk">`+
         a.ins.filter(i=>Q[i]).map(i=>`<li data-q="${esc(i)}">${esc(sym(i))}</li>`).join('')+`</ul>`;
     }
@@ -751,7 +761,7 @@ addEventListener('resize',fit);
   bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'':'design-separate'; location.reload(); }); }
 let mode='all';
 function applyMode(){
-  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!(ISSUES[q]&&ISSUES[q].some(BLOCKING)) : mode.startsWith('issue:')?KINDS(q).includes(mode.slice(6)) : mode==='design'?DESIGN.has(q) : ANALYSIS.has(q));
+  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!(ISSUES[q]&&ISSUES[q].some(BLOCKING)) : mode.startsWith('issue:')?KINDS(q).includes(mode.slice(6)) : mode==='design'?DESIGN.has(q) : mode==='defaults'?!!DEFS[q] : ANALYSIS.has(q));
   for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
   edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
   document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));

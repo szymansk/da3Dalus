@@ -1564,7 +1564,6 @@ model (part of `IMPORT_REPORT.md`).
 | `dynamic-pressure` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `endurance-and-range` | procedure | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
 | `endurance-and-range-optimum` | optimization | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
-| `glide-distance-from-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | later |
 | `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `lateral-static-stability-app` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
