@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:792d0888ce5f05a769369e758777fc54f081af54db412d23b9b08c06cbfe3b35",
+  "content_hash": "sha256:b9f43e866c30cad634aebceec0d5ff66cbd2d6ba1bed6c4d187d91b846ff0514",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -474,7 +474,7 @@
           "applications": [
             {
               "bind": {
-                "e_bat": "calc:battery-capacity",
+                "e_req": "calc:battery-energy-required",
                 "e_star": "calc:battery-specific-energy"
               },
               "given": null,
@@ -490,7 +490,7 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
-            "e_bat": "calc:battery-capacity",
+            "e_req": "calc:battery-energy-required",
             "e_star": "calc:battery-specific-energy"
           },
           "kind": "law",
@@ -2400,41 +2400,6 @@
           "variables": [],
           "worlds": []
         },
-        "relative-mass-deviation": {
-          "applications": [
-            {
-              "bind": {
-                "m_bat": "calc:battery-mass",
-                "m_bat_pred": "calc:predicted-battery-mass"
-              },
-              "given": null,
-              "id": "default",
-              "produce": {
-                "dev": "calc:battery-mass-deviation"
-              },
-              "when": null
-            }
-          ],
-          "cost": "instant",
-          "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
-          "inputs": {
-            "m_bat": "calc:battery-mass",
-            "m_bat_pred": "calc:predicted-battery-mass"
-          },
-          "kind": "law",
-          "optional": [],
-          "outputs": {
-            "dev": "calc:battery-mass-deviation"
-          },
-          "postconditions": [],
-          "preconditions": [],
-          "tool": "APP",
-          "uncertainty": null,
-          "variables": [],
-          "worlds": []
-        },
         "roll-rate": {
           "applications": [
             {
@@ -3745,6 +3710,22 @@
           "uncertainty": null,
           "unit": "A"
         },
+        "battery-energy-required": {
+          "at_most": null,
+          "checks": null,
+          "data": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": null,
+          "positive": null,
+          "role": "input",
+          "stage": "references",
+          "symbol": "E_req",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "Wh"
+        },
         "battery-mass": {
           "at_most": null,
           "checks": null,
@@ -3754,7 +3735,7 @@
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
-          "point": null,
+          "point": "none",
           "positive": null,
           "role": "derived",
           "stage": "references",
@@ -3762,22 +3743,6 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
-        },
-        "battery-mass-deviation": {
-          "at_most": null,
-          "checks": null,
-          "data": null,
-          "discipline": "powered",
-          "group": null,
-          "module": null,
-          "point": "none",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "dev",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "1"
         },
         "battery-power": {
           "at_most": null,
@@ -5091,7 +5056,7 @@
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
-          "point": null,
+          "point": "none",
           "positive": null,
           "role": "derived",
           "stage": "references",
