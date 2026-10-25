@@ -46,7 +46,7 @@ quantity). A violation of either is review-blocking.
 | [0024](0024-single-user-desktop-operating-model.md) | Single-user desktop operating model | product, security | Accepted (**corrects 0016**) |
 | [0025](0025-mcp-is-built-on-the-copilot-tool-layer.md) | MCP is built on the copilot tool layer, not by wrapping REST | agents, architecture | Accepted |
 | [0026](0026-aero-truth-from-the-solver-not-the-parabola.md) | The aero truth comes from the solver, not from the parabola | aerodynamics | Accepted (amends 0004) |
-| [0027](0027-uncertain-quantities-as-intervals-over-method-worlds.md) | Uncertain quantities are intervals over method worlds | aerodynamics, calculation canon | Accepted (amends 0026 for the neutral point; clarifies 0022) |
+| [0027](0027-uncertain-quantities-as-intervals-over-method-worlds.md) | Uncertain quantities are intervals over method worlds | aerodynamics, calculation canon | Accepted (amends 0026 for the neutral point; clarifies 0022; amended 2026-10-25: a world can declare itself outside its validity, #1243) |
 | ⭐ [0028](0028-engineering-constants-carry-provenance-regime-by-flow-physics.md) | Engineering constants carry provenance; the regime is defined by flow physics | domain methodology | Accepted (supersedes 0023) |
 | ⭐ [0029](0029-source-code-is-english.md) | Everything in the source tree is English | conventions | Accepted |
 

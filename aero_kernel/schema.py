@@ -62,6 +62,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "aileron_deflection_beyond_reference": WarningSeverity.PRACTICE,
     "control_surface_fit_range_unknown": WarningSeverity.PRACTICE,
     "fuselage_not_modelled": WarningSeverity.PRACTICE,
+    "world_outside_validity": WarningSeverity.PRACTICE,
     "avl_mesh_not_converged": WarningSeverity.DEFECT,
     "avl_roll_rate_beyond_range": WarningSeverity.DEFECT,
     "avl_refinement_unchecked": WarningSeverity.DEFECT,

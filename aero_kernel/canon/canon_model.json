@@ -1,9 +1,16 @@
 {
-  "content_hash": "sha256:03ad7fea7de3c32efd9bb7192f7a9b86b99deed1f2198d9bf4e6abf7a365682e",
+  "content_hash": "sha256:68a84773f79b9ac097032787ad12d924b41cfe1c05a494b37d9d942643d845ea",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
       "defaults": {
+        "altitude": {
+          "basis": "definition",
+          "regime": "regime-independent",
+          "source": "the reference point of the International Standard Atmosphere (U.S. Standard Atmosphere 1976: geopotential altitude 0 at mean sea level, where rho = 1.225 kg/m^3); without a stated altitude the atmosphere is evaluated at its reference by definition - maintainer 2026-10-25; the designer overrides it, e.g. for a field at 500 m",
+          "unit": "m",
+          "value": 0.0
+        },
         "approach-speed-margin-target": {
           "basis": "sourced",
           "regime": "transport rule taken as the lower bound: at low wing loading and low speed a gust changes the angle of attack and load factor more (Scholz Wing Design §7.3), so RC needs at least this margin; a larger RC margin has no source",
@@ -17,6 +24,13 @@
           "source": "maintainer, 2026-10-25 (#1235): pack level, a round value inside 128–159 Wh/kg; that band comes from the catalogue's ten 'Generic LiPo' entries, which are placeholder data, not manufacturer datasheets — no published pack value is cited yet",
           "unit": "Wh/kg",
           "value": 140.0
+        },
+        "cell-voltage-nominal": {
+          "basis": "sourced",
+          "regime": "regime-independent: a property of the cell chemistry, not of the flow; a mid-discharge value, so the rated mAh times it is the energy at the manufacturer's test rate; the caller overrides it for another chemistry",
+          "source": "SkyRC, \"RC Battery Lineup: Voltage Ranges by Chemistry Types\", SkyRC Blog, 2024-12-26 (https://blog.skyrc.com/rc-battery-lineup-voltage-ranges-by-chemistry-types/): nominal per cell LiPo 3.7 V (LiHV 3.8 V, LiFe 3.2 V, Li-Ion 3.6 V, NiMH 1.2 V); the default is the LiPo value",
+          "unit": "V",
+          "value": 3.7
         },
         "gravity": {
           "basis": "standard",
@@ -277,7 +291,8 @@
           "applications": [
             {
               "bind": {
-                "components": "calc:components"
+                "components": "calc:components",
+                "u_cell": "calc:cell-voltage-nominal"
               },
               "given": null,
               "id": "default",
@@ -302,7 +317,8 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
-            "components": "calc:components"
+            "components": "calc:components",
+            "u_cell": "calc:cell-voltage-nominal"
           },
           "kind": "procedure",
           "optional": [],
@@ -1223,54 +1239,6 @@
           "variables": [
             "calc:flight-speed"
           ],
-          "worlds": []
-        },
-        "glide-distance-from-ratio": {
-          "applications": [
-            {
-              "bind": {
-                "e": "calc:lift-to-drag-ratio",
-                "h": "calc:altitude"
-              },
-              "given": null,
-              "id": "default",
-              "produce": {
-                "r_glide": "calc:glide-distance"
-              },
-              "when": null
-            }
-          ],
-          "cost": "instant",
-          "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
-          "inputs": {
-            "e": "calc:lift-to-drag-ratio",
-            "h": "calc:altitude"
-          },
-          "kind": "law",
-          "optional": [],
-          "outputs": {
-            "r_glide": "calc:glide-distance"
-          },
-          "postconditions": [],
-          "preconditions": [
-            {
-              "applications": null,
-              "id": "lift_to_drag_of_flown_configuration",
-              "on_violation": "warning",
-              "parameter": "e"
-            },
-            {
-              "applications": null,
-              "id": "propeller_drag_not_in_polar",
-              "on_violation": "warning",
-              "parameter": "e"
-            }
-          ],
-          "tool": "APP",
-          "uncertainty": null,
-          "variables": [],
           "worlds": []
         },
         "induced-drag-factor": {
@@ -3907,6 +3875,21 @@
           "uncertainty": null,
           "unit": "m/s"
         },
+        "cell-voltage-nominal": {
+          "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "construction",
+          "point": null,
+          "positive": true,
+          "role": "input",
+          "stage": null,
+          "symbol": "U_cell",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "V"
+        },
         "centre-of-gravity": {
           "at_most": null,
           "checks": null,
@@ -4237,21 +4220,6 @@
           "uncertainty": null,
           "unit": "m/s"
         },
-        "glide-distance": {
-          "at_most": null,
-          "checks": null,
-          "discipline": "glide",
-          "group": null,
-          "module": null,
-          "point": "free",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "R_glide",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "m"
-        },
         "gravity": {
           "at_most": null,
           "checks": null,
@@ -4393,7 +4361,7 @@
           "discipline": "aerodynamics",
           "group": "aero-forces",
           "module": null,
-          "point": null,
+          "point": "free",
           "positive": null,
           "role": "derived",
           "stage": "aero-model",

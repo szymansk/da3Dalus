@@ -430,6 +430,8 @@ and a `practice` warning names the route (ADR 0020); (2) the **canon's own defin
 value means something stated, and there is no warning; (3) the value **is needed after all** — no
 value, `missing_input`.
 
+**Validity of a world** (ADR 0027 point 8, #1243) — a world whose method states a range is excluded from the interval where its own result lies outside it: the entry states the range, its source and the exclusion, and the kernel declares it with the warning `world_outside_validity` (world, value and limit). It is no field of the front matter and no failure: the other worlds form the interval; if none is left the quantity is an error. Used by the roll entries (AVL, `|pb/2V| ≤ 0.10`).
+
 **`given`** — an application that exists only when the caller supplies certain values lists them:
 `given: [<slug>, …]`. Each slug has role `input` or `target`, has no default in `defaults.yaml`, and is bound by that
 application. The application exists only if all of them are supplied; otherwise it is not computed —
@@ -548,6 +550,12 @@ as a mapping `<slug>: {value, unit, basis, source, regime}` (maintainer, 2026-10
 Only a value the canon states with its source gets an entry. Taking a default is visible
 (INFO, `provenance.defaults_used`).
 
+The navigator shows every default, whatever its basis (#1239): the "Defaults" view lists the quantities that carry one;
+on the quantity it gives value, unit, basis, source, regime and the quantities and formulas that rest on it. The
+generator fails if a default maps to no quantity of the navigator. A constant bound in an application (`{const, source}`,
+e.g. `n_load` = ±1 in the stall-speed applications) is not a default: it is fixed by the application, cannot be overridden,
+and is shown at the binding as a "fixed constant (not overridable)" with its source.
+
 #### Quantity types
 
 Closed. The unit is the unit of the values. A dimensionless quantity is written `unit: 1` — one spelling
@@ -566,17 +574,16 @@ column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` fie
 
 ### One example per kind
 
-A **law** with preconditions and the single default application (`glide-distance-from-ratio`):
+A **law** with a precondition and the single default application (`sink-rate`):
 
 ```yaml
 kind: law
 tool: APP
-output: glide-distance
-inputs: {e: lift-to-drag-ratio, h: altitude}
-outputs: {r_glide: glide-distance}
+output: sink-rate
+inputs: {v: flight-speed, cl: lift-coefficient, cd: drag-coefficient-parabolic}
+outputs: {w_sink: sink-rate}
 preconditions:
-  - {id: lift_to_drag_of_flown_configuration, parameter: e, on_violation: warning}
-  - {id: propeller_drag_not_in_polar, parameter: e, on_violation: warning}
+  - {id: small_glide_angle, parameter: cd, on_violation: warning}
 ```
 
 A **procedure** with declared uncertainty (`neutral-point`):

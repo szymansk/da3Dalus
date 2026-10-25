@@ -4,7 +4,8 @@ One coroutine over two method worlds (A11): ``aerobuildup`` solves the steady ro
 AeroBuildup, ``avl`` with the ailerons driven directly in AVL. Both solve the same roll: rotation
 about the stability x axis through the airplane's reference point, the stability-axis rolling moment
 zero, positive for a roll to the right. The speed is the approach speed; a deflection beyond the
-reference angle is computed and declared, never clipped.
+reference angle is computed and declared, never clipped. The ``avl`` world beyond AVL's stated
+range ``|p b / 2V| <= 0.10`` declares itself outside its validity and leaves the interval.
 """
 
 import math
@@ -12,6 +13,7 @@ import math
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
+from aero_kernel.solvers.avl import ROLL_RATE_LIMIT
 
 __all__ = ["roll_rate"]
 
@@ -37,6 +39,28 @@ def warn_deflection_beyond_reference(ctx: Context, delta_deg: float) -> None:
             "Aircraft Design, 12.4.3; transport and general-aviation material, not checked at "
             "model Reynolds numbers). The value is computed at the given angle.",
             {"deflection_deg": delta_deg, "reference_deg": DEFLECTION_REFERENCE_DEG},
+        )
+
+
+def exclude_avl_beyond_range(ctx: Context, p_hat: float, p_deg_s: float) -> None:
+    """Declare the AVL world outside its stated range, which drops it from the interval (A11).
+
+    AVL is linear in the deflection and its primer gives ``-0.10 < pb/2V < 0.10`` as the practical
+    limit (``avl_doc.txt:121-141``); beyond it the world is not used (maintainer decision on #1243,
+    2026-10-25). The exclusion is the ``world_outside_validity`` warning, which carries the value.
+
+    Args:
+        ctx: The formula context, in the ``avl`` world.
+        p_hat: The nondimensional roll rate ``p b / 2V`` AVL gave (signed).
+        p_deg_s: The same roll rate in deg/s.
+    """
+    if abs(p_hat) > ROLL_RATE_LIMIT:
+        ctx.warn(
+            "world_outside_validity",
+            f"The AVL world gives p b / 2V = {p_hat:g}, outside AVL's stated range of "
+            f"|p b / 2V| <= {ROLL_RATE_LIMIT:g} (AVL is linear in the deflection). It is not used: "
+            "the interval is the AeroBuildup world alone.",
+            {"p_hat": p_hat, "p_deg_s": p_deg_s, "limit": ROLL_RATE_LIMIT},
         )
 
 
@@ -82,6 +106,7 @@ async def roll_rate(x: Inputs, ctx: Context) -> dict[str, float]:
         found = await ctx.solvers.avl.steady_roll(airplane, cl, delta)
         forward_warnings(ctx, found.warnings)
         rate = found.p_hat * 2.0 * speed / span
+        exclude_avl_beyond_range(ctx, found.p_hat, math.degrees(rate))
     else:
         msg = f"roll-rate has no world {world!r}"
         raise TypeError(msg)

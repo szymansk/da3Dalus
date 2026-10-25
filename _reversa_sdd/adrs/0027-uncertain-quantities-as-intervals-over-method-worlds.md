@@ -2,7 +2,8 @@
 
 - **Status:** Accepted. **Amends [ADR 0026](0026-aero-truth-from-the-solver-not-the-parabola.md)** for
   the neutral point; **clarifies [ADR 0022](0022-one-authority-per-user-facing-quantity.md)** for
-  interval-valued quantities.
+  interval-valued quantities. **Amended 2026-10-25** (point 8, #1243): a world can declare itself outside
+  its validity.
 - **Decided:** 2026-10-03, by the maintainer: "Wir nehmen Unschärfe mit in den Kanon auf". Recorded
   "as practicable as possible to implement in the canon".
 - **Basis:**
@@ -45,6 +46,23 @@ A single number would present knowledge that does not exist.
    neutral point) is a target of the design or the evaluation, not a canon value (A10).
 7. **Neutral point**: worlds textbook (eta 0.9), Pappas, AVL. AeroBuildup is not a world for the
    neutral point. This amends ADR 0026 point "x_np from the solver" for this quantity.
+8. **A world can declare itself outside its validity** (amendment, maintainer 2026-10-25, #1243; first
+   user: the AVL world of the roll entries). Where a world's method states a range and the world's result
+   lies outside it, the world is **not used**: the interval is formed by the remaining worlds, and the
+   excluded value is not part of it. The maintainer's reason: keeping it "would distort the interval, and
+   then it is unclear which bound is reliable" (German original: "a würde das Intervall verfälschen und dann
+   ist nicht klar, welche Grenze belastbar ist").
+   - The exclusion is declared, never silent (ADR 0020): the world emits the `practice` warning
+     `world_outside_validity` with its own world assignment, and `detail` carries the value, the range and
+     the limit. The warning is the only mechanism; it is the exclusion.
+   - It is **not** a failure. A failed assignment is still never dropped (rule 3 stands, ch. 8.13): only a
+     declared validity exclusion drops a world.
+   - If every world is excluded the quantity is an `unsupported_configuration` error, code
+     `all_worlds_outside_validity`, with the values in `detail.worlds_excluded`; an empty interval does not
+     exist. One remaining world gives an interval of width zero.
+   - The range is the world's own, stated by its method with a source (for AVL's roll rate
+     `|pb/2V| <= 0.10`, `avl_doc.txt:121-141`); a world is excluded for a stated range only, never for
+     disagreeing with the others.
 
 ## Consequences
 

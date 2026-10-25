@@ -213,7 +213,7 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 | Category | retryable | escalate | Meaning | Example hint |
 |---|---|---|---|---|
 | `invalid_input` | no | no | input is physically inadmissible | "Chord at `wings.W.x_secs[2].chord` must be > 0." |
-| `unsupported_configuration` | no | no | the method does not cover this layout, or a target lies above what the method itself can reach (code `target_above_method_maximum`, `detail` = the maximum reached and the input at which it occurs, e.g. the roll rate and δ_a) | "The textbook neutral-point formula needs a horizontal tail." |
+| `unsupported_configuration` | no | no | the method does not cover this layout, or a target lies above what the method itself can reach (code `target_above_method_maximum`, `detail` = the maximum reached and the input at which it occurs, e.g. the roll rate and δ_a), or every method world of a quantity declared itself outside its validity (code `all_worlds_outside_validity`, `detail.worlds_excluded`, ch. 8.13) | "The textbook neutral-point formula needs a horizontal tail." |
 | `not_implemented` | no | no | the canon formula has no implementation yet | "`max-sustained-turn-rate` is in the canon, not in the kernel." |
 | `not_converged` | yes | no | the solver found no solution | "Change the start value or the operating point." |
 | `timeout` | yes | no | the time budget was exceeded | "Raise the budget or request it as a long run." |
@@ -279,6 +279,7 @@ Sources:
   from the section chords in metres, the evaluated V and the speed of sound at the altitude. Not in input
   validation, which does not know V.
 - violated or unchecked preconditions
+- a method world outside its stated range (`world_outside_validity`, `practice`, ch. 8.13): the world leaves the interval and the warning carries its value and the limit
 - the missing fuselage (`fuselage_not_modelled`, `practice`, origin `neutral-point`, once per world): none of the
   three neutral-point worlds models a fuselage, whose contribution is destabilising, so the interval is biased
   aft and a static margin computed from it is over-reported (`static-margin` inherits it). `practice`: a
@@ -732,6 +733,11 @@ caller's responsibility.
       pinned by an aero test on the clean airplane.
       Scope change: every consumer of `to_asb_airplane` (the GEO properties, AeroBuildup) now refuses a mirrored
       surface whose sections fold back along y as `unsupported_configuration`, as the AVL mesh already did.
+    - *Validity of the AVL world (#1243).* AVL is linear in δ and its primer gives `|pb/2V| <= 0.10` as the
+      practical limit. Outside it (`ROLL_RATE_LIMIT`, tested with `>`: 0.10 itself is inside) the `roll-rate`
+      formula declares `world_outside_validity` in the `avl` world (`detail`: `p_hat`, `p_deg_s`, `limit`) and
+      the interval is the AeroBuildup world alone (ch. 8.13). The adapter's own `defect` warning
+      `avl_roll_rate_beyond_range` stays: it is the tool's statement, the exclusion is the canon's decision.
     - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
       one sweep on the **clean** (unrolled) airplane: with the deflection the curve has kinks and its first
       local maximum lies far below the stall (trainer: C_L 0.364 at 1° against a clean peak of 1.233 at 16°),
@@ -1341,6 +1347,18 @@ sampled grid and no `-static` chain.
   would be an undeclared fallback (ADR 0020). Example: `aileron-deflection-required-approach` with the target above the
   AeroBuildup maximum is an error even though AVL, linear in δ, returns an angle; the AVL value is in
   `detail.worlds_ok`.
+- **A world outside its validity** (ADR 0027 point 8, maintainer 2026-10-25, #1243). A world whose method states a
+  range and whose result lies outside it declares that with `ctx.warn("world_outside_validity", …)` and still
+  returns its values; the warning (`practice`, the world on it, `detail`: the value and the limit) *is* the
+  exclusion. The merge drops an assignment from `min`, `max` and `Interval.worlds` when a
+  `world_outside_validity` warning is anywhere in the subtree of that assignment (a dependent of an excluded
+  world is excluded with it); the warnings of the dropped assignment stay on the quantity. This is not a
+  failure: a failed assignment is still never dropped, and with a failed and an excluded assignment the
+  failure is reported. One remaining assignment gives an interval with `min == max`. **Every assignment
+  excluded** gives an error, `unsupported_configuration`, code `all_worlds_outside_validity`, no world,
+  `detail.worlds_excluded` (assignment → value); like every error it carries no warnings. `detail.worlds_ok`
+  of another failure lists the excluded assignments too, since they computed. The roll rate is the first
+  user (ch. 8.8).
 - **Which failure is reported.** When several assignments fail, the quantity's error is that of the failed
   assignment whose run has the lowest row in the status order below, then the lexicographically smallest
   assignment key. The row is the run's, not the error code's: a failure the formula raises while computing
@@ -1475,7 +1493,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `INFO` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding (engine half built with the first embedder) | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
-| Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter |
+| Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter and, since #1243, leaves the interval (`world_outside_validity`, ch. 8.13): with BRYAN and JAGUAR at 20° the roll rate is the AeroBuildup world alone |
 | Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a wing whose devices are flaperons only has `has_aileron` but not the butterfly condition — flaperons never count toward it (D10), with one flaperon or several; butterfly needs a device of role `flap` and one of role `aileron` or `elevon`, otherwise the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
 | Q36 | Embedded postcondition and variables (engine half built with the first embedder) | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
 | Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
@@ -1548,7 +1566,6 @@ model (part of `IMPORT_REPORT.md`).
 | `dynamic-pressure` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `endurance-and-range` | procedure | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
 | `endurance-and-range-optimum` | optimization | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
-| `glide-distance-from-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | later |
 | `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `lateral-static-stability-app` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |

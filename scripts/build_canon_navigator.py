@@ -227,6 +227,7 @@ def application_edges(formulas: dict, quantities: dict, model: dict) -> list:
     mf = model["namespaces"]["calc"]["formulas"]
     if set(mf) != set(formulas):
         raise SystemExit("canon model and canon documents differ; re-run the importer first")
+    constants = binding_constants(mf)
     edges = []
     for slug, f in formulas.items():
         apps, ins_all, outs_all = [], {}, {}
@@ -235,7 +236,15 @@ def application_edges(formulas: dict, quantities: dict, model: dict) -> list:
             ins += [g.split(":", 1)[1] for g in ap.get("given") or []]
             ins = list(dict.fromkeys(ins))
             outs = [o.split(":", 1)[1] for o in (ap["produce"] or {}).values() if o]
-            apps.append({"id": ap["id"], "when": ap.get("when") or "", "ins": ins, "out": outs})
+            apps.append(
+                {
+                    "id": ap["id"],
+                    "when": ap.get("when") or "",
+                    "ins": ins,
+                    "out": outs,
+                    "consts": constants[slug][ap["id"]],
+                }
+            )
             for o in outs:
                 outs_all[o] = None
                 for i in ins:
@@ -380,37 +389,72 @@ def plausibility(data: dict) -> list:
     return notes
 
 
-def convention_marks(data: dict, model: dict) -> None:
-    """Mark what rests on a defined value: a ``convention`` default and its whole downstream closure.
+def default_marks(data: dict, model: dict) -> None:
+    """Show every default of the canon model with its source and what rests on it.
 
-    The basis is read from the defaults of the canon model (``defaults.yaml``), never typed in
-    here. ``conventions`` holds the defined values (value, unit, source); ``conv`` maps every
-    quantity that rests on at least one of them to the slugs of those values.
+    The defaults are read from the canon model (``defaults.yaml``), never typed in here. A default
+    that maps to no quantity of the navigator is an error, whatever its basis. ``defaults`` holds
+    per default its value, unit, basis, source, regime and the quantities and formulas downstream
+    of it; ``conventions`` and ``conv`` are the ``convention`` subset: the defined values and, per
+    quantity that rests on at least one of them, their slugs.
     """
-    defaults = model["namespaces"]["calc"]["defaults"]
-    conventions = {s: d for s, d in sorted(defaults.items()) if d["basis"] == "convention"}
-    unknown = sorted(set(conventions) - set(data["Q"]))
+    defaults = dict(sorted(model["namespaces"]["calc"]["defaults"].items()))
+    unknown = sorted(set(defaults) - set(data["Q"]))
     if unknown:
         raise SystemExit(f"defaults for quantities the canon lacks: {unknown}")
     succ: dict = {q: [] for q in data["Q"]}
-    for a, b, _ in data["edges"]:
-        succ[a].append(b)
-    conv: dict = {}
-    for slug in conventions:
+    for a, b, f in data["edges"]:
+        succ[a].append((b, f))
+    shown: dict = {}
+    for slug, d in defaults.items():
         seen: set = set()
+        used: set = set()
         stack = [slug]
         while stack:
             q = stack.pop()
             if q not in seen:
                 seen.add(q)
-                stack.extend(succ[q])
-        for q in seen:
-            conv.setdefault(q, []).append(slug)
+                for b, f in succ[q]:
+                    used.add(f)
+                    stack.append(b)
+        shown[slug] = {
+            "value": d["value"],
+            "unit": d["unit"],
+            "basis": d["basis"],
+            "source": d["source"],
+            "regime": d["regime"],
+            "quantities": sorted(seen - {slug}),
+            "formulas": sorted(used),
+        }
+    conv: dict = {}
+    for slug, d in shown.items():
+        if d["basis"] == "convention":
+            for q in [slug, *d["quantities"]]:
+                conv.setdefault(q, []).append(slug)
+    data["defaults"] = shown
     data["conventions"] = {
         s: {"value": d["value"], "unit": d["unit"], "source": d["source"]}
-        for s, d in conventions.items()
+        for s, d in shown.items()
+        if d["basis"] == "convention"
     }
     data["conv"] = {q: sorted(v) for q, v in sorted(conv.items())}
+
+
+def binding_constants(model_formulas: dict) -> dict:
+    """Constants bound in applications (``{const, source}``): per formula, per application id.
+
+    They are fixed by definition of the application, not overridable and not defaults.
+    """
+    found: dict = {}
+    for slug, f in model_formulas.items():
+        for ap in f["applications"]:
+            consts = [
+                {"param": p, "value": v["const"], "source": v["source"]}
+                for p, v in ap["bind"].items()
+                if isinstance(v, dict)
+            ]
+            found.setdefault(slug, {})[ap["id"]] = consts
+    return found
 
 
 def to_ascii(html: str) -> str:
@@ -447,7 +491,7 @@ def build() -> tuple[str, dict]:
     edges = application_edges(formulas, quantities, model)
     data = layout(quantities, formulas, edges)
     kernel_status(data, KERNEL_FORMULAS)
-    convention_marks(data, model)
+    default_marks(data, model)
     data["tax"] = model["namespaces"]["calc"]["taxonomy"]
     data["stand"] = model["content_hash"][:12]
     template = pathlib.Path(__file__).with_name("canon_navigator_template.html")

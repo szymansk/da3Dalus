@@ -68,6 +68,13 @@ def worlds(quantity: QuantityResult) -> dict[str, float]:
     return quantity.interval.worlds
 
 
+def excluded_avl(quantity: QuantityResult) -> KernelWarning:
+    """The declaration that dropped the AVL world (|p b / 2V| > 0.10, decision (b) of #1243)."""
+    (warning,) = [w for w in quantity.warnings if w.code == "world_outside_validity"]
+    assert warning.world == AVL
+    return warning
+
+
 def codes(quantity: QuantityResult, world: str | None = None) -> list[str]:
     return [w.code for w in quantity.warnings if world is None or w.world == world]
 
@@ -80,20 +87,22 @@ async def test_roll_rate_goldens_per_world(member: FleetMember) -> None:
     assert p.unit == "deg/s"
     assert p_hat.unit == "1"
     assert p.tool == "OPT"
-    for quantity, golden, rel, absolute in (
-        (p, GOLDEN_P[member], 1e-4, None),
-        (p_hat, GOLDEN_P_HAT[member], None, 1e-4),
+    for quantity, golden, rel, absolute, key in (
+        (p, GOLDEN_P[member], 1e-4, None, "p_deg_s"),
+        (p_hat, GOLDEN_P_HAT[member], None, 1e-4, "p_hat"),
     ):
+        # both fleet members roll beyond AVL's stated range: the interval is AeroBuildup alone
         found = worlds(quantity)
-        assert set(found) == {AB, AVL}
+        assert set(found) == {AB}
+        assert quantity.interval is not None
+        assert quantity.interval.min == quantity.interval.max == found[AB]
+        # the excluded AVL value stays visible, in the declaration
+        shown = {AB: found[AB], AVL: _detail(excluded_avl(quantity), key)}
         for world, value in zip((AB, AVL), golden, strict=True):
             if rel is not None:
-                assert close(found[world], value, rel), (quantity.slug, world, found[world])
+                assert close(shown[world], value, rel), (quantity.slug, world, shown[world])
             else:
-                assert abs(found[world] - value) < (absolute or 0.0), (quantity.slug, world)
-        assert quantity.interval is not None
-        assert quantity.interval.min == min(found.values())
-        assert quantity.interval.max == max(found.values())
+                assert abs(shown[world] - value) < (absolute or 0.0), (quantity.slug, world)
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
@@ -103,9 +112,14 @@ async def test_the_nondimensional_rate_is_p_b_over_two_v_in_both_worlds(
     """p_hat = radians(p) b_ref / (2 V_app) with the kernel's b_ref, hand-computed from the geometry."""
     b_ref = main_wing_properties(AirplaneGeometry.model_validate(reference_document(member))).b_ref
     p, p_hat = (await run(member)).quantities
-    for world in (AB, AVL):
-        expected = math.radians(worlds(p)[world]) * b_ref / (2.0 * V_APP[member])
-        assert close(worlds(p_hat)[world], expected, 1e-9), world
+    seen = {AB: (worlds(p)[AB], worlds(p_hat)[AB])}
+    seen[AVL] = (
+        _detail(excluded_avl(p), "p_deg_s"),
+        _detail(excluded_avl(p_hat), "p_hat"),
+    )
+    for world, (rate, rate_hat) in seen.items():
+        expected = math.radians(rate) * b_ref / (2.0 * V_APP[member])
+        assert close(rate_hat, expected, 1e-9), world
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
@@ -136,9 +150,14 @@ async def test_a_negative_command_gives_the_mirrored_roll_in_both_worlds(
     """Sign and antisymmetry (M2): +20 deg rolls to the right in each world, -20 deg exactly the
     other way, within the AVL print and the IPOPT tolerance."""
     plus, minus = (await run(member, 20.0)).quantities[1], (await run(member, -20.0)).quantities[1]
-    for world in (AB, AVL):
-        assert worlds(plus)[world] > 0.0
-        assert abs(worlds(minus)[world] + worlds(plus)[world]) < 1e-4, world
+    assert worlds(plus)[AB] > 0.0
+    assert abs(worlds(minus)[AB] + worlds(plus)[AB]) < 1e-4
+    # AVL's value is not in the interval (beyond its range) but is in the declaration, mirrored
+    avl_plus, avl_minus = excluded_avl(plus).detail["p_hat"], excluded_avl(minus).detail["p_hat"]
+    assert isinstance(avl_plus, float)
+    assert isinstance(avl_minus, float)
+    assert avl_plus > 0.0
+    assert abs(avl_minus + avl_plus) < 1e-4
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
@@ -159,6 +178,10 @@ async def test_the_warnings_of_the_roll(member: FleetMember) -> None:
         assert beyond.world == AVL
         assert beyond.severity is WarningSeverity.DEFECT
         assert beyond.detail == {"p_hat": GOLDEN_P_HAT[member][1], "limit": 0.1}
+        # decision (b): the same range drops the AVL world from the interval, declared with its value
+        dropped = excluded_avl(quantity)
+        assert dropped.severity is WarningSeverity.PRACTICE
+        assert dropped.detail["limit"] == 0.1
         # the averaged hinge line: one declaration per driven segment, AeroBuildup world only
         averaged = [w for w in quantity.warnings if w.code == "hinge_line_averaged"]
         assert len(averaged) == HINGE_SEGMENTS[member]
