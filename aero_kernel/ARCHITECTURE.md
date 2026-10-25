@@ -154,6 +154,8 @@ aero_kernel/
   errors.py         error catalogue (ch. 8.1): `ErrorCategory`, `KernelError`, the closed code table
                     (code → category), `FormulaError`, upstream aggregation; imports no other module
   __init__.py       public API; adds the NullHandler to the `aero_kernel` logger (ch. 8.14)
+  evaluation/       rules.py (rule table, shipped `rule_table.json`, check against the canon model) · evaluator.py (result + rule table → verdicts)
+                    the judgement the canon never makes (A10); pure; not called by `compute()` (#1276)
   tools/            robustness.py (#1178)
   tests/            unit, property, golden, traceability and error tests
 ```
@@ -166,6 +168,7 @@ aero_kernel/
 | `graph` | dependencies, worlds, error propagation | call tools |
 | `formulas/*` | exactly one canon formula | compute a second formula; judge thresholds (A10) |
 | `solvers/*` | call the tool, report its version, translate tool errors | know canon names |
+| `evaluation` | judge computed values against a rule table: inside, below, above, partly (interval), not applicable, not available | compute a physical quantity; hold a band in code (bands are data, `_reversa_sdd/calculations/evaluation/`); read YAML (Q12; `importer/rule_table.py` generates the shipped `evaluation/rule_table.json` from the YAML at dev time, `shipped_rule_table()` loads it) |
 | `cache` | map keys to results | change results |
 
 ## 6. Runtime view — one call
