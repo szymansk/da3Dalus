@@ -127,7 +127,7 @@ Stage 1 is the formula's own status; stage 2 is derived: every input is produced
 | roll-rate | draft | 8 of 9 | wing-span (produced by airplane-geometry (not approved)) |
 | roll-rate-cruise-target | draft | 6 of 6 |  |
 | sink-rate | draft | 1 of 3 | drag-coefficient-parabolic (produced by drag-polar (not approved)); lift-coefficient (produced by lift-coefficient-required (not approved)) |
-| spanwise-loads | draft | 6 of 6 |  |
+| spanwise-loads | approved | 6 of 6 |  |
 | spar-break-load-factor | draft | 5 of 5 |  |
 | speed-from-stall-margin | approved | 5 of 5 |  |
 | spiral-parameter | draft | 5 of 5 |  |
