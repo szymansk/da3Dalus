@@ -786,12 +786,12 @@ inputs:
 outputs: {cd0: zero-lift-drag-coefficient, e_osw: oswald-efficiency}
 ```
 
-A **rating** with three applications of one formula (`speed-from-stall-margin`); each binds its
+A **definition** (kind `law`) with three applications of one formula (`speed-from-stall-margin`); each binds its
 margin `k_S` to a target quantity whose default in `defaults.yaml` carries the source (a constant would be written
 `k_s: {const: <value>, source: "<citation>"}`):
 
 ```yaml
-kind: rating
+kind: law
 tool: APP
 output: approach-speed, touchdown-speed, takeoff-speed
 inputs: {v_s_cfg: null, k_s: null}

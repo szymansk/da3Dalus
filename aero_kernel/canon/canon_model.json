@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:aace8c9013aaf4a6396217f8849c2b30be0e3c97b047befc3c3f7cd5e8e38b42",
+  "content_hash": "sha256:792d0888ce5f05a769369e758777fc54f081af54db412d23b9b08c06cbfe3b35",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -2725,7 +2725,7 @@
             "k_s": null,
             "v_s_cfg": null
           },
-          "kind": "rating",
+          "kind": "law",
           "optional": [],
           "outputs": {
             "v": null
