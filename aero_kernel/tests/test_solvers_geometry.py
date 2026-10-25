@@ -45,6 +45,7 @@ async def test_without_aerosandbox_the_tool_is_unavailable(monkeypatch: pytest.M
     adapter = GeometryAdapter(SolverRuntime())
     assert not adapter.available()
     assert adapter.tool_versions() == {}
+    document = airplane()
     with pytest.raises(FormulaError) as raised:
-        await adapter.main_wing_reference(airplane())
+        await adapter.main_wing_reference(document)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE

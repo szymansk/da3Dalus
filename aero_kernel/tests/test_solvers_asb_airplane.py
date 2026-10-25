@@ -167,8 +167,9 @@ def test_the_main_wing_properties_ask_asb_with_its_default_area_and_the_centreli
 
 def test_a_main_wing_without_a_planform_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(FAKE_REFERENCE, "Main", (0.0, 1.7, 0.21))
+    document = geometry()
     with pytest.raises(FormulaError) as raised:
-        main_wing_properties(geometry())
+        main_wing_properties(document)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
