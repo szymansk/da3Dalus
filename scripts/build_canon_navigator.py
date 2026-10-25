@@ -31,8 +31,10 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))  # the script runs from scripts/, the package sits at the root
 
 from aero_kernel.canon.model import DATA_KIND_PARENT, CanonModel  # noqa: E402
+from aero_kernel.evaluation.rules import RuleTable, check_rule_table  # noqa: E402
 from aero_kernel.importer.approval import derive_approval  # noqa: E402
 from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES  # noqa: E402
+from aero_kernel.importer.rule_table import load_rule_table  # noqa: E402
 
 #: Edges the layering breaks, with the reason. A naming collapse, not a fixed point: one
 #: name covering a swept measurement and a modelled value. (The second one, a generic
@@ -183,6 +185,7 @@ CANON_DIR = REPO / "_reversa_sdd/calculations/canon"
 OUT_PATH = CANON_DIR / "navigator.html"
 MODEL_PATH = REPO / "aero_kernel/canon/canon_model.json"
 KERNEL_FORMULAS = REPO / "aero_kernel/formulas"
+RULES_PATH = REPO / "_reversa_sdd/calculations/evaluation/drela.yaml"
 
 
 def _clip(text: str, limit: int = 700) -> str:
@@ -579,6 +582,26 @@ def approval_marks(data: dict, model: dict) -> None:
     data["miss"] = sorted(q for q, status in data["qstat"].items() if status == "unmapped")
 
 
+def rule_marks(data: dict, table: RuleTable, model: dict) -> None:
+    """The evaluation rules as their own layer (#1276): per rule the band, source, meanings and the quantity.
+
+    The rules are read from the rule table, never typed in here. A rule that names a quantity the
+    canon lacks, without a planned ticket, is an error; so is a quantity the navigator does not show.
+    """
+    problems = check_rule_table(table, CanonModel.model_validate(model))
+    unshown = [
+        r.quantity.slug
+        for r in table.rules
+        if r.quantity.planned is None and r.quantity.slug not in data["Q"]
+    ]
+    if problems or unshown:
+        raise SystemExit("evaluation rules: " + "; ".join([*problems, *map(str, unshown)]))
+    data["rules"] = {
+        "source": table.source,
+        "rules": [r.model_dump(mode="json", exclude_none=True) for r in table.rules],
+    }
+
+
 def binding_constants(model_formulas: dict) -> dict:
     """Constants bound in applications (``{const, source}``): per formula, per application id.
 
@@ -632,6 +655,7 @@ def build() -> tuple[str, dict]:
     kernel_status(data, KERNEL_FORMULAS)
     default_marks(data, model)
     approval_marks(data, model)
+    rule_marks(data, load_rule_table(RULES_PATH), model)
     data["tax"] = model["namespaces"]["calc"]["taxonomy"]
     data["stand"] = model["content_hash"][:12]
     template = pathlib.Path(__file__).with_name("canon_navigator_template.html")
