@@ -6,6 +6,7 @@ from aero_kernel.evaluation.evaluator import (
     evaluate_rules,
     quantities_to_request,
 )
+from aero_kernel.evaluation.rules import Severity
 from aero_kernel.graph import WhenFacts
 from aero_kernel.schema import ComputeResult
 from aero_kernel.tests.evaluation_builders import (
@@ -192,3 +193,25 @@ def test_a_quantity_the_caller_did_not_supply_is_not_available_not_not_applicabl
     verdict = judge(result_of(not_given(SM)))
     assert verdict.status is RuleStatus.NOT_AVAILABLE
     assert "No CG." in verdict.explanation
+
+
+def test_a_value_below_the_band_carries_that_sides_severity() -> None:
+    assert judge(result_of(ok(SM, -0.02))).severity is Severity.BAD
+    assert judge(result_of(ok(SM, 0.4)), above_severity="caution").severity is Severity.CAUTION
+
+
+def test_a_value_inside_the_band_has_no_severity() -> None:
+    assert judge(result_of(ok(SM, 0.1)), above_severity="caution").severity is None
+
+
+def test_an_interval_reaching_both_sides_takes_the_worst_severity() -> None:
+    verdict = judge(result_of(spread(SM, 0.0, 0.3)), above_severity="caution")
+    assert verdict.severity is Severity.BAD
+    verdict = judge(result_of(spread(SM, 0.10, 0.3)), above_severity="caution")
+    assert verdict.severity is Severity.CAUTION
+
+
+def test_the_basis_of_a_side_is_in_the_explanation() -> None:
+    verdict = judge(result_of(ok(SM, 0.4)), above_severity="caution", above_basis="maintainer")
+    assert "maintainer" in verdict.explanation
+    assert "caution" in verdict.explanation

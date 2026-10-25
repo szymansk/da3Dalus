@@ -17,6 +17,7 @@ from aero_kernel.evaluation.rules import (
     QuantityRef,
     Rule,
     RuleTable,
+    Severity,
     check_rule_table,
     shipped_rule_table,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "RuleStatus",
     "RuleTable",
     "RuleVerdict",
+    "Severity",
     "check_rule_table",
     "evaluate_rules",
     "quantities_to_request",

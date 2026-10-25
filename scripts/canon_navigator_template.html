@@ -803,7 +803,8 @@ function selectRule(r){
   let h=`<h2>${esc(r.title)}</h2><p class="meta">${esc(r.source)} \u00b7 band ${esc(bandText(r.band,r.unit))}</p>
    <p class="desc">Judges ${link}. The canon computes and never judges (A10); this rule belongs to the evaluation layer.</p>`;
   if(when.length) h+=`<p class="meta">Applies when: ${when.map(w=>esc(w.replace(/`/g,''))).join(' and ')}</p>`;
-  for(const [side,label] of [['min','below'],['max','above']]) if(r.band[side]!==undefined) h+=`<div class="blk"><div class="lab">${label[0].toUpperCase()+label.slice(1)} the band</div><p class="sub" style="margin:0">${esc(r[label]||'The source names no consequence.')}</p></div>`;
+  for(const [side,label] of [['min','below'],['max','above']]) if(r.band[side]!==undefined){ const sev=r[label+'_severity']||'bad', col=sev==='caution'?'var(--mvp)':'var(--bad)', basis=r[label+'_basis'];
+    h+=`<div class="blk"><div class="lab"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${col};margin-right:6px"></span>${label[0].toUpperCase()+label.slice(1)} the band \u00b7 ${sev==='caution'?'caution (yellow)':'bad (red)'}</div><p class="sub" style="margin:0">${esc(r[label]||'The source names no consequence.')}${basis?'<br>Basis: '+esc(basis):''}</p></div>`; }
   for(const lv of (r.levels||[])) h+=`<div class="blk"><div class="lab">Level ${esc(lv.id)} \u00b7 ${esc(bandText(lv,r.unit))}</div><p class="sub" style="margin:0">${esc(lv.meaning)}</p></div>`;
   h+=`<p class="sub">Rule status per reference aircraft is not shown: the navigator is built from the canon alone and holds no computed fleet values, so only the band is given.</p>`;
   if(r.note) h+=`<div class="blk"><div class="lab">Note</div><p class="sub" style="margin:0">${esc(r.note)}</p></div>`;

@@ -20,6 +20,8 @@
       "when_not": [],
       "below": "Approaches the neutral point. A negative S.M. is unstable in pitch to some degree and makes the aircraft difficult or even impossible to fly.",
       "above": "A large S.M. gives large (and annoying) pitch trim changes with changing airspeed and degrades the pitch trim authority of the elevator.",
+      "below_severity": "bad",
+      "above_severity": "bad",
       "note": "The same rule as static-margin-measured, applied to the design target SM_target: it judges whether the designer's choice is plausible, not a measured margin."
     },
     {
@@ -41,6 +43,8 @@
       "when_not": [],
       "below": "Approaches the neutral point. A negative S.M. is unstable in pitch to some degree and makes the aircraft difficult or even impossible to fly.",
       "above": "A large S.M. gives large (and annoying) pitch trim changes with changing airspeed and degrades the pitch trim authority of the elevator.",
+      "below_severity": "bad",
+      "above_severity": "bad",
       "note": "The same rule as static-margin-design, applied to the margin of a given CG (an existing aircraft, a measured or plan CG). Not available when no CG is supplied."
     },
     {
@@ -64,6 +68,8 @@
       ],
       "when_not": [],
       "below": "Pitch behaviour is very sensitive to the CG location, the aircraft resists gusts and other upsets poorly and generally wanders in pitch attitude, which makes precise pitch control difficult.",
+      "below_severity": "bad",
+      "above_severity": "bad",
       "note": "Drela's V_h = S_h * l_h / (S * c) uses c = S/b and the arm from the CG; the canon quantity (#1273) uses c_MAC and the arm from the design CG (#1272)."
     },
     {
@@ -86,6 +92,8 @@
       ],
       "when_not": [],
       "below": "The aircraft tends to oscillate or wallow in yaw (Dutch roll) as the pilot gives rudder or aileron inputs, which makes precise directional control difficult; poor rudder roll authority in an aircraft that turns with the rudder only.",
+      "below_severity": "bad",
+      "above_severity": "bad",
       "note": "Until #1272 the canon arm is l_V,25 (from the wing quarter-chord MAC), not Drela's arm from the CG."
     },
     {
@@ -116,6 +124,8 @@
       ],
       "when_not": [],
       "below": "B < 5 is spirally unstable and B = 5 spirally neutral. Spiral stability is not a hard requirement and most aircraft are spirally unstable, but an RC aircraft that must fly hands-off has to be spirally stable.",
+      "below_severity": "bad",
+      "above_severity": "bad",
       "note": "B = l_V * Gamma / (b * C_L) with Gamma in degrees. Until #1272 the arm is l_V,25."
     },
     {
@@ -141,7 +151,10 @@
         "has_aileron"
       ],
       "below": "A value of 0.10 will likely give marginal roll control.",
-      "note": "Drela states 0.10 gives marginal and 0.20 very effective roll control and names no penalty above the range; the upper end of the band is his stated range, not a limit."
+      "above": "Costs performance (drag) without adding roll authority. Drela states 0.20 gives very effective control.",
+      "below_severity": "bad",
+      "above_severity": "caution",
+      "above_basis": "maintainer 2026-10-25; Drela names no penalty above the range"
     },
     {
       "id": "turn-sideslip",
@@ -179,6 +192,8 @@
         "has_aileron"
       ],
       "above": "Flying at a constant nonzero sideslip in the turn can produce a large drag increase if the sideslip is excessive, mainly because the fuselage is partly broadside to the oncoming flow.",
+      "below_severity": "bad",
+      "above_severity": "bad",
       "note": "Drela states beta_turn < (beta_turn)max = 5...15 deg at the tightest expected turn radius. The canon quantity (#1275) is the worst steady turn at phi = 45 deg at the minimum-sink C_L (maintainer, 2026-10-25): a reasoned transfer of Drela's criterion, not a quote."
     }
   ]

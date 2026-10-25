@@ -8,6 +8,7 @@ from aero_kernel.evaluation.rules import (
     Band,
     Position,
     RuleTable,
+    Severity,
     check_rule_table,
     shipped_rule_table,
 )
@@ -174,3 +175,33 @@ def test_the_two_applications_of_the_static_margin_rule_do_not_drift_apart() -> 
         measured.above,
         measured.source,
     )
+
+
+def test_severity_defaults_to_bad_on_both_sides() -> None:
+    rule = rule_of()
+    assert rule.below_severity is Severity.BAD
+    assert rule.above_severity is Severity.BAD
+
+
+def test_a_side_can_be_a_caution_with_its_basis() -> None:
+    rule = rule_of(above_severity="caution", above_basis="maintainer 2026-10-25")
+    assert rule.above_severity is Severity.CAUTION
+    assert rule.above_basis == "maintainer 2026-10-25"
+
+
+def test_a_severity_for_a_side_the_band_lacks_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        rule_of(band={"min": 5.0}, above=None, above_severity="caution")
+
+
+def test_a_basis_for_a_side_the_band_lacks_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        rule_of(band={"min": 5.0}, above=None, above_basis="x")
+
+
+def test_the_rudder_roll_authority_above_side_is_a_caution_with_the_maintainers_basis() -> None:
+    rule = {r.id: r for r in load_rule_table(DRELA).rules}["rudder-roll-authority"]
+    assert rule.above_severity is Severity.CAUTION
+    assert rule.above_basis is not None
+    assert "maintainer 2026-10-25" in rule.above_basis
+    assert (rule.band.min, rule.band.max) == (0.10, 0.20)

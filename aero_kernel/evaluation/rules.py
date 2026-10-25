@@ -20,6 +20,7 @@ __all__ = [
     "QuantityRef",
     "Rule",
     "RuleTable",
+    "Severity",
     "check_rule_table",
     "shipped_rule_table",
 ]
@@ -36,6 +37,17 @@ class Position(StrEnum):
     BELOW = "below"
     INSIDE = "inside"
     ABOVE = "above"
+
+
+class Severity(StrEnum):
+    """How bad it is to leave a band on one side.
+
+    ``BAD`` is a defect the source names; ``CAUTION`` is a cost without a defect, for example drag
+    that buys nothing.
+    """
+
+    CAUTION = "caution"
+    BAD = "bad"
 
 
 class Band(BaseModel):
@@ -130,6 +142,11 @@ class Rule(BaseModel):
             consequence, and not allowed when the band has no lower end.
         above: What the source says about a value above the band; absent where the source names no
             consequence, and not allowed when the band has no upper end.
+        below_severity: How bad a value below the band is; ``bad`` unless stated.
+        above_severity: How bad a value above the band is; ``bad`` unless stated.
+        below_basis: Where a non-default severity or an unsourced meaning of the lower side comes
+            from, when it is not the rule's ``source``.
+        above_basis: The same for the upper side.
         note: A difference between the source's definition and the canon quantity's, or any other
             caveat a reader needs.
     """
@@ -147,17 +164,23 @@ class Rule(BaseModel):
     when_not: tuple[WhenTerm, ...] = ()
     below: _NonBlank | None = None
     above: _NonBlank | None = None
+    below_severity: Severity = Severity.BAD
+    above_severity: Severity = Severity.BAD
+    below_basis: _NonBlank | None = None
+    above_basis: _NonBlank | None = None
     note: _NonBlank | None = None
 
     @model_validator(mode="after")
     def _check_meanings(self) -> Self:
-        """Reject a meaning for a side the band lacks; a side may have none where the source names none."""
-        for side, bound, meaning in (
-            ("below", self.band.min, self.below),
-            ("above", self.band.max, self.above),
+        """Reject anything stated for a side the band lacks; a side may have no meaning where the source names none."""
+        for side, bound, meaning, severity, basis in (
+            ("below", self.band.min, self.below, self.below_severity, self.below_basis),
+            ("above", self.band.max, self.above, self.above_severity, self.above_basis),
         ):
-            if bound is None and meaning is not None:
-                msg = f"rule {self.id}: the band has no {side} side, so `{side}` must be absent"
+            if bound is not None:
+                continue
+            if meaning is not None or basis is not None or severity is not Severity.BAD:
+                msg = f"rule {self.id}: the band has no {side} side, so its meaning, severity and basis must be absent"
                 raise ValueError(msg)
         return self
 

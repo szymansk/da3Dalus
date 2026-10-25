@@ -8,7 +8,7 @@ is inside the band, ``below`` or ``above`` only if the whole interval is, and ``
 
 from enum import StrEnum
 
-from aero_kernel.evaluation.rules import Band, Position, Rule, RuleTable
+from aero_kernel.evaluation.rules import Band, Position, Rule, RuleTable, Severity
 from aero_kernel.graph import PENDING_WHEN_TERMS, WhenFacts
 from aero_kernel.schema import (
     ComputeResult,
@@ -45,6 +45,8 @@ class RuleVerdict(BaseModel):
         interval: The judged spread over method worlds, for an uncertain quantity.
         unit: Unit of the value and of the band.
         band: The rule's band, copied so a verdict stands alone.
+        severity: For ``below``, ``above`` and ``partly``: how bad the side or sides left are; the
+            worst when an interval reaches both.
         level: Name of the rule's level that contains the value, if any.
         explanation: A sentence saying why, with the source's meaning where the band is left.
     """
@@ -57,6 +59,7 @@ class RuleVerdict(BaseModel):
     interval: Interval | None = None
     unit: str
     band: Band
+    severity: Severity | None = None
     level: str | None = None
     explanation: str
 
@@ -179,7 +182,22 @@ def _judge_value(rule: Rule, quantity: QuantityResult) -> RuleVerdict:
     if level is not None:
         extra["level"] = level
     status = _status_of(positions)
+    severity = _severity_of(rule, positions)
+    if severity is not None:
+        extra["severity"] = severity
     return _verdict(rule, status, _explain(rule, status, text, positions, level), **extra)
+
+
+def _severity_of(rule: Rule, positions: set[Position]) -> Severity | None:
+    """The worst severity of the sides a value reaches outside the band, if any."""
+    found: set[Severity] = set()
+    if Position.BELOW in positions:
+        found.add(rule.below_severity)
+    if Position.ABOVE in positions:
+        found.add(rule.above_severity)
+    if Severity.BAD in found:
+        return Severity.BAD
+    return Severity.CAUTION if found else None
 
 
 def _status_of(positions: set[Position]) -> RuleStatus:
@@ -207,10 +225,13 @@ def _explain(
         RuleStatus.PARTLY: "reaches outside",
     }[status]
     parts = [f"{rule.title}: {text} {verb} the band {band} ({rule.source})."]
-    if Position.BELOW in positions:
-        parts.append(f"Below: {rule.below or _NO_CONSEQUENCE}")
-    if Position.ABOVE in positions:
-        parts.append(f"Above: {rule.above or _NO_CONSEQUENCE}")
+    for side, position, meaning, severity, basis in (
+        ("Below", Position.BELOW, rule.below, rule.below_severity, rule.below_basis),
+        ("Above", Position.ABOVE, rule.above, rule.above_severity, rule.above_basis),
+    ):
+        if position in positions:
+            text = f"{side} ({severity.value}): {meaning or _NO_CONSEQUENCE}"
+            parts.append(f"{text} Basis: {basis}." if basis else text)
     if level is not None:
         meaning = next(lv.meaning for lv in rule.levels if lv.id == level)
         parts.append(f"Level {level}: {meaning}")
