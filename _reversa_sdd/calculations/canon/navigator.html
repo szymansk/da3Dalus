@@ -521,7 +521,7 @@ const NS='http://www.w3.org/2000/svg';
 const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
 
 {
-  for(const [band,label] of BANDS){ const t=el('text',{x:W,y:BANDY[band]-12,class:'colhead','text-anchor':'end'}); t.textContent=label; cam.appendChild(t); }
+  for(const [band,label] of BANDS){ const t=el('text',{x:RULES.length?SX.rules-SIDEGAP:W,y:BANDY[band]-12,class:'colhead','text-anchor':'end'}); t.textContent=label; cam.appendChild(t); }
   const dy=BANDY.final-GAPY/2; cam.appendChild(el('line',{x1:SX.analysis-SIDEGAP/2,y1:dy,x2:W,y2:dy,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
 }
 { const line=(x1,y1,x2,y2)=>cam.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
@@ -806,6 +806,7 @@ function selectRule(r){
   if(r.below) h+=`<div class="blk"><div class="lab">Below the band</div><p class="sub" style="margin:0">${esc(r.below)}</p></div>`;
   if(r.above) h+=`<div class="blk"><div class="lab">Above the band</div><p class="sub" style="margin:0">${esc(r.above)}</p></div>`;
   for(const lv of (r.levels||[])) h+=`<div class="blk"><div class="lab">Level ${esc(lv.id)} \u00b7 ${esc(bandText(lv,r.unit))}</div><p class="sub" style="margin:0">${esc(lv.meaning)}</p></div>`;
+  h+=`<p class="sub">Rule status per reference aircraft is not shown: the navigator is built from the canon alone and holds no computed fleet values, so only the band is given.</p>`;
   if(r.note) h+=`<div class="blk"><div class="lab">Note</div><p class="sub" style="margin:0">${esc(r.note)}</p></div>`;
   info.innerHTML=h;
 }
