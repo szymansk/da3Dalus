@@ -23,7 +23,7 @@ def flight_canon() -> CanonModel:
 
 
 @pytest.fixture(autouse=True)
-def _no_aerosandbox_for_the_reference_values(
+def no_aerosandbox_for_the_reference_values(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Fast tier: the main wing's reference values come from a stand-in, never from AeroSandbox.
@@ -31,7 +31,7 @@ def _no_aerosandbox_for_the_reference_values(
     The CI fast tier runs without the aero dependencies. The aero tier (marker ``aero``) measures
     with the real AeroSandbox.
     """
-    if request.node.get_closest_marker("aero") is not None:
+    if request.node.get_closest_marker("aero") is not None:  # pyright: ignore[reportUnknownMemberType]
         return
     for module in (
         "aero_kernel.solvers.geometry",
