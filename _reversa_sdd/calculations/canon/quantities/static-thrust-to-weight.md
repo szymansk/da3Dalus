@@ -4,7 +4,6 @@ kind: quantity
 symbol: T_0/W
 unit: 1
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

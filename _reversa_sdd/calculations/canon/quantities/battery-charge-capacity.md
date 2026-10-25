@@ -4,7 +4,6 @@ kind: quantity
 symbol: Q_bat
 unit: mAh
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

@@ -4,7 +4,6 @@ kind: quantity
 symbol: V
 unit: m/s
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/operating-point

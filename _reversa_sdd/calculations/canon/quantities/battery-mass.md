@@ -4,7 +4,6 @@ kind: quantity
 symbol: m_bat
 unit: kg
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

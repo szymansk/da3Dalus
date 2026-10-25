@@ -4,7 +4,6 @@ kind: quantity
 symbol: r_min
 unit: m
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

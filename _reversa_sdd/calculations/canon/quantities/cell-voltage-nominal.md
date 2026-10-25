@@ -4,12 +4,12 @@ kind: quantity
 symbol: U_cell
 unit: V
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/construction
   - role/input
 type: scalar
+
 positive: true
 ---
 

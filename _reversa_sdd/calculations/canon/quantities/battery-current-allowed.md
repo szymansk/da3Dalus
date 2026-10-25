@@ -4,7 +4,6 @@ kind: quantity
 symbol: I_bat,max
 unit: A
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

@@ -4,7 +4,6 @@ kind: quantity
 symbol: h
 unit: m
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/atmosphere

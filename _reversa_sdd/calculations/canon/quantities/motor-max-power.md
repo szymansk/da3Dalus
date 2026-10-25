@@ -4,7 +4,6 @@ kind: quantity
 symbol: P_mot,max
 unit: W
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

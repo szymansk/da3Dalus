@@ -4,7 +4,6 @@ kind: quantity
 symbol: "n"
 unit: 1
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/operating-point

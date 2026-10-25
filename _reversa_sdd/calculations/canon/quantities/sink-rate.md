@@ -4,7 +4,6 @@ kind: quantity
 symbol: w_sink
 unit: m/s
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/glide

@@ -4,12 +4,12 @@ kind: quantity
 symbol: V_cruise,target
 unit: m/s
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/envelope-targets
   - role/target
 type: scalar
+
 positive: true
 ---
 

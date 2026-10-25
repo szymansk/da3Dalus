@@ -4,12 +4,12 @@ kind: quantity
 symbol: k_S,TD
 unit: 1
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/envelope-targets
   - role/target
 type: scalar
+
 positive: true
 ---
 

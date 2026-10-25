@@ -260,6 +260,7 @@ const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \
   dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
 IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
 const CONV=D.conv||{}, CONVS=D.conventions||{}, DEFS=D.defaults||{};
+const APPR=D.appr||{}, QSTAT=D.qstat||{}, QDATA=D.qdata||{};
 const BLOCKING=i=>!IKIND[kindOf(i)].info;
 const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
 const ISSUES={}; for(const f in D.F) for(const o of D.F[f].out) if((D.F[f].issues||[]).length) (ISSUES[o] ||= []).push(...D.F[f].issues.map(i=>({...i,formula:f})));
@@ -638,6 +639,8 @@ function select(q){
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   if(CONV[q]) h+=`<div class="blk"><div class="lab" style="color:var(--sel)">&#8776; Rests on a defined value \u00b7 ${CONV[q].length}</div>`+
     CONV[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(CONVS[c].value)} ${esc(CONVS[c].unit==='1'?'':CONVS[c].unit)}</b> <span class="sub">(${esc(c)}, convention)</span><br>${esc(CONVS[c].source)}<br><span class="sub">A value chosen without a published source, adopted on the maintainer&#8217;s word &#8212; the result is only as good as this choice.</span></div>`).join('')+`</div>`;
+  if(QSTAT[q]==='unmapped') h+=`<div class="blk"><div class="lab" style="color:var(--bad)">Data source \u00b7 unmapped</div><p class="sub" style="margin:0">No demonstrated source in our data (geometry, component catalogue, default, app field, evaluation); stage 2 of every formula reading it stays open.</p></div>`;
+  else if(QDATA[q]) h+=`<div class="blk"><div class="lab">Data source \u00b7 approved</div><ul class="lnk" style="display:block">`+QDATA[q].map(x=>`<li style="display:block;cursor:default">${esc(x)}</li>`).join('')+`</ul></div>`;
   if(DEFS[q]){ const d=DEFS[q], link=x=>`<li data-q="${esc(x)}" title="${esc(x)}">${esc(sym(x))}</li>`;
     h+=`<div class="blk"><div class="lab">Default \u00b7 ${esc(d.basis)}</div>`+
       `<div class="cblk"><b>${esc(sym(q))} = ${esc(d.value)} ${esc(d.unit==='1'?'':d.unit)}</b> <span class="sub">(${esc(q)}, overridable by the caller; taking it is declared)</span><br>`+
@@ -657,6 +660,9 @@ function select(q){
   for(const f of fs){
     const e=F[f];
     h+=`<div class="blk"><div class="lab">Produced by \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;
+    { const ap=APPR[f];
+      if(ap) h+=`<p class="sub" style="margin:0 0 6px">Approval: formula <b>${ap.s1==='approved'?'&#10003;':'&#8212;'}</b> ${esc(ap.s1)} \u00b7 inputs <b>${ap.k}</b> of <b>${ap.n}</b>`+
+        (ap.missing.length?'<br>missing: '+ap.missing.map(m=>`<a href="#" onclick="select('${esc(m.q)}');return false">${esc(sym(m.q))}</a> <span class="sub">(${esc(m.why)})</span>`).join(' &#183; '):'')+`</p>`; }
     h+= e.tex ? `<div class="math">$$${e.tex}$$</div>`
               : `<div class="mono">${esc(e.form)}</div>
                  <p class="sub" style="margin:6px 0 0">Procedural form \u2014 not typeset as a formula.</p>`;
@@ -785,7 +791,8 @@ document.addEventListener('click',ev=>{ const bt=ev.target.closest('.seg button[
   document.getElementById('kstat').innerHTML=
     `Canon model <b>${esc(D.stand||'')}</b>.<br>`+
     `Formulas implemented: <b>${fDone.length}</b> of <b>${fAll.length}</b>.<br>`+
-    `Formulas approved: <b>${fAll.filter(f=>F[f].status==='approved').length}</b> of <b>${fAll.length}</b>; `+
+    `Formulas approved (stage 1): <b>${fAll.filter(f=>F[f].status==='approved').length}</b> of <b>${fAll.length}</b>; `+
+    `with both stages (inputs mapped): <b>${fAll.filter(f=>F[f].status==='approved'&&APPR[f]&&!APPR[f].missing.length).length}</b>.<br>`+
     `<span style="color:var(--bad)">with open issues: <b>${fAll.filter(f=>(F[f].issues||[]).some(BLOCKING)).length}</b></span>.<br>`+
     `MVP (BRYAN, JAGUAR): ${res.map(r=>`<a href="#" data-q="${esc(r)}">${esc(sym(r))}</a>`).join(', ')} &#8212; `+
     `<b>${mvpF.length-mvpOpen.length}</b> of <b>${mvpF.length}</b> formulas implemented.`+

@@ -4,7 +4,6 @@ kind: quantity
 symbol: alpha
 unit: deg
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/operating-point

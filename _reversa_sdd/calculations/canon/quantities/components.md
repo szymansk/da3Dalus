@@ -4,7 +4,6 @@ kind: quantity
 symbol: components
 unit: —
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/construction

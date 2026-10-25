@@ -4,12 +4,12 @@ kind: quantity
 symbol: eta_mot
 unit: 1
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/construction
   - role/input
 type: scalar
+
 positive: true
 ---
 

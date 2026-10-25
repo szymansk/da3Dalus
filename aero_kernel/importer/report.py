@@ -4,6 +4,7 @@ import json
 
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import DEFAULT_NAMESPACE
+from aero_kernel.importer.approval import Approval
 
 __all__ = ["model_text", "report_text"]
 
@@ -16,7 +17,7 @@ def model_text(model: CanonModel) -> str:
     )
 
 
-def report_text(model: CanonModel) -> str:
+def report_text(model: CanonModel, approval: Approval) -> str:
     """Render the import report: provenance, counts and the table of formulas (Appendix A).
 
     The report holds no timestamp and no path, so importing the same canon twice gives the same
@@ -24,6 +25,7 @@ def report_text(model: CanonModel) -> str:
 
     Args:
         model: The imported model.
+        approval: The derived two-stage approval of its formulas and quantities.
 
     Returns:
         The Markdown text.
@@ -52,4 +54,42 @@ def report_text(model: CanonModel) -> str:
         f"{', '.join(application.id for application in formula.applications)} |"
         for slug, formula in sorted(content.formulas.items())
     )
+    lines.extend(_approval_lines(approval))
     return "\n".join(lines) + "\n"
+
+
+def _approval_lines(approval: Approval) -> list[str]:
+    """Render stage 2 of the approval: per formula, then every supplied input without a source."""
+    lines = [
+        "",
+        "## Approval, stage 2",
+        "",
+        "Stage 1 is the formula's own status; stage 2 is derived: every input is produced by an "
+        'approved formula or has a `data:` source in our data (canon README, "Two stages").',
+        "",
+        "| formula | stage 1 | inputs | missing |",
+        "|---|---|---|---|",
+    ]
+    lines.extend(
+        f"| {row.formula} | {row.stage1} | {row.mapped} of {row.total} | "
+        f"{'; '.join(f'{state.quantity} ({state.basis})' for state in row.missing)} |"
+        for row in approval.formulas
+    )
+    readers: dict[str, list[str]] = {slug: [] for slug in approval.unmapped}
+    for row in approval.formulas:
+        for state in row.inputs:
+            if state.quantity in readers:
+                readers[state.quantity].append(row.formula)
+    lines.extend(
+        [
+            "",
+            "### Unmapped inputs",
+            "",
+            "Supplied quantities with no `data:` source: findings, not errors.",
+            "",
+            "| quantity | read by |",
+            "|---|---|",
+        ]
+    )
+    lines.extend(f"| {slug} | {', '.join(users)} |" for slug, users in readers.items())
+    return lines

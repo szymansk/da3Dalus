@@ -4,7 +4,6 @@ kind: quantity
 symbol: R_m
 unit: ohm
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

@@ -4,7 +4,6 @@ kind: quantity
 symbol: s_max
 unit: 1
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/glide

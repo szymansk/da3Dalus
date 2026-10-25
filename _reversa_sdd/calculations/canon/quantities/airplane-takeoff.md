@@ -4,7 +4,6 @@ kind: quantity
 symbol: airplane_TO
 unit: —
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

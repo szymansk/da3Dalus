@@ -4,7 +4,6 @@ kind: quantity
 symbol: V_y
 unit: m/s
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

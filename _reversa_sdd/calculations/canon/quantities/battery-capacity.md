@@ -4,7 +4,6 @@ kind: quantity
 symbol: E_bat
 unit: Wh
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

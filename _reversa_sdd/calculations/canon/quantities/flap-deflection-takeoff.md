@@ -4,7 +4,6 @@ kind: quantity
 symbol: delta_f,TO
 unit: deg
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/control-deflections

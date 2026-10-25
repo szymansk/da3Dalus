@@ -4,7 +4,6 @@ kind: quantity
 symbol: C_rate
 unit: 1/h
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

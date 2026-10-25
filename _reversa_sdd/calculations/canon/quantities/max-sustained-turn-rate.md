@@ -4,7 +4,6 @@ kind: quantity
 symbol: omega_max
 unit: deg/s
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

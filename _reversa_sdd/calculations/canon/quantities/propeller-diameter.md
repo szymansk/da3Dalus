@@ -4,7 +4,6 @@ kind: quantity
 symbol: D_prop
 unit: m
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

@@ -15,7 +15,7 @@ def _quantity(
     shown = f'"{unit}"' if unit == "N" else unit  # the newton is a YAML 1.1 boolean unless quoted
     return (
         f"---\ncanon: {slug}\nkind: quantity\nsymbol: {symbol}\nunit: {shown}\nrole: {role}\n"
-        f"status: draft\ntags:\n  - canon/quantity\ntype: {type_}\n{extra}---\n\n# {slug}\n\nProse.\n"
+        f"tags:\n  - canon/quantity\ntype: {type_}\n{extra}---\n\n# {slug}\n\nProse.\n"
     )
 
 
@@ -45,7 +45,7 @@ worlds:
 MINI_CANON: dict[str, str] = {
     "taxonomy.yaml": MINI_TAXONOMY,
     "quantities/aircraft-mass.md": _quantity(
-        "aircraft-mass", "m", "kg", "input", "positive: true\n"
+        "aircraft-mass", "m", "kg", "input", "positive: true\ndata: geometry:total_mass_kg\n"
     ),
     "quantities/gravity.md": _quantity("gravity", "g", "m/s^2", "input", "positive: true\n"),
     "quantities/weight.md": _quantity("weight", "W", "N", "derived"),

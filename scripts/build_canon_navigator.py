@@ -30,6 +30,8 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))  # the script runs from scripts/, the package sits at the root
 
+from aero_kernel.canon.model import CanonModel  # noqa: E402
+from aero_kernel.importer.approval import derive_approval  # noqa: E402
 from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES  # noqa: E402
 
 #: Edges the layering breaks, with the reason. A naming collapse, not a fixed point: one
@@ -440,6 +442,28 @@ def default_marks(data: dict, model: dict) -> None:
     data["conv"] = {q: sorted(v) for q, v in sorted(conv.items())}
 
 
+def approval_marks(data: dict, model: dict) -> None:
+    """Two-stage approval (#1251): per formula stage 1 and inputs k of n, per quantity its derived status.
+
+    Stage 1 is the formula's own status in its entry; stage 2 and the quantity statuses are derived
+    from the canon model by the same function the importer reports with.
+    """
+    stage1 = {slug: f["status"] or "draft" for slug, f in data["F"].items()}
+    approval = derive_approval(CanonModel.model_validate(model), stage1)
+    data["appr"] = {
+        row.formula: {
+            "s1": row.stage1,
+            "k": row.mapped,
+            "n": row.total,
+            "missing": [{"q": state.quantity, "why": state.basis} for state in row.missing],
+        }
+        for row in approval.formulas
+    }
+    data["qstat"] = approval.quantity_status
+    quantities = model["namespaces"]["calc"]["quantities"]
+    data["qdata"] = {q: v["data"] for q, v in sorted(quantities.items()) if v.get("data")}
+
+
 def binding_constants(model_formulas: dict) -> dict:
     """Constants bound in applications (``{const, source}``): per formula, per application id.
 
@@ -492,6 +516,7 @@ def build() -> tuple[str, dict]:
     data = layout(quantities, formulas, edges)
     kernel_status(data, KERNEL_FORMULAS)
     default_marks(data, model)
+    approval_marks(data, model)
     data["tax"] = model["namespaces"]["calc"]["taxonomy"]
     data["stand"] = model["content_hash"][:12]
     template = pathlib.Path(__file__).with_name("canon_navigator_template.html")

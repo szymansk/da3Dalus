@@ -151,6 +151,26 @@ def _producers(content: Namespace) -> list[Finding]:
     return findings
 
 
+def _data_on_produced(content: Namespace) -> list[Finding]:
+    """A ``data`` source belongs to a quantity no formula produces (two-stage approval, #1251)."""
+    produced = {
+        _bare(slug)
+        for formula in content.formulas.values()
+        for application in formula.applications
+        for slug in _produced(application).values()
+    }
+    return [
+        Finding(
+            file=_quantity_file(slug),
+            field="data",
+            message="this quantity is produced by a formula, which is its source; "
+            "'data:' belongs to quantities no formula produces",
+        )
+        for slug, quantity in sorted(content.quantities.items())
+        if quantity.data is not None and slug in produced
+    ]
+
+
 def _names(content: Namespace) -> list[Finding]:
     """A9: a target has a ``target`` segment in its name; no input or target is called requirement.
 
@@ -333,6 +353,7 @@ def check_model(model: CanonModel) -> list[Finding]:
         findings.extend(_producers(content))
         findings.extend(_reads_of_per_control_surface(content))
         findings.extend(_per_control_surface_roles(content))
+        findings.extend(_data_on_produced(content))
         findings.extend(_names(content))
         findings.extend(_symbols(content))
         findings.extend(_units(content))

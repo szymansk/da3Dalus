@@ -4,7 +4,6 @@ kind: quantity
 symbol: l(y)
 unit: N/m
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/structure

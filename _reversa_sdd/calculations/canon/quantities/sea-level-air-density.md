@@ -4,12 +4,12 @@ kind: quantity
 symbol: rho_0
 unit: kg/m^3
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/atmosphere
   - role/input
 type: scalar
+
 positive: true
 ---
 

@@ -819,7 +819,7 @@ python -m aero_kernel.importer <canon-document-dir> [--check]
 | 2 Normalise | slugs, unit spellings to one closed symbol set (`1` for dimensionless, `—` folded into it), roles, kinds, tools to closed vocabularies; resolves `[[…]]` references | an unknown unit, kind, tool or role |
 | 3 Validate | JSON Schema of the canon model; consistency rules (ch. 8.6); dimensional check | any rule is violated |
 | 4 Diff | compares with the committed canon model: entries added, removed or changed; marks **breaking** changes (inputs, units, outputs, applications) and lists the affected implementations and golden tests | — (only reports) |
-| 5 Write | writes `canon_model.json` (sorted, stable formatting), its content hash and the importer version; writes `IMPORT_REPORT.md` (diff, findings, Appendix A table) | — |
+| 5 Write | writes `canon_model.json` (sorted, stable formatting), its content hash and the importer version; writes `IMPORT_REPORT.md` (diff, findings, Appendix A table, stage-2 approval table and unmapped inputs) | — |
 
 **What the importer reads (maintainer decision 2026-10-14, migration in #1181).** Every entry carries its
 structure in the front matter; the prose explains, the importer never reads it. **The definition of the
@@ -907,7 +907,7 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   is > 0 for a `positive` quantity and not above `at_most`; `variables` exactly with `embeds`;
   `embeds` ⊆ `embeds_closure` and every closure item resolves. **Cross-formula rules stay with the
   importer** (ch. 8.6): one producer per quantity, unit consistency, closure correctness and acyclicity,
-  cost derivation. The implicit application is written out with id `default`.
+  cost derivation, and the two-stage approval (#1251): a quantity's `data:` sources (`<kind>:<location>`, five closed kinds) belong to quantities no formula produces and their locations are looked up in the repository files (`importer/data_sources.py`); stage 2 is derived in `importer/approval.py` and reported in `IMPORT_REPORT.md`. The implicit application is written out with id `default`.
 - **The embeds closure** is a field of each embedder, `embeds_closure`: the sorted, de-duplicated items
   reachable through `embeds` (the direct ones included), computed by the importer.
 - **Loader** (`canon/load.py`): version pre-check, Pydantic validation (the JSON Schema is generated from

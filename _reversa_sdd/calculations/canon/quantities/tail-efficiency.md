@@ -4,12 +4,12 @@ kind: quantity
 symbol: eta_h
 unit: 1
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/conventions
   - role/input
 type: scalar
+
 positive: true
 at_most: 1
 ---
