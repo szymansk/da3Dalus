@@ -93,7 +93,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | best-angle-of-climb | draft | 12 of 12 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | best-rate-of-climb | draft | 12 of 12 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | butterfly-approach | draft | 6 of 8 | crow-aileron-deflection (no data source); crow-flap-deflection (no data source) |
-| cg-for-target-margin | draft | 3 of 3 |  |
+| cg-for-target-margin | approved | 3 of 3 |  |
 | control-surface-hinge-moments | approved | 12 of 12 |  |
 | cruise-target-performance | draft | 14 of 14 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
 | dive-speed | draft | 12 of 12 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
@@ -102,8 +102,8 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | endurance-and-range | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
 | endurance-and-range-optimum | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
 | induced-drag-factor | draft | 0 of 2 | aspect-ratio (not approved); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
-| lateral-static-stability-app | approved | 5 of 6 | centre-of-gravity-design (cg-for-target-margin: not approved) |
-| lateral-static-stability-md | approved | 5 of 6 | centre-of-gravity-design (cg-for-target-margin: not approved) |
+| lateral-static-stability-app | approved | 6 of 6 |  |
+| lateral-static-stability-md | approved | 6 of 6 |  |
 | lift-coefficient-required | draft | 5 of 5 |  |
 | lift-to-drag-ratio | draft | 2 of 2 |  |
 | linear-lift-curve-inverse | draft | 4 of 4 |  |
@@ -135,7 +135,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | stall-speed | approved | 8 of 8 |  |
 | stall-wing-loading-limit | approved | 2 of 3 | stall-speed-target (no data source) |
 | static-margin | draft | 3 of 3 |  |
-| static-margin-probe | draft | 5 of 6 | centre-of-gravity-design (cg-for-target-margin: not approved) |
+| static-margin-probe | draft | 6 of 6 |  |
 | static-thrust-to-weight | draft | 11 of 11 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | thrust-at-airspeed-from-coefficient | draft | 2 of 4 | propeller-speed (motor-propeller-equilibrium: not approved); thrust-coefficient (propeller-table-lookup: not approved; advance-ratio-from-speed: not approved via propeller-table-lookup; motor-propeller-equilibrium: not approved via propeller-table-lookup, advance-ratio-from-speed) |
 | vertical-tail-volume | draft | 3 of 3 |  |
