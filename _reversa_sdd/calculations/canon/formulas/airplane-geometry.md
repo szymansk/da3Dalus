@@ -32,25 +32,39 @@ S_ref, b_ref, c_MAC := geometry of the airplane model
 
 **Produces** [[wing-reference-area]] · [[wing-span]] · [[mean-aerodynamic-chord]]  ·  **from** [[airplane]]
 
-**Kind: a procedure — an evaluation of the model.** These are properties of the aircraft, read or
-integrated from its geometry: reference area and span from the main wing (the wing with surface_type main_wing, #1187), the mean
-aerodynamic chord as `(2/S)·∫c(y)² dy`.
+**Kind: a procedure — an evaluation of the model.** These are properties of the aircraft, read from its
+geometry: reference area, span and mean aerodynamic chord of the main wing (the wing with surface_type main_wing,
+#1187), chosen by type and never by list position.
 
-**Definition (maintainer, 2026-10-22).** The reference values are the sections' chords and leading edges as
-given, projected onto the x-y plane, panel by panel; twist does not change them. A mirrored wing is carried to the
-centreline: a root off the plane is extended to y = 0 with the root chord, and a stored side that crosses y = 0 is
-clipped there, so b_ref = 2·max|y| and S_ref, c_MAC are integrated over 0 … max|y|; a wing that is not mirrored
-keeps its stored extent (max y − min y) without extension. Sections that fold back in y are not supported. The kernel integrates the
-sections itself. AeroSandbox's `Wing.area()`, `Wing.span()` and `Wing.mean_aerodynamic_chord()` are not used for
-the reference values: their projection depends on twist (they measure along the quarter-chord line), and the
-mean aerodynamic chord weights panels by their slant area. The app's current values are measured along the
-panels and differ by up to about 2 % at 8° dihedral.
+**Definition (maintainer, 2026-10-25).** The reference values are AeroSandbox's, measured on the main wing:
+
+- `S_ref = Wing.area()` (ASB default: `type="planform"`, `include_centerline_distance=False`),
+- `b_ref = Wing.span(include_centerline_distance=True)`,
+- `c_MAC = Wing.mean_aerodynamic_chord()`,
+
+that is exactly what `asb.Airplane` infers when the main wing is its first wing. The kernel passes them
+explicitly to `asb.Airplane` and to AVL, so every coefficient stays referenced to the same area (ADR 0022);
+ASB's own default would take the first wing in the list, not the main wing. A mirrored wing is built from its
+oriented chain (root first, y ≥ 0); sections that fold back in y are not supported.
+
+**Declared, not changed.** ASB's `area()` excludes the gap at the centreline (a root off y = 0 contributes no
+area inboard of it), while `b_ref` includes the centreline distance (`2·max|y|`). For a wing whose root lies on
+y = 0 the two agree; for an offset root, S_ref and b_ref do not describe the same planform. This is ASB's
+definition and is stated here, not corrected. ASB measures the panels along the quarter-chord line, so twist
+and dihedral move the values; that is part of the definition.
+
+**Superseded (maintainer 2026-10-25).** The rule of 2026-10-22 (sections projected onto the x-y plane,
+twist-independent, the mirrored root extended to y = 0 with the root chord, the kernel integrating the sections
+itself) no longer holds. The decision: "Wenn ich was ausgeschlossen habe, das bei asb anders gemacht wird, dann
+gilt die Rechnung nach asb! Das ist von einem Experten implementiert." With it the warning
+`reference_wing_at_centreline` is gone. The neutral point's own planform integration
+(`aero_kernel/geometry_properties.py`, `x_le_MAC` and the tail terms) is a separate matter and is unchanged.
 
 **Why this entry exists.** These quantities used to stand as free inputs. They are not: a
 change to the wing changes all of them, and the graph has to say so, or invalidation (A1)
 would leave every number computed from them standing after a geometry edit.
 
-**Source.** 🟢 Scholz, *Flugzeugentwurf*, Wing Design §7.1: `c_MAC = (2/S)·∫₀^{b/2} c(y)² dy`, and the reference wing area as a definitional convention. The projection and centreline rules (x-y projection, twist-independent, root extended to y = 0 with the root chord, b_ref = 2·max|y|) have no textbook source; they are adopted on the maintainer's authority (definition, 2026-10-22).
+**Source.** 🟢 AeroSandbox 4.2.9 (Sharpe; version from `poetry.lock`) for the computation: `Wing.area()`, `Wing.span()` and `Wing.mean_aerodynamic_chord()` as `asb.Airplane` uses them for its reference values, adopted on the maintainer's authority (2026-10-25: the expert's implementation is the definition). 🟢 Scholz, *Flugzeugentwurf*, Wing Design §7.1 for the concept: `c_MAC = (2/S)·∫₀^{b/2} c(y)² dy`, and the reference wing area as a definitional convention.
 
 **Validity in the RC/UAV regime (ADR 0028).** Regime-independent: S_ref, b_ref and c_MAC are geometric properties of the planform, and no Reynolds number, Mach number or equipment enters them. The reference area is a convention: Scholz (Wing Design §7.1) shows that manufacturers define it differently and that changing it changes only the coefficients. The one regime requirement is consistency: every coefficient in the chain must use the S_ref and c_MAC this entry produces.
 
@@ -58,7 +72,7 @@ would leave every number computed from them standing after a geometry edit.
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/airplane_geometry.py` | EXACT | 🟢 | the reference planform carried to the centreline is declared (`reference_wing_at_centreline`, ADR 0020); the integration is `aero_kernel/geometry_properties.py` |
+| `aero_kernel/formulas/airplane_geometry.py` | EXACT | 🟢 | the values are ASB's own, measured by the GEO adapter (`aero_kernel/solvers/geometry.py`) on the wing `aero_kernel/solvers/asb_airplane.py` builds; `area()` excludes the centreline gap while `b_ref` includes it (declared above) |
 
 ## Approval
 

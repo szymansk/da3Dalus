@@ -48,11 +48,12 @@ GOLDEN_NP = {
 }
 # The textbook world with the former constant given explicitly as tail-efficiency (continuity).
 GOLDEN_TEXTBOOK_ETA_09 = {FleetMember.BRYAN: 0.1441142600, FleetMember.JAGUAR: 0.1233721388}
-C_MAC = {FleetMember.BRYAN: 0.13277219166316895, FleetMember.JAGUAR: 0.10504546518699101}
+# AeroSandbox's c_MAC of the main wing (gh-1240); it was the kernel's projected 0.13277219 / 0.10504547.
+C_MAC = {member: member.asb_reference[2] for member in FleetMember}
 # BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral
 # point of the template's own aligned mesh under the kernel's conditions at that C_L:
 # scripts/sim_export/crrcsim/avl_kernel_reference.py, AVL_CONVERGENCE.md "Kernel conditions".
-BRYAN_CL_MD = 0.6240228
+BRYAN_CL_MD = 0.6229294
 BRYAN_TEMPLATE_X_NP = 0.144023
 SM_TARGET = 0.10
 ABS_M = 1e-4  # the regression tolerance of the AVL world

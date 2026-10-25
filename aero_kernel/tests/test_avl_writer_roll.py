@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.solvers.avl_mesh import mesh_surfaces
 from aero_kernel.solvers.avl_writer import (
     RollOutput,
@@ -22,7 +21,7 @@ SNAPSHOTS = Path(__file__).resolve().parent / "reference" / "snapshots"
 def written(member: FleetMember, *, roll: bool) -> str:
     """The AVL file of a fleet member at 24 strips: every airfoil gets CLAF 1.09."""
     plane = AirplaneGeometry.model_validate(reference_document(member))
-    reference = main_wing_properties(plane)
+    reference = member.reference
     numbers: dict[str, int] = {}
 
     def number(airfoil: object) -> int:
@@ -43,8 +42,8 @@ def written(member: FleetMember, *, roll: bool) -> str:
 
 @pytest.mark.parametrize("member", list(FleetMember))
 def test_clean_mesh_and_file_unchanged(member: FleetMember) -> None:
-    """The neutral-point file is byte-identical to the one the slice-4b code wrote (generated from
-    commit 1ab1d5ef): no breaks, no controls, the reference point at the origin."""
+    """The neutral-point file is the slice-4b one (commit 1ab1d5ef): no breaks, no controls, the
+    reference point at the origin. Only its ``Sref Cref Bref`` line moved, to AeroSandbox's values (gh-1240)."""
     expected = (SNAPSHOTS / f"{member.name.lower()}_clean.avl").read_text()
     assert written(member, roll=False) == expected
 

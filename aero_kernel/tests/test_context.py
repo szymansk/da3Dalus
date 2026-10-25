@@ -5,7 +5,12 @@ from aero_kernel.context import Context
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers.opti import OptiAdapter
-from aero_kernel.tests.formula_builders import OPT_SETTINGS, StubAtmosphere, solvers_with
+from aero_kernel.tests.formula_builders import (
+    OPT_SETTINGS,
+    StubAtmosphere,
+    StubGeometry,
+    solvers_with,
+)
 
 SOLVERS = solvers_with()
 
@@ -60,9 +65,15 @@ def test_tool_versions_of_an_adapter_tool_are_the_adapters() -> None:
     assert solvers.tool_versions_of("ATM") == {"aerosandbox": "1.2.3"}
 
 
-@pytest.mark.parametrize("tool", ["APP", "GEO", "KAT", "APC"])
+@pytest.mark.parametrize("tool", ["APP", "KAT", "APC"])
 def test_a_pure_tool_has_no_version(tool: str) -> None:
     assert SOLVERS.tool_versions_of(tool) == {}
+
+
+def test_the_geometry_tool_reports_the_versions_of_its_adapter() -> None:
+    """GEO measures with AeroSandbox (ch. 8.8), so its result depends on that version."""
+    solvers = solvers_with(geometry=StubGeometry(versions={"aerosandbox": "4.5.6"}))
+    assert solvers.tool_versions_of("GEO") == {"aerosandbox": "4.5.6"}
 
 
 @pytest.mark.parametrize("tool", ["AB"])

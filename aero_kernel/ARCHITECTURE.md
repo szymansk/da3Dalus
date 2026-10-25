@@ -293,7 +293,6 @@ Sources:
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
-- the reference wing carried to the centreline (`reference_wing_at_centreline`, `practice`, origin: the quantities of `airplane-geometry`): a mirrored main wing whose root lies off y = 0 is extended to the plane with the root chord, or its stored side crossing y = 0 is clipped there (`detail`: `wing` and `extended_m` or `clipped_m`); the convention changes the planform by that length, so it is declared (ADR 0020)
 - active bounds in the optimiser
 
 The A11 "not validated" marker is the field `QuantityResult.validated`, not a warning.
@@ -481,10 +480,13 @@ quantity.
       never a geometric inference (the provisional planform rule is dropped); the geometry-format change
       gets its own ticket. The type follows the **function**, not the position:
       - `main_wing` — exactly one (biplanes are out of v1; a second `main_wing` is `main_wing_count`);
-        `S_ref`, `b_ref`, `c_MAC` come from it alone, integrated from its sections' chords and leading edges
-        projected onto the x-y plane (twist-independent); a mirrored wing is carried to the centreline (root off
-        y = 0 extended with the root chord, a side crossing y = 0 clipped; maintainer 2026-10-22, team-lead
-        2026-10-23), declared by the warning `reference_wing_at_centreline` (ch. 8.2);
+        `S_ref`, `b_ref`, `c_MAC` come from it alone, chosen by type and never by list position, and are
+        AeroSandbox's own values of that wing (maintainer 2026-10-25, superseding the own integration of
+        2026-10-22): `Wing.area()`, `Wing.span(include_centerline_distance=True)` and
+        `Wing.mean_aerodynamic_chord()`, i.e. what `asb.Airplane` infers when the main wing is its first
+        wing. `area()` excludes the centreline gap while the span includes it (declared in the canon entry,
+        not changed). The GEO adapter (`solvers/geometry.py`) measures them on the wing the one conversion
+        `to_asb_airplane` builds; its tool versions are AeroSandbox's;
       - `horizontal_tail`;
       - `vertical_tail` — also tip fins and centre fins that carry a rudder or serve directional stability;
       - `v_tail` — counts as **both** a horizontal and a vertical tail;
