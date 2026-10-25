@@ -4,10 +4,10 @@ import math
 from collections.abc import Callable, Sequence
 
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import FlowConditions, Polar
 from aero_kernel.solvers.air import AirState
+from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.solvers.opti import (
     BestGlide,
     BestGlideSolution,

@@ -7,8 +7,7 @@ from typing import Any
 import numpy as np
 import pytest
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import main_wing_properties
-from aero_kernel.solvers.asb_airplane import to_asb_airplane
+from aero_kernel.solvers.asb_airplane import main_wing_properties, to_asb_airplane
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 from aero_kernel.tests.test_solvers_asb_airplane import CONTOUR, geometry
 

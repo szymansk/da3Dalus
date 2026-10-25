@@ -8,11 +8,11 @@ from aero_kernel.devices import FLAP_ROLES
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import ComputeRequest, QuantityStatus
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.air import AirState
+from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.solvers.opti import OptiAdapter, Stall, StallRequest, StallSolution
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.solver_builders import InProcessRuntime

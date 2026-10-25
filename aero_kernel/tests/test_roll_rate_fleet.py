@@ -14,7 +14,6 @@ import pytest
 from aero_kernel import compute
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.schema import (
     AircraftInput,
     ComputeResult,
@@ -23,6 +22,7 @@ from aero_kernel.schema import (
     QuantityStatus,
     WarningSeverity,
 )
+from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
@@ -33,12 +33,12 @@ SLUGS = ("roll-rate-approach", "roll-rate-nondimensional-approach")
 AB, AVL = "roll-rate=aerobuildup", "roll-rate=avl"
 # Regression goldens: (AeroBuildup world, AVL world) of p in deg/s and of p_hat = p b / 2 V.
 GOLDEN_P = {
-    FleetMember.BRYAN: (490.14462, 410.52307),
-    FleetMember.JAGUAR: (346.50673, 419.59689),
+    FleetMember.BRYAN: (490.14462, 410.51230),
+    FleetMember.JAGUAR: (346.50673, 419.59114),
 }
 GOLDEN_P_HAT = {
-    FleetMember.BRYAN: (0.3423656, 0.28675),
-    FleetMember.JAGUAR: (0.2304832, 0.2791),
+    FleetMember.BRYAN: (0.3431387, 0.28739),
+    FleetMember.JAGUAR: (0.2304946, 0.27911),
 }
 # V_app = 1.3 V_S (m/s) of the slice-3 stall golden path; the fleet has no flap, so V_S,landing = V_S.
 V_APP = {FleetMember.BRYAN: 6.818986359246604, FleetMember.JAGUAR: 8.188976805083124}

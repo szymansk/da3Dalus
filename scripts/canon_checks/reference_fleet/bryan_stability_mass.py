@@ -43,19 +43,43 @@ def build(delta_e=0.0, x_ref=X_CG_PLAN):
         for x in w["x_secs"]:
             cs = []
             if "control_surface" in x and x["control_surface"]["name"] == "Hoehenruder":
-                cs = [asb.ControlSurface(name="elevator", symmetric=True,
-                                         hinge_point=x["control_surface"]["hinge_point"],
-                                         deflection=delta_e)]
-            xs.append(asb.WingXSec(xyz_le=x["xyz_le"], chord=x["chord"], twist=x["twist"],
-                                   airfoil=AF[x["airfoil"]], control_surfaces=cs))
+                cs = [
+                    asb.ControlSurface(
+                        name="elevator",
+                        symmetric=True,
+                        hinge_point=x["control_surface"]["hinge_point"],
+                        deflection=delta_e,
+                    )
+                ]
+            xs.append(
+                asb.WingXSec(
+                    xyz_le=x["xyz_le"],
+                    chord=x["chord"],
+                    twist=x["twist"],
+                    airfoil=AF[x["airfoil"]],
+                    control_surfaces=cs,
+                )
+            )
         wings.append(asb.Wing(name=name, symmetric=w["symmetric"], xsecs=xs))
-    fus = [asb.Fuselage(name=n, xsecs=[asb.FuselageXSec(xyz_c=x["xyz"], width=2 * x["a"],
-                                                         height=2 * x["b"], shape=x["n"])
-                                        for x in f["x_secs"]])
-           for n, f in d["fuselages"].items()]
-    return asb.Airplane(name="BRYAN", xyz_ref=[x_ref, 0, Z_REF], wings=wings, fuselages=fus,
-                        s_ref=wings[0].area(), c_ref=wings[0].mean_aerodynamic_chord(),
-                        b_ref=wings[0].span())
+    fus = [
+        asb.Fuselage(
+            name=n,
+            xsecs=[
+                asb.FuselageXSec(xyz_c=x["xyz"], width=2 * x["a"], height=2 * x["b"], shape=x["n"])
+                for x in f["x_secs"]
+            ],
+        )
+        for n, f in d["fuselages"].items()
+    ]
+    return asb.Airplane(
+        name="BRYAN",
+        xyz_ref=[x_ref, 0, Z_REF],
+        wings=wings,
+        fuselages=fus,
+        s_ref=wings[0].area(),
+        c_ref=wings[0].mean_aerodynamic_chord(),
+        b_ref=wings[0].span(),
+    )
 
 
 plane = build()
@@ -74,9 +98,14 @@ def pct(x):
 
 # --- thrust, route A power-limited (same model as bryan_route_a.py) -------------------------
 db = sqlite3.connect(pathlib.Path(__file__).parents[3] / "db" / "test.db")
-pid, d_in = db.execute("select id,diameter_in from propeller_polars where name='APC 6x4E'").fetchone()
-rows = np.array(db.execute("select rpm,J,Ct,Cp from propeller_polar_samples where propeller_id=?",
-                           (pid,)).fetchall())
+pid, d_in = db.execute(
+    "select id,diameter_in from propeller_polars where name='APC 6x4E'"
+).fetchone()
+rows = np.array(
+    db.execute(
+        "select rpm,J,Ct,Cp from propeller_polar_samples where propeller_id=?", (pid,)
+    ).fetchall()
+)
 DP, RPMS = d_in * 0.0254, np.unique(rows[:, 0])
 
 
@@ -96,11 +125,11 @@ RPM_FREE, P_SHAFT = 2000 * 2 * 3.7, 45 * 0.85
 
 def thrust(V):
     def p_excess(r):
-        return coef(r, V / (r / 60 * DP), 3) * RHO * (r / 60) ** 3 * DP ** 5 - P_SHAFT
+        return coef(r, V / (r / 60 * DP), 3) * RHO * (r / 60) ** 3 * DP**5 - P_SHAFT
 
     rpm = brentq(p_excess, 3000, RPM_FREE) if p_excess(RPM_FREE) > 0 else RPM_FREE
     n = rpm / 60
-    return max(coef(rpm, V / (n * DP), 2), 0) * RHO * n ** 2 * DP ** 4
+    return max(coef(rpm, V / (n * DP), 2), 0) * RHO * n**2 * DP**4
 
 
 VG = np.linspace(0, 40, 81)
@@ -118,8 +147,13 @@ def stall_branch_alpha(m):
     V = 6.0
     for _ in range(3):  # the peak moves with Re; two re-evaluations at the resulting V_S suffice
         al = np.arange(-4, 26, 0.5)
-        cl = np.ravel(asb.AeroBuildup(plane, asb.OperatingPoint(atm, velocity=V, alpha=al)).run()["CL"])
-        i = next((k for k in range(1, len(cl) - 1) if cl[k] >= cl[k - 1] and cl[k] > cl[k + 1]), int(np.argmax(cl)))
+        cl = np.ravel(
+            asb.AeroBuildup(plane, asb.OperatingPoint(atm, velocity=V, alpha=al)).run()["CL"]
+        )
+        i = next(
+            (k for k in range(1, len(cl) - 1) if cl[k] >= cl[k - 1] and cl[k] > cl[k + 1]),
+            int(np.argmax(cl)),
+        )
         V = float(np.sqrt(2 * m * G / (RHO * plane.s_ref * cl[i])))
     return float(al[i])
 
@@ -181,8 +215,9 @@ def stab(V, m, x_ref=X_CG_PLAN):
     a = o.variable(init_guess=3, lower_bound=-8, upper_bound=25)
     o.subject_to(aero(plane, V, a)["L"] == m * G)
     al = float(o.solve(verbose=False, max_iter=500)(a))
-    return asb.AeroBuildup(build(0.0, x_ref), asb.OperatingPoint(atm, velocity=V, alpha=al)) \
-        .run_with_stability_derivatives(), al
+    return asb.AeroBuildup(
+        build(0.0, x_ref), asb.OperatingPoint(atm, velocity=V, alpha=al)
+    ).run_with_stability_derivatives(), al
 
 
 def trim_cg_at_alpha(m, alpha, delta_e, x_max):
@@ -211,9 +246,13 @@ def trim_cg(m, V, delta_e):
 
 # --- run ---------------------------------------------------------------------------------------
 print("Annahmen: Rumpf-Halbachsen x2; Schub Route A leistungsbegrenzt (45 W x 0,85, APC 6x4E, 2S);")
-print(f"          Höhenruder ±{DELTA_E:.0f}° wie gebaut; k_S Start {K_TO}, Anflug {K_APP} (k_S offen)")
-print(f"\nGeometrie: MAC {MAC*1000:.1f} mm, MAC-Vorderkante x = {X_MAC_LE*1000:.1f} mm, "
-      f"S = {W.area()*1e4:.1f} cm², m = {M0*1000:.0f} g")
+print(
+    f"          Höhenruder ±{DELTA_E:.0f}° wie gebaut; k_S Start {K_TO}, Anflug {K_APP} (k_S offen)"
+)
+print(
+    f"\nGeometrie: MAC {MAC * 1000:.1f} mm, MAC-Vorderkante x = {X_MAC_LE * 1000:.1f} mm, "
+    f"S = {W.area() * 1e4:.1f} cm², m = {M0 * 1000:.0f} g"
+)
 
 v_md, _ = level(M0, "Vmd")
 r_md, a_md = stab(v_md, M0)
@@ -221,22 +260,30 @@ x_np = sc(r_md["x_np"])
 sm = (x_np - X_CG_PLAN) / MAC
 print("\n== Längsstabilität (neutral-point, static-margin)")
 print(f"  V_md = {v_md:.2f} m/s, alpha = {a_md:.2f}°")
-print(f"  Neutralpunkt x_NP = {x_np*1000:.1f} mm  = {pct(x_np):.1f} % MAC")
-print(f"  Schwerpunkt Plan  = {X_CG_PLAN*1000:.1f} mm  = {pct(X_CG_PLAN):.1f} % MAC")
-print(f"  Stabilitätsmaß SM = {100*sm:.1f} % MAC")
+print(f"  Neutralpunkt x_NP = {x_np * 1000:.1f} mm  = {pct(x_np):.1f} % MAC")
+print(f"  Schwerpunkt Plan  = {X_CG_PLAN * 1000:.1f} mm  = {pct(X_CG_PLAN):.1f} % MAC")
+print(f"  Stabilitätsmaß SM = {100 * sm:.1f} % MAC")
 for t in (0.05, 0.10, 0.15):
-    print(f"  cg-for-target-margin SM {t:.0%}: x_CG = {(x_np - t*MAC)*1000:.1f} mm = {pct(x_np - t*MAC):.1f} % MAC")
+    print(
+        f"  cg-for-target-margin SM {t:.0%}: x_CG = {(x_np - t * MAC) * 1000:.1f} mm = {pct(x_np - t * MAC):.1f} % MAC"
+    )
 
 v_s, _ = level(M0, "VS")
 print("\n== Seitenstabilität (lateral-static-stability)")
 for label, V in (("V_md", v_md), (f"Anflug {K_APP}·V_S", K_APP * v_s)):
     r, al = stab(V, M0)
     clb, cnb, clr, cnr = (sc(r[k]) for k in ("Clb", "Cnb", "Clr", "Cnr"))
-    print(f"  {label:14s} V={V:5.2f} alpha={al:5.2f}°  C_lβ={clb:+.4f}  C_nβ={cnb:+.4f}  "
-          f"C_lr={clr:+.4f}  C_nr={cnr:+.4f}  E_spiral={clb*cnr - cnb*clr:+.5f}")
+    print(
+        f"  {label:14s} V={V:5.2f} alpha={al:5.2f}°  C_lβ={clb:+.4f}  C_nβ={cnb:+.4f}  "
+        f"C_lr={clr:+.4f}  C_nr={cnr:+.4f}  E_spiral={clb * cnr - cnb * clr:+.5f}"
+    )
 
 print("\n== Massenhüllkurve (mass-envelope)")
-print(f"   m [g]  V_S    V_max  ROC_max  T-D bei V_TO   x_fwd %MAC (getrimmtes V_S)   x_aft %MAC (Ruder)   [NP {pct(x_np):.1f} %MAC, Plan-SP {pct(X_CG_PLAN):.1f} %MAC]")
+print(
+    f"   m [g]  V_S    V_max  ROC_max  T-D bei V_TO   x_fwd %MAC (getrimmtes V_S)   x_aft %MAC (Ruder)   [NP {pct(x_np):.1f} %MAC, Plan-SP {pct(X_CG_PLAN):.1f} %MAC]"
+)
+
+
 def tryf(f):
     try:
         return f()
@@ -257,9 +304,12 @@ for m in (0.10, 0.151, 0.20, 0.30, 0.50, 0.80, 1.10):
     xfv = tryf(lambda m=m, vsa=vsa: trim_cg_at_alpha(m, vsa[1], -DELTA_E, x_np)) if vsa else None
     xf = pct(xfv[0]) if xfv else None
     xa = tryf(lambda m=m, vm=vm: pct(trim_cg(m, vm[0], +DELTA_E)[0])) if vm else None
-    print(f"   {m*1000:5.0f}  {fmt(vs, '5.2f')}  {fmt(vm[0] if vm else None, '5.2f')}  {fmt(rc, '6.2f')}   "
-          f"{fmt(ex, '+6.3f')} N     {fmt(xf, '7.1f')} (V {fmt(xfv[1] if xfv else None, '4.1f')})   "
-          f"{fmt(xa, '7.1f')}" + ("  -> hinten begrenzt zuerst der NP" if xa is not None and xa > pct(x_np) else ""))
+    print(
+        f"   {m * 1000:5.0f}  {fmt(vs, '5.2f')}  {fmt(vm[0] if vm else None, '5.2f')}  {fmt(rc, '6.2f')}   "
+        f"{fmt(ex, '+6.3f')} N     {fmt(xf, '7.1f')} (V {fmt(xfv[1] if xfv else None, '4.1f')})   "
+        f"{fmt(xa, '7.1f')}"
+        + ("  -> hinten begrenzt zuerst der NP" if xa is not None and xa > pct(x_np) else "")
+    )
 
 o = asb.Opti()
 mm = o.variable(init_guess=0.3, lower_bound=0.05, upper_bound=2.0)
@@ -269,7 +319,7 @@ r = aero(plane, V, a)
 o.subject_to([r["L"] == mm * G, TM({"V": V}) >= r["D"]])
 o.maximize(mm)
 s = o.solve(verbose=False, max_iter=800)
-print(f"\n  m_max,level = {float(s(mm))*1000:.0f} g  (bei V = {float(s(V)):.2f} m/s)")
+print(f"\n  m_max,level = {float(s(mm)) * 1000:.0f} g  (bei V = {float(s(V)):.2f} m/s)")
 
 
 def ex_to(m):
@@ -277,4 +327,4 @@ def ex_to(m):
 
 
 m_to = brentq(ex_to, 0.15, float(s(mm)) - 1e-3, xtol=1e-3)
-print(f"  m_max,TO    = {m_to*1000:.0f} g  (Schubüberschuss bei V_TO = {K_TO}·V_S verschwindet)")
+print(f"  m_max,TO    = {m_to * 1000:.0f} g  (Schubüberschuss bei V_TO = {K_TO}·V_S verschwindet)")

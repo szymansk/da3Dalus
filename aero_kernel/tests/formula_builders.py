@@ -6,10 +6,13 @@ from collections.abc import Mapping
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.context import Context, Solvers, Value
 from aero_kernel.errors import display_slug
+from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.geometry_properties import MainWingProperties
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
+from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 from pydantic import JsonValue
 
@@ -117,24 +120,58 @@ class StubAtmosphere(AtmosphereAdapter):
         )
 
 
+class StubGeometry(GeometryAdapter):
+    """A GEO adapter that answers with fixed reference values, and records the airplane it was asked about."""
+
+    def __init__(
+        self, reference: MainWingProperties | None = None, versions: Mapping[str, str] | None = None
+    ) -> None:
+        """Create the stub.
+
+        Args:
+            reference: What every call returns; defaults to S 0.12 m^2, b 0.8 m, MAC 0.16 m.
+            versions: The tool versions the stub reports.
+        """
+        super().__init__(SolverRuntime())
+        self.reference = reference or MainWingProperties(s_ref=0.12, b_ref=0.8, c_mac=0.16)
+        self.versions = dict(versions or {"aerosandbox": "0.0-stub"})
+        self.asked: list[AirplaneGeometry] = []
+
+    def tool_versions(self) -> dict[str, str]:
+        """Return the versions the stub was given."""
+        return self.versions
+
+    async def main_wing_reference(self, airplane: AirplaneGeometry) -> MainWingProperties:
+        """Return the fixed reference values."""
+        self.asked.append(airplane)
+        return self.reference
+
+
 def solvers_with(
     atmosphere: AtmosphereAdapter | None = None,
     opti: OptiAdapter | None = None,
     avl: AvlAdapter | None = None,
+    geometry: GeometryAdapter | None = None,
 ) -> Solvers:
     """Solvers with the given adapters; one left out is the real one on a fresh runtime."""
     return Solvers(
         atmosphere=atmosphere or AtmosphereAdapter(SolverRuntime()),
         opti=opti or OptiAdapter(SolverRuntime()),
         avl=avl or AvlAdapter(SolverRuntime()),
+        geometry=geometry or GeometryAdapter(SolverRuntime()),
     )
 
 
 def context_with(
-    atmosphere: AtmosphereAdapter, origin: str = "t", opti: OptiAdapter | None = None
+    atmosphere: AtmosphereAdapter,
+    origin: str = "t",
+    opti: OptiAdapter | None = None,
+    geometry: GeometryAdapter | None = None,
 ) -> Context:
-    """A formula context whose ATM (and, if given, OPT) adapter is the given one."""
-    return Context(origin=origin, solvers=solvers_with(atmosphere=atmosphere, opti=opti))
+    """A formula context whose ATM (and, if given, OPT and GEO) adapter is the given one."""
+    return Context(
+        origin=origin, solvers=solvers_with(atmosphere=atmosphere, opti=opti, geometry=geometry)
+    )
 
 
 def close(actual: float | None, expected: float, rel: float) -> bool:

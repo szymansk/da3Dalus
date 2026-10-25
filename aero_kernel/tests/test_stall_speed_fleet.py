@@ -28,14 +28,14 @@ SLUGS = (
     "stall-speed-landing",
     "inverted-max-lift-coefficient",
 )
-# Regression goldens at sea level, mass of the fleet member, ISA, the kernel's projected S_ref,
-# NeuralFoil model size xlarge (maintainer 2026-10-22).
+# Regression goldens at sea level, mass of the fleet member, ISA, AeroSandbox's S_ref of the main wing
+# (gh-1240; V_S and alpha_S did not move, the lift coefficients did), NeuralFoil model size xlarge.
 BRYAN_V_S = 5.2453741  # m/s
-BRYAN_CL_MAX, BRYAN_ALPHA_S = 1.2577521, 13.1987303
+BRYAN_CL_MAX, BRYAN_ALPHA_S = 1.2555483, 13.1987303
 BRYAN_V_S_SMALL = 5.2894317  # m/s, the small model of the prototype
 JAGUAR_V_S = 6.2992129  # m/s
-JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 0.9980616, 9.9252911
-JAGUAR_CL_MIN = -0.7827520
+JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 1.0019847, 9.9252911
+JAGUAR_CL_MIN = -0.7858288
 
 
 def sea_level_air() -> AirState:
@@ -77,8 +77,8 @@ async def test_bryan_stalls_where_the_prototype_found_it_with_the_small_model(
 
     The prototype used AeroSandbox's default NeuralFoil model, "small", so the worker is run in this
     process with that size: 5.2894 m/s, 0.01 % from the prototype. The prototype took S from
-    AeroSandbox's own planform area (7.0 dm2); the kernel passes its projected S_ref (6.99 dm2) to
-    AeroBuildup, so C_L,max differs a little (1.237 at 11.2 deg) while V_S, which fixes S * C_L,
+    AeroSandbox's own planform area (7.0 dm2); the kernel passes AeroSandbox's S_ref of the main
+    wing (6.9985 dm2) to AeroBuildup, so C_L,max differs a little while V_S, which fixes S * C_L,
     agrees.
     """
     monkeypatch.setattr(opti_module, "NEURALFOIL_MODEL_SIZE", "small")
@@ -96,7 +96,7 @@ async def test_bryan_stalls_where_the_prototype_found_it_with_the_small_model(
 
 async def test_bryan_regression_goldens_with_the_xlarge_model() -> None:
     """xlarge, the size the kernel uses (maintainer 2026-10-22): 5.2454 m/s, 0.85 % below the
-    prototype, which the small model reproduces (test above). C_L,max 1.258 at 13.2 deg."""
+    prototype, which the small model reproduces (test above). C_L,max 1.256 at 13.2 deg."""
     result = await stall_result(FleetMember.BRYAN)
     assert_goldens_are_pinned_to_their_tools(result)
     quantities = {q.slug: q for q in result.quantities}

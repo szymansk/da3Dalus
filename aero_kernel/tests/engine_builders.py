@@ -14,6 +14,7 @@ from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeRequest, Polar
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
+from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 from aero_kernel.tests.graph_builders import formula, model_of, quantity
 from aero_kernel.tests.wing_builders import main_wing_document
@@ -25,6 +26,7 @@ NO_SOLVERS = Solvers(
     atmosphere=AtmosphereAdapter(SolverRuntime()),
     opti=OptiAdapter(SolverRuntime()),
     avl=AvlAdapter(SolverRuntime()),
+    geometry=GeometryAdapter(SolverRuntime()),
 )
 
 

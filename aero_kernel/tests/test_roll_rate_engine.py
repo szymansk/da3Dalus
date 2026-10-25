@@ -8,7 +8,6 @@ from aero_kernel.build import shipped_build
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -18,6 +17,7 @@ from aero_kernel.schema import (
     ReasonCode,
     WarningSeverity,
 )
+from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.np_builders import StubAvl
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, StubOpti

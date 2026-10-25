@@ -11,6 +11,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
+from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 from pydantic import JsonValue
 
@@ -25,7 +26,7 @@ Inputs = Mapping[str, Value | None]
 
 
 # Canon tool codes of formulas that call no adapter: pure relations and plain input reads (ch. 8.8).
-_PURE_TOOLS = frozenset({"APP", "GEO", "KAT", "APC"})
+_PURE_TOOLS = frozenset({"APP", "KAT", "APC"})
 
 
 @dataclass(frozen=True)
@@ -39,11 +40,13 @@ class Solvers:
         atmosphere: The ATM adapter (exact ISA density).
         opti: The OPT adapter (the stall problem, IPOPT over AeroBuildup).
         avl: The AVL adapter (the neutral point).
+        geometry: The GEO adapter (the reference values of the main wing, AeroSandbox's).
     """
 
     atmosphere: AtmosphereAdapter
     opti: OptiAdapter
     avl: AvlAdapter
+    geometry: GeometryAdapter
 
     def settings_of(self, tool: str) -> dict[str, JsonValue]:
         """Return the solver settings of the adapter of a canon tool code (``solver_settings``).
@@ -54,7 +57,7 @@ class Solvers:
         Returns:
             Name -> value; empty for a tool whose adapter fixes no setting, and for a pure tool.
         """
-        for adapter in (self.atmosphere, self.opti, self.avl):
+        for adapter in (self.atmosphere, self.opti, self.avl, self.geometry):
             if tool == adapter.tool:
                 return adapter.settings()
         return {}
@@ -63,7 +66,7 @@ class Solvers:
         """Return the installed versions of the distributions a canon tool code relies on.
 
         Feeds ``Provenance.tool_versions`` and the cache key (ch. 8.4). A plain read or a pure
-        formula (``APP``, ``GEO``, ``KAT``, ``APC``) uses no tool and has none.
+        formula (``APP``, ``KAT``, ``APC``) uses no tool and has none.
 
         Args:
             tool: The canon tool code of a formula, e.g. ``ATM``.
@@ -77,7 +80,7 @@ class Solvers:
         """
         if tool in _PURE_TOOLS:
             return {}
-        for adapter in (self.atmosphere, self.opti, self.avl):
+        for adapter in (self.atmosphere, self.opti, self.avl, self.geometry):
             if tool == adapter.tool:
                 return dict(adapter.tool_versions())
         msg = f"no solver adapter for the tool {tool}"
