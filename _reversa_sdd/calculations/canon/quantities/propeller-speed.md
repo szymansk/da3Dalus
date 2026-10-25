@@ -4,7 +4,6 @@ kind: quantity
 symbol: n_prop
 unit: 1/s
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

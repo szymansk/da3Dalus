@@ -4,7 +4,6 @@ kind: quantity
 symbol: H
 unit: N*m
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/structure

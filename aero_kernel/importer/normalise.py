@@ -107,6 +107,9 @@ def _quantity(entry: Entry, findings: list[Finding]) -> JsonDict:
             "checks",
         )
     }
+    if "data" in entry.front:
+        raw = entry.front["data"]
+        document["data"] = as_list(raw) or [raw]
     for family in QUANTITY_TAG_FAMILIES:
         values = _tag_values(entry, family, findings)
         if values:

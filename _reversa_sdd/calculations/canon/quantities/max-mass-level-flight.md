@@ -4,7 +4,6 @@ kind: quantity
 symbol: m_max,level
 unit: kg
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

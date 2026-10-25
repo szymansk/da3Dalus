@@ -4,7 +4,6 @@ kind: quantity
 symbol: a
 unit: m/s
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

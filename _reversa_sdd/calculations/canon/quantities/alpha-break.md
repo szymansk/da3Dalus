@@ -4,7 +4,6 @@ kind: quantity
 symbol: alpha_break
 unit: deg
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

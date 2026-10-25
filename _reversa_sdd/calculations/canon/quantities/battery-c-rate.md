@@ -4,7 +4,6 @@ kind: quantity
 symbol: C_rate
 unit: 1/h
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references
@@ -13,6 +12,7 @@ tags:
   - group/powertrain-battery
   - role/derived
 type: scalar
+data: component:battery.c_rate
 ---
 
 # Continuous discharge rate · `C_rate`

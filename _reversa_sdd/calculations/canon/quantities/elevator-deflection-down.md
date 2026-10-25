@@ -4,12 +4,12 @@ kind: quantity
 symbol: delta_e,down
 unit: deg
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/control-deflections
   - role/input
 type: scalar
+data: app:OperatingPointSchema.control_deflections
 ---
 
 # Elevator deflection, down · `delta_e,down`

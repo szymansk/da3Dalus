@@ -37,7 +37,7 @@ def quantity(slug: str, symbol: str, unit: str, role: str, type_: str = "scalar"
     shown_unit = f'"{unit}"' if unit == "N" else unit
     return (
         f"---\ncanon: {slug}\nkind: quantity\nsymbol: {symbol}\nunit: {shown_unit}\nrole: {role}\n"
-        f"status: draft\ntags: []\ntype: {type_}\n---\n"
+        f"tags: []\ntype: {type_}\n---\n"
     )
 
 

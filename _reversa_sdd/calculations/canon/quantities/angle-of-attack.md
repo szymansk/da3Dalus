@@ -4,12 +4,12 @@ kind: quantity
 symbol: alpha
 unit: deg
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/operating-point
   - role/input
 type: scalar
+data: app:OperatingPointSchema.alpha
 ---
 
 # Angle of attack · `alpha`

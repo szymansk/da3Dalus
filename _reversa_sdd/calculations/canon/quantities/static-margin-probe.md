@@ -4,7 +4,6 @@ kind: quantity
 symbol: SM_probe
 unit: 1
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/longitudinal

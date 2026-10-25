@@ -4,7 +4,6 @@ kind: quantity
 symbol: E_max
 unit: 1
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/glide

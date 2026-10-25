@@ -5,7 +5,6 @@ symbol: x_NP
 unit: m
 role: derived
 uncertainty: interval
-status: draft
 tags:
   - canon/quantity
   - discipline/longitudinal

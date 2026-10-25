@@ -4,7 +4,6 @@ kind: quantity
 symbol: L
 unit: "N"
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

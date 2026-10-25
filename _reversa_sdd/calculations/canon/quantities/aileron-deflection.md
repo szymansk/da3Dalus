@@ -4,12 +4,12 @@ kind: quantity
 symbol: delta_a
 unit: deg
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/control-deflections
   - role/input
 type: scalar
+data: app:OperatingPointSchema.control_deflections
 ---
 
 # Aileron deflection · `delta_a`

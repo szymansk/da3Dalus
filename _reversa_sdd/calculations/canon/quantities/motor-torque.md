@@ -4,7 +4,6 @@ kind: quantity
 symbol: Q_m
 unit: N*m
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

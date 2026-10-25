@@ -4,7 +4,6 @@ kind: quantity
 symbol: V_S
 unit: m/s
 role: output
-status: approved
 tags:
   - canon/quantity
   - discipline/aerodynamics

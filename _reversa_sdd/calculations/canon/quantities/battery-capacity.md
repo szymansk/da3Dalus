@@ -4,7 +4,6 @@ kind: quantity
 symbol: E_bat
 unit: Wh
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references
@@ -12,6 +11,10 @@ tags:
   - group/powertrain-battery
   - role/derived
 type: scalar
+data:
+  - component:battery.capacity_mah
+  - component:battery.cells
+  - default:cell-voltage-nominal
 ---
 
 # Usable battery capacity · `E_bat`

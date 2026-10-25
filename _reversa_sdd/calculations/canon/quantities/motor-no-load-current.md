@@ -4,7 +4,6 @@ kind: quantity
 symbol: I_0
 unit: A
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references
@@ -12,6 +11,7 @@ tags:
   - group/powertrain-motor-propeller
   - role/derived
 type: scalar
+data: component:brushless_motor.io_no_load_a
 ---
 
 # Motor no-load current · `I_0`

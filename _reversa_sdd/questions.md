@@ -5129,6 +5129,8 @@ Accepted cost: a new spec key becomes a schema change. That is the point of choo
 
 ## Q-PT-6 — Is a winding-resistance data source planned for QPROP?
 
+> **Update 2026-10-25 (#1251).** The canon takes `R_m` as the manufacturer's winding resistance (`rm_ohm`); ESC and cable resistance are not included and the voltage loss is slightly under-estimated (maintainer, 2026-10-25, #1251: "wie es im Modellbau üblich ist; das ist an allen Ecken keine genaue Wissenschaft, es geht um eine grobe Aussage zum bestehenden Design."). The canon wording "circuit resistance" is replaced accordingly.
+
 **Context:** `rm_ohm` is absent from the D-Power catalog, so **every seeded motor
 falls back to the fixed-RPM approximation** whose own docstring calls it a
 simplification. The physically better QPROP model is dormant for the entire

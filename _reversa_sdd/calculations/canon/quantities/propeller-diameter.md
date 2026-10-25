@@ -4,7 +4,6 @@ kind: quantity
 symbol: D_prop
 unit: m
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references
@@ -12,6 +11,7 @@ tags:
   - group/powertrain-motor-propeller
   - role/derived
 type: scalar
+data: component:propeller.diameter_in
 ---
 
 # Propeller diameter · `D_prop`

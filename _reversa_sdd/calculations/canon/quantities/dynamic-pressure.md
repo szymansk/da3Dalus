@@ -4,7 +4,6 @@ kind: quantity
 symbol: q
 unit: Pa
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

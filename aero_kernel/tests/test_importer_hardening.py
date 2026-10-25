@@ -604,7 +604,7 @@ def test_an_unreadable_file_is_a_finding_not_a_traceback(tmp_path: Path, name: s
 
 EFFICIENCY = "quantities/efficiency.md"
 EFFICIENCY_ENTRY = (
-    "---\ncanon: efficiency\nkind: quantity\nsymbol: eta\nunit: {unit}\nrole: input\nstatus: draft\n"
+    "---\ncanon: efficiency\nkind: quantity\nsymbol: eta\nunit: {unit}\nrole: input\n"
     "tags: []\ntype: scalar\n---\n"
 )
 
@@ -728,12 +728,12 @@ def diamond_chain(depth: int) -> dict[str, str | None]:
             files[f"formulas/{slug}.md"] = entry(slug, embeds, f"q-{slug}")
             files[f"quantities/q-{slug}.md"] = (
                 f"---\ncanon: q-{slug}\nkind: quantity\nsymbol: S_{slug}\nunit: kg\nrole: derived\n"
-                "status: draft\ntags: []\ntype: scalar\n---\n"
+                "tags: []\ntype: scalar\n---\n"
             )
     files[f"formulas/a{depth}.md"] = entry(f"a{depth}", [], f"q-a{depth}")
     files[f"quantities/q-a{depth}.md"] = (
         f"---\ncanon: q-a{depth}\nkind: quantity\nsymbol: S_a{depth}\nunit: kg\nrole: derived\n"
-        "status: draft\ntags: []\ntype: scalar\n---\n"
+        "tags: []\ntype: scalar\n---\n"
     )
     return files
 

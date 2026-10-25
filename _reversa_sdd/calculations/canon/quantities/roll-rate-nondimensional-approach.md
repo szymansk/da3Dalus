@@ -5,7 +5,6 @@ symbol: p_hat_app
 unit: 1
 role: output
 uncertainty: interval
-status: draft
 tags:
   - canon/quantity
   - discipline/lateral

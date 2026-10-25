@@ -4,12 +4,15 @@ kind: quantity
 symbol: components
 unit: —
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/construction
   - role/input
 type: components
+data:
+  - component:brushless_motor
+  - component:battery
+  - component:propeller
 ---
 
 # Fitted components · `components`

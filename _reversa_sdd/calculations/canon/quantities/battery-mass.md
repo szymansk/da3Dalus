@@ -4,7 +4,6 @@ kind: quantity
 symbol: m_bat
 unit: kg
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references
@@ -12,6 +11,7 @@ tags:
   - group/powertrain-battery
   - role/derived
 type: scalar
+data: component:battery.mass_g
 ---
 
 # Battery component mass · `m_bat`
