@@ -238,7 +238,7 @@ def test_a_world_the_taxonomy_lacks_is_a_finding(tmp_path: Path) -> None:
     thin = MINI_TAXONOMY.replace("  - {id: detailed, tool: AVL}\n", "")
     result = import_canon(write_canon(tmp_path, {"taxonomy.yaml": thin}))
     assert findings(result) == [
-        "formulas/estimate.md: worlds: 'detailed' is not in the taxonomy (worlds: simple)"
+        "formulas/estimate.md: worlds[1]: world 'detailed' has no tool in the taxonomy"
     ]
 
 

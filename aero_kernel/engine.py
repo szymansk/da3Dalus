@@ -402,8 +402,10 @@ class _Call:
                 anchor, lambda slug, error=refused: error.model_copy(update={"quantity": slug})
             )
         # A called formula used its tool even if it then fails, like a default (ch. 8.11).
-        self.tool_versions.update(self.solvers.tool_versions_of(formula.tool))
-        self.solver_settings.update(self.solvers.settings_of(formula.tool))
+        # A formula with worlds used the tool of its world, not its own (ch. 8.4, #1221).
+        tool = self.build.model.tool_of(node.id.formula, world)
+        self.tool_versions.update(self.solvers.tool_versions_of(tool))
+        self.solver_settings.update(self.solvers.settings_of(tool))
         try:
             returned = await implementation.func(inputs, warner)
         except ToolRunTimeoutError as exc:

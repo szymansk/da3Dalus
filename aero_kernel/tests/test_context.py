@@ -5,7 +5,7 @@ from aero_kernel.context import Context
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers.opti import OptiAdapter
-from aero_kernel.tests.formula_builders import StubAtmosphere, solvers_with
+from aero_kernel.tests.formula_builders import OPT_SETTINGS, StubAtmosphere, solvers_with
 
 SOLVERS = solvers_with()
 
@@ -86,7 +86,7 @@ def test_the_optimiser_tool_reports_the_versions_of_its_adapter() -> None:
 def test_solver_settings_of_an_adapter_tool_are_the_adapters() -> None:
     solvers = solvers_with()
     assert solvers.settings_of("OPT") == solvers.opti.settings()
-    assert solvers.settings_of("OPT") == {"neuralfoil_model_size": "xlarge"}
+    assert solvers.settings_of("OPT") == OPT_SETTINGS
 
 
 @pytest.mark.parametrize("tool", ["APP", "GEO", "KAT", "APC", "ATM"])

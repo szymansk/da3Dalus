@@ -672,6 +672,66 @@ class CanonModel(BaseModel):
             raise ValueError(msg)
         return self
 
+    def tool_of(self, reference: str, world: str | None) -> Tool:
+        """Return the tool that computes a formula, or one of its method worlds (ch. 8.4).
+
+        A formula with worlds is computed by the tool its world names in the taxonomy; the
+        formula's own ``tool`` is the tool of the formula as a whole and says nothing about which
+        tool a world used.
+
+        Args:
+            reference: ``<namespace>:<slug>`` of the formula, or a bare slug (``calc:``).
+            world: The world of the run, or ``None`` for a formula without worlds.
+
+        Returns:
+            The tool code.
+
+        Raises:
+            ValueError: If the formula does not exist, or ``world`` is not one of its worlds
+                (a world must be given exactly for a formula that has worlds).
+        """
+        namespace, slug = _split(reference)
+        formula = self.formula(reference)
+        if formula is None:
+            msg = f"no formula {reference}"
+            raise ValueError(msg)
+        if world is None and not formula.worlds:
+            return formula.tool
+        if world is None or world not in formula.worlds:
+            msg = f"formula {reference} has no world {world!r}"
+            raise ValueError(msg)
+        tools: dict[str, Tool] = {w.id: w.tool for w in self.namespaces[namespace].taxonomy.worlds}
+        tool = tools.get(world)
+        if tool is None:
+            msg = f"world {world!r} of {namespace}:{slug} has no tool in the taxonomy"
+            raise ValueError(msg)
+        return tool
+
+    @model_validator(mode="after")
+    def _check_worlds(self) -> Self:
+        """Require the taxonomy to state the tool of every world of every formula (ch. 8.4)."""
+        problems: list[CanonProblem] = []
+        for namespace, content in self.namespaces.items():
+            stated = {world.id for world in content.taxonomy.worlds}
+            for slug, formula in content.formulas.items():
+                problems.extend(
+                    CanonProblem(
+                        namespace=namespace,
+                        section="formulas",
+                        slug=slug,
+                        field=f"worlds[{position}]",
+                        side=None,
+                        application=None,
+                        parameter=None,
+                        text=f"world {world!r} has no tool in the taxonomy",
+                    )
+                    for position, world in enumerate(formula.worlds)
+                    if world not in stated
+                )
+        if problems:
+            raise _canon_error(problems)
+        return self
+
     def _check_embed(self, item: str) -> str | None:
         """Return the problem with an embedded ``<ns>:<slug>.<application-id>``, if any."""
         reference, _, application_id = item.rpartition(".")

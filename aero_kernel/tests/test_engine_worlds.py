@@ -280,6 +280,7 @@ async def test_the_cache_key_is_per_assignment() -> None:
             inputs={"v": 1.0},
             build_digest="sha256:aa",
             tool_versions={},
+            solver_settings={},
         )
         for key in keys
     }

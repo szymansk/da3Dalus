@@ -348,10 +348,13 @@ No internal paths or mechanisms in any field (ADR 0019).
   `git log -S <content_hash> -- aero_kernel/canon/canon_model.json`); `None` only when the shipped model
   could not be loaded (every quantity is then `internal`)
 - tool versions (aerosandbox, NeuralFoil model, AVL): one non-empty version string per tool **the call actually
-  used**; empty when only pure formulas ran
+  used**; empty when only pure formulas ran. The tool of a node with method worlds is the tool of its **world**
+  (`taxonomy.yaml` maps each world to a tool; `CanonModel.tool_of`), not the `tool` of the formula: the AVL world
+  of `roll-rate` lists the AVL binary, the AeroBuildup world the optimiser's tools (#1221)
 - solver settings (e.g. the NeuralFoil model size the adapters use: `xlarge` in v1, the author's default at the knee
   of speed versus accuracy, Sharpe 2024, PhD thesis ch. 7, Table 7.1; maintainer 2026-10-22. It is a named constant of the
-  OPT adapter, recorded in `solver_settings`; a caller-selectable accuracy level comes only when a caller needs it. The
+  OPT adapter, recorded in `solver_settings` together with its alpha sweep (`opt_alpha_min_deg`, `opt_alpha_max_deg`,
+  `opt_alpha_step_deg`, `opt_bracket_cl`), its speed bounds, iteration limit and active-bound fraction: every constant that shapes a result; a caller-selectable accuracy level comes only when a caller needs it. The
   airfoil scoring, #821, uses `xxxlarge` on purpose: it is precomputed)
 - `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 
@@ -364,7 +367,12 @@ No internal paths or mechanisms in any field (ADR 0019).
   `tests/`, `tools/` and `importer/`, plus `canon_model.json`; computed once, with the `Build`. Any code or canon change invalidates every entry. That wastes hits after an
   upgrade but can never serve a stale value; no hand-maintained implementation version exists that could be
   forgotten.
-- the tool versions (aerosandbox, NeuralFoil model, AVL). Every datum a node reads —
+- the tool versions (aerosandbox, NeuralFoil model, AVL) and the solver settings of the tool of the node's
+  world (`Solvers.tool_versions_of` / `settings_of` of `CanonModel.tool_of(formula, world)`). The settings are
+  module constants, so a change of one is a code change and the build digest already expires every entry;
+  they are in the key as a guard, and as the record of what the result was computed with. Per-world expiry
+  happens only when a tool or its binary changes version: a new AVL binary expires the AVL world and leaves
+  the AeroBuildup world cached. Every datum a node reads —
   components and propeller tables included — is part of its direct input values, so nothing else enters
   the key (ch. 8.11, D14). There are no request-level solver settings in v1 (no accuracy knob, S10:
   A3 asks for one declared level per quantity, not per request, and the NeuralFoil size names are an

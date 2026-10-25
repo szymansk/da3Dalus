@@ -179,6 +179,7 @@ async def test_the_cache_key_of_the_density_node_follows_the_tool_version() -> N
             inputs={"h": ALTITUDE_M},
             build_digest="sha256:aa",
             tool_versions=solvers.tool_versions_of("ATM"),
+            solver_settings=solvers.settings_of("ATM"),
         )
 
     first, again, other = key("4.2.9"), key("4.2.9"), key("4.3.0")

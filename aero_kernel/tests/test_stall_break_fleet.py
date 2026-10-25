@@ -9,7 +9,7 @@ import pytest
 from aero_kernel import compute
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
 from aero_kernel.tests.engine_builders import request
-from aero_kernel.tests.formula_builders import close
+from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
@@ -39,7 +39,7 @@ async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> 
     result = await stall_break(member)
     assert all(q.status is QuantityStatus.OK for q in result.quantities), result
     assert result.provenance.tool_versions == GOLDEN_TOOL_VERSIONS
-    assert result.provenance.solver_settings == {"neuralfoil_model_size": "xlarge"}
+    assert result.provenance.solver_settings == OPT_SETTINGS
     for quantity, value in zip(result.quantities, GOLDEN[member], strict=True):
         assert close(quantity.value, value, 1e-5), quantity.slug
         assert quantity.tool == "OPT"

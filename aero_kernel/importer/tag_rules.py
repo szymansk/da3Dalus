@@ -3,7 +3,7 @@
 ``taxonomy.yaml`` states every value of every tag family. These rules check what the tags of the
 entries say against it: a tag value is in the taxonomy, a quantity carries the tags its place in
 the calculation requires, a target stands in a module that holds targets, a group agrees with the
-stage and module of its quantities, a formula's tool and worlds are declared, and a probe names a
+stage and module of its quantities, a formula's tool is declared, and a probe names a
 quantity that exists. A family the taxonomy leaves empty is not used by the canon: it accepts no
 tag and requires none.
 """
@@ -69,7 +69,6 @@ def _known_values(content: Namespace) -> list[Finding]:
                 )
     directions = [value.id for value in content.taxonomy.directions]
     tools = [value.id for value in content.taxonomy.tools]
-    worlds = [value.id for value in content.taxonomy.worlds]
     for slug, formula in sorted(content.formulas.items()):
         file = f"formulas/{slug}.md"
         if formula.direction is not None and formula.direction not in directions:
@@ -84,11 +83,6 @@ def _known_values(content: Namespace) -> list[Finding]:
             findings.append(
                 Finding(file=file, field="tool", message=_unknown(formula.tool, "tools", tools))
             )
-        findings.extend(
-            Finding(file=file, field="worlds", message=_unknown(world, "worlds", worlds))
-            for world in formula.worlds
-            if world not in worlds
-        )
     return findings
 
 

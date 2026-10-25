@@ -8,7 +8,7 @@ from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.schema import ComputeRequest, ComputeResult, QuantityResult, QuantityStatus
 from aero_kernel.solvers.opti import BestGlideSolution
-from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
+from aero_kernel.tests.formula_builders import OPT_SETTINGS, StubAtmosphere, close, solvers_with
 from aero_kernel.tests.stall_stubs import CD0, GLIDE_ALPHA, K, StubOpti
 from aero_kernel.tests.test_stall_speed_engine import MASS, RHO, aircraft
 
@@ -58,7 +58,7 @@ async def test_level_flight_best_glide_from_the_shipped_canon() -> None:
 async def test_the_provenance_names_the_optimiser_tool_versions_and_settings() -> None:
     result, _ = await run("minimum-drag-speed")
     assert set(result.provenance.tool_versions) == {"aerosandbox", "neuralfoil"}
-    assert result.provenance.solver_settings == {"neuralfoil_model_size": "xlarge"}
+    assert result.provenance.solver_settings == OPT_SETTINGS
 
 
 async def test_a_heavier_airplane_flies_the_best_glide_faster_by_the_square_root() -> None:

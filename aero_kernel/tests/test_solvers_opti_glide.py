@@ -15,6 +15,7 @@ from aero_kernel.solvers.opti import (
     OptiAdapter,
     StallRequest,
 )
+from aero_kernel.tests.formula_builders import OPT_SETTINGS
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
 
@@ -137,7 +138,7 @@ async def test_the_glide_uses_the_adapters_versions_and_settings() -> None:
         "aerosandbox": importlib.metadata.version("aerosandbox"),
         "neuralfoil": importlib.metadata.version("neuralfoil"),
     }
-    assert adapter.settings() == {"neuralfoil_model_size": "xlarge"}
+    assert adapter.settings() == OPT_SETTINGS
 
 
 # --- the worker, with the solver boundary faked ------------------------------------------------

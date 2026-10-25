@@ -32,6 +32,7 @@ from aero_kernel.solvers.devices import (
     roll_segments,
 )
 from aero_kernel.solvers.roll_math import (
+    EFFECTIVENESS_EXPONENT,
     alpha_for_lift_coefficient,
     body_rates,
     control_effectiveness,
@@ -976,8 +977,25 @@ class OptiAdapter(SolverAdapter):
     }
 
     def settings(self) -> dict[str, JsonValue]:
-        """The NeuralFoil model size AeroBuildup is evaluated with."""
-        return {"neuralfoil_model_size": NEURALFOIL_MODEL_SIZE}
+        """Every constant that shapes an optimisation result: model size, alpha sweep, bounds, limits.
+
+        The keys of this adapter's own constants carry the ``opt_`` prefix: the settings of all tools of a call
+        share one dictionary. ``neuralfoil_model_size`` keeps its name, it is NeuralFoil's.
+        The start values of the solves (``GLIDE_*``, ``ROLL_START_*``, ``ROLL_PROBE_*``) are not
+        settings: they are starts only and not a result or a bound.
+        """
+        return {
+            "neuralfoil_model_size": NEURALFOIL_MODEL_SIZE,
+            "opt_alpha_min_deg": ALPHA_MIN_DEG,
+            "opt_alpha_max_deg": ALPHA_MAX_DEG,
+            "opt_alpha_step_deg": ALPHA_STEP_DEG,
+            "opt_bracket_cl": BRACKET_CL,
+            "opt_v_min_ms": V_MIN_MS,
+            "opt_v_max_mach": V_MAX_MACH,
+            "opt_max_iterations": MAX_ITERATIONS,
+            "opt_active_bound_fraction": ACTIVE_BOUND_FRACTION,
+            "opt_effectiveness_exponent": EFFECTIVENESS_EXPONENT,
+        }
 
     def _request(
         self,

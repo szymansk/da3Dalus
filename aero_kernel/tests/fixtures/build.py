@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from aero_kernel.canon.model import Namespace, compute_content_hash
+from aero_kernel.tests.canon_builders import world_taxonomy
 from pydantic import TypeAdapter
 
 # ``Any`` in this module is the raw-JSON boundary: the entries below are hand-written JSON-shaped
@@ -311,7 +312,12 @@ formulas = {
 def build_flight_canon() -> str:
     """Return the text of ``flight_canon.json``: sorted keys, two-space indent, final newline."""
     namespaces: dict[str, Any] = {
-        "calc": {"quantities": quantities, "formulas": formulas, "defaults": defaults}
+        "calc": {
+            "quantities": quantities,
+            "formulas": formulas,
+            "defaults": defaults,
+            "taxonomy": world_taxonomy({"formulas": formulas}),
+        }
     }
     parsed = TypeAdapter(dict[str, Namespace]).validate_python(namespaces)
     # The model file holds the normalised form: every absent optional field is written out.
