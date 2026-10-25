@@ -42,7 +42,7 @@ def test_the_conventions_of_the_real_canon_are_the_stall_break_fraction_and_the_
     (tmp_path / "canon_model.json").write_text(result.model_json, encoding="utf-8")
     defaults = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"].defaults
     conventions = {slug for slug, default in defaults.items() if default.basis == "convention"}
-    assert conventions == {"stall-break-fraction", "tail-efficiency", "cell-voltage-nominal"}
+    assert conventions == {"stall-break-fraction", "tail-efficiency"}
     assert defaults["tail-efficiency"].value == 0.65
     assert defaults["stall-break-fraction"].value == 0.10
     assert defaults["gravity"].basis == "standard"

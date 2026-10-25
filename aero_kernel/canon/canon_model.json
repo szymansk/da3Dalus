@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b0b515259a6abd8cfaf1bdf285fc482dce1f7b31f0a59f33f078806283d73ad1",
+  "content_hash": "sha256:e2609c8661967435be63b227f4570d90bbc3d1a294a1dffa1875fab97122c576",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -12,9 +12,9 @@
           "value": 1.3
         },
         "cell-voltage-nominal": {
-          "basis": "convention",
-          "regime": "regime-independent: a property of the cell chemistry, not of the flow; it is a mid-discharge value, so the rated mAh times it is the energy at the manufacturer's test rate; the caller overrides it for LiHV or another chemistry",
-          "source": "no single published value: Battery University BU-216 lists 3.60 V (lithium cobalt oxide) and 3.60 (3.70) V (NMC) per cell; 3.7 V is the usual nominal figure on LiPo pack labels (a LiHV cell is 3.8 V); adopted as convention, maintainer-confirmed value from BR-PM3",
+          "basis": "sourced",
+          "regime": "regime-independent: a property of the cell chemistry, not of the flow; a mid-discharge value, so the rated mAh times it is the energy at the manufacturer's test rate; the caller overrides it for another chemistry",
+          "source": "SkyRC, \"RC Battery Lineup: Voltage Ranges by Chemistry Types\", SkyRC Blog, 2024-12-26 (https://blog.skyrc.com/rc-battery-lineup-voltage-ranges-by-chemistry-types/): nominal per cell LiPo 3.7 V (LiHV 3.8 V, LiFe 3.2 V, Li-Ion 3.6 V, NiMH 1.2 V); the default is the LiPo value",
           "unit": "V",
           "value": 3.7
         },
