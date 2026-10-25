@@ -6,6 +6,8 @@ import types
 from typing import Any
 
 import pytest
+from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.geometry_properties import MainWingProperties, surface_properties
 
 # ``Any``: the fake stands in for an untyped third-party module; keyword arguments are recorded
 # exactly as passed.
@@ -105,3 +107,14 @@ def install_fake_aerosandbox(monkeypatch: pytest.MonkeyPatch) -> types.ModuleTyp
     module.Airplane = FakeAirplane  # pyright: ignore[reportAttributeAccessIssue]
     monkeypatch.setitem(sys.modules, "aerosandbox", module)
     return module
+
+
+def stand_in_main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
+    """The reference values without AeroSandbox, for fast tests that need consistent numbers only.
+
+    Taken from the kernel's own planform integration of the main wing; these are not AeroSandbox's
+    values (the aero tier compares those), only a deterministic stand-in at the solver boundary.
+    """
+    (main,) = [w for w in (airplane.wings or {}).values() if w.surface_type == "main_wing"]
+    surface = surface_properties(main)
+    return MainWingProperties(s_ref=surface.area, b_ref=surface.span, c_mac=surface.c_mac)

@@ -7,7 +7,6 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import FlowConditions, Polar
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.solvers.opti import (
     BestGlide,
     BestGlideSolution,
@@ -18,6 +17,7 @@ from aero_kernel.solvers.opti import (
     StallSolution,
     SteadyRoll,
 )
+from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 
 STEP = 0.25
 CD0, K = 0.03, 0.05  # the parabolic polar of the best-glide stub
@@ -55,7 +55,7 @@ def consistent_stall(
     """The self-consistent answer: V_S from the closed form with the lift curve's extremum."""
     upright = n_load > 0.0
     alpha_s, cl_max = UPRIGHT_PEAK if upright else INVERTED_TROUGH
-    area = main_wing_properties(airplane).s_ref
+    area = stand_in_main_wing_properties(airplane).s_ref
     v_s = math.sqrt(2.0 * abs(n_load) * mass * gravity / (air.density * area * abs(cl_max)))
     flow = FlowConditions(
         v_ms=v_s,
@@ -74,7 +74,7 @@ def consistent_glide(
 
     V_md = sqrt(2 n m g / (rho S)) (k / CD0)^(1/4); CL_md = sqrt(CD0 / k); (L/D)max = 1 / (2 sqrt(CD0 k)).
     """
-    area = main_wing_properties(airplane).s_ref
+    area = stand_in_main_wing_properties(airplane).s_ref
     v_md = math.sqrt(2.0 * n_load * mass * gravity / (air.density * area)) * (K / CD0) ** 0.25
     return BestGlideSolution(
         v_md=v_md,
@@ -92,7 +92,7 @@ def consistent_min_sink(
     The sink rate V D / W is least where the induced drag is three times the parasite drag:
     CL_mp = sqrt(3 CD0 / k) and V_mp = sqrt(2 n m g / (rho S)) (k / (3 CD0))^(1/4) = V_md / 3^(1/4).
     """
-    area = main_wing_properties(airplane).s_ref
+    area = stand_in_main_wing_properties(airplane).s_ref
     v_mp = (
         math.sqrt(2.0 * n_load * mass * gravity / (air.density * area)) * (K / (3.0 * CD0)) ** 0.25
     )

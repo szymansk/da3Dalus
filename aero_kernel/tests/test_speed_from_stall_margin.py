@@ -12,8 +12,8 @@ from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import ComputeRequest, QuantityStatus
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.solvers.opti import OptiAdapter, Stall, StallRequest, StallSolution
+from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.solver_builders import InProcessRuntime
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, StubOpti, consistent_stall, lift_curve
@@ -46,7 +46,7 @@ class FlapAwareOpti(StubOpti):
         factor = 1.0 - flap_deflection(airplane) / 100.0
         alpha_s, cl_clean = UPRIGHT_PEAK
         cl_max = cl_clean / factor**2
-        area = main_wing_properties(airplane).s_ref
+        area = stand_in_main_wing_properties(airplane).s_ref
         v_s = math.sqrt(2.0 * n_load * mass_kg * gravity / (air.density * area * cl_max))
         polar = lift_curve((alpha_s, cl_max), upright=True)
         solution = StallSolution(v_s=v_s, cl_max=cl_max, alpha_s=alpha_s, polar=polar)

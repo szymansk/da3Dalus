@@ -14,6 +14,7 @@ from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
+from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from pydantic import JsonValue
 
 # The canon formulas that have an implementation (slugs, qualified); grows with each slice.
@@ -129,11 +130,11 @@ class StubGeometry(GeometryAdapter):
         """Create the stub.
 
         Args:
-            reference: What every call returns; defaults to S 0.12 m^2, b 0.8 m, MAC 0.16 m.
+            reference: What every call returns; by default the stand-in values of the airplane asked about.
             versions: The tool versions the stub reports.
         """
         super().__init__(SolverRuntime())
-        self.reference = reference or MainWingProperties(s_ref=0.12, b_ref=0.8, c_mac=0.16)
+        self.reference = reference
         self.versions = dict(versions or {"aerosandbox": "0.0-stub"})
         self.asked: list[AirplaneGeometry] = []
 
@@ -144,7 +145,7 @@ class StubGeometry(GeometryAdapter):
     async def main_wing_reference(self, airplane: AirplaneGeometry) -> MainWingProperties:
         """Return the fixed reference values."""
         self.asked.append(airplane)
-        return self.reference
+        return self.reference or stand_in_main_wing_properties(airplane)
 
 
 def solvers_with(
@@ -158,7 +159,7 @@ def solvers_with(
         atmosphere=atmosphere or AtmosphereAdapter(SolverRuntime()),
         opti=opti or OptiAdapter(SolverRuntime()),
         avl=avl or AvlAdapter(SolverRuntime()),
-        geometry=geometry or GeometryAdapter(SolverRuntime()),
+        geometry=geometry or StubGeometry(),
     )
 
 

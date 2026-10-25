@@ -17,7 +17,7 @@ from aero_kernel.schema import (
     ReasonCode,
     WarningSeverity,
 )
-from aero_kernel.solvers.asb_airplane import main_wing_properties
+from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.np_builders import StubAvl
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, StubOpti
@@ -61,7 +61,7 @@ def only(result: ComputeResult) -> QuantityResult:
 
 def v_app(model: AirplaneGeometry) -> float:
     """1.3 * V_S of the stub's lift curve: V_S = sqrt(2 m g / (rho S C_L,max))."""
-    area = main_wing_properties(model).s_ref
+    area = stand_in_main_wing_properties(model).s_ref
     return 1.3 * math.sqrt(2.0 * MASS * GRAVITY / (RHO * area * UPRIGHT_PEAK[1]))
 
 
@@ -129,7 +129,9 @@ async def test_avl_world_cl_from_kernel_sref() -> None:
     ((airplane, cl, delta),) = avl.roll_calls
     speed = v_app(airplane)
     assert close(
-        cl, MASS * GRAVITY / (0.5 * RHO * speed**2 * main_wing_properties(airplane).s_ref), 1e-12
+        cl,
+        MASS * GRAVITY / (0.5 * RHO * speed**2 * stand_in_main_wing_properties(airplane).s_ref),
+        1e-12,
     )
     assert delta == 20.0
 

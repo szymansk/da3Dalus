@@ -6,6 +6,8 @@ import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
+from aero_kernel.solvers import geometry as geometry_module
+from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.tests.asb_fakes import (
     FAKE_CENTRELINE_GAP,
@@ -27,6 +29,7 @@ def test_the_adapter_declares_its_tool_and_requirement() -> None:
 @pytest.mark.asyncio
 async def test_the_main_wing_reference_is_what_asb_reports(monkeypatch: pytest.MonkeyPatch) -> None:
     install_fake_aerosandbox(monkeypatch)
+    monkeypatch.setattr(geometry_module, "main_wing_properties", main_wing_properties)
     area, span, chord = FAKE_REFERENCE["Main"]
     reference = await GeometryAdapter(SolverRuntime()).main_wing_reference(airplane())
     assert (reference.s_ref, reference.b_ref, reference.c_mac) == (
