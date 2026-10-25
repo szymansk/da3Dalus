@@ -10,6 +10,7 @@ tags:
   - module/construction
   - group/powertrain-battery
   - role/derived
+  - point/none
 type: scalar
 data: component:battery.mass_g
 ---
@@ -21,5 +22,3 @@ Mass of the battery as entered in the component tree.
 **Unit.** `kg`
 
 **Produced by.** [[airplane-components]]
-
-**Used by.** [[relative-mass-deviation]]
