@@ -385,8 +385,7 @@ source in our data**, recorded on the quantity as `data:` (below), or (b) produc
 **both** stages themselves — stage 1 approved and stage 2 holding for *their* inputs, recursively. The
 formulas a formula embeds (its `embeds` closure) count the same way. Only both stages, over the whole
 chain, make a formula fully approved — a test oracle. A gap is reported at its root, with the formulas it
-passes through: `motor-circuit-resistance: no data source (the catalogue does not carry it) via
-airplane-components`.
+passes through: `<quantity>: no data source (the catalogue does not carry it) via airplane-components`.
 
 **Pure data reads (maintainer, 2026-10-25).** `data:` is also allowed on a quantity produced by a
 formula that is a *pure data read* — criterion: `tool: KAT`, a formula that takes its outputs from the
@@ -394,8 +393,7 @@ parts catalogue (today `airplane-components`). Such a quantity names the catalog
 (`motor-voltage-constant: component:brushless_motor.kv_rpm_per_volt`) or, where it is computed from
 catalogue fields in the same formula, the fields and defaults it rests on (`battery-voltage`). The
 importer checks that each field exists. A quantity of such a formula **without** `data:` is one the
-catalogue does not carry (the circuit resistance `R_m`, #1149: `rm_ohm` is the winding resistance, not the
-circuit's); a formula consuming it reports it as unmapped in stage 2. Every other produced quantity takes
+catalogue does not carry (a catalogue field no component type has); a formula consuming it reports it as unmapped in stage 2. Every other produced quantity takes
 its approval from its producer and may not carry `data:`.
 
 **Quantity status is derived, not a field.** A produced quantity is `approved` when every producer satisfies both stages over its whole chain, otherwise `draft`;

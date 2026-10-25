@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b4ac0f6f4d570013c3df1b100de9eaa62b69166041104026a934c7bc91e2e541",
+  "content_hash": "sha256:e43ce550493e90b047d099d02876c435bb2c4d52f706d24daa91d66241f9737d",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -4900,7 +4900,9 @@
         "motor-circuit-resistance": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:brushless_motor.rm_ohm"
+          ],
           "discipline": null,
           "group": "powertrain-motor-propeller",
           "module": "construction",
