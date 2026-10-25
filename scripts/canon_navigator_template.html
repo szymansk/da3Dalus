@@ -349,7 +349,7 @@ if(DESIGN_SEP){ const n=Object.keys(COLOF).filter(q=>COLOF[q]==='design').length
   if(n) COLS.push({side:'design',module:'design',cols:Math.max(2,Math.min(MAXCOLS,n))}); }
 // Data sources (#1251, maintainer 2026-10-25): an explicit layer between the cross-cutting column
 // and the first formula column; each source feeds the quantities that name it, missing ones are marked.
-const SRCW=2*NW, SRCCOLW=SRCW+2*FPAD, SRCGAP=34;
+const SRCW=2*NW, SRCCOLW=SRCW+4*FPAD, SRCGAP=34;
 const SX={xcut:0, src:XW+REFGAP+RW+SRCGAP};
 { let x=SX.src+SRCCOLW+SIDEGAP, prev=null;
   for(const c of COLS){
@@ -494,19 +494,32 @@ SX.refs=XW+REFGAP;
   }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
+const SRCSUBEL=[];
 const pick=id=>RULEBYID[id]?selectRule(RULEBYID[id]):SRCBYID[id]&&SRCBYID[id].src?selectSource(SRCBYID[id].src):select(id);
 const SRC=D.src||[], MISS=D.miss||[], SRCKINDS=D.srckinds||[];
-const SP={}, SRCFRAMES=[], SRCNODES=[];
+const SP={}, SRCFRAMES=[], SRCNODES=[], SRCSUB=[];
 { let y=XTOP+FHEAD;
+  const FRS=D.srcframes||[];
   const groups=SRCKINDS.map(k=>({id:k.id,label:k.label,missing:false,
-    items:SRC.filter(x=>x.kind===k.id).map(x=>({id:'src:'+x.id,label:x.loc,title:x.id,qs:x.qs,src:x}))}));
-  groups.push({id:'missing',label:'Missing \u2014 no source yet',missing:true,
+    items:SRC.filter(x=>x.kind===k.id).map(x=>({id:'src:'+x.id,label:x.short||x.loc,title:x.id,qs:x.qs,src:x})),
+    frames:FRS.filter(f=>f.kind===k.id)}));
+  groups.push({id:'missing',label:'Missing \u2014 no source yet',missing:true,frames:[],
     items:MISS.map(q=>({id:'miss:'+q,label:'? '+q,title:'No demonstrated source for '+q,qs:[q],src:null}))});
   for(const g of groups){
     if(!g.items.length) continue;
-    const fh=(g.items.length-1)*SUBGAP+NH+2*FPAD;
-    SRCFRAMES.push({x:SX.src,y,w:SRCCOLW,h:fh,label:g.label+' \u00b7 '+g.items.length,missing:g.missing});
-    g.items.forEach((it,i)=>{ SP[it.id]={x:SX.src+FPAD,y:y+FPAD+i*SUBGAP}; SRCNODES.push({...it,missing:g.missing}); });
+    // a framed source sits in the frame of its collection (builder grouping), a plain one on the group
+    let cy=y+FPAD, n=0, bottom=y+2*FPAD+NH;
+    const framed=new Set();
+    for(const f of g.frames){
+      const mine=g.items.filter(it=>it.src&&it.src.frame===f.id);
+      if(!mine.length) continue;
+      const fh=(mine.length-1)*SUBGAP+NH+2*FPAD+FHEAD;
+      SRCSUB.push({id:f.id,label:f.label,parent:f.parent,qs:f.qs,x:SX.src+FPAD,y:cy,w:SRCCOLW-2*FPAD,h:fh,fields:mine.map(it=>it.id),missing:false});
+      mine.forEach((it,i)=>{ SP[it.id]={x:SX.src+2*FPAD,y:cy+FHEAD+FPAD+i*SUBGAP}; SRCNODES.push({...it,missing:g.missing}); framed.add(it.id); n++; });
+      bottom=cy+fh+FPAD; cy=bottom; }
+    g.items.filter(it=>!framed.has(it.id)).forEach(it=>{ SP[it.id]={x:SX.src+FPAD,y:cy}; SRCNODES.push({...it,missing:g.missing}); bottom=cy+NH+FPAD; cy+=SUBGAP; n++; });
+    const fh=bottom-y;
+    SRCFRAMES.push({x:SX.src,y,w:SRCCOLW,h:fh,label:g.label+' \u00b7 '+n,missing:g.missing});
     y+=fh+FHEAD+8; }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
@@ -537,7 +550,15 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
     const t=el('text',{x:SX.src,y:XTOP,class:'colhead'}); t.textContent='Data sources'; cam.appendChild(t);
     for(const f of SRCFRAMES){
       cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.missing?' srcmiss':'')}));
-      const l=el('text',{x:f.x+2,y:f.y-7,class:'blocklab '+(f.missing?'tmodlab':'modlab')}); l.textContent=f.label; cam.appendChild(l); } }
+      const l=el('text',{x:f.x+2,y:f.y-7,class:'blocklab '+(f.missing?'tmodlab':'modlab')}); l.textContent=f.label; cam.appendChild(l); }
+    for(const f of SRCSUB){
+      const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select source '+f.label});
+      const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:6,class:'frame'});
+      const l=el('text',{x:f.x+6,y:f.y+13,class:'blocklab modlab'}); l.textContent=f.label+' \u25b8';
+      g.appendChild(r); g.appendChild(l);
+      g.addEventListener('click',()=>{ if(!moved) selectSourceFrame(f); });
+      g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectSourceFrame(f);} });
+      cam.appendChild(g); SRCSUBEL.push({el:r,module:'srcframe:'+f.id}); } }
   if(RULES.length){ line(SX.rules-SIDEGAP/2,XTOP-14,SX.rules-SIDEGAP/2,H+10);
     const t=el('text',{x:SX.rules,y:XTOP,class:'colhead'}); t.textContent='Evaluation'; cam.appendChild(t);
     const fh=(RULES.length-1)*SUBGAP+NH+2*FPAD;
@@ -633,14 +654,14 @@ for(const n of SRCNODES) SRCBYID[n.id]=n;
 for(const n of SRCNODES){ const par=n.src&&n.src.parent&&Q[n.src.parent]?n.src.parent:'';
   pred[n.id]=par?[[par,'']]:[]; succ[n.id]=n.qs.map(q=>[q,'']); n.qs.forEach(q=>pred[q].push([n.id,'']));
   if(par) succ[par].push([n.id,'']); n.parent=par; }
+for(const f of SRCSUB){
+  const p0=P[f.parent]; if(!p0) continue;
+  const toLeft0=p0.x+NW<=SX.src, x0=toLeft0?p0.x+NW:p0.x, y0=p0.y+NH/2, x1=toLeft0?f.x:f.x+f.w, y1=f.y+FHEAD/2, dx=Math.max(30,Math.abs(x1-x0)/2)*(toLeft0?1:-1);
+  const e=el('path',{class:'edge xedge srcedge',d:`M${x0},${y0} C${x0+dx},${y0} ${x1-dx},${y1} ${x1},${y1}`});
+  cam.appendChild(e); edgeEls.push({e,a:f.parent,b:'srcframe:'+f.id,via:f.fields});
+}
 for(const n of SRCNODES){
   const p1=SP[n.id];
-  if(n.parent){
-    const p0=P[n.parent], toLeft0=p0.x+NW<=SX.src;
-    const x0=toLeft0?p0.x+NW:p0.x, y0=p0.y+NH/2, x1=toLeft0?p1.x:p1.x+SRCW, y1=p1.y+NH/2, dx=Math.max(30,Math.abs(x1-x0)/2)*(toLeft0?1:-1);
-    const e=el('path',{class:'edge xedge srcedge',d:`M${x0},${y0} C${x0+dx},${y0} ${x1-dx},${y1} ${x1},${y1}`});
-    cam.appendChild(e); edgeEls.push({e,a:n.parent,b:n.id});
-  }
   for(const q of n.qs){
     const p2=P[q], toLeft=p2.x+NW<=SX.src;
     const x1=toLeft?p1.x:p1.x+SRCW, y1=p1.y+NH/2, x2=toLeft?p2.x+NW:p2.x, y2=p2.y+NH/2, dx=Math.max(30,Math.abs(x2-x1)/2)*(toLeft?-1:1);
@@ -705,10 +726,14 @@ function paint(){
   const on=new Set([...S,...up,...down,...sibs]);
   for(const q in nodeEls){ nodeEls[q].classList.toggle('faded',!on.has(q)); nodeEls[q].classList.toggle('sib',sibs.has(q)); }
   for(const f of frameEls) f.el.classList.toggle('framesel',!!(sel&&sel.module===f.module));
-  edgeEls.forEach(({e,a,b})=>{
+  for(const f of SRCSUBEL) f.el.classList.toggle('framesel',!!(sel&&sel.module===f.module));
+  edgeEls.forEach(({e,a,b,via})=>{
     e.classList.remove('up','down','faded');
-    const upE = (on.has(a)&&(S.has(b)||up.has(b))) && (S.has(a)||up.has(a));
-    const dnE = (on.has(b)&&(S.has(a)||down.has(a))) && (S.has(b)||down.has(b));
+    // the edge into a source frame is lit when one of the frame's fields is on that side
+    const upE = via ? (S.has(a)||up.has(a)) && via.some(f=>S.has(f)||up.has(f))
+                    : (on.has(a)&&(S.has(b)||up.has(b))) && (S.has(a)||up.has(a));
+    const dnE = via ? (S.has(a)||down.has(a)) && via.some(f=>S.has(f)||down.has(f))
+                    : (on.has(b)&&(S.has(a)||down.has(a))) && (S.has(b)||down.has(b));
     if(upE) e.classList.add('up'); else if(dnE) e.classList.add('down'); else e.classList.add('faded');
   });
 }
@@ -809,6 +834,17 @@ function selectRule(r){
   h+=`<p class="sub">Rule status per reference aircraft is not shown: the navigator is built from the canon alone and holds no computed fleet values, so only the band is given.</p>`;
   if(r.note) h+=`<div class="blk"><div class="lab">Note</div><p class="sub" style="margin:0">${esc(r.note)}</p></div>`;
   info.innerHTML=h;
+}
+function selectSourceFrame(f){
+  sel={module:'srcframe:'+f.id,members:new Set(f.fields)}; paint();
+  const qs=[...new Set(f.fields.flatMap(id=>SRCBYID[id].qs))].sort();
+  info.innerHTML=`<h2>${esc(f.label)}</h2><p class="meta">${esc(f.id)} \u00b7 ${f.fields.length} fields</p>
+   <p class="desc">The fields of this source; the frame refines <a href="#" onclick="select('${f.parent}');return false">${esc(sym(f.parent))}</a>. All its fields are selected together; the depth slider sets how many steps of their influence are highlighted.</p>
+   <div class="blk"><div class="lab">Fields \u00b7 ${f.fields.length}</div><ul class="lnk">`+
+   f.fields.map(id=>`<li data-q="${esc(id)}">${esc(sym(id))}</li>`).join('')+`</ul></div>
+   <div class="blk"><div class="lab">Feeds \u00b7 ${qs.length}</div><ul class="lnk">`+
+   qs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
 }
 function selectSource(x){
   const id='src:'+x.id; sel={module:id,members:new Set([id])}; paint();
