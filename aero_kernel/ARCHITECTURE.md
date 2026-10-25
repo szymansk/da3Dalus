@@ -677,6 +677,7 @@ caller's responsibility.
     0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
     `FormulaError`; a dead worker discards the pool and becomes `internal`. Tested with a stub solver.
+  - **`minimum_sink_stall_limited`** (`practice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
     the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
     `|p·b/2V| > 0.10`, the documented range of the primer (`defect`). AeroBuildup with a deflected

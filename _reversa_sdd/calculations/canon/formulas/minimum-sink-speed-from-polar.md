@@ -58,11 +58,13 @@ subject to:               L(V, alpha) = n * m * g
 
 **Convergence.** None. Exhaustive search: exact on the 36-sample grid, blind between grid points, single pass, no tolerance, no refinement. Note the contrast with the sibling implementation, which does have an iterative scheme - one Picard pass, _PICARD_PASSES = 1 at speed_polar_service.py:34, itself a fixed pass count with no convergence test.
 
-**On failure.** argmin always returns an index; an endpoint minimum (the sweep stopped before the sink minimum) is reported as v_min_sink/w_min with nothing in the response to distinguish it. Empty curve with v_min_sink = None only for the degenerate-geometry branch at :493-512. Whole polar returned as null on any exception (:667-669). No DesignWarning in the file - undeclared, ADR 0020.
+**On failure — three cases (Soll, the optimisation; maintainer 2026-10-25, #1268).** (1) *Interior optimum*: the value, no warning. (2) *Boundary optimum*: the sink power `D·V` is still falling at the first C_L peak, where the window of α ends, so the minimum is limited by the stall; the value is returned at the stall boundary — `V`, `α` and `C_L` at the first C_L peak, **no safety margin** (a circling margin belongs to the evaluation, A10) — with the declared warning `minimum_sink_stall_limited` (`practice`, ADR 0020), which carries the boundary `α` and `C_L` and says that `D·V` is still falling there. (3) *Not bracketed at all* (the sweep has no C_L peak), IPOPT failing, or `V` or the lower bound of `α` active: `not_converged`, no value, as before. The postcondition is therefore: a value is returned exactly in cases (1) and (2), and only (2) carries a warning.
 
-**Shape: a route.** Ist: the code reaches this quantity in several ways; Soll: this optimisation is the only producer. The canon does not choose between them — it requires that they **agree**.
+**On failure (Ist, today's code).** argmin always returns an index; an endpoint minimum (the sweep stopped before the sink minimum) is reported as v_min_sink/w_min with nothing in the response to distinguish it. Empty curve with v_min_sink = None only for the degenerate-geometry branch at :493-512. Whole polar returned as null on any exception (:667-669). No DesignWarning in the file - undeclared, ADR 0020.
 
-**Test that follows.** Both routes claim the same quantity by different means; they must agree. Where they do not, the polar is not parabolic — which is a statement about the aircraft, not a defect.
+**Shape: a law, a single producer.** Ist: the code reaches this quantity in several ways (the three producers named in the broken assumption above); Soll: this optimisation is the only producer (ADR 0022), so the shape is *single*, not *route* — a route is one quantity legitimately reached two ways that must agree (canon README, "The four shapes"), and here the other producers are to be removed, not kept as a second route. (Wording corrected 2026-10-25: this paragraph said "a route", which contradicted the front matter `shape: law` and the Autorität paragraph.)
+
+**Test that follows.** For a parabolic polar the optimum agrees with the closed form, `V_mp = V_md / 3^(1/4)` (Sadraey 4.3.5.2); where it does not, the polar is not parabolic — which is a statement about the aircraft, not a defect. The kernel's aero tier checks the identity on a parabolic polar.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -114,3 +116,5 @@ polar instead of a closed form.
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
 > **Approved** (maintainer, 2026-10-24, approval block 1). This is the relation the implementations are measured against.
+>
+> Stall-limited optimum returns the boundary value with a warning (maintainer 2026-10-25).

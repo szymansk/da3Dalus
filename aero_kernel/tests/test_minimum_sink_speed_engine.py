@@ -95,4 +95,31 @@ async def test_an_expired_time_budget_cancels_the_solve_and_reports_timeout() ->
 
 
 async def test_the_sink_solution_type_carries_the_three_outputs() -> None:
-    assert set(MinSinkSolution.model_fields) == {"v_mp", "alpha_mp", "cl_mp"}
+    assert set(MinSinkSolution.model_fields) == {"v_mp", "alpha_mp", "cl_mp", "stall_limited"}
+
+
+async def test_a_stall_limited_optimum_gives_the_value_and_a_practice_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
+    from aero_kernel.schema import WarningSeverity
+    from aero_kernel.solvers import opti as opti_module
+    from aero_kernel.solvers.opti import OptiAdapter
+    from aero_kernel.tests.solver_builders import InProcessRuntime
+
+    limited = MinSinkSolution(v_mp=12.5, alpha_mp=15.75, cl_mp=1.2, stall_limited=True)
+
+    def worker(_request: object) -> WorkerOutcome[MinSinkSolution]:
+        return WorkerOutcome(value=limited, diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+    monkeypatch.setattr(opti_module, "min_sink_worker", worker)
+    solvers = solvers_with(
+        atmosphere=StubAtmosphere({0.0: RHO}), opti=OptiAdapter(InProcessRuntime())
+    )
+    request = ComputeRequest(quantities=SLUGS)
+    result = await evaluate(shipped_build(), aircraft(), request, solvers=solvers)
+    quantity = by_slug(result)["minimum-sink-speed"]
+    assert quantity.status is QuantityStatus.OK
+    assert quantity.value == 12.5
+    (warning,) = [w for w in quantity.warnings if w.code == "minimum_sink_stall_limited"]
+    assert warning.severity is WarningSeverity.PRACTICE
