@@ -12,6 +12,13 @@
 #            brakes), or "regime-independent"
 # Values moved from the quantity entries; touchdown changed to 1.1 (maintainer, 2026-10-17).
 
+altitude:
+  value: 0
+  unit: "m"
+  basis: convention
+  source: "maintainer 2026-10-25: without a stated altitude the atmosphere is evaluated at the ISA reference, mean sea level (U.S. Standard Atmosphere 1976); the designer overrides it, e.g. for a field at 500 m"
+  regime: "regime-independent"
+
 approach-speed-margin-target:
   value: 1.3
   unit: "1"

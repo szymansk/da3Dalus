@@ -15,7 +15,7 @@ tags:
   - shape/law
   - kind/law
   - status/draft
-inputs: {e: lift-to-drag-ratio, h: altitude}
+inputs: {e: lift-to-drag-ratio, h: height-above-ground}
 outputs: {r_glide: glide-distance}
 preconditions:
   - {id: lift_to_drag_of_flown_configuration, parameter: e, on_violation: warning}
@@ -27,10 +27,10 @@ preconditions:
 **Canonical form**
 
 ```
-R_glide = E * h
+R_glide = E * h_AGL
 ```
 
-**Produces** [[glide-distance]]  ·  **from** [[lift-to-drag-ratio]] · [[altitude]]
+**Produces** [[glide-distance]]  ·  **from** [[lift-to-drag-ratio]] · [[height-above-ground]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 

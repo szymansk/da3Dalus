@@ -1,9 +1,16 @@
 {
-  "content_hash": "sha256:e2609c8661967435be63b227f4570d90bbc3d1a294a1dffa1875fab97122c576",
+  "content_hash": "sha256:ee460fbe454e5f41f841f3aa86dfe0c1dfb3b5d1fd92671f0aff30e0c3102937",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
       "defaults": {
+        "altitude": {
+          "basis": "convention",
+          "regime": "regime-independent",
+          "source": "maintainer 2026-10-25: without a stated altitude the atmosphere is evaluated at the ISA reference, mean sea level (U.S. Standard Atmosphere 1976); the designer overrides it, e.g. for a field at 500 m",
+          "unit": "m",
+          "value": 0.0
+        },
         "approach-speed-margin-target": {
           "basis": "sourced",
           "regime": "transport rule taken as the lower bound: at low wing loading and low speed a gust changes the angle of attack and load factor more (Scholz Wing Design §7.3), so RC needs at least this margin; a larger RC margin has no source",
@@ -1225,7 +1232,7 @@
             {
               "bind": {
                 "e": "calc:lift-to-drag-ratio",
-                "h": "calc:altitude"
+                "h": "calc:height-above-ground"
               },
               "given": null,
               "id": "default",
@@ -1241,7 +1248,7 @@
           "embeds_closure": [],
           "inputs": {
             "e": "calc:lift-to-drag-ratio",
-            "h": "calc:altitude"
+            "h": "calc:height-above-ground"
           },
           "kind": "law",
           "optional": [],
@@ -4276,6 +4283,21 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s^2"
+        },
+        "height-above-ground": {
+          "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "atmosphere",
+          "point": null,
+          "positive": true,
+          "role": "input",
+          "stage": null,
+          "symbol": "h_AGL",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
         },
         "hinge-moment": {
           "at_most": null,

@@ -578,7 +578,7 @@ A **law** with preconditions and the single default application (`glide-distance
 kind: law
 tool: APP
 output: glide-distance
-inputs: {e: lift-to-drag-ratio, h: altitude}
+inputs: {e: lift-to-drag-ratio, h: height-above-ground}
 outputs: {r_glide: glide-distance}
 preconditions:
   - {id: lift_to_drag_of_flown_configuration, parameter: e, on_violation: warning}
