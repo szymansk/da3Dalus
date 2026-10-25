@@ -5,8 +5,8 @@
 # the rule applies. Bands live here and nowhere in code. Schema: aero_kernel/evaluation/rules.py.
 #
 # Source: M. Drela, "Lab 11 Notes - Basic Aircraft Design Rules", MIT 16.Unified, 16 Apr 2009.
-# Meanings are quoted or closely paraphrased from that text; where Drela says nothing, the entry
-# says so. `planned: "#N"` marks a quantity the canon does not have yet; the rule is not_available
+# Meanings are quoted or closely paraphrased from that text; where Drela names no consequence the
+# side has no meaning (absent, not a placeholder text). `planned: "#N"` marks a quantity the canon does not have yet; the rule is not_available
 # until that ticket lands (the check fails once the canon has the quantity, so the marker cannot
 # go stale). `when` / `when_not` are terms of the canon's closed `when` vocabulary.
 #
@@ -43,7 +43,6 @@ rules:
       Pitch behaviour is very sensitive to the CG location, the aircraft resists gusts and other
       upsets poorly and generally wanders in pitch attitude, which makes precise pitch control
       difficult.
-    above: Drela names no consequence of a value above the range.
     note: >-
       Drela's V_h = S_h * l_h / (S * c) uses c = S/b and the arm from the CG; the canon quantity
       (#1273) uses c_MAC and the arm from the design CG (#1272).
@@ -59,7 +58,6 @@ rules:
       The aircraft tends to oscillate or wallow in yaw (Dutch roll) as the pilot gives rudder or
       aileron inputs, which makes precise directional control difficult; poor rudder roll
       authority in an aircraft that turns with the rudder only.
-    above: Drela names no consequence of a value above the range.
     note: >-
       Until #1272 the canon arm is l_V,25 (from the wing quarter-chord MAC), not Drela's arm from
       the CG.
@@ -94,8 +92,9 @@ rules:
     when: [has_vertical_tail]
     when_not: [has_aileron]
     below: "A value of 0.10 will likely give marginal roll control."
-    above: >-
-      Drela states 0.20 gives very effective control and names no penalty above the range.
+    note: >-
+      Drela states 0.10 gives marginal and 0.20 very effective roll control and names no penalty
+      above the range; the upper end of the band is his stated range, not a limit.
 
   - id: turn-sideslip
     title: Sideslip in the steady turn (aircraft without ailerons)

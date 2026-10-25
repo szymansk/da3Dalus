@@ -18,6 +18,7 @@ from aero_kernel.evaluation.rules import (
     Rule,
     RuleTable,
     check_rule_table,
+    shipped_rule_table,
 )
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "check_rule_table",
     "evaluate_rules",
     "quantities_to_request",
+    "shipped_rule_table",
 ]

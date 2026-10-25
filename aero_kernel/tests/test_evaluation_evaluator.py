@@ -178,3 +178,9 @@ def test_the_shipped_table_judges_a_hand_made_result() -> None:
     assert verdicts["spiral-stability"].status is RuleStatus.BELOW  # B = 5 is neutral, not stable
     assert verdicts["horizontal-tail-volume"].status is RuleStatus.NOT_AVAILABLE
     assert verdicts["turn-sideslip"].status is RuleStatus.NOT_AVAILABLE
+
+
+def test_a_side_without_a_meaning_says_the_source_names_no_consequence() -> None:
+    verdict = judge(result_of(ok(SM, 0.4)), above=None)
+    assert verdict.status is RuleStatus.ABOVE
+    assert "names no consequence" in verdict.explanation

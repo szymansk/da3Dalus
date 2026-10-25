@@ -7,6 +7,7 @@ quantity the canon does not have.
 """
 
 from enum import StrEnum
+from pathlib import Path
 from typing import Annotated, Self
 
 from aero_kernel.canon.model import CanonModel, FiniteNumber, Unit, WhenTerm
@@ -20,6 +21,7 @@ __all__ = [
     "Rule",
     "RuleTable",
     "check_rule_table",
+    "shipped_rule_table",
 ]
 
 _FROZEN = ConfigDict(extra="forbid", frozen=True)
@@ -124,10 +126,10 @@ class Rule(BaseModel):
         source: Where the band comes from, with the equation number.
         when: Geometry terms that must all hold for the rule to apply.
         when_not: Geometry terms none of which may hold for the rule to apply.
-        below: What the source says about a value below the band; required when the band has a
-            lower end.
-        above: What the source says about a value above the band; required when the band has an
-            upper end.
+        below: What the source says about a value below the band; absent where the source names no
+            consequence, and not allowed when the band has no lower end.
+        above: What the source says about a value above the band; absent where the source names no
+            consequence, and not allowed when the band has no upper end.
         note: A difference between the source's definition and the canon quantity's, or any other
             caveat a reader needs.
     """
@@ -149,14 +151,11 @@ class Rule(BaseModel):
 
     @model_validator(mode="after")
     def _check_meanings(self) -> Self:
-        """Require a meaning for each side the band has, and none for a side it lacks."""
+        """Reject a meaning for a side the band lacks; a side may have none where the source names none."""
         for side, bound, meaning in (
             ("below", self.band.min, self.below),
             ("above", self.band.max, self.above),
         ):
-            if bound is not None and meaning is None:
-                msg = f"rule {self.id}: the band has a {side} side, so `{side}` is required"
-                raise ValueError(msg)
             if bound is None and meaning is not None:
                 msg = f"rule {self.id}: the band has no {side} side, so `{side}` must be absent"
                 raise ValueError(msg)
@@ -232,3 +231,16 @@ def check_rule_table(table: RuleTable, model: CanonModel) -> list[str]:
                 f"rule {rule.id}: unit {rule.unit} differs from the canon unit {known.unit} of {ref.slug}"
             )
     return problems
+
+
+def shipped_rule_table() -> RuleTable:
+    """Load the rule table shipped with the package (``rule_table.json``).
+
+    It is generated from ``_reversa_sdd/calculations/evaluation/drela.yaml`` by
+    ``python -m aero_kernel.importer.rule_table`` and never edited by hand.
+
+    Returns:
+        The validated table.
+    """
+    path = Path(__file__).resolve().parent / "rule_table.json"
+    return RuleTable.model_validate_json(path.read_text(encoding="utf-8"))

@@ -13,6 +13,8 @@ from aero_kernel.graph import PENDING_WHEN_TERMS, WhenFacts
 from aero_kernel.schema import ComputeResult, Interval, QuantityResult, QuantityStatus
 from pydantic import BaseModel, ConfigDict
 
+_NO_CONSEQUENCE = "the source names no consequence."
+
 __all__ = ["RuleStatus", "RuleVerdict", "evaluate_rules", "quantities_to_request"]
 
 
@@ -196,10 +198,10 @@ def _explain(
         RuleStatus.PARTLY: "reaches outside",
     }[status]
     parts = [f"{rule.title}: {text} {verb} the band {band} ({rule.source})."]
-    if Position.BELOW in positions and rule.below is not None:
-        parts.append(f"Below: {rule.below}")
-    if Position.ABOVE in positions and rule.above is not None:
-        parts.append(f"Above: {rule.above}")
+    if Position.BELOW in positions:
+        parts.append(f"Below: {rule.below or _NO_CONSEQUENCE}")
+    if Position.ABOVE in positions:
+        parts.append(f"Above: {rule.above or _NO_CONSEQUENCE}")
     if level is not None:
         meaning = next(lv.meaning for lv in rule.levels if lv.id == level)
         parts.append(f"Level {level}: {meaning}")

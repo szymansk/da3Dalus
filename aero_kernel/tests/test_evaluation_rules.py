@@ -9,8 +9,9 @@ from aero_kernel.evaluation.rules import (
     Position,
     RuleTable,
     check_rule_table,
+    shipped_rule_table,
 )
-from aero_kernel.importer.rule_table import load_rule_table
+from aero_kernel.importer.rule_table import load_rule_table, main, render_rule_table
 from aero_kernel.tests.evaluation_builders import rule_of, table_of
 from pydantic import ValidationError
 
@@ -45,11 +46,10 @@ def test_a_band_needs_a_bound_and_min_below_max() -> None:
         Band(min=2.0, max=1.0)
 
 
-def test_a_meaning_is_required_for_every_side_the_band_has() -> None:
-    with pytest.raises(ValidationError):
-        rule_of(below=None)
-    with pytest.raises(ValidationError):
-        rule_of(above=None)
+def test_a_side_may_have_no_meaning_where_the_source_names_none() -> None:
+    rule = rule_of(above=None)
+    assert rule.above is None
+    assert rule.below == "Negative: unstable."
 
 
 def test_a_meaning_for_a_side_the_band_lacks_is_rejected() -> None:
@@ -144,3 +144,17 @@ def test_every_not_yet_computable_rule_names_its_ticket() -> None:
         "rudder-roll-authority": "#1274",
         "turn-sideslip": "#1275",
     }
+
+
+def test_the_shipped_json_equals_the_yaml() -> None:
+    assert shipped_rule_table() == load_rule_table(DRELA)
+
+
+def test_the_shipped_json_is_current() -> None:
+    assert main([str(DRELA), "--check"]) == 0
+
+
+def test_the_json_rendering_is_stable() -> None:
+    table = load_rule_table(DRELA)
+    assert render_rule_table(table) == render_rule_table(table)
+    assert render_rule_table(table).endswith("}\n")
