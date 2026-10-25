@@ -34,15 +34,15 @@ applications:
 **Canonical form**
 
 ```
-l_V, Gamma_eq := geometry(airplane)   # tail arm, (equivalent) dihedral in degrees
+l_V_25, Gamma_eq := geometry(airplane)   # tail arm, (equivalent) dihedral in degrees
 C_L = m * g / (0.5 * rho * V_md^2 * S_ref)
-B   = l_V * Gamma_eq / (b_ref * C_L)
+B   = l_V_25 * Gamma_eq / (b_ref * C_L)
 ```
 
 `S_ref` and `b_ref` are [[wing-reference-area]] and [[wing-span]], produced by [[airplane-geometry]] (AeroSandbox's
 definition, measured on the main wing; maintainer 2026-10-25). This entry does not read the wing area or span
 from the airplane itself: one producer per number a user sees (ADR 0022). Only the tail-specific geometry,
-`l_V` and `Gamma_eq`, is read from the airplane.
+`l_V,25` and `Gamma_eq`, is read from the airplane.
 
 **Produces** [[spiral-parameter]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[wing-span]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]]
 
@@ -50,7 +50,7 @@ from the airplane itself: one producer per number a user sees (ADR 0022). Only t
 independent of any solver — the RC practice's counterpart to the spiral criterion of
 [[lateral-static-stability-md]] (K27).
 
-**Precondition.** The aircraft has a fin or a V-tail behind the wing (`l_V` is a tail arm). Not computed
+**Precondition.** The aircraft has a fin or a V-tail behind the wing (`l_V,25` is a tail arm). Not computed
 for tailless aircraft.
 
 **Values, not verdicts (A10).** Drela: B > 5 spirally stable, ≈ 5 neutral, 3–4 no difficulty for an

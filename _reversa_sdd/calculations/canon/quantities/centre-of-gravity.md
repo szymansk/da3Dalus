@@ -18,4 +18,4 @@ Longitudinal CG position of the aircraft; x in the geometry frame, aft positive,
 
 **Unit.** `m`
 
-**Used by.** [[lateral-static-stability-app]] · [[lateral-static-stability-md]] · [[static-margin-probe]] · [[static-margin]]
+**Used by.** [[static-margin]]

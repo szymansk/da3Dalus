@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:4c66c6860ba76501eecc9dc37f820fdb6fc608ee675ae0a318fe4c1183f87e9d",
+  "content_hash": "sha256:88315e41e8c4dddd4907a286c4fc9d1227b2819147752ef45bf346f4f8048290",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1285,7 +1285,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v": "calc:approach-speed",
-                "x_cg": "calc:centre-of-gravity"
+                "x_cg": "calc:cg-for-target-margin"
               },
               "given": null,
               "id": "default",
@@ -1308,7 +1308,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v": "calc:approach-speed",
-            "x_cg": "calc:centre-of-gravity"
+            "x_cg": "calc:cg-for-target-margin"
           },
           "kind": "procedure",
           "optional": [],
@@ -1334,7 +1334,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v": "calc:minimum-drag-speed",
-                "x_cg": "calc:centre-of-gravity"
+                "x_cg": "calc:cg-for-target-margin"
               },
               "given": null,
               "id": "default",
@@ -1357,7 +1357,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v": "calc:minimum-drag-speed",
-            "x_cg": "calc:centre-of-gravity"
+            "x_cg": "calc:cg-for-target-margin"
           },
           "kind": "procedure",
           "optional": [],
@@ -3059,7 +3059,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v_md": "calc:minimum-drag-speed",
-                "x_cg": "calc:centre-of-gravity"
+                "x_cg": "calc:cg-for-target-margin"
               },
               "given": null,
               "id": "default",
@@ -3080,7 +3080,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v_md": "calc:minimum-drag-speed",
-            "x_cg": "calc:centre-of-gravity"
+            "x_cg": "calc:cg-for-target-margin"
           },
           "kind": "procedure",
           "optional": [],
@@ -3936,8 +3936,8 @@
           "module": null,
           "point": "best-glide",
           "positive": null,
-          "role": "output",
-          "stage": null,
+          "role": "derived",
+          "stage": "stability-structure",
           "symbol": "x_CG,SM",
           "type": "scalar",
           "uncertainty": null,
