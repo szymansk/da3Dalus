@@ -9,6 +9,7 @@ tags:
   - module/envelope-targets
   - role/target
 type: scalar
+data: default:limit-load-factor
 
 positive: true
 ---

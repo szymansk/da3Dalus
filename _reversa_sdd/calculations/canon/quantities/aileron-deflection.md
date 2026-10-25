@@ -9,6 +9,7 @@ tags:
   - module/control-deflections
   - role/input
 type: scalar
+data: app:OperatingPointSchema.control_deflections
 ---
 
 # Aileron deflection · `delta_a`

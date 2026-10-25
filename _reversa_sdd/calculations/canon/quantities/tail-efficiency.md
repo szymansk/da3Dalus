@@ -9,6 +9,7 @@ tags:
   - module/conventions
   - role/input
 type: scalar
+data: default:tail-efficiency
 
 positive: true
 at_most: 1

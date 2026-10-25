@@ -9,6 +9,7 @@ tags:
   - module/atmosphere
   - role/input
 type: scalar
+data: default:gravity
 
 positive: true
 ---

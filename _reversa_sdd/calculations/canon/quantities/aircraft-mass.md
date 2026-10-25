@@ -9,6 +9,7 @@ tags:
   - module/mass-and-balance
   - role/input
 type: scalar
+data: geometry:total_mass_kg
 
 positive: true
 ---

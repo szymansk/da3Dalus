@@ -99,3 +99,29 @@ def test_the_real_navigator_shows_all_defaults_and_the_load_factor_constants() -
     consts = [c for f in data["F"].values() for a in f["apps"] for c in a["consts"]]
     assert len(consts) >= 6
     assert {c["param"] for c in consts} >= {"n_load"}
+
+
+def test_the_navigator_carries_stage_two_of_the_approval_per_formula_and_quantity() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "approved"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    stall = data["appr"]["stall-speed"]
+    assert stall["s1"] == "approved"
+    assert stall["k"] == stall["n"]
+    assert stall["missing"] == []
+    assert data["qstat"]["aircraft-mass"] == "approved"
+    assert data["qdata"]["aircraft-mass"] == ["geometry:total_mass_kg"]
+
+
+def test_every_missing_input_is_named_with_its_reason() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    for row in data["appr"].values():
+        assert row["k"] + len(row["missing"]) == row["n"]
+        for missing in row["missing"]:
+            assert missing["why"] == "no data source" or "not approved" in missing["why"]
+            unmapped = data["qstat"][missing["q"]] == "unmapped"
+            assert unmapped == (missing["why"] == "no data source")

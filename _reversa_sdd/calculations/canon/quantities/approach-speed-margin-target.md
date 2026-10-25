@@ -9,6 +9,9 @@ tags:
   - module/envelope-targets
   - role/target
 type: scalar
+data:
+  - default:approach-speed-margin-target
+  - app:Goals.approach_speed_margin_vs_ldg
 
 positive: true
 ---

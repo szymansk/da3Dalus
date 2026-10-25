@@ -9,6 +9,7 @@ tags:
   - module/operating-point
   - role/input
 type: scalar
+data: default:load-factor
 ---
 
 # Load factor · `n`

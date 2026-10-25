@@ -9,6 +9,7 @@ tags:
   - module/construction
   - role/input
 type: scalar
+data: default:cell-voltage-nominal
 
 positive: true
 ---

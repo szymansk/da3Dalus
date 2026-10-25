@@ -9,6 +9,7 @@ tags:
   - module/control-deflections
   - role/input
 type: scalar
+data: app:OperatingPointSchema.control_deflections
 ---
 
 # Elevator deflection, down · `delta_e,down`

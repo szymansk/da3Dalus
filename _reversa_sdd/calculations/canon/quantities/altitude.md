@@ -9,6 +9,9 @@ tags:
   - module/atmosphere
   - role/input
 type: scalar
+data:
+  - default:altitude
+  - app:OperatingPointSchema.altitude
 ---
 
 # Altitude · `h`

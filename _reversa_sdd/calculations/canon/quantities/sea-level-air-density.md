@@ -9,6 +9,7 @@ tags:
   - module/atmosphere
   - role/input
 type: scalar
+data: default:sea-level-air-density
 
 positive: true
 ---

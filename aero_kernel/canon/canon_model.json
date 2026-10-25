@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e72238add1e2348c6e5c2ba8e93743b599458beb33ee74b5e659d5aa17196efc",
+  "content_hash": "sha256:b2dcce2a002d26f6943cda005980135bbc923c37e384d9413496387ce051a0d3",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -3324,7 +3324,9 @@
         "aileron-deflection": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:OperatingPointSchema.control_deflections"
+          ],
           "discipline": null,
           "group": null,
           "module": "control-deflections",
@@ -3388,7 +3390,9 @@
         "aircraft-mass": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "geometry:total_mass_kg"
+          ],
           "discipline": null,
           "group": null,
           "module": "mass-and-balance",
@@ -3404,7 +3408,9 @@
         "airplane": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "geometry:$"
+          ],
           "discipline": null,
           "group": null,
           "module": "construction",
@@ -3468,7 +3474,10 @@
         "altitude": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:altitude",
+            "app:OperatingPointSchema.altitude"
+          ],
           "discipline": null,
           "group": null,
           "module": "atmosphere",
@@ -3484,7 +3493,9 @@
         "angle-of-attack": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:OperatingPointSchema.alpha"
+          ],
           "discipline": null,
           "group": null,
           "module": "operating-point",
@@ -3596,7 +3607,10 @@
         "approach-speed-margin-target": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:approach-speed-margin-target",
+            "app:Goals.approach_speed_margin_vs_ldg"
+          ],
           "discipline": null,
           "group": null,
           "module": "envelope-targets",
@@ -3756,7 +3770,9 @@
         "battery-specific-energy": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:battery-specific-energy"
+          ],
           "discipline": null,
           "group": null,
           "module": "construction",
@@ -3916,7 +3932,9 @@
         "cell-voltage-nominal": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:cell-voltage-nominal"
+          ],
           "discipline": null,
           "group": null,
           "module": "construction",
@@ -3996,7 +4014,11 @@
         "components": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:brushless_motor",
+            "component:battery",
+            "component:propeller"
+          ],
           "discipline": null,
           "group": null,
           "module": "construction",
@@ -4044,7 +4066,9 @@
         "cruise-speed-target": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:Goals.cruise_speed_mps"
+          ],
           "discipline": null,
           "group": null,
           "module": "envelope-targets",
@@ -4172,7 +4196,9 @@
         "elevator-deflection-down": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:OperatingPointSchema.control_deflections"
+          ],
           "discipline": null,
           "group": null,
           "module": "control-deflections",
@@ -4188,7 +4214,9 @@
         "elevator-deflection-up": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:OperatingPointSchema.control_deflections"
+          ],
           "discipline": null,
           "group": null,
           "module": "control-deflections",
@@ -4236,7 +4264,9 @@
         "flap-deflection-landing": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:OperatingPointSchema.control_deflections"
+          ],
           "discipline": null,
           "group": null,
           "module": "control-deflections",
@@ -4252,7 +4282,9 @@
         "flap-deflection-takeoff": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:OperatingPointSchema.control_deflections"
+          ],
           "discipline": null,
           "group": null,
           "module": "control-deflections",
@@ -4268,7 +4300,9 @@
         "flight-speed": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:OperatingPointSchema.velocity"
+          ],
           "discipline": null,
           "group": null,
           "module": "operating-point",
@@ -4284,7 +4318,9 @@
         "gravity": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:gravity"
+          ],
           "discipline": null,
           "group": null,
           "module": "atmosphere",
@@ -4444,7 +4480,9 @@
         "limit-load-factor": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:limit-load-factor"
+          ],
           "discipline": null,
           "group": null,
           "module": "envelope-targets",
@@ -4460,7 +4498,9 @@
         "load-factor": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:load-factor"
+          ],
           "discipline": null,
           "group": null,
           "module": "operating-point",
@@ -4860,7 +4900,9 @@
         "motor-efficiency": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:motor-efficiency"
+          ],
           "discipline": null,
           "group": null,
           "module": "construction",
@@ -5164,7 +5206,9 @@
         "roll-rate-target-cruise": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:Handling.roll_rate_target_dps"
+          ],
           "discipline": null,
           "group": null,
           "module": "design-targets",
@@ -5180,7 +5224,9 @@
         "rudder-deflection": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "app:OperatingPointSchema.control_deflections"
+          ],
           "discipline": null,
           "group": null,
           "module": "control-deflections",
@@ -5196,7 +5242,9 @@
         "sea-level-air-density": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:sea-level-air-density"
+          ],
           "discipline": null,
           "group": null,
           "module": "atmosphere",
@@ -5388,7 +5436,9 @@
         "stall-break-fraction": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:stall-break-fraction"
+          ],
           "discipline": null,
           "group": null,
           "module": "conventions",
@@ -5548,7 +5598,9 @@
         "tail-efficiency": {
           "at_most": 1.0,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:tail-efficiency"
+          ],
           "discipline": null,
           "group": null,
           "module": "conventions",
@@ -5580,7 +5632,10 @@
         "takeoff-speed-margin-target": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:takeoff-speed-margin-target",
+            "app:Goals.takeoff_speed_margin_vs_to"
+          ],
           "discipline": null,
           "group": null,
           "module": "envelope-targets",
@@ -5660,7 +5715,9 @@
         "touchdown-speed-margin-target": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "default:touchdown-speed-margin-target"
+          ],
           "discipline": null,
           "group": null,
           "module": "envelope-targets",

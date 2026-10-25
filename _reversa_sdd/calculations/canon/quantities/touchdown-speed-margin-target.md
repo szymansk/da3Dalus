@@ -9,6 +9,7 @@ tags:
   - module/envelope-targets
   - role/target
 type: scalar
+data: default:touchdown-speed-margin-target
 
 positive: true
 ---

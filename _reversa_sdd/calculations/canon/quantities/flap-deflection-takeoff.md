@@ -9,6 +9,7 @@ tags:
   - module/control-deflections
   - role/input
 type: scalar
+data: app:OperatingPointSchema.control_deflections
 ---
 
 # Flap deflection in take-off configuration · `delta_f,TO`

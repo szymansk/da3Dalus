@@ -9,6 +9,9 @@ tags:
   - module/envelope-targets
   - role/target
 type: scalar
+data:
+  - default:takeoff-speed-margin-target
+  - app:Goals.takeoff_speed_margin_vs_to
 
 positive: true
 ---

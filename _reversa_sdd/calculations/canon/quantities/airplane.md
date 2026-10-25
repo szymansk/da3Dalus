@@ -9,6 +9,7 @@ tags:
   - module/construction
   - role/input
 type: airplane
+data: geometry:$
 ---
 
 # Airplane · `airplane`

@@ -9,6 +9,7 @@ tags:
   - module/control-deflections
   - role/input
 type: scalar
+data: app:OperatingPointSchema.control_deflections
 ---
 
 # Rudder deflection · `delta_r`

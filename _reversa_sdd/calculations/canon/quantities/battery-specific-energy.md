@@ -9,6 +9,7 @@ tags:
   - module/construction
   - role/input
 type: scalar
+data: default:battery-specific-energy
 ---
 
 # Specific energy of the battery · `E_star`
