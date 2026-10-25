@@ -21,16 +21,16 @@ ABS_M = 1e-4  # the regression tolerance of the AVL world
 # Regression goldens (m), per world textbook / Pappas / AVL: the design CG at SM_target = 0.10 and the
 # arms l_H,CG and l_V,CG from it.
 GOLDEN_CG = {
-    FleetMember.BRYAN: (0.0, 0.0, 0.0),
-    FleetMember.JAGUAR: (0.0, 0.0, 0.0),
+    FleetMember.BRYAN: (0.1266041726, 0.1269010159, 0.1307588397),
+    FleetMember.JAGUAR: (0.1075391889, 0.1133476263, 0.1158455146),
 }
 GOLDEN_L_H = {
-    FleetMember.BRYAN: (0.0, 0.0, 0.0),
-    FleetMember.JAGUAR: (0.0, 0.0, 0.0),
+    FleetMember.BRYAN: (0.2972459914, 0.2969491481, 0.2930913242),
+    FleetMember.JAGUAR: (0.2447503047, 0.2389418673, 0.2364439791),
 }
 GOLDEN_L_V = {
-    FleetMember.BRYAN: (0.0, 0.0, 0.0),
-    FleetMember.JAGUAR: (0.0, 0.0, 0.0),
+    FleetMember.BRYAN: (0.3157883688, 0.3154915255, 0.3116337017),
+    FleetMember.JAGUAR: (0.2320591484, 0.2262507110, 0.2237528227),
 }
 
 

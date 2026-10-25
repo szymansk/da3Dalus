@@ -480,6 +480,15 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
                 "type": "number",
                 "unit": "W",
             },
+            # gh-1290: the efficiency the manufacturer publishes; absent for most motors.
+            {
+                "name": "efficiency_pct",
+                "label": "Wirkungsgrad",
+                "type": "number",
+                "unit": "%",
+                "min": 0,
+                "max": 100,
+            },
         ],
     },
     {
@@ -498,6 +507,21 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
             {"name": "cells", "label": "Zellen (S)", "type": "number", "required": True, "min": 1},
             {"name": "c_rate", "label": "C-Rate", "type": "number"},
             {"name": "voltage_v", "label": "Spannung", "type": "number", "unit": "V"},
+            # gh-1245: the chemistry and the datasheet's nominal cell voltage belong to the
+            # battery; the pack voltage voltage_v is cells * cell_voltage_v.
+            {
+                "name": "chemistry",
+                "label": "Chemie",
+                "type": "enum",
+                "options": ["lipo", "lihv", "life", "li_ion", "nimh"],
+            },
+            {
+                "name": "cell_voltage_v",
+                "label": "Nennspannung je Zelle",
+                "type": "number",
+                "unit": "V",
+                "min": 0,
+            },
         ],
     },
     {
@@ -691,9 +715,9 @@ def seed_default_types(db: Session) -> None:
     existing = {row[0] for row in db.query(ComponentTypeModel.name).all()}
     for seed in DEFAULT_SEED_TYPES:
         if seed["name"] in existing:
-            # gh-1008 / gh-1006: additively patch new schema fields onto existing
+            # gh-1008 / gh-1006 / gh-1245: additively patch new schema fields onto existing
             # ComponentTypes so already-seeded DBs gain them without a rebuild.
-            if seed["name"] in ("material", "brushless_motor"):
+            if seed["name"] in ("material", "brushless_motor", "battery"):
                 _patch_schema_fields(db, seed["name"], seed["schema"])
             continue
         db.add(

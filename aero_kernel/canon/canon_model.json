@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:18b6360b4615cf14dbf776cf744ffcbc84a4c82c36d758986e2bae563cd32c16",
+  "content_hash": "sha256:cc18a4809077bd5870e93012c003e6587f8d54d9f2b5fbb33fa58f836997c5a5",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -26,9 +26,9 @@
           "value": 140.0
         },
         "cell-voltage-nominal": {
-          "basis": "sourced",
+          "basis": "start",
           "regime": "regime-independent: a property of the cell chemistry, not of the flow; a mid-discharge value, so the rated mAh times it is the energy at the manufacturer's test rate; the caller overrides it for another chemistry",
-          "source": "SkyRC, \"RC Battery Lineup: Voltage Ranges by Chemistry Types\", SkyRC Blog, 2024-12-26 (https://blog.skyrc.com/rc-battery-lineup-voltage-ranges-by-chemistry-types/): nominal per cell LiPo 3.7 V (LiHV 3.8 V, LiFe 3.2 V, Li-Ion 3.6 V, NiMH 1.2 V); the default is the LiPo value",
+          "source": "SkyRC, \"RC Battery Lineup: Voltage Ranges by Chemistry Types\", SkyRC Blog, 2024-12-26 (https://blog.skyrc.com/rc-battery-lineup-voltage-ranges-by-chemistry-types/): nominal per cell LiPo 3.7 V (LiHV 3.8 V, LiFe 3.2 V, Li-Ion 3.6 V, NiMH 1.2 V); the default is the LiPo value, the fallback of a battery with neither cell_voltage_v nor chemistry (maintainer 2026-10-25, #1245); a battery with a chemistry takes that chemistry's value from the same source",
           "unit": "V",
           "value": 3.7
         },
@@ -54,9 +54,9 @@
           "value": 1.0
         },
         "motor-efficiency": {
-          "basis": "sourced",
+          "basis": "start",
           "regime": "RC brushless motors (the source's subject); at P_max copper loss grows with I², so the efficiency lies below the peak band and the lower bound fits",
-          "source": "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point",
+          "source": "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point; the fallback of a motor without a published efficiency_pct (maintainer 2026-10-25, #1290)",
           "unit": "1",
           "value": 0.75
         },
@@ -291,8 +291,7 @@
           "applications": [
             {
               "bind": {
-                "components": "calc:components",
-                "u_cell": "calc:cell-voltage-nominal"
+                "components": "calc:components"
               },
               "given": null,
               "id": "default",
@@ -300,6 +299,7 @@
                 "c_rate": "calc:battery-c-rate",
                 "d_prop": "calc:propeller-diameter",
                 "e_bat": "calc:battery-capacity",
+                "eta_mot": "calc:motor-efficiency",
                 "i_0": "calc:motor-no-load-current",
                 "i_bat_max": "calc:battery-current-allowed",
                 "k_v": "calc:motor-voltage-constant",
@@ -307,7 +307,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "q_bat": "calc:battery-charge-capacity",
                 "r_m": "calc:motor-circuit-resistance",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "u_cell": "calc:cell-voltage-nominal"
               },
               "when": null
             }
@@ -317,8 +318,7 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
-            "components": "calc:components",
-            "u_cell": "calc:cell-voltage-nominal"
+            "components": "calc:components"
           },
           "kind": "procedure",
           "optional": [],
@@ -326,6 +326,7 @@
             "c_rate": "calc:battery-c-rate",
             "d_prop": "calc:propeller-diameter",
             "e_bat": "calc:battery-capacity",
+            "eta_mot": "calc:motor-efficiency",
             "i_0": "calc:motor-no-load-current",
             "i_bat_max": "calc:battery-current-allowed",
             "k_v": "calc:motor-voltage-constant",
@@ -333,7 +334,8 @@
             "p_mot_max": "calc:motor-max-power",
             "q_bat": "calc:battery-charge-capacity",
             "r_m": "calc:motor-circuit-resistance",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "u_cell": "calc:cell-voltage-nominal"
           },
           "postconditions": [],
           "preconditions": [],
@@ -474,7 +476,7 @@
           "applications": [
             {
               "bind": {
-                "e_bat": "calc:battery-capacity",
+                "e_req": "calc:battery-energy-required",
                 "e_star": "calc:battery-specific-energy"
               },
               "given": null,
@@ -490,7 +492,7 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
-            "e_bat": "calc:battery-capacity",
+            "e_req": "calc:battery-energy-required",
             "e_star": "calc:battery-specific-energy"
           },
           "kind": "law",
@@ -2435,41 +2437,6 @@
           "variables": [],
           "worlds": []
         },
-        "relative-mass-deviation": {
-          "applications": [
-            {
-              "bind": {
-                "m_bat": "calc:battery-mass",
-                "m_bat_pred": "calc:predicted-battery-mass"
-              },
-              "given": null,
-              "id": "default",
-              "produce": {
-                "dev": "calc:battery-mass-deviation"
-              },
-              "when": null
-            }
-          ],
-          "cost": "instant",
-          "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
-          "inputs": {
-            "m_bat": "calc:battery-mass",
-            "m_bat_pred": "calc:predicted-battery-mass"
-          },
-          "kind": "law",
-          "optional": [],
-          "outputs": {
-            "dev": "calc:battery-mass-deviation"
-          },
-          "postconditions": [],
-          "preconditions": [],
-          "tool": "APP",
-          "uncertainty": null,
-          "variables": [],
-          "worlds": []
-        },
         "roll-rate": {
           "applications": [
             {
@@ -3819,6 +3786,22 @@
           "uncertainty": null,
           "unit": "A"
         },
+        "battery-energy-required": {
+          "at_most": null,
+          "checks": null,
+          "data": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": null,
+          "positive": null,
+          "role": "input",
+          "stage": "references",
+          "symbol": "E_req",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "Wh"
+        },
         "battery-mass": {
           "at_most": null,
           "checks": null,
@@ -3828,7 +3811,7 @@
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
-          "point": null,
+          "point": "none",
           "positive": null,
           "role": "derived",
           "stage": "references",
@@ -3836,22 +3819,6 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "kg"
-        },
-        "battery-mass-deviation": {
-          "at_most": null,
-          "checks": null,
-          "data": null,
-          "discipline": "powered",
-          "group": null,
-          "module": null,
-          "point": "none",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "dev",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "1"
         },
         "battery-power": {
           "at_most": null,
@@ -4038,15 +4005,17 @@
           "at_most": null,
           "checks": null,
           "data": [
+            "component:battery.cell_voltage_v",
+            "component:battery.chemistry",
             "default:cell-voltage-nominal"
           ],
           "discipline": null,
-          "group": null,
+          "group": "powertrain-battery",
           "module": "construction",
-          "point": null,
-          "positive": true,
-          "role": "input",
-          "stage": null,
+          "point": "none",
+          "positive": null,
+          "role": "derived",
+          "stage": "references",
           "symbol": "U_cell",
           "type": "scalar",
           "uncertainty": null,
@@ -5026,15 +4995,16 @@
           "at_most": null,
           "checks": null,
           "data": [
+            "component:brushless_motor.efficiency_pct",
             "default:motor-efficiency"
           ],
           "discipline": null,
-          "group": null,
+          "group": "powertrain-motor-propeller",
           "module": "construction",
           "point": null,
-          "positive": true,
-          "role": "input",
-          "stage": null,
+          "positive": null,
+          "role": "derived",
+          "stage": "references",
           "symbol": "eta_mot",
           "type": "scalar",
           "uncertainty": null,
@@ -5181,7 +5151,7 @@
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
-          "point": null,
+          "point": "none",
           "positive": null,
           "role": "derived",
           "stage": "references",

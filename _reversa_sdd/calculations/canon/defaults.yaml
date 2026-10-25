@@ -33,8 +33,8 @@ approach-speed-margin-target:
 cell-voltage-nominal:
   value: 3.7
   unit: "V"
-  basis: sourced
-  source: "SkyRC, \"RC Battery Lineup: Voltage Ranges by Chemistry Types\", SkyRC Blog, 2024-12-26 (https://blog.skyrc.com/rc-battery-lineup-voltage-ranges-by-chemistry-types/): nominal per cell LiPo 3.7 V (LiHV 3.8 V, LiFe 3.2 V, Li-Ion 3.6 V, NiMH 1.2 V); the default is the LiPo value"
+  basis: start
+  source: "SkyRC, \"RC Battery Lineup: Voltage Ranges by Chemistry Types\", SkyRC Blog, 2024-12-26 (https://blog.skyrc.com/rc-battery-lineup-voltage-ranges-by-chemistry-types/): nominal per cell LiPo 3.7 V (LiHV 3.8 V, LiFe 3.2 V, Li-Ion 3.6 V, NiMH 1.2 V); the default is the LiPo value, the fallback of a battery with neither cell_voltage_v nor chemistry (maintainer 2026-10-25, #1245); a battery with a chemistry takes that chemistry's value from the same source"
   regime: "regime-independent: a property of the cell chemistry, not of the flow; a mid-discharge value, so the rated mAh times it is the energy at the manufacturer's test rate; the caller overrides it for another chemistry"
 
 gravity:
@@ -54,8 +54,8 @@ load-factor:
 motor-efficiency:
   value: 0.75
   unit: "1"
-  basis: sourced
-  source: "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point"
+  basis: start
+  source: "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point; the fallback of a motor without a published efficiency_pct (maintainer 2026-10-25, #1290)"
   regime: "RC brushless motors (the source's subject); at P_max copper loss grows with I², so the efficiency lies below the peak band and the lower bound fits"
 
 takeoff-speed-margin-target:
