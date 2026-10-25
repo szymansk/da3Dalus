@@ -5,7 +5,7 @@ from pathlib import Path
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.importer.approval import derive_approval
 from aero_kernel.importer.pipeline import ImportResult, import_canon
-from aero_kernel.tests.importer_builders import MINI_CANON, _formula, _quantity, write_canon
+from aero_kernel.tests.importer_builders import MINI_CANON, formula_text, quantity_text, write_canon
 
 RATIO = "quantities/ratio.md"
 GRAVITY = "quantities/gravity.md"
@@ -112,13 +112,13 @@ def test_the_report_lists_unmapped_inputs(tmp_path: Path) -> None:
 def read_canon(data: str) -> dict[str, str | None]:
     """A catalogue read (tool KAT) producing one quantity, and a formula that consumes it."""
     return {
-        "quantities/stored-mass.md": _quantity("stored-mass", "m_s", "kg", "derived", data),
-        "quantities/weight-read.md": _quantity("weight-read", "W_r", "N", "derived"),
-        "formulas/catalogue-read.md": _formula(
+        "quantities/stored-mass.md": quantity_text("stored-mass", "m_s", "kg", "derived", data),
+        "quantities/weight-read.md": quantity_text("weight-read", "W_r", "N", "derived"),
+        "formulas/catalogue-read.md": formula_text(
             "catalogue-read",
             "kind: procedure\ntool: KAT\ninputs: {m: aircraft-mass}\noutputs: {x: stored-mass}\n",
         ),
-        "formulas/weight-of-stored.md": _formula(
+        "formulas/weight-of-stored.md": formula_text(
             "weight-of-stored",
             "kind: law\ntool: APP\ninputs: {m: stored-mass, g: gravity}\noutputs: {w: weight-read}\n",
         ),

@@ -34,7 +34,7 @@ Stage 1 is the formula's own status; stage 2 is derived: every input is produced
 
 ### Unmapped inputs
 
-Supplied quantities with no `data:` source: findings, not errors.
+Supplied quantities, and quantities a catalogue read produces, with no `data:` source: findings, not errors.
 
 | quantity | read by |
 |---|---|
