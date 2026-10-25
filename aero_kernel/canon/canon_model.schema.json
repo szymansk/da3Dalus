@@ -162,14 +162,15 @@
     },
     "Default": {
       "additionalProperties": false,
-      "description": "A value the canon states for a supplied quantity, with its unit, basis, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``; it must equal the unit of the quantity.\n    basis: ``definition`` (true by definition), ``standard`` (a published standard value),\n        ``sourced`` (taken from a cited source) or ``convention`` (chosen, no published source,\n        adopted on the maintainer's word).\n    source: Citation of where the value comes from (ADR 0028).\n    regime: The flight regime the value is valid for (ADR 0028).",
+      "description": "A value the canon states for a supplied quantity, with its unit, basis, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``; it must equal the unit of the quantity.\n    basis: ``definition`` (true by definition), ``standard`` (a published standard value),\n        ``sourced`` (taken from a cited source), ``convention`` (chosen, no published source,\n        adopted on the maintainer's word) or ``start`` (a defined starting value for a design,\n        expected to be changed by the designer; it may be sourced).\n    source: Citation of where the value comes from (ADR 0028).\n    regime: The flight regime the value is valid for (ADR 0028).",
       "properties": {
         "basis": {
           "enum": [
             "definition",
             "standard",
             "sourced",
-            "convention"
+            "convention",
+            "start"
           ],
           "title": "Basis",
           "type": "string"

@@ -191,7 +191,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>formula implemented, quantity not scalar &#8212; v1 does not return it</span>
       <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>belongs to the MVP (bar under the node)</span>
       <span><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--ink-3);margin:0 6px 0 2px">2/4</span>one of several outputs of the same calculation (top right); selecting it outlines the others</span>
-      <span id="issueLegend" style="display:block">marks at the bottom left of a node (click it for why) &#8212; open issues block approval; notes and defined values do not:</span>
+      <span id="issueLegend" style="display:block">marks at the bottom left of a node (click it for why) &#8212; open issues block approval; notes, defined values and starting values do not:</span>
     </div>
     <p class="stat" id="kstat"></p>
   </div>
@@ -262,13 +262,14 @@ const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \
   approximation:{icon:'~',label:'Approximation where a law belongs',col:'var(--mvp)'},
   dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
 IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
-const CONV=D.conv||{}, CONVS=D.conventions||{}, DEFS=D.defaults||{};
+IKIND.start={icon:'\u2299',label:'Rests on a starting value \u2014 to be set by the designer',col:'var(--mvp)',defined:true};
+const CONV=D.conv||{}, CONVS=D.conventions||{}, START=D.start||{}, STARTS=D.starts||{}, DEFS=D.defaults||{};
 const APPR=D.appr||{}, QSTAT=D.qstat||{}, QDATA=D.qdata||{};
 const BLOCKING=i=>!IKIND[kindOf(i)].info;
 const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
 const ISSUES={}; for(const f in D.F) for(const o of D.F[f].out) if((D.F[f].issues||[]).length) (ISSUES[o] ||= []).push(...D.F[f].issues.map(i=>({...i,formula:f})));
 // every mark a node carries: its issue kinds, then the defined value (not a problem, never blocking)
-const KINDS=q=>[...new Set((ISSUES[q]||[]).map(kindOf))].concat(CONV[q]?['convention']:[]);
+const KINDS=q=>[...new Set((ISSUES[q]||[]).map(kindOf))].concat(CONV[q]?['convention']:[]).concat(START[q]?['start']:[]);
 const STATUS=D.status||{}, MVP=new Set(D.mvp||[]), DESIGN=new Set(D.design||[]), ANALYSIS=new Set(D.analysis||[]);
 const TARGETS=new Set(Object.keys(Q).filter(q=>Q[q].role==='target'));
 
@@ -686,6 +687,8 @@ function select(q){
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   if(CONV[q]) h+=`<div class="blk"><div class="lab" style="color:var(--sel)">&#8776; Rests on a defined value \u00b7 ${CONV[q].length}</div>`+
     CONV[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(CONVS[c].value)} ${esc(CONVS[c].unit==='1'?'':CONVS[c].unit)}</b> <span class="sub">(${esc(c)}, convention)</span><br>${esc(CONVS[c].source)}<br><span class="sub">A value chosen without a published source, adopted on the maintainer&#8217;s word &#8212; the result is only as good as this choice.</span></div>`).join('')+`</div>`;
+  if(START[q]) h+=`<div class="blk"><div class="lab" style="color:var(--mvp)">&#8857; Rests on a starting value \u2014 to be set by the designer \u00b7 ${START[q].length}</div>`+
+    START[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(STARTS[c].value)} ${esc(STARTS[c].unit==='1'?'':STARTS[c].unit)}</b> <span class="sub">(${esc(c)}, starting value)</span><br>${esc(STARTS[c].source)}<br><span class="sub">A defined starting value for a design, expected to be changed by the designer &#8212; the result holds for this value only.</span></div>`).join('')+`</div>`;
   if(QSTAT[q]==='unmapped') h+=`<div class="blk"><div class="lab" style="color:var(--bad)">Data source \u00b7 unmapped</div><p class="sub" style="margin:0">No demonstrated source in our data (geometry, component catalogue, default, app field, evaluation); stage 2 of every formula reading it stays open.</p></div>`;
   else if(QDATA[q]) h+=`<div class="blk"><div class="lab">Data source \u00b7 approved</div><ul class="lnk" style="display:block">`+QDATA[q].map(x=>`<li style="display:block;cursor:default">${esc(x)}</li>`).join('')+`</ul></div>`;
   if(DEFS[q]){ const d=DEFS[q], link=x=>`<li data-q="${esc(x)}" title="${esc(x)}">${esc(sym(x))}</li>`;
