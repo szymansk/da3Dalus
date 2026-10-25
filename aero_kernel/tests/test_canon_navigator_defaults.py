@@ -88,6 +88,55 @@ def test_starting_values_form_their_own_group_in_the_data_source_layer() -> None
     assert by_id["default:gravity"] == "default"
 
 
+def source_data() -> tuple[dict[str, Any], dict[str, Any]]:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    return data, model
+
+
+def test_data_source_nodes_carry_the_input_they_refine() -> None:
+    data, model = source_data()
+    quantities = model["namespaces"]["calc"]["quantities"]
+    parents = {source["id"]: source["parent"] for source in data["src"]}
+    assert parents["component:battery.capacity_mah"] == "components"
+    assert parents["geometry:total_mass_kg"] == "airplane"
+    assert parents["default:gravity"] == ""
+    for source in data["src"]:
+        if source["kind"] in ("default", "start", "app", "evaluation"):
+            assert source["parent"] == "", source["id"]
+        assert source["parent"] in ("", *quantities), source["id"]
+        if source["parent"]:
+            assert quantities[source["parent"]]["role"] == "input"
+    battery = next(s for s in data["src"] if s["id"] == "component:battery.capacity_mah")
+    assert "battery-charge-capacity" in battery["qs"]
+
+
+def test_a_whole_collection_source_is_a_frame_around_its_fields_not_a_node() -> None:
+    data, _ = source_data()
+    nodes = {source["id"] for source in data["src"]}
+    frames = {frame["id"]: frame for frame in data["srcframes"]}
+    assert {"component:battery", "component:brushless_motor", "component:propeller"} <= set(frames)
+    assert "geometry:$" in frames
+    assert not nodes & set(frames)  # no stand-alone collection node
+    battery = frames["component:battery"]
+    assert battery["label"] == "battery"
+    assert battery["parent"] == "components"
+    assert "component:battery.cells" in battery["fields"]
+    assert all(f.startswith("component:battery.") for f in battery["fields"])
+    assert frames["geometry:$"]["label"] == "airplane"
+    assert frames["geometry:$"]["parent"] == "airplane"
+    assert "geometry:total_mass_kg" in frames["geometry:$"]["fields"]
+    by_id = {source["id"]: source for source in data["src"]}
+    assert by_id["component:battery.cells"]["frame"] == "component:battery"
+    assert by_id["default:gravity"]["frame"] == ""
+    assert by_id["component:battery.cells"]["short"] == "cells"  # the frame carries the type
+    assert by_id["geometry:total_mass_kg"]["short"] == "total_mass_kg"
+    framed = {f for frame in frames.values() for f in frame["fields"]}
+    assert framed == {s for s, source in by_id.items() if source["frame"]}
+
+
 @pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention", "start"])
 def test_a_default_of_a_quantity_the_navigator_lacks_fails_for_any_basis(basis: str) -> None:
     data, model = make({"ghost": default(basis)})
@@ -154,7 +203,7 @@ def test_the_navigator_lists_every_data_source_with_what_it_feeds_and_the_missin
     nav.approval_marks(data, model)
     kinds = {kind["id"] for kind in data["srckinds"]}
     assert {source["kind"] for source in data["src"]} <= kinds
-    fed = {q for source in data["src"] for q in source["qs"]}
+    fed = {q for source in [*data["src"], *data["srcframes"]] for q in source["qs"]}
     assert fed == set(data["qdata"])
     assert set(data["miss"]).isdisjoint(fed)
     assert set(data["miss"]) == {q for q, s in data["qstat"].items() if s == "unmapped"}

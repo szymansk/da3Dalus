@@ -30,9 +30,11 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))  # the script runs from scripts/, the package sits at the root
 
-from aero_kernel.canon.model import CanonModel  # noqa: E402
+from aero_kernel.canon.model import DATA_KIND_PARENT, CanonModel  # noqa: E402
+from aero_kernel.evaluation.rules import RuleTable, check_rule_table  # noqa: E402
 from aero_kernel.importer.approval import derive_approval  # noqa: E402
 from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES  # noqa: E402
+from aero_kernel.importer.rule_table import load_rule_table  # noqa: E402
 
 #: Edges the layering breaks, with the reason. A naming collapse, not a fixed point: one
 #: name covering a swept measurement and a modelled value. (The second one, a generic
@@ -109,6 +111,22 @@ def _by_file(item: tuple[str, dict]) -> str:
     return item[0] + ".md"
 
 
+def quantity_notes(text: str) -> list:
+    """The paragraphs after the first one, up to the first labelled one (``**Unit.**`` ...).
+
+    The explanation of a quantity (what is measured, by which call, why) lives in the canon
+    Markdown; the navigator only shows it. Links ``[[x]]`` are shown as the bare slug.
+    """
+    body = re.sub(r"^\s*# .*\n", "", text.split("---", 2)[2], count=1)
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", body)]
+    notes = []
+    for paragraph in paragraphs[1:]:
+        if paragraph.startswith("**") or not paragraph:
+            break
+        notes.append(" ".join(re.sub(r"\[\[([^\]]+)\]\]", r"\1", paragraph).split()))
+    return notes
+
+
 def read_canon(root: pathlib.Path, model: dict) -> tuple[dict, dict]:
     """Quantities and formulas: structure from the canon model, prose from the Markdown entries."""
     calc = model["namespaces"]["calc"]
@@ -117,6 +135,7 @@ def read_canon(root: pathlib.Path, model: dict) -> tuple[dict, dict]:
         t = (root / "quantities" / f"{slug}.md").read_text(encoding="utf-8")
         m = re.search(r"^# .+?\n+(.+?)(?:\n\n|\Z)", t.split("---", 2)[2], re.S | re.M)
         quantities[slug] = {
+            "notes": quantity_notes(t),
             "symbol": mq["symbol"],
             "unit": _front(t, "unit"),  # as written: the model folds the em dash into 1
             "role": mq["role"],
@@ -166,6 +185,7 @@ CANON_DIR = REPO / "_reversa_sdd/calculations/canon"
 OUT_PATH = CANON_DIR / "navigator.html"
 MODEL_PATH = REPO / "aero_kernel/canon/canon_model.json"
 KERNEL_FORMULAS = REPO / "aero_kernel/formulas"
+RULES_PATH = REPO / "_reversa_sdd/calculations/evaluation/drela.yaml"
 
 
 def _clip(text: str, limit: int = 700) -> str:
@@ -470,6 +490,27 @@ SOURCE_KINDS = (
 )
 
 
+def source_frame(source: str) -> str:
+    """The frame a data source is drawn in, or ``""`` for a source of a kind that has none.
+
+    A kind with a parent input (``DATA_KIND_PARENT``) is framed: a component field
+    ``component:battery.cells`` sits in the frame ``component:battery``, the whole-collection source
+    that frame stands for; a geometry field sits in ``geometry:$``. The frame replaces the
+    stand-alone collection node (#1280).
+    """
+    kind, loc = source.split(":", 1)
+    if kind not in DATA_KIND_PARENT:
+        return ""
+    return "geometry:$" if kind == "geometry" else f"{kind}:{loc.split('.', 1)[0]}"
+
+
+def short_of(source: str) -> str:
+    """The location of a source without the prefix its frame already shows."""
+    loc = source.split(":", 1)[1]
+    frame = source_frame(source)
+    return loc.removeprefix(frame.split(":", 1)[1] + ".") if frame else loc
+
+
 def approval_marks(data: dict, model: dict) -> None:
     """Two-stage approval (#1251): per formula stage 1 and inputs k of n, per quantity its derived status.
 
@@ -505,11 +546,60 @@ def approval_marks(data: dict, model: dict) -> None:
         kind, loc = source.split(":", 1)
         return "start" if kind == "default" and defaults[loc]["basis"] == "start" else kind
 
+    ordered = sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
+    frames: dict = {}
+    for source, qs in ordered:
+        frame = source_frame(source)
+        if not frame:
+            continue
+        kind, loc = frame.split(":", 1)
+        entry = frames.setdefault(
+            frame,
+            {
+                "id": frame,
+                "kind": kind,
+                "label": DATA_KIND_PARENT[kind] if loc == "$" else loc,
+                "parent": DATA_KIND_PARENT[kind],
+                "qs": [],
+                "fields": [],
+            },
+        )
+        entry["fields" if source != frame else "qs"].extend([source] if source != frame else qs)
+    data["srcframes"] = list(frames.values())
     data["src"] = [
-        {"id": source, "kind": kind_of(source), "loc": source.split(":", 1)[1], "qs": qs}
-        for source, qs in sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
+        {
+            "id": source,
+            "kind": kind_of(source),
+            "loc": source.split(":", 1)[1],
+            "qs": qs,
+            "parent": DATA_KIND_PARENT.get(source.split(":", 1)[0], ""),
+            "frame": source_frame(source),
+            "short": short_of(source),
+        }
+        for source, qs in ordered
+        if source not in frames
     ]
     data["miss"] = sorted(q for q, status in data["qstat"].items() if status == "unmapped")
+
+
+def rule_marks(data: dict, table: RuleTable, model: dict) -> None:
+    """The evaluation rules as their own layer (#1276): per rule the band, source, meanings and the quantity.
+
+    The rules are read from the rule table, never typed in here. A rule that names a quantity the
+    canon lacks, without a planned ticket, is an error; so is a quantity the navigator does not show.
+    """
+    problems = check_rule_table(table, CanonModel.model_validate(model))
+    unshown = [
+        r.quantity.slug
+        for r in table.rules
+        if r.quantity.planned is None and r.quantity.slug not in data["Q"]
+    ]
+    if problems or unshown:
+        raise SystemExit("evaluation rules: " + "; ".join([*problems, *map(str, unshown)]))
+    data["rules"] = {
+        "source": table.source,
+        "rules": [r.model_dump(mode="json", exclude_none=True) for r in table.rules],
+    }
 
 
 def binding_constants(model_formulas: dict) -> dict:
@@ -565,6 +655,7 @@ def build() -> tuple[str, dict]:
     kernel_status(data, KERNEL_FORMULAS)
     default_marks(data, model)
     approval_marks(data, model)
+    rule_marks(data, load_rule_table(RULES_PATH), model)
     data["tax"] = model["namespaces"]["calc"]["taxonomy"]
     data["stand"] = model["content_hash"][:12]
     template = pathlib.Path(__file__).with_name("canon_navigator_template.html")

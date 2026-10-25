@@ -1928,6 +1928,8 @@ Autoritäten aus §3.10.
 > Bruchlastvielfache des Holms statt des Zulassungsverhältnisses), der Schub bei Fahrt wird
 > von Steigen, Kurve und $V_{max}$ verbraucht. Offen: `mean-geometric-chord` (Waise) und
 > `battery-mass-deviation`. Die Zahlen dieses Abschnitts beschreiben den Stand davor.
+>
+> **Nachtrag 25.10.2026:** `battery-mass-deviation` und `relative-mass-deviation` sind gestrichen (#1285).
 
 #### Zwei Zyklen, und beide sind Namensprobleme
 

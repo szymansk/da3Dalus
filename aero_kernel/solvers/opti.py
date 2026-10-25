@@ -586,8 +586,11 @@ def sweep_worker(request: SweepRequest) -> WorkerOutcome[Polar]:
 # BRYAN of the prototype); IPOPT only needs to start on the pre-stall branch.
 GLIDE_SPEED_FACTOR = 1.4
 # Start value of alpha for that solve, as a fraction of the first C_L peak's angle: a start only, not a
-# result or a bound; the optimum is wherever IPOPT finds it inside the window.
-GLIDE_ALPHA_FRACTION = 0.4
+# result or a bound; the optimum is wherever IPOPT finds it inside the window. 0.4 made IPOPT report
+# 'Infeasible_Problem_Detected' for BRYAN at exactly its mass (reference S_ref +0.06 %, gh-1262) while
+# its neighbours 0.1 % either side converged; 0.3, 0.5 and 0.6 converged on all nine masses
+# 0.99 ... 1.01 of both fleet members.
+GLIDE_ALPHA_FRACTION = 0.5
 
 
 def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]:

@@ -18,20 +18,20 @@ class FleetMember(Enum):
     Attributes:
         json_path: The copy of the geometry document.
         mass_kg: The mass the tests pass as ``aircraft-mass`` (README for its source).
-        asb_reference: AeroSandbox 4.2.9's ``(area(), span(include_centerline_distance=True),
-            mean_aerodynamic_chord())`` of the main wing in m^2, m, m, frozen so the fast tier needs
+        asb_reference: AeroSandbox 4.2.9's ``(area(type="planform", include_centerline_distance=True),
+            span(type="yz", include_centerline_distance=True), mean_aerodynamic_chord())`` of the main wing in m^2, m, m, frozen so the fast tier needs
             no AeroSandbox; ``test_geometry_properties`` checks them against the real one.
     """
 
     BRYAN = (
         "bryan/bryan.airplane.json",
         0.151,
-        (0.06998507932146676, 0.5470385422650689, 0.13280160307833674),
+        (0.0700246334494812, 0.5470385422650689, 0.13280160307833674),
     )
     JAGUAR = (
         "jaguar/flugzeug.json",
         0.160,
-        (0.06443193760749368, 0.624210916480389, 0.10498485405652615),
+        (0.06465165601284742, 0.624210916480389, 0.10498485405652615),
     )
 
     def __init__(

@@ -1,8 +1,8 @@
 """S_ref, b_ref and c_MAC of the main wing against AeroSandbox, built independently here.
 
 The reference values are AeroSandbox's, of the wing with ``surface_type`` ``main_wing``
-(maintainer, 2026-10-25): ``area()``, ``span(include_centerline_distance=True)`` and
-``mean_aerodynamic_chord()``. The expected values are taken from an ``asb.Wing`` that this module
+(maintainer, 2026-10-25, gh-1262): ``area(type="planform", include_centerline_distance=True)``,
+``span(type="yz", include_centerline_distance=True)`` and ``mean_aerodynamic_chord()``. The expected values are taken from an ``asb.Wing`` that this module
 builds itself from the document dict, so a defect of the kernel's conversion cannot hide in both.
 """
 
@@ -38,8 +38,8 @@ def asb_values(wing: dict[str, Any]) -> tuple[float, float, float]:
         ],
     )
     return (
-        float(built.area()),
-        float(built.span(include_centerline_distance=True)),
+        float(built.area(type="planform", include_centerline_distance=True)),
+        float(built.span(type="yz", include_centerline_distance=True)),
         float(built.mean_aerodynamic_chord()),
     )
 
@@ -120,14 +120,15 @@ def test_hand_values_of_a_single_trapezoid() -> None:
     assert math.isclose(c_mac, 2 / 0.12 * 0.4 * 0.07 / 3, rel_tol=1e-12)
 
 
-def test_the_area_excludes_the_centreline_gap_while_the_span_includes_it() -> None:
-    """Declared, not changed: root at y = 0.05 m (chord 0.3), tip at 0.45 m (chord 0.2), mirrored.
+def test_the_area_and_the_span_both_include_the_centreline_gap() -> None:
+    """Root at y = 0.05 m (chord 0.3), tip at 0.45 m (chord 0.2), mirrored (gh-1262).
 
-    ASB's area() sums the two panels 0.05 ... 0.45 only: S = 2 * 0.4 * 0.25 = 0.2 m^2, while
-    span(include_centerline_distance=True) is 2 * 0.45 = 0.9 m.
+    The two panels 0.05 ... 0.45 give 2 * 0.4 * 0.25 = 0.2 m^2. ASB extrudes the root section to the
+    centreline with the wing's geometric chord (0.25 m) as width, which adds 2 * 0.05 * 0.25 =
+    0.025 m^2, so S = 0.225 m^2; the span is 2 * 0.45 = 0.9 m. Both describe the same planform.
     """
     s_ref, b_ref, _ = properties_of(wing_of(section(0, 0.05, 0, 0.3), section(0, 0.45, 0, 0.2)))
-    assert math.isclose(s_ref, 0.2, rel_tol=1e-12)
+    assert math.isclose(s_ref, 0.225, rel_tol=1e-12)
     assert math.isclose(b_ref, 0.9, rel_tol=1e-12)
 
 
@@ -222,8 +223,8 @@ def asb_surface(wing: dict[str, Any]) -> tuple[float, float, float, float, float
             for s in wing["x_secs"]
         ],
     )
-    area = float(built.area())
-    span = float(built.span(include_centerline_distance=True))
+    area = float(built.area(type="planform", include_centerline_distance=True))
+    span = float(built.span(type="yz", include_centerline_distance=True))
     mac = float(built.mean_aerodynamic_chord())
     x_ac = float(built.aerodynamic_center()[0])
     return area, span, span**2 / area, mac, x_ac - 0.25 * mac

@@ -49,6 +49,7 @@ quantity). A violation of either is review-blocking.
 | [0027](0027-uncertain-quantities-as-intervals-over-method-worlds.md) | Uncertain quantities are intervals over method worlds | aerodynamics, calculation canon | Accepted (amends 0026 for the neutral point; clarifies 0022; amended 2026-10-25: a world can declare itself outside its validity, #1243) |
 | ⭐ [0028](0028-engineering-constants-carry-provenance-regime-by-flow-physics.md) | Engineering constants carry provenance; the regime is defined by flow physics | domain methodology | Accepted (supersedes 0023) |
 | ⭐ [0029](0029-source-code-is-english.md) | Everything in the source tree is English | conventions | Accepted |
+| [0030](0030-expert-view-shows-kernel-values-as-a-development-exception.md) | The Expert View may show kernel values beside the app's — development exception to 0022 | cross-cutting | Accepted |
 
 ## Provenance
 

@@ -29,7 +29,9 @@ C_D,par = C_D0 + k * C_L^2
 
 **Produces** [[drag-coefficient-parabolic]]  ·  **from** [[zero-lift-drag-coefficient]] · [[induced-drag-factor]] · [[lift-coefficient]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
+**Kind: a law, shape: a declared approximation.** The relation is exact as written, but it stands in for a polar that is not parabolic at our Reynolds numbers, so the entry is labelled an approximation and is never approved as *the* law of the aircraft's drag. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
+
+**What it produces, and what not.** The output [[drag-coefficient-parabolic]] (`C_D,par`) is the **fitted parabola**, a display quantity of the design direction (ADR 0004). It is **not the aircraft's drag**: that is the solver's `C_D` from the sweep (AeroBuildup), the single authority (ADR 0026, ADR 0022). There is no second authority: `C_D,par` and `C_D` have different names and different meanings, and their difference is the measure of how well the parabola fits (below).
 
 **Dimensional check.** 🟢 balances — all three terms are dimensionless.
 

@@ -118,3 +118,7 @@ polar instead of a closed form.
 > **Approved** (maintainer, 2026-10-24, approval block 1). This is the relation the implementations are measured against.
 >
 > Stall-limited optimum returns the boundary value with a warning (maintainer 2026-10-25).
+
+> **Approval confirmed** (maintainer, 2026-10-25) with the inputs `dynamic-viscosity` (μ) and `speed-of-sound`
+> (a) from air-density-isa — the Reynolds and Mach numbers of the polar, as in stall-speed and
+> minimum-drag-speed-from-polar (added with the kernel implementation, #1230).

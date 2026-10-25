@@ -28,8 +28,8 @@ class SurfaceProperties(BaseModel):
     """Area, span, aspect ratio and mean aerodynamic chord of one surface, as AeroSandbox measures them.
 
     Attributes:
-        area: ``Wing.area()`` in m^2.
-        span: ``Wing.span(include_centerline_distance=True)`` in m.
+        area: ``Wing.area(type="planform", include_centerline_distance=True)`` in m^2.
+        span: ``Wing.span(type="yz", include_centerline_distance=True)`` in m.
         aspect_ratio: ``span^2 / area`` (the decision of gh-1253: derived from the two ASB values).
         c_mac: ``Wing.mean_aerodynamic_chord()`` in m.
         x_le_mac: x of the leading edge of the mean aerodynamic chord in m, in the geometry frame,

@@ -264,6 +264,7 @@ const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \
 IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
 IKIND.start={icon:'\u2299',label:'Rests on a starting value \u2014 to be set by the designer',col:'var(--mvp)',defined:true};
 const CONV=D.conv||{}, CONVS=D.conventions||{}, START=D.start||{}, STARTS=D.starts||{}, DEFS=D.defaults||{};
+const SRCBYID={};
 const APPR=D.appr||{}, QSTAT=D.qstat||{}, QDATA=D.qdata||{};
 const BLOCKING=i=>!IKIND[kindOf(i)].info;
 const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
@@ -348,7 +349,7 @@ if(DESIGN_SEP){ const n=Object.keys(COLOF).filter(q=>COLOF[q]==='design').length
   if(n) COLS.push({side:'design',module:'design',cols:Math.max(2,Math.min(MAXCOLS,n))}); }
 // Data sources (#1251, maintainer 2026-10-25): an explicit layer between the cross-cutting column
 // and the first formula column; each source feeds the quantities that name it, missing ones are marked.
-const SRCW=2*NW, SRCCOLW=SRCW+2*FPAD, SRCGAP=34;
+const SRCW=2*NW, SRCCOLW=SRCW+4*FPAD, SRCGAP=34;
 const SX={xcut:0, src:XW+REFGAP+RW+SRCGAP};
 { let x=SX.src+SRCCOLW+SIDEGAP, prev=null;
   for(const c of COLS){
@@ -357,6 +358,11 @@ const SX={xcut:0, src:XW+REFGAP+RW+SRCGAP};
     c.x=x; c.w=c.cols*slotW-GAPX+2*FPAD; x+=c.w+MODGAP; prev=c.side; }
   if(!SX.design) SX.design=x+SIDEGAP;
 }
+// Evaluation layer (#1276): the design rules, outside the canon (A10: the canon computes, never judges).
+// One node per rule in a column right of the formula columns; an edge from the quantity it judges.
+const RULES=(D.rules||{}).rules||[], RULEW=3*NW, RULECOLW=RULEW+2*FPAD;
+const RULEBYID={};
+SX.rules=Math.max(...COLS.map(c=>c.x+c.w))+SIDEGAP;
 const P={}, LY={}, FRAMES=[], frameEls=[], COLHEADS=[];
 // Bands (maintainer 2026-10-24): below the top row all derived quantities share one band and
 // every final result sits in the bottom band; within a band a column is ordered by dependency
@@ -383,7 +389,7 @@ let yc=HEAD;
   }
   yc+=height-NH+GAPY;
 }
-const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW);
+const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW, ...(RULES.length?[SX.rules+RULECOLW]:[]));
 const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
 // Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
 // in reading order inside each column; within a cluster: values of the point, then stability,
@@ -488,20 +494,39 @@ SX.refs=XW+REFGAP;
   }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
+const SRCSUBEL=[];
+const pick=id=>RULEBYID[id]?selectRule(RULEBYID[id]):SRCBYID[id]&&SRCBYID[id].src?selectSource(SRCBYID[id].src):select(id);
 const SRC=D.src||[], MISS=D.miss||[], SRCKINDS=D.srckinds||[];
-const SP={}, SRCFRAMES=[], SRCNODES=[];
+const SP={}, SRCFRAMES=[], SRCNODES=[], SRCSUB=[];
 { let y=XTOP+FHEAD;
+  const FRS=D.srcframes||[];
   const groups=SRCKINDS.map(k=>({id:k.id,label:k.label,missing:false,
-    items:SRC.filter(x=>x.kind===k.id).map(x=>({id:'src:'+x.id,label:x.loc,title:x.id,qs:x.qs,src:x}))}));
-  groups.push({id:'missing',label:'Missing \u2014 no source yet',missing:true,
+    items:SRC.filter(x=>x.kind===k.id).map(x=>({id:'src:'+x.id,label:x.short||x.loc,title:x.id,qs:x.qs,src:x})),
+    frames:FRS.filter(f=>f.kind===k.id)}));
+  groups.push({id:'missing',label:'Missing \u2014 no source yet',missing:true,frames:[],
     items:MISS.map(q=>({id:'miss:'+q,label:'? '+q,title:'No demonstrated source for '+q,qs:[q],src:null}))});
   for(const g of groups){
     if(!g.items.length) continue;
-    const fh=(g.items.length-1)*SUBGAP+NH+2*FPAD;
-    SRCFRAMES.push({x:SX.src,y,w:SRCCOLW,h:fh,label:g.label+' \u00b7 '+g.items.length,missing:g.missing});
-    g.items.forEach((it,i)=>{ SP[it.id]={x:SX.src+FPAD,y:y+FPAD+i*SUBGAP}; SRCNODES.push({...it,missing:g.missing}); });
+    // a framed source sits in the frame of its collection (builder grouping), a plain one on the group
+    let cy=y+FPAD, n=0, bottom=y+2*FPAD+NH;
+    const framed=new Set();
+    for(const f of g.frames){
+      const mine=g.items.filter(it=>it.src&&it.src.frame===f.id);
+      if(!mine.length) continue;
+      const fh=(mine.length-1)*SUBGAP+NH+2*FPAD+FHEAD;
+      SRCSUB.push({id:f.id,label:f.label,parent:f.parent,qs:f.qs,x:SX.src+FPAD,y:cy,w:SRCCOLW-2*FPAD,h:fh,fields:mine.map(it=>it.id),missing:false});
+      mine.forEach((it,i)=>{ SP[it.id]={x:SX.src+2*FPAD,y:cy+FHEAD+FPAD+i*SUBGAP}; SRCNODES.push({...it,missing:g.missing}); framed.add(it.id); n++; });
+      bottom=cy+fh+FPAD; cy=bottom; }
+    g.items.filter(it=>!framed.has(it.id)).forEach(it=>{ SP[it.id]={x:SX.src+FPAD,y:cy}; SRCNODES.push({...it,missing:g.missing}); bottom=cy+NH+FPAD; cy+=SUBGAP; n++; });
+    const fh=bottom-y;
+    SRCFRAMES.push({x:SX.src,y,w:SRCCOLW,h:fh,label:g.label+' \u00b7 '+n,missing:g.missing});
     y+=fh+FHEAD+8; }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
+}
+const RP={};
+if(RULES.length){ const y=XTOP+FHEAD;
+  RULES.forEach((r,i)=>{ RP['rule:'+r.id]={x:SX.rules+FPAD,y:y+FPAD+i*SUBGAP}; });
+  yc=Math.max(yc,y+(RULES.length-1)*SUBGAP+NH+2*FPAD+GAPY-MODGAP);
 }
 const H=yc-GAPY+NH;
 const cam=document.getElementById('cam'), svg=document.getElementById('g');
@@ -509,7 +534,7 @@ const NS='http://www.w3.org/2000/svg';
 const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
 
 {
-  for(const [band,label] of BANDS){ const t=el('text',{x:W,y:BANDY[band]-12,class:'colhead','text-anchor':'end'}); t.textContent=label; cam.appendChild(t); }
+  for(const [band,label] of BANDS){ const t=el('text',{x:RULES.length?SX.rules-SIDEGAP:W,y:BANDY[band]-12,class:'colhead','text-anchor':'end'}); t.textContent=label; cam.appendChild(t); }
   const dy=BANDY.final-GAPY/2; cam.appendChild(el('line',{x1:SX.analysis-SIDEGAP/2,y1:dy,x2:W,y2:dy,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
 }
 { const line=(x1,y1,x2,y2)=>cam.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
@@ -525,7 +550,20 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
     const t=el('text',{x:SX.src,y:XTOP,class:'colhead'}); t.textContent='Data sources'; cam.appendChild(t);
     for(const f of SRCFRAMES){
       cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.missing?' srcmiss':'')}));
-      const l=el('text',{x:f.x+2,y:f.y-7,class:'blocklab '+(f.missing?'tmodlab':'modlab')}); l.textContent=f.label; cam.appendChild(l); } }
+      const l=el('text',{x:f.x+2,y:f.y-7,class:'blocklab '+(f.missing?'tmodlab':'modlab')}); l.textContent=f.label; cam.appendChild(l); }
+    for(const f of SRCSUB){
+      const g=el('g',{class:'modsel',tabindex:'0',role:'button','aria-label':'Select source '+f.label});
+      const r=el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:6,class:'frame'});
+      const l=el('text',{x:f.x+6,y:f.y+13,class:'blocklab modlab'}); l.textContent=f.label+' \u25b8';
+      g.appendChild(r); g.appendChild(l);
+      g.addEventListener('click',()=>{ if(!moved) selectSourceFrame(f); });
+      g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectSourceFrame(f);} });
+      cam.appendChild(g); SRCSUBEL.push({el:r,module:'srcframe:'+f.id}); } }
+  if(RULES.length){ line(SX.rules-SIDEGAP/2,XTOP-14,SX.rules-SIDEGAP/2,H+10);
+    const t=el('text',{x:SX.rules,y:XTOP,class:'colhead'}); t.textContent='Evaluation'; cam.appendChild(t);
+    const fh=(RULES.length-1)*SUBGAP+NH+2*FPAD;
+    cam.appendChild(el('rect',{x:SX.rules,y:XTOP+FHEAD,width:RULECOLW,height:fh,rx:7,class:'frame'}));
+    const l=el('text',{x:SX.rules+2,y:XTOP+FHEAD-7,class:'blocklab modlab'}); l.textContent=D.rules.source.split(',')[0]+' \u00b7 '+RULES.length; cam.appendChild(l); }
   for(const s of PSPANS){
     const st=s.band!=='final';
     if(!s.sub) cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
@@ -564,6 +602,7 @@ for(const [a,b,f] of D.edges){
   cam.appendChild(e); edgeEls.push({e,a,b});
 }
 function sym(q){
+  if(!Q[q]) return (SRCBYID[q]||RULEBYID[q]||{}).label||q;
   const s=(Q[q].symbol||q).replace(/\\/g,'').trim();
   // Greek names become letters also when a subscript follows (alpha_bg, delta_a, Delta_alpha_break).
   const g={alpha:'\u03b1',beta:'\u03b2',gamma:'\u03b3',Delta:'\u0394',delta:'\u03b4',eta:'\u03b7',lambda:'\u03bb',
@@ -611,7 +650,16 @@ for(const q in Q){
 
 // The data sources: nodes and edges into the quantities that name them (shown on selection, like the
 // cross-cutting edges). They join the reach maps so that selecting a quantity lights its sources.
-for(const n of SRCNODES){ pred[n.id]=[]; succ[n.id]=n.qs.map(q=>[q,'']); n.qs.forEach(q=>pred[q].push([n.id,''])); }
+for(const n of SRCNODES) SRCBYID[n.id]=n;
+for(const n of SRCNODES){ const par=n.src&&n.src.parent&&Q[n.src.parent]?n.src.parent:'';
+  pred[n.id]=par?[[par,'']]:[]; succ[n.id]=n.qs.map(q=>[q,'']); n.qs.forEach(q=>pred[q].push([n.id,'']));
+  if(par) succ[par].push([n.id,'']); n.parent=par; }
+for(const f of SRCSUB){
+  const p0=P[f.parent]; if(!p0) continue;
+  const toLeft0=p0.x+NW<=SX.src, x0=toLeft0?p0.x+NW:p0.x, y0=p0.y+NH/2, x1=toLeft0?f.x:f.x+f.w, y1=f.y+FHEAD/2, dx=Math.max(30,Math.abs(x1-x0)/2)*(toLeft0?1:-1);
+  const e=el('path',{class:'edge xedge srcedge',d:`M${x0},${y0} C${x0+dx},${y0} ${x1-dx},${y1} ${x1},${y1}`});
+  cam.appendChild(e); edgeEls.push({e,a:f.parent,b:'srcframe:'+f.id,via:f.fields});
+}
 for(const n of SRCNODES){
   const p1=SP[n.id];
   for(const q of n.qs){
@@ -628,6 +676,29 @@ for(const n of SRCNODES){
   g.addEventListener('click',open);
   g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();} });
   cam.appendChild(g); nodeEls[n.id]=g;
+}
+
+// The evaluation rules: nodes, and edges from the quantity each judges (shown on selection, like the sources).
+const RULES_OF={};
+for(const r of RULES){
+  const id='rule:'+r.id, q=r.quantity.slug, ok=!r.quantity.planned&&Q[q];
+  RULEBYID[id]={...r,id,label:r.title,q:ok?q:''};
+  pred[id]=ok?[[q,'']]:[]; succ[id]=[];
+  if(ok){ succ[q].push([id,'']); (RULES_OF[q] ||= []).push(id); }
+}
+for(const id in RULEBYID){
+  const n=RULEBYID[id], p1=RP[id], planned=!!n.quantity.planned;
+  if(n.q){ const p2=P[n.q], x1=p2.x+NW, y1=p2.y+NH/2, x2=p1.x, y2=p1.y+NH/2, dx=Math.max(30,Math.abs(x2-x1)/2);
+    const e=el('path',{class:'edge xedge srcedge',d:`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`});
+    cam.appendChild(e); edgeEls.push({e,a:n.q,b:id}); }
+  const g=el('g',{class:'node srcnode',transform:`translate(${p1.x},${p1.y})`,tabindex:'0',role:'button'});
+  g.appendChild(el('rect',{width:RULEW,height:NH,rx:5,fill:'var(--panel)',stroke:planned?'var(--ink-3)':'var(--sel)','stroke-dasharray':planned?'4 3':'none'}));
+  const t=el('text',{x:RULEW/2,y:NH/2,class:'srclab'}); t.textContent=n.label.length>36?n.label.slice(0,35)+'\u2026':n.label; g.appendChild(t);
+  const tt=el('title',{}); tt.textContent=n.label+(planned?' \u2014 quantity planned '+n.quantity.planned:''); g.appendChild(tt);
+  const open=()=>{ if(!moved) selectRule(n); };
+  g.addEventListener('click',open);
+  g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();} });
+  cam.appendChild(g); nodeEls[id]=g;
 }
 
 let depth=1, sel=null;
@@ -655,10 +726,14 @@ function paint(){
   const on=new Set([...S,...up,...down,...sibs]);
   for(const q in nodeEls){ nodeEls[q].classList.toggle('faded',!on.has(q)); nodeEls[q].classList.toggle('sib',sibs.has(q)); }
   for(const f of frameEls) f.el.classList.toggle('framesel',!!(sel&&sel.module===f.module));
-  edgeEls.forEach(({e,a,b})=>{
+  for(const f of SRCSUBEL) f.el.classList.toggle('framesel',!!(sel&&sel.module===f.module));
+  edgeEls.forEach(({e,a,b,via})=>{
     e.classList.remove('up','down','faded');
-    const upE = (on.has(a)&&(S.has(b)||up.has(b))) && (S.has(a)||up.has(a));
-    const dnE = (on.has(b)&&(S.has(a)||down.has(a))) && (S.has(b)||down.has(b));
+    // the edge into a source frame is lit when one of the frame's fields is on that side
+    const upE = via ? (S.has(a)||up.has(a)) && via.some(f=>S.has(f)||up.has(f))
+                    : (on.has(a)&&(S.has(b)||up.has(b))) && (S.has(a)||up.has(a));
+    const dnE = via ? (S.has(a)||down.has(a)) && via.some(f=>S.has(f)||down.has(f))
+                    : (on.has(b)&&(S.has(a)||down.has(a))) && (S.has(b)||down.has(b));
     if(upE) e.classList.add('up'); else if(dnE) e.classList.add('down'); else e.classList.add('faded');
   });
 }
@@ -672,7 +747,8 @@ function select(q){
   let h=`<h2>${esc(sym(q))}${isOpt(q)?'<span class="opt" title="Result of an optimisation problem">*</span>':''}</h2>
    <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 layer L${LAYER[q]}
    &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
-   <p class="desc">${esc(d.desc||'No description in the catalogue.')}</p>`;
+   <p class="desc">${esc(d.desc||'No description in the catalogue.')}</p>`
+   + (d.notes||[]).map(n=>`<p class="desc">${esc(n)}</p>`).join('');
   { const st=STATUS[q], impl=fs.map(f=>F[f].impl).filter(Boolean), tk=[...new Set(fs.map(f=>F[f].ticket).filter(Boolean))];
     const txt = st==='input' ? 'input &#8212; given by the caller'+(MVP.has(q)?' (needed by the MVP)':'')
       : st==='done' ? '&#10003; implemented in the kernel ('+impl.map(esc).join(', ')+')'
@@ -733,13 +809,43 @@ function select(q){
       run.outs.filter(x=>x!==q).map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
     if(run&&OTHERRUNS[q].length) h+=`<div class="blk"><div class="lab">Same formula, other applications (separate runs)</div>`+
       OTHERRUNS[q].map(r=>`<p class="sub" style="margin:4px 0 2px">${esc(r.app)}</p><ul class="lnk">`+r.outs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul>`).join('')+`</div>`; }
-  const us=succ[q].map(([o])=>o), uniq=[...new Set(us)];
+  if(RULES_OF[q]) h+=`<div class="blk"><div class="lab">Judged by \u00b7 ${RULES_OF[q].length}</div><ul class="lnk">`+
+    RULES_OF[q].map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
+  const us=succ[q].map(([o])=>o).filter(o=>!RULEBYID[o]), uniq=[...new Set(us)];
   if(uniq.length) h+=`<div class="blk"><div class="lab">Feeds \u00b7 ${uniq.length}</div><ul class="lnk">`+
     uniq.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
   else h+=`<div class="blk"><div class="lab">Feeds</div><p class="sub" style="margin:0">Nothing \u2014 this is a final result.</p></div>`;
   info.innerHTML=h;
-  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
+}
+const bandText=(b,unit)=>{ const u=unit==='1'?'':' '+unit, lo=b.min, hi=b.max;
+  return lo!==undefined&&hi!==undefined?`${lo}\u2026${hi}${u}`:lo!==undefined?`${b.min_inclusive===false?'>':'\u2265'} ${lo}${u}`:`${b.max_inclusive===false?'<':'\u2264'} ${hi}${u}`; };
+function selectRule(r){
+  sel={module:r.id,members:new Set([r.id])}; paint();
+  const when=[...(r.when||[]).map(t=>'`'+t+'`'),...(r.when_not||[]).map(t=>'not `'+t+'`')];
+  const link=r.q?`<a href="#" onclick="select('${r.q}');return false">${esc(sym(r.q))}</a> <span class="sub">(${esc(r.q)})</span>`
+    :`<span class="sub">${esc(r.quantity.slug)} \u2014 not in the canon yet (${esc(r.quantity.planned)})</span>`;
+  let h=`<h2>${esc(r.title)}</h2><p class="meta">${esc(r.source)} \u00b7 band ${esc(bandText(r.band,r.unit))}</p>
+   <p class="desc">Judges ${link}. The canon computes and never judges (A10); this rule belongs to the evaluation layer.</p>`;
+  if(when.length) h+=`<p class="meta">Applies when: ${when.map(w=>esc(w.replace(/`/g,''))).join(' and ')}</p>`;
+  for(const [side,label] of [['min','below'],['max','above']]) if(r.band[side]!==undefined){ const sev=r[label+'_severity']||'bad', col=sev==='caution'?'var(--mvp)':'var(--bad)', basis=r[label+'_basis'];
+    h+=`<div class="blk"><div class="lab"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${col};margin-right:6px"></span>${label[0].toUpperCase()+label.slice(1)} the band \u00b7 ${sev==='caution'?'caution (yellow)':'bad (red)'}</div><p class="sub" style="margin:0">${esc(r[label]||'The source names no consequence.')}${basis?'<br>Basis: '+esc(basis):''}</p></div>`; }
+  for(const lv of (r.levels||[])) h+=`<div class="blk"><div class="lab">Level ${esc(lv.id)} \u00b7 ${esc(bandText(lv,r.unit))}</div><p class="sub" style="margin:0">${esc(lv.meaning)}</p></div>`;
+  h+=`<p class="sub">Rule status per reference aircraft is not shown: the navigator is built from the canon alone and holds no computed fleet values, so only the band is given.</p>`;
+  if(r.note) h+=`<div class="blk"><div class="lab">Note</div><p class="sub" style="margin:0">${esc(r.note)}</p></div>`;
+  info.innerHTML=h;
+}
+function selectSourceFrame(f){
+  sel={module:'srcframe:'+f.id,members:new Set(f.fields)}; paint();
+  const qs=[...new Set(f.fields.flatMap(id=>SRCBYID[id].qs))].sort();
+  info.innerHTML=`<h2>${esc(f.label)}</h2><p class="meta">${esc(f.id)} \u00b7 ${f.fields.length} fields</p>
+   <p class="desc">The fields of this source; the frame refines <a href="#" onclick="select('${f.parent}');return false">${esc(sym(f.parent))}</a>. All its fields are selected together; the depth slider sets how many steps of their influence are highlighted.</p>
+   <div class="blk"><div class="lab">Fields \u00b7 ${f.fields.length}</div><ul class="lnk">`+
+   f.fields.map(id=>`<li data-q="${esc(id)}">${esc(sym(id))}</li>`).join('')+`</ul></div>
+   <div class="blk"><div class="lab">Feeds \u00b7 ${qs.length}</div><ul class="lnk">`+
+   qs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
 }
 function selectSource(x){
   const id='src:'+x.id; sel={module:id,members:new Set([id])}; paint();
@@ -748,7 +854,7 @@ function selectSource(x){
    <p class="desc">${esc(kind.explanation)}</p>
    <div class="blk"><div class="lab">Feeds \u00b7 ${x.qs.length}</div><ul class="lnk">`+
    x.qs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
-  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
 }
 const KINDNAME={module:'module',discipline:'discipline',stage:'stage',point:'operating point',group:'group'};
 function membersOf(kind,key){
@@ -771,7 +877,7 @@ function selectGroup(kind,key,label){
     direct.map(o=>`<li data-q="${esc(o)}" title="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`
     : `<div class="blk"><div class="lab">Directly influences</div><p class="sub" style="margin:0">Nothing.</p></div>`;
   info.innerHTML=h;
-  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
 }
 function selectModule(m){ selectGroup('module',m,MODULES[m]||m); }
 // a clickable heading: SVG text with the selection behaviour of a module frame
@@ -790,7 +896,7 @@ qi.addEventListener('input',()=>{
   const m=Object.keys(Q).filter(k=>k.includes(v)||(Q[k].symbol||'').toLowerCase().includes(v)
     ||(Q[k].unit||'').toLowerCase().includes(v)).slice(0,18);
   hits.innerHTML=m.map(k=>`<li data-q="${esc(k)}">${esc(k)}<span class="u">${esc(Q[k].unit||'')}</span></li>`).join('');
-  hits.querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{select(li.dataset.q);qi.value='';hits.innerHTML='';}));
+  hits.querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{pick(li.dataset.q);qi.value='';hits.innerHTML='';}));
 });
 // Camera
 let k=1,tx=0,ty=0;

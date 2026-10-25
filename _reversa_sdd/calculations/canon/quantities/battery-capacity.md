@@ -25,4 +25,4 @@ Usable pack energy, derived: `E_bat = Q_bat / 1000 · U_bat` — the rated charg
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[battery-mass-from-capacity]] · [[cruise-target-performance]] · [[endurance-and-range]] · [[endurance-and-range-optimum]]
+**Used by.** [[cruise-target-performance]] · [[endurance-and-range]] · [[endurance-and-range-optimum]]
