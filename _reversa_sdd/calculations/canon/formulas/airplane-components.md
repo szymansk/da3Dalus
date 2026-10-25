@@ -65,7 +65,7 @@ changes the mass, the thrust and with them everything downstream. The graph now 
 
 **Validity in the RC/UAV regime (ADR 0028).** Regime-independent as a read: the entry copies catalogue values and computes nothing. The data are point measurements, valid near the conditions they were measured at. In Drela's three-parameter model `R_m` rises with winding temperature, so a cold catalogue value under-predicts the voltage drop under load; `I_0` depends on shaft speed and is meaningful only when measured near the operating rpm; the model breaks down at very high current (Drela `motor1` §1.1). Battery capacity and voltage depend on discharge rate and temperature [no source]: the rated mAh holds at the manufacturer's test rate, the nominal 3.7 V per cell is a mid-discharge value, and the pack energy derived from the two inherits both.
 
-**Ist ≠ Soll (#1235).** Ist: the app reads the capacity in Wh and applies one drive-train efficiency of about 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions) in `app/services/endurance_service.py`. Soll: the app **must follow** this entry and the part-load chain and drop that constant (follow-up of #1235; the ticket number is added by the orchestrator).
+**Ist ≠ Soll (#1235).** Ist: the app reads the capacity in Wh and applies one drive-train efficiency of about 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions) in `app/services/endurance_service.py`. Soll: the app **must follow** this entry and the part-load chain and drop that constant (#1238).
 
 ## Implementations (0)
 

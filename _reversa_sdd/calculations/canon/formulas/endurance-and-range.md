@@ -55,7 +55,7 @@ P_bat(V) := battery-power of motor-propeller-part-load at V   (thrust = drag, le
 
 **One entry with two outputs, not two applications; the optimum a second entry.** The estimate needs the two speeds `V_mp` and `V_md` as inputs, the optimum needs none and instead the stall speed — different inputs (the optimum embeds the stall speed for its domain), and every application binds every input. Within this entry the two results share the inputs and the closure, so one entry with two outputs is the canon's usual shape (it was already so before the split).
 
-**Ist ≠ Soll (#1235).** Ist: `app/services/endurance_service.py` converts aerodynamic power to battery power with one constant, η ≈ 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions). Soll: the app **must follow** this entry and take the battery power from the part-load chain (follow-up of #1235; the ticket number is added by the orchestrator).
+**Ist ≠ Soll (#1235).** Ist: `app/services/endurance_service.py` converts aerodynamic power to battery power with one constant, η ≈ 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions). Soll: the app **must follow** this entry and take the battery power from the part-load chain (#1238).
 
 **Replaces** (2026-10-02, maintainer) `cruise-speed-resolution`, `power-required-electrical`, `endurance-from-battery` and `range-from-endurance`; (2026-10-25, #1235) the quotient `D·V/η` with `propulsive-efficiency`. Both results are **properties of the aircraft**, no target involved.
 
@@ -65,7 +65,7 @@ P_bat(V) := battery-power of motor-propeller-part-load at V   (thrust = drag, le
 
 ## Implementations (0)
 
-None in aero_kernel yet; no register node is mapped to this entry (kernel implementation of the part-load chain and the optimisation: follow-up of #1235).
+None in aero_kernel yet; no register node is mapped to this entry (kernel implementation of the part-load chain and the optimisation: #1238).
 
 ## Approval
 

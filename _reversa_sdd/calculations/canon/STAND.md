@@ -306,7 +306,7 @@ Route B mit veröffentlichtem R_m, sonst Route A mit `motor-efficiency`). `endur
 **optimierte** Wert (`max-endurance`, `max-range`). Kapazität in mAh (`battery-charge-capacity`), C-Rate
 (`battery-c-rate`), zulässiger Strom `battery-current-allowed`; `battery-specific-energy` ist Entwurfsannahme
 von `battery-mass-from-capacity` (Vorgabewert **offen**). Soll: App (`endurance_service`, η ≈ 0,52) und
-Kernel-Umsetzung folgen in einem Folgeticket zu #1235.
+Kernel-Umsetzung folgen in #1238.
 
 **f_T (02.10.2026):** `mean-thrust-derate`/`mean-thrust`/`static-thrust` gestrichen; `static-thrust-to-weight` T_0/W aus dem berechneten Standschub (V = 0).
 

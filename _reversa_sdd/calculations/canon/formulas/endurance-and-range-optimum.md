@@ -53,7 +53,7 @@ V_S              := stall speed of stall-speed.clean
 
 **Kind: an optimisation problem.** The speed is not given but found: the one at which the **battery power** of the part-load chain is least (endurance) or the battery energy per metre `P_bat/V` is least (range). The domain is the speeds the airplane can fly level — from the stall speed up to where the required thrust reaches the full-throttle thrust (`r_T ≤ 1`, [[thrust-demand-ratio]]). This is the **optimised** value of decision 2 (maintainer, 2026-10-25, #1235); [[endurance-and-range]] gives the estimate at `V_mp` and `V_md`, which does not exceed it where its speeds lie inside the domain. Approval asks, on top of source and scale: **no bound active at the optimum** (an optimum at `V_S` or at `r_T = 1` is reported, not accepted silently) and **what is returned when the solver fails** — never a value.
 
-**Ist ≠ Soll (#1235).** Ist: `app/services/endurance_service.py` converts aerodynamic power to battery power with one constant, η ≈ 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions). Soll: the app **must follow** this entry and take the battery power from the part-load chain (follow-up of #1235; the ticket number is added by the orchestrator).
+**Ist ≠ Soll (#1235).** Ist: `app/services/endurance_service.py` converts aerodynamic power to battery power with one constant, η ≈ 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions). Soll: the app **must follow** this entry and take the battery power from the part-load chain (#1238).
 
 **Source.** 🟡 PARTIAL. As in [[endurance-and-range]]: the energy balance `t = E_bat/P_bat`, `R = V·t` has no textbook source [no source]; Sadraey's closures (§4.2.5.2 Eq. 4.17, §4.2.5.4 Eq. 4.22–4.23) are the constant-`η_P` special case, in which the optima fall at `V_md` and `V_mp`.
 
@@ -61,7 +61,7 @@ V_S              := stall speed of stall-speed.clean
 
 ## Implementations (0)
 
-None in aero_kernel yet; no register node is mapped to this entry (kernel implementation of the part-load chain and the optimisation: follow-up of #1235).
+None in aero_kernel yet; no register node is mapped to this entry (kernel implementation of the part-load chain and the optimisation: #1238).
 
 ## Approval
 

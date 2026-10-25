@@ -62,7 +62,7 @@ drive-train efficiency** (maintainer, 2026-10-25, #1235): the former `propulsive
 If the thrust required at the target speed exceeds the full-throttle thrust, [[thrust-demand-ratio]] of
 the embedded entry is above 1 and the part-load entry warns; the target speed cannot be held.
 
-**Ist ≠ Soll (#1235).** Ist: `app/services/endurance_service.py` uses one constant, η ≈ 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions). Soll: the app **must follow** this entry (follow-up of #1235; the ticket number is added by the orchestrator).
+**Ist ≠ Soll (#1235).** Ist: `app/services/endurance_service.py` uses one constant, η ≈ 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions). Soll: the app **must follow** this entry (#1238).
 
 **Measured against a target.** A UAV mission often prescribes its cruise speed (area coverage per
 time, wind penetration). This entry answers *how long and how far at that speed* — the UAV purpose
