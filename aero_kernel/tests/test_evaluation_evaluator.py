@@ -37,7 +37,7 @@ def test_a_value_in_the_band_is_inside() -> None:
     assert verdict.status is RuleStatus.INSIDE
     assert verdict.value is not None
     assert abs(verdict.value - 0.10) < 1e-12
-    assert "Eq. (2)" in verdict.explanation
+    assert "Eq. (2)" in verdict.text
 
 
 def test_a_value_below_the_band_carries_drelas_meaning() -> None:

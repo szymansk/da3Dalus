@@ -9,6 +9,7 @@ from aero_kernel.evaluation.evaluator import (
     RuleVerdict,
     evaluate_rules,
     quantities_to_request,
+    summarize_verdicts,
 )
 from aero_kernel.evaluation.rules import (
     Band,
@@ -36,4 +37,5 @@ __all__ = [
     "evaluate_rules",
     "quantities_to_request",
     "shipped_rule_table",
+    "summarize_verdicts",
 ]

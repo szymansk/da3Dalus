@@ -154,7 +154,7 @@ aero_kernel/
   errors.py         error catalogue (ch. 8.1): `ErrorCategory`, `KernelError`, the closed code table
                     (code → category), `FormulaError`, upstream aggregation; imports no other module
   __init__.py       public API; adds the NullHandler to the `aero_kernel` logger (ch. 8.14)
-  evaluation/       rules.py (rule table, shipped `rule_table.json`, check against the canon model) · evaluator.py (result + rule table → verdicts)
+  evaluation/       rules.py (rule table, shipped `rule_table.json`, check against the canon model) · evaluator.py (result + rule table → verdicts with a self-contained `text`, `summarize_verdicts`, red/yellow verdicts logged at INFO on `aero_kernel.evaluation`; #1289)
                     the judgement the canon never makes (A10); pure; not called by `compute()` (#1276)
   tools/            robustness.py (#1178)
   tests/            unit, property, golden, traceability and error tests
