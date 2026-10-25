@@ -235,8 +235,9 @@ def test_a_derived_quantity_not_read_from_our_data_still_takes_no_default() -> N
         "type": "scalar",
         "data": ["default:gravity"],
     }
+    with_default = with_defaults(namespaces, computed=GRAVITY_DEFAULT | {"unit": "N"})
     with pytest.raises(ValidationError, match="role"):
-        build(with_defaults(namespaces, computed=GRAVITY_DEFAULT | {"unit": "N"}))
+        build(with_default)
 
 
 def test_a_negative_default_is_accepted_on_a_quantity_that_is_not_positive() -> None:
