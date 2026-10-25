@@ -89,3 +89,25 @@ Reference fleet (np_methods.py): BRYAN [32.9, 36.9] % MAC, e-Hawk [48.8, 52.9] %
 
 **Source.** 🟢 derived from Sadraey Eq. 6.67, §6.7.12 (textbook); η from Lennon Ch. 7/8 and Sadraey Eq. 6.28, §6.2.1; Pappas, *Model Aviation* 10/2009; Drela, AVL. Review of the
 uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.
+
+**Validity in the RC/UAV regime (ADR 0028).** All three worlds are evaluated incompressible (Mach ≤ 0.3). The textbook world's tail efficiency is the input [[tail-efficiency]] (default 0.65 from Lennon, *Basics of R/C Model Aircraft Design*, Ch. 7/8, for a conventional tail near the wing wake); Sadraey's 0.85–0.95 conventional and 1 for a T-tail (Eq. 6.28, §6.2.1, p. 276) are full-scale practice and state no Reynolds number. Lower efficiency moves the neutral point forward. At low Re the wing's laminar separation and transition (Anderson §20.3.2) can thicken its wake and change the downwash at the tail [no source for the magnitude]. The lift slopes `2πAR/(AR+2)` assume a 2π section slope, which falls at low Re (Anderson §20.3.2, qualitative); the smaller-chord tail, at lower Re, is affected more [no source]. The fuselage is not modelled by decision (above, #1205), declared as `fuselage_not_modelled`.
+
+## Implementations (1)
+
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/neutral_point.py` | EXACT | 🟢 | textbook (with the input `eta_h`) and Pappas barycentres as written; the AVL world calls the AVL adapter at C_L = m·g/(q·S_ref); every world declares `fuselage_not_modelled`; the interval over the worlds is formed by the engine (A11) |
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.

@@ -414,8 +414,9 @@ async def test_minimum_sink_speed_passes_a_failed_solve_on_without_a_value() -> 
             raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "m", "h")
 
     context = context_with(StubAtmosphere({}), opti=Failing())
+    x = stall_x()
     with pytest.raises(FormulaError) as raised:
-        await minimum_sink_speed_from_polar(stall_x(), context)
+        await minimum_sink_speed_from_polar(x, context)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
 
 

@@ -86,24 +86,27 @@ async def test_an_inadmissible_input_is_invalid_input(
 ) -> None:
     monkeypatch.setattr(opti_module, "min_sink_worker", canned(sink()))
     adapter = OptiAdapter(InProcessRuntime())
+    plane = airplane()
     with pytest.raises(FormulaError) as raised:
-        await adapter.min_sink(airplane(), mass, gravity, n_load, AIR)
+        await adapter.min_sink(plane, mass, gravity, n_load, AIR)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
 async def test_a_deflected_control_surface_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(opti_module, "min_sink_worker", canned(sink()))
     adapter = OptiAdapter(InProcessRuntime())
+    deflected = airplane(device=("aileron", 4.0))
     with pytest.raises(FormulaError) as raised:
-        await adapter.min_sink(airplane(device=("aileron", 4.0)), MASS, GRAVITY, 1.0, AIR)
+        await adapter.min_sink(deflected, MASS, GRAVITY, 1.0, AIR)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
     adapter = OptiAdapter(InProcessRuntime())
+    plane = airplane()
     with pytest.raises(FormulaError) as raised:
-        await adapter.min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)
+        await adapter.min_sink(plane, MASS, GRAVITY, 1.0, AIR)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 

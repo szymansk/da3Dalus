@@ -45,7 +45,7 @@ T_0/W = T / W
 **Produces** [[static-thrust-to-weight]]  ·  **from** [[weight]] · [[airplane]] · [[components]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: a law.** `T` is the static thrust, evaluated inside this entry at `V = 0`: it embeds the
-motor-propeller balance and the measured propeller table (`embeds:`) and reads no thrust value — the
+motor-propeller balance and the APC propeller table (`embeds:`) and reads no thrust value — the
 computed static thrust over the weight. A common RC figure: above 1 the model can climb
 vertically and hang on the propeller (BRYAN, route A power-limited: 2.0).
 
@@ -58,3 +58,20 @@ stated *"we need no factor for this"*.
 practice size on power loading `W/P`, not `T/W` — that belongs to the design direction (O12).
 
 **Source.** 🟢 Definitional (Scholz §5.2 `T_TO/(m·g)`; Sadraey Eq. 4.47).
+
+**Validity in the RC/UAV regime (ADR 0028).** The ratio is exact; what it is worth depends on the static thrust, read from the `J = 0` row of the propeller table at the balanced rpm. Static coefficients differ from those in advancing flight, and the blade Reynolds number is lowest there (Brandt & Selig 2011 §II.B, §III); at Re₀.₇₅ ≈ 15–100 k `C_T` changes with rpm (Deters, Ananda & Selig 2014 §V.A–B). Static thrust is the relevant number for hand launch and for hanging on the propeller. On route A it inherits the free-run-rpm overestimate (loaded brushless motors run at about 85 % of no-load rpm, Roxxy Motoren-Fibel Ch. 1 pp. 9–10) unless the power limit binds. For propeller aircraft Sadraey sizes on `W/P`, not `T/W` (§4.3.5.2, Eq. 4.89), as the entry says.
+
+## Implementations (0)
+
+None in aero_kernel yet; no register node is mapped to this entry.
+
+## Approval
+
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [ ] **Dimensions** — the check balances
+- [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+> While `status: draft` this entry **cites nothing and decides nothing**.
