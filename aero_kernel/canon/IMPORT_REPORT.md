@@ -83,7 +83,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 |---|---|---|---|
 | advance-ratio-from-speed | draft | 2 of 3 | propeller-speed (motor-propeller-equilibrium: not approved) |
 | aerobuildup-evaluation | approved | 6 of 6 |  |
-| aileron-deflection-required | draft | 7 of 8 | roll-rate-target-approach (no data source) |
+| aileron-deflection-required | approved | 7 of 8 | roll-rate-target-approach (no data source) |
 | air-density-isa | approved | 1 of 1 |  |
 | airplane-components | approved | 2 of 2 |  |
 | airplane-configuration | approved | 3 of 3 |  |
@@ -125,7 +125,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | propeller-table-lookup | draft | 1 of 2 | advance-ratio (advance-ratio-from-speed: not approved; motor-propeller-equilibrium: not approved via advance-ratio-from-speed) |
 | relative-mass-deviation | draft | 1 of 2 | predicted-battery-mass (battery-mass-from-capacity: not approved) |
 | roll-rate | draft | 8 of 9 | wing-span (airplane-geometry: not approved) |
-| roll-rate-cruise-target | draft | 6 of 6 |  |
+| roll-rate-cruise-target | approved | 6 of 6 |  |
 | sink-rate | draft | 1 of 3 | drag-coefficient-parabolic (drag-polar: not approved; induced-drag-factor: not approved via drag-polar; aspect-ratio: not approved via drag-polar, induced-drag-factor; airplane-geometry: not approved via drag-polar, induced-drag-factor, aspect-ratio; parabolic-polar-fit: not approved via drag-polar, induced-drag-factor; lift-coefficient-required: not approved via drag-polar); lift-coefficient (lift-coefficient-required: not approved; airplane-geometry: not approved via lift-coefficient-required) |
 | spanwise-loads | approved | 6 of 6 |  |
 | spar-break-load-factor | draft | 5 of 5 |  |
