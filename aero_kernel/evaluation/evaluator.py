@@ -6,6 +6,8 @@ quantity (A11) is judged at both ends of its interval: it is ``inside`` only if 
 is inside the band, ``below`` or ``above`` only if the whole interval is, and ``partly`` otherwise.
 """
 
+import logging
+from collections.abc import Sequence
 from enum import StrEnum
 
 from aero_kernel.evaluation.rules import Band, Position, Rule, RuleTable, Severity
@@ -19,9 +21,17 @@ from aero_kernel.schema import (
 )
 from pydantic import BaseModel, ConfigDict
 
+logger = logging.getLogger("aero_kernel.evaluation")
+
 _NO_CONSEQUENCE = "the source names no consequence."
 
-__all__ = ["RuleStatus", "RuleVerdict", "evaluate_rules", "quantities_to_request"]
+__all__ = [
+    "RuleStatus",
+    "RuleVerdict",
+    "evaluate_rules",
+    "quantities_to_request",
+    "summarize_verdicts",
+]
 
 
 class RuleStatus(StrEnum):
@@ -40,6 +50,7 @@ class RuleVerdict(BaseModel):
 
     Attributes:
         rule_id: Id of the rule.
+        quantity: Canon slug of the quantity the rule judges.
         status: The outcome.
         value: The judged value, for a scalar quantity.
         interval: The judged spread over method worlds, for an uncertain quantity.
@@ -48,12 +59,16 @@ class RuleVerdict(BaseModel):
         severity: For ``below``, ``above`` and ``partly``: how bad the side or sides left are; the
             worst when an interval reaches both.
         level: Name of the rule's level that contains the value, if any.
-        explanation: A sentence saying why, with the source's meaning where the band is left.
+        explanation: Why, with the source's meaning where the band is left.
+        text: A self-contained statement for a person or an LLM: rule, source, quantity, value
+            (an interval with its worlds), band, severity, meaning and basis. Built from the rule
+            table only; it is the LLM-facing contract of the evaluation layer.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     rule_id: str
+    quantity: str
     status: RuleStatus
     value: float | None = None
     interval: Interval | None = None
@@ -62,6 +77,7 @@ class RuleVerdict(BaseModel):
     severity: Severity | None = None
     level: str | None = None
     explanation: str
+    text: str
 
 
 def quantities_to_request(table: RuleTable) -> tuple[str, ...]:
@@ -78,20 +94,35 @@ def quantities_to_request(table: RuleTable) -> tuple[str, ...]:
 
 
 def evaluate_rules(
-    table: RuleTable, result: ComputeResult, facts: WhenFacts
+    table: RuleTable,
+    result: ComputeResult,
+    facts: WhenFacts,
+    *,
+    call_id: str | None = None,
 ) -> tuple[RuleVerdict, ...]:
-    """Judge every rule of a table.
+    """Judge every rule of a table, and log the red and yellow verdicts.
 
     Args:
         table: The rule table.
         result: The kernel result; it need not contain every rule's quantity.
         facts: The ``when`` facts of the aircraft geometry.
+        call_id: The kernel call the result came from, carried into the log records.
 
     Returns:
         One verdict per rule, in table order.
     """
     by_slug = {quantity.slug: quantity for quantity in result.quantities}
-    return tuple(_judge(rule, by_slug.get(rule.quantity.slug), facts) for rule in table.rules)
+    verdicts = tuple(_judge(rule, by_slug.get(rule.quantity.slug), facts) for rule in table.rules)
+    for verdict in verdicts:
+        if verdict.severity is not None:
+            _log_verdict(verdict, call_id)
+    return verdicts
+
+
+def _named(rule: Rule, explanation: str) -> str:
+    """Make an explanation name its quantity; a value explanation already does."""
+    quoted = f"`{rule.quantity.slug}`"
+    return explanation if explanation.startswith(quoted) else f"{quoted}: {explanation}"
 
 
 def _verdict(rule: Rule, status: RuleStatus, explanation: str, **extra: object) -> RuleVerdict:
@@ -99,10 +130,12 @@ def _verdict(rule: Rule, status: RuleStatus, explanation: str, **extra: object) 
     return RuleVerdict.model_validate(
         {
             "rule_id": rule.id,
+            "quantity": rule.quantity.slug,
             "status": status,
             "unit": rule.unit,
             "band": rule.band,
             "explanation": explanation,
+            "text": f"{rule.title} (rule `{rule.id}`, {rule.source}): {_named(rule, explanation)}",
             **extra,
         }
     )
@@ -170,12 +203,13 @@ def _judge_value(rule: Rule, quantity: QuantityResult) -> RuleVerdict:
         interval = quantity.interval
         ends = (interval.min, interval.max)
         extra: dict[str, object] = {"interval": interval}
-        text = f"{interval.min:.4g}…{interval.max:.4g} {rule.unit}"
+        worlds = ", ".join(f"{world}: {value:.4g}" for world, value in interval.worlds.items())
+        text = f"{interval.min:.4g}…{interval.max:.4g}{_unit(rule)} over the worlds {worlds}"
     else:
         assert quantity.value is not None  # status ok carries exactly one of the two
         ends = (quantity.value, quantity.value)
         extra = {"value": quantity.value}
-        text = f"{quantity.value:.4g} {rule.unit}"
+        text = f"{quantity.value:.4g}{_unit(rule)}"
     positions = {rule.band.position(end) for end in ends}
     levels = {rule.level_of(end) for end in ends}
     level = next(iter(levels)) if len(levels) == 1 else None
@@ -220,26 +254,94 @@ def _band_text(band: Band) -> str:
     return f"≤ {band.max:g}"
 
 
+def _unit(rule: Rule) -> str:
+    """The unit with a leading space, empty for a dimensionless quantity."""
+    return "" if rule.unit == "1" else f" {rule.unit}"
+
+
+def _sentence(meaning: str | None) -> str:
+    """The meaning of a side as a sentence; the source names none when it is absent."""
+    return (meaning or _NO_CONSEQUENCE).rstrip(".") + "."
+
+
 def _explain(
     rule: Rule, status: RuleStatus, text: str, positions: set[Position], level: str | None
 ) -> str:
-    """Write the explanation: the value, the band, the source and the meaning of leaving it."""
-    band = _band_text(rule.band)
+    """Write the explanation: the value, the band and, outside it, severity, meaning and basis."""
     verb = {
         RuleStatus.INSIDE: "lies inside",
         RuleStatus.BELOW: "lies below",
         RuleStatus.ABOVE: "lies above",
         RuleStatus.PARTLY: "reaches outside",
     }[status]
-    parts = [f"{rule.title}: {text} {verb} the band {band} ({rule.source})."]
-    for side, position, meaning, severity, basis in (
-        ("Below", Position.BELOW, rule.below, rule.below_severity, rule.below_basis),
-        ("Above", Position.ABOVE, rule.above, rule.above_severity, rule.above_basis),
-    ):
-        if position in positions:
-            text = f"{side} ({severity.value}): {meaning or _NO_CONSEQUENCE}"
-            parts.append(f"{text} Basis: {basis}." if basis else text)
+    parts = [f"`{rule.quantity.slug}` = {text} {verb} the band {_band_text(rule.band)}"]
+    sides = [
+        (name, meaning, severity, basis)
+        for name, position, meaning, severity, basis in (
+            ("below", Position.BELOW, rule.below, rule.below_severity, rule.below_basis),
+            ("above", Position.ABOVE, rule.above, rule.above_severity, rule.above_basis),
+        )
+        if position in positions
+    ]
+    if not sides:
+        parts[0] += "."
+    for name, meaning, severity, basis in sides:
+        label = f"{name}, {severity.value}" if len(sides) > 1 else severity.value
+        sentence = f"{label}: {_sentence(meaning)}"
+        parts.append(f"{sentence} (basis: {basis})" if basis else sentence)
     if level is not None:
-        meaning = next(lv.meaning for lv in rule.levels if lv.id == level)
-        parts.append(f"Level {level}: {meaning}")
+        level_meaning = next(lv.meaning for lv in rule.levels if lv.id == level)
+        parts.append(f"Level {level}: {level_meaning}")
+    if sides:
+        parts[:2] = [f"{parts[0]} — {parts[1]}"]
     return " ".join(parts)
+
+
+def summarize_verdicts(table: RuleTable, verdicts: Sequence[RuleVerdict]) -> str:
+    """Summarise an evaluation for a person or an LLM: counts, then the red, then the yellow.
+
+    Args:
+        table: The rule table the verdicts came from.
+        verdicts: The verdicts of :func:`evaluate_rules`.
+
+    Returns:
+        Text: a count line, then ``Red:`` and ``Yellow:`` sections with the verdict texts; a
+        section is left out when it is empty.
+    """
+    red = [v for v in verdicts if v.severity is Severity.BAD]
+    yellow = [v for v in verdicts if v.severity is Severity.CAUTION]
+    count = {status: sum(v.status is status for v in verdicts) for status in RuleStatus}
+    lines = [
+        f"Evaluation against {table.source}: {len(verdicts)} rules, "
+        f"{count[RuleStatus.INSIDE]} inside, {len(red)} bad (red), {len(yellow)} caution (yellow), "
+        f"{count[RuleStatus.NOT_APPLICABLE]} not applicable, "
+        f"{count[RuleStatus.NOT_AVAILABLE]} not available."
+    ]
+    for heading, items in (("Red:", red), ("Yellow:", yellow)):
+        if items:
+            lines.append(heading)
+            lines.extend(f"- {v.text}" for v in items)
+    return "\n".join(lines)
+
+
+def _log_verdict(verdict: RuleVerdict, call_id: str | None) -> None:
+    """Write a red or yellow verdict to the run log (INFO; WARNING stays for degraded operation)."""
+    interval = verdict.interval
+    logger.info(
+        "%s",
+        verdict.text,
+        extra={
+            "verdict": "evaluation",
+            "call_id": call_id,
+            "rule_id": verdict.rule_id,
+            "quantity": verdict.quantity,
+            "status": verdict.status.value,
+            "severity": verdict.severity.value if verdict.severity is not None else None,
+            "unit": verdict.unit,
+            "value": verdict.value,
+            "interval_min": interval.min if interval is not None else None,
+            "interval_max": interval.max if interval is not None else None,
+            "band_min": verdict.band.min,
+            "band_max": verdict.band.max,
+        },
+    )
