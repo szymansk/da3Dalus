@@ -25,6 +25,7 @@ IMPLEMENTED = {
     "calc:stall-speed",
     "calc:stall-break",
     "calc:minimum-drag-speed-from-polar",
+    "calc:minimum-sink-speed-from-polar",
     "calc:neutral-point",
     "calc:static-margin",
     "calc:speed-from-stall-margin",

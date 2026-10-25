@@ -11,6 +11,8 @@ from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import (
     BestGlide,
     BestGlideSolution,
+    MinSink,
+    MinSinkSolution,
     OptiAdapter,
     Stall,
     StallSolution,
@@ -20,6 +22,7 @@ from aero_kernel.solvers.opti import (
 STEP = 0.25
 CD0, K = 0.03, 0.05  # the parabolic polar of the best-glide stub
 GLIDE_ALPHA = 5.7  # deg
+SINK_ALPHA = 9.0  # deg, the stub's angle of attack at the minimum sink
 UPRIGHT_PEAK = (15.75, 1.19)  # alpha_S in deg, C_L,max
 INVERTED_TROUGH = (-10.0, -0.70)
 
@@ -81,6 +84,21 @@ def consistent_glide(
     )
 
 
+def consistent_min_sink(
+    airplane: AirplaneGeometry, mass: float, gravity: float, n_load: float, air: AirState
+) -> MinSinkSolution:
+    """The closed-form answers of a parabolic polar CD = CD0 + k CL^2 (hand values).
+
+    The sink rate V D / W is least where the induced drag is three times the parasite drag:
+    CL_mp = sqrt(3 CD0 / k) and V_mp = sqrt(2 n m g / (rho S)) (k / (3 CD0))^(1/4) = V_md / 3^(1/4).
+    """
+    area = main_wing_properties(airplane).s_ref
+    v_mp = (
+        math.sqrt(2.0 * n_load * mass * gravity / (air.density * area)) * (K / (3.0 * CD0)) ** 0.25
+    )
+    return MinSinkSolution(v_mp=v_mp, alpha_mp=SINK_ALPHA, cl_mp=math.sqrt(3.0 * CD0 / K))
+
+
 class StubOpti(OptiAdapter):
     """Records its calls and answers consistently, or with a given solution."""
 
@@ -88,6 +106,8 @@ class StubOpti(OptiAdapter):
         super().__init__(SolverRuntime())
         self.answer = answer
         self.glide_answer: BestGlideSolution | None = None
+        self.sink_answer: MinSinkSolution | None = None
+        self.sink_calls: list[tuple[AirplaneGeometry, float, float, float, AirState]] = []
         self.glide_calls: list[tuple[AirplaneGeometry, float, float, float, AirState]] = []
         self.sweep_answer: Callable[[Sequence[float]], Polar] | None = None
         self.sweep_calls: list[tuple[AirplaneGeometry, AirState, float, tuple[float, ...]]] = []
@@ -146,6 +166,26 @@ class StubOpti(OptiAdapter):
         if self.sweep_answer is not None:
             return self.sweep_answer(alphas_deg)
         return lift_curve_at(UPRIGHT_PEAK, True, alphas_deg)
+
+    async def min_sink(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        n_load: float,
+        air: AirState,
+    ) -> MinSink:
+        """Answer the minimum-sink problem without a solver."""
+        import asyncio
+
+        self.sink_calls.append((airplane, mass_kg, gravity, n_load, air))
+        try:
+            await asyncio.sleep(self.delay_s)
+        except asyncio.CancelledError:
+            self.cancelled = True
+            raise
+        solution = self.sink_answer or consistent_min_sink(airplane, mass_kg, gravity, n_load, air)
+        return MinSink(solution=solution, warnings=())
 
     async def steady_roll(
         self,
