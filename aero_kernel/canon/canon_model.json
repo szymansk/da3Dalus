@@ -1,9 +1,16 @@
 {
-  "content_hash": "sha256:e2609c8661967435be63b227f4570d90bbc3d1a294a1dffa1875fab97122c576",
+  "content_hash": "sha256:5e38a04e0aad1285d300d3e0f9cc4941f9e242ffe0546f235ac4c21d7250f645",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
       "defaults": {
+        "altitude": {
+          "basis": "standard",
+          "regime": "regime-independent",
+          "source": "ISA sea-level reference, U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562): geopotential altitude 0 at mean sea level",
+          "unit": "m",
+          "value": 0.0
+        },
         "approach-speed-margin-target": {
           "basis": "sourced",
           "regime": "transport rule taken as the lower bound: at low wing loading and low speed a gust changes the angle of attack and load factor more (Scholz Wing Design §7.3), so RC needs at least this margin; a larger RC margin has no source",

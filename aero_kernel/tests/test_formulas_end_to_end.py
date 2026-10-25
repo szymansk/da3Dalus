@@ -158,14 +158,18 @@ async def test_a_request_of_pure_formulas_reports_no_tool_version() -> None:
 
 
 async def test_a_formula_that_was_never_called_reports_no_tool_version() -> None:
-    no_altitude = AircraftInput.model_validate(
+    # altitude has a default (0 m), so the density formula would run; the caller supplies the
+    # density itself and the atmosphere solver is never called
+    given_density = AircraftInput.model_validate(
         {
             "airplane": airplane_document(),
-            "values": {"aircraft-mass": 0.151, "flight-speed": 15.0},
+            "values": {"aircraft-mass": 0.151, "flight-speed": 15.0, "air-density": 1.2},
         }
     )
     solvers = solvers_with(atmosphere=StubAtmosphere({}, {"aerosandbox": "7.7"}))
-    result = await evaluate(shipped_build(), no_altitude, request("air-density"), solvers=solvers)
+    result = await evaluate(
+        shipped_build(), given_density, request("dynamic-pressure"), solvers=solvers
+    )
     assert result.provenance.tool_versions == {}
 
 
