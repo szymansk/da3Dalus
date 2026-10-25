@@ -21,7 +21,7 @@ inputs:
   g: gravity
   rho: air-density
   v_md: minimum-drag-speed
-  x_cg: cg-for-target-margin
+  x_cg: centre-of-gravity-design
 outputs: {c_m_alpha: pitching-moment-slope, sm_probe: static-margin-probe}
 ---
 
@@ -31,18 +31,18 @@ outputs: {c_m_alpha: pitching-moment-slope, sm_probe: static-margin-probe}
 
 ```
 solve for alpha at V_md:   L = m * g
-C_m_alpha, C_L_alpha := AeroBuildup(airplane, x_ref = x_CG_SM, V_md, alpha).run_with_stability_derivatives()
+C_m_alpha, C_L_alpha := AeroBuildup(airplane, x_ref = x_cg_design, V_md, alpha).run_with_stability_derivatives()
 SM_probe = - C_m_alpha / C_L_alpha
 ```
 
-**Produces** [[pitching-moment-slope]] · [[static-margin-probe]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]] · [[cg-for-target-margin]]
+**Produces** [[pitching-moment-slope]] · [[static-margin-probe]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]] · [[centre-of-gravity-design]]
 
-**Kind: a procedure — the Probe of [[static-margin]].** With the moment reference at the
+**Kind: a procedure — the Probe of [[static-margin-measured]].** With the moment reference at the
 CG, `−C_mα/C_Lα` is the static margin by a second path. Two paths to one quantity are a
 **test**, not a second truth (A7): a deviation beyond tolerance is reported, never averaged.
 
 Unlike `x_NP`, `C_mα` **does** depend on the reference: its sign flips exactly at
-`x_ref = x_NP` (§2.3). That is why the Probe — and only the Probe — needs the CG, and it is [[cg-for-target-margin]]'s `x_CG,SM`, never an app input (maintainer 2026-10-25).
+`x_ref = x_NP` (§2.3). That is why the Probe — and only the Probe — needs the CG, and it is [[centre-of-gravity-design]] (`x_cg,design`, produced by cg-for-target-margin), never an app input (maintainer 2026-10-25).
 
 **Source.** 🟢 `SM = −C_mα/C_Lα`: Sadraey Eq. 11.17 (`C_mα = C_Lα·(X_cg − X_np)`) with Eq. 11.18, §11.6.2. (Anderson §4.9, cited here before, is the airfoil aerodynamic-centre relation, the 2D analogue, not the airplane static margin.)
 

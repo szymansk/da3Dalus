@@ -11,12 +11,12 @@ tags:
   - point/best-glide
   - role/output
 type: scalar
-checks: static-margin
+checks: static-margin-measured
 ---
 
 # Static margin, Probe · `SM_probe`
 
-`−C_mα/C_Lα` with the moment reference at the CG — checks [[static-margin]].
+`−C_mα/C_Lα` with the moment reference at the CG — checks [[static-margin-measured]].
 
 **Unit.** `1`
 

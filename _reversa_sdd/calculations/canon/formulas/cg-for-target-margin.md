@@ -5,7 +5,7 @@ kind: law
 tool: APP
 shape: law
 status: draft
-output: cg-for-target-margin
+output: centre-of-gravity-design
 source_status: SOURCED
 dimensional_check: BALANCES
 tags:
@@ -16,9 +16,9 @@ tags:
   - shape/law
   - kind/law
   - status/draft
-tex: x_{CG,SM} = x_{NP} - SM_{target}\,c_{MAC}
+tex: x_{cg,design} = x_{NP} - SM_{target}\,c_{MAC}
 inputs: {x_np: neutral-point, sm_target: static-margin-target, c_mac: mean-aerodynamic-chord}
-outputs: {x_cg_sm: cg-for-target-margin}
+outputs: {x_cg_sm: centre-of-gravity-design}
 ---
 
 # Centre of gravity that gives the target static margin
@@ -26,10 +26,10 @@ outputs: {x_cg_sm: cg-for-target-margin}
 **Canonical form**
 
 ```
-x_CG,SM = x_NP - SM_target * c_MAC
+x_cg,design = x_NP - SM_target * c_MAC
 ```
 
-**Produces** [[cg-for-target-margin]]  ·  **from** [[neutral-point]] · [[static-margin-target]] · [[mean-aerodynamic-chord]]
+**Produces** [[centre-of-gravity-design]]  ·  **from** [[neutral-point]] · [[static-margin-target]] · [[mean-aerodynamic-chord]]
 
 **Kind: a law** — the design direction (§2.3, ADR 0011): the CG is a **target derived from
 the wanted stability**, not a bottom-up result of the components. The designer then places

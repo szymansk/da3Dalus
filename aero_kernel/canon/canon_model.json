@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:88315e41e8c4dddd4907a286c4fc9d1227b2819147752ef45bf346f4f8048290",
+  "content_hash": "sha256:0c59cf9c5fb4546f40cfc86889a7b1ac7992e6b2816a62eb6910c5a7a5e7ad36",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -713,7 +713,7 @@
               "given": null,
               "id": "default",
               "produce": {
-                "x_cg_sm": "calc:cg-for-target-margin"
+                "x_cg_sm": "calc:centre-of-gravity-design"
               },
               "when": null
             }
@@ -730,7 +730,7 @@
           "kind": "law",
           "optional": [],
           "outputs": {
-            "x_cg_sm": "calc:cg-for-target-margin"
+            "x_cg_sm": "calc:centre-of-gravity-design"
           },
           "postconditions": [],
           "preconditions": [],
@@ -1285,7 +1285,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v": "calc:approach-speed",
-                "x_cg": "calc:cg-for-target-margin"
+                "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
               "id": "default",
@@ -1308,7 +1308,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v": "calc:approach-speed",
-            "x_cg": "calc:cg-for-target-margin"
+            "x_cg": "calc:centre-of-gravity-design"
           },
           "kind": "procedure",
           "optional": [],
@@ -1334,7 +1334,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v": "calc:minimum-drag-speed",
-                "x_cg": "calc:cg-for-target-margin"
+                "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
               "id": "default",
@@ -1357,7 +1357,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v": "calc:minimum-drag-speed",
-            "x_cg": "calc:cg-for-target-margin"
+            "x_cg": "calc:centre-of-gravity-design"
           },
           "kind": "procedure",
           "optional": [],
@@ -3018,13 +3018,13 @@
             {
               "bind": {
                 "c_mac": "calc:mean-aerodynamic-chord",
-                "x_cg": "calc:centre-of-gravity",
+                "x_cg": "calc:centre-of-gravity-measured",
                 "x_np": "calc:neutral-point"
               },
               "given": null,
               "id": "default",
               "produce": {
-                "sm": "calc:static-margin"
+                "sm": "calc:static-margin-measured"
               },
               "when": null
             }
@@ -3035,13 +3035,13 @@
           "embeds_closure": [],
           "inputs": {
             "c_mac": "calc:mean-aerodynamic-chord",
-            "x_cg": "calc:centre-of-gravity",
+            "x_cg": "calc:centre-of-gravity-measured",
             "x_np": "calc:neutral-point"
           },
           "kind": "law",
           "optional": [],
           "outputs": {
-            "sm": "calc:static-margin"
+            "sm": "calc:static-margin-measured"
           },
           "postconditions": [],
           "preconditions": [],
@@ -3059,7 +3059,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v_md": "calc:minimum-drag-speed",
-                "x_cg": "calc:cg-for-target-margin"
+                "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
               "id": "default",
@@ -3080,7 +3080,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v_md": "calc:minimum-drag-speed",
-            "x_cg": "calc:cg-for-target-margin"
+            "x_cg": "calc:centre-of-gravity-design"
           },
           "kind": "procedure",
           "optional": [],
@@ -3898,7 +3898,22 @@
           "uncertainty": null,
           "unit": "V"
         },
-        "centre-of-gravity": {
+        "centre-of-gravity-design": {
+          "at_most": null,
+          "checks": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
+          "positive": null,
+          "role": "derived",
+          "stage": "stability-structure",
+          "symbol": "x_cg,design",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "centre-of-gravity-measured": {
           "at_most": null,
           "checks": null,
           "discipline": null,
@@ -3908,7 +3923,7 @@
           "positive": null,
           "role": "input",
           "stage": null,
-          "symbol": "x_CG",
+          "symbol": "x_cg,meas",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
@@ -3925,21 +3940,6 @@
           "stage": null,
           "symbol": "x_fwd(m), x_aft(m)",
           "type": "curve_pair",
-          "uncertainty": null,
-          "unit": "m"
-        },
-        "cg-for-target-margin": {
-          "at_most": null,
-          "checks": null,
-          "discipline": "longitudinal",
-          "group": null,
-          "module": null,
-          "point": "best-glide",
-          "positive": null,
-          "role": "derived",
-          "stage": "stability-structure",
-          "symbol": "x_CG,SM",
-          "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
@@ -5353,7 +5353,7 @@
           "uncertainty": null,
           "unit": "m/s"
         },
-        "static-margin": {
+        "static-margin-measured": {
           "at_most": null,
           "checks": null,
           "discipline": "longitudinal",
@@ -5363,14 +5363,14 @@
           "positive": null,
           "role": "output",
           "stage": null,
-          "symbol": "SM",
+          "symbol": "SM_meas",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "static-margin-probe": {
           "at_most": null,
-          "checks": "static-margin",
+          "checks": "static-margin-measured",
           "discipline": "longitudinal",
           "group": null,
           "module": null,

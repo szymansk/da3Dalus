@@ -38,7 +38,7 @@ from the airplane itself: one producer per number a user sees (ADR 0022). Only t
 
 `S_V` is the fin area, for a V-tail its fin share `S_Vtail·sin²ν` (ν = panel angle to the horizontal);
 `l_V,25` runs from the wing's quarter-chord MAC (25 % MAC) to the fin's quarter-chord MAC.
-Drela measures from the CG; for the MVP the CG is taken as 25 % MAC (maintainer 2026-10-25).
+Drela measures from the CG; for the MVP the CG is taken as 25 % MAC (maintainer 2026-10-25). A CG-referenced variant (`l_V,CG`, `l_H,CG`, Drela's definition) may be added later as a separate quantity; the suffix names the reference point.
 
 **Produces** [[vertical-tail-volume]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[wing-span]]
 

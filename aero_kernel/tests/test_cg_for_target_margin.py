@@ -1,4 +1,4 @@
-"""cg-for-target-margin: x_CG,SM = x_NP - SM_target c_MAC, as a law and per method world (A10, A11)."""
+"""cg-for-target-margin: x_cg,design = x_NP - SM_target c_MAC, as a law and per method world (A10, A11)."""
 
 import pytest
 from aero_kernel.build import shipped_build
@@ -39,7 +39,7 @@ async def test_the_law_is_the_neutral_point_minus_the_margin_in_chords() -> None
 
 
 async def test_the_cg_is_an_interval_per_world() -> None:
-    quantity = only((await run("cg-for-target-margin", target=SM_TARGET))[0])
+    quantity = only((await run("centre-of-gravity-design", target=SM_TARGET))[0])
     assert quantity.status is QuantityStatus.OK
     assert quantity.interval is not None
     assert quantity.unit == "m"
@@ -54,16 +54,16 @@ async def test_the_cg_is_an_interval_per_world() -> None:
 
 
 async def test_the_static_margin_of_that_cg_is_the_target_in_every_world() -> None:
-    cg = only((await run("cg-for-target-margin", target=SM_TARGET))[0])
+    cg = only((await run("centre-of-gravity-design", target=SM_TARGET))[0])
     assert cg.interval is not None
     for key, value in cg.interval.worlds.items():
-        margin = only((await run("static-margin", cg=value))[0])
+        margin = only((await run("static-margin-measured", cg=value))[0])
         assert margin.interval is not None
         assert close(margin.interval.worlds[key], SM_TARGET, 1e-9), key
 
 
 async def test_a_missing_target_is_a_missing_input() -> None:
-    quantity = only((await run("cg-for-target-margin"))[0])
+    quantity = only((await run("centre-of-gravity-design"))[0])
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.error is not None
     assert quantity.error.code == "missing_input"
@@ -71,7 +71,7 @@ async def test_a_missing_target_is_a_missing_input() -> None:
 
 
 async def test_the_missing_fuselage_is_inherited_in_every_world() -> None:
-    quantity = only((await run("cg-for-target-margin", target=SM_TARGET))[0])
+    quantity = only((await run("centre-of-gravity-design", target=SM_TARGET))[0])
     fuselage = [w for w in quantity.warnings if w.code == "fuselage_not_modelled"]
     assert sorted(str(w.world) for w in fuselage) == [
         "neutral-point=avl",
@@ -85,7 +85,7 @@ async def test_a_failing_avl_world_is_an_error_with_the_worlds_that_computed() -
     """Pins the existing merge behaviour (ARCH 8.13) for this formula; it passes without new code."""
     avl = StubAvl(X_NP_AVL)
     avl.failure = FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "avl failed", "retry")
-    quantity = only((await run("cg-for-target-margin", target=SM_TARGET, avl=avl))[0])
+    quantity = only((await run("centre-of-gravity-design", target=SM_TARGET, avl=avl))[0])
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.interval is None
     assert quantity.error is not None
