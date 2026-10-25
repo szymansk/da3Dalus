@@ -149,6 +149,27 @@ def _duplicates(ids: list[str]) -> list[str]:
     return sorted({value for value in ids if ids.count(value) > 1})
 
 
+def _group_problems(
+    group: Group, groups: dict[str, Group], families: dict[str, list[str]]
+) -> list[str]:
+    """Return what is wrong with the ids a group's properties name."""
+    problems = [
+        f"{name} {value!r}"
+        for name, value, family in (
+            ("parent", group.parent, "groups"),
+            ("stage", group.stage, "stages"),
+            ("module", group.module, "modules"),
+        )
+        if value is not None and value not in families[family]
+    ]
+    parent = groups.get(group.parent) if group.parent is not None else None
+    if parent is not None and parent.parent is not None:
+        problems.append(f"parent {parent.id!r} is itself a part of a group")
+    if group.parent == group.id:
+        problems.append("parent is the group itself")
+    return problems
+
+
 class Taxonomy(BaseModel):
     """Every value of every tag family, in display order.
 
@@ -201,28 +222,19 @@ class Taxonomy(BaseModel):
 
     @model_validator(mode="after")
     def _check_references(self) -> Self:
-        """Require every id a property names to exist in its family."""
+        """Require every id a group property names to exist in its family."""
         families = self._families()
         groups = {group.id: group for group in self.groups}
         for group in self.groups:
-            problems = [
-                f"{name} {value!r}"
-                for name, value, family in (
-                    ("parent", group.parent, "groups"),
-                    ("stage", group.stage, "stages"),
-                    ("module", group.module, "modules"),
-                )
-                if value is not None and value not in families[family]
-            ]
-            if group.parent is not None and group.parent in groups:
-                if groups[group.parent].parent is not None:
-                    problems.append(f"parent {group.parent!r} is itself a part of a group")
-                if group.parent == group.id:
-                    problems.append("parent is the group itself")
-            if problems:
+            if problems := _group_problems(group, groups, families):
                 msg = f"group {group.id}: unknown or invalid " + ", ".join(problems)
                 raise ValueError(msg)
-        tools = set(families["tools"])
+        return self
+
+    @model_validator(mode="after")
+    def _check_world_tools(self) -> Self:
+        """Require the tool of every world to be one of the tools."""
+        tools = {tool.id for tool in self.tools}
         for world in self.worlds:
             if world.tool not in tools:
                 msg = f"world {world.id}: tool {world.tool!r} is not in tools"
