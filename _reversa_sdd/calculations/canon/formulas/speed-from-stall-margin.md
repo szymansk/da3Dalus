@@ -1,19 +1,19 @@
 ---
 canon: speed-from-stall-margin
 entry: formula
-kind: rating
+kind: law
 tool: APP
-shape: approximation
+shape: law
 status: approved
 output: approach-speed, touchdown-speed, takeoff-speed
 source_status: SOURCED
-dimensional_check: PROCEDURAL
+dimensional_check: BALANCES
 tags:
   - canon/formula
   - source/sourced
-  - dim/procedural
-  - shape/approximation
-  - kind/rating
+  - dim/balances
+  - shape/law
+  - kind/law
   - status/approved
 inputs: {v_s_cfg: null, k_s: null}
 outputs: {v: null}
@@ -34,18 +34,21 @@ applications:
 **Canonical form**
 
 ```
-V = k_S * V_S,cfg      (V_S,cfg = V_S0 for approach and touchdown, V_S,TO for take-off)
+V_app = k_S,app * V_S0
 ```
+
+One relation, three applications: `V = k_S · V_S,cfg` with the stall speed of the matching configuration —
+`V_app = k_S,app · V_S0`, `V_TD = k_S,TD · V_S0`, `V_TO = k_S,TO · V_S,TO`.
 
 **Produces** [[approach-speed]] · [[touchdown-speed]] · [[takeoff-speed]]  ·  **from** [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[approach-speed-margin-target]] · [[touchdown-speed-margin-target]] · [[takeoff-speed-margin-target]]
 
-**Kind: a rating.** A preference, not physics. The reference values still need an origin and a scale — where does *excellent* come from, and for which aircraft? **On top:** whether **this** weighting is the one you want. That part is a decision, not a fact.
+**Kind: a law — a definition.** The named speeds are defined as a margin over the stall speed of the
+matching configuration; the margins `k_S` are sourced targets in `defaults.yaml` (approach 1.3, touchdown
+1.1 — Lennon Ch. 20, CS 25.125 as the lower bound). Not an approximation of another relation: the
+approach speed *is* `k_S · V_S0` by definition (reclassified from rating/approximation, maintainer
+2026-10-25).
 
-⚠️ **Shape: an approximation.** A rule of thumb standing where a law belongs. It may be the right thing to show, but it is never approved *as* the law for this quantity.
-
-> V_x and V_y are labelled best-angle and best-rate-of-climb but contain no climb relation — no thrust, no excess power.
-
-**Dimensional check.** ⚪ procedural — not an algebraic law
+**Dimensional check.** 🟢 balances — dimensionless × m/s = m/s.
 
 **Source.** 🟢 SOURCED
 
@@ -119,3 +122,7 @@ operating point, which has been computed since 2026-10-01 (§3.10).
 > `V = k_S · V_S,cfg` with the sourced defaults approach 1.3, touchdown 1.1, take-off 1.1
 > (`defaults.yaml`, overridable targets). The shape stays an approximation and the RC caution above stands:
 > at model Reynolds number the 1.3 is a lower bound.
+
+> **Approval confirmed** (maintainer, 2026-10-25) after a classification cleanup only: kind and shape `law`
+> (a definition, not a rating or an approximation), dimensional check `balances`, a stale V_x/V_y remark
+> removed. The relation and the margins are unchanged.
