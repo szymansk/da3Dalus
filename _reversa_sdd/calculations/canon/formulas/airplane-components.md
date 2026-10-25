@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: KAT
 shape: law
-status: draft
+status: approved
 output: battery-mass, battery-charge-capacity, battery-capacity, battery-c-rate, battery-current-allowed, motor-voltage-constant, motor-no-load-current, motor-circuit-resistance, battery-voltage, motor-max-power, propeller-diameter
 source_status: PARTIAL
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs: {components: components}
 outputs:
   m_bat: battery-mass
@@ -73,10 +73,17 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-25). The entry is a read: it computes nothing beyond the two declared
+> derivations (pack energy from charge and nominal voltage, allowed current from C-rate and charge). The
+> values are catalogue data — manufacturer figures where published — adopted on the maintainer's
+> authority; their calibration is the manufacturers', not the canon's. Decided in the same review (#1235):
+> no drive-train efficiency and no specific energy are read here; capacity is read in mAh; the continuous
+> C-rate is read and the allowed current stays in this entry; `R_m` and `I_0` are optional and only
+> published values are used (route B where Ri is published, route A otherwise, #1149, debt #1236). The
+> implementation checklist item holds vacuously: there is no implementation yet (#1238).

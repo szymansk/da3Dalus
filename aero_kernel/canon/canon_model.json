@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:917ba0c8c80fc5ec55012293fb596d44e07c462c8933b9967fd96903a872b1eb",
+  "content_hash": "sha256:a3bc240b13194654b2ab22888fd1c8d992a9fbbb50972adfe6742657b90d6a92",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -10,6 +10,13 @@
           "source": "Lennon, Basics of R/C Model Aircraft Design, Ch. 20 (FAR 23 reasoning, scaled); CS 25.125 as transport-category reference",
           "unit": "1",
           "value": 1.3
+        },
+        "battery-specific-energy": {
+          "basis": "convention",
+          "regime": "RC LiPo packs, pack level (wiring, balance lead, shrink included); the cell-level figure of the cited RC-Network value (152.8 Wh/kg) is higher by construction",
+          "source": "maintainer, 2026-10-25 (#1235): pack level, a round value inside 128–159 Wh/kg; that band comes from the catalogue's ten 'Generic LiPo' entries, which are placeholder data, not manufacturer datasheets — no published pack value is cited yet",
+          "unit": "Wh/kg",
+          "value": 140.0
         },
         "gravity": {
           "basis": "standard",
