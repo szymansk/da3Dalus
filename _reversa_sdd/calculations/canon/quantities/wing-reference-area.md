@@ -4,7 +4,6 @@ kind: quantity
 symbol: S_ref
 unit: m^2
 role: derived
-status: approved
 tags:
   - canon/quantity
   - stage/references

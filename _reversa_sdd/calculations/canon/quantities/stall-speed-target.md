@@ -4,7 +4,6 @@ kind: quantity
 symbol: V_S,target
 unit: m/s
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/design-targets

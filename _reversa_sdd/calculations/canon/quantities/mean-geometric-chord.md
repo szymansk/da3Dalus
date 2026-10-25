@@ -4,7 +4,6 @@ kind: quantity
 symbol: c_bar
 unit: m
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/structure

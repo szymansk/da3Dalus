@@ -4,7 +4,6 @@ kind: quantity
 symbol: delta_a,crow
 unit: deg
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/control-deflections

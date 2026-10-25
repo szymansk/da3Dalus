@@ -30,6 +30,8 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))  # the script runs from scripts/, the package sits at the root
 
+from aero_kernel.canon.model import CanonModel  # noqa: E402
+from aero_kernel.importer.approval import derive_approval  # noqa: E402
 from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES  # noqa: E402
 
 #: Edges the layering breaks, with the reason. A naming collapse, not a fixed point: one
@@ -440,6 +442,62 @@ def default_marks(data: dict, model: dict) -> None:
     data["conv"] = {q: sorted(v) for q, v in sorted(conv.items())}
 
 
+#: The five kinds of data source (canon README, "Two-stage approval"): id, label, explanation.
+SOURCE_KINDS = (
+    (
+        "geometry",
+        "Geometry format",
+        "A field of the airplane geometry document (docs/geometry-format).",
+    ),
+    ("component", "Component catalogue", "A field of a component type in the parts catalogue."),
+    ("default", "Defaults", "An entry of defaults.yaml: a value the canon states with its source."),
+    ("app", "Designer input in the app", "A named field the designer enters in the app."),
+    (
+        "evaluation",
+        "Evaluation result",
+        "The result of the evaluation or of the selection graph (Urmodell).",
+    ),
+)
+
+
+def approval_marks(data: dict, model: dict) -> None:
+    """Two-stage approval (#1251): per formula stage 1 and inputs k of n, per quantity its derived status.
+
+    Stage 1 is the formula's own status in its entry; stage 2 and the quantity statuses are derived
+    from the canon model by the same function the importer reports with.
+    """
+    stage1 = {slug: f["status"] or "draft" for slug, f in data["F"].items()}
+    approval = derive_approval(CanonModel.model_validate(model), stage1)
+    data["appr"] = {
+        row.formula: {
+            "s1": row.stage1,
+            "k": row.mapped,
+            "n": row.total,
+            "missing": [{"q": state.quantity, "why": state.basis} for state in row.missing]
+            + [{"q": "", "why": f"embedded: {blocker}"} for blocker in row.embed_blockers],
+        }
+        for row in approval.formulas
+    }
+    data["qstat"] = approval.quantity_status
+    quantities = model["namespaces"]["calc"]["quantities"]
+    data["qdata"] = {q: v["data"] for q, v in sorted(quantities.items()) if v.get("data")}
+    data["srckinds"] = [
+        {"id": k, "label": label, "explanation": text} for k, label, text in SOURCE_KINDS
+    ]
+    fed: dict = {}
+    for quantity, sources in data["qdata"].items():
+        for source in sources:
+            fed.setdefault(source, []).append(quantity)
+    order = {k: i for i, (k, _, _) in enumerate(SOURCE_KINDS)}
+    data["src"] = [
+        {"id": source, "kind": source.split(":", 1)[0], "loc": source.split(":", 1)[1], "qs": qs}
+        for source, qs in sorted(
+            fed.items(), key=lambda item: (order[item[0].split(":", 1)[0]], item[0])
+        )
+    ]
+    data["miss"] = sorted(q for q, status in data["qstat"].items() if status == "unmapped")
+
+
 def binding_constants(model_formulas: dict) -> dict:
     """Constants bound in applications (``{const, source}``): per formula, per application id.
 
@@ -492,6 +550,7 @@ def build() -> tuple[str, dict]:
     data = layout(quantities, formulas, edges)
     kernel_status(data, KERNEL_FORMULAS)
     default_marks(data, model)
+    approval_marks(data, model)
     data["tax"] = model["namespaces"]["calc"]["taxonomy"]
     data["stand"] = model["content_hash"][:12]
     template = pathlib.Path(__file__).with_name("canon_navigator_template.html")

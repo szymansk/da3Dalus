@@ -56,9 +56,9 @@ FORMULA_DROPPED = frozenset(
     }
 )
 QUANTITY_CARRIED = frozenset(
-    {"symbol", "unit", "role", "type", "positive", "at_most", "uncertainty", "checks"}
+    {"symbol", "unit", "role", "type", "positive", "at_most", "uncertainty", "checks", "data"}
 )
-QUANTITY_DROPPED = frozenset({"canon", "kind", "status", "tags"})
+QUANTITY_DROPPED = frozenset({"canon", "kind", "tags"})
 
 # Container type of each field: str, mapping or list. Required fields are listed apart.
 _FORMULA_SHAPE = {
@@ -247,7 +247,16 @@ def _check_entry(
         else (QUANTITY_CARRIED, QUANTITY_DROPPED, _QUANTITY_SHAPE, _QUANTITY_REQUIRED)
     )
     for name, value in front.items():
-        if name == "default" and not is_formula:
+        if name == "status" and not is_formula:
+            findings.append(
+                Finding(
+                    file=file,
+                    field="status",
+                    message="a quantity's status is derived (producer's status, or stage 2: a "
+                    "'data:' source), not hand-set; remove the field",
+                )
+            )
+        elif name == "default" and not is_formula:
             findings.append(
                 Finding(
                     file=file,

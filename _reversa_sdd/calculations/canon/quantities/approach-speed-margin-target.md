@@ -4,12 +4,15 @@ kind: quantity
 symbol: k_S,app
 unit: 1
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/envelope-targets
   - role/target
 type: scalar
+data:
+  - default:approach-speed-margin-target
+  - app:Goals.approach_speed_margin_vs_ldg
+
 positive: true
 ---
 

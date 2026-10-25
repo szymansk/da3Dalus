@@ -4,12 +4,15 @@ kind: quantity
 symbol: k_S,TO
 unit: 1
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/envelope-targets
   - role/target
 type: scalar
+data:
+  - default:takeoff-speed-margin-target
+  - app:Goals.takeoff_speed_margin_vs_to
+
 positive: true
 ---
 

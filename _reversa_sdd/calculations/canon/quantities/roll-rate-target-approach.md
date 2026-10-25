@@ -4,7 +4,6 @@ kind: quantity
 symbol: p_target,app
 unit: deg/s
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/design-targets

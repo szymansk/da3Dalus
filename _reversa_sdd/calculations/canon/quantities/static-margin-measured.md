@@ -4,7 +4,6 @@ kind: quantity
 symbol: SM_meas
 unit: 1
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/longitudinal

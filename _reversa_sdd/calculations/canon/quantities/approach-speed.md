@@ -4,7 +4,6 @@ kind: quantity
 symbol: V_app
 unit: m/s
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

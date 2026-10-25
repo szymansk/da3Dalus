@@ -4,7 +4,6 @@ kind: quantity
 symbol: B_spiral
 unit: 1
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/lateral

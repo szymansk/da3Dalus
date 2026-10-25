@@ -4,7 +4,6 @@ kind: quantity
 symbol: alpha_bg,probe
 unit: deg
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/glide

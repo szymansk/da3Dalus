@@ -4,7 +4,6 @@ kind: quantity
 symbol: V_S0(s)
 unit: m/s
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/glide

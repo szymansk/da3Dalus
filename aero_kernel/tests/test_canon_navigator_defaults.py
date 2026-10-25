@@ -99,3 +99,40 @@ def test_the_real_navigator_shows_all_defaults_and_the_load_factor_constants() -
     consts = [c for f in data["F"].values() for a in f["apps"] for c in a["consts"]]
     assert len(consts) >= 6
     assert {c["param"] for c in consts} >= {"n_load"}
+
+
+def test_the_navigator_carries_stage_two_of_the_approval_per_formula_and_quantity() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "approved"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    stall = data["appr"]["stall-speed"]
+    assert stall["s1"] == "approved"
+    assert stall["k"] == stall["n"]
+    assert stall["missing"] == []
+    assert data["qstat"]["aircraft-mass"] == "approved"
+    assert data["qdata"]["aircraft-mass"] == ["geometry:total_mass_kg"]
+
+
+def test_every_missing_input_is_named_with_its_root_cause() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    for row in data["appr"].values():
+        assert row["k"] + len([m for m in row["missing"] if m["q"]]) == row["n"]
+        for missing in row["missing"]:
+            assert "no data source" in missing["why"] or "not approved" in missing["why"]
+
+
+def test_the_navigator_lists_every_data_source_with_what_it_feeds_and_the_missing_ones() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    kinds = {kind["id"] for kind in data["srckinds"]}
+    assert {source["kind"] for source in data["src"]} <= kinds
+    fed = {q for source in data["src"] for q in source["qs"]}
+    assert fed == set(data["qdata"])
+    assert set(data["miss"]).isdisjoint(fed)
+    assert set(data["miss"]) == {q for q, s in data["qstat"].items() if s == "unmapped"}

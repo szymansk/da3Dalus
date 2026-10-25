@@ -4,12 +4,13 @@ kind: quantity
 symbol: m
 unit: kg
 role: input
-status: approved
 tags:
   - canon/quantity
   - module/mass-and-balance
   - role/input
 type: scalar
+data: geometry:total_mass_kg
+
 positive: true
 ---
 

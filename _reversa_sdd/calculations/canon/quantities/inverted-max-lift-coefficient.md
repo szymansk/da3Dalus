@@ -4,7 +4,6 @@ kind: quantity
 symbol: C_L,min
 unit: 1
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

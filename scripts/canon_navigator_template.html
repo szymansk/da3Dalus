@@ -95,6 +95,9 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .colhead{font-family:"STIX Two Text",Georgia,serif;font-size:15px;font-weight:600;fill:var(--ink)}
 #g.noedges .edge{display:none !important}
 .edge.xedge{display:none}
+.edge.srcmiss{stroke-dasharray:5 3}
+.srclab{font-size:10px;text-anchor:middle;dominant-baseline:central;fill:var(--ink-2)}
+.srcnode.srcmiss .srclab{fill:var(--bad)}
 .edge.xedge.up,.edge.xedge.down{display:inline}
 .sspan{fill:var(--hub-bg);fill-opacity:.25;stroke:var(--hub);stroke-opacity:.75;stroke-width:1.3}
 .sframe{fill:var(--hub-bg);fill-opacity:.35;stroke:var(--hub);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
@@ -260,6 +263,7 @@ const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \
   dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
 IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
 const CONV=D.conv||{}, CONVS=D.conventions||{}, DEFS=D.defaults||{};
+const APPR=D.appr||{}, QSTAT=D.qstat||{}, QDATA=D.qdata||{};
 const BLOCKING=i=>!IKIND[kindOf(i)].info;
 const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
 const ISSUES={}; for(const f in D.F) for(const o of D.F[f].out) if((D.F[f].issues||[]).length) (ISSUES[o] ||= []).push(...D.F[f].issues.map(i=>({...i,formula:f})));
@@ -341,8 +345,11 @@ for(const d of DORDER){ const n=Object.keys(COLOF).filter(q=>COLOF[q]===d).lengt
   if(n) COLS.push({side:'analysis',module:d,cols:Math.max(2,Math.min(MAXCOLS,n))}); }
 if(DESIGN_SEP){ const n=Object.keys(COLOF).filter(q=>COLOF[q]==='design').length;
   if(n) COLS.push({side:'design',module:'design',cols:Math.max(2,Math.min(MAXCOLS,n))}); }
-const SX={xcut:0};
-{ let x=XW+REFGAP+RW+SIDEGAP, prev=null;
+// Data sources (#1251, maintainer 2026-10-25): an explicit layer between the cross-cutting column
+// and the first formula column; each source feeds the quantities that name it, missing ones are marked.
+const SRCW=2*NW, SRCCOLW=SRCW+2*FPAD, SRCGAP=34;
+const SX={xcut:0, src:XW+REFGAP+RW+SRCGAP};
+{ let x=SX.src+SRCCOLW+SIDEGAP, prev=null;
   for(const c of COLS){
     if(prev&&prev!==c.side) x+=SIDEGAP-MODGAP;
     if(prev!==c.side) SX[c.side]=x;
@@ -375,7 +382,7 @@ let yc=HEAD;
   }
   yc+=height-NH+GAPY;
 }
-const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w));
+const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW);
 const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
 // Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
 // in reading order inside each column; within a cluster: values of the point, then stability,
@@ -480,6 +487,21 @@ SX.refs=XW+REFGAP;
   }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
+const SRC=D.src||[], MISS=D.miss||[], SRCKINDS=D.srckinds||[];
+const SP={}, SRCFRAMES=[], SRCNODES=[];
+{ let y=XTOP+FHEAD;
+  const groups=SRCKINDS.map(k=>({id:k.id,label:k.label,missing:false,
+    items:SRC.filter(x=>x.kind===k.id).map(x=>({id:'src:'+x.id,label:x.loc,title:x.id,qs:x.qs,src:x}))}));
+  groups.push({id:'missing',label:'Missing \u2014 no source yet',missing:true,
+    items:MISS.map(q=>({id:'miss:'+q,label:'? '+q,title:'No demonstrated source for '+q,qs:[q],src:null}))});
+  for(const g of groups){
+    if(!g.items.length) continue;
+    const fh=(g.items.length-1)*SUBGAP+NH+2*FPAD;
+    SRCFRAMES.push({x:SX.src,y,w:SRCCOLW,h:fh,label:g.label+' \u00b7 '+g.items.length,missing:g.missing});
+    g.items.forEach((it,i)=>{ SP[it.id]={x:SX.src+FPAD,y:y+FPAD+i*SUBGAP}; SRCNODES.push({...it,missing:g.missing}); });
+    y+=fh+FHEAD+8; }
+  yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
+}
 const H=yc-GAPY+NH;
 const cam=document.getElementById('cam'), svg=document.getElementById('g');
 const NS='http://www.w3.org/2000/svg';
@@ -498,6 +520,11 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
     if(side==='design'&&!DESIGN_SEP) continue;
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
+  { line(SX.src-SRCGAP/2,XTOP-14,SX.src-SRCGAP/2,H+10);
+    const t=el('text',{x:SX.src,y:XTOP,class:'colhead'}); t.textContent='Data sources'; cam.appendChild(t);
+    for(const f of SRCFRAMES){
+      cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.missing?' srcmiss':'')}));
+      const l=el('text',{x:f.x+2,y:f.y-7,class:'blocklab '+(f.missing?'tmodlab':'modlab')}); l.textContent=f.label; cam.appendChild(l); } }
   for(const s of PSPANS){
     const st=s.band!=='final';
     if(!s.sub) cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
@@ -581,6 +608,27 @@ for(const q in Q){
   cam.appendChild(g); nodeEls[q]=g;
 }
 
+// The data sources: nodes and edges into the quantities that name them (shown on selection, like the
+// cross-cutting edges). They join the reach maps so that selecting a quantity lights its sources.
+for(const n of SRCNODES){ pred[n.id]=[]; succ[n.id]=n.qs.map(q=>[q,'']); n.qs.forEach(q=>pred[q].push([n.id,''])); }
+for(const n of SRCNODES){
+  const p1=SP[n.id];
+  for(const q of n.qs){
+    const p2=P[q], toLeft=p2.x+NW<=SX.src;
+    const x1=toLeft?p1.x:p1.x+SRCW, y1=p1.y+NH/2, x2=toLeft?p2.x+NW:p2.x, y2=p2.y+NH/2, dx=Math.max(30,Math.abs(x2-x1)/2)*(toLeft?-1:1);
+    const e=el('path',{class:'edge xedge srcedge'+(n.missing?' srcmiss':''),d:`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`});
+    cam.appendChild(e); edgeEls.push({e,a:n.id,b:q});
+  }
+  const g=el('g',{class:'node srcnode'+(n.missing?' srcmiss':''),transform:`translate(${p1.x},${p1.y})`,tabindex:'0',role:'button'});
+  g.appendChild(el('rect',{width:SRCW,height:NH,rx:5,fill:'var(--panel)',stroke:n.missing?'var(--bad)':'var(--ink-3)','stroke-dasharray':n.missing?'4 3':'none'}));
+  const t=el('text',{x:SRCW/2,y:NH/2,class:'srclab'}); t.textContent=n.label.length>26?n.label.slice(0,25)+'\u2026':n.label; g.appendChild(t);
+  const tt=el('title',{}); tt.textContent=n.title; g.appendChild(tt);
+  const open=()=>{ if(moved) return; if(n.src) selectSource(n.src); else select(n.qs[0]); };
+  g.addEventListener('click',open);
+  g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();} });
+  cam.appendChild(g); nodeEls[n.id]=g;
+}
+
 let depth=1, sel=null;
 const dEl=document.getElementById('depth'), dOut=document.getElementById('depthOut');
 dEl.addEventListener('input',()=>{depth=+dEl.value;dOut.value=depth;if(sel)paint();});
@@ -638,6 +686,8 @@ function select(q){
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   if(CONV[q]) h+=`<div class="blk"><div class="lab" style="color:var(--sel)">&#8776; Rests on a defined value \u00b7 ${CONV[q].length}</div>`+
     CONV[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(CONVS[c].value)} ${esc(CONVS[c].unit==='1'?'':CONVS[c].unit)}</b> <span class="sub">(${esc(c)}, convention)</span><br>${esc(CONVS[c].source)}<br><span class="sub">A value chosen without a published source, adopted on the maintainer&#8217;s word &#8212; the result is only as good as this choice.</span></div>`).join('')+`</div>`;
+  if(QSTAT[q]==='unmapped') h+=`<div class="blk"><div class="lab" style="color:var(--bad)">Data source \u00b7 unmapped</div><p class="sub" style="margin:0">No demonstrated source in our data (geometry, component catalogue, default, app field, evaluation); stage 2 of every formula reading it stays open.</p></div>`;
+  else if(QDATA[q]) h+=`<div class="blk"><div class="lab">Data source \u00b7 approved</div><ul class="lnk" style="display:block">`+QDATA[q].map(x=>`<li style="display:block;cursor:default">${esc(x)}</li>`).join('')+`</ul></div>`;
   if(DEFS[q]){ const d=DEFS[q], link=x=>`<li data-q="${esc(x)}" title="${esc(x)}">${esc(sym(x))}</li>`;
     h+=`<div class="blk"><div class="lab">Default \u00b7 ${esc(d.basis)}</div>`+
       `<div class="cblk"><b>${esc(sym(q))} = ${esc(d.value)} ${esc(d.unit==='1'?'':d.unit)}</b> <span class="sub">(${esc(q)}, overridable by the caller; taking it is declared)</span><br>`+
@@ -657,6 +707,9 @@ function select(q){
   for(const f of fs){
     const e=F[f];
     h+=`<div class="blk"><div class="lab">Produced by \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;
+    { const ap=APPR[f];
+      if(ap) h+=`<p class="sub" style="margin:0 0 6px">Approval: formula <b>${ap.s1==='approved'?'&#10003;':'&#8212;'}</b> ${esc(ap.s1)} \u00b7 inputs <b>${ap.k}</b> of <b>${ap.n}</b>`+
+        (ap.missing.length?'<br>missing: '+ap.missing.map(m=>m.q?`<a href="#" onclick="select('${esc(m.q)}');return false">${esc(sym(m.q))}</a> <span class="sub">(${esc(m.why)})</span>`:`<span class="sub">${esc(m.why)}</span>`).join(' &#183; '):'')+`</p>`; }
     h+= e.tex ? `<div class="math">$$${e.tex}$$</div>`
               : `<div class="mono">${esc(e.form)}</div>
                  <p class="sub" style="margin:6px 0 0">Procedural form \u2014 not typeset as a formula.</p>`;
@@ -684,6 +737,15 @@ function select(q){
   info.innerHTML=h;
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
+}
+function selectSource(x){
+  const id='src:'+x.id; sel={module:id,members:new Set([id])}; paint();
+  const kind=SRCKINDS.find(k=>k.id===x.kind)||{label:x.kind,explanation:''};
+  info.innerHTML=`<h2>${esc(x.loc)}</h2><p class="meta">${esc(kind.label)} \u00b7 ${esc(x.id)}</p>
+   <p class="desc">${esc(kind.explanation)}</p>
+   <div class="blk"><div class="lab">Feeds \u00b7 ${x.qs.length}</div><ul class="lnk">`+
+   x.qs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
 }
 const KINDNAME={module:'module',discipline:'discipline',stage:'stage',point:'operating point',group:'group'};
 function membersOf(kind,key){
@@ -785,7 +847,9 @@ document.addEventListener('click',ev=>{ const bt=ev.target.closest('.seg button[
   document.getElementById('kstat').innerHTML=
     `Canon model <b>${esc(D.stand||'')}</b>.<br>`+
     `Formulas implemented: <b>${fDone.length}</b> of <b>${fAll.length}</b>.<br>`+
-    `Formulas approved: <b>${fAll.filter(f=>F[f].status==='approved').length}</b> of <b>${fAll.length}</b>; `+
+    `Data sources: <b>${SRC.length}</b>; quantities with no source yet: <b>${MISS.length}</b>.<br>`+
+    `Formulas approved (stage 1): <b>${fAll.filter(f=>F[f].status==='approved').length}</b> of <b>${fAll.length}</b>; `+
+    `with both stages (inputs mapped): <b>${fAll.filter(f=>F[f].status==='approved'&&APPR[f]&&!APPR[f].missing.length).length}</b>.<br>`+
     `<span style="color:var(--bad)">with open issues: <b>${fAll.filter(f=>(F[f].issues||[]).some(BLOCKING)).length}</b></span>.<br>`+
     `MVP (BRYAN, JAGUAR): ${res.map(r=>`<a href="#" data-q="${esc(r)}">${esc(sym(r))}</a>`).join(', ')} &#8212; `+
     `<b>${mvpF.length-mvpOpen.length}</b> of <b>${mvpF.length}</b> formulas implemented.`+

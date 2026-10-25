@@ -4,12 +4,12 @@ kind: quantity
 symbol: f
 unit: 1
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/conventions
   - role/input
 type: scalar
+data: default:stall-break-fraction
 ---
 
 # Stall break fraction · `f`

@@ -4,12 +4,12 @@ kind: quantity
 symbol: E_star
 unit: Wh/kg
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/construction
   - role/input
 type: scalar
+data: default:battery-specific-energy
 ---
 
 # Specific energy of the battery · `E_star`

@@ -5,7 +5,6 @@ symbol: delta_a,req,app
 unit: deg
 role: output
 uncertainty: interval
-status: draft
 tags:
   - canon/quantity
   - discipline/lateral

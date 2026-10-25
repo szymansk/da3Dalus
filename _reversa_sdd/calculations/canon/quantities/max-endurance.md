@@ -4,7 +4,6 @@ kind: quantity
 symbol: t_max
 unit: s
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

@@ -4,7 +4,6 @@ kind: quantity
 symbol: polar_S
 unit: 1
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

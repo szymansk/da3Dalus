@@ -5,7 +5,6 @@ symbol: p_app
 unit: deg/s
 role: output
 uncertainty: interval
-status: draft
 tags:
   - canon/quantity
   - discipline/lateral

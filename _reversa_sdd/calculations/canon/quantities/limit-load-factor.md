@@ -4,12 +4,13 @@ kind: quantity
 symbol: n_lim
 unit: 1
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/envelope-targets
   - role/target
 type: scalar
+data: default:limit-load-factor
+
 positive: true
 ---
 

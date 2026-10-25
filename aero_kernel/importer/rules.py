@@ -151,6 +151,32 @@ def _producers(content: Namespace) -> list[Finding]:
     return findings
 
 
+def _data_on_produced(content: Namespace) -> list[Finding]:
+    """A ``data`` source belongs to a supplied quantity, or one only a pure data read produces.
+
+    A pure data read is a formula of tool ``KAT`` (the parts catalogue): its outputs are read from, or
+    computed from, catalogue fields, so they may name those fields (two-stage approval, #1251).
+    """
+    makers: dict[str, set[str]] = {}
+    for formula_slug, formula in content.formulas.items():
+        for application in formula.applications:
+            for slug in _produced(application).values():
+                makers.setdefault(_bare(slug), set()).add(formula_slug)
+    return [
+        Finding(
+            file=_quantity_file(slug),
+            field="data",
+            message="this quantity is produced by a formula that is not a pure data read (tool KAT): "
+            "its source is that formula; 'data:' belongs to supplied quantities and to quantities "
+            "a catalogue read produces",
+        )
+        for slug, quantity in sorted(content.quantities.items())
+        if quantity.data is not None
+        and slug in makers
+        and any(content.formulas[maker].tool != "KAT" for maker in makers[slug])
+    ]
+
+
 def _names(content: Namespace) -> list[Finding]:
     """A9: a target has a ``target`` segment in its name; no input or target is called requirement.
 
@@ -333,6 +359,7 @@ def check_model(model: CanonModel) -> list[Finding]:
         findings.extend(_producers(content))
         findings.extend(_reads_of_per_control_surface(content))
         findings.extend(_per_control_surface_roles(content))
+        findings.extend(_data_on_produced(content))
         findings.extend(_names(content))
         findings.extend(_symbols(content))
         findings.extend(_units(content))

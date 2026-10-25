@@ -4,7 +4,6 @@ kind: quantity
 symbol: x_cg,design
 unit: m
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/longitudinal

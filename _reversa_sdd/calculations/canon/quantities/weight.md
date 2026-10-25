@@ -4,7 +4,6 @@ kind: quantity
 symbol: W
 unit: "N"
 role: derived
-status: approved
 tags:
   - canon/quantity
   - stage/references

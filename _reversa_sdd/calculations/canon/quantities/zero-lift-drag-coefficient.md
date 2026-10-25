@@ -4,7 +4,6 @@ kind: quantity
 symbol: C_D0
 unit: 1
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

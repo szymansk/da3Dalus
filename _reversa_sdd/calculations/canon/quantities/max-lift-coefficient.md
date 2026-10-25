@@ -4,7 +4,6 @@ kind: quantity
 symbol: C_L,max,S
 unit: 1
 role: derived
-status: approved
 tags:
   - canon/quantity
   - discipline/aerodynamics
