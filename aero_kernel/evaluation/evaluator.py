@@ -211,13 +211,20 @@ def _status_of(positions: set[Position]) -> RuleStatus:
     }[next(iter(positions))]
 
 
+def _band_text(band: Band) -> str:
+    """Write a band as ``low…high``, ``≥ low`` or ``≤ high``."""
+    if band.min is not None and band.max is not None:
+        return f"{band.min:g}…{band.max:g}"
+    if band.min is not None:
+        return f"≥ {band.min:g}"
+    return f"≤ {band.max:g}"
+
+
 def _explain(
     rule: Rule, status: RuleStatus, text: str, positions: set[Position], level: str | None
 ) -> str:
     """Write the explanation: the value, the band, the source and the meaning of leaving it."""
-    low = "" if rule.band.min is None else f"{rule.band.min:g}"
-    high = "" if rule.band.max is None else f"{rule.band.max:g}"
-    band = f"{low}…{high}" if low and high else (f"≥ {low}" if low else f"≤ {high}")
+    band = _band_text(rule.band)
     verb = {
         RuleStatus.INSIDE: "lies inside",
         RuleStatus.BELOW: "lies below",

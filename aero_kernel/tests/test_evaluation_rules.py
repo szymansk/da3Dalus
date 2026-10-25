@@ -64,8 +64,9 @@ def test_a_planned_marker_is_a_ticket_reference() -> None:
 
 
 def test_rule_ids_are_unique() -> None:
+    rules = (rule_of(), rule_of())
     with pytest.raises(ValidationError):
-        RuleTable(source="s", rules=(rule_of(), rule_of()))
+        RuleTable(source="s", rules=rules)
 
 
 def test_levels_are_matched_in_order() -> None:
@@ -162,8 +163,10 @@ def test_the_shipped_json_is_current() -> None:
 
 def test_the_json_rendering_is_stable() -> None:
     table = load_rule_table(DRELA)
-    assert render_rule_table(table) == render_rule_table(table)
-    assert render_rule_table(table).endswith("}\n")
+    first = render_rule_table(table)
+    second = render_rule_table(load_rule_table(DRELA))
+    assert first == second
+    assert first.endswith("}\n")
 
 
 def test_the_two_applications_of_the_static_margin_rule_do_not_drift_apart() -> None:
@@ -205,3 +208,15 @@ def test_the_rudder_roll_authority_above_side_is_a_caution_with_the_maintainers_
     assert rule.above_basis is not None
     assert "maintainer 2026-10-25" in rule.above_basis
     assert (rule.band.min, rule.band.max) == (0.10, 0.20)
+
+
+def test_a_rule_table_outside_the_working_directory_is_refused(tmp_path: Path) -> None:
+    outside = tmp_path / "rules.yaml"
+    outside.write_text("source: x\nrules: []\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="inside"):
+        load_rule_table(outside)
+
+
+def test_a_rule_table_that_is_not_yaml_is_refused() -> None:
+    with pytest.raises(ValueError, match="YAML"):
+        load_rule_table(REPO / "aero_kernel" / "evaluation" / "rule_table.json")

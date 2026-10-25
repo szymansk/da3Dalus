@@ -28,9 +28,20 @@ def load_rule_table(path: Path) -> RuleTable:
         The validated table.
 
     Raises:
+        ValueError: If the path is not a YAML file inside the current working directory.
         pydantic.ValidationError: If the file does not describe a valid table.
     """
-    return RuleTable.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+    return RuleTable.model_validate(yaml.safe_load(_checked(path).read_text(encoding="utf-8")))
+
+
+def _checked(path: Path) -> Path:
+    """Resolve a path and require a YAML file inside the working directory (path-injection guard)."""
+    resolved = path.resolve()
+    base = Path.cwd().resolve()
+    if resolved.suffix not in (".yaml", ".yml") or not resolved.is_relative_to(base):
+        msg = f"{path} is not a YAML file inside {base}"
+        raise ValueError(msg)
+    return resolved
 
 
 def render_rule_table(table: RuleTable) -> str:
