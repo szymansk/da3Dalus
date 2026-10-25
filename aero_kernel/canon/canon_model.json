@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:9f9f88049a26b027e83310ea63fb660dca1d489e70d2a78176a6f1eb3ef13922",
+  "content_hash": "sha256:08df065f7b6823480e98b426b9f83519bd8e90443f9cf35d30204d11a00da186",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1918,9 +1918,11 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": {
                   "const": 1.0,
                   "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
@@ -1941,9 +1943,11 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "n_load": null,
             "rho": "calc:air-density"
           },
