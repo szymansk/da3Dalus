@@ -36,7 +36,7 @@ becomes the app's single source of computation (register epic "implement the cal
 - Dependencies are limited to numpy, pydantic, aerosandbox and avl-binary.
 - The fast CI tier runs **without** AeroSandbox and AVL.
 - One unit per quantity, the canon's: SI-coherent, with the canon's declared exceptions (angles in
-  `deg`, `deg/s`; `Wh`; `rpm/V`). No conversion inside the kernel except the geometry's millimetre fields.
+  `deg`, `deg/s`; `Wh`; `rpm/V`; `mAh`, `1/h` for the battery as the catalogue holds it). No conversion inside the kernel except the geometry's millimetre fields.
 - Everything in the source tree is English (ADR 0029).
 - PEP 8, Pydantic v2 for all data types, full type annotations; enforced by `ruff` (strict rule set in
   `aero_kernel/ruff.toml`) and `pyright` in strict mode (module CLAUDE.md).
@@ -1043,7 +1043,7 @@ implementation, not before (ADR 0021).
 **Binding of canon input quantities to the input:**
 - **Units.** A value is given, and a result returned, in the unit the canon model declares for the
   quantity — SI-coherent, with the canon's declared exceptions: angles in `deg` (and `deg/s`), energy in
-  `Wh`, the motor constant in `rpm/V`. The kernel converts none of them; a formula converts internally
+  `Wh`, the battery charge in `mAh` and its C-rate in `1/h`, the motor constant in `rpm/V`. The kernel converts none of them; a formula converts internally
   where a tool needs radians or SI base units.
 - **What `values` may hold.** Only slugs of **scalar** canon quantities with `role: input` or `role:
   target`. An unknown slug is an `input_errors` entry, code `unknown_quantity`; a slug of a derived or
@@ -1531,7 +1531,7 @@ model (part of `IMPORT_REPORT.md`).
 | `aerobuildup-evaluation` | procedure | AB | law | 4 → 4 | 1 | – | – | seconds | core chain |
 | `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
-| `airplane-components` | procedure | KAT | law | 1 → 10 | 1 | – | – | instant | probe |
+| `airplane-components` | procedure | KAT | law | 1 → 11 | 1 | – | – | instant | probe |
 | `airplane-configuration` | procedure | GEO | law | 2 → 1 | 2 | – | – | instant | core chain |
 | `airplane-geometry` | procedure | GEO | law | 1 → 3 | 1 | – | – | instant | core chain |
 | `aspect-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
@@ -1540,11 +1540,12 @@ model (part of `IMPORT_REPORT.md`).
 | `best-rate-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | later |
 | `butterfly-approach` | optimization | OPT | law | 6 → 4 | 1 | – | – | seconds | later |
 | `cg-for-target-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
-| `cruise-target-performance` | procedure | OPT | law | 7 → 2 | 1 | – | – | seconds | later |
+| `cruise-target-performance` | procedure | OPT | law | 14 → 2 | 1 | – | – | seconds | later |
 | `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
 | `drag-polar` | law | APP | approximation | 3 → 1 | 1 | – | – | instant | later |
 | `dynamic-pressure` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
-| `endurance-and-range` | procedure | OPT | law | 8 → 2 | 1 | – | – | seconds | later |
+| `endurance-and-range` | procedure | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
+| `endurance-and-range-optimum` | optimization | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
 | `glide-distance-from-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | later |
 | `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `lateral-static-stability-app` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
@@ -1565,7 +1566,8 @@ model (part of `IMPORT_REPORT.md`).
 | `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later |
 | `minimum-drag-speed-from-polar` | optimization | OPT | route | 5 → 2 | 1 | – | – | seconds | core chain |
 | `minimum-sink-speed-from-polar` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | core chain |
-| `motor-propeller-equilibrium` | procedure | APP | route | 9 → 1 | 1 | – | – | instant | probe |
+| `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe |
+| `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later |
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
 | `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe |
 | `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe |
