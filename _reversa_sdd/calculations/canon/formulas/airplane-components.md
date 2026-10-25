@@ -5,7 +5,7 @@ kind: procedure
 tool: KAT
 shape: law
 status: approved
-output: battery-mass, battery-charge-capacity, battery-capacity, battery-c-rate, battery-current-allowed, motor-voltage-constant, motor-no-load-current, motor-circuit-resistance, battery-voltage, motor-max-power, propeller-diameter
+output: battery-mass, battery-charge-capacity, battery-capacity, battery-c-rate, battery-current-allowed, cell-voltage-nominal, motor-voltage-constant, motor-no-load-current, motor-circuit-resistance, motor-efficiency, battery-voltage, motor-max-power, propeller-diameter
 source_status: PARTIAL
 dimensional_check: PROCEDURAL
 tags:
@@ -15,16 +15,18 @@ tags:
   - shape/law
   - kind/procedure
   - status/approved
-inputs: {components: components, u_cell: cell-voltage-nominal}
+inputs: {components: components}
 outputs:
   m_bat: battery-mass
   q_bat: battery-charge-capacity
   e_bat: battery-capacity
   c_rate: battery-c-rate
   i_bat_max: battery-current-allowed
+  u_cell: cell-voltage-nominal
   k_v: motor-voltage-constant
   i_0: motor-no-load-current
   r_m: motor-circuit-resistance
+  eta_mot: motor-efficiency
   u_bat: battery-voltage
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
@@ -35,13 +37,14 @@ outputs:
 **Canonical form**
 
 ```
-m_bat, Q_bat, C_rate, K_v, I_0, R_m, P_mot,max, D_prop := components of the airplane
+m_bat, Q_bat, C_rate, U_cell, K_v, I_0, R_m, eta_mot, P_mot,max, D_prop := components of the airplane
+                                              (U_cell = battery.cell_voltage_v, eta_mot = brushless_motor.efficiency_pct / 100)
 U_bat     := cells * U_cell                  (cells from the pack; U_cell = cell-voltage-nominal)
 E_bat     := Q_bat / 1000 * U_bat            (Ah times the nominal pack voltage; U_bat = cells * U_cell)
 I_bat,max := C_rate * Q_bat / 1000           (continuous current allowed, A)
 ```
 
-**Produces** [[battery-mass]] · [[battery-charge-capacity]] · [[battery-capacity]] · [[battery-c-rate]] · [[battery-current-allowed]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]  ·  **from** [[components]] · [[cell-voltage-nominal]]
+**Produces** [[battery-mass]] · [[battery-charge-capacity]] · [[battery-capacity]] · [[battery-c-rate]] · [[battery-current-allowed]] · [[cell-voltage-nominal]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[motor-efficiency]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]  ·  **from** [[components]]
 
 **Kind: a procedure — an evaluation of the model.** Battery data, motor and propeller data
 belong to the components the aircraft is built from — motor,
@@ -56,9 +59,9 @@ changes the mass, the thrust and with them everything downstream. The graph now 
 
 **Battery as the catalogue holds it** (maintainer, 2026-10-25, #1235). The charge is read in mAh ([[battery-charge-capacity]], field `capacity_mah`), the continuous C-rate as [[battery-c-rate]] (field `c_rate`; burst ratings are not modelled). Derived: the pack energy [[battery-capacity]] `= Q_bat/1000 · U_bat` in Wh (nominal cell voltage [[cell-voltage-nominal]], default 3.7 V) and the allowed continuous current [[battery-current-allowed]] `= C_rate · Q_bat/1000` in A, both as values for the evaluation (A10).
 
-**Motor and battery for the torque balance** (added 2026-10-01): `K_v`, `I_0` and `R_m` of the fitted motor, `U_bat` from the cell count and the nominal cell voltage [[cell-voltage-nominal]] (an input with a default, declared when taken). `R_m` and some `I_0` are missing from the catalogue (#1149), so both are **optional** outputs — an absent value is returned as absent, never filled in: `R_m` absent → route A, never estimated (`Q-PT-6`); `R_m` is the manufacturer's winding resistance (`rm_ohm`) only, ESC and cable are not in it, so the voltage loss is slightly under-estimated (maintainer, 2026-10-25, #1251); `I_0` absent → the torque balance runs with `I_0 = 0` (BR-PT15). Both are declared by a `practice` warning (ADR 0020); route B is taken only where the manufacturer publishes `R_m`.
+**Motor and battery for the torque balance** (added 2026-10-01): `K_v`, `I_0` and `R_m` of the fitted motor, `U_bat` from the cell count and the nominal cell voltage [[cell-voltage-nominal]] (read from the battery, #1245). `R_m` and some `I_0` are missing from the catalogue (#1149), so both are **optional** outputs — an absent value is returned as absent, never filled in: `R_m` absent → route A, never estimated (`Q-PT-6`); `R_m` is the manufacturer's winding resistance (`rm_ohm`) only, ESC and cable are not in it, so the voltage loss is slightly under-estimated (maintainer, 2026-10-25, #1251); `I_0` absent → the torque balance runs with `I_0 = 0` (BR-PT15). Both are declared by a `practice` warning (ADR 0020); route B is taken only where the manufacturer publishes `R_m`.
 
-**Motor efficiency** is not produced here: it is the input [[motor-efficiency]]. The caller passes the catalogue's `efficiency_pct` where the manufacturer publishes it, else the sourced default of [[motor-efficiency]] is taken, declared with a `practice` warning. Nothing is measured; only published values are used (#1149).
+**Nominal cell voltage and motor efficiency are read here** (maintainer, 2026-10-25, #1245, #1290): [[cell-voltage-nominal]] from `battery.cell_voltage_v` — one value per battery from the datasheet, `voltage_v = cells · cell_voltage_v` — and [[motor-efficiency]] from `brushless_motor.efficiency_pct` (percent, divided by 100). They belong to the battery and the motor, not to the calculation. Where the field is absent the declared fallback is taken, with a `practice` warning (ADR 0020): the cell voltage of the battery's `chemistry` (lipo 3.7, lihv 3.8, life 3.2, li_ion 3.6, nimh 1.2 V; SkyRC 2024), else the starting value 3.7 V; the efficiency starting value 0.75 (`defaults.yaml`, basis `start`). Nothing is measured; only published values are read (#1149).
 
 **Propeller diameter** (moved here from [[airplane-geometry]], maintainer 2026-10-16, D11 on #1174): `D_prop` is a property of the fitted propeller, the same component whose APC table [[propeller-table-lookup]] reads. The geometry format has no propeller, so a missing propeller fails only the drive-train chain, never the wing quantities.
 
@@ -90,3 +93,5 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > implementation checklist item holds vacuously: there is no implementation yet (#1238).
 >
 > **Approval confirmed** (maintainer, 2026-10-25) with the input `cell-voltage-nominal` (#1244): `U_bat = cells · u_cell`; with the default 3.7 V (LiPo, sourced) the result is unchanged.
+>
+> Pending maintainer confirmation: reads cell_voltage_v and efficiency_pct (#1245, #1290).
