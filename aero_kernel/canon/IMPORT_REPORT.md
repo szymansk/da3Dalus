@@ -135,7 +135,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | stall-speed | approved | 8 of 8 |  |
 | stall-wing-loading-limit | approved | 2 of 3 | stall-speed-target (no data source) |
 | static-margin | draft | 3 of 3 |  |
-| static-margin-probe | draft | 6 of 6 |  |
+| static-margin-probe | approved | 6 of 6 |  |
 | static-thrust-to-weight | draft | 11 of 11 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | thrust-at-airspeed-from-coefficient | draft | 2 of 4 | propeller-speed (motor-propeller-equilibrium: not approved); thrust-coefficient (propeller-table-lookup: not approved; advance-ratio-from-speed: not approved via propeller-table-lookup; motor-propeller-equilibrium: not approved via propeller-table-lookup, advance-ratio-from-speed) |
 | vertical-tail-volume | draft | 3 of 3 |  |
