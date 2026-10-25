@@ -684,7 +684,8 @@ function select(q){
   let h=`<h2>${esc(sym(q))}${isOpt(q)?'<span class="opt" title="Result of an optimisation problem">*</span>':''}</h2>
    <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 layer L${LAYER[q]}
    &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
-   <p class="desc">${esc(d.desc||'No description in the catalogue.')}</p>`;
+   <p class="desc">${esc(d.desc||'No description in the catalogue.')}</p>`
+   + (d.notes||[]).map(n=>`<p class="desc">${esc(n)}</p>`).join('');
   { const st=STATUS[q], impl=fs.map(f=>F[f].impl).filter(Boolean), tk=[...new Set(fs.map(f=>F[f].ticket).filter(Boolean))];
     const txt = st==='input' ? 'input &#8212; given by the caller'+(MVP.has(q)?' (needed by the MVP)':'')
       : st==='done' ? '&#10003; implemented in the kernel ('+impl.map(esc).join(', ')+')'
