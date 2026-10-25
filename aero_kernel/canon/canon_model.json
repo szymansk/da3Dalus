@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:0c59cf9c5fb4546f40cfc86889a7b1ac7992e6b2816a62eb6910c5a7a5e7ad36",
+  "content_hash": "sha256:783535d26d1b6c8308703e9b490824edde1f8dec6e1e6f93d7ed822c15364379",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -5370,7 +5370,7 @@
         },
         "static-margin-probe": {
           "at_most": null,
-          "checks": "static-margin-measured",
+          "checks": "static-margin-target",
           "discipline": "longitudinal",
           "group": null,
           "module": null,

@@ -36,7 +36,7 @@ def test_the_data_carries_the_taxonomy(built: tuple[str, dict]) -> None:
 
 def test_a_probe_names_what_it_checks(built: tuple[str, dict]) -> None:
     quantities = built[1]["Q"]
-    assert quantities["static-margin-probe"]["checks"] == "static-margin-measured"
+    assert quantities["static-margin-probe"]["checks"] == "static-margin-target"
     assert quantities["static-margin-measured"]["checks"] == ""
 
 

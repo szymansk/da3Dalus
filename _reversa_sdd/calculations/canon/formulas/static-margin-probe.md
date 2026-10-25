@@ -37,9 +37,12 @@ SM_probe = - C_m_alpha / C_L_alpha
 
 **Produces** [[pitching-moment-slope]] · [[static-margin-probe]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]] · [[centre-of-gravity-design]]
 
-**Kind: a procedure — the Probe of [[static-margin-measured]].** With the moment reference at the
-CG, `−C_mα/C_Lα` is the static margin by a second path. Two paths to one quantity are a
-**test**, not a second truth (A7): a deviation beyond tolerance is reported, never averaged.
+**Kind: a procedure — the Probe of [[static-margin-target]].** With the moment reference at the
+design CG, `x_cg,design = x_NP − SM_target·c_MAC`, `−C_mα/C_Lα` must reproduce `SM_target`: the design
+CG and the probe are two paths to one margin. Two paths to one quantity are a **test**, not a second
+truth (A7): a deviation beyond tolerance is reported, never averaged. The tolerance allows the declared
+method offset: AeroBuildup has no wing-tail downwash, which biases the probe toward a larger margin.
+Checking a measured CG is the path of [[static-margin-measured]], not of the probe.
 
 Unlike `x_NP`, `C_mα` **does** depend on the reference: its sign flips exactly at
 `x_ref = x_NP` (§2.3). That is why the Probe — and only the Probe — needs the CG, and it is [[centre-of-gravity-design]] (`x_cg,design`, produced by cg-for-target-margin), never an app input (maintainer 2026-10-25).
