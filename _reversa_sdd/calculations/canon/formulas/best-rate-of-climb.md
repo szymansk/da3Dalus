@@ -32,7 +32,7 @@ inputs:
 outputs: {v_y: best-rate-of-climb-speed, roc_max: max-rate-of-climb}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
-optional: [r_m]
+optional: [r_m, i_0]
 ---
 
 # Best rate of climb at full throttle

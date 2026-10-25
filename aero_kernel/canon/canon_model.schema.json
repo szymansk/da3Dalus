@@ -213,7 +213,9 @@
             "ohm",
             "Wh",
             "Wh/kg",
-            "rpm/V"
+            "rpm/V",
+            "mAh",
+            "1/h"
           ],
           "title": "Unit",
           "type": "string"
@@ -850,7 +852,9 @@
             "ohm",
             "Wh",
             "Wh/kg",
-            "rpm/V"
+            "rpm/V",
+            "mAh",
+            "1/h"
           ],
           "title": "Unit",
           "type": "string"

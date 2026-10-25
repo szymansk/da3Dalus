@@ -96,6 +96,8 @@ Unit = Literal[
     "Wh",
     "Wh/kg",
     "rpm/V",
+    "mAh",
+    "1/h",
 ]
 
 _MODEL_CONFIG = ConfigDict(extra="forbid", frozen=True)

@@ -40,6 +40,8 @@ VOCABULARIES = {
         "Wh",
         "Wh/kg",
         "rpm/V",
+        "mAh",
+        "1/h",
     ],
     "FormulaKind": ["law", "procedure", "optimization", "fit", "rating"],
     "Tool": ["APP", "ATM", "GEO", "AB", "AVL", "OPT", "KAT", "APC"],

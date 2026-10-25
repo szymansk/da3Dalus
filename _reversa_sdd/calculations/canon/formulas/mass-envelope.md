@@ -54,7 +54,7 @@ embeds:
   - propeller-table-lookup
   - thrust-at-airspeed-from-coefficient
 variables: [aircraft-mass, flight-speed]
-optional: [r_m]
+optional: [r_m, i_0]
 cost: minutes
 ---
 
