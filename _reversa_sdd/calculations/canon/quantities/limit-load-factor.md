@@ -15,7 +15,7 @@ positive: true
 
 # Structural limit load factor · `n_lim`
 
-User-chosen positive manoeuvre load-factor limit, default 3.0.
+User-chosen positive manoeuvre load-factor limit. Default 10 (`defaults.yaml`, basis convention, maintainer 2026-10-25; formerly 3.0): models carry 6–19 g measured. A mission table with the structure-mass consequence will replace the single default (#1242).
 
 **Unit.** `1`
 

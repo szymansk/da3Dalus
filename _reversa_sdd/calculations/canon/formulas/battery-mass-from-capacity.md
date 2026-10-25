@@ -35,7 +35,7 @@ m_bat,pred = E_bat / E_star
 
 **`E*` is a design assumption, not a component read** (maintainer, 2026-10-25, #1235). [[battery-specific-energy]] is an input of this entry only; it is no longer produced by [[airplane-components]], because a value derived from the real pack would make the plausibility check against the actual battery mass tautological. The input carries its **basis**: the formula divides a *pack* energy ([[battery-capacity]], pack nominal) and compares with a *pack* mass, so the consistent basis is the pack; a cell-level `E*` predicts the cell mass only, and the check then differs from a correct pack systematically.
 
-**The default value is an OPEN decision — not taken here.** Candidates: catalogue packs 128–159 Wh/kg; the app default 180 Wh/kg; the canon's cited source 152.8 Wh/kg, which is cell level (below). Until the maintainer decides there is no default in `defaults.yaml` and `E*` is a required input.
+**Default: 140 Wh/kg at pack level, a `convention`** (maintainer, 2026-10-25; `defaults.yaml`). Candidates were the catalogue packs 128–159 Wh/kg — placeholder 'Generic LiPo' entries, not datasheets —, the app default 180 Wh/kg and the canon's cited source 152.8 Wh/kg, which is cell level (below). A published pack value would replace the convention.
 
 **Source.** 🟡 PARTIAL
 
