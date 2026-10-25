@@ -7,7 +7,11 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers import geometry as geometry_module
-from aero_kernel.solvers.asb_airplane import main_wing_properties, surface_properties
+from aero_kernel.solvers.asb_airplane import (
+    main_wing_properties,
+    quarter_chord_mac_x,
+    surface_properties,
+)
 from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.tests.asb_fakes import (
     FAKE_AC_X,
@@ -76,4 +80,57 @@ async def test_without_aerosandbox_the_surface_reference_is_unavailable(
     document = airplane()
     with pytest.raises(FormulaError) as raised:
         await adapter.surface_reference(document, "Main")
+    assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
+
+
+@pytest.mark.asyncio
+async def test_the_quarter_chord_position_is_asbs_aerodynamic_centre(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_aerosandbox(monkeypatch)
+    monkeypatch.setattr(geometry_module, "quarter_chord_mac_x", quarter_chord_mac_x)
+    x = await GeometryAdapter(SolverRuntime()).quarter_chord_mac_x(airplane(), "Main")
+    assert x == FAKE_AC_X["Main"]
+
+
+def test_the_quarter_chord_is_asked_with_an_explicit_chord_fraction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The flag is set in code, never left to ASB's default (maintainer, gh-1262)."""
+    module = install_fake_aerosandbox(monkeypatch)
+    asked: list[dict[str, float]] = []
+    original = module.Wing.aerodynamic_center  # pyright: ignore[reportAttributeAccessIssue]
+
+    def recording(self: object, **options: float) -> list[float]:
+        asked.append(options)
+        return original(self, **options)
+
+    monkeypatch.setattr(module.Wing, "aerodynamic_center", recording)  # pyright: ignore[reportAttributeAccessIssue]
+    quarter_chord_mac_x(airplane(), "Main")
+    assert asked == [{"chord_fraction": 0.25}]
+
+
+def test_a_wing_without_a_finite_aerodynamic_centre_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = install_fake_aerosandbox(monkeypatch)
+    monkeypatch.setattr(
+        module.Wing,  # pyright: ignore[reportAttributeAccessIssue]
+        "aerodynamic_center",
+        lambda self, **options: [float("nan"), 0.0, 0.0],
+    )
+    with pytest.raises(FormulaError) as raised:
+        quarter_chord_mac_x(airplane(), "Main")
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+
+
+@pytest.mark.asyncio
+async def test_without_aerosandbox_the_quarter_chord_position_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(sys.modules, "aerosandbox", None)
+    adapter = GeometryAdapter(SolverRuntime())
+    document = airplane()
+    with pytest.raises(FormulaError) as raised:
+        await adapter.quarter_chord_mac_x(document, "Main")
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE

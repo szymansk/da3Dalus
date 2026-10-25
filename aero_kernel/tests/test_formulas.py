@@ -92,7 +92,7 @@ async def test_the_traceability_report_is_ok_on_the_shipped_model() -> None:
         for slug in content.formulas
     }
     assert set(build.report.not_implemented) == declared - IMPLEMENTED
-    assert len(build.report.not_implemented) == 60 - len(IMPLEMENTED)
+    assert len(build.report.not_implemented) == 62 - len(IMPLEMENTED)
 
 
 async def test_number_rejects_an_absent_or_non_numeric_parameter() -> None:

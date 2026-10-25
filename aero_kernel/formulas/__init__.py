@@ -11,6 +11,7 @@ from aero_kernel.formulas import (
     aspect_ratio,
     cg_for_target_margin,
     dynamic_pressure,
+    horizontal_tail_arm,
     mean_geometric_chord,
     minimum_drag_speed_from_polar,
     minimum_sink_speed_from_polar,
@@ -20,6 +21,7 @@ from aero_kernel.formulas import (
     stall_break,
     stall_speed,
     static_margin,
+    vertical_tail_arm,
     weight_from_mass,
     wing_loading,
 )
@@ -32,6 +34,7 @@ __all__ = [
     "aspect_ratio",
     "cg_for_target_margin",
     "dynamic_pressure",
+    "horizontal_tail_arm",
     "mean_geometric_chord",
     "minimum_drag_speed_from_polar",
     "minimum_sink_speed_from_polar",
@@ -41,6 +44,7 @@ __all__ = [
     "stall_break",
     "stall_speed",
     "static_margin",
+    "vertical_tail_arm",
     "weight_from_mass",
     "wing_loading",
 ]

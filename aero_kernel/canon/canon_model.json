@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:792d0888ce5f05a769369e758777fc54f081af54db412d23b9b08c06cbfe3b35",
+  "content_hash": "sha256:18b6360b4615cf14dbf776cf744ffcbc84a4c82c36d758986e2bae563cd32c16",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1246,6 +1246,41 @@
           "variables": [
             "calc:flight-speed"
           ],
+          "worlds": []
+        },
+        "horizontal-tail-arm": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "x_cg": "calc:centre-of-gravity-design"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "l_h_cg": "calc:horizontal-tail-arm"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "direction": "analysis",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "x_cg": "calc:centre-of-gravity-design"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "l_h_cg": "calc:horizontal-tail-arm"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "GEO",
+          "uncertainty": null,
+          "variables": [],
           "worlds": []
         },
         "induced-drag-factor": {
@@ -2744,6 +2779,7 @@
                 "airplane": "calc:airplane",
                 "b_ref": "calc:wing-span",
                 "g": "calc:gravity",
+                "l_v_cg": "calc:vertical-tail-arm",
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "s_ref": "calc:wing-reference-area",
@@ -2765,6 +2801,7 @@
             "airplane": "calc:airplane",
             "b_ref": "calc:wing-span",
             "g": "calc:gravity",
+            "l_v_cg": "calc:vertical-tail-arm",
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "s_ref": "calc:wing-reference-area",
@@ -3209,12 +3246,48 @@
           "variables": [],
           "worlds": []
         },
+        "vertical-tail-arm": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "x_cg": "calc:centre-of-gravity-design"
+              },
+              "given": null,
+              "id": "with_vertical_tail",
+              "produce": {
+                "l_v_cg": "calc:vertical-tail-arm"
+              },
+              "when": "has_vertical_tail"
+            }
+          ],
+          "cost": "instant",
+          "direction": "analysis",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "x_cg": "calc:centre-of-gravity-design"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "l_v_cg": "calc:vertical-tail-arm"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "GEO",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
         "vertical-tail-volume": {
           "applications": [
             {
               "bind": {
                 "airplane": "calc:airplane",
                 "b_ref": "calc:wing-span",
+                "l_v_cg": "calc:vertical-tail-arm",
                 "s_ref": "calc:wing-reference-area"
               },
               "given": null,
@@ -3232,6 +3305,7 @@
           "inputs": {
             "airplane": "calc:airplane",
             "b_ref": "calc:wing-span",
+            "l_v_cg": "calc:vertical-tail-arm",
             "s_ref": "calc:wing-reference-area"
           },
           "kind": "law",
@@ -4381,6 +4455,22 @@
           "type": "per_control_surface",
           "uncertainty": null,
           "unit": "N*m"
+        },
+        "horizontal-tail-arm": {
+          "at_most": null,
+          "checks": null,
+          "data": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
+          "positive": null,
+          "role": "derived",
+          "stage": "stability-structure",
+          "symbol": "l_H,CG",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
         },
         "induced-drag-factor": {
           "at_most": null,
@@ -5756,6 +5846,22 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
+        },
+        "vertical-tail-arm": {
+          "at_most": null,
+          "checks": null,
+          "data": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": null,
+          "positive": null,
+          "role": "derived",
+          "stage": "stability-structure",
+          "symbol": "l_V,CG",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
         },
         "vertical-tail-volume": {
           "at_most": null,

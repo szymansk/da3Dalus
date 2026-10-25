@@ -21,4 +21,4 @@ Where the CG has to be for the static-margin target — a construction target fo
 
 **Produced by.** [[cg-for-target-margin]]
 
-**Used by.** [[lateral-static-stability-app]] · [[lateral-static-stability-md]] · [[static-margin-probe]]
+**Used by.** [[lateral-static-stability-app]] · [[horizontal-tail-arm]] · [[lateral-static-stability-md]] · [[static-margin-probe]] · [[vertical-tail-arm]]

@@ -1,13 +1,16 @@
 """A fake ``aerosandbox`` that records how the geometry conversion builds its objects."""
 
 import importlib.machinery
+import math
 import sys
 import types
+from itertools import pairwise
 from typing import Any
 
 import pytest
-from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.geometry import AirplaneGeometry, Wing
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
+from aero_kernel.surface_chain import ChainPoint, oriented_chain
 from aero_kernel.tests.planform_stand_in import stand_in_surface_properties
 
 # ``Any``: the fake stands in for an untyped third-party module; keyword arguments are recorded
@@ -137,3 +140,36 @@ def stand_in_main_wing_properties(airplane: AirplaneGeometry) -> MainWingPropert
 def stand_in_surface_of(airplane: AirplaneGeometry, key: str) -> SurfaceProperties:
     """The stand-in planform values of the wing under ``key`` (see :mod:`planform_stand_in`)."""
     return stand_in_surface_properties((airplane.wings or {})[key])
+
+
+def stand_in_quarter_chord_x(wing: Wing) -> float:
+    """x of the quarter-chord MAC of a wing without AeroSandbox, by ASB's own formula.
+
+    Per panel (ASB, ``Wing.aerodynamic_center``): taper ratio ``l``, ``c_MAC = 2/3 c1 (1 + l + l^2) /
+    (1 + l)``, MAC leading edge at ``x1 + (x2 - x1) (1 + 2 l) / (3 + 3 l)``, centre at a quarter of the
+    panel MAC behind it, panels weighted by their (here: y-z) area. A stand-in for the fast tier.
+    """
+    chain = (
+        oriented_chain(wing, 1)
+        if wing.symmetric
+        else [
+            ChainPoint(
+                x=s.xyz_le[0],
+                y=s.xyz_le[1],
+                z=s.xyz_le[2],
+                chord=s.chord,
+                twist=s.twist,
+                airfoil=s.airfoil,
+            )
+            for s in wing.x_secs
+        ]
+    )
+    total = moment = 0.0
+    for a, b in pairwise(chain):
+        taper = b.chord / a.chord
+        mac = (2.0 / 3.0) * a.chord * (1.0 + taper + taper**2) / (1.0 + taper)
+        mac_le = a.x + (b.x - a.x) * (1.0 + 2.0 * taper) / (3.0 + 3.0 * taper)
+        area = (a.chord + b.chord) / 2.0 * math.hypot(b.y - a.y, b.z - a.z)
+        total += area
+        moment += area * (mac_le + 0.25 * mac)
+    return moment / total
