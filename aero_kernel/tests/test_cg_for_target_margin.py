@@ -62,12 +62,14 @@ async def test_the_static_margin_of_that_cg_is_the_target_in_every_world() -> No
         assert close(margin.interval.worlds[key], SM_TARGET, 1e-9), key
 
 
-async def test_a_missing_target_is_a_missing_input() -> None:
-    quantity = only((await run("centre-of-gravity-design"))[0])
-    assert quantity.status is QuantityStatus.ERROR
-    assert quantity.error is not None
-    assert quantity.error.code == "missing_input"
-    assert quantity.error.input_path == "values.static-margin-target"
+async def test_a_missing_target_takes_the_starting_value_and_declares_it() -> None:
+    result = (await run("centre-of-gravity-design"))[0]
+    quantity = only(result)
+    assert quantity.status is QuantityStatus.OK
+    assert quantity.interval is not None
+    assert close(quantity.interval.worlds["neutral-point=avl"], X_NP_AVL - 0.10 * C_MAC, 1e-12)
+    used = {d.slug: d for d in result.provenance.defaults_used}
+    assert used["static-margin-target"].value == 0.10
 
 
 async def test_the_missing_fuselage_is_inherited_in_every_world() -> None:

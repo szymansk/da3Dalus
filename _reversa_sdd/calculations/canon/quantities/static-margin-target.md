@@ -9,6 +9,7 @@ tags:
   - module/design-targets
   - role/target
 type: scalar
+data: default:static-margin-target
 ---
 
 # Static-margin target · `SM_target`

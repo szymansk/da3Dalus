@@ -398,7 +398,8 @@ def default_marks(data: dict, model: dict) -> None:
     that maps to no quantity of the navigator is an error, whatever its basis. ``defaults`` holds
     per default its value, unit, basis, source, regime and the quantities and formulas downstream
     of it; ``conventions`` and ``conv`` are the ``convention`` subset: the defined values and, per
-    quantity that rests on at least one of them, their slugs.
+    quantity that rests on at least one of them, their slugs. ``starts`` and ``start`` are the same
+    for the ``start`` basis (#1258): starting values the designer is expected to set.
     """
     defaults = dict(sorted(model["namespaces"]["calc"]["defaults"].items()))
     unknown = sorted(set(defaults) - set(data["Q"]))
@@ -428,18 +429,22 @@ def default_marks(data: dict, model: dict) -> None:
             "quantities": sorted(seen - {slug}),
             "formulas": sorted(used),
         }
-    conv: dict = {}
-    for slug, d in shown.items():
-        if d["basis"] == "convention":
-            for q in [slug, *d["quantities"]]:
-                conv.setdefault(q, []).append(slug)
     data["defaults"] = shown
-    data["conventions"] = {
-        s: {"value": d["value"], "unit": d["unit"], "source": d["source"]}
-        for s, d in shown.items()
-        if d["basis"] == "convention"
-    }
-    data["conv"] = {q: sorted(v) for q, v in sorted(conv.items())}
+    for basis, listed, rests_on in (
+        ("convention", "conventions", "conv"),
+        ("start", "starts", "start"),
+    ):
+        marked: dict = {}
+        for slug, d in shown.items():
+            if d["basis"] == basis:
+                for q in [slug, *d["quantities"]]:
+                    marked.setdefault(q, []).append(slug)
+        data[listed] = {
+            s: {"value": d["value"], "unit": d["unit"], "source": d["source"]}
+            for s, d in shown.items()
+            if d["basis"] == basis
+        }
+        data[rests_on] = {q: sorted(v) for q, v in sorted(marked.items())}
 
 
 #: The five kinds of data source (canon README, "Two-stage approval"): id, label, explanation.
@@ -451,6 +456,11 @@ SOURCE_KINDS = (
     ),
     ("component", "Component catalogue", "A field of a component type in the parts catalogue."),
     ("default", "Defaults", "An entry of defaults.yaml: a value the canon states with its source."),
+    (
+        "start",
+        "Starting values",
+        "An entry of defaults.yaml with basis start: a starting value the designer is expected to set.",
+    ),
     ("app", "Designer input in the app", "A named field the designer enters in the app."),
     (
         "evaluation",
@@ -489,11 +499,15 @@ def approval_marks(data: dict, model: dict) -> None:
         for source in sources:
             fed.setdefault(source, []).append(quantity)
     order = {k: i for i, (k, _, _) in enumerate(SOURCE_KINDS)}
+    defaults = model["namespaces"]["calc"]["defaults"]
+
+    def kind_of(source: str) -> str:
+        kind, loc = source.split(":", 1)
+        return "start" if kind == "default" and defaults[loc]["basis"] == "start" else kind
+
     data["src"] = [
-        {"id": source, "kind": source.split(":", 1)[0], "loc": source.split(":", 1)[1], "qs": qs}
-        for source, qs in sorted(
-            fed.items(), key=lambda item: (order[item[0].split(":", 1)[0]], item[0])
-        )
+        {"id": source, "kind": kind_of(source), "loc": source.split(":", 1)[1], "qs": qs}
+        for source, qs in sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
     ]
     data["miss"] = sorted(q for q, status in data["qstat"].items() if status == "unmapped")
 

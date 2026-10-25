@@ -66,7 +66,29 @@ def test_conventions_stay_the_convention_basis_only() -> None:
     assert set(data["conv"]) == {"m", "w", "ld"}
 
 
-@pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention"])
+def test_starting_values_get_their_own_marking_and_are_not_conventions() -> None:
+    data, model = make({"g": default("start"), "m": default("convention")})
+    nav.default_marks(data, model)
+    assert set(data["conventions"]) == {"m"}
+    assert set(data["conv"]) == {"m", "w", "ld"}
+    assert set(data["starts"]) == {"g"}
+    assert set(data["start"]) == {"g", "w", "ld"}
+    assert data["start"]["w"] == ["g"]
+
+
+def test_starting_values_form_their_own_group_in_the_data_source_layer() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    assert "start" in {kind["id"] for kind in data["srckinds"]}
+    by_id = {source["id"]: source["kind"] for source in data["src"]}
+    assert by_id["default:static-margin-target"] == "start"
+    assert by_id["default:altitude"] == "start"
+    assert by_id["default:gravity"] == "default"
+
+
+@pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention", "start"])
 def test_a_default_of_a_quantity_the_navigator_lacks_fails_for_any_basis(basis: str) -> None:
     data, model = make({"ghost": default(basis)})
     with pytest.raises(SystemExit, match=r"defaults for quantities the canon lacks.*ghost"):

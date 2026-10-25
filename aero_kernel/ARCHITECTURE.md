@@ -1073,11 +1073,11 @@ implementation, not before (ADR 0021).
 - **Defaults** (maintainer, 2026-10-17, S5). A missing value is computed with its **default**, and the
   caller can set or override every value. Defaults are never hard-coded and never in a quantity entry:
   - **One settings file in the canon document**, `_reversa_sdd/calculations/canon/defaults.yaml`: a mapping
-    `<quantity slug>: {value, unit, basis, source, regime}` — `value` in the quantity's canon unit, `basis` what kind of value it is (`definition`, `standard`, `sourced` or `convention`; a `convention` is a chosen value without a published source, adopted on the maintainer's word, #1219), `source` the citation,
+    `<quantity slug>: {value, unit, basis, source, regime}` — `value` in the quantity's canon unit, `basis` what kind of value it is (`definition`, `standard`, `sourced`, `convention` or `start`; a `convention` is a chosen value without a published source, adopted on the maintainer's word, #1219; a `start` is a starting value the designer is expected to change, #1258), `source` the citation,
     `regime` the RC/UAV check (ADR 0028: why the value holds for chord Re 3·10⁴–1·10⁶ and Mach ≤ 0.3, or
     that it is regime-independent, e.g. standard gravity). The quantity entries carry no `default:` field.
   - **The importer** validates it (stage 3: every slug exists, has role `input` or `target` and type
-    `scalar`; `value` finite, for a `positive` quantity > 0 and not above its `at_most`; `basis` one of the four terms, `source` and `regime` non-empty; no slug
+    `scalar`; `value` finite, for a `positive` quantity > 0 and not above its `at_most`; `basis` one of the five terms, `source` and `regime` non-empty; no slug
     twice) and writes it **into the one model artefact**, `canon_model.json`, as
     `namespaces.calc.defaults: {<slug>: {value, unit, basis, source, regime}}`. There is no second file and no
     second loader: the defaults load, hash and check with the model (`content_hash`, the build digest,

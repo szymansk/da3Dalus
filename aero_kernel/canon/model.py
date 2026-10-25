@@ -105,8 +105,8 @@ Unit = Literal[
 _MODEL_CONFIG = ConfigDict(extra="forbid", frozen=True)
 
 
-DefaultBasis = Literal["definition", "standard", "sourced", "convention"]
-"""What kind of value a default is; ``convention`` marks a chosen value without a published source."""
+DefaultBasis = Literal["definition", "standard", "sourced", "convention", "start"]
+"""What kind of value a default is; ``convention`` marks a chosen value without a published source, ``start`` a starting value the designer is expected to change."""
 
 
 class Default(BaseModel):
@@ -116,8 +116,9 @@ class Default(BaseModel):
         value: The value, in ``unit``.
         unit: The unit of ``value``; it must equal the unit of the quantity.
         basis: ``definition`` (true by definition), ``standard`` (a published standard value),
-            ``sourced`` (taken from a cited source) or ``convention`` (chosen, no published source,
-            adopted on the maintainer's word).
+            ``sourced`` (taken from a cited source), ``convention`` (chosen, no published source,
+            adopted on the maintainer's word) or ``start`` (a defined starting value for a design,
+            expected to be changed by the designer; it may be sourced).
         source: Citation of where the value comes from (ADR 0028).
         regime: The flight regime the value is valid for (ADR 0028).
     """

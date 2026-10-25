@@ -26,7 +26,7 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
     content = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"]
     assert len(content.formulas) == len(list((CANON / "formulas").glob("*.md")))
     assert len(content.quantities) == len(list((CANON / "quantities").glob("*.md")))
-    assert len(content.defaults) == 13
+    assert len(content.defaults) == 14
     for default in content.defaults.values():
         assert default.source
         assert default.regime
@@ -34,7 +34,7 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
         assert default.basis
 
 
-def test_the_conventions_of_the_real_canon_are_stall_break_fraction_specific_energy_and_limit_load(
+def test_the_real_canon_has_one_convention_and_five_starting_values(
     tmp_path: Path,
 ) -> None:
     result = import_canon(CANON)
@@ -42,17 +42,21 @@ def test_the_conventions_of_the_real_canon_are_stall_break_fraction_specific_ene
     (tmp_path / "canon_model.json").write_text(result.model_json, encoding="utf-8")
     defaults = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"].defaults
     conventions = {slug for slug, default in defaults.items() if default.basis == "convention"}
-    assert conventions == {
+    assert conventions == {"stall-break-fraction"}
+    starts = {slug for slug, default in defaults.items() if default.basis == "start"}
+    assert starts == {
+        "altitude",
         "battery-specific-energy",
         "limit-load-factor",
-        "stall-break-fraction",
+        "static-margin-target",
+        "tail-efficiency",
     }
+    assert defaults["static-margin-target"].value == 0.10
+    assert "Drela" in defaults["static-margin-target"].source
     assert defaults["limit-load-factor"].value == 10
-    assert defaults["tail-efficiency"].basis == "sourced"
     assert defaults["battery-specific-energy"].value == 140
     assert defaults["tail-efficiency"].value == 0.65
     assert defaults["stall-break-fraction"].value == 0.10
-    assert defaults["altitude"].basis == "definition"
     assert defaults["gravity"].basis == "standard"
     assert defaults["load-factor"].basis == "definition"
 
