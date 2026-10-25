@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:ab2873c7228b3341bb532cbe1f7bd65c5e968286fe58b0bbce6536470a24c9df",
+  "content_hash": "sha256:ed5a07594fc10f0a10c0b4c5a3dd091d56e34ba082045632521ae31d7cf5b87e",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -2566,6 +2566,7 @@
           "applications": [
             {
               "bind": {
+                "airplane": "calc:airplane",
                 "alpha_s": "calc:angle-of-attack-stall",
                 "cl_max": "calc:max-lift-coefficient",
                 "f": "calc:stall-break-fraction",
@@ -2580,11 +2581,12 @@
               "when": null
             }
           ],
-          "cost": "instant",
+          "cost": "seconds",
           "direction": "analysis",
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "airplane": "calc:airplane",
             "alpha_s": "calc:angle-of-attack-stall",
             "cl_max": "calc:max-lift-coefficient",
             "f": "calc:stall-break-fraction",
@@ -2598,7 +2600,7 @@
           },
           "postconditions": [],
           "preconditions": [],
-          "tool": "APP",
+          "tool": "OPT",
           "uncertainty": null,
           "variables": [],
           "worlds": []
