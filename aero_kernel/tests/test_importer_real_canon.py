@@ -26,7 +26,7 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
     content = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"]
     assert len(content.formulas) == len(list((CANON / "formulas").glob("*.md")))
     assert len(content.quantities) == len(list((CANON / "quantities").glob("*.md")))
-    assert len(content.defaults) == 11
+    assert len(content.defaults) == 10
     for default in content.defaults.values():
         assert default.source
         assert default.regime

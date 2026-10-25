@@ -12,13 +12,6 @@
 #            brakes), or "regime-independent"
 # Values moved from the quantity entries; touchdown changed to 1.1 (maintainer, 2026-10-17).
 
-altitude:
-  value: 0
-  unit: "m"
-  basis: standard
-  source: "ISA sea-level reference, U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562): geopotential altitude 0 at mean sea level"
-  regime: "regime-independent"
-
 approach-speed-margin-target:
   value: 1.3
   unit: "1"
