@@ -15,7 +15,7 @@ tags:
   - shape/law
   - kind/law
   - status/draft
-inputs: {airplane: airplane}
+inputs: {airplane: airplane, s_ref: wing-reference-area, b_ref: wing-span}
 outputs: {v_v: vertical-tail-volume}
 applications:
   - id: with_vertical_tail
@@ -27,14 +27,19 @@ applications:
 **Canonical form**
 
 ```
-S_V, l_V, S, b := geometry(airplane)   # fin area (V-tail: S_Vtail*sin^2(nu)), tail arm, wing area, span
-V_V = S_V * l_V / (S * b)
+S_V, l_V := geometry(airplane)   # fin area (V-tail: S_Vtail*sin^2(nu)), tail arm
+V_V = S_V * l_V / (S_ref * b_ref)
 ```
+
+`S_ref` and `b_ref` are [[wing-reference-area]] and [[wing-span]], produced by [[airplane-geometry]] (AeroSandbox's
+definition, measured on the main wing; maintainer 2026-10-25). This entry does not read the wing area or span
+from the airplane itself: one producer per number a user sees (ADR 0022). Only the tail-specific geometry,
+`S_V` and `l_V`, is read from the airplane.
 
 `S_V` is the fin area, for a V-tail its fin share `S_Vtail·sin²ν` (ν = panel angle to the horizontal);
 `l_V` runs from the wing's to the fin's quarter-chord MAC.
 
-**Produces** [[vertical-tail-volume]]  ·  **from** [[airplane]]
+**Produces** [[vertical-tail-volume]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[wing-span]]
 
 **Kind: a law.** A geometric ratio, deterministic and independent of any solver. It is the robust anchor
 next to the AVL derivatives (K27): RC practice and preliminary design size the fin with it, not with

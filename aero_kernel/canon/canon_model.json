@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:68a84773f79b9ac097032787ad12d924b41cfe1c05a494b37d9d942643d845ea",
+  "content_hash": "sha256:4c66c6860ba76501eecc9dc37f820fdb6fc608ee675ae0a318fe4c1183f87e9d",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -2735,9 +2735,11 @@
             {
               "bind": {
                 "airplane": "calc:airplane",
+                "b_ref": "calc:wing-span",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
+                "s_ref": "calc:wing-reference-area",
                 "v_md": "calc:minimum-drag-speed"
               },
               "given": null,
@@ -2754,9 +2756,11 @@
           "embeds_closure": [],
           "inputs": {
             "airplane": "calc:airplane",
+            "b_ref": "calc:wing-span",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
+            "s_ref": "calc:wing-reference-area",
             "v_md": "calc:minimum-drag-speed"
           },
           "kind": "law",
@@ -3202,7 +3206,9 @@
           "applications": [
             {
               "bind": {
-                "airplane": "calc:airplane"
+                "airplane": "calc:airplane",
+                "b_ref": "calc:wing-span",
+                "s_ref": "calc:wing-reference-area"
               },
               "given": null,
               "id": "with_vertical_tail",
@@ -3217,7 +3223,9 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
-            "airplane": "calc:airplane"
+            "airplane": "calc:airplane",
+            "b_ref": "calc:wing-span",
+            "s_ref": "calc:wing-reference-area"
           },
           "kind": "law",
           "optional": [],
