@@ -26,6 +26,10 @@ then the code. Epic: #1173.
   applications are bindings, not copies (ARCHITECTURE §8.5). Likewise one implementation per check: a
   postcondition stated by two entries (`optimum_at_first_cl_peak`) shares one check function.
 - **Formulas compute, they do not judge** (canon A10): no thresholds, bands or pass/fail in this package.
+- **Judgement lives in `evaluation/` only (#1276).** Bands, rule meanings and `when` conditions are data in the
+  rule table (`_reversa_sdd/calculations/evaluation/`), never in code; the evaluator is a pure function of a
+  rule table and a `ComputeResult`; an interval is judged per end (`partly` when it straddles the band). A rule
+  for a quantity the canon lacks carries `planned: "#N"` and stays `not_available`.
 - **Solvers only through `solvers/`.** Formulas never import aerosandbox or call AVL directly, so they stay
   mockable and missing tools become `tool_unavailable`.
 - **Errors vs warnings.** No value → `KernelError` with category, `message`, `hint` (ARCHITECTURE §8.1).

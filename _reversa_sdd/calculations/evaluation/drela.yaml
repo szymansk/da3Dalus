@@ -1,0 +1,144 @@
+# Evaluation rule table: Drela's basic aircraft design rules (maintainer, 2026-10-25, epic #1259, #1276).
+#
+# The canon computes and never judges (A10). This table is the judgement, kept outside the canon:
+# which canon quantity a rule looks at, the band, what the source says about leaving it, and when
+# the rule applies. Bands live here and nowhere in code. Schema: aero_kernel/evaluation/rules.py.
+#
+# Source: M. Drela, "Lab 11 Notes - Basic Aircraft Design Rules", MIT 16.Unified, 16 Apr 2009.
+# Meanings are quoted or closely paraphrased from that text; where Drela names no consequence the
+# side has no meaning (absent, not a placeholder text). `planned: "#N"` marks a quantity the canon does not have yet; the rule is not_available
+# until that ticket lands (the check fails once the canon has the quantity, so the marker cannot
+# go stale). `when` / `when_not` are terms of the canon's closed `when` vocabulary.
+#
+# `below_severity` / `above_severity`: `bad` (default, a defect the source names) or `caution` (a
+# cost without a defect); `*_basis` says where a non-default severity comes from.
+#
+# Definition differences to keep in mind (stated on epic #1259):
+#   - Drela's c is the average chord S/b; the canon uses c_MAC. They differ for a tapered wing.
+#   - Drela measures tail arms from the CG. The canon's vertical-tail-volume and spiral-parameter
+#     still use l_V,25 until #1272 moves them to the design CG.
+source: "M. Drela, Lab 11 Notes - Basic Aircraft Design Rules, MIT 16.Unified, 16 Apr 2009"
+rules:
+  - id: static-margin-design
+    title: Static margin (design target)
+    quantity: {slug: static-margin-target}
+    unit: "1"
+    band: {min: 0.05, max: 0.15}
+    source: "Drela rule (2), Eq. 2"
+    below: >-
+      Approaches the neutral point. A negative S.M. is unstable in pitch to some degree and makes
+      the aircraft difficult or even impossible to fly.
+    above: >-
+      A large S.M. gives large (and annoying) pitch trim changes with changing airspeed and
+      degrades the pitch trim authority of the elevator.
+    note: >-
+      The same rule as static-margin-measured, applied to the design target SM_target: it judges
+      whether the designer's choice is plausible, not a measured margin.
+
+  - id: static-margin-measured
+    title: Static margin (given CG)
+    quantity: {slug: static-margin-measured}
+    unit: "1"
+    band: {min: 0.05, max: 0.15}
+    source: "Drela rule (2), Eq. 2"
+    below: >-
+      Approaches the neutral point. A negative S.M. is unstable in pitch to some degree and makes
+      the aircraft difficult or even impossible to fly.
+    above: >-
+      A large S.M. gives large (and annoying) pitch trim changes with changing airspeed and
+      degrades the pitch trim authority of the elevator.
+    note: >-
+      The same rule as static-margin-design, applied to the margin of a given CG (an existing
+      aircraft, a measured or plan CG). Not available when no CG is supplied.
+
+  - id: horizontal-tail-volume
+    title: Horizontal tail volume
+    quantity: {slug: horizontal-tail-volume, planned: "#1273"}
+    unit: "1"
+    band: {min: 0.30, max: 0.60}
+    source: "Drela rule (4), Eqs. 3-4"
+    when: [has_horizontal_tail]
+    below: >-
+      Pitch behaviour is very sensitive to the CG location, the aircraft resists gusts and other
+      upsets poorly and generally wanders in pitch attitude, which makes precise pitch control
+      difficult.
+    note: >-
+      Drela's V_h = S_h * l_h / (S * c) uses c = S/b and the arm from the CG; the canon quantity
+      (#1273) uses c_MAC and the arm from the design CG (#1272).
+
+  - id: vertical-tail-volume
+    title: Vertical tail volume
+    quantity: {slug: vertical-tail-volume}
+    unit: "1"
+    band: {min: 0.02, max: 0.05}
+    source: "Drela rule (7), Eqs. 6-7"
+    when: [has_vertical_tail]
+    below: >-
+      The aircraft tends to oscillate or wallow in yaw (Dutch roll) as the pilot gives rudder or
+      aileron inputs, which makes precise directional control difficult; poor rudder roll
+      authority in an aircraft that turns with the rudder only.
+    note: >-
+      Until #1272 the canon arm is l_V,25 (from the wing quarter-chord MAC), not Drela's arm from
+      the CG.
+
+  - id: spiral-stability
+    title: Spiral stability
+    quantity: {slug: spiral-parameter}
+    unit: "1"
+    band: {min: 5.0, min_inclusive: false}
+    source: "Drela rule (9), Eqs. 8-9"
+    when: [has_vertical_tail]
+    below: >-
+      B < 5 is spirally unstable and B = 5 spirally neutral. Spiral stability is not a hard
+      requirement and most aircraft are spirally unstable, but an RC aircraft that must fly
+      hands-off has to be spirally stable.
+    levels:
+      - id: manageable-for-experienced-pilot
+        min: 3.0
+        max: 4.0
+        meaning: >-
+          A small amount of spiral instability (B = 3...4, say) does not cause major difficulties
+          for an experienced pilot.
+    note: >-
+      B = l_V * Gamma / (b * C_L) with Gamma in degrees. Until #1272 the arm is l_V,25.
+
+  - id: rudder-roll-authority
+    title: Rudder roll authority (rudder/elevator aircraft)
+    quantity: {slug: rudder-roll-authority, planned: "#1274"}
+    unit: "1"
+    band: {min: 0.10, max: 0.20}
+    source: "Drela rule (10), Eq. 10"
+    when: [has_vertical_tail]
+    when_not: [has_aileron]
+    below: "A value of 0.10 will likely give marginal roll control."
+    above: >-
+      Costs performance (drag) without adding roll authority. Drela states 0.20 gives very
+      effective control.
+    above_severity: caution
+    above_basis: "maintainer 2026-10-25; Drela names no penalty above the range"
+
+  - id: turn-sideslip
+    title: Sideslip in the steady turn (aircraft without ailerons)
+    quantity: {slug: turn-sideslip, planned: "#1275"}
+    unit: deg
+    band: {max: 15.0}
+    source: "Drela rule (11), Eq. 11"
+    when_not: [has_aileron]
+    above: >-
+      Flying at a constant nonzero sideslip in the turn can produce a large drag increase if the
+      sideslip is excessive, mainly because the fuselage is partly broadside to the oncoming flow.
+    levels:
+      - id: below-typical-limit
+        max: 5.0
+        meaning: Below the lower end of the typical range of the maximum tolerable sideslip.
+      - id: within-typical-limit-range
+        min: 5.0
+        min_inclusive: false
+        max: 15.0
+        meaning: >-
+          Inside the range 5...15 deg that Drela gives for the maximum tolerable sideslip; the limit
+          is difficult to estimate and depends on the aircraft.
+    note: >-
+      Drela states beta_turn < (beta_turn)max = 5...15 deg at the tightest expected turn radius.
+      The canon quantity (#1275) is the worst steady turn at phi = 45 deg at the minimum-sink C_L
+      (maintainer, 2026-10-25): a reasoned transfer of Drela's criterion, not a quote.

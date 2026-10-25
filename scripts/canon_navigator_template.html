@@ -358,6 +358,11 @@ const SX={xcut:0, src:XW+REFGAP+RW+SRCGAP};
     c.x=x; c.w=c.cols*slotW-GAPX+2*FPAD; x+=c.w+MODGAP; prev=c.side; }
   if(!SX.design) SX.design=x+SIDEGAP;
 }
+// Evaluation layer (#1276): the design rules, outside the canon (A10: the canon computes, never judges).
+// One node per rule in a column right of the formula columns; an edge from the quantity it judges.
+const RULES=(D.rules||{}).rules||[], RULEW=3*NW, RULECOLW=RULEW+2*FPAD;
+const RULEBYID={};
+SX.rules=Math.max(...COLS.map(c=>c.x+c.w))+SIDEGAP;
 const P={}, LY={}, FRAMES=[], frameEls=[], COLHEADS=[];
 // Bands (maintainer 2026-10-24): below the top row all derived quantities share one band and
 // every final result sits in the bottom band; within a band a column is ordered by dependency
@@ -384,7 +389,7 @@ let yc=HEAD;
   }
   yc+=height-NH+GAPY;
 }
-const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW);
+const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW, ...(RULES.length?[SX.rules+RULECOLW]:[]));
 const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
 // Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
 // in reading order inside each column; within a cluster: values of the point, then stability,
@@ -490,7 +495,7 @@ SX.refs=XW+REFGAP;
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
 const SRCSUBEL=[];
-const pick=id=>SRCBYID[id]&&SRCBYID[id].src?selectSource(SRCBYID[id].src):select(id);
+const pick=id=>RULEBYID[id]?selectRule(RULEBYID[id]):SRCBYID[id]&&SRCBYID[id].src?selectSource(SRCBYID[id].src):select(id);
 const SRC=D.src||[], MISS=D.miss||[], SRCKINDS=D.srckinds||[];
 const SP={}, SRCFRAMES=[], SRCNODES=[], SRCSUB=[];
 { let y=XTOP+FHEAD;
@@ -518,13 +523,18 @@ const SP={}, SRCFRAMES=[], SRCNODES=[], SRCSUB=[];
     y+=fh+FHEAD+8; }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
+const RP={};
+if(RULES.length){ const y=XTOP+FHEAD;
+  RULES.forEach((r,i)=>{ RP['rule:'+r.id]={x:SX.rules+FPAD,y:y+FPAD+i*SUBGAP}; });
+  yc=Math.max(yc,y+(RULES.length-1)*SUBGAP+NH+2*FPAD+GAPY-MODGAP);
+}
 const H=yc-GAPY+NH;
 const cam=document.getElementById('cam'), svg=document.getElementById('g');
 const NS='http://www.w3.org/2000/svg';
 const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
 
 {
-  for(const [band,label] of BANDS){ const t=el('text',{x:W,y:BANDY[band]-12,class:'colhead','text-anchor':'end'}); t.textContent=label; cam.appendChild(t); }
+  for(const [band,label] of BANDS){ const t=el('text',{x:RULES.length?SX.rules-SIDEGAP:W,y:BANDY[band]-12,class:'colhead','text-anchor':'end'}); t.textContent=label; cam.appendChild(t); }
   const dy=BANDY.final-GAPY/2; cam.appendChild(el('line',{x1:SX.analysis-SIDEGAP/2,y1:dy,x2:W,y2:dy,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
 }
 { const line=(x1,y1,x2,y2)=>cam.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--line-2)','stroke-width':1.2,'stroke-dasharray':'6 5'}));
@@ -549,6 +559,11 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
       g.addEventListener('click',()=>{ if(!moved) selectSourceFrame(f); });
       g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectSourceFrame(f);} });
       cam.appendChild(g); SRCSUBEL.push({el:r,module:'srcframe:'+f.id}); } }
+  if(RULES.length){ line(SX.rules-SIDEGAP/2,XTOP-14,SX.rules-SIDEGAP/2,H+10);
+    const t=el('text',{x:SX.rules,y:XTOP,class:'colhead'}); t.textContent='Evaluation'; cam.appendChild(t);
+    const fh=(RULES.length-1)*SUBGAP+NH+2*FPAD;
+    cam.appendChild(el('rect',{x:SX.rules,y:XTOP+FHEAD,width:RULECOLW,height:fh,rx:7,class:'frame'}));
+    const l=el('text',{x:SX.rules+2,y:XTOP+FHEAD-7,class:'blocklab modlab'}); l.textContent=D.rules.source.split(',')[0]+' \u00b7 '+RULES.length; cam.appendChild(l); }
   for(const s of PSPANS){
     const st=s.band!=='final';
     if(!s.sub) cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
@@ -587,7 +602,7 @@ for(const [a,b,f] of D.edges){
   cam.appendChild(e); edgeEls.push({e,a,b});
 }
 function sym(q){
-  if(!Q[q]) return (SRCBYID[q]||{}).label||q;
+  if(!Q[q]) return (SRCBYID[q]||RULEBYID[q]||{}).label||q;
   const s=(Q[q].symbol||q).replace(/\\/g,'').trim();
   // Greek names become letters also when a subscript follows (alpha_bg, delta_a, Delta_alpha_break).
   const g={alpha:'\u03b1',beta:'\u03b2',gamma:'\u03b3',Delta:'\u0394',delta:'\u03b4',eta:'\u03b7',lambda:'\u03bb',
@@ -661,6 +676,29 @@ for(const n of SRCNODES){
   g.addEventListener('click',open);
   g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();} });
   cam.appendChild(g); nodeEls[n.id]=g;
+}
+
+// The evaluation rules: nodes, and edges from the quantity each judges (shown on selection, like the sources).
+const RULES_OF={};
+for(const r of RULES){
+  const id='rule:'+r.id, q=r.quantity.slug, ok=!r.quantity.planned&&Q[q];
+  RULEBYID[id]={...r,id,label:r.title,q:ok?q:''};
+  pred[id]=ok?[[q,'']]:[]; succ[id]=[];
+  if(ok){ succ[q].push([id,'']); (RULES_OF[q] ||= []).push(id); }
+}
+for(const id in RULEBYID){
+  const n=RULEBYID[id], p1=RP[id], planned=!!n.quantity.planned;
+  if(n.q){ const p2=P[n.q], x1=p2.x+NW, y1=p2.y+NH/2, x2=p1.x, y2=p1.y+NH/2, dx=Math.max(30,Math.abs(x2-x1)/2);
+    const e=el('path',{class:'edge xedge srcedge',d:`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`});
+    cam.appendChild(e); edgeEls.push({e,a:n.q,b:id}); }
+  const g=el('g',{class:'node srcnode',transform:`translate(${p1.x},${p1.y})`,tabindex:'0',role:'button'});
+  g.appendChild(el('rect',{width:RULEW,height:NH,rx:5,fill:'var(--panel)',stroke:planned?'var(--ink-3)':'var(--sel)','stroke-dasharray':planned?'4 3':'none'}));
+  const t=el('text',{x:RULEW/2,y:NH/2,class:'srclab'}); t.textContent=n.label.length>36?n.label.slice(0,35)+'\u2026':n.label; g.appendChild(t);
+  const tt=el('title',{}); tt.textContent=n.label+(planned?' \u2014 quantity planned '+n.quantity.planned:''); g.appendChild(tt);
+  const open=()=>{ if(!moved) selectRule(n); };
+  g.addEventListener('click',open);
+  g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();} });
+  cam.appendChild(g); nodeEls[id]=g;
 }
 
 let depth=1, sel=null;
@@ -771,13 +809,32 @@ function select(q){
       run.outs.filter(x=>x!==q).map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
     if(run&&OTHERRUNS[q].length) h+=`<div class="blk"><div class="lab">Same formula, other applications (separate runs)</div>`+
       OTHERRUNS[q].map(r=>`<p class="sub" style="margin:4px 0 2px">${esc(r.app)}</p><ul class="lnk">`+r.outs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul>`).join('')+`</div>`; }
-  const us=succ[q].map(([o])=>o), uniq=[...new Set(us)];
+  if(RULES_OF[q]) h+=`<div class="blk"><div class="lab">Judged by \u00b7 ${RULES_OF[q].length}</div><ul class="lnk">`+
+    RULES_OF[q].map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
+  const us=succ[q].map(([o])=>o).filter(o=>!RULEBYID[o]), uniq=[...new Set(us)];
   if(uniq.length) h+=`<div class="blk"><div class="lab">Feeds \u00b7 ${uniq.length}</div><ul class="lnk">`+
     uniq.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
   else h+=`<div class="blk"><div class="lab">Feeds</div><p class="sub" style="margin:0">Nothing \u2014 this is a final result.</p></div>`;
   info.innerHTML=h;
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
+}
+const bandText=(b,unit)=>{ const u=unit==='1'?'':' '+unit, lo=b.min, hi=b.max;
+  return lo!==undefined&&hi!==undefined?`${lo}\u2026${hi}${u}`:lo!==undefined?`${b.min_inclusive===false?'>':'\u2265'} ${lo}${u}`:`${b.max_inclusive===false?'<':'\u2264'} ${hi}${u}`; };
+function selectRule(r){
+  sel={module:r.id,members:new Set([r.id])}; paint();
+  const when=[...(r.when||[]).map(t=>'`'+t+'`'),...(r.when_not||[]).map(t=>'not `'+t+'`')];
+  const link=r.q?`<a href="#" onclick="select('${r.q}');return false">${esc(sym(r.q))}</a> <span class="sub">(${esc(r.q)})</span>`
+    :`<span class="sub">${esc(r.quantity.slug)} \u2014 not in the canon yet (${esc(r.quantity.planned)})</span>`;
+  let h=`<h2>${esc(r.title)}</h2><p class="meta">${esc(r.source)} \u00b7 band ${esc(bandText(r.band,r.unit))}</p>
+   <p class="desc">Judges ${link}. The canon computes and never judges (A10); this rule belongs to the evaluation layer.</p>`;
+  if(when.length) h+=`<p class="meta">Applies when: ${when.map(w=>esc(w.replace(/`/g,''))).join(' and ')}</p>`;
+  for(const [side,label] of [['min','below'],['max','above']]) if(r.band[side]!==undefined){ const sev=r[label+'_severity']||'bad', col=sev==='caution'?'var(--mvp)':'var(--bad)', basis=r[label+'_basis'];
+    h+=`<div class="blk"><div class="lab"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${col};margin-right:6px"></span>${label[0].toUpperCase()+label.slice(1)} the band \u00b7 ${sev==='caution'?'caution (yellow)':'bad (red)'}</div><p class="sub" style="margin:0">${esc(r[label]||'The source names no consequence.')}${basis?'<br>Basis: '+esc(basis):''}</p></div>`; }
+  for(const lv of (r.levels||[])) h+=`<div class="blk"><div class="lab">Level ${esc(lv.id)} \u00b7 ${esc(bandText(lv,r.unit))}</div><p class="sub" style="margin:0">${esc(lv.meaning)}</p></div>`;
+  h+=`<p class="sub">Rule status per reference aircraft is not shown: the navigator is built from the canon alone and holds no computed fleet values, so only the band is given.</p>`;
+  if(r.note) h+=`<div class="blk"><div class="lab">Note</div><p class="sub" style="margin:0">${esc(r.note)}</p></div>`;
+  info.innerHTML=h;
 }
 function selectSourceFrame(f){
   sel={module:'srcframe:'+f.id,members:new Set(f.fields)}; paint();
