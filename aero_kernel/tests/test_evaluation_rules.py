@@ -118,7 +118,12 @@ def test_the_shipped_drela_table_is_consistent_with_the_canon() -> None:
 
 def test_the_shipped_table_holds_drelas_bands() -> None:
     table = {rule.id: rule for rule in load_rule_table(DRELA).rules}
-    assert (table["static-margin"].band.min, table["static-margin"].band.max) == (0.05, 0.15)
+    for rule_id, slug in (
+        ("static-margin-design", "static-margin-target"),
+        ("static-margin-measured", "static-margin-measured"),
+    ):
+        assert (table[rule_id].band.min, table[rule_id].band.max) == (0.05, 0.15)
+        assert table[rule_id].quantity.slug == slug
     assert (table["horizontal-tail-volume"].band.min, table["horizontal-tail-volume"].band.max) == (
         0.30,
         0.60,
@@ -158,3 +163,14 @@ def test_the_json_rendering_is_stable() -> None:
     table = load_rule_table(DRELA)
     assert render_rule_table(table) == render_rule_table(table)
     assert render_rule_table(table).endswith("}\n")
+
+
+def test_the_two_applications_of_the_static_margin_rule_do_not_drift_apart() -> None:
+    table = {rule.id: rule for rule in load_rule_table(DRELA).rules}
+    design, measured = table["static-margin-design"], table["static-margin-measured"]
+    assert (design.band, design.below, design.above, design.source) == (
+        measured.band,
+        measured.below,
+        measured.above,
+        measured.source,
+    )

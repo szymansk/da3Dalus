@@ -16,8 +16,8 @@
 #     still use l_V,25 until #1272 moves them to the design CG.
 source: "M. Drela, Lab 11 Notes - Basic Aircraft Design Rules, MIT 16.Unified, 16 Apr 2009"
 rules:
-  - id: static-margin
-    title: Static margin
+  - id: static-margin-design
+    title: Static margin (design target)
     quantity: {slug: static-margin-target}
     unit: "1"
     band: {min: 0.05, max: 0.15}
@@ -29,8 +29,24 @@ rules:
       A large S.M. gives large (and annoying) pitch trim changes with changing airspeed and
       degrades the pitch trim authority of the elevator.
     note: >-
-      Judges the design target SM_target, the margin the design CG is placed for, not a measured
-      margin of a given CG.
+      The same rule as static-margin-measured, applied to the design target SM_target: it judges
+      whether the designer's choice is plausible, not a measured margin.
+
+  - id: static-margin-measured
+    title: Static margin (given CG)
+    quantity: {slug: static-margin-measured}
+    unit: "1"
+    band: {min: 0.05, max: 0.15}
+    source: "Drela rule (2), Eq. 2"
+    below: >-
+      Approaches the neutral point. A negative S.M. is unstable in pitch to some degree and makes
+      the aircraft difficult or even impossible to fly.
+    above: >-
+      A large S.M. gives large (and annoying) pitch trim changes with changing airspeed and
+      degrades the pitch trim authority of the elevator.
+    note: >-
+      The same rule as static-margin-design, applied to the margin of a given CG (an existing
+      aircraft, a measured or plan CG). Not available when no CG is supplied.
 
   - id: horizontal-tail-volume
     title: Horizontal tail volume

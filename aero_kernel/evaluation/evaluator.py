@@ -10,7 +10,13 @@ from enum import StrEnum
 
 from aero_kernel.evaluation.rules import Band, Position, Rule, RuleTable
 from aero_kernel.graph import PENDING_WHEN_TERMS, WhenFacts
-from aero_kernel.schema import ComputeResult, Interval, QuantityResult, QuantityStatus
+from aero_kernel.schema import (
+    ComputeResult,
+    Interval,
+    QuantityResult,
+    QuantityStatus,
+    ReasonCode,
+)
 from pydantic import BaseModel, ConfigDict
 
 _NO_CONSEQUENCE = "the source names no consequence."
@@ -118,6 +124,9 @@ def _judge(rule: Rule, quantity: QuantityResult | None, facts: WhenFacts) -> Rul
         )
     if quantity.status is QuantityStatus.NOT_APPLICABLE:
         reason = quantity.reason.message if quantity.reason is not None else "no reason given"
+        if quantity.reason is not None and quantity.reason.code is ReasonCode.NOT_GIVEN:
+            # Not a property of the aircraft: the caller has not supplied what the quantity needs.
+            return _verdict(rule, RuleStatus.NOT_AVAILABLE, f"Not supplied: {reason}")
         return _verdict(
             rule, RuleStatus.NOT_APPLICABLE, f"The kernel found it not applicable: {reason}"
         )

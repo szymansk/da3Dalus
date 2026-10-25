@@ -11,6 +11,7 @@ from aero_kernel.schema import ComputeResult
 from aero_kernel.tests.evaluation_builders import (
     facts,
     not_applicable,
+    not_given,
     ok,
     result_of,
     rule_of,
@@ -173,7 +174,8 @@ def test_the_shipped_table_judges_a_hand_made_result() -> None:
         ok("spiral-parameter", 5.0),
     )
     verdicts = {v.rule_id: v for v in evaluate_rules(table, result, facts(has_vertical_tail=True))}
-    assert verdicts["static-margin"].status is RuleStatus.INSIDE
+    assert verdicts["static-margin-design"].status is RuleStatus.INSIDE
+    assert verdicts["static-margin-measured"].status is RuleStatus.NOT_AVAILABLE
     assert verdicts["vertical-tail-volume"].status is RuleStatus.BELOW
     assert verdicts["spiral-stability"].status is RuleStatus.BELOW  # B = 5 is neutral, not stable
     assert verdicts["horizontal-tail-volume"].status is RuleStatus.NOT_AVAILABLE
@@ -184,3 +186,9 @@ def test_a_side_without_a_meaning_says_the_source_names_no_consequence() -> None
     verdict = judge(result_of(ok(SM, 0.4)), above=None)
     assert verdict.status is RuleStatus.ABOVE
     assert "names no consequence" in verdict.explanation
+
+
+def test_a_quantity_the_caller_did_not_supply_is_not_available_not_not_applicable() -> None:
+    verdict = judge(result_of(not_given(SM)))
+    assert verdict.status is RuleStatus.NOT_AVAILABLE
+    assert "No CG." in verdict.explanation

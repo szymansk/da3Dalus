@@ -83,6 +83,15 @@ def not_applicable(slug: str) -> QuantityResult:
     )
 
 
+def not_given(slug: str) -> QuantityResult:
+    """A quantity that needs a value the caller did not supply."""
+    return QuantityResult(
+        slug=slug,
+        status=QuantityStatus.NOT_APPLICABLE,
+        reason=Reason(code=ReasonCode.NOT_GIVEN, message="No CG."),
+    )
+
+
 def result_of(*quantities: QuantityResult) -> ComputeResult:
     """A kernel result with these quantities."""
     return ComputeResult(quantities=quantities, provenance=Provenance(build_digest="test"))

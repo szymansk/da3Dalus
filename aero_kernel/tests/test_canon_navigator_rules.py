@@ -64,5 +64,5 @@ def test_a_rule_for_a_quantity_the_canon_lacks_is_an_error() -> None:
 def test_the_shipped_table_is_part_of_the_page_data() -> None:
     _, data = nav.build()
     ids = [rule["id"] for rule in data["rules"]["rules"]]
-    assert "static-margin" in ids
+    assert {"static-margin-design", "static-margin-measured"} <= set(ids)
     assert "turn-sideslip" in ids
