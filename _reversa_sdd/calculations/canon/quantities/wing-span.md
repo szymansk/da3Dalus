@@ -22,4 +22,4 @@ Reference wing span of the built airplane.
 
 **Produced by.** [[airplane-geometry]]
 
-**Used by.** [[aspect-ratio]] · [[roll-rate]] · [[mean-geometric-chord]]
+**Used by.** [[aspect-ratio]] · [[roll-rate]] · [[mean-geometric-chord]] · [[spiral-parameter]] · [[vertical-tail-volume]]

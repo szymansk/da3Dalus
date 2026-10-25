@@ -22,4 +22,4 @@ Reference area of the built AeroSandbox airplane, the denominator of every coeff
 
 **Produced by.** [[airplane-geometry]]
 
-**Used by.** [[aspect-ratio]] · [[lift-coefficient-required]] · [[mean-geometric-chord]] · [[wing-loading]]
+**Used by.** [[aspect-ratio]] · [[lift-coefficient-required]] · [[mean-geometric-chord]] · [[wing-loading]] · [[spiral-parameter]] · [[vertical-tail-volume]]
