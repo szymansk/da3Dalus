@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from aero_kernel.canon.load import load_canon_model
 from aero_kernel.canon.model import CanonModel
-from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
+from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties, stand_in_surface_of
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 
@@ -41,3 +41,6 @@ def no_aerosandbox_for_the_reference_values(
         monkeypatch.setattr(
             f"{module}.main_wing_properties", stand_in_main_wing_properties, raising=True
         )
+    monkeypatch.setattr(
+        "aero_kernel.solvers.geometry.surface_properties", stand_in_surface_of, raising=True
+    )

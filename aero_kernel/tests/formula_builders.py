@@ -7,14 +7,14 @@ from aero_kernel.canon.model import CanonModel
 from aero_kernel.context import Context, Solvers, Value
 from aero_kernel.errors import display_slug
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import MainWingProperties
+from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
-from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
+from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties, stand_in_surface_of
 from pydantic import JsonValue
 
 # The canon formulas that have an implementation (slugs, qualified); grows with each slice.
@@ -125,16 +125,21 @@ class StubGeometry(GeometryAdapter):
     """A GEO adapter that answers with fixed reference values, and records the airplane it was asked about."""
 
     def __init__(
-        self, reference: MainWingProperties | None = None, versions: Mapping[str, str] | None = None
+        self,
+        reference: MainWingProperties | None = None,
+        versions: Mapping[str, str] | None = None,
+        surfaces: Mapping[str, SurfaceProperties] | None = None,
     ) -> None:
         """Create the stub.
 
         Args:
+            surfaces: Fixed planform values per wing key; any other wing gets the stand-in.
             reference: What every call returns; by default the stand-in values of the airplane asked about.
             versions: The tool versions the stub reports.
         """
         super().__init__(SolverRuntime())
         self.reference = reference
+        self.surfaces = dict(surfaces or {})
         self.versions = dict(versions or {"aerosandbox": "0.0-stub"})
         self.asked: list[AirplaneGeometry] = []
 
@@ -146,6 +151,11 @@ class StubGeometry(GeometryAdapter):
         """Return the fixed reference values."""
         self.asked.append(airplane)
         return self.reference or stand_in_main_wing_properties(airplane)
+
+    async def surface_reference(self, airplane: AirplaneGeometry, key: str) -> SurfaceProperties:
+        """Return the stand-in planform values of the wing, or the fixed ones given to the stub."""
+        self.asked.append(airplane)
+        return self.surfaces.get(key) or stand_in_surface_of(airplane, key)
 
 
 def solvers_with(

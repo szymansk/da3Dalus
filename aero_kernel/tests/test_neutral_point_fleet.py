@@ -42,12 +42,15 @@ WORLDS = ("textbook", "pappas", "avl")
 # Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
 # The textbook world takes the default tail efficiency 0.65 (#1205); it was 0.9 before:
 # BRYAN 0.1441142600 -> 0.1398911924 m, JAGUAR 0.1233721388 -> 0.1180210991 m.
+# Since #1253 the surfaces are AeroSandbox's (area, AR = b^2/S, MAC, x_AC - 0.25 MAC): textbook/Pappas
+# BRYAN 0.1398911924/0.1401394435 -> 0.1398961691/0.1402057906 m, JAGUAR 0.1180210991/0.1238206059 ->
+# 0.1181103705/0.1239713559 m; the eta = 0.9 values below moved from 0.1441142600/0.1233721388.
 GOLDEN_NP = {
-    FleetMember.BRYAN: (0.1398911924, 0.1401394435, 0.144039),
-    FleetMember.JAGUAR: (0.1180210991, 0.1238206059, 0.126344),
+    FleetMember.BRYAN: (0.1398961691, 0.1402057906, 0.144039),
+    FleetMember.JAGUAR: (0.1181103705, 0.1239713559, 0.126344),
 }
 # The textbook world with the former constant given explicitly as tail-efficiency (continuity).
-GOLDEN_TEXTBOOK_ETA_09 = {FleetMember.BRYAN: 0.1441142600, FleetMember.JAGUAR: 0.1233721388}
+GOLDEN_TEXTBOOK_ETA_09 = {FleetMember.BRYAN: 0.1441218653, FleetMember.JAGUAR: 0.1234884884}
 # AeroSandbox's c_MAC of the main wing (gh-1240); it was the kernel's projected 0.13277219 / 0.10504547.
 C_MAC = {member: member.asb_reference[2] for member in FleetMember}
 # BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral

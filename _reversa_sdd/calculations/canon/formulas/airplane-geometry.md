@@ -16,6 +16,8 @@ tags:
   - kind/procedure
   - status/draft
 inputs: {airplane: airplane}
+preconditions:
+  - {id: main_wing_has_spanwise_extent, parameter: airplane, on_violation: error}
 outputs:
   s_ref: wing-reference-area
   b_ref: wing-span
@@ -46,6 +48,15 @@ that is exactly what `asb.Airplane` infers when the main wing is its first wing.
 explicitly to `asb.Airplane` and to AVL, so every coefficient stays referenced to the same area (ADR 0022);
 ASB's own default would take the first wing in the list, not the main wing. A mirrored wing is built from its
 oriented chain (root first, y ≥ 0); sections that fold back in y are not supported.
+
+**Precondition `main_wing_has_spanwise_extent` (error; maintainer 2026-10-25, #1253).** A wing typed `main_wing`
+must extend further in y than in z: over its stored sections, `max y − min y > max z − min z`. Equal or less
+means the mean inclination of the whole wing is 45° or more, a vertical surface. AeroSandbox would measure it
+without complaint (a slant planform), so the kernel refuses it before the measurement, as
+`unsupported_configuration` (`precondition_violated`), with the hint to check the surface type. Criterion and
+threshold are the proposal of #1253 and **await the maintainer's approval**: the dihedral of a real main wing
+stays far below 45° (even a strong V, 10–15°; a winglet adds little y-extent and little z-extent to a wing
+whose y-extent dominates), whereas a fin or a V-tail typed `main_wing` has y ≤ z.
 
 **Declared, not changed.** ASB's `area()` excludes the gap at the centreline (a root off y = 0 contributes no
 area inboard of it), while `b_ref` includes the centreline distance (`2·max|y|`). For a wing whose root lies on

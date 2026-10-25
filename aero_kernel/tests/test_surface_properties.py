@@ -5,7 +5,7 @@ from bisect import bisect_right
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry, Wing
-from aero_kernel.geometry_properties import surface_properties
+from aero_kernel.tests.planform_stand_in import stand_in_surface_properties as surface_properties
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 SAMPLES = 100_001

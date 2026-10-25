@@ -11,32 +11,31 @@ from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.values import airplane_of, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import SurfaceProperties, surface_properties
+from aero_kernel.geometry_properties import SurfaceProperties
 from aero_kernel.registry import formula
+from aero_kernel.solvers.asb_airplane import AC_FRACTION
 
 __all__ = ["neutral_point"]
 
 # Pappas, "If It Flies", Model Aviation 10/2009: the downwash factor 1 - 3.24 / AR_w (after von Mises,
 # Prager, Kuerti).
 PAPPAS_DOWNWASH = 3.24
-# The aerodynamic centre of each surface lies at a quarter of its mean aerodynamic chord.
-AC_FRACTION = 0.25
 # The surface types allowed beside the one main wing and the one horizontal tail (any number).
 _BESIDE = frozenset({"vertical_tail", "winglet"})
 
 
-def _layout(airplane: AirplaneGeometry) -> tuple[SurfaceProperties, SurfaceProperties]:
-    """The main wing and the horizontal tail of a supported layout, from ``surface_type`` only.
+def _layout(airplane: AirplaneGeometry) -> tuple[str, str]:
+    """The keys of the main wing and the horizontal tail of a supported layout, from ``surface_type`` only.
 
     Raises:
         FormulaError: ``unsupported_configuration`` (``unsupported_layout``) unless there is exactly
             one ``main_wing`` and one ``horizontal_tail`` (any ``vertical_tail`` and ``winglet``).
     """
-    wings = list((airplane.wings or {}).values())
-    types = Counter(wing.surface_type for wing in wings)
+    wings = list((airplane.wings or {}).items())
+    types = Counter(wing.surface_type for _, wing in wings)
     others = set(types) - {"main_wing", "horizontal_tail"} - _BESIDE
     if types["main_wing"] != 1 or types["horizontal_tail"] != 1 or others:
-        found = sorted(str(wing.surface_type) for wing in wings)
+        found = sorted(str(wing.surface_type) for _, wing in wings)
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,
             "unsupported_layout",
@@ -46,9 +45,9 @@ def _layout(airplane: AirplaneGeometry) -> tuple[SurfaceProperties, SurfacePrope
             detail={"surface_types": list(found)},
             parameter="airplane",
         )
-    main = next(w for w in wings if w.surface_type == "main_wing")
-    tail = next(w for w in wings if w.surface_type == "horizontal_tail")
-    return surface_properties(main), surface_properties(tail)
+    main = next(key for key, wing in wings if wing.surface_type == "main_wing")
+    tail = next(key for key, wing in wings if wing.surface_type == "horizontal_tail")
+    return main, tail
 
 
 def _barycentre(main: SurfaceProperties, tail: SurfaceProperties, weight: float) -> float:
@@ -77,6 +76,9 @@ async def neutral_point(x: Inputs, ctx: Context) -> dict[str, float]:
     - ``avl``: the vortex lattice at the lift coefficient ``m g / (1/2 rho V_md^2 S_ref)`` with the
       kernel's ``S_ref``. It adds no regime warning: those come with ``V_md`` and are inherited.
 
+    The textbook and Pappas worlds take the area, aspect ratio, MAC and MAC leading edge of the main wing
+    and of the tail from the GEO adapter, i.e. AeroSandbox (#1253).
+
     The layout is checked first, in every world, from ``surface_type`` only; AVL is never started
     for a refused layout. Every world declares ``fuselage_not_modelled``.
 
@@ -94,7 +96,7 @@ async def neutral_point(x: Inputs, ctx: Context) -> dict[str, float]:
         FormulaError: ``unsupported_layout``; from the adapter, unchanged.
     """
     airplane = airplane_of(x)
-    main, tail = _layout(airplane)
+    main_key, tail_key = _layout(airplane)
     ctx.warn(
         "fuselage_not_modelled",
         "The fuselage's destabilising contribution is not included in the neutral point (a declared "
@@ -102,15 +104,17 @@ async def neutral_point(x: Inputs, ctx: Context) -> dict[str, float]:
         "point is slightly too far aft; larger for a fat fuselage or a long nose.",
     )
     world = ctx.world
-    if world == "textbook":
-        weight = (
-            number(x, "eta_h")
-            * (1.0 - 4.0 / (main.aspect_ratio + 2.0))
-            * _lift_slope_ratio(main, tail)
-        )
-        return {"x_np": _barycentre(main, tail, weight)}
-    if world == "pappas":
-        weight = (1.0 - PAPPAS_DOWNWASH / main.aspect_ratio) * _lift_slope_ratio(main, tail)
+    if world in ("textbook", "pappas"):
+        main = await ctx.solvers.geometry.surface_reference(airplane, main_key)
+        tail = await ctx.solvers.geometry.surface_reference(airplane, tail_key)
+        if world == "textbook":
+            weight = (
+                number(x, "eta_h")
+                * (1.0 - 4.0 / (main.aspect_ratio + 2.0))
+                * _lift_slope_ratio(main, tail)
+            )
+        else:
+            weight = (1.0 - PAPPAS_DOWNWASH / main.aspect_ratio) * _lift_slope_ratio(main, tail)
         return {"x_np": _barycentre(main, tail, weight)}
     if world == "avl":
         dynamic_pressure = 0.5 * number(x, "rho") * number(x, "v_md") ** 2

@@ -1,4 +1,4 @@
-"""The GEO adapter: the reference values of the main wing, as AeroSandbox measures them.
+"""The GEO adapter: the planform values of the wings, as AeroSandbox measures them.
 
 Implements the tool behind the canon formula ``airplane-geometry`` (ARCHITECTURE ch. 8.8). The
 measurement itself is :func:`aero_kernel.solvers.asb_airplane.main_wing_properties`, shared with the
@@ -12,8 +12,8 @@ from collections.abc import Mapping
 from typing import ClassVar
 
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import MainWingProperties
-from aero_kernel.solvers.asb_airplane import main_wing_properties
+from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
+from aero_kernel.solvers.asb_airplane import main_wing_properties, surface_properties
 from aero_kernel.solvers.base import SolverAdapter
 
 logger = logging.getLogger(__name__)
@@ -55,3 +55,22 @@ class GeometryAdapter(SolverAdapter):
         reference = main_wing_properties(airplane)
         logger.debug("main wing reference of %s: %s", airplane.name, reference)
         return reference
+
+    async def surface_reference(self, airplane: AirplaneGeometry, key: str) -> SurfaceProperties:
+        """Return AeroSandbox's planform values of one wing, for the neutral point's surface terms.
+
+        Args:
+            airplane: The validated geometry document.
+            key: The key of the wing in ``airplane.wings``.
+
+        Returns:
+            Area, span, aspect ratio, MAC and the MAC's leading edge in m^2, m, 1, m, m.
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing;
+                ``unsupported_configuration`` for a wing without a planform or one whose
+                sections fold back along y.
+        """
+        self.require_available()
+        await asyncio.to_thread(importlib.import_module, "aerosandbox")
+        return surface_properties(airplane, key)

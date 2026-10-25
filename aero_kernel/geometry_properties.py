@@ -1,19 +1,11 @@
-"""Planform values of a lifting surface, integrated from the geometry (ARCHITECTURE ch. 8.5, 8.8).
+"""Containers of the planform values AeroSandbox measures (ARCHITECTURE ch. 8.5, 8.8).
 
-Nothing here calls a tool. :func:`surface_properties` implements the surface terms of
-``neutral-point`` for the main wing and the tail. The reference values ``S_ref``, ``b_ref`` and
-``c_MAC`` of ``airplane-geometry`` are AeroSandbox's (``solvers.asb_airplane.main_wing_properties``);
-:class:`MainWingProperties` is their container.
+The values are AeroSandbox's (``solvers.asb_airplane``); nothing is integrated here (gh-1240, gh-1253).
 """
 
-from itertools import pairwise
-
-from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.geometry import Wing
-from aero_kernel.surface_chain import oriented_chain
 from pydantic import BaseModel, ConfigDict
 
-__all__ = ["MainWingProperties", "SurfaceProperties", "surface_properties"]
+__all__ = ["MainWingProperties", "SurfaceProperties"]
 
 
 class MainWingProperties(BaseModel):
@@ -33,15 +25,15 @@ class MainWingProperties(BaseModel):
 
 
 class SurfaceProperties(BaseModel):
-    """Area, span, aspect ratio and mean aerodynamic chord of one surface, projected onto x-y.
+    """Area, span, aspect ratio and mean aerodynamic chord of one surface, as AeroSandbox measures them.
 
     Attributes:
-        area: Planform area in m^2 (both halves of a mirrored surface).
-        span: Span in m (``2 max|y|`` for a mirrored surface).
-        aspect_ratio: ``span^2 / area``.
-        c_mac: Mean aerodynamic chord in m.
-        x_le_mac: x of the leading edge of the mean aerodynamic chord in m (the chord-weighted
-            leading edge), in the geometry frame, aft positive.
+        area: ``Wing.area()`` in m^2.
+        span: ``Wing.span(include_centerline_distance=True)`` in m.
+        aspect_ratio: ``span^2 / area`` (the decision of gh-1253: derived from the two ASB values).
+        c_mac: ``Wing.mean_aerodynamic_chord()`` in m.
+        x_le_mac: x of the leading edge of the mean aerodynamic chord in m, in the geometry frame,
+            aft positive: ``x_AC - 0.25 c_MAC`` with ``x_AC`` from ``Wing.aerodynamic_center()``.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -51,101 +43,3 @@ class SurfaceProperties(BaseModel):
     aspect_ratio: float
     c_mac: float
     x_le_mac: float
-
-
-# A point of the planform chain: y, chord, x of the leading edge (all in m).
-_Point = tuple[float, float, float]
-# A panel: dy, chords c1 and c2, leading-edge x1 and x2.
-_Panel = tuple[float, float, float, float, float]
-
-
-def _unsupported(message: str, hint: str, wing: str) -> FormulaError:
-    """The error of a surface whose planform cannot be integrated."""
-    return FormulaError(
-        ErrorCategory.UNSUPPORTED_CONFIGURATION,
-        "unsupported_configuration",
-        message,
-        hint,
-        detail={"wing": wing},
-        parameter="airplane",
-    )
-
-
-def _panels(chain: list[_Point], symmetric: bool) -> tuple[list[_Panel], float]:
-    """The panels of the planform and its half span.
-
-    A mirrored surface is carried to the centreline: a root off y = 0 is extended to it with the root
-    chord and leading edge, and a side that crosses y = 0 is clipped there.
-
-    Returns:
-        The panels ``(dy, c1, c2, x1, x2)`` and the y extent of the half planform.
-    """
-    if not symmetric:
-        panels = [(y2 - y1, c1, c2, x1, x2) for (y1, c1, x1), (y2, c2, x2) in pairwise(chain)]
-        return panels, chain[-1][0] - chain[0][0]
-    panels: list[_Panel] = []
-    if chain[0][0] > 0.0:
-        panels.append((chain[0][0], chain[0][1], chain[0][1], chain[0][2], chain[0][2]))
-    for (y1, c1, x1), (y2, c2, x2) in pairwise(chain):
-        low = max(y1, 0.0)
-        if y2 > low:
-            share = (low - y1) / (y2 - y1)
-            panels.append((y2 - low, c1 + (c2 - c1) * share, c2, x1 + (x2 - x1) * share, x2))
-    return panels, max(chain[-1][0], 0.0)
-
-
-def surface_properties(wing: Wing) -> SurfaceProperties:
-    """Return the planform values of one surface, projected onto the x-y plane.
-
-    The definition (maintainer, 2026-10-22): the sections' chords and leading edges as given,
-    projected onto the x-y plane, panel by panel (so a polyhedral wing works); twist does not
-    change it. A mirrored surface is carried to the centreline (team-lead, 2026-10-23): a root off
-    the plane is extended to y = 0 with the root chord, and a stored side that crosses y = 0 is
-    clipped there, so the span is ``2 max|y|``. A surface that is not mirrored keeps its stored
-    extent ``max y - min y``, with no extension. The neutral point's wing and tail terms come from
-    here (the reference values of the main wing are AeroSandbox's, not these).
-
-    ``x_le_MAC`` has no AeroSandbox counterpart. Per panel, with ``dy`` its y extent, chords ``c1``,
-    ``c2`` and leading edges ``x1``, ``x2``:
-
-    - area ``dy (c1 + c2) / 2``, ``integral c^2 dy = dy (c1^2 + c1 c2 + c2^2) / 3``,
-      ``integral c x_le dy = dy (c1 x1 / 3 + (c1 x2 + c2 x1) / 6 + c2 x2 / 3)``;
-    - ``c_MAC = integral(c^2 dy) / integral(c dy)`` over the half planform, which is
-      ``(2/S) integral(c^2 dy)`` over the half wing;
-    - ``x_le_MAC = integral(c x_le dy) / integral(c dy)``, the chord-weighted leading edge: the
-      leading edge at the spanwise station of the MAC.
-
-    No external tool is called, so this needs no AeroSandbox.
-
-    Args:
-        wing: One surface of a validated geometry document.
-
-    Returns:
-        The planform values in m^2, m, 1, m, m.
-
-    Raises:
-        FormulaError: ``unsupported_configuration`` if the sections fold back in y or the surface
-            has no projected area (all its sections at one y).
-    """
-    chain = [(p.y, p.chord, p.x) for p in oriented_chain(wing, 1)]
-    panels, half_span = _panels(chain, wing.symmetric)
-    area = sum(dy * (c1 + c2) / 2.0 for dy, c1, c2, _x1, _x2 in panels)
-    squares = sum(dy * (c1 * c1 + c1 * c2 + c2 * c2) / 3.0 for dy, c1, c2, _x1, _x2 in panels)
-    moment = sum(
-        dy * (c1 * x1 / 3.0 + (c1 * x2 + c2 * x1) / 6.0 + c2 * x2 / 3.0)
-        for dy, c1, c2, x1, x2 in panels
-    )
-    if area <= 0.0:
-        raise _unsupported(
-            f"the wing {wing.name!r} has no area projected onto the x-y plane",
-            "a surface needs sections at different y; a vertical surface has no projected planform",
-            wing.name,
-        )
-    mirrored = 2.0 if wing.symmetric else 1.0
-    return SurfaceProperties(
-        area=mirrored * area,
-        span=mirrored * half_span,
-        aspect_ratio=(mirrored * half_span) ** 2 / (mirrored * area),
-        c_mac=squares / area,
-        x_le_mac=moment / area,
-    )
