@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: AVL
 shape: law
-status: draft
+status: approved
 output: spanwise-lift-distribution, spanwise-shear-force, spanwise-bending-moment
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs:
   airplane: airplane
   m: aircraft-mass
@@ -104,14 +104,20 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [x] **Convergence** — the criterion, and what is returned and declared on failure
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-25): one AVL solution at `L = n·m·g`, the main wing's strip normal
+> force integrated tip → root to shear and bending, with the declared limits — main wing only, aerodynamic
+> load only (no inertial relief), pitch untrimmed, attached flow, accuracy by chord Reynolds number as
+> stated. AVL is the tool for the MVP; AeroSandbox's vortex lattice is recorded as technical debt (#1248).
+> The design load case — does the spar hold `n_lim` — is `spar-break-load-factor` (n_break against n_lim
+> in the evaluation, A10); a direct evaluation at `n = n_lim` is #1139. The implementation checklist item
+> holds vacuously: there is no aero_kernel formula yet.
