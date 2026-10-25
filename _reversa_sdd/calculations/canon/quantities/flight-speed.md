@@ -4,12 +4,12 @@ kind: quantity
 symbol: V
 unit: m/s
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/operating-point
   - role/input
 type: scalar
+data: app:OperatingPointSchema.velocity
 ---
 
 # Flight speed · `V`

@@ -240,7 +240,7 @@ conventions already exists and is the right one; it only has to win.
 
 ## Approval
 
-Each formula carries a `status`:
+Each formula carries a `status` — stage 1 of the two-stage approval (below); a quantity carries none:
 
 | status | meaning |
 |---|---|
@@ -358,10 +358,61 @@ codebase is an application defect, not a formula defect.** The contradiction in
 What was wrong was which `cl_max` got bound to it. That is why the code reads as
 unremarkable: every individual line is right, and only the path shows the error.
 
-**One rule orders the work: a formula is only approvable once its inputs are approved.**
+~~**One rule orders the work: a formula is only approvable once its inputs are approved.**
 Otherwise approval rests on unapproved ground. That is what makes the traversal run
 from the input parameters to the outputs, and it gives the only honest progress
-measure — *what fraction of the paths reaching a user-visible number is approved*.
+measure — *what fraction of the paths reaching a user-visible number is approved*.~~
+
+**Superseded 2026-10-25 (#1251) by the two-stage approval below.** The rule had two readings
+(formula level: an input is approved when its producer is; quantity level: the quantity's own
+`status`), and neither caught a formula whose input has *no mapping to our actual data* — the
+motor circuit resistance is the case: a correct, sourced relation whose input no catalogue field
+carries. The traversal still runs from the input parameters to the outputs, and the progress
+measure is unchanged.
+
+### Two-stage approval: the formula, then its inputs
+
+Decision (maintainer, 2026-10-25): "die fünf Quellarten sind ok".
+
+**Stage 1 — formula approved.** The relation is sourced (or adopted on the maintainer's authority),
+the method is named, regime and limits are declared, the implementations agree: the three gates
+above, without "inputs approved". Stage 1 is the formula's `status`, set by the maintainer.
+
+**Stage 2 — inputs approved.** Derived, never set by hand, and **transitive** (maintainer, 2026-10-25:
+"für die finale Freigabe muss die ganze Kette stimmen, sonst lässt es sich nicht berechnen; eine einfache
+Traverse des Baums"). Every input of the formula is either (a) a supplied quantity with a **demonstrated
+source in our data**, recorded on the quantity as `data:` (below), or (b) produced by formulas that satisfy
+**both** stages themselves — stage 1 approved and stage 2 holding for *their* inputs, recursively. The
+formulas a formula embeds (its `embeds` closure) count the same way. Only both stages, over the whole
+chain, make a formula fully approved — a test oracle. A gap is reported at its root, with the formulas it
+passes through: `<quantity>: no data source (the catalogue does not carry it) via airplane-components`.
+
+**Pure data reads (maintainer, 2026-10-25).** `data:` is also allowed on a quantity produced by a
+formula that is a *pure data read* — criterion: `tool: KAT`, a formula that takes its outputs from the
+parts catalogue (today `airplane-components`). Such a quantity names the catalogue field it is read from
+(`motor-voltage-constant: component:brushless_motor.kv_rpm_per_volt`) or, where it is computed from
+catalogue fields in the same formula, the fields and defaults it rests on (`battery-voltage`). The
+importer checks that each field exists. A quantity of such a formula **without** `data:` is one the
+catalogue does not carry (a catalogue field no component type has); a formula consuming it reports it as unmapped in stage 2. Every other produced quantity takes
+its approval from its producer and may not carry `data:`.
+
+**Quantity status is derived, not a field.** A produced quantity is `approved` when every producer satisfies both stages over its whole chain, otherwise `draft`;
+a supplied one is `approved` exactly when its `data:` is set and resolves, otherwise `unmapped`.
+A `status:` in a quantity entry is a finding.
+
+**The five kinds of data source:**
+
+| kind | location | what it proves |
+|---|---|---|
+| `geometry` | a dotted property path in `docs/geometry-format/airplane-geometry.schema.json` | the geometry format carries the value |
+| `component` | `<component_type>` or `<component_type>.<field>` of the component-type seed, or a column every component has (`mass_g`) | the parts catalogue carries it |
+| `default` | a key of `defaults.yaml` | the canon states it with its source |
+| `app` | `<Class>.<field>` of a pydantic model under `app/schemas/` | the designer enters it in the app |
+| `evaluation` | a name | it is the result of the evaluation or of the selection graph (Urmodell) |
+
+An unmapped input is a **finding listed in `IMPORT_REPORT.md`** ("Approval, stage 2"), not an error:
+the report is the work list, and the navigator shows on every formula "formula ✓ / inputs k of n"
+with the missing inputs and why (no source, or produced by a formula that is not approved).
 
 ## Machine-readable fields
 
@@ -520,7 +571,7 @@ version and settings of its tool (#1221). A tool or world the taxonomy lacks is 
 checks (`static-margin-probe` checks `static-margin`). The importer carries it; the navigator links
 probe and value. The slug of a probe says nothing.
 
-The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `status`, `uncertainty`, `tags`)
+The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `uncertainty`, `tags`; a quantity has no `status`, it is derived)
 stay. Added:
 
 | field | required | what it holds |
@@ -529,6 +580,7 @@ stay. Added:
 | `checks` | only on a probe | the slug of the quantity the probe verifies (see Probe above); must be another quantity of the canon |
 | `positive` | optional, only on `type: scalar` with role `input` or `target` (positivity is a property of a number) | `true` when the quantity is strictly greater than zero **by its definition**; omit otherwise (`false` is an error — one spelling). A default of such a quantity (`defaults.yaml`) must be > 0 (a mass, a density, gravity) — a fact about the quantity, not a design judgement (A10). A supplied value ≤ 0 is rejected. Not set where zero or a negative value is meaningful (angles, deflections, altitude, a speed that may be 0). Example: `aircraft-mass` carries `positive: true` |
 | `at_most` | optional, only on `type: scalar` with role `input` or `target` | the largest admissible value, a number (an efficiency is at most 1). A supplied value above it is rejected (`value_above_maximum`); a default of such a quantity must not exceed it. Example: `tail-efficiency` carries `positive: true` and `at_most: 1` |
+| `data` | optional; for a quantity no formula produces, or one a pure data read (`tool: KAT`) produces; on any other produced quantity it is a finding | where the quantity comes from in our data: one `<kind>:<location>` or a list of them, the kinds and locations of "Two-stage approval". The importer validates the kind and, where it can read the repository, that the location exists: a geometry path in the schema, a component type or field in the seed (`app/services/component_type_service.py`), a `defaults.yaml` key, an `<Class>.<field>` under `app/schemas/`. `evaluation` is not checked. Example: `aircraft-mass` carries `data: geometry:total_mass_kg` |
 
 #### Defaults — `defaults.yaml`
 

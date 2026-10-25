@@ -4,7 +4,6 @@ kind: quantity
 symbol: K_v
 unit: rpm/V
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references
@@ -12,6 +11,7 @@ tags:
   - group/powertrain-motor-propeller
   - role/derived
 type: scalar
+data: component:brushless_motor.kv_rpm_per_volt
 ---
 
 # Motor voltage constant · `K_v`

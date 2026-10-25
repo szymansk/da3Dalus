@@ -4,7 +4,6 @@ kind: quantity
 symbol: C_Lalpha
 unit: 1/rad
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

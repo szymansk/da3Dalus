@@ -4,7 +4,6 @@ kind: quantity
 symbol: C_malpha
 unit: 1/rad
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/longitudinal

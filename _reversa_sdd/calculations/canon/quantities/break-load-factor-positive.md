@@ -4,7 +4,6 @@ kind: quantity
 symbol: n_break,pos
 unit: 1
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/structure

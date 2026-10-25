@@ -4,7 +4,6 @@ kind: quantity
 symbol: V_mp
 unit: m/s
 role: derived
-status: draft
 tags:
   - canon/quantity
   - discipline/glide

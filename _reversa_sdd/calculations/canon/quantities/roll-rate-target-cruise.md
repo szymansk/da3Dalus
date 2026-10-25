@@ -4,12 +4,12 @@ kind: quantity
 symbol: p_target,cruise
 unit: deg/s
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/design-targets
   - role/target
 type: scalar
+data: app:Handling.roll_rate_target_dps
 ---
 
 # Target roll rate at cruise · `p_target,cruise`

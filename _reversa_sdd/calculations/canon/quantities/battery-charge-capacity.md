@@ -4,7 +4,6 @@ kind: quantity
 symbol: Q_bat
 unit: mAh
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references
@@ -13,6 +12,7 @@ tags:
   - group/powertrain-battery
   - role/derived
 type: scalar
+data: component:battery.capacity_mah
 ---
 
 # Battery charge capacity · `Q_bat`

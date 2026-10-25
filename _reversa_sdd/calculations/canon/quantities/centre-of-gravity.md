@@ -4,7 +4,6 @@ kind: quantity
 symbol: x_CG
 unit: m
 role: input
-status: draft
 tags:
   - canon/quantity
   - module/mass-and-balance

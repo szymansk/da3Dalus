@@ -4,12 +4,13 @@ kind: quantity
 symbol: g
 unit: m/s^2
 role: input
-status: approved
 tags:
   - canon/quantity
   - module/atmosphere
   - role/input
 type: scalar
+data: default:gravity
+
 positive: true
 ---
 

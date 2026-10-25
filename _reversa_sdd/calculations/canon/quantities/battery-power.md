@@ -4,7 +4,6 @@ kind: quantity
 symbol: P_bat
 unit: W
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

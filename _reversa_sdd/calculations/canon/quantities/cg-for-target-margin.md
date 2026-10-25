@@ -4,7 +4,6 @@ kind: quantity
 symbol: x_CG,SM
 unit: m
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/longitudinal

@@ -4,7 +4,6 @@ kind: quantity
 symbol: P_mot,max
 unit: W
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references
@@ -12,6 +11,7 @@ tags:
   - group/powertrain-motor-propeller
   - role/derived
 type: scalar
+data: component:brushless_motor.max_power_w
 ---
 
 # Motor power rating · `P_mot,max`

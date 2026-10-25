@@ -31,6 +31,7 @@ from pydantic_core import PydanticCustomError
 
 __all__ = [
     "BINDING_TAGS",
+    "DATA_KINDS",
     "DEFAULT_NAMESPACE",
     "Application",
     "Binding",
@@ -39,6 +40,7 @@ __all__ = [
     "Check",
     "ConstBinding",
     "CostClass",
+    "DataSource",
     "Default",
     "Formula",
     "FormulaKind",
@@ -129,6 +131,13 @@ class Default(BaseModel):
     regime: NonBlank
 
 
+DATA_KINDS = ("geometry", "component", "default", "app", "evaluation")
+"""The five kinds of data source a supplied quantity can have (canon README, "Two stages", #1251)."""
+
+DataSource = Annotated[str, StringConstraints(pattern=rf"^({'|'.join(DATA_KINDS)}):\S+$")]
+"""``<kind>:<location>``, e.g. ``geometry:total_mass_kg``; the importer checks the location."""
+
+
 class Quantity(BaseModel):
     """A quantity of the canon vocabulary.
 
@@ -148,6 +157,8 @@ class Quantity(BaseModel):
         checks: The slug of the quantity this one verifies (a probe); ``None`` for any other.
         at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),
             otherwise omitted (``None``).
+        data: Where the quantity comes from in our data, each ``<kind>:<location>`` (a quantity no
+            formula produces; stage 2 of the approval); ``None`` while it has no demonstrated source.
     """
 
     model_config = _MODEL_CONFIG
@@ -165,6 +176,7 @@ class Quantity(BaseModel):
     discipline: Slug | None = None
     checks: Slug | None = None
     at_most: FiniteNumber | None = None
+    data: Annotated[list[DataSource], Field(min_length=1)] | None = None
 
     @field_validator("positive", mode="before")
     @classmethod
@@ -187,6 +199,14 @@ class Quantity(BaseModel):
             if self.type != "scalar":
                 msg = f"{name} is only allowed on a scalar quantity, not {self.type}"
                 raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_data_sources_differ(self) -> Self:
+        """Reject a source named twice."""
+        if self.data is not None and len(set(self.data)) != len(self.data):
+            msg = "data names a source twice"
+            raise ValueError(msg)
         return self
 
     @model_validator(mode="after")

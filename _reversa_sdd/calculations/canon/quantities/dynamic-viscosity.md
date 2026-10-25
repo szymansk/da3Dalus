@@ -4,7 +4,6 @@ kind: quantity
 symbol: mu
 unit: Pa*s
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

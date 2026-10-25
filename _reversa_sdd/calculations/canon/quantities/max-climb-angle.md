@@ -4,7 +4,6 @@ kind: quantity
 symbol: gamma_max
 unit: deg
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

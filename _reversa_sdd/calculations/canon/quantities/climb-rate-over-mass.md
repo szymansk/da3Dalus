@@ -4,7 +4,6 @@ kind: quantity
 symbol: ROC_max(m)
 unit: m/s
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/powered

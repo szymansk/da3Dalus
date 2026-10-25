@@ -4,7 +4,6 @@ kind: quantity
 symbol: W/S
 unit: N/m^2
 role: derived
-status: draft
 tags:
   - canon/quantity
   - stage/references

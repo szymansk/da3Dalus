@@ -4,7 +4,6 @@ kind: quantity
 symbol: V_A
 unit: m/s
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/structure

@@ -4,7 +4,6 @@ kind: quantity
 symbol: T_2,spiral,md
 unit: s
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/lateral

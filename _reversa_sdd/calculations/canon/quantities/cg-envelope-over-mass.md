@@ -4,7 +4,6 @@ kind: quantity
 symbol: x_fwd(m), x_aft(m)
 unit: m
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/longitudinal

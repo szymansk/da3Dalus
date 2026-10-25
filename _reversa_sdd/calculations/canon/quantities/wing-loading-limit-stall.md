@@ -4,7 +4,6 @@ kind: quantity
 symbol: (W/S)_max,S
 unit: N/m^2
 role: output
-status: draft
 tags:
   - canon/quantity
   - discipline/aerodynamics

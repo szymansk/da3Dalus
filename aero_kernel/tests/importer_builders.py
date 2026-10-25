@@ -6,20 +6,20 @@ once against the real canon document.
 
 from pathlib import Path
 
-__all__ = ["MINI_CANON", "MINI_TAXONOMY", "write_canon"]
+__all__ = ["MINI_CANON", "MINI_TAXONOMY", "formula_text", "quantity_text", "write_canon"]
 
 
-def _quantity(
+def quantity_text(
     slug: str, symbol: str, unit: str, role: str, extra: str = "", type_: str = "scalar"
 ) -> str:
     shown = f'"{unit}"' if unit == "N" else unit  # the newton is a YAML 1.1 boolean unless quoted
     return (
         f"---\ncanon: {slug}\nkind: quantity\nsymbol: {symbol}\nunit: {shown}\nrole: {role}\n"
-        f"status: draft\ntags:\n  - canon/quantity\ntype: {type_}\n{extra}---\n\n# {slug}\n\nProse.\n"
+        f"tags:\n  - canon/quantity\ntype: {type_}\n{extra}---\n\n# {slug}\n\nProse.\n"
     )
 
 
-def _formula(slug: str, body: str) -> str:
+def formula_text(slug: str, body: str) -> str:
     return (
         f"---\ncanon: {slug}\nentry: formula\nstatus: draft\nshape: law\noutput: weight\n"
         f"source_status: SOURCED\ndimensional_check: OK\ntags:\n  - canon/formula\n"
@@ -44,27 +44,27 @@ worlds:
 
 MINI_CANON: dict[str, str] = {
     "taxonomy.yaml": MINI_TAXONOMY,
-    "quantities/aircraft-mass.md": _quantity(
-        "aircraft-mass", "m", "kg", "input", "positive: true\n"
+    "quantities/aircraft-mass.md": quantity_text(
+        "aircraft-mass", "m", "kg", "input", "positive: true\ndata: geometry:total_mass_kg\n"
     ),
-    "quantities/gravity.md": _quantity("gravity", "g", "m/s^2", "input", "positive: true\n"),
-    "quantities/weight.md": _quantity("weight", "W", "N", "derived"),
-    "quantities/weight-estimate.md": _quantity(
+    "quantities/gravity.md": quantity_text("gravity", "g", "m/s^2", "input", "positive: true\n"),
+    "quantities/weight.md": quantity_text("weight", "W", "N", "derived"),
+    "quantities/weight-estimate.md": quantity_text(
         "weight-estimate", "W_e", "N", "derived", "uncertainty: interval\n"
     ),
-    "quantities/weight-twice.md": _quantity("weight-twice", "W_2", "N", "derived"),
-    "quantities/weight-outer.md": _quantity("weight-outer", "W_o", "N", "derived"),
-    "quantities/weight-weighed.md": _quantity("weight-weighed", "W_w", "N", "derived"),
-    "quantities/weight-flapped.md": _quantity("weight-flapped", "W_f", "N", "derived"),
-    "quantities/airplane.md": _quantity("airplane", "airplane", "—", "input", type_="airplane"),
-    "quantities/ratio.md": _quantity("ratio", "r", "1", "input"),
-    "formulas/weight-from-mass.md": _formula(
+    "quantities/weight-twice.md": quantity_text("weight-twice", "W_2", "N", "derived"),
+    "quantities/weight-outer.md": quantity_text("weight-outer", "W_o", "N", "derived"),
+    "quantities/weight-weighed.md": quantity_text("weight-weighed", "W_w", "N", "derived"),
+    "quantities/weight-flapped.md": quantity_text("weight-flapped", "W_f", "N", "derived"),
+    "quantities/airplane.md": quantity_text("airplane", "airplane", "—", "input", type_="airplane"),
+    "quantities/ratio.md": quantity_text("ratio", "r", "1", "input"),
+    "formulas/weight-from-mass.md": formula_text(
         "weight-from-mass",
         "kind: law\ntool: APP\ninputs: {m: aircraft-mass, g: gravity}\noutputs: {w: weight}\n"
         "preconditions:\n  - {id: m_checked, parameter: m, on_violation: warning}\n"
         "postconditions:\n  - {id: w_checked, parameter: w, on_violation: error}\n",
     ),
-    "formulas/weighing.md": _formula(
+    "formulas/weighing.md": formula_text(
         "weighing",
         "kind: procedure\ntool: AB\n"
         "inputs: {m: aircraft-mass, g: gravity}\noutputs: {w: null}\n"
@@ -75,18 +75,18 @@ MINI_CANON: dict[str, str] = {
         "postconditions:\n"
         "  - {id: clean_only, parameter: w, on_violation: warning, applications: [clean]}\n",
     ),
-    "formulas/estimate.md": _formula(
+    "formulas/estimate.md": formula_text(
         "estimate",
         "kind: procedure\ntool: AVL\nuncertainty: interval\nworlds: [simple, detailed]\n"
         "inputs: {m: aircraft-mass, g: gravity}\noutputs: {w: weight-estimate}\n",
     ),
-    "formulas/weigh-twice.md": _formula(
+    "formulas/weigh-twice.md": formula_text(
         "weigh-twice",
         "kind: procedure\ntool: APP\ninputs: {m: aircraft-mass, g: gravity}\n"
         "outputs: {w: weight-twice}\nembeds: [weight-from-mass, weighing.clean]\n"
         "variables: [aircraft-mass]\n",
     ),
-    "formulas/outer.md": _formula(
+    "formulas/outer.md": formula_text(
         "outer",
         "kind: optimization\ntool: OPT\ncost: minutes\ninputs: {m: aircraft-mass, g: gravity}\n"
         "outputs: {w: weight-outer}\nembeds: [weigh-twice]\nvariables: [aircraft-mass]\n"

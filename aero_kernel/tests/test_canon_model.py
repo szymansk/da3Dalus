@@ -468,6 +468,7 @@ def test_public_names_of_the_model_are_pinned() -> None:
     assert sorted(model.__all__) == sorted(
         [
             "BINDING_TAGS",
+            "DATA_KINDS",
             "DEFAULT_NAMESPACE",
             "Application",
             "Binding",
@@ -476,6 +477,7 @@ def test_public_names_of_the_model_are_pinned() -> None:
             "Check",
             "ConstBinding",
             "CostClass",
+            "DataSource",
             "Default",
             "Formula",
             "FormulaKind",

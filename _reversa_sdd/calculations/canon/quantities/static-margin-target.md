@@ -4,7 +4,6 @@ kind: quantity
 symbol: SM_target
 unit: 1
 role: target
-status: draft
 tags:
   - canon/quantity
   - module/design-targets
