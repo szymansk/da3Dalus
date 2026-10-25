@@ -1593,7 +1593,6 @@ model (part of `IMPORT_REPORT.md`).
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
 | `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe |
 | `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe |
-| `relative-mass-deviation` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
