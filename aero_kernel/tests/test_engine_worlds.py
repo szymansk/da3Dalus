@@ -62,6 +62,7 @@ class Probe:
         self.calls: list[tuple[str, str | None]] = []
         self.fail: dict[str, FormulaError] = {}
         self.warn: set[str] = set()
+        self.outside: set[str] = set()
         self.pre_calls: list[object] = []
 
     def registry(self) -> Registry:
@@ -77,6 +78,12 @@ class Probe:
             self.calls.append(("unc", world))
             if world in self.warn:
                 ctx.warn("precondition_unchecked", f"warned in {world}")
+            if world in self.outside:
+                ctx.warn(
+                    "world_outside_validity",
+                    f"{world} is outside its validity",
+                    {"value": VALUE[world], "limit": 25.0},
+                )
             if world in self.fail:
                 raise self.fail[world]
             return {"o": VALUE[world]}
@@ -296,3 +303,79 @@ async def test_two_worlds_failing_alike_and_one_differently_keep_a_world_label()
     error = only(await run(probe, "np-q")).error
     assert error is not None
     assert error.world is not None
+
+
+async def test_a_world_outside_its_validity_is_dropped_from_the_interval() -> None:
+    probe = Probe()
+    probe.outside.add("gamma")
+    quantity_ = only(await run(probe, "np-q"))
+    assert quantity_.status is QuantityStatus.OK
+    assert quantity_.interval is not None
+    assert (quantity_.interval.min, quantity_.interval.max) == (10.0, 20.0)
+    assert quantity_.interval.worlds == {"unc=alpha": 10.0, "unc=beta": 20.0}
+
+
+async def test_the_exclusion_is_declared_with_the_world_and_the_excluded_value() -> None:
+    probe = Probe()
+    probe.outside.add("gamma")
+    quantity_ = only(await run(probe, "np-q"))
+    (warning,) = [w for w in quantity_.warnings if w.code == "world_outside_validity"]
+    assert (warning.world, warning.origin) == ("unc=gamma", "np-q")
+    assert warning.severity.value == "practice"
+    assert warning.detail == {"value": 30.0, "limit": 25.0}
+
+
+async def test_a_downstream_quantity_drops_the_excluded_assignment_too() -> None:
+    probe = Probe()
+    probe.outside.add("alpha")
+    quantity_ = only(await run(probe, "join-q"))
+    assert quantity_.interval is not None
+    assert quantity_.interval.worlds == {"unc=beta": 28.0, "unc=gamma": 38.0}
+    assert "world_outside_validity" in [w.code for w in quantity_.warnings]
+
+
+async def test_one_remaining_world_collapses_the_interval_to_a_point() -> None:
+    probe = Probe()
+    probe.outside.update({"alpha", "gamma"})
+    quantity_ = only(await run(probe, "np-q"))
+    assert quantity_.interval is not None
+    assert (quantity_.interval.min, quantity_.interval.max) == (20.0, 20.0)
+    assert quantity_.interval.worlds == {"unc=beta": 20.0}
+    excluded = [w.world for w in quantity_.warnings if w.code == "world_outside_validity"]
+    assert sorted(str(w) for w in excluded) == ["unc=alpha", "unc=gamma"]
+
+
+async def test_all_worlds_outside_their_validity_is_an_error_not_an_empty_interval() -> None:
+    probe = Probe()
+    probe.outside.update(WORLDS)
+    quantity_ = only(await run(probe, "np-q"))
+    assert quantity_.status is QuantityStatus.ERROR
+    assert quantity_.interval is None
+    assert quantity_.error is not None
+    assert quantity_.error.code == "all_worlds_outside_validity"
+    assert quantity_.error.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert quantity_.error.world is None
+    assert quantity_.warnings == ()  # an error carries no warnings (ch. 8.1)
+    assert quantity_.error.detail["worlds_excluded"] == {
+        "unc=alpha": 10.0,
+        "unc=beta": 20.0,
+        "unc=gamma": 30.0,
+    }
+
+
+async def test_a_failed_world_stays_an_error_beside_an_excluded_one() -> None:
+    probe = Probe()
+    probe.outside.add("alpha")
+    probe.fail["beta"] = failing("not_converged", ErrorCategory.NOT_CONVERGED)
+    quantity_ = only(await run(probe, "np-q"))
+    assert quantity_.status is QuantityStatus.ERROR
+    assert quantity_.error is not None
+    assert (quantity_.error.code, quantity_.error.world) == ("not_converged", "unc=beta")
+
+
+async def test_an_ordinary_warning_in_a_world_does_not_exclude_it() -> None:
+    probe = Probe()
+    probe.warn.add("gamma")
+    quantity_ = only(await run(probe, "np-q"))
+    assert quantity_.interval is not None
+    assert len(quantity_.interval.worlds) == 3

@@ -63,6 +63,10 @@ from pydantic import JsonValue
 
 logger = logging.getLogger(__name__)
 
+# The warning code by which a world declares itself outside its validity; it drops the assignment from
+# the interval (ch. 8.13).
+WORLD_OUTSIDE_VALIDITY = "world_outside_validity"
+
 __all__ = ["evaluate", "log_call"]
 
 
@@ -876,30 +880,28 @@ def _row(result: QuantityResult, *, computed: bool) -> int:
     return _ROW_BY_CODE.get(result.error.code, _ROW_OF_A_COMPUTED_FAILURE)
 
 
+def _excluded(result: QuantityResult) -> bool:
+    """Whether the assignment lies outside the validity of a world it ran in (ch. 8.13).
+
+    The exclusion is the declaration itself: a ``world_outside_validity`` warning anywhere in the
+    result's subtree. The assignment keeps its value (the warning names it) but is not in the interval.
+    """
+    return any(w.code == WORLD_OUTSIDE_VALIDITY for w in result.warnings)
+
+
 def _merge_worlds(
     slug: str, unit: str | None, results: Sequence[tuple[str, QuantityResult, bool]]
 ) -> QuantityResult:
     """Merge the results of one quantity over its world assignments (ch. 8.13, A11).
 
-    All ``ok``: an interval over the assignment values. Otherwise the failure that comes first by
-    its row of the status order, then by the assignment key; an error carries the values that did
-    compute in ``detail.worlds_ok``. A failed assignment is never dropped from the interval.
+    All ``ok``: an interval over the assignment values, without the assignments a world declared
+    outside its validity (``world_outside_validity``); if every assignment is excluded the quantity
+    is an error. Otherwise the failure that comes first by its row of the status order, then by the
+    assignment key; an error carries the values that did compute in ``detail.worlds_ok``. A failed
+    assignment is never dropped from the interval; only a declared exclusion is.
     """
     if all(result.status is QuantityStatus.OK for _, result, _ in results):
-        values: dict[str, float] = {}
-        for key, result, _ in results:
-            assert result.value is not None
-            values[key] = result.value
-        first = results[0][1]
-        return QuantityResult(
-            slug=slug,
-            unit=unit,
-            status=QuantityStatus.OK,
-            interval=Interval(min=min(values.values()), max=max(values.values()), worlds=values),
-            tool=first.tool,
-            application=first.application,
-            warnings=dedupe_warnings([w for _, result, _ in results for w in result.warnings]),
-        )
+        return _interval_of(slug, unit, results)
     _, _, chosen = min(
         (
             (_row(result, computed=computed), key, result)
@@ -918,6 +920,45 @@ def _merge_worlds(
         error = error.model_copy(update={"world": None})  # the cause is in no world
     error = error.model_copy(update={"detail": {**error.detail, "worlds_ok": worlds_ok}})
     return chosen.model_copy(update={"error": error})
+
+
+def _interval_of(
+    slug: str, unit: str | None, results: Sequence[tuple[str, QuantityResult, bool]]
+) -> QuantityResult:
+    """The interval of an all-``ok`` quantity over the assignments inside every world's validity."""
+    kept = [(key, result) for key, result, _ in results if not _excluded(result)]
+    if not kept:
+        excluded: dict[str, JsonValue] = {key: result.value for key, result, _ in results}
+        return QuantityResult(
+            slug=slug,
+            unit=unit,
+            status=QuantityStatus.ERROR,
+            error=KernelError(
+                code="all_worlds_outside_validity",
+                category=ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                quantity=slug,
+                message=(
+                    f"Every method world of `{slug}` declared itself outside its validity, "
+                    "so no interval remains."
+                ),
+                hint="The values of the excluded worlds are in detail.worlds_excluded.",
+                detail={"worlds_excluded": excluded},
+            ),
+        )
+    values: dict[str, float] = {}
+    for key, result in kept:
+        assert result.value is not None
+        values[key] = result.value
+    first = kept[0][1]
+    return QuantityResult(
+        slug=slug,
+        unit=unit,
+        status=QuantityStatus.OK,
+        interval=Interval(min=min(values.values()), max=max(values.values()), worlds=values),
+        tool=first.tool,
+        application=first.application,
+        warnings=dedupe_warnings([w for _, result, _ in results for w in result.warnings]),
+    )
 
 
 def _alike_in_every_world(results: Sequence[tuple[str, QuantityResult, bool]]) -> bool:

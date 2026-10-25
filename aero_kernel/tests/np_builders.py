@@ -49,7 +49,9 @@ class StubAvl(AvlAdapter):
         self.canned_warnings = warnings
         self.calls: list[tuple[AirplaneGeometry, float]] = []
         self.failure: Exception | None = None
-        self.p_hat = 0.25  # |p'b/2V| of the stub's steady roll, signed by the command
+        self.p_hat = (
+            0.08  # |p'b/2V| of the stub's steady roll (inside AVL's range), signed by the command
+        )
         self.roll_calls: list[tuple[AirplaneGeometry, float, float]] = []
         self.roll_failure: Exception | None = None
 
