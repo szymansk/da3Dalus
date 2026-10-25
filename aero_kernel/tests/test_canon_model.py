@@ -469,6 +469,7 @@ def test_public_names_of_the_model_are_pinned() -> None:
         [
             "BINDING_TAGS",
             "DATA_KINDS",
+            "DATA_KIND_PARENT",
             "DEFAULT_NAMESPACE",
             "Application",
             "Binding",

@@ -32,6 +32,7 @@ from pydantic_core import PydanticCustomError
 __all__ = [
     "BINDING_TAGS",
     "DATA_KINDS",
+    "DATA_KIND_PARENT",
     "DEFAULT_NAMESPACE",
     "Application",
     "Binding",
@@ -134,6 +135,13 @@ class Default(BaseModel):
 
 DATA_KINDS = ("geometry", "component", "default", "app", "evaluation")
 """The five kinds of data source a supplied quantity can have (canon README, "Two stages", #1251)."""
+
+DATA_KIND_PARENT = {"geometry": "airplane", "component": "components"}
+"""The cross-cutting input quantity a kind of data source refines; the other kinds have no parent.
+
+A geometry field is a part of the ``airplane`` input, a catalogue field a part of ``components``
+(canon README, "Two-stage approval"). The navigator draws the source node under that input.
+"""
 
 DataSource = Annotated[str, StringConstraints(pattern=rf"^({'|'.join(DATA_KINDS)}):\S+$")]
 """``<kind>:<location>``, e.g. ``geometry:total_mass_kg``; the importer checks the location."""

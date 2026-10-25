@@ -410,6 +410,11 @@ A `status:` in a quantity entry is a finding.
 | `app` | `<Class>.<field>` of a pydantic model under `app/schemas/` | the designer enters it in the app |
 | `evaluation` | a name | it is the result of the evaluation or of the selection graph (Urmodell) |
 
+A `geometry` source refines the cross-cutting input `airplane`, a `component` source the input `components`
+(`DATA_KIND_PARENT` in `aero_kernel/canon/model.py`); the navigator draws such a source node under that
+input, so selecting a quantity lights its source and, one step further, the input. `default`, `app` and
+`evaluation` sources have no parent quantity.
+
 An unmapped input is a **finding listed in `IMPORT_REPORT.md`** ("Approval, stage 2"), not an error:
 the report is the work list, and the navigator shows on every formula "formula ✓ / inputs k of n"
 with the missing inputs and why (no source, or produced by a formula that is not approved).
