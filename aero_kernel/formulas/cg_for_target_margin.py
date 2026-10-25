@@ -1,4 +1,4 @@
-"""Canon formula ``cg-for-target-margin``: x_CG,SM = x_NP - SM_target c_MAC (ARCHITECTURE ch. 8.13, A10)."""
+"""Canon formula ``cg-for-target-margin``: x_cg,design = x_NP - SM_target c_MAC (ARCHITECTURE ch. 8.13, A10)."""
 
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import number

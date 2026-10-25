@@ -20,7 +20,7 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
-  x_cg: centre-of-gravity
+  x_cg: centre-of-gravity-design
   v: approach-speed
 outputs:
   c_l_beta: dihedral-effect-app
@@ -35,13 +35,13 @@ outputs:
 
 ```
 solve for alpha at V:   L = m * g          (V = V_app)
-C_l_beta, C_n_beta, C_l_p, C_n_p, C_l_r, C_n_r := AVL(airplane incl. fuselage BODY, x_ref = x_CG, V, alpha)  # stability-axis derivatives
+C_l_beta, C_n_beta, C_l_p, C_n_p, C_l_r, C_n_r := AVL(airplane incl. fuselage BODY, x_ref = x_cg_design, V, alpha)  # stability-axis derivatives
 E_spiral    = C_l_beta * C_n_r - C_n_beta * C_l_r
 lambda_s    = -(g / V) * E_spiral / (C_l_beta * C_n_p - C_n_beta * C_l_p)   # spiral root, no inertias
 T_2,spiral  = ln 2 / lambda_s    if lambda_s > 0   (time to double; stable spiral: no doubling, report T_half)
 ```
 
-**Produces** [[dihedral-effect-app]] · [[weathercock-stability-app]] · [[spiral-criterion-app]] · [[spiral-doubling-time-app]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[centre-of-gravity]] · [[approach-speed]]
+**Produces** [[dihedral-effect-app]] · [[weathercock-stability-app]] · [[spiral-criterion-app]] · [[spiral-doubling-time-app]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[centre-of-gravity-design]] · [[approach-speed]]
 
 **Kind: a procedure — derivatives from one solver evaluation.** The dihedral effect `C_lβ`
 (roll stability; negative rights the aircraft), the weathercock stability `C_nβ` (positive turns
@@ -100,5 +100,6 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > implausible fuselage share of C_nβ. Declared: not validated (below chord Re 7·10⁴ especially), the
 > fuselage share of C_nβ uncertain, statics only (Dutch roll and roll time constant need inertias). Open:
 > the Etkin & Reid equation number for the spiral approximation (🟡). Stage 2 (inputs mapped to our data)
-> is open while the app has no centre-of-gravity field (#1209). The implementation checklist item holds
+> is open while the app has no centre-of-gravity field (#1209); the CG is the quantity [[centre-of-gravity-design]] (produced by the formula cg-for-target-margin), never an app input. The implementation checklist item holds
 > vacuously: there is no aero_kernel formula yet.
+> Input rebound (maintainer 2026-10-25): the CG is cg-for-target-margin's, never an app input.

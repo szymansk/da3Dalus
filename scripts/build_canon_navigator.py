@@ -153,8 +153,8 @@ def read_canon(root: pathlib.Path, model: dict) -> tuple[dict, dict]:
 MVP_RESULTS = (
     "stall-speed",
     "neutral-point",
-    "static-margin",
-    "cg-for-target-margin",
+    "static-margin-measured",
+    "centre-of-gravity-design",
     "roll-rate-approach",
     "roll-rate-nondimensional-approach",
 )

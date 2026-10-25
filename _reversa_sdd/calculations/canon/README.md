@@ -568,7 +568,7 @@ every method world of a formula's `worlds` field to the tool that computes it (`
 version and settings of its tool (#1221). A tool or world the taxonomy lacks is a finding.
 
 **Probe.** A quantity that only verifies another carries `checks: <slug>` — the quantity whose value it
-checks (`static-margin-probe` checks `static-margin`). The importer carries it; the navigator links
+checks (`static-margin-probe` checks `static-margin-target`). The importer carries it; the navigator links
 probe and value. The slug of a probe says nothing.
 
 The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `uncertainty`, `tags`; a quantity has no `status`, it is derived)

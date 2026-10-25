@@ -126,5 +126,5 @@ def load_navigator_script() -> ModuleType:
 async def test_the_navigator_no_longer_marks_the_neutral_point_as_resting_on_a_convention() -> None:
     _, data = load_navigator_script().build()
     assert "tail-efficiency" not in data["conventions"]
-    for slug in ("neutral-point", "static-margin", "cg-for-target-margin"):
+    for slug in ("neutral-point", "static-margin-measured", "centre-of-gravity-design"):
         assert "tail-efficiency" not in data["conv"].get(slug, []), slug

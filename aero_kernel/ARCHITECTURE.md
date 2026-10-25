@@ -119,7 +119,7 @@ and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 
 3. **Solver path:** `stall-speed` — AeroBuildup/Opti adapters, applications, `when`, postconditions,
    configured airplanes, polar values.
 4. **Method worlds:** `minimum-drag-speed` first (it sets the lift coefficient of the AVL world, #1204), then
-   `neutral-point` (A11 intervals, AVL) with `static-margin` (#1203) and `cg-for-target-margin` (#1214).
+   `neutral-point` (A11 intervals, AVL) with `static-margin-measured` (#1203) and `centre-of-gravity-design` (#1214).
 5. **Embedding:** the propulsion relations and the optimisers; `mass-envelope` last (embedding, worlds and
    long runs together).
 Engine features named "built with the first embedder" (or with a later step) are specified here but not
@@ -282,7 +282,7 @@ Sources:
 - a method world outside its stated range (`world_outside_validity`, `practice`, ch. 8.13): the world leaves the interval and the warning carries its value and the limit
 - the missing fuselage (`fuselage_not_modelled`, `practice`, origin `neutral-point`, once per world): none of the
   three neutral-point worlds models a fuselage, whose contribution is destabilising, so the interval is biased
-  aft and a static margin computed from it is over-reported (`static-margin` inherits it). `practice`: a
+  aft and a static margin computed from it is over-reported (`static-margin-measured` inherits it). `practice`: a
   deliberate, declared simplification (maintainer 2026-10-24, #1205): USAF DATCOM 1978 §4.2.2.1 Method 1
   gives about 1.5-2.1 % MAC forward (BRYAN) and 0.7-1.0 % (JAGUAR), inside Sadraey's "about ±5 % c̄"
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
@@ -1063,12 +1063,12 @@ implementation, not before (ADR 0021).
   (its value is the caller's own); the rest of the request is computed.
 - The quantity `airplane` (type `airplane`) is `AircraftInput.airplane`.
 - Every other quantity with `role: input` or `role: target` is `AircraftInput.values[<slug>]`. Today these
-  are `aircraft-mass`, `centre-of-gravity`, `altitude`, `flight-speed`, `angle-of-attack`, `load-factor`,
+  are `aircraft-mass`, `centre-of-gravity-measured`, `altitude`, `flight-speed`, `angle-of-attack`, `load-factor`,
   `gravity`, `sea-level-air-density`, the control-device angles (`flap-deflection-takeoff` /
   `-landing`, `aileron-deflection`, `elevator-deflection-up` / `-down`, `crow-flap-deflection` /
   `crow-aileron-deflection`; deg, geometry sign convention, no default) and the `*-target` quantities. Assumptions are values like any
   other (R1); whether a value is assumed or measured is not the kernel's concern.
-- **The frame of position quantities** (#1203): `neutral-point` and `centre-of-gravity` are x coordinates in
+- **The frame of position quantities** (#1203): `neutral-point` and `centre-of-gravity-measured` are x coordinates in
   the geometry frame of `airplane`, x aft positive, in metres. The app's own CG field follows in #1209.
 - **Defaults** (maintainer, 2026-10-17, S5). A missing value is computed with its **default**, and the
   caller can set or override every value. Defaults are never hard-coded and never in a quantity entry:

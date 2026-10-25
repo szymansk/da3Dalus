@@ -54,7 +54,7 @@ async def run(
     solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=opti or StubOpti(), avl=stub)
     values = {"aircraft-mass": MASS, "altitude": 0.0}
     if cg is not None:
-        values["centre-of-gravity"] = cg
+        values["centre-of-gravity-measured"] = cg
     if target is not None:
         values["static-margin-target"] = target
     if eta is not None:
@@ -130,12 +130,12 @@ async def test_every_world_carries_the_fuselage_warning_and_so_does_the_static_m
         w.severity is WarningSeverity.PRACTICE and w.origin == "neutral-point" for w in fuselage
     )
     assert all(not w.detail for w in fuselage)
-    margin = only((await run("static-margin", cg=CG))[0])
+    margin = only((await run("static-margin-measured", cg=CG))[0])
     assert len([w for w in margin.warnings if w.code == "fuselage_not_modelled"]) == 3
 
 
 async def test_the_static_margin_is_an_interval_per_world() -> None:
-    quantity = only((await run("static-margin", cg=CG))[0])
+    quantity = only((await run("static-margin-measured", cg=CG))[0])
     assert quantity.interval is not None
     assert quantity.unit == "1"
     expected = {
@@ -148,11 +148,11 @@ async def test_the_static_margin_is_an_interval_per_world() -> None:
 
 
 async def test_a_missing_centre_of_gravity_is_a_missing_input() -> None:
-    quantity = only((await run("static-margin"))[0])
+    quantity = only((await run("static-margin-measured"))[0])
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.error is not None
     assert quantity.error.code == "missing_input"
-    assert quantity.error.input_path == "values.centre-of-gravity"
+    assert quantity.error.input_path == "values.centre-of-gravity-measured"
 
 
 @pytest.mark.parametrize(
