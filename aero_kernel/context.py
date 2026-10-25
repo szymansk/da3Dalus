@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.schema import KernelWarning
+from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
@@ -18,7 +18,7 @@ __all__ = ["Context", "Inputs", "Solvers", "Value"]
 
 # The values that flow between nodes: a scalar in the canon unit of its quantity, or the geometry.
 # A new quantity type adds its class here when the first formula needs it (ch. 8.12).
-Value = float | AirplaneGeometry
+Value = float | AirplaneGeometry | Polar
 
 # ``x`` of a formula: value per canon parameter name; ``None`` only for an absent ``optional`` input.
 Inputs = Mapping[str, Value | None]
