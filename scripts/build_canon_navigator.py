@@ -487,6 +487,27 @@ SOURCE_KINDS = (
 )
 
 
+def source_frame(source: str) -> str:
+    """The frame a data source is drawn in, or ``""`` for a source of a kind that has none.
+
+    A kind with a parent input (``DATA_KIND_PARENT``) is framed: a component field
+    ``component:battery.cells`` sits in the frame ``component:battery``, the whole-collection source
+    that frame stands for; a geometry field sits in ``geometry:$``. The frame replaces the
+    stand-alone collection node (#1280).
+    """
+    kind, loc = source.split(":", 1)
+    if kind not in DATA_KIND_PARENT:
+        return ""
+    return "geometry:$" if kind == "geometry" else f"{kind}:{loc.split('.', 1)[0]}"
+
+
+def short_of(source: str) -> str:
+    """The location of a source without the prefix its frame already shows."""
+    loc = source.split(":", 1)[1]
+    frame = source_frame(source)
+    return loc.removeprefix(frame.split(":", 1)[1] + ".") if frame else loc
+
+
 def approval_marks(data: dict, model: dict) -> None:
     """Two-stage approval (#1251): per formula stage 1 and inputs k of n, per quantity its derived status.
 
@@ -518,24 +539,42 @@ def approval_marks(data: dict, model: dict) -> None:
     order = {k: i for i, (k, _, _) in enumerate(SOURCE_KINDS)}
     defaults = model["namespaces"]["calc"]["defaults"]
 
-    def parent_of(source: str, fed: list) -> str:
-        """The input a source refines; a source that feeds that input itself is its root, not its child."""
-        parent = DATA_KIND_PARENT.get(source.split(":", 1)[0], "")
-        return "" if parent in fed else parent
-
     def kind_of(source: str) -> str:
         kind, loc = source.split(":", 1)
         return "start" if kind == "default" and defaults[loc]["basis"] == "start" else kind
 
+    ordered = sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
+    frames: dict = {}
+    for source, qs in ordered:
+        frame = source_frame(source)
+        if not frame:
+            continue
+        kind, loc = frame.split(":", 1)
+        entry = frames.setdefault(
+            frame,
+            {
+                "id": frame,
+                "kind": kind,
+                "label": DATA_KIND_PARENT[kind] if loc == "$" else loc,
+                "parent": DATA_KIND_PARENT[kind],
+                "qs": [],
+                "fields": [],
+            },
+        )
+        entry["fields" if source != frame else "qs"].extend([source] if source != frame else qs)
+    data["srcframes"] = list(frames.values())
     data["src"] = [
         {
             "id": source,
             "kind": kind_of(source),
             "loc": source.split(":", 1)[1],
             "qs": qs,
-            "parent": parent_of(source, qs),
+            "parent": DATA_KIND_PARENT.get(source.split(":", 1)[0], ""),
+            "frame": source_frame(source),
+            "short": short_of(source),
         }
-        for source, qs in sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
+        for source, qs in ordered
+        if source not in frames
     ]
     data["miss"] = sorted(q for q, status in data["qstat"].items() if status == "unmapped")
 
