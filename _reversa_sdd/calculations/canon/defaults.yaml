@@ -19,6 +19,13 @@ approach-speed-margin-target:
   source: "Lennon, Basics of R/C Model Aircraft Design, Ch. 20 (FAR 23 reasoning, scaled); CS 25.125 as transport-category reference"
   regime: "transport rule taken as the lower bound: at low wing loading and low speed a gust changes the angle of attack and load factor more (Scholz Wing Design §7.3), so RC needs at least this margin; a larger RC margin has no source"
 
+cell-voltage-nominal:
+  value: 3.7
+  unit: "V"
+  basis: convention
+  source: "no single published value: Battery University BU-216 lists 3.60 V (lithium cobalt oxide) and 3.60 (3.70) V (NMC) per cell; 3.7 V is the usual nominal figure on LiPo pack labels (a LiHV cell is 3.8 V); adopted as convention, maintainer-confirmed value from BR-PM3"
+  regime: "regime-independent: a property of the cell chemistry, not of the flow; it is a mid-discharge value, so the rated mAh times it is the energy at the manufacturer's test rate; the caller overrides it for LiHV or another chemistry"
+
 gravity:
   value: 9.80665
   unit: "m/s^2"

@@ -16,7 +16,7 @@ type: scalar
 
 # Battery voltage · `U_bat`
 
-Pack voltage at the motor controller: cell count × 3.7 V nominal (BR-PM3). Sag under load is not modelled; the value is the nominal one and is declared as such.
+Pack voltage at the motor controller: cell count × [[cell-voltage-nominal]] (default 3.7 V, BR-PM3; the caller overrides it for another chemistry). Sag under load is not modelled; the value is the nominal one and is declared as such.
 
 **Unit.** `V`
 

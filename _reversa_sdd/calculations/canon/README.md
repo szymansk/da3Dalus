@@ -548,6 +548,12 @@ as a mapping `<slug>: {value, unit, basis, source, regime}` (maintainer, 2026-10
 Only a value the canon states with its source gets an entry. Taking a default is visible
 (INFO, `provenance.defaults_used`).
 
+The navigator shows every default, whatever its basis (#1239): the "Defaults" view lists the quantities that carry one;
+on the quantity it gives value, unit, basis, source, regime and the quantities and formulas that rest on it. The
+generator fails if a default maps to no quantity of the navigator. A constant bound in an application (`{const, source}`,
+e.g. `n_load` = ±1 in the stall-speed applications) is not a default: it is fixed by the application, cannot be overridden,
+and is shown at the binding as a "fixed constant (not overridable)" with its source.
+
 #### Quantity types
 
 Closed. The unit is the unit of the values. A dimensionless quantity is written `unit: 1` — one spelling

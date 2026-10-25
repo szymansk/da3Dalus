@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:917ba0c8c80fc5ec55012293fb596d44e07c462c8933b9967fd96903a872b1eb",
+  "content_hash": "sha256:b0b515259a6abd8cfaf1bdf285fc482dce1f7b31f0a59f33f078806283d73ad1",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -10,6 +10,13 @@
           "source": "Lennon, Basics of R/C Model Aircraft Design, Ch. 20 (FAR 23 reasoning, scaled); CS 25.125 as transport-category reference",
           "unit": "1",
           "value": 1.3
+        },
+        "cell-voltage-nominal": {
+          "basis": "convention",
+          "regime": "regime-independent: a property of the cell chemistry, not of the flow; it is a mid-discharge value, so the rated mAh times it is the energy at the manufacturer's test rate; the caller overrides it for LiHV or another chemistry",
+          "source": "no single published value: Battery University BU-216 lists 3.60 V (lithium cobalt oxide) and 3.60 (3.70) V (NMC) per cell; 3.7 V is the usual nominal figure on LiPo pack labels (a LiHV cell is 3.8 V); adopted as convention, maintainer-confirmed value from BR-PM3",
+          "unit": "V",
+          "value": 3.7
         },
         "gravity": {
           "basis": "standard",
@@ -263,7 +270,8 @@
           "applications": [
             {
               "bind": {
-                "components": "calc:components"
+                "components": "calc:components",
+                "u_cell": "calc:cell-voltage-nominal"
               },
               "given": null,
               "id": "default",
@@ -288,7 +296,8 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
-            "components": "calc:components"
+            "components": "calc:components",
+            "u_cell": "calc:cell-voltage-nominal"
           },
           "kind": "procedure",
           "optional": [],
@@ -3892,6 +3901,21 @@
           "type": "curve",
           "uncertainty": null,
           "unit": "m/s"
+        },
+        "cell-voltage-nominal": {
+          "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": "construction",
+          "point": null,
+          "positive": true,
+          "role": "input",
+          "stage": null,
+          "symbol": "U_cell",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "V"
         },
         "centre-of-gravity": {
           "at_most": null,

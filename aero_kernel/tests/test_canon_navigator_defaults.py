@@ -1,0 +1,101 @@
+"""The navigator generator shows every default with its source and rejects a default it cannot show."""
+
+import importlib.util
+import json
+import math
+import pathlib
+from typing import Any
+
+import pytest
+
+REPO = pathlib.Path(__file__).resolve().parents[2]
+_SPEC = importlib.util.spec_from_file_location(
+    "build_canon_navigator", REPO / "scripts" / "build_canon_navigator.py"
+)
+assert _SPEC is not None
+assert _SPEC.loader is not None
+nav = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(nav)
+
+CHAIN = [("g", "w", "weight"), ("w", "ld", "loading"), ("m", "w", "weight")]
+
+
+def default(basis: str, value: float = 2.0) -> dict[str, Any]:
+    return {
+        "value": value,
+        "unit": "1",
+        "basis": basis,
+        "source": f"source of {basis}",
+        "regime": "regime-independent",
+    }
+
+
+def make(defaults: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    quantities: dict[str, Any] = {q: {} for q in ("g", "m", "w", "ld", "unrelated")}
+    data: dict[str, Any] = {"Q": quantities, "edges": [list(e) for e in CHAIN]}
+    return data, {"namespaces": {"calc": {"defaults": defaults}}}
+
+
+def test_every_default_is_listed_with_its_fields_whatever_its_basis() -> None:
+    data, model = make({"g": default("standard"), "m": default("convention")})
+    nav.default_marks(data, model)
+    assert set(data["defaults"]) == {"g", "m"}
+    assert data["defaults"]["g"]["basis"] == "standard"
+    assert data["defaults"]["g"]["source"] == "source of standard"
+    assert data["defaults"]["g"]["regime"] == "regime-independent"
+    assert data["defaults"]["g"]["unit"] == "1"
+
+
+def test_a_default_lists_the_quantities_and_formulas_that_rest_on_it() -> None:
+    data, model = make({"g": default("standard")})
+    nav.default_marks(data, model)
+    assert data["defaults"]["g"]["quantities"] == ["ld", "w"]
+    assert data["defaults"]["g"]["formulas"] == ["loading", "weight"]
+
+
+def test_the_quantity_itself_is_not_among_what_rests_on_it() -> None:
+    data, model = make({"w": default("sourced")})
+    nav.default_marks(data, model)
+    assert data["defaults"]["w"]["quantities"] == ["ld"]
+
+
+def test_conventions_stay_the_convention_basis_only() -> None:
+    data, model = make({"g": default("standard"), "m": default("convention")})
+    nav.default_marks(data, model)
+    assert set(data["conventions"]) == {"m"}
+    assert set(data["conv"]) == {"m", "w", "ld"}
+
+
+@pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention"])
+def test_a_default_of_a_quantity_the_navigator_lacks_fails_for_any_basis(basis: str) -> None:
+    data, model = make({"ghost": default(basis)})
+    with pytest.raises(SystemExit, match=r"defaults for quantities the canon lacks.*ghost"):
+        nav.default_marks(data, model)
+
+
+def test_binding_constants_are_collected_with_their_source() -> None:
+    mf = {
+        "stall": {
+            "applications": [
+                {
+                    "id": "clean",
+                    "bind": {"m": "calc:m", "n": {"const": 1.0, "source": "definition"}},
+                },
+                {"id": "inverted", "bind": {"n": {"const": -1.0, "source": "inverted"}}},
+            ]
+        }
+    }
+    found = nav.binding_constants(mf)
+    assert found["stall"]["clean"] == [{"param": "n", "value": 1.0, "source": "definition"}]
+    assert math.isclose(found["stall"]["inverted"][0]["value"], -1.0)
+
+
+def test_the_real_navigator_shows_all_defaults_and_the_load_factor_constants() -> None:
+    model = json.loads((REPO / "aero_kernel/canon/canon_model.json").read_text())
+    defaults = model["namespaces"]["calc"]["defaults"]
+    _, data = nav.build()
+    assert set(data["defaults"]) == set(defaults)
+    assert "cell-voltage-nominal" in data["defaults"]
+    consts = [c for f in data["F"].values() for a in f["apps"] for c in a["consts"]]
+    assert len(consts) >= 6
+    assert {c["param"] for c in consts} >= {"n_load"}
