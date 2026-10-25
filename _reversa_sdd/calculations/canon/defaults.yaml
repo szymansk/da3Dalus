@@ -58,13 +58,6 @@ motor-efficiency:
   source: "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point"
   regime: "RC brushless motors (the source's subject); at P_max copper loss grows with I², so the efficiency lies below the peak band and the lower bound fits"
 
-sea-level-air-density:
-  value: 1.225
-  unit: "kg/m^3"
-  basis: standard
-  source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa"
-  regime: "regime-independent (a high or hot field lies below it; field density stays an input)"
-
 takeoff-speed-margin-target:
   value: 1.1
   unit: "1"

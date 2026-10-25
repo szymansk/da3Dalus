@@ -1064,7 +1064,7 @@ implementation, not before (ADR 0021).
 - The quantity `airplane` (type `airplane`) is `AircraftInput.airplane`.
 - Every other quantity with `role: input` or `role: target` is `AircraftInput.values[<slug>]`. Today these
   are `aircraft-mass`, `centre-of-gravity-measured`, `altitude`, `flight-speed`, `angle-of-attack`, `load-factor`,
-  `gravity`, `sea-level-air-density`, the control-device angles (`flap-deflection-takeoff` /
+  `gravity`, the control-device angles (`flap-deflection-takeoff` /
   `-landing`, `aileron-deflection`, `elevator-deflection-up` / `-down`, `crow-flap-deflection` /
   `crow-aileron-deflection`; deg, geometry sign convention, no default) and the `*-target` quantities. Assumptions are values like any
   other (R1); whether a value is assumed or measured is not the kernel's concern.

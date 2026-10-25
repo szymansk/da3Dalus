@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:500a39cdf9c1f6e5a0a77dcc20177ac080de4ed6de48e500f71eb31dd77fbcdd",
+  "content_hash": "sha256:aace8c9013aaf4a6396217f8849c2b30be0e3c97b047befc3c3f7cd5e8e38b42",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -59,13 +59,6 @@
           "source": "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point",
           "unit": "1",
           "value": 0.75
-        },
-        "sea-level-air-density": {
-          "basis": "standard",
-          "regime": "regime-independent (a high or hot field lies below it; field density stays an input)",
-          "source": "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa",
-          "unit": "kg/m^3",
-          "value": 1.225
         },
         "stall-break-fraction": {
           "basis": "convention",
@@ -2993,7 +2986,7 @@
             {
               "bind": {
                 "cl_max": "calc:max-lift-coefficient",
-                "rho_0": "calc:sea-level-air-density",
+                "rho": "calc:air-density",
                 "v_s_target": "calc:stall-speed-target"
               },
               "given": [
@@ -3012,7 +3005,7 @@
           "embeds_closure": [],
           "inputs": {
             "cl_max": "calc:max-lift-coefficient",
-            "rho_0": "calc:sea-level-air-density",
+            "rho": "calc:air-density",
             "v_s_target": "calc:stall-speed-target"
           },
           "kind": "law",
@@ -5288,24 +5281,6 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
-        },
-        "sea-level-air-density": {
-          "at_most": null,
-          "checks": null,
-          "data": [
-            "default:sea-level-air-density"
-          ],
-          "discipline": null,
-          "group": null,
-          "module": "atmosphere",
-          "point": null,
-          "positive": true,
-          "role": "input",
-          "stage": null,
-          "symbol": "rho_0",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "kg/m^3"
         },
         "sink-rate": {
           "at_most": null,
