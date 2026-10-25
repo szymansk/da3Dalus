@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: OPT
 shape: law
-status: draft
+status: approved
 output: alpha-break, stall-break-width
 source_status: PARTIAL
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs: {polar_s: polar-stall, alpha_s: angle-of-attack-stall, cl_max: max-lift-coefficient, f: stall-break-fraction, airplane: airplane}
 outputs: {alpha_break: alpha-break, width: stall-break-width}
 ---
@@ -49,7 +49,7 @@ width       = alpha_break - alpha_S
 
 **Assumptions.** (1) The polar runs far enough past the peak to bracket the crossing ([[polar-stall]] is swept past the first peak for this purpose). (2) The α spacing resolves the post-peak fall; **this is checked, not assumed** (resolution check below). (3) The polar is the one at the stall Reynolds number — `alpha_break` is only meaningful for the Reynolds number the polar was computed at.
 
-**Resolution check** (maintainer, 2026-10-24: raise the resolution, never loosen a threshold). The crossing is computed a second time from a sweep at **half the published step** (0.125°), from α_S to the end of the range, at the same airplane and at the flow conditions the polar was computed at (speed `V_S`, density, viscosity and speed of sound, carried by the polar value itself) — which is why the entry takes `airplane` besides the polar, and why its tool is the OPT adapter (one more AeroBuildup sweep). The two angles are compared against **one published step, 0.25°**. Basis: linear interpolation between samples cannot be trusted below the sample spacing, so a finer sweep that moves the break by more than one published step shows the grid, not the polar, resolves the value. The tolerance is fixed from the sweep's own step before any measurement; it is a convention, not a sourced number — none exists for a computed polar (open question for the maintainer). A difference above it is a `DesignWarning` of severity *defect* (`stall_break_resolution`) carrying both angles; the value of the published sweep stands.
+**Resolution check** (maintainer, 2026-10-24: raise the resolution, never loosen a threshold). The crossing is computed a second time from a sweep at **half the published step** (0.125°), from α_S to the end of the range, at the same airplane and at the flow conditions the polar was computed at (speed `V_S`, density, viscosity and speed of sound, carried by the polar value itself) — which is why the entry takes `airplane` besides the polar, and why its tool is the OPT adapter (one more AeroBuildup sweep). The two angles are compared against **one published step, 0.25°**. Basis: linear interpolation between samples cannot be trusted below the sample spacing, so a finer sweep that moves the break by more than one published step shows the grid, not the polar, resolves the value. The tolerance is fixed from the sweep's own step before any measurement; it is a convention, not a sourced number — none exists for a computed polar (adopted by the maintainer, 2026-10-25). A difference above it is a `DesignWarning` of severity *defect* (`stall_break_resolution`) carrying both angles; the value of the published sweep stands.
 
 **Convergence.** None: a single pass with no iteration; the only tolerance is that of the resolution check.
 
@@ -75,14 +75,20 @@ Legacy implementations: none. Kernel: `aero_kernel/formulas/stall_break.py` (#12
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [x] **Convergence** — the criterion, and what is returned and declared on failure
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-25). `alpha_break` is the first crossing of `(1 - f)·C_L,max` past
+> `alpha_S`, linearly interpolated, with `f` = 0.10 (`stall-break-fraction`, the maintainer's convention of
+> 2026-10-24, #1219); `stall-break-width = alpha_break − alpha_S`. The phenomenon is sourced (Anderson
+> §4.13), the level is the convention. The resolution check (half-step sweep, tolerance one published
+> step, 0.25°) is part of the definition; its tolerance is a convention adopted the same day. Kernel
+> `aero_kernel/formulas/stall_break.py` (#1226): BRYAN α_break 14.78°, width 1.58°; JAGUAR 11.07°, 1.14° —
+> regression, not validation against flight.
