@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: centre-of-gravity-design
 source_status: SOURCED
 dimensional_check: BALANCES
@@ -15,7 +15,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 tex: x_{cg,design} = x_{NP} - SM_{target}\,c_{MAC}
 inputs: {x_np: neutral-point, sm_target: static-margin-target, c_mac: mean-aerodynamic-chord}
 outputs: {x_cg_sm: centre-of-gravity-design}
