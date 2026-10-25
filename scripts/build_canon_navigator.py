@@ -30,7 +30,7 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))  # the script runs from scripts/, the package sits at the root
 
-from aero_kernel.canon.model import CanonModel  # noqa: E402
+from aero_kernel.canon.model import DATA_KIND_PARENT, CanonModel  # noqa: E402
 from aero_kernel.importer.approval import derive_approval  # noqa: E402
 from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES  # noqa: E402
 
@@ -501,12 +501,23 @@ def approval_marks(data: dict, model: dict) -> None:
     order = {k: i for i, (k, _, _) in enumerate(SOURCE_KINDS)}
     defaults = model["namespaces"]["calc"]["defaults"]
 
+    def parent_of(source: str, fed: list) -> str:
+        """The input a source refines; a source that feeds that input itself is its root, not its child."""
+        parent = DATA_KIND_PARENT.get(source.split(":", 1)[0], "")
+        return "" if parent in fed else parent
+
     def kind_of(source: str) -> str:
         kind, loc = source.split(":", 1)
         return "start" if kind == "default" and defaults[loc]["basis"] == "start" else kind
 
     data["src"] = [
-        {"id": source, "kind": kind_of(source), "loc": source.split(":", 1)[1], "qs": qs}
+        {
+            "id": source,
+            "kind": kind_of(source),
+            "loc": source.split(":", 1)[1],
+            "qs": qs,
+            "parent": parent_of(source, qs),
+        }
         for source, qs in sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
     ]
     data["miss"] = sorted(q for q, status in data["qstat"].items() if status == "unmapped")

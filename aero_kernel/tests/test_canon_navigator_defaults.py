@@ -88,6 +88,31 @@ def test_starting_values_form_their_own_group_in_the_data_source_layer() -> None
     assert by_id["default:gravity"] == "default"
 
 
+def test_data_source_nodes_carry_the_input_they_refine() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    quantities = model["namespaces"]["calc"]["quantities"]
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    parents = {source["id"]: source["parent"] for source in data["src"]}
+    assert parents["component:battery.capacity_mah"] == "components"
+    assert parents["geometry:total_mass_kg"] == "airplane"
+    assert parents["default:gravity"] == ""
+    # a source that feeds the input itself is that input's root, never its child (no 2-cycle)
+    assert parents["component:battery"] == ""
+    assert parents["geometry:$"] == ""
+    for source in data["src"]:
+        if source["kind"] in ("default", "start", "app", "evaluation"):
+            assert source["parent"] == "", source["id"]
+        assert source["parent"] not in source["qs"], source["id"]
+    for source in data["src"]:
+        assert source["parent"] in ("", *quantities), source["id"]
+        if source["parent"]:
+            assert quantities[source["parent"]]["role"] == "input"
+    battery = next(s for s in data["src"] if s["id"] == "component:battery.capacity_mah")
+    assert "battery-charge-capacity" in battery["qs"]
+
+
 @pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention", "start"])
 def test_a_default_of_a_quantity_the_navigator_lacks_fails_for_any_basis(basis: str) -> None:
     data, model = make({"ghost": default(basis)})
