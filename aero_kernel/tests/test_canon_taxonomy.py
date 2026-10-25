@@ -38,8 +38,9 @@ def test_properties_are_carried() -> None:
 
 
 def test_a_duplicate_id_is_rejected() -> None:
+    document = {"points": [value("a"), value("a")]}
     with pytest.raises(ValidationError, match="duplicate id"):
-        Taxonomy.model_validate({"points": [value("a"), value("a")]})
+        Taxonomy.model_validate(document)
 
 
 @pytest.mark.parametrize(
@@ -62,18 +63,21 @@ def test_a_reference_to_a_missing_value_is_rejected(document: dict[str, object],
 
 
 def test_exactly_one_direction_is_the_default() -> None:
+    none_default = {"directions": [value("a"), value("b")]}
+    two_defaults = {"directions": [value("a", default=True), value("b", default=True)]}
+    one_default = {"directions": [value("a", default=True), value("b")]}
     with pytest.raises(ValidationError, match="exactly one"):
-        Taxonomy.model_validate({"directions": [value("a"), value("b")]})
+        Taxonomy.model_validate(none_default)
     with pytest.raises(ValidationError, match="exactly one"):
-        Taxonomy.model_validate(
-            {"directions": [value("a", default=True), value("b", default=True)]}
-        )
-    taxonomy = Taxonomy.model_validate({"directions": [value("a", default=True), value("b")]})
+        Taxonomy.model_validate(two_defaults)
+    taxonomy = Taxonomy.model_validate(one_default)
     assert [d.id for d in taxonomy.directions if d.default] == ["a"]
 
 
 def test_an_unknown_field_and_a_blank_text_are_rejected() -> None:
+    unknown = {"points": [value("a", colour="red")]}
+    blank = {"points": [{**value("a"), "label": ""}]}
     with pytest.raises(ValidationError, match="Extra inputs"):
-        Taxonomy.model_validate({"points": [value("a", colour="red")]})
+        Taxonomy.model_validate(unknown)
     with pytest.raises(ValidationError, match="at least 1 character"):
-        Taxonomy.model_validate({"points": [{**value("a"), "label": ""}]})
+        Taxonomy.model_validate(blank)

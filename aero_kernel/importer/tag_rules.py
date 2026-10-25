@@ -12,10 +12,14 @@ from collections.abc import Sequence
 
 from aero_kernel.canon.model import Namespace, Quantity
 from aero_kernel.canon.taxonomy import Taxonomy
+from aero_kernel.errors import DEFAULT_NAMESPACE
 from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES
 
 __all__ = ["check_tags"]
+
+
+_PREFIX = f"{DEFAULT_NAMESPACE}:"
 
 
 def _file(slug: str) -> str:
@@ -89,19 +93,33 @@ def _flows(content: Namespace) -> tuple[set[str], set[str]]:
     for formula in content.formulas.values():
         for application in formula.applications:
             produced.update(
-                value.removeprefix("calc:") for value in application.produce.values() if value
+                value.removeprefix(_PREFIX) for value in application.produce.values() if value
             )
             consumed.update(
-                value.removeprefix("calc:")
+                value.removeprefix(_PREFIX)
                 for value in application.bind.values()
                 if isinstance(value, str)
             )
-            consumed.update(slug.removeprefix("calc:") for slug in application.given or ())
+            consumed.update(slug.removeprefix(_PREFIX) for slug in application.given or ())
     return produced, consumed
 
 
 def _required(slug: str, field: str, place: str) -> Finding:
     return Finding(file=_file(slug), field=field, message=f"missing: {place} needs a {field} tag")
+
+
+def _places(
+    slug: str, is_reference: bool, produced: set[str], consumed: set[str]
+) -> list[tuple[str, str]]:
+    """Return the (tag field, place) pairs a quantity needs a tag for."""
+    if slug not in produced:
+        return [("module", "an input or target")]
+    places = [
+        ("stage", "an intermediate quantity") if slug in consumed else ("point", "a final result")
+    ]
+    if is_reference:
+        return [*places, ("module", "a reference"), ("group", "a reference")]
+    return [*places, ("discipline", "a derived quantity")]
 
 
 def _missing_tags(content: Namespace) -> list[Finding]:
@@ -110,27 +128,12 @@ def _missing_tags(content: Namespace) -> list[Finding]:
     families = _family_ids(taxonomy)
     reference_stages = {stage.id for stage in taxonomy.stages if stage.reference}
     produced, consumed = _flows(content)
-    findings: list[Finding] = []
-    for slug, quantity in sorted(content.quantities.items()):
-        is_reference = quantity.stage in reference_stages
-        places: list[tuple[str, str]] = []
-        if slug not in produced:
-            places.append(("module", "an input or target"))
-        else:
-            places.append(
-                ("stage", "an intermediate quantity")
-                if slug in consumed
-                else ("point", "a final result")
-            )
-            if not is_reference:
-                places.append(("discipline", "a derived quantity"))
-        if is_reference:
-            places += [("module", "a reference"), ("group", "a reference")]
-        # An intermediate quantity needs a stage, a final result a point.
-        for field, place in places:
-            if families[field] and getattr(quantity, field) is None:
-                findings.append(_required(slug, field, place))
-    return findings
+    return [
+        _required(slug, field, place)
+        for slug, quantity in sorted(content.quantities.items())
+        for field, place in _places(slug, quantity.stage in reference_stages, produced, consumed)
+        if families[field] and getattr(quantity, field) is None
+    ]
 
 
 def _targets(content: Namespace) -> list[Finding]:
