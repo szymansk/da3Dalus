@@ -103,13 +103,15 @@ async def test_eta_of_one_is_admissible() -> None:
     assert only(result).status is QuantityStatus.OK
 
 
-async def test_the_quantity_is_a_defined_value_with_a_convention_default() -> None:
+async def test_the_quantity_has_a_sourced_default() -> None:
     namespace = shipped_build().model.namespaces["calc"]
     quantity = namespace.quantities["tail-efficiency"]
     assert (quantity.symbol, quantity.unit, quantity.role) == ("eta_h", "1", "input")
     assert quantity.positive is True
     assert close(quantity.at_most, 1.0, 1e-12)
-    assert namespace.defaults["tail-efficiency"].basis == "convention"
+    assert (
+        namespace.defaults["tail-efficiency"].basis == "sourced"
+    )  # Lennon Ch. 7/8, maintainer 2026-10-25
 
 
 def load_navigator_script() -> ModuleType:
@@ -121,8 +123,8 @@ def load_navigator_script() -> ModuleType:
     return module
 
 
-async def test_the_navigator_marks_the_neutral_point_and_its_downstream_as_convention() -> None:
+async def test_the_navigator_no_longer_marks_the_neutral_point_as_resting_on_a_convention() -> None:
     _, data = load_navigator_script().build()
-    assert "tail-efficiency" in data["conventions"]
+    assert "tail-efficiency" not in data["conventions"]
     for slug in ("neutral-point", "static-margin", "cg-for-target-margin"):
-        assert "tail-efficiency" in data["conv"][slug], slug
+        assert "tail-efficiency" not in data["conv"].get(slug, []), slug

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:a3bc240b13194654b2ab22888fd1c8d992a9fbbb50972adfe6742657b90d6a92",
+  "content_hash": "sha256:016d06e435f71df215d4cff306a5e108fa343a8b878f115cae7d017272805cce",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -54,9 +54,9 @@
           "value": 0.1
         },
         "tail-efficiency": {
-          "basis": "convention",
+          "basis": "sourced",
           "regime": "not checked at RC Reynolds number: the wing wake is thicker at low Re, by an amount no source quantifies; Lennon's model-scale value is used instead of the full-scale 0.85–0.95. The designer overrides it per airplane",
-          "source": "Lennon, Basics of R/C Model Aircraft Design (1996) Ch. 7/8: conventional tail near the wing wake 0.65 (T-tail 0.9, in the wake 0.4); Sadraey, Aircraft Design (2013) Eq. 6.28 §6.2.1: 0.85–0.95 conventional, 1 T-tail, full-scale; maintainer decision 2026-10-24 (#1205)",
+          "source": "Lennon, Basics of R/C Model Aircraft Design (1996) Ch. 7/8: conventional tail near the wing wake 0.65 (T-tail 0.9, in the wake 0.4); Sadraey, Aircraft Design (2013) Eq. 6.28 §6.2.1: 0.85–0.95 conventional, 1 T-tail, full-scale; maintainer decision 2026-10-24 (#1205); basis sourced (Lennon gives the value), maintainer 2026-10-25",
           "unit": "1",
           "value": 0.65
         },
