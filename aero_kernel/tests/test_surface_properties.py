@@ -5,7 +5,7 @@ from bisect import bisect_right
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry, Wing
-from aero_kernel.geometry_properties import main_wing_properties, surface_properties
+from aero_kernel.geometry_properties import surface_properties
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 SAMPLES = 100_001
@@ -63,7 +63,6 @@ def test_a_single_panel_tail_has_the_hand_values() -> None:
     assert math.isclose(properties.aspect_ratio, 0.16 / 0.03, rel_tol=1e-12)
     assert math.isclose(properties.c_mac, 2 / 3 * 0.0175 / 0.15, rel_tol=1e-12)
     assert math.isclose(properties.x_le_mac, 0.50 + 0.02 * 0.2 / 0.45, rel_tol=1e-12)
-    assert (properties.extended_m, properties.clipped_m) == (0.0, 0.0)
 
 
 def test_a_straight_untapered_wing_has_its_leading_edge_as_x_le_mac() -> None:
@@ -88,23 +87,6 @@ def test_x_le_mac_equals_the_sampled_chord_weighted_leading_edge(
     properties = surface_properties(wing_of(*sections))
     expected = sampled_x_le_mac(sections, 0.0, max(y for y, _, _ in sections))
     assert math.isclose(properties.x_le_mac, expected, rel_tol=1e-7)
-
-
-@pytest.mark.parametrize("member", list(FleetMember))
-def test_the_main_wing_values_are_unchanged_through_surface_properties(
-    member: FleetMember,
-) -> None:
-    """One authority for S_ref, b_ref and c_MAC (ADR 0022)."""
-    airplane = AirplaneGeometry.model_validate(reference_document(member))
-    (main,) = [w for w in (airplane.wings or {}).values() if w.surface_type == "main_wing"]
-    surface = surface_properties(main)
-    reference = main_wing_properties(airplane)
-    assert (surface.area, surface.span, surface.c_mac) == (
-        reference.s_ref,
-        reference.b_ref,
-        reference.c_mac,
-    )
-    assert (surface.extended_m, surface.clipped_m) == (reference.extended_m, reference.clipped_m)
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
@@ -136,3 +118,26 @@ def test_surface_properties_of_a_vertical_surface_is_unsupported() -> None:
     with pytest.raises(FormulaError) as raised:
         surface_properties(fin)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+
+
+def test_a_root_beyond_the_centreline_is_clipped_at_y_zero() -> None:
+    """Root y = -0.1 m (chord 0.3), tip y = 0.4 m (chord 0.2), mirrored: the neutral point's planform.
+
+    The chord at y = 0 is 0.3 - 0.1 * 0.1 / 0.5 = 0.28; the half planform 0..0.4 has the area
+    0.4 * (0.28 + 0.2) / 2 = 0.096, so area = 0.192 m^2, span = 0.8 m and
+    c_MAC = 0.4 * (0.28^2 + 0.28*0.2 + 0.2^2) / 3 / 0.096 = 0.242222 m.
+    """
+    properties = surface_properties(wing_of((-0.1, 0.3, 0.0), (0.4, 0.2, 0.0)))
+    assert math.isclose(properties.area, 0.192, rel_tol=1e-12)
+    assert math.isclose(properties.span, 0.8, rel_tol=1e-12)
+    assert math.isclose(properties.c_mac, 0.0232533333333 / 0.096, rel_tol=1e-9)
+
+
+def test_a_root_off_the_centreline_is_carried_to_it_with_the_root_chord() -> None:
+    """Root y = 0.05 m (chord 0.3), tip y = 0.45 m (chord 0.2), mirrored.
+
+    Half area = 0.05 * 0.3 + 0.4 * 0.25 = 0.115, so area = 0.23 m^2 and span = 0.9 m.
+    """
+    properties = surface_properties(wing_of((0.05, 0.3, 0.0), (0.45, 0.2, 0.0)))
+    assert math.isclose(properties.area, 0.23, rel_tol=1e-12)
+    assert math.isclose(properties.span, 0.9, rel_tol=1e-12)

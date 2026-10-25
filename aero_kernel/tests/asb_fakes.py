@@ -6,6 +6,8 @@ import types
 from typing import Any
 
 import pytest
+from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.geometry_properties import MainWingProperties, surface_properties
 
 # ``Any``: the fake stands in for an untyped third-party module; keyword arguments are recorded
 # exactly as passed.
@@ -33,11 +35,42 @@ class FakeControlSurface:
         self.kwargs = kwargs
 
 
+# (area, span, mean aerodynamic chord) the fake wing reports by name; any other name gets the default.
+FAKE_REFERENCE: dict[str, tuple[float, float, float]] = {
+    "Main": (0.31, 1.7, 0.21),
+    "Fin": (0.07, 0.4, 0.08),
+}
+FAKE_DEFAULT_REFERENCE = (1.0, 2.0, 0.5)
+# The span without the centreline distance is this much shorter than the one with it.
+FAKE_CENTRELINE_GAP = 0.1
+
+
 class FakeWing:
-    """Records ``asb.Wing(...)``."""
+    """Records ``asb.Wing(...)`` and reports the reference values of :data:`FAKE_REFERENCE`."""
 
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
+        self.name = kwargs.get("name")
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def _reference(self) -> tuple[float, float, float]:
+        return FAKE_REFERENCE.get(str(self.name), FAKE_DEFAULT_REFERENCE)
+
+    def area(self, **options: Any) -> float:
+        """The planform area (centreline gap excluded, as ASB does)."""
+        self.calls.append(("area", options))
+        return self._reference()[0]
+
+    def span(self, **options: Any) -> float:
+        """The span; the one with the centreline distance is the longer."""
+        self.calls.append(("span", options))
+        gap = FAKE_CENTRELINE_GAP if options.get("include_centerline_distance") else 0.0
+        return self._reference()[1] + gap
+
+    def mean_aerodynamic_chord(self, **options: Any) -> float:
+        """The mean aerodynamic chord."""
+        self.calls.append(("mean_aerodynamic_chord", options))
+        return self._reference()[2]
 
 
 class FakeFuselageXSec:
@@ -74,3 +107,14 @@ def install_fake_aerosandbox(monkeypatch: pytest.MonkeyPatch) -> types.ModuleTyp
     module.Airplane = FakeAirplane  # pyright: ignore[reportAttributeAccessIssue]
     monkeypatch.setitem(sys.modules, "aerosandbox", module)
     return module
+
+
+def stand_in_main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
+    """The reference values without AeroSandbox, for fast tests that need consistent numbers only.
+
+    Taken from the kernel's own planform integration of the main wing; these are not AeroSandbox's
+    values (the aero tier compares those), only a deterministic stand-in at the solver boundary.
+    """
+    (main,) = [w for w in (airplane.wings or {}).values() if w.surface_type == "main_wing"]
+    surface = surface_properties(main)
+    return MainWingProperties(s_ref=surface.area, b_ref=surface.span, c_mac=surface.c_mac)

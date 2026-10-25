@@ -114,7 +114,8 @@ async def neutral_point(x: Inputs, ctx: Context) -> dict[str, float]:
         return {"x_np": _barycentre(main, tail, weight)}
     if world == "avl":
         dynamic_pressure = 0.5 * number(x, "rho") * number(x, "v_md") ** 2
-        cl = number(x, "m") * number(x, "g") / (dynamic_pressure * main.area)
+        reference = await ctx.solvers.geometry.main_wing_reference(airplane)
+        cl = number(x, "m") * number(x, "g") / (dynamic_pressure * reference.s_ref)
         found = await ctx.solvers.avl.neutral_point(airplane, cl)
         forward_warnings(ctx, found.warnings)
         return {"x_np": found.x_np}

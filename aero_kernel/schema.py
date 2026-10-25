@@ -58,7 +58,6 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "default_target_used": WarningSeverity.PRACTICE,
     "deflection_without_flap": WarningSeverity.PRACTICE,
     "geometry_deflection_ignored": WarningSeverity.PRACTICE,
-    "reference_wing_at_centreline": WarningSeverity.PRACTICE,
     "hinge_line_averaged": WarningSeverity.PRACTICE,
     "aileron_deflection_beyond_reference": WarningSeverity.PRACTICE,
     "control_surface_fit_range_unknown": WarningSeverity.PRACTICE,

@@ -24,7 +24,9 @@ V = 1.3 * 5.29
 q = 0.5 * float(atm.density()) * V**2
 cl_req = m * g / (q * dif["plane"].s_ref)
 avl = dif["run"](cl_req, -DELTA, DELTA, True)
-print(f"AVL:          pb/2V = {abs(avl['phat']):.4f}   (alpha {avl['alpha']:.2f}°, C_L {cl_req:.3f})")
+print(
+    f"AVL:          pb/2V = {abs(avl['phat']):.4f}   (alpha {avl['alpha']:.2f}°, C_L {cl_req:.3f})"
+)
 
 
 def build(delta):
@@ -35,14 +37,34 @@ def build(delta):
             cs = []
             ted = x.get("trailing_edge_device")
             if ted and ted.get("role") == "aileron":
-                cs = [asb.ControlSurface(name="aileron", symmetric=False,
-                                         hinge_point=x["control_surface"]["hinge_point"], deflection=delta)]
-            xs.append(asb.WingXSec(xyz_le=x["xyz_le"], chord=x["chord"], twist=x["twist"],
-                                   airfoil=af[x["airfoil"]], control_surfaces=cs))
+                cs = [
+                    asb.ControlSurface(
+                        name="aileron",
+                        symmetric=False,
+                        hinge_point=x["control_surface"]["hinge_point"],
+                        deflection=delta,
+                    )
+                ]
+            xs.append(
+                asb.WingXSec(
+                    xyz_le=x["xyz_le"],
+                    chord=x["chord"],
+                    twist=x["twist"],
+                    airfoil=af[x["airfoil"]],
+                    control_surfaces=cs,
+                )
+            )
         wings.append(asb.Wing(name=name, symmetric=w["symmetric"], xsecs=xs))
     w0 = wings[0]
-    return asb.Airplane(name="BRYAN", xyz_ref=d_geo["xyz_ref"], wings=wings, fuselages=fus(True),
-                        s_ref=w0.area(), c_ref=w0.mean_aerodynamic_chord(), b_ref=w0.span())
+    return asb.Airplane(
+        name="BRYAN",
+        xyz_ref=d_geo["xyz_ref"],
+        wings=wings,
+        fuselages=fus(True),
+        s_ref=w0.area(),
+        c_ref=w0.mean_aerodynamic_chord(),
+        b_ref=w0.span(),
+    )
 
 
 p_ab = build(DELTA)
