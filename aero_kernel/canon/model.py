@@ -111,7 +111,7 @@ DefaultBasis = Literal["definition", "standard", "sourced", "convention", "start
 
 
 class Default(BaseModel):
-    """A value the canon states for a supplied quantity, with its unit, basis, source and regime.
+    """A value the canon states for a supplied quantity or a catalogue read, with its unit, basis, source and regime.
 
     Attributes:
         value: The value, in ``unit``.
@@ -510,7 +510,7 @@ class Namespace(BaseModel):
     Attributes:
         quantities: The quantity vocabulary.
         formulas: The formulas.
-        defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.
+        defaults: The stated default per supplied scalar quantity (or fallback of a catalogue read); absent = the caller must supply it.
         taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.
     """
 
@@ -522,11 +522,22 @@ class Namespace(BaseModel):
     taxonomy: Taxonomy = Taxonomy()
 
 
+def _is_catalogue_read(quantity: Quantity) -> bool:
+    """Whether a derived quantity is read from a catalogue field (``data: component:...``).
+
+    Such a read may carry a default as its fallback for a part whose field is absent (#1245,
+    #1290); the producer applies it and declares it with a warning (ADR 0020).
+    """
+    return quantity.role == "derived" and any(
+        source.startswith("component:") for source in quantity.data or ()
+    )
+
+
 def _default_problem(where: str, default: Default, quantity: Quantity | None) -> str | None:
     """Return what is wrong with a default against its quantity, or ``None``."""
     if quantity is None:
         return f"default of unknown quantity {where}"
-    if quantity.role not in ("input", "target"):
+    if quantity.role not in ("input", "target") and not _is_catalogue_read(quantity):
         return f"default of {where}: role must be input or target, not {quantity.role}"
     if quantity.type != "scalar":
         return f"default of {where}: quantity must be a scalar, not {quantity.type}"

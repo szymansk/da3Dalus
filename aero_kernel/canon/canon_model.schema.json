@@ -162,7 +162,7 @@
     },
     "Default": {
       "additionalProperties": false,
-      "description": "A value the canon states for a supplied quantity, with its unit, basis, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``; it must equal the unit of the quantity.\n    basis: ``definition`` (true by definition), ``standard`` (a published standard value),\n        ``sourced`` (taken from a cited source), ``convention`` (chosen, no published source,\n        adopted on the maintainer's word) or ``start`` (a defined starting value for a design,\n        expected to be changed by the designer; it may be sourced).\n    source: Citation of where the value comes from (ADR 0028).\n    regime: The flight regime the value is valid for (ADR 0028).",
+      "description": "A value the canon states for a supplied quantity or a catalogue read, with its unit, basis, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``; it must equal the unit of the quantity.\n    basis: ``definition`` (true by definition), ``standard`` (a published standard value),\n        ``sourced`` (taken from a cited source), ``convention`` (chosen, no published source,\n        adopted on the maintainer's word) or ``start`` (a defined starting value for a design,\n        expected to be changed by the designer; it may be sourced).\n    source: Citation of where the value comes from (ADR 0028).\n    regime: The flight regime the value is valid for (ADR 0028).",
       "properties": {
         "basis": {
           "enum": [
@@ -596,7 +596,7 @@
     },
     "Namespace": {
       "additionalProperties": false,
-      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.\n    taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.",
+      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity (or fallback of a catalogue read); absent = the caller must supply it.\n    taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.",
       "properties": {
         "defaults": {
           "default": {},
