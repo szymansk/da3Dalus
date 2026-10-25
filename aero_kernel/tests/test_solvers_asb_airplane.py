@@ -5,9 +5,10 @@ from typing import Any
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import main_wing_properties
-from aero_kernel.solvers.asb_airplane import to_asb_airplane
+from aero_kernel.solvers.asb_airplane import main_wing_properties, to_asb_airplane
 from aero_kernel.tests.asb_fakes import (
+    FAKE_CENTRELINE_GAP,
+    FAKE_REFERENCE,
     FakeAirfoil,
     FakeAirplane,
     FakeFuselage,
@@ -137,13 +138,39 @@ def test_an_airplane_without_a_main_wing_is_a_defect_of_the_caller() -> None:
         to_asb_airplane(empty)
 
 
-def test_the_reference_values_are_the_kernels_projected_ones() -> None:
-    """ASB normalises C_L by these, not by its own planform area (ADR 0022)."""
+def test_the_reference_values_are_asbs_own_values_of_the_main_wing() -> None:
+    """ASB normalises C_L by these (ADR 0022): area(), span(centreline distance), MAC."""
     kwargs = converted().kwargs
+    area, span, chord = FAKE_REFERENCE["Main"]
+    assert kwargs["s_ref"] == area
+    assert kwargs["b_ref"] == span + FAKE_CENTRELINE_GAP
+    assert kwargs["c_ref"] == chord
+
+
+def test_the_main_wing_is_chosen_by_surface_type_not_by_list_position() -> None:
+    """ASB's own default takes the first wing, here the fin (VSPAERO finding F1)."""
+    document = geometry_document()
+    document["wings"] = {"Fin": document["wings"]["Fin"], "Main": document["wings"]["Main"]}
+    kwargs = to_asb_airplane(AirplaneGeometry.model_validate(document)).kwargs
+    assert [w.kwargs["name"] for w in kwargs["wings"]] == ["Fin", "Main"]
+    assert kwargs["s_ref"] == FAKE_REFERENCE["Main"][0]
+
+
+def test_the_main_wing_properties_ask_asb_with_its_default_area_and_the_centreline_span() -> None:
     properties = main_wing_properties(geometry())
-    assert kwargs["s_ref"] == properties.s_ref
-    assert kwargs["b_ref"] == properties.b_ref
-    assert kwargs["c_ref"] == properties.c_mac
+    assert (properties.s_ref, properties.c_mac) == (
+        FAKE_REFERENCE["Main"][0],
+        FAKE_REFERENCE["Main"][2],
+    )
+    assert properties.b_ref == FAKE_REFERENCE["Main"][1] + FAKE_CENTRELINE_GAP
+
+
+def test_a_main_wing_without_a_planform_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(FAKE_REFERENCE, "Main", (0.0, 1.7, 0.21))
+    document = geometry()
+    with pytest.raises(FormulaError) as raised:
+        main_wing_properties(document)
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
 def test_a_fuselage_becomes_super_ellipse_sections_with_full_widths() -> None:

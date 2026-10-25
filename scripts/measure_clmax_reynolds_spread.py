@@ -122,8 +122,10 @@ def main() -> int:
             if missed:
                 worst = sorted(missed, key=lambda r: -abs(r[1]))[:5]
                 for n, s, _brackets, lo, vs in worst:
-                    print(f"    {n:22s} grid starts {lo:.2f} m/s, stall at {vs:.2f} m/s"
-                          f"  -> {100 * s:+.1f} %")
+                    print(
+                        f"    {n:22s} grid starts {lo:.2f} m/s, stall at {vs:.2f} m/s"
+                        f"  -> {100 * s:+.1f} %"
+                    )
     finally:
         db.close()
     return 0

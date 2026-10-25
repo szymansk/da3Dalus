@@ -12,7 +12,6 @@ import math
 
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
-from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.registry import formula
 from aero_kernel.solvers.avl import ROLL_RATE_LIMIT
 
@@ -102,11 +101,8 @@ async def roll_rate(x: Inputs, ctx: Context) -> dict[str, float]:
         rate = steady.p_rad_s
     elif world == "avl":
         dynamic_pressure = 0.5 * number(x, "rho") * speed**2
-        cl = (
-            number(x, "m")
-            * number(x, "g")
-            / (dynamic_pressure * main_wing_properties(airplane).s_ref)
-        )
+        reference = await ctx.solvers.geometry.main_wing_reference(airplane)
+        cl = number(x, "m") * number(x, "g") / (dynamic_pressure * reference.s_ref)
         found = await ctx.solvers.avl.steady_roll(airplane, cl, delta)
         forward_warnings(ctx, found.warnings)
         rate = found.p_hat * 2.0 * speed / span

@@ -5,6 +5,7 @@ been `alembic upgrade head`-ed, so the partial unique index + all real
 constraints are present — the layer where create_all unit tests miss bugs).
 Exits non-zero on the first failure.
 """
+
 from __future__ import annotations
 
 import sys
@@ -51,7 +52,11 @@ try:
     db.commit()
     db.refresh(ap)
     root_id = ap.root_id
-    check("create_aeroplane sets root_id=self", ap.root_id == ap.id, f"root_id={ap.root_id} id={ap.id}")
+    check(
+        "create_aeroplane sets root_id=self",
+        ap.root_id == ap.id,
+        f"root_id={ap.root_id} id={ap.id}",
+    )
     check("create_aeroplane sets branch_id", ap.branch_id is not None)
     check("create_aeroplane node is mutable", not ap.is_immutable)
     mb = main_branch_of(db, root_id)
@@ -67,8 +72,10 @@ try:
     db.refresh(mb)
     check("snapshot is immutable", bool(snap.is_immutable))
     check("snapshot has root_id (gh-910)", snap.root_id == root_id, f"snap.root_id={snap.root_id}")
-    check("snapshot NOT a head (heads_only excludes it)",
-          all(h.id != snap.id for h in vs.list_aeroplanes_heads_only(db)))
+    check(
+        "snapshot NOT a head (heads_only excludes it)",
+        all(h.id != snap.id for h in vs.list_aeroplanes_heads_only(db)),
+    )
     db.refresh(ap)
     check("branch head unchanged after snapshot", mb.head_id == ap.id)
 
@@ -79,7 +86,10 @@ try:
     variant_head_id = br_variant.head_id
     check("create_branch new mutable head (clone)", variant_head_id != ap.id)
     check("variant branch not main", not br_variant.is_main)
-    check("variant head in heads", any(h.id == variant_head_id for h in vs.list_aeroplanes_heads_only(db)))
+    check(
+        "variant head in heads",
+        any(h.id == variant_head_id for h in vs.list_aeroplanes_heads_only(db)),
+    )
 
     # 4) adopt variant  ← gh-912 (must not violate the one-main partial index)
     try:
@@ -119,8 +129,13 @@ try:
 
     # 7) compare two nodes
     na, nb, ma, mbx = vs.compare(db, ap.id, variant_head_id)
-    check("compare returns both nodes + metric dicts", na.id == ap.id and nb.id == variant_head_id
-          and isinstance(ma, dict) and isinstance(mbx, dict))
+    check(
+        "compare returns both nodes + metric dicts",
+        na.id == ap.id
+        and nb.id == variant_head_id
+        and isinstance(ma, dict)
+        and isinstance(mbx, dict),
+    )
 
     # 8) list_tree
     nodes, branches = vs.list_tree(db, root_id)
@@ -130,8 +145,10 @@ try:
     # 9) discard a non-main branch
     vs.discard_branch(db, br_variant.id)
     db.commit()
-    check("discard non-main branch removed it",
-          db.query(BranchModel).filter(BranchModel.id == br_variant.id).first() is None)
+    check(
+        "discard non-main branch removed it",
+        db.query(BranchModel).filter(BranchModel.id == br_variant.id).first() is None,
+    )
 
     # 10) discard guards: cannot discard main
     try:

@@ -29,11 +29,11 @@ SLUGS = (
 # The tool versions the goldens hold for. A different version may move them; this is then noticed
 # here (and the goldens are re-recorded deliberately), not discovered later.
 GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
-# Regression goldens at sea level, mass of the fleet member, ISA, the kernel's projected S_ref,
+# Regression goldens at sea level, mass of the fleet member, ISA, AeroSandbox's S_ref of the main wing (gh-1240),
 # NeuralFoil model size xlarge: (V_md m/s, (L/D)max, alpha_md deg, C_L,md).
 GOLDEN = {
-    FleetMember.BRYAN: (7.4468700, 7.7276780, 1.3379343, 0.6240228),
-    FleetMember.JAGUAR: (9.0692794, 10.4719556, 2.1200951, 0.4814868),
+    FleetMember.BRYAN: (7.4468700, 7.7276780, 1.3379343, 0.6229294),
+    FleetMember.JAGUAR: (9.0692794, 10.4719556, 2.1200951, 0.4833794),
 }
 
 

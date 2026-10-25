@@ -17,10 +17,10 @@ from typing import ClassVar
 
 from aero_kernel.errors import ErrorCategory, FormulaError, ToolRunTimeoutError
 from aero_kernel.geometry import Airfoil, AirplaneGeometry, InlineAirfoil
-from aero_kernel.geometry_properties import MainWingProperties, main_wing_properties
+from aero_kernel.geometry_properties import MainWingProperties
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning
-from aero_kernel.solvers.asb_airplane import load_aerosandbox
+from aero_kernel.solvers.asb_airplane import load_aerosandbox, main_wing_properties
 from aero_kernel.solvers.avl_contour import repanel
 from aero_kernel.solvers.avl_mesh import (
     JOIN_TOLERANCE_M,

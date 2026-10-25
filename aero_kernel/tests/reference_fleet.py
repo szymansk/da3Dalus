@@ -5,6 +5,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from aero_kernel.geometry_properties import MainWingProperties
+
 REFERENCE_DIR = Path(__file__).resolve().parent / "reference"
 
 # ``Any`` is the raw-JSON boundary: the document is validated by ``AirplaneGeometry`` afterwards.
@@ -16,14 +18,34 @@ class FleetMember(Enum):
     Attributes:
         json_path: The copy of the geometry document.
         mass_kg: The mass the tests pass as ``aircraft-mass`` (README for its source).
+        asb_reference: AeroSandbox 4.2.9's ``(area(), span(include_centerline_distance=True),
+            mean_aerodynamic_chord())`` of the main wing in m^2, m, m, frozen so the fast tier needs
+            no AeroSandbox; ``test_geometry_properties`` checks them against the real one.
     """
 
-    BRYAN = ("bryan/bryan.airplane.json", 0.151)
-    JAGUAR = ("jaguar/flugzeug.json", 0.160)
+    BRYAN = (
+        "bryan/bryan.airplane.json",
+        0.151,
+        (0.06998507932146676, 0.5470385422650689, 0.13280160307833674),
+    )
+    JAGUAR = (
+        "jaguar/flugzeug.json",
+        0.160,
+        (0.06443193760749368, 0.624210916480389, 0.10498485405652615),
+    )
 
-    def __init__(self, relative_path: str, mass_kg: float) -> None:
+    def __init__(
+        self, relative_path: str, mass_kg: float, asb_reference: tuple[float, float, float]
+    ) -> None:
         self.json_path = REFERENCE_DIR / relative_path
         self.mass_kg = mass_kg
+        self.asb_reference = asb_reference
+
+    @property
+    def reference(self) -> MainWingProperties:
+        """The frozen AeroSandbox reference values of the main wing."""
+        s_ref, b_ref, c_mac = self.asb_reference
+        return MainWingProperties(s_ref=s_ref, b_ref=b_ref, c_mac=c_mac)
 
 
 def read_selig_coordinates(path: Path) -> list[list[float]]:

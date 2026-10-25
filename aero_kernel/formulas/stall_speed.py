@@ -4,7 +4,7 @@ The formula passes the airplane, the mass, the load factor and the ISA air state
 which runs the sweep, IPOPT and the re-sweep in the process pool (canon K32).
 
 The postconditions read the polar the formula returns (the sweep at ``V_S``, with ``alpha_S`` among
-its samples), so they need no solver access. Tolerances are numeric consistency of the solve (A10:
+its samples); only the Probe also reads ``S_ref`` (AeroSandbox's, of the main wing). Tolerances are numeric consistency of the solve (A10:
 they decide whether the solver's own answer is self-consistent, not whether the aircraft is good).
 """
 
@@ -13,9 +13,9 @@ from collections.abc import Mapping
 
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
-from aero_kernel.geometry_properties import main_wing_properties
 from aero_kernel.registry import CheckResult, formula, postcondition
 from aero_kernel.schema import Polar
+from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.solvers.opti import ALPHA_STEP_DEG
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
 

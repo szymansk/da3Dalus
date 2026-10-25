@@ -19,6 +19,7 @@ from aero_kernel.formulas.values import number
 from aero_kernel.formulas.weight_from_mass import weight_from_mass
 from aero_kernel.formulas.wing_loading import wing_loading
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.geometry_properties import MainWingProperties
 from aero_kernel.registry import DEFAULT_REGISTRY
 from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.air import AirState
@@ -28,11 +29,13 @@ from aero_kernel.tests.formula_builders import (
     STUB_SPEED_OF_SOUND,
     STUB_VISCOSITY,
     StubAtmosphere,
+    StubGeometry,
     close,
     context_with,
     inputs_from_model,
 )
 from aero_kernel.tests.stall_stubs import StubOpti
+from aero_kernel.tests.wing_builders import airplane_document
 
 pytestmark = pytest.mark.asyncio
 
@@ -128,65 +131,22 @@ async def test_wing_loading_is_weight_over_area() -> None:
     assert close(result["w_s"], 1.48080415 / 0.06, 1e-12)
 
 
-async def test_airplane_geometry_returns_the_projected_reference_values_of_the_main_wing() -> None:
-    """Hand values: half panel y 0..0.4 m, chord 0.2 -> 0.1 m, mirrored: S 0.12, b 0.8, c_MAC 0.155556."""
-    sections = [
-        {"xyz_le": [0.0, y, 0.0], "chord": c, "twist": 0.0, "airfoil": "naca2412"}
-        for y, c in ((0.0, 0.2), (0.4, 0.1))
-    ]
-    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
-    airplane = AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+async def test_airplane_geometry_returns_the_reference_values_of_the_geo_adapter() -> None:
+    """The values are the adapter's (AeroSandbox's, of the main wing); the formula only names them."""
+    stub = StubGeometry(MainWingProperties(s_ref=0.31, b_ref=1.8, c_mac=0.21))
+    airplane = AirplaneGeometry.model_validate(airplane_document())
     x = inputs_from_model(MODEL, "airplane-geometry", {"airplane": airplane})
-    result = await airplane_geometry(x, context_with(StubAtmosphere({})))
-    assert set(result) == {"s_ref", "b_ref", "c_mac"}
-    assert close(result["s_ref"], 0.12, 1e-12)
-    assert close(result["b_ref"], 0.8, 1e-12)
-    assert close(result["c_mac"], 2 / 0.12 * 0.4 * 0.07 / 3, 1e-12)
+    context = context_with(StubAtmosphere({}), geometry=stub)
+    result = await airplane_geometry(x, context)
+    assert result == {"s_ref": 0.31, "b_ref": 1.8, "c_mac": 0.21}
+    assert stub.asked == [airplane]
+    assert context.warnings == ()
 
 
 async def test_airplane_geometry_rejects_a_value_that_is_not_the_geometry() -> None:
     context = context_with(StubAtmosphere({}))
     with pytest.raises(TypeError, match="airplane"):
         await airplane_geometry({"airplane": 1.0}, context)
-
-
-def main_wing_document(root_y: float) -> AirplaneGeometry:
-    sections = [
-        {"xyz_le": [0.0, y, 0.0], "chord": c, "twist": 0.0, "airfoil": "naca2412"}
-        for y, c in ((root_y, 0.3), (0.45, 0.2))
-    ]
-    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
-    return AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
-
-
-async def test_airplane_geometry_warns_when_the_root_is_extended_to_the_centreline() -> None:
-    x = inputs_from_model(MODEL, "airplane-geometry", {"airplane": main_wing_document(0.05)})
-    context = context_with(StubAtmosphere({}), origin="wing-reference-area")
-    await airplane_geometry(x, context)
-    (warning,) = context.warnings
-    assert warning.code == "reference_wing_at_centreline"
-    assert warning.severity.value == "practice"
-    assert warning.origin == "wing-reference-area"
-    assert warning.detail == {"wing": "Main", "extended_m": 0.05}
-    assert "extended" in warning.message
-    assert "centreline" in warning.message
-
-
-async def test_airplane_geometry_warns_when_the_stored_side_is_clipped_at_the_centreline() -> None:
-    x = inputs_from_model(MODEL, "airplane-geometry", {"airplane": main_wing_document(-0.1)})
-    context = context_with(StubAtmosphere({}))
-    await airplane_geometry(x, context)
-    (warning,) = context.warnings
-    assert warning.code == "reference_wing_at_centreline"
-    assert warning.detail == {"wing": "Main", "clipped_m": 0.1}
-    assert "clipped" in warning.message
-
-
-async def test_airplane_geometry_does_not_warn_when_the_root_lies_on_the_centreline() -> None:
-    x = inputs_from_model(MODEL, "airplane-geometry", {"airplane": main_wing_document(0.0)})
-    context = context_with(StubAtmosphere({}))
-    await airplane_geometry(x, context)
-    assert context.warnings == ()
 
 
 def configuration_x(deflection: float | None, *roles: str) -> dict[str, Any]:

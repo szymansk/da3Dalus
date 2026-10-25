@@ -1,11 +1,13 @@
 """The one conversion of the geometry format to an AeroSandbox airplane (ARCHITECTURE ch. 8.8).
 
 Every adapter that needs an AeroSandbox airplane (the GEO properties, later AeroBuildup) calls
-:func:`to_asb_airplane`; there is no second conversion (ADR 0022).
+:func:`to_asb_airplane`; there is no second conversion (ADR 0022). The reference values of the
+main wing are AeroSandbox's own, read from the wing this conversion builds (:func:`main_wing_properties`).
 """
 
 import importlib
 import logging
+import math
 from typing import Any
 
 import numpy as np
@@ -17,14 +19,14 @@ from aero_kernel.geometry import (
     InlineAirfoil,
     Wing,
 )
-from aero_kernel.geometry_properties import main_wing_properties
+from aero_kernel.geometry_properties import MainWingProperties
 from aero_kernel.graph import AILERON_ROLES
 from aero_kernel.solvers.devices import roll_deflection, roll_segments
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["load_aerosandbox", "to_asb_airplane"]
+__all__ = ["load_aerosandbox", "main_wing_properties", "to_asb_airplane"]
 
 # ``Any`` is the boundary to AeroSandbox, which ships no type information.
 
@@ -163,13 +165,77 @@ def _fuselage(asb: Any, fuselage: Fuselage) -> Any:  # noqa: ANN401  # untyped a
     return asb.Fuselage(name=fuselage.name, xsecs=sections)
 
 
+def _main_wing_key(airplane: AirplaneGeometry) -> str:
+    """Key of the one wing with ``surface_type`` ``main_wing``, never the first wing in the list.
+
+    Raises:
+        ValueError: If the document does not have exactly one main wing (a defect: validation
+            reports ``main_wing_count`` as the user-facing error).
+    """
+    keys = [k for k, w in (airplane.wings or {}).items() if w.surface_type == "main_wing"]
+    if len(keys) != 1:
+        msg = f"validated input has exactly one main wing, got {len(keys)}"
+        raise ValueError(msg)
+    return keys[0]
+
+
+def _reference(wing: Any) -> MainWingProperties:  # noqa: ANN401  # untyped aerosandbox boundary
+    """AeroSandbox's reference values of a wing: what ``asb.Airplane`` infers from its first wing.
+
+    ``area()`` is the planform area without the gap at the centreline, while ``span`` includes the
+    centreline distance, as ``asb.Airplane`` takes it (declared in the canon entry
+    ``airplane-geometry``, not changed).
+
+    Raises:
+        FormulaError: ``unsupported_configuration`` if a value is not a positive finite number
+            (a wing with no planform, e.g. all its sections at one y).
+    """
+    values = {
+        "s_ref": float(wing.area()),
+        "b_ref": float(wing.span(include_centerline_distance=True)),
+        "c_mac": float(wing.mean_aerodynamic_chord()),
+    }
+    if not all(math.isfinite(v) and v > 0.0 for v in values.values()):
+        raise FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "unsupported_configuration",
+            f"the main wing {wing.name!r} has no planform: AeroSandbox gives {values}",
+            "a main wing needs sections at different y; a vertical surface has no planform",
+            detail={"wing": str(wing.name)},
+            parameter="airplane",
+        )
+    return MainWingProperties(**values)
+
+
+def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
+    """Return AeroSandbox's ``S_ref``, ``b_ref`` and ``c_MAC`` of the one wing of type ``main_wing``.
+
+    The wing is converted like in :func:`to_asb_airplane` and measured with ``Wing.area()``,
+    ``Wing.span(include_centerline_distance=True)`` and ``Wing.mean_aerodynamic_chord()``: what
+    ``asb.Airplane`` infers when the main wing is its first wing (maintainer, 2026-10-25).
+
+    Args:
+        airplane: The validated geometry document, which has exactly one main wing.
+
+    Returns:
+        The three reference values in m^2, m and m.
+
+    Raises:
+        ValueError: If the document does not have exactly one main wing.
+        FormulaError: As :func:`_wing` and :func:`_reference`.
+    """
+    asb = load_aerosandbox()
+    key = _main_wing_key(airplane)
+    return _reference(_wing(asb, key, (airplane.wings or {})[key], 0.0))
+
+
 def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Convert a geometry document to an ``asb.Airplane``.
 
     Metres and degrees as parsed (ch. 8.11). The reference area, span and chord of the airplane
-    are the kernel's own (:func:`main_wing_properties`, projected onto the x-y plane), so ASB
-    normalises its coefficients by the one reference area the canon names (ADR 0022); ASB's
-    default is the planform area. AeroSandbox is imported here; callers import it off the event
+    are AeroSandbox's own values of the main wing (:func:`main_wing_properties`), chosen by
+    ``surface_type`` and not by list position as ASB's default would, so ASB normalises its
+    coefficients by the one reference area the canon names (ADR 0022). AeroSandbox is imported here; callers import it off the event
     loop first (ch. 8.10), so this import is a lookup.
 
     Args:
@@ -188,10 +254,12 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
             (the oriented chain refuses it); ``invalid_input`` for a roll device without a hinge.
     """
     asb = load_aerosandbox()
-    reference = main_wing_properties(airplane)
+    main_key = _main_wing_key(airplane)
     if roll_deg:
         roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
-    wings = [_wing(asb, key, wing, roll_deg) for key, wing in (airplane.wings or {}).items()]
+    built = {key: _wing(asb, key, wing, roll_deg) for key, wing in (airplane.wings or {}).items()}
+    reference = _reference(built[main_key])
+    wings = list(built.values())
     fuselages = [_fuselage(asb, fuselage) for fuselage in (airplane.fuselages or {}).values()]
     logger.debug(
         "converted airplane %s: %d wings, %d fuselages", airplane.name, len(wings), len(fuselages)

@@ -26,8 +26,10 @@ AF = asb.Airfoil("naca0010")
 
 
 def wing(w):
-    return asb.Wing(symmetric=w["symmetric"],
-                    xsecs=[asb.WingXSec(xyz_le=x["xyz_le"], chord=x["chord"], airfoil=AF) for x in w["x_secs"]])
+    return asb.Wing(
+        symmetric=w["symmetric"],
+        xsecs=[asb.WingXSec(xyz_le=x["xyz_le"], chord=x["chord"], airfoil=AF) for x in w["x_secs"]],
+    )
 
 
 def geometry(path, tail_name, v_tail=False):
@@ -37,16 +39,29 @@ def geometry(path, tail_name, v_tail=False):
     s_h, b_h = t.area(), t.span()
     if v_tail:  # horizontal projection (Drela): area A cos^2(nu), span projected
         xs = d["wings"][tail_name]["x_secs"]
-        nu = np.arctan2(xs[-1]["xyz_le"][2] - xs[0]["xyz_le"][2], xs[-1]["xyz_le"][1] - xs[0]["xyz_le"][1])
+        nu = np.arctan2(
+            xs[-1]["xyz_le"][2] - xs[0]["xyz_le"][2], xs[-1]["xyz_le"][1] - xs[0]["xyz_le"][1]
+        )
         s_h = s_h * np.cos(nu) ** 2
         b_h = 2 * xs[-1]["xyz_le"][1]
     mac = m.mean_aerodynamic_chord()
-    return dict(S=m.area(), AR=m.aspect_ratio(), mac=mac, x_acw=m.aerodynamic_center()[0], le=m.aerodynamic_center()[0] - 0.25 * mac,
-                S_h=s_h, AR_h=b_h**2 / s_h, x_ach=t.aerodynamic_center()[0], x_cg=d["xyz_ref"][0])
+    return dict(
+        S=m.area(),
+        AR=m.aspect_ratio(),
+        mac=mac,
+        x_acw=m.aerodynamic_center()[0],
+        le=m.aerodynamic_center()[0] - 0.25 * mac,
+        S_h=s_h,
+        AR_h=b_h**2 / s_h,
+        x_ach=t.aerodynamic_center()[0],
+        x_cg=d["xyz_ref"][0],
+    )
 
 
 def bary(g, k, shift=0.0):
-    return (g["S"] * g["x_acw"] + k * g["S_h"] * g["x_ach"]) / (g["S"] + k * g["S_h"]) - shift * g["mac"]
+    return (g["S"] * g["x_acw"] + k * g["S_h"] * g["x_ach"]) / (g["S"] + k * g["S_h"]) - shift * g[
+        "mac"
+    ]
 
 
 def methods(g):
@@ -54,19 +69,31 @@ def methods(g):
     k_pappas = (1 - 3.24 / arw) * (1 / (1 + 2 / arh)) / (1 / (1 + 2 / arw))
     k_text = (1 - 4 / (arw + 2)) * (arh / (arh + 2)) / (arw / (arw + 2))
     vh = g["S_h"] * (g["x_ach"] - g["x_acw"]) / (g["S"] * g["mac"])
-    return vh, k_pappas, k_text, {
-        "A rcplanedesigner (K 0,5, −5 %)": bary(g, 0.5, 0.05),
-        "B Harding (K 0,5)": bary(g, 0.5),
-        f"C Pappas (K {k_pappas:.2f})": bary(g, k_pappas),
-        f"D Lehrbuch η 1,0 (K {k_text:.2f})": bary(g, k_text),
-        f"D Lehrbuch η 0,9 (K {0.9*k_text:.2f})": bary(g, 0.9 * k_text),
-        "E Krauss (K 0,75)": bary(g, 0.75),
-        "G Lennon fest 35 %": g["le"] + 0.35 * g["mac"],
-    }
+    return (
+        vh,
+        k_pappas,
+        k_text,
+        {
+            "A rcplanedesigner (K 0,5, −5 %)": bary(g, 0.5, 0.05),
+            "B Harding (K 0,5)": bary(g, 0.5),
+            f"C Pappas (K {k_pappas:.2f})": bary(g, k_pappas),
+            f"D Lehrbuch η 1,0 (K {k_text:.2f})": bary(g, k_text),
+            f"D Lehrbuch η 0,9 (K {0.9 * k_text:.2f})": bary(g, 0.9 * k_text),
+            "E Krauss (K 0,75)": bary(g, 0.75),
+            "G Lennon fest 35 %": g["le"] + 0.35 * g["mac"],
+        },
+    )
 
 
-fleet = [("BRYAN", geometry(HERE / "bryan" / "bryan.airplane.json", "Hoehenleitwerk"), 32.9, 43.7),
-         ("e-Hawk", geometry(HERE / "ehawk" / "ehawk.airplane.json", "V-Leitwerk", v_tail=True), 48.8, 58.4)]
+fleet = [
+    ("BRYAN", geometry(HERE / "bryan" / "bryan.airplane.json", "Hoehenleitwerk"), 32.9, 43.7),
+    (
+        "e-Hawk",
+        geometry(HERE / "ehawk" / "ehawk.airplane.json", "V-Leitwerk", v_tail=True),
+        48.8,
+        58.4,
+    ),
+]
 for name, g, avl, ab in fleet:
     vh, kp, kt, res = methods(g)
     le, mac = g["le"], g["mac"]
@@ -74,12 +101,16 @@ for name, g, avl, ab in fleet:
     def pct(x, le=le, mac=mac):
         return 100 * (x - le) / mac
 
-    print(f"\n{name}: AR {g['AR']:.2f}, AR_h {g['AR_h']:.2f}, S_h/S {g['S_h']/g['S']:.3f}, V_H {vh:.3f}, "
-          f"Plan-Schwerpunkt {pct(g['x_cg']):.1f} % MAC")
+    print(
+        f"\n{name}: AR {g['AR']:.2f}, AR_h {g['AR_h']:.2f}, S_h/S {g['S_h'] / g['S']:.3f}, V_H {vh:.3f}, "
+        f"Plan-Schwerpunkt {pct(g['x_cg']):.1f} % MAC"
+    )
     print(f"  {'Methode':34s} {'NP % MAC':>9s} {'SM am Plan-SP':>14s}")
     for k, x in res.items():
-        print(f"  {k:34s} {pct(x):8.1f}  {pct(x)-pct(g['x_cg']):12.1f} %")
-    print(f"  {'AVL (gemessen)':34s} {avl:8.1f}  {avl-pct(g['x_cg']):12.1f} %")
-    print(f"  {'AeroBuildup (gemessen)':34s} {ab:8.1f}  {ab-pct(g['x_cg']):12.1f} %")
+        print(f"  {k:34s} {pct(x):8.1f}  {pct(x) - pct(g['x_cg']):12.1f} %")
+    print(f"  {'AVL (gemessen)':34s} {avl:8.1f}  {avl - pct(g['x_cg']):12.1f} %")
+    print(f"  {'AeroBuildup (gemessen)':34s} {ab:8.1f}  {ab - pct(g['x_cg']):12.1f} %")
     for hte in (0.4, 0.5, 0.9):
-        print(f"  F Lennon hinterster Schwerpunkt, HTE {hte}: {100*(0.17+0.30*vh*hte):.1f} % MAC")
+        print(
+            f"  F Lennon hinterster Schwerpunkt, HTE {hte}: {100 * (0.17 + 0.30 * vh * hte):.1f} % MAC"
+        )

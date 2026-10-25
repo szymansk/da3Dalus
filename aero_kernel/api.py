@@ -20,6 +20,7 @@ from aero_kernel.schema import (
 )
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
+from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 
 logger = logging.getLogger(__name__)
@@ -76,5 +77,6 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
                 atmosphere=AtmosphereAdapter(runtime),
                 opti=OptiAdapter(runtime),
                 avl=AvlAdapter(runtime),
+                geometry=GeometryAdapter(runtime),
             ),
         )
