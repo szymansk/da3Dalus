@@ -430,6 +430,8 @@ and a `practice` warning names the route (ADR 0020); (2) the **canon's own defin
 value means something stated, and there is no warning; (3) the value **is needed after all** — no
 value, `missing_input`.
 
+**Validity of a world** (ADR 0027 point 8, #1243) — a world whose method states a range is excluded from the interval where its own result lies outside it: the entry states the range, its source and the exclusion, and the kernel declares it with the warning `world_outside_validity` (world, value and limit). It is no field of the front matter and no failure: the other worlds form the interval; if none is left the quantity is an error. Used by the roll entries (AVL, `|pb/2V| ≤ 0.10`).
+
 **`given`** — an application that exists only when the caller supplies certain values lists them:
 `given: [<slug>, …]`. Each slug has role `input` or `target`, has no default in `defaults.yaml`, and is bound by that
 application. The application exists only if all of them are supplied; otherwise it is not computed —

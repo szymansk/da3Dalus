@@ -105,6 +105,7 @@ CODE_CATALOGUE: Mapping[str, ErrorCategory] = {
     "non_positive_value": ErrorCategory.INVALID_INPUT,
     "value_above_maximum": ErrorCategory.INVALID_INPUT,
     "target_above_method_maximum": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+    "all_worlds_outside_validity": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "precondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "postcondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "continuous_uncertainty": ErrorCategory.NOT_IMPLEMENTED,
