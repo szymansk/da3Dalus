@@ -3,7 +3,7 @@ canon: motor-propeller-part-load
 entry: formula
 kind: procedure
 tool: OPT
-shape: route
+shape: law
 status: draft
 output: propeller-speed-part-load, battery-current, battery-power, thrust-demand-ratio
 source_status: PARTIAL
@@ -12,7 +12,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/procedural
-  - shape/route
+  - shape/law
   - kind/procedure
   - status/draft
 inputs:
