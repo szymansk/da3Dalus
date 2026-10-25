@@ -114,3 +114,7 @@ polar instead of a closed form.
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
 > **Approved** (maintainer, 2026-10-24, approval block 1). This is the relation the implementations are measured against.
+
+> **Approval confirmed** (maintainer, 2026-10-25) with the inputs `dynamic-viscosity` (μ) and `speed-of-sound`
+> (a) from air-density-isa — the Reynolds and Mach numbers of the polar, as in stall-speed and
+> minimum-drag-speed-from-polar (added with the kernel implementation, #1230).

@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: wing-loading-limit-stall
 source_status: SOURCED
 dimensional_check: BALANCES
@@ -15,8 +15,8 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
-  - status/draft
-inputs: {rho_0: sea-level-air-density, v_s_target: stall-speed-target, cl_max: max-lift-coefficient}
+  - status/approved
+inputs: {rho: air-density, v_s_target: stall-speed-target, cl_max: max-lift-coefficient}
 outputs: {ws_max_stall: wing-loading-limit-stall}
 applications:
   - id: at_stall_speed_target
@@ -28,14 +28,25 @@ applications:
 **Canonical form**
 
 ```
-(W/S)_max,stall = 0.5 * rho_0 * V_S,target^2 * C_L,max,clean
+(W/S)_max,stall = 0.5 * rho * V_S,target^2 * C_L,max,clean
 ```
 
-**Produces** [[wing-loading-limit-stall]]  ·  **from** [[sea-level-air-density]] · [[stall-speed-target]] · [[max-lift-coefficient]]
+**Produces** [[wing-loading-limit-stall]]  ·  **from** [[air-density]] · [[stall-speed-target]] · [[max-lift-coefficient]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 ℹ️ **Reclassified.** Was recorded as a second producer of another quantity. It produces its own: a design limit, not the actual value.
+
+**Density at the set altitude (maintainer, 2026-10-25).** `rho` is the air density of
+[[air-density-isa]] at the designer's altitude — one atmosphere for every calculation. With the
+starting value of the altitude (0 m, the ISA reference) it is exactly Sadraey's sea-level value; at a
+field altitude of 500 m the permitted wing loading falls by about 5 %, as it must, because the aircraft
+stalls faster there at the same wing loading. This departs from Sadraey's usage rule (a) below (sea
+level always) on purpose, and supersedes the convention of 2026-10-02 (stall-speed target stated at sea
+level, quantity `sea-level-air-density`, now deleted): "Wir haben uns auf ISA geeinigt, also rechnen wir
+auch mit ISA, und wenn jemand die Höhe angeben möchte, dann darf er es machen und bekommt entsprechende
+Werte! Wir werden nicht eine Ausnahme von der Regel machen, um einer alten Regel Genüge zu tun!"
+(maintainer, 2026-10-25).
 
 **Dimensional check.** 🟢 balances
 
@@ -59,14 +70,13 @@ Identical. Sadraey adds two usage rules: (a) rho is the SEA-LEVEL value (1.225 k
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
 
 ## Design direction — what this entry is for (maintainer, 2026-10-02)
 
@@ -80,3 +90,8 @@ the analysis computes `V_S` and the comparison with `V_S,target` closes the loop
 questions and computed by the canon like any airplane. This entry stays only as an aid when a
 stall-speed target is given; its `C_L,max` then comes from the **chosen airfoil** (NeuralFoil at
 the mission Reynolds number, scaled to the wing with AeroSandbox's `CL_over_Cl`), not from a table.
+
+> **Approved — stage 1** (maintainer, 2026-10-25): Sadraey Eq. 4.31 as the stall-speed sizing limit,
+> with the density of air-density-isa at the set altitude instead of the fixed sea-level value (decision
+> (a)). Stage 2 is open on `stall-speed-target` until the app carries it as a designer input variable
+> (maintainer: close the gap as an input variable; #1264).

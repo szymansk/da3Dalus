@@ -808,12 +808,12 @@ applications:
     produce: {v: takeoff-speed}
 ```
 
-A **quantity** (`sea-level-air-density`) — its default is in `defaults.yaml`:
+A **quantity** (`gravity`) — its default is in `defaults.yaml`:
 
 ```yaml
 kind: quantity
-symbol: rho_0
-unit: kg/m^3
+symbol: g
+unit: m/s^2
 role: input
 type: scalar
 positive: true
