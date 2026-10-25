@@ -7,11 +7,11 @@ shape: law
 status: draft
 output: sink-rate
 source_status: PARTIAL
-dimensional_check: UNPARSEABLE
+dimensional_check: BALANCES
 tags:
   - canon/formula
   - source/partial
-  - dim/unparseable
+  - dim/balances
   - shape/law
   - kind/law
   - status/draft
@@ -26,7 +26,8 @@ preconditions:
 **Canonical form**
 
 ```
-w_sink = V * C_D / C_L   (small glide-angle form of w_sink = V * sin(gamma), tan(gamma) = C_D/C_L)
+w_sink = V * C_D,par / C_L
+# small glide-angle form of w_sink = V * sin(gamma), tan(gamma) = C_D,par/C_L
 ```
 
 **Produces** [[sink-rate]]  ·  **from** [[flight-speed]] · [[lift-coefficient]] · [[drag-coefficient-parabolic]]
@@ -46,7 +47,7 @@ w_sink = V * C_D / C_L   (small glide-angle form of w_sink = V * sin(gamma), tan
 
 **On failure.** Non-positive-CL points are silently dropped (analysis_service.py:479-481). If no positive-CL point survives, or S_ref <= 0, rho <= 0 or m <= 0, an empty SpeedPolarCurve is emitted with every characteristic value None (lines 493-512) and no warning. The whole builder is wrapped in `except Exception ... return None` with a `logger.error` only (analysis_service.py:667-669), so a failed polar reaches the user as an absent chart. Neither path emits a DesignWarning — ADR 0020 is not satisfied.
 
-**Dimensional check.** ⚪ not machine-checkable as written
+**Dimensional check.** 🟢 balances
 
 **Source.** 🟡 PARTIAL
 

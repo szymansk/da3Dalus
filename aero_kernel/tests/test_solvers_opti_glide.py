@@ -167,6 +167,9 @@ def install_optimum(
 
         __hash__ = object.__hash__
 
+        def __mul__(self, other: object) -> "Expr":  # a product records the names of its factors
+            return Expr(f"{self.name}*{getattr(other, 'name', other)}")
+
     class FakeOpti:
         def __init__(self) -> None:
             self.count = 0
