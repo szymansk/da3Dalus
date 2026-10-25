@@ -16,10 +16,10 @@ type: scalar
 
 # Motor no-load current · `I_0`
 
-No-load current of the fitted motor, from the parts catalogue. Missing for 18 of 41 motors (#1149); the torque balance then runs with `I_0 = 0`, as BR-PT15 does today — declared, not silent.
+No-load current of the fitted motor, from the parts catalogue. Missing for 18 of 41 motors (#1149), so **optional**: absent, the torque balance runs with `I_0 = 0`, as BR-PT15 does today — declared with a `practice` warning, not silent.
 
 **Unit.** `A`
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[mass-envelope]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]] · [[static-thrust-to-weight]]
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[cruise-target-performance]] · [[dive-speed]] · [[endurance-and-range]] · [[endurance-and-range-optimum]] · [[mass-envelope]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]] · [[motor-propeller-part-load]] · [[static-thrust-to-weight]]

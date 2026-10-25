@@ -22,4 +22,4 @@ The power the manufacturer rates the fitted motor for — 🟡 INFERRED as elect
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[mass-envelope]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]] · [[static-thrust-to-weight]]
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[cruise-target-performance]] · [[dive-speed]] · [[endurance-and-range]] · [[endurance-and-range-optimum]] · [[mass-envelope]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]] · [[motor-propeller-part-load]] · [[static-thrust-to-weight]]

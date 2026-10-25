@@ -32,7 +32,7 @@ inputs:
 outputs: {v_x: best-angle-of-climb-speed, gamma_max: max-climb-angle}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
-optional: [r_m]
+optional: [r_m, i_0]
 ---
 
 # Best angle of climb at full throttle

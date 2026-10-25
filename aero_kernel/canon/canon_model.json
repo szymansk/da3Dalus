@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:ed5a07594fc10f0a10c0b4c5a3dd091d56e34ba082045632521ae31d7cf5b87e",
+  "content_hash": "sha256:03ad7fea7de3c32efd9bb7192f7a9b86b99deed1f2198d9bf4e6abf7a365682e",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -11,12 +11,26 @@
           "unit": "1",
           "value": 1.3
         },
+        "battery-specific-energy": {
+          "basis": "convention",
+          "regime": "RC LiPo packs, pack level (wiring, balance lead, shrink included); the cell-level figure of the cited RC-Network value (152.8 Wh/kg) is higher by construction",
+          "source": "maintainer, 2026-10-25 (#1235): pack level, a round value inside 128–159 Wh/kg; that band comes from the catalogue's ten 'Generic LiPo' entries, which are placeholder data, not manufacturer datasheets — no published pack value is cited yet",
+          "unit": "Wh/kg",
+          "value": 140.0
+        },
         "gravity": {
           "basis": "standard",
           "regime": "regime-independent",
           "source": "standard gravity, CGPM 1901 / U.S. Standard Atmosphere 1976",
           "unit": "m/s^2",
           "value": 9.80665
+        },
+        "limit-load-factor": {
+          "basis": "convention",
+          "regime": "RC/UAV models: far above the transport and FAR 23 values (2.5–6 g), inside the measured 6–19 g; the designer overrides it per airplane",
+          "source": "maintainer, 2026-10-25 (canon review of maneuvering-speed): 10 g instead of the former 3; measured loads on models are 6–19 g (spar sizing); to be replaced by a mission table with its structure-mass consequence (#1242)",
+          "unit": "1",
+          "value": 10.0
         },
         "load-factor": {
           "basis": "definition",
@@ -47,9 +61,9 @@
           "value": 0.1
         },
         "tail-efficiency": {
-          "basis": "convention",
+          "basis": "sourced",
           "regime": "not checked at RC Reynolds number: the wing wake is thicker at low Re, by an amount no source quantifies; Lennon's model-scale value is used instead of the full-scale 0.85–0.95. The designer overrides it per airplane",
-          "source": "Lennon, Basics of R/C Model Aircraft Design (1996) Ch. 7/8: conventional tail near the wing wake 0.65 (T-tail 0.9, in the wake 0.4); Sadraey, Aircraft Design (2013) Eq. 6.28 §6.2.1: 0.85–0.95 conventional, 1 T-tail, full-scale; maintainer decision 2026-10-24 (#1205)",
+          "source": "Lennon, Basics of R/C Model Aircraft Design (1996) Ch. 7/8: conventional tail near the wing wake 0.65 (T-tail 0.9, in the wake 0.4); Sadraey, Aircraft Design (2013) Eq. 6.28 §6.2.1: 0.85–0.95 conventional, 1 T-tail, full-scale; maintainer decision 2026-10-24 (#1205); basis sourced (Lennon gives the value), maintainer 2026-10-25",
           "unit": "1",
           "value": 0.65
         },
@@ -268,14 +282,15 @@
               "given": null,
               "id": "default",
               "produce": {
+                "c_rate": "calc:battery-c-rate",
                 "d_prop": "calc:propeller-diameter",
                 "e_bat": "calc:battery-capacity",
-                "e_star": "calc:battery-specific-energy",
-                "eta_total": "calc:propulsive-efficiency",
                 "i_0": "calc:motor-no-load-current",
+                "i_bat_max": "calc:battery-current-allowed",
                 "k_v": "calc:motor-voltage-constant",
                 "m_bat": "calc:battery-mass",
                 "p_mot_max": "calc:motor-max-power",
+                "q_bat": "calc:battery-charge-capacity",
                 "r_m": "calc:motor-circuit-resistance",
                 "u_bat": "calc:battery-voltage"
               },
@@ -292,14 +307,15 @@
           "kind": "procedure",
           "optional": [],
           "outputs": {
+            "c_rate": "calc:battery-c-rate",
             "d_prop": "calc:propeller-diameter",
             "e_bat": "calc:battery-capacity",
-            "e_star": "calc:battery-specific-energy",
-            "eta_total": "calc:propulsive-efficiency",
             "i_0": "calc:motor-no-load-current",
+            "i_bat_max": "calc:battery-current-allowed",
             "k_v": "calc:motor-voltage-constant",
             "m_bat": "calc:battery-mass",
             "p_mot_max": "calc:motor-max-power",
+            "q_bat": "calc:battery-charge-capacity",
             "r_m": "calc:motor-circuit-resistance",
             "u_bat": "calc:battery-voltage"
           },
@@ -522,7 +538,8 @@
           },
           "kind": "optimization",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "gamma_max": "calc:max-climb-angle",
@@ -593,7 +610,8 @@
           },
           "kind": "optimization",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "roc_max": "calc:max-rate-of-climb",
@@ -840,11 +858,18 @@
             {
               "bind": {
                 "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
                 "e_bat": "calc:battery-capacity",
-                "eta": "calc:propulsive-efficiency",
+                "eta_mot": "calc:motor-efficiency",
                 "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage",
                 "v_cruise_target": "calc:cruise-speed-target"
               },
               "given": [
@@ -860,19 +885,37 @@
           ],
           "cost": "seconds",
           "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
+          "embeds": [
+            "calc:motor-propeller-part-load.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:motor-propeller-part-load.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
           "inputs": {
             "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
             "e_bat": "calc:battery-capacity",
-            "eta": "calc:propulsive-efficiency",
+            "eta_mot": "calc:motor-efficiency",
             "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage",
             "v_cruise_target": "calc:cruise-speed-target"
           },
           "kind": "procedure",
-          "optional": [],
+          "optional": [
+            "r_m",
+            "i_0"
+          ],
           "outputs": {
             "r_cruise": "calc:range-at-cruise-target",
             "t_cruise": "calc:endurance-at-cruise-target"
@@ -881,7 +924,9 @@
           "preconditions": [],
           "tool": "OPT",
           "uncertainty": null,
-          "variables": [],
+          "variables": [
+            "calc:flight-speed"
+          ],
           "worlds": []
         },
         "dive-speed": {
@@ -939,7 +984,8 @@
           },
           "kind": "procedure",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "v_d": "calc:dive-speed"
@@ -1030,13 +1076,96 @@
             {
               "bind": {
                 "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
                 "e_bat": "calc:battery-capacity",
-                "eta": "calc:propulsive-efficiency",
+                "eta_mot": "calc:motor-efficiency",
                 "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage",
                 "v_md": "calc:minimum-drag-speed",
                 "v_mp": "calc:minimum-sink-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "r_est": "calc:range-estimate",
+                "t_est": "calc:endurance-estimate"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "direction": "analysis",
+          "embeds": [
+            "calc:motor-propeller-part-load.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:motor-propeller-part-load.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "e_bat": "calc:battery-capacity",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m": "calc:aircraft-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage",
+            "v_md": "calc:minimum-drag-speed",
+            "v_mp": "calc:minimum-sink-speed"
+          },
+          "kind": "procedure",
+          "optional": [
+            "r_m",
+            "i_0"
+          ],
+          "outputs": {
+            "r_est": "calc:range-estimate",
+            "t_est": "calc:endurance-estimate"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
+          "worlds": []
+        },
+        "endurance-and-range-optimum": {
+          "applications": [
+            {
+              "bind": {
+                "a": "calc:speed-of-sound",
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "e_bat": "calc:battery-capacity",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage"
               },
               "given": null,
               "id": "default",
@@ -1049,20 +1178,40 @@
           ],
           "cost": "seconds",
           "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
+          "embeds": [
+            "calc:motor-propeller-part-load.default",
+            "calc:stall-speed.clean"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:motor-propeller-part-load.default",
+            "calc:propeller-table-lookup.default",
+            "calc:stall-speed.clean",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
             "e_bat": "calc:battery-capacity",
-            "eta": "calc:propulsive-efficiency",
+            "eta_mot": "calc:motor-efficiency",
             "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "v_md": "calc:minimum-drag-speed",
-            "v_mp": "calc:minimum-sink-speed"
+            "u_bat": "calc:battery-voltage"
           },
-          "kind": "procedure",
-          "optional": [],
+          "kind": "optimization",
+          "optional": [
+            "r_m",
+            "i_0"
+          ],
           "outputs": {
             "r_max": "calc:max-range",
             "t_max": "calc:max-endurance"
@@ -1071,7 +1220,9 @@
           "preconditions": [],
           "tool": "OPT",
           "uncertainty": null,
-          "variables": [],
+          "variables": [
+            "calc:flight-speed"
+          ],
           "worlds": []
         },
         "glide-distance-from-ratio": {
@@ -1516,7 +1667,8 @@
           },
           "kind": "optimization",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "cg_envelope": "calc:cg-envelope-over-mass",
@@ -1590,7 +1742,8 @@
           },
           "kind": "optimization",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "v_max": "calc:max-level-speed"
@@ -1734,7 +1887,8 @@
           },
           "kind": "optimization",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "omega_max": "calc:max-sustained-turn-rate",
@@ -1842,7 +1996,8 @@
           },
           "kind": "optimization",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "r_min": "calc:min-sustained-turn-radius",
@@ -2044,7 +2199,8 @@
           },
           "kind": "procedure",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "n_prop": "calc:propeller-speed",
@@ -2055,6 +2211,91 @@
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
+          "worlds": []
+        },
+        "motor-propeller-part-load": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m": "calc:aircraft-mass",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage",
+                "v": "calc:flight-speed"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "i_bat": "calc:battery-current",
+                "n_pl": "calc:propeller-speed-part-load",
+                "p_bat": "calc:battery-power",
+                "r_t": "calc:thrust-demand-ratio"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "direction": "analysis",
+          "embeds": [
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m": "calc:aircraft-mass",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage",
+            "v": "calc:flight-speed"
+          },
+          "kind": "procedure",
+          "optional": [
+            "r_m",
+            "i_0"
+          ],
+          "outputs": {
+            "i_bat": "calc:battery-current",
+            "n_pl": "calc:propeller-speed-part-load",
+            "p_bat": "calc:battery-power",
+            "r_t": "calc:thrust-demand-ratio"
+          },
+          "postconditions": [
+            {
+              "applications": null,
+              "id": "demand_within_full_throttle",
+              "on_violation": "warning",
+              "parameter": "r_t"
+            }
+          ],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:flight-speed"
+          ],
           "worlds": []
         },
         "neutral-point": {
@@ -2935,7 +3176,8 @@
           },
           "kind": "law",
           "optional": [
-            "r_m"
+            "r_m",
+            "i_0"
           ],
           "outputs": {
             "t0_w": "calc:static-thrust-to-weight"
@@ -3395,6 +3637,21 @@
           "uncertainty": null,
           "unit": "1"
         },
+        "battery-c-rate": {
+          "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": "none",
+          "positive": null,
+          "role": "derived",
+          "stage": "references",
+          "symbol": "C_rate",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/h"
+        },
         "battery-capacity": {
           "at_most": null,
           "checks": null,
@@ -3409,6 +3666,51 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "Wh"
+        },
+        "battery-charge-capacity": {
+          "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": "none",
+          "positive": null,
+          "role": "derived",
+          "stage": "references",
+          "symbol": "Q_bat",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "mAh"
+        },
+        "battery-current": {
+          "at_most": null,
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "free",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "I_bat",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "A"
+        },
+        "battery-current-allowed": {
+          "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": "powertrain-battery",
+          "module": "construction",
+          "point": "none",
+          "positive": null,
+          "role": "derived",
+          "stage": "references",
+          "symbol": "I_bat,max",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "A"
         },
         "battery-mass": {
           "at_most": null,
@@ -3440,16 +3742,31 @@
           "uncertainty": null,
           "unit": "1"
         },
+        "battery-power": {
+          "at_most": null,
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "free",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "P_bat",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "W"
+        },
         "battery-specific-energy": {
           "at_most": null,
           "checks": null,
           "discipline": null,
-          "group": "powertrain-battery",
+          "group": null,
           "module": "construction",
           "point": null,
           "positive": null,
-          "role": "derived",
-          "stage": "references",
+          "role": "input",
+          "stage": null,
           "symbol": "E_star",
           "type": "scalar",
           "uncertainty": null,
@@ -3860,6 +4177,21 @@
           "uncertainty": null,
           "unit": "s"
         },
+        "endurance-estimate": {
+          "at_most": null,
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "t_est",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "s"
+        },
         "flap-deflection-landing": {
           "at_most": null,
           "checks": null,
@@ -4136,7 +4468,7 @@
           "discipline": "powered",
           "group": null,
           "module": null,
-          "point": "minimum-sink",
+          "point": "free",
           "positive": null,
           "role": "output",
           "stage": null,
@@ -4286,7 +4618,7 @@
           "discipline": "powered",
           "group": null,
           "module": null,
-          "point": "best-glide",
+          "point": "free",
           "positive": null,
           "role": "output",
           "stage": null,
@@ -4640,20 +4972,20 @@
           "uncertainty": null,
           "unit": "1/s"
         },
-        "propulsive-efficiency": {
+        "propeller-speed-part-load": {
           "at_most": null,
           "checks": null,
-          "discipline": null,
-          "group": "powertrain-motor-propeller",
-          "module": "construction",
-          "point": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "free",
           "positive": null,
-          "role": "derived",
-          "stage": "references",
-          "symbol": "eta_total",
+          "role": "output",
+          "stage": null,
+          "symbol": "n_prop,pl",
           "type": "scalar",
           "uncertainty": null,
-          "unit": "1"
+          "unit": "1/s"
         },
         "range-at-cruise-target": {
           "at_most": null,
@@ -4666,6 +4998,21 @@
           "role": "output",
           "stage": null,
           "symbol": "R_cruise",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "range-estimate": {
+          "at_most": null,
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "R_est",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
@@ -5161,6 +5508,21 @@
           "role": "derived",
           "stage": "propulsion-state",
           "symbol": "C_T",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "thrust-demand-ratio": {
+          "at_most": null,
+          "checks": null,
+          "discipline": "powered",
+          "group": null,
+          "module": null,
+          "point": "free",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "r_T",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"

@@ -3,7 +3,7 @@ canon: motor-propeller-equilibrium
 entry: formula
 kind: procedure
 tool: APP
-shape: route
+shape: law
 status: draft
 output: propeller-speed, motor-torque
 source_status: SOURCED
@@ -12,7 +12,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/procedural
-  - shape/route
+  - shape/law
   - kind/procedure
   - status/draft
 inputs:
@@ -27,7 +27,7 @@ inputs:
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
 outputs: {n_prop: propeller-speed, q_m: motor-torque}
-optional: [r_m]
+optional: [r_m, i_0]
 ---
 
 # Propeller speed from the motor–propeller torque balance
@@ -65,9 +65,13 @@ structural use.
 
 *Why the limit.* Route A as built (gh-615, BR-PT14) computes thrust at free-run rpm and clips only the **reported** shaft power. On BRYAN (Pulsar Micro 1510, 45 W, APC 6x4E, 2S) the propeller then asks 75–82 W of a 45 W motor; limited, static thrust falls from 489 g to 307 g. The code also cannot read `max_power_w` — it knows only currents. Ticketed as #1150.
 
-*What it still ignores.* The rpm drop under load below the power ceiling — measured on a D-Power AL 28-13 with APC 6x4E: loaded 8 973 vs free-run 10 064 rpm, about 25 % too much thrust. And `eta_mot` is the input [[motor-efficiency]] (maintainer, 2026-10-15, E1): default 0.75 from the Roxxy Motoren-Fibel, Ch. 3 (band 75–85 %), the lower bound because route A applies it at `P_mot,max`, above the peak-efficiency point; taking the default is visible (INFO, `provenance.defaults_used`). The canon reads no efficiency from catalogue data — [[airplane-components]] does not produce one; a caller with a catalogue value passes it as the [[motor-efficiency]] input. Ist: BR-PM3 uses 0.85. Whether the catalogue's power rating is electrical or shaft power is open — the source does not say; [[motor-max-power]] reads it as electrical, 🟡 INFERRED (STAND §10, E1).
+*What it still ignores.* The rpm drop under load below the power ceiling — measured on a D-Power AL 28-13 with APC 6x4E: loaded 8 973 vs free-run 10 064 rpm, about 25 % too much thrust. And `eta_mot` is the input [[motor-efficiency]] (maintainer, 2026-10-15, E1): default 0.75 from the Roxxy Motoren-Fibel, Ch. 3 (band 75–85 %), the lower bound because route A applies it at `P_mot,max`, above the peak-efficiency point; taking the default is visible (INFO, `provenance.defaults_used`) and, since 2026-10-25 (#1235), declared with a `practice` warning (ADR 0020). [[airplane-components]] produces no efficiency; the caller passes the catalogue's `efficiency_pct` where the manufacturer publishes it as the [[motor-efficiency]] input, else the default is taken. Ist: BR-PM3 uses 0.85. Whether the catalogue's power rating is electrical or shaft power is open — the source does not say; [[motor-max-power]] reads it as electrical, 🟡 INFERRED (STAND §10, E1).
 
-**Already decided — `Q-PT-6`** (maintainer, 2026-08-14). The route is chosen by data availability, and the result **declares which route ran** (ADR 0020). `R_m` is sourced only where a manufacturer publishes it and **never synthesised** from `K_v` and `I_0`. Today no catalogue motor carries it, so every number comes from route A until #1149 fills the data. `r_m` is therefore `optional`: route A without `R_m` is a **declared method limitation**, and a `practice` warning names the route (`Q-PT-6`).
+**Already decided — `Q-PT-6`** (maintainer, 2026-08-14). The route is chosen by data availability, and the result **declares which route ran** (ADR 0020). `R_m` is sourced only where a manufacturer publishes it and **never synthesised** from `K_v` and `I_0`. Today no catalogue motor carries it, so every number comes from route A until #1149 fills the data. `r_m` is therefore `optional`: route A without `R_m` is a **declared method limitation**, and a `practice` warning names the route (`Q-PT-6`). `i_0` is `optional` as well (2026-10-25, #1235): absent, the balance runs with `I_0 = 0` (BR-PT15), declared with a `practice` warning.
+
+Making the route choice an explicit decision over component data is recorded as technical debt, #1236 (maintainer 2026-10-25: extend the `when` vocabulary, no new mechanism).
+
+**Full throttle only.** This entry answers for the full-throttle point (`T_full(V)`, the static thrust, top speed, climb). The part-load point of level flight — thrust equal to drag, battery current and power — is [[motor-propeller-part-load]], which embeds this entry for `T_full(V)`.
 
 **Why not constant power.** Sadraey's propeller relation `T = eta_P · P / V` with constant `P` (Eq. 8.2, 4.84; `eta_P` 0.5–0.6 in climb, §4.3.5.2) is stated there as "sufficient for preliminary sizing". A voltage-fed motor on a fixed-pitch propeller does not deliver constant power, the relation diverges at `V = 0`, and it still needs the rpm to read `eta_P(J)`. It stays out of the canon.
 
