@@ -139,8 +139,10 @@ async def test_a_polar_that_never_falls_to_the_level_gives_no_value_and_runs_no_
         alpha_deg=flat.alpha_deg, cl=(1.0, 1.1, CL_MAX, 1.18, 1.17), cd=flat.cd, cm=flat.cm
     )
     stub = StubOpti()
+    x = break_x(flat)
+    context = context_with(StubAtmosphere({}), opti=stub)
     with pytest.raises(FormulaError) as raised:
-        await stall_break(break_x(flat), context_with(StubAtmosphere({}), opti=stub))
+        await stall_break(x, context)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
     assert raised.value.detail["alpha_s"] == ALPHA_S
     assert stub.sweep_calls == []
@@ -183,8 +185,9 @@ async def test_a_finer_sweep_that_does_not_bracket_the_break_is_not_converged() 
         update={"cl": (CL_MAX,) * len(alphas)}
     )
     context = context_with(StubAtmosphere({}), opti=stub)
+    x = break_x()
     with pytest.raises(FormulaError) as raised:
-        await stall_break(break_x(), context)
+        await stall_break(x, context)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
     assert close(float(str(raised.value.detail["alpha_break_published_deg"])), ALPHA_BREAK, 1e-12)
     assert context.warnings == ()
@@ -204,33 +207,43 @@ async def test_a_failed_half_step_sweep_is_passed_on_without_a_value() -> None:
         async def sweep(self, *args: Any) -> Polar:  # type: ignore[override]
             raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "m", "h")
 
+    x = break_x()
+    context = context_with(StubAtmosphere({}), opti=Failing())
     with pytest.raises(FormulaError) as raised:
-        await stall_break(break_x(), context_with(StubAtmosphere({}), opti=Failing()))
+        await stall_break(x, context)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
 
 
 @pytest.mark.parametrize("fraction", [0.0, 1.0, -0.1, 1.5, math.nan])
 async def test_a_fraction_outside_zero_and_one_is_invalid_input(fraction: float) -> None:
+    x = break_x(f=fraction)
+    context = context_with(StubAtmosphere({}), opti=StubOpti())
     with pytest.raises(FormulaError) as raised:
-        await stall_break(break_x(f=fraction), context_with(StubAtmosphere({}), opti=StubOpti()))
+        await stall_break(x, context)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
 async def test_a_non_positive_peak_is_invalid_input() -> None:
+    x = break_x(cl_max=0.0)
+    context = context_with(StubAtmosphere({}), opti=StubOpti())
     with pytest.raises(FormulaError) as raised:
-        await stall_break(break_x(cl_max=0.0), context_with(StubAtmosphere({}), opti=StubOpti()))
+        await stall_break(x, context)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
 async def test_an_alpha_s_that_is_no_sample_of_the_polar_is_invalid_input() -> None:
+    x = break_x(alpha_s=15.8)
+    context = context_with(StubAtmosphere({}), opti=StubOpti())
     with pytest.raises(FormulaError) as raised:
-        await stall_break(break_x(alpha_s=15.8), context_with(StubAtmosphere({}), opti=StubOpti()))
+        await stall_break(x, context)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
 async def test_a_polar_that_is_not_a_polar_is_a_type_error() -> None:
+    x = break_x(polar_s=1.0)
+    context = context_with(StubAtmosphere({}), opti=StubOpti())
     with pytest.raises(TypeError, match="polar_s"):
-        await stall_break(break_x(polar_s=1.0), context_with(StubAtmosphere({}), opti=StubOpti()))
+        await stall_break(x, context)
 
 
 # --- through the engine on the shipped canon --------------------------------------------------

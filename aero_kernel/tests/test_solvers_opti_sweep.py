@@ -63,24 +63,28 @@ async def test_an_inadmissible_speed_or_angle_series_is_invalid_input(
     monkeypatch: pytest.MonkeyPatch, v_ms: float, alphas: tuple[float, ...]
 ) -> None:
     monkeypatch.setattr(opti_module, "sweep_worker", canned(lift_curve(UPRIGHT_PEAK, upright=True)))
+    adapter = OptiAdapter(InProcessRuntime())
+    plane = airplane()
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).sweep(airplane(), AIR, v_ms, alphas)
+        await adapter.sweep(plane, AIR, v_ms, alphas)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
 async def test_a_deflected_control_surface_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(opti_module, "sweep_worker", canned(lift_curve(UPRIGHT_PEAK, upright=True)))
+    adapter = OptiAdapter(InProcessRuntime())
+    deflected = airplane(device=("aileron", 4.0))
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).sweep(
-            airplane(device=("aileron", 4.0)), AIR, 10.0, ALPHAS
-        )
+        await adapter.sweep(deflected, AIR, 10.0, ALPHAS)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
+    adapter = OptiAdapter(InProcessRuntime())
+    plane = airplane()
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).sweep(airplane(), AIR, 10.0, ALPHAS)
+        await adapter.sweep(plane, AIR, 10.0, ALPHAS)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 
