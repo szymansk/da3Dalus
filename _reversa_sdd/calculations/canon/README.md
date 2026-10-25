@@ -572,17 +572,16 @@ column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` fie
 
 ### One example per kind
 
-A **law** with preconditions and the single default application (`glide-distance-from-ratio`):
+A **law** with a precondition and the single default application (`sink-rate`):
 
 ```yaml
 kind: law
 tool: APP
-output: glide-distance
-inputs: {e: lift-to-drag-ratio, h: height-above-ground}
-outputs: {r_glide: glide-distance}
+output: sink-rate
+inputs: {v: flight-speed, cl: lift-coefficient, cd: drag-coefficient-parabolic}
+outputs: {w_sink: sink-rate}
 preconditions:
-  - {id: lift_to_drag_of_flown_configuration, parameter: e, on_violation: warning}
-  - {id: propeller_drag_not_in_polar, parameter: e, on_violation: warning}
+  - {id: small_glide_angle, parameter: cd, on_violation: warning}
 ```
 
 A **procedure** with declared uncertainty (`neutral-point`):

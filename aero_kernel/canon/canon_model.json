@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:ee460fbe454e5f41f841f3aa86dfe0c1dfb3b5d1fd92671f0aff30e0c3102937",
+  "content_hash": "sha256:0aff606719962b39d61a563cbdcc4a46b6eb8e687216ae47a4c5f70dc41f6b17",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1225,54 +1225,6 @@
           "variables": [
             "calc:flight-speed"
           ],
-          "worlds": []
-        },
-        "glide-distance-from-ratio": {
-          "applications": [
-            {
-              "bind": {
-                "e": "calc:lift-to-drag-ratio",
-                "h": "calc:height-above-ground"
-              },
-              "given": null,
-              "id": "default",
-              "produce": {
-                "r_glide": "calc:glide-distance"
-              },
-              "when": null
-            }
-          ],
-          "cost": "instant",
-          "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
-          "inputs": {
-            "e": "calc:lift-to-drag-ratio",
-            "h": "calc:height-above-ground"
-          },
-          "kind": "law",
-          "optional": [],
-          "outputs": {
-            "r_glide": "calc:glide-distance"
-          },
-          "postconditions": [],
-          "preconditions": [
-            {
-              "applications": null,
-              "id": "lift_to_drag_of_flown_configuration",
-              "on_violation": "warning",
-              "parameter": "e"
-            },
-            {
-              "applications": null,
-              "id": "propeller_drag_not_in_polar",
-              "on_violation": "warning",
-              "parameter": "e"
-            }
-          ],
-          "tool": "APP",
-          "uncertainty": null,
-          "variables": [],
           "worlds": []
         },
         "induced-drag-factor": {
@@ -4254,21 +4206,6 @@
           "uncertainty": null,
           "unit": "m/s"
         },
-        "glide-distance": {
-          "at_most": null,
-          "checks": null,
-          "discipline": "glide",
-          "group": null,
-          "module": null,
-          "point": "free",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "R_glide",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "m"
-        },
         "gravity": {
           "at_most": null,
           "checks": null,
@@ -4283,21 +4220,6 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s^2"
-        },
-        "height-above-ground": {
-          "at_most": null,
-          "checks": null,
-          "discipline": null,
-          "group": null,
-          "module": "atmosphere",
-          "point": null,
-          "positive": true,
-          "role": "input",
-          "stage": null,
-          "symbol": "h_AGL",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "m"
         },
         "hinge-moment": {
           "at_most": null,
@@ -4425,7 +4347,7 @@
           "discipline": "aerodynamics",
           "group": "aero-forces",
           "module": null,
-          "point": null,
+          "point": "free",
           "positive": null,
           "role": "derived",
           "stage": "aero-model",
