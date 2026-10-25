@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: AB
 shape: law
-status: draft
+status: approved
 output: pitching-moment-slope, static-margin-probe
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs:
   airplane: airplane
   m: aircraft-mass

@@ -5,7 +5,7 @@ kind: procedure
 uncertainty: interval
 tool: AVL
 shape: law
-status: draft
+status: approved
 output: neutral-point
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -15,7 +15,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs:
   airplane: airplane
   m: aircraft-mass

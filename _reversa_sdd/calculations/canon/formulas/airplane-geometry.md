@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: GEO
 shape: law
-status: draft
+status: approved
 output: wing-reference-area, wing-span, mean-aerodynamic-chord
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs: {airplane: airplane}
 preconditions:
   - {id: main_wing_has_spanwise_extent, parameter: airplane, on_violation: error}
@@ -56,7 +56,7 @@ must extend further in y than in z: over its stored sections, `max y − min y >
 means the mean inclination of the whole wing is 45° or more, a vertical surface. AeroSandbox would measure it
 without complaint (a slant planform), so the kernel refuses it before the measurement, as
 `unsupported_configuration` (`precondition_violated`), with the hint to check the surface type. Criterion and
-threshold are the proposal of #1253 and **await the maintainer's approval**: the dihedral of a real main wing
+threshold are the proposal of #1253 and **adopted by the maintainer (2026-10-25)**: the dihedral of a real main wing
 stays far below 45° (even a strong V, 10–15°; a winglet adds little y-extent and little z-extent to a wing
 whose y-extent dominates), whereas a fin or a V-tail typed `main_wing` has y ≤ z.
 
