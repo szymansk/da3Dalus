@@ -197,8 +197,9 @@ async def test_a_polar_without_flow_conditions_is_invalid_input() -> None:
     bare = lift_curve(UPRIGHT_PEAK, upright=True)
     x = break_x()
     x["polar_s"] = bare
+    context = context_with(StubAtmosphere({}), opti=StubOpti())
     with pytest.raises(FormulaError) as raised:
-        await stall_break(x, context_with(StubAtmosphere({}), opti=StubOpti()))
+        await stall_break(x, context)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
