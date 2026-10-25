@@ -22,13 +22,13 @@ A formula with cost class `minutes` is long-running and runs only on request (ch
 
 ## Approval, stage 2
 
-Stage 1 is the formula's own status; stage 2 is derived: every input is produced by an approved formula or has a `data:` source in our data (canon README, "Two stages").
+Stage 1 is the formula's own status; stage 2 is derived and transitive: every input has a `data:` source in our data or is produced by formulas that hold both stages themselves, embedded formulas included (canon README, "Two-stage approval"). A missing entry names the root cause and the formulas it passes through.
 
 | formula | stage 1 | inputs | missing |
 |---|---|---|---|
 | estimate | draft | 1 of 2 | gravity (no data source) |
-| outer | draft | 1 of 2 | gravity (no data source) |
-| weigh-twice | draft | 1 of 2 | gravity (no data source) |
+| outer | draft | 1 of 2 | gravity (no data source); embedded: weigh-twice: not approved; embedded: weighing: not approved via weigh-twice; embedded: weight-from-mass: not approved via weigh-twice |
+| weigh-twice | draft | 1 of 2 | gravity (no data source); embedded: weighing: not approved; embedded: weight-from-mass: not approved |
 | weighing | draft | 1 of 2 | gravity (no data source) |
 | weight-from-mass | draft | 1 of 2 | gravity (no data source) |
 

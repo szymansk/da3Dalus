@@ -378,10 +378,15 @@ Decision (maintainer, 2026-10-25): "die fünf Quellarten sind ok".
 the method is named, regime and limits are declared, the implementations agree: the three gates
 above, without "inputs approved". Stage 1 is the formula's `status`, set by the maintainer.
 
-**Stage 2 — inputs approved.** Derived, never set by hand. Every input of the formula is either
-(a) produced by a formula whose stage 1 is `approved`, or (b) a supplied quantity with a
-**demonstrated source in our data**, recorded on the quantity as `data:` (below). Only both stages
-make a formula fully approved — a test oracle.
+**Stage 2 — inputs approved.** Derived, never set by hand, and **transitive** (maintainer, 2026-10-25:
+"für die finale Freigabe muss die ganze Kette stimmen, sonst lässt es sich nicht berechnen; eine einfache
+Traverse des Baums"). Every input of the formula is either (a) a supplied quantity with a **demonstrated
+source in our data**, recorded on the quantity as `data:` (below), or (b) produced by formulas that satisfy
+**both** stages themselves — stage 1 approved and stage 2 holding for *their* inputs, recursively. The
+formulas a formula embeds (its `embeds` closure) count the same way. Only both stages, over the whole
+chain, make a formula fully approved — a test oracle. A gap is reported at its root, with the formulas it
+passes through: `motor-circuit-resistance: no data source (the catalogue does not carry it) via
+airplane-components`.
 
 **Pure data reads (maintainer, 2026-10-25).** `data:` is also allowed on a quantity produced by a
 formula that is a *pure data read* — criterion: `tool: KAT`, a formula that takes its outputs from the
@@ -393,7 +398,7 @@ catalogue does not carry (the circuit resistance `R_m`, #1149: `rm_ohm` is the w
 circuit's); a formula consuming it reports it as unmapped in stage 2. Every other produced quantity takes
 its approval from its producer and may not carry `data:`.
 
-**Quantity status is derived, not a field.** A produced quantity has the status of its producers;
+**Quantity status is derived, not a field.** A produced quantity is `approved` when every producer satisfies both stages over its whole chain, otherwise `draft`;
 a supplied one is `approved` exactly when its `data:` is set and resolves, otherwise `unmapped`.
 A `status:` in a quantity entry is a finding.
 

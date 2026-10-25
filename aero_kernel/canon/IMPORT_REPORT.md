@@ -77,56 +77,56 @@ A formula with cost class `minutes` is long-running and runs only on request (ch
 
 ## Approval, stage 2
 
-Stage 1 is the formula's own status; stage 2 is derived: every input is produced by an approved formula or has a `data:` source in our data (canon README, "Two stages").
+Stage 1 is the formula's own status; stage 2 is derived and transitive: every input has a `data:` source in our data or is produced by formulas that hold both stages themselves, embedded formulas included (canon README, "Two-stage approval"). A missing entry names the root cause and the formulas it passes through.
 
 | formula | stage 1 | inputs | missing |
 |---|---|---|---|
-| advance-ratio-from-speed | draft | 2 of 3 | propeller-speed (produced by motor-propeller-equilibrium (not approved)) |
+| advance-ratio-from-speed | draft | 2 of 3 | propeller-speed (motor-propeller-equilibrium: not approved; motor-circuit-resistance: no data source (the catalogue does not carry it) via motor-propeller-equilibrium, airplane-components) |
 | aerobuildup-evaluation | approved | 6 of 6 |  |
 | aileron-deflection-required | draft | 7 of 8 | roll-rate-target-approach (no data source) |
 | air-density-isa | approved | 1 of 1 |  |
 | airplane-components | approved | 2 of 2 |  |
 | airplane-configuration | approved | 3 of 3 |  |
 | airplane-geometry | draft | 1 of 1 |  |
-| aspect-ratio | draft | 0 of 2 | wing-reference-area (produced by airplane-geometry (not approved)); wing-span (produced by airplane-geometry (not approved)) |
+| aspect-ratio | draft | 0 of 2 | wing-reference-area (airplane-geometry: not approved); wing-span (airplane-geometry: not approved) |
 | battery-mass-from-capacity | draft | 2 of 2 |  |
-| best-angle-of-climb | draft | 11 of 12 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| best-rate-of-climb | draft | 11 of 12 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
+| best-angle-of-climb | draft | 11 of 12 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
+| best-rate-of-climb | draft | 11 of 12 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | butterfly-approach | draft | 6 of 8 | crow-aileron-deflection (no data source); crow-flap-deflection (no data source) |
-| cg-for-target-margin | draft | 0 of 3 | mean-aerodynamic-chord (produced by airplane-geometry (not approved)); neutral-point (produced by neutral-point (not approved)); static-margin-target (no data source) |
+| cg-for-target-margin | draft | 0 of 3 | mean-aerodynamic-chord (airplane-geometry: not approved); neutral-point (not approved); static-margin-target (no data source) |
 | control-surface-hinge-moments | draft | 12 of 12 |  |
-| cruise-target-performance | draft | 13 of 14 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| dive-speed | draft | 11 of 12 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| drag-polar | draft | 0 of 3 | induced-drag-factor (produced by induced-drag-factor (not approved)); lift-coefficient (produced by lift-coefficient-required (not approved)); zero-lift-drag-coefficient (produced by parabolic-polar-fit (not approved)) |
+| cruise-target-performance | draft | 13 of 14 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
+| dive-speed | draft | 11 of 12 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
+| drag-polar | draft | 0 of 3 | induced-drag-factor (not approved; aspect-ratio: not approved via induced-drag-factor; airplane-geometry: not approved via induced-drag-factor, aspect-ratio; parabolic-polar-fit: not approved via induced-drag-factor); lift-coefficient (lift-coefficient-required: not approved; airplane-geometry: not approved via lift-coefficient-required); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; airplane-geometry: not approved via parabolic-polar-fit, aspect-ratio) |
 | dynamic-pressure | approved | 2 of 2 |  |
-| endurance-and-range | draft | 14 of 15 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| endurance-and-range-optimum | draft | 14 of 15 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| induced-drag-factor | draft | 0 of 2 | aspect-ratio (produced by aspect-ratio (not approved)); oswald-efficiency (produced by parabolic-polar-fit (not approved)) |
+| endurance-and-range | draft | 14 of 15 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
+| endurance-and-range-optimum | draft | 14 of 15 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
+| induced-drag-factor | draft | 0 of 2 | aspect-ratio (not approved; airplane-geometry: not approved via aspect-ratio); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; airplane-geometry: not approved via parabolic-polar-fit, aspect-ratio) |
 | lateral-static-stability-app | draft | 5 of 6 | centre-of-gravity (no data source) |
 | lateral-static-stability-md | draft | 5 of 6 | centre-of-gravity (no data source) |
-| lift-coefficient-required | draft | 4 of 5 | wing-reference-area (produced by airplane-geometry (not approved)) |
+| lift-coefficient-required | draft | 4 of 5 | wing-reference-area (airplane-geometry: not approved) |
 | lift-to-drag-ratio | draft | 2 of 2 |  |
 | linear-lift-curve-inverse | draft | 4 of 4 |  |
 | maneuvering-speed | approved | 5 of 5 |  |
-| mass-envelope | draft | 19 of 21 | motor-circuit-resistance (no data source (the catalogue does not carry it)); neutral-point (produced by neutral-point (not approved)) |
-| max-level-speed | draft | 11 of 12 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| max-lift-to-drag-parabolic | draft | 0 of 3 | aspect-ratio (produced by aspect-ratio (not approved)); oswald-efficiency (produced by parabolic-polar-fit (not approved)); zero-lift-drag-coefficient (produced by parabolic-polar-fit (not approved)) |
-| max-mass-structure | draft | 1 of 2 | break-load-factor-positive (produced by spar-break-load-factor (not approved)) |
-| max-sustained-turn-rate | draft | 12 of 13 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| mean-geometric-chord | draft | 0 of 2 | wing-reference-area (produced by airplane-geometry (not approved)); wing-span (produced by airplane-geometry (not approved)) |
-| min-sustained-turn-radius | draft | 12 of 13 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| minimum-drag-speed-closed-form | draft | 1 of 4 | induced-drag-factor (produced by induced-drag-factor (not approved)); wing-loading (produced by wing-loading (not approved)); zero-lift-drag-coefficient (produced by parabolic-polar-fit (not approved)) |
+| mass-envelope | draft | 19 of 21 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); neutral-point (not approved); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: best-rate-of-climb: not approved; embedded: propeller-table-lookup: not approved via best-rate-of-climb; embedded: thrust-at-airspeed-from-coefficient: not approved via best-rate-of-climb; embedded: max-level-speed: not approved |
+| max-level-speed | draft | 11 of 12 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
+| max-lift-to-drag-parabolic | draft | 0 of 3 | aspect-ratio (not approved; airplane-geometry: not approved via aspect-ratio); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; airplane-geometry: not approved via parabolic-polar-fit, aspect-ratio); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; airplane-geometry: not approved via parabolic-polar-fit, aspect-ratio) |
+| max-mass-structure | draft | 1 of 2 | break-load-factor-positive (spar-break-load-factor: not approved) |
+| max-sustained-turn-rate | draft | 12 of 13 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
+| mean-geometric-chord | draft | 0 of 2 | wing-reference-area (airplane-geometry: not approved); wing-span (airplane-geometry: not approved) |
+| min-sustained-turn-radius | draft | 12 of 13 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
+| minimum-drag-speed-closed-form | draft | 1 of 4 | induced-drag-factor (not approved; aspect-ratio: not approved via induced-drag-factor; airplane-geometry: not approved via induced-drag-factor, aspect-ratio; parabolic-polar-fit: not approved via induced-drag-factor); wing-loading (not approved; airplane-geometry: not approved via wing-loading); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; airplane-geometry: not approved via parabolic-polar-fit, aspect-ratio) |
 | minimum-drag-speed-from-polar | approved | 6 of 6 |  |
 | minimum-sink-speed-from-polar | approved | 6 of 6 |  |
-| motor-propeller-equilibrium | draft | 9 of 10 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| motor-propeller-part-load | draft | 12 of 13 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
+| motor-propeller-equilibrium | draft | 9 of 10 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components) |
+| motor-propeller-part-load | draft | 12 of 13 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | neutral-point | draft | 6 of 6 |  |
-| parabolic-polar-fit | draft | 5 of 6 | aspect-ratio (produced by aspect-ratio (not approved)) |
-| propeller-table-lookup | draft | 1 of 2 | advance-ratio (produced by advance-ratio-from-speed (not approved)) |
-| relative-mass-deviation | draft | 1 of 2 | predicted-battery-mass (produced by battery-mass-from-capacity (not approved)) |
-| roll-rate | draft | 8 of 9 | wing-span (produced by airplane-geometry (not approved)) |
+| parabolic-polar-fit | draft | 5 of 6 | aspect-ratio (not approved; airplane-geometry: not approved via aspect-ratio) |
+| propeller-table-lookup | draft | 1 of 2 | advance-ratio (advance-ratio-from-speed: not approved; motor-propeller-equilibrium: not approved via advance-ratio-from-speed; motor-circuit-resistance: no data source (the catalogue does not carry it) via advance-ratio-from-speed, motor-propeller-equilibrium, airplane-components) |
+| relative-mass-deviation | draft | 1 of 2 | predicted-battery-mass (battery-mass-from-capacity: not approved) |
+| roll-rate | draft | 8 of 9 | wing-span (airplane-geometry: not approved) |
 | roll-rate-cruise-target | draft | 6 of 6 |  |
-| sink-rate | draft | 1 of 3 | drag-coefficient-parabolic (produced by drag-polar (not approved)); lift-coefficient (produced by lift-coefficient-required (not approved)) |
+| sink-rate | draft | 1 of 3 | drag-coefficient-parabolic (drag-polar: not approved; induced-drag-factor: not approved via drag-polar; aspect-ratio: not approved via drag-polar, induced-drag-factor; airplane-geometry: not approved via drag-polar, induced-drag-factor, aspect-ratio; parabolic-polar-fit: not approved via drag-polar, induced-drag-factor; lift-coefficient-required: not approved via drag-polar); lift-coefficient (lift-coefficient-required: not approved; airplane-geometry: not approved via lift-coefficient-required) |
 | spanwise-loads | approved | 6 of 6 |  |
 | spar-break-load-factor | draft | 5 of 5 |  |
 | speed-from-stall-margin | approved | 5 of 5 |  |
@@ -134,13 +134,13 @@ Stage 1 is the formula's own status; stage 2 is derived: every input is produced
 | stall-break | approved | 5 of 5 |  |
 | stall-speed | approved | 8 of 8 |  |
 | stall-wing-loading-limit | draft | 2 of 3 | stall-speed-target (no data source) |
-| static-margin | draft | 0 of 3 | centre-of-gravity (no data source); mean-aerodynamic-chord (produced by airplane-geometry (not approved)); neutral-point (produced by neutral-point (not approved)) |
+| static-margin | draft | 0 of 3 | centre-of-gravity (no data source); mean-aerodynamic-chord (airplane-geometry: not approved); neutral-point (not approved) |
 | static-margin-probe | draft | 5 of 6 | centre-of-gravity (no data source) |
-| static-thrust-to-weight | draft | 10 of 11 | motor-circuit-resistance (no data source (the catalogue does not carry it)) |
-| thrust-at-airspeed-from-coefficient | draft | 2 of 4 | propeller-speed (produced by motor-propeller-equilibrium (not approved)); thrust-coefficient (produced by propeller-table-lookup (not approved)) |
+| static-thrust-to-weight | draft | 10 of 11 | motor-circuit-resistance (no data source (the catalogue does not carry it) via airplane-components); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
+| thrust-at-airspeed-from-coefficient | draft | 2 of 4 | propeller-speed (motor-propeller-equilibrium: not approved; motor-circuit-resistance: no data source (the catalogue does not carry it) via motor-propeller-equilibrium, airplane-components); thrust-coefficient (propeller-table-lookup: not approved; advance-ratio-from-speed: not approved via propeller-table-lookup; motor-propeller-equilibrium: not approved via propeller-table-lookup, advance-ratio-from-speed; motor-circuit-resistance: no data source (the catalogue does not carry it) via propeller-table-lookup, advance-ratio-from-speed, motor-propeller-equilibrium, airplane-components) |
 | vertical-tail-volume | draft | 1 of 1 |  |
 | weight-from-mass | approved | 2 of 2 |  |
-| wing-loading | draft | 2 of 3 | wing-reference-area (produced by airplane-geometry (not approved)) |
+| wing-loading | draft | 2 of 3 | wing-reference-area (airplane-geometry: not approved) |
 
 ### Unmapped inputs
 

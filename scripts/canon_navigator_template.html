@@ -709,7 +709,7 @@ function select(q){
     h+=`<div class="blk"><div class="lab">Produced by \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;
     { const ap=APPR[f];
       if(ap) h+=`<p class="sub" style="margin:0 0 6px">Approval: formula <b>${ap.s1==='approved'?'&#10003;':'&#8212;'}</b> ${esc(ap.s1)} \u00b7 inputs <b>${ap.k}</b> of <b>${ap.n}</b>`+
-        (ap.missing.length?'<br>missing: '+ap.missing.map(m=>`<a href="#" onclick="select('${esc(m.q)}');return false">${esc(sym(m.q))}</a> <span class="sub">(${esc(m.why)})</span>`).join(' &#183; '):'')+`</p>`; }
+        (ap.missing.length?'<br>missing: '+ap.missing.map(m=>m.q?`<a href="#" onclick="select('${esc(m.q)}');return false">${esc(sym(m.q))}</a> <span class="sub">(${esc(m.why)})</span>`:`<span class="sub">${esc(m.why)}</span>`).join(' &#183; '):'')+`</p>`; }
     h+= e.tex ? `<div class="math">$$${e.tex}$$</div>`
               : `<div class="mono">${esc(e.form)}</div>
                  <p class="sub" style="margin:6px 0 0">Procedural form \u2014 not typeset as a formula.</p>`;

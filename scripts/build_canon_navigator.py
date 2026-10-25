@@ -473,7 +473,8 @@ def approval_marks(data: dict, model: dict) -> None:
             "s1": row.stage1,
             "k": row.mapped,
             "n": row.total,
-            "missing": [{"q": state.quantity, "why": state.basis} for state in row.missing],
+            "missing": [{"q": state.quantity, "why": state.basis} for state in row.missing]
+            + [{"q": "", "why": f"embedded: {blocker}"} for blocker in row.embed_blockers],
         }
         for row in approval.formulas
     }

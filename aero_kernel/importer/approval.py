@@ -1,11 +1,12 @@
-"""Two-stage approval of the canon, derived (canon README "Two stages", #1251).
+"""Two-stage approval of the canon, derived (canon README "Two-stage approval", #1251).
 
 Stage 1 is the formula's own ``status``, set by the maintainer. Stage 2 is derived here and never
-set by hand: every input of the formula is either produced by a stage-1-approved formula, or a
-supplied quantity with a ``data:`` source in our data. A quantity's status follows from the same
-rule: a produced quantity has the status of its producers, a supplied one is ``approved`` exactly
-when it has a source. A quantity produced by a pure data read (a formula of tool ``KAT``) needs
-both: its producer approved and a source naming the catalogue field.
+set by hand, and it is transitive (maintainer, 2026-10-25: the whole chain must hold, or the value
+cannot be computed): every input of the formula is either a supplied quantity with a ``data:`` source,
+or produced by formulas that satisfy **both** stages themselves, recursively, embedded formulas
+included. A quantity produced by a pure data read (a formula of tool ``KAT``) also needs a source
+naming the catalogue field. A cause that blocks a formula is reported at its root, with the formulas
+it passes through.
 """
 
 from dataclasses import dataclass
@@ -43,11 +44,13 @@ class FormulaApproval:
         formula: The formula's slug.
         stage1: The formula's own status as written in its entry.
         inputs: Every input quantity with its stage-2 state, ordered by slug.
+        embed_blockers: What blocks the formula through the formulas it embeds, as root causes.
     """
 
     formula: str
     stage1: str
     inputs: tuple[InputState, ...]
+    embed_blockers: tuple[str, ...] = ()
 
     @property
     def mapped(self) -> int:
@@ -67,7 +70,7 @@ class FormulaApproval:
     @property
     def fully_approved(self) -> bool:
         """Both stages hold: the formula is a test oracle."""
-        return self.stage1 == "approved" and not self.missing
+        return self.stage1 == "approved" and not self.missing and not self.embed_blockers
 
 
 @dataclass(frozen=True)
@@ -114,47 +117,104 @@ def _is_read(content: Namespace, makers: list[str] | set[str]) -> bool:
     return all(content.formulas[maker].tool == "KAT" for maker in makers)
 
 
-def _input_state(
-    content: Namespace,
-    quantity: str,
-    formula: str,
-    producers: dict[str, set[str]],
-    stage1: dict[str, str],
-) -> InputState:
-    """Judge one input of ``formula``: produced by an approved formula, or with a data source."""
-    makers = sorted(producers.get(quantity, set()) - {formula})
+# A root cause: the quantity or formula at fault, what is wrong, and the formulas it passes through.
+_Cause = tuple[str, str, tuple[str, ...]]
+
+
+def _text(cause: _Cause, own: str | None = None) -> str:
+    """Render a cause; ``own`` is the input it is shown on, whose name is then left out."""
+    root, reason, via = cause
+    head = reason if root == own else f"{root}: {reason}"
+    return f"{head} via {', '.join(via)}" if via else head
+
+
+def _unique(causes: list[_Cause]) -> list[_Cause]:
+    """Keep one path per root cause, so that diamonds of embeds stay linear."""
+    first: dict[tuple[str, str], _Cause] = {}
+    for cause in causes:
+        first.setdefault((cause[0], cause[1]), cause)
+    return list(first.values())
+
+
+class _Walk:
+    """The transitive walk of stage 2, memoised per formula."""
+
+    def __init__(self, content: Namespace, stage1: dict[str, str]) -> None:
+        self.content = content
+        self.stage1 = stage1
+        self.producers = _producers(content)
+        self._memo: dict[str, list[_Cause]] = {}
+
+    def blocked(self, formula: str) -> list[_Cause]:
+        """Root causes that keep ``formula`` from satisfying both stages; empty if it does."""
+        if formula in self._memo:
+            return self._memo[formula]
+        self._memo[formula] = []  # a cycle adds nothing; the importer rejects cycles anyway
+        causes: list[_Cause] = []
+        if self.stage1.get(formula, "draft") != "approved":
+            causes.append((formula, "not approved", ()))
+        for quantity in _inputs(self.content, formula):
+            causes.extend(self.input_causes(quantity, formula))
+        causes.extend(self.embed_causes(formula))
+        self._memo[formula] = _unique(causes)
+        return self._memo[formula]
+
+    def input_causes(self, quantity: str, formula: str) -> list[_Cause]:
+        """Root causes that keep one input of ``formula`` from being covered."""
+        makers = sorted(self.producers.get(quantity, set()) - {formula})
+        data = self.content.quantities[quantity].data
+        if not makers:
+            return [] if data else [(quantity, "no data source", ())]
+        causes: list[_Cause] = []
+        for maker in makers:
+            for root, reason, via in self.blocked(maker):
+                causes.append((root, reason, via if root == maker and not via else (maker, *via)))
+        if _is_read(self.content, makers) and not data:
+            causes.append(
+                (quantity, "no data source (the catalogue does not carry it)", tuple(makers))
+            )
+        return _unique(causes)
+
+    def embed_causes(self, formula: str) -> list[_Cause]:
+        """Root causes inside the formulas ``formula`` embeds, other than its own inputs."""
+        own = set(_inputs(self.content, formula))
+        causes: list[_Cause] = []
+        for item in self.content.formulas[formula].embeds_closure:
+            embedded = _bare(item).rpartition(".")[0]
+            for root, reason, via in self.blocked(embedded):
+                if root not in own:
+                    causes.append(
+                        (root, reason, via if root == embedded and not via else (embedded, *via))
+                    )
+        return _unique(causes)
+
+
+def _input_state(walk: _Walk, quantity: str, formula: str) -> InputState:
+    """Judge one input of ``formula`` over the whole chain behind it."""
+    causes = walk.input_causes(quantity, formula)
+    if causes:
+        return InputState(quantity, False, "; ".join(_text(c, quantity) for c in causes))
+    content = walk.content
     data = content.quantities[quantity].data
+    makers = sorted(walk.producers.get(quantity, set()) - {formula})
     if not makers:
-        return (
-            InputState(quantity, True, ", ".join(data))
-            if data
-            else InputState(quantity, False, "no data source")
-        )
-    draft = [maker for maker in makers if stage1.get(maker, "draft") != "approved"]
-    if draft:
-        return InputState(quantity, False, f"produced by {', '.join(draft)} (not approved)")
-    if not _is_read(content, makers):
-        return InputState(quantity, True, f"produced by {', '.join(makers)}")
-    if data:
-        return InputState(quantity, True, f"read from {', '.join(data)}")
-    return InputState(quantity, False, "no data source (the catalogue does not carry it)")
+        return InputState(quantity, True, ", ".join(data or []))
+    if _is_read(content, makers):
+        return InputState(quantity, True, f"read from {', '.join(data or [])}")
+    return InputState(quantity, True, f"produced by {', '.join(makers)}")
 
 
-def _quantity_status(
-    content: Namespace, producers: dict[str, set[str]], stage1: dict[str, str]
-) -> dict[str, str]:
+def _quantity_status(walk: _Walk) -> dict[str, str]:
     """A produced quantity follows its producers; a supplied one is approved with a source."""
     status: dict[str, str] = {}
-    for slug, quantity in content.quantities.items():
-        makers = producers.get(slug)
-        if makers:
-            approved = all(stage1.get(maker, "draft") == "approved" for maker in makers)
-            if approved and _is_read(content, makers) and not quantity.data:
-                status[slug] = UNMAPPED
-            else:
-                status[slug] = "approved" if approved else "draft"
-        else:
+    for slug, quantity in walk.content.quantities.items():
+        makers = walk.producers.get(slug)
+        if not makers:
             status[slug] = "approved" if quantity.data else UNMAPPED
+        elif _is_read(walk.content, makers) and not quantity.data:
+            status[slug] = UNMAPPED
+        else:
+            status[slug] = "approved" if all(not walk.blocked(m) for m in makers) else "draft"
     return status
 
 
@@ -169,18 +229,16 @@ def derive_approval(model: CanonModel, stage1: dict[str, str]) -> Approval:
         The approval of every formula and quantity.
     """
     content = model.namespaces[DEFAULT_NAMESPACE]
-    producers = _producers(content)
+    walk = _Walk(content, stage1)
     rows = tuple(
         FormulaApproval(
             formula=slug,
             stage1=stage1.get(slug, "draft"),
-            inputs=tuple(
-                _input_state(content, quantity, slug, producers, stage1)
-                for quantity in _inputs(content, slug)
-            ),
+            inputs=tuple(_input_state(walk, quantity, slug) for quantity in _inputs(content, slug)),
+            embed_blockers=tuple(_text(cause) for cause in walk.embed_causes(slug)),
         )
         for slug in sorted(content.formulas)
     )
-    status = _quantity_status(content, producers, stage1)
+    status = _quantity_status(walk)
     unmapped = tuple(sorted(slug for slug, value in status.items() if value == UNMAPPED))
     return Approval(formulas=rows, quantity_status=status, unmapped=unmapped)

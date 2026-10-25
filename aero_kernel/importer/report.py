@@ -4,7 +4,7 @@ import json
 
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import DEFAULT_NAMESPACE
-from aero_kernel.importer.approval import Approval
+from aero_kernel.importer.approval import Approval, FormulaApproval
 
 __all__ = ["model_text", "report_text"]
 
@@ -64,15 +64,17 @@ def _approval_lines(approval: Approval) -> list[str]:
         "",
         "## Approval, stage 2",
         "",
-        "Stage 1 is the formula's own status; stage 2 is derived: every input is produced by an "
-        'approved formula or has a `data:` source in our data (canon README, "Two stages").',
+        "Stage 1 is the formula's own status; stage 2 is derived and transitive: every input has a "
+        "`data:` source in our data or is produced by formulas that hold both stages themselves, "
+        'embedded formulas included (canon README, "Two-stage approval"). A missing entry names '
+        "the root cause and the formulas it passes through.",
         "",
         "| formula | stage 1 | inputs | missing |",
         "|---|---|---|---|",
     ]
     lines.extend(
         f"| {row.formula} | {row.stage1} | {row.mapped} of {row.total} | "
-        f"{'; '.join(f'{state.quantity} ({state.basis})' for state in row.missing)} |"
+        f"{'; '.join(_missing(row))} |"
         for row in approval.formulas
     )
     readers: dict[str, list[str]] = {slug: [] for slug in approval.unmapped}
@@ -94,3 +96,9 @@ def _approval_lines(approval: Approval) -> list[str]:
     )
     lines.extend(f"| {slug} | {', '.join(users)} |" for slug, users in readers.items())
     return lines
+
+
+def _missing(row: FormulaApproval) -> list[str]:
+    """Name what blocks stage 2 of a formula: the inputs with their root causes, then the embeds."""
+    named = [f"{state.quantity} ({state.basis})" for state in row.missing]
+    return named + [f"embedded: {blocker}" for blocker in row.embed_blockers]

@@ -114,17 +114,15 @@ def test_the_navigator_carries_stage_two_of_the_approval_per_formula_and_quantit
     assert data["qdata"]["aircraft-mass"] == ["geometry:total_mass_kg"]
 
 
-def test_every_missing_input_is_named_with_its_reason() -> None:
+def test_every_missing_input_is_named_with_its_root_cause() -> None:
     model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
     formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
     data: dict[str, Any] = {"F": formulas}
     nav.approval_marks(data, model)
     for row in data["appr"].values():
-        assert row["k"] + len(row["missing"]) == row["n"]
+        assert row["k"] + len([m for m in row["missing"] if m["q"]]) == row["n"]
         for missing in row["missing"]:
-            assert missing["why"] == "no data source" or "not approved" in missing["why"]
-            unmapped = data["qstat"][missing["q"]] == "unmapped"
-            assert unmapped == (missing["why"] == "no data source")
+            assert "no data source" in missing["why"] or "not approved" in missing["why"]
 
 
 def test_the_navigator_lists_every_data_source_with_what_it_feeds_and_the_missing_ones() -> None:
