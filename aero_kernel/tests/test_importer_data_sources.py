@@ -59,13 +59,16 @@ def test_a_geometry_path_the_schema_lacks_is_a_problem(source: str, catalogue: C
         "component:brushless_motor",
         "component:brushless_motor.kv_rpm_per_volt",
         "component:battery.mass_g",
+        "component:battery.cell_voltage_v",
+        "component:battery.chemistry",
+        "component:brushless_motor.efficiency_pct",
     ],
 )
 def test_a_component_type_and_field_of_the_seed_resolve(source: str, catalogue: Catalogue) -> None:
     assert problem(source, catalogue) is None
 
 
-@pytest.mark.parametrize("source", ["component:rocket", "component:brushless_motor.efficiency_pct"])
+@pytest.mark.parametrize("source", ["component:rocket", "component:brushless_motor.warp_factor"])
 def test_a_component_type_or_field_the_seed_lacks_is_a_problem(
     source: str, catalogue: Catalogue
 ) -> None:

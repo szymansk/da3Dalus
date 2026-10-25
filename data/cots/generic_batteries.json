@@ -5,7 +5,7 @@
     "component_type": "battery",
     "mass_g": 75,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 1300, "cells": 2, "c_rate": 30, "voltage_v": 7.4}
+    "specs": {"capacity_mah": 1300, "cells": 2, "c_rate": 30, "voltage_v": 7.4, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -13,7 +13,7 @@
     "component_type": "battery",
     "mass_g": 110,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 1300, "cells": 3, "c_rate": 30, "voltage_v": 11.1}
+    "specs": {"capacity_mah": 1300, "cells": 3, "c_rate": 30, "voltage_v": 11.1, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -21,7 +21,7 @@
     "component_type": "battery",
     "mass_g": 185,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 2200, "cells": 3, "c_rate": 30, "voltage_v": 11.1}
+    "specs": {"capacity_mah": 2200, "cells": 3, "c_rate": 30, "voltage_v": 11.1, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -29,7 +29,7 @@
     "component_type": "battery",
     "mass_g": 270,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 3300, "cells": 3, "c_rate": 30, "voltage_v": 11.1}
+    "specs": {"capacity_mah": 3300, "cells": 3, "c_rate": 30, "voltage_v": 11.1, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -37,7 +37,7 @@
     "component_type": "battery",
     "mass_g": 245,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 2200, "cells": 4, "c_rate": 35, "voltage_v": 14.8}
+    "specs": {"capacity_mah": 2200, "cells": 4, "c_rate": 35, "voltage_v": 14.8, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -45,7 +45,7 @@
     "component_type": "battery",
     "mass_g": 330,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 3300, "cells": 4, "c_rate": 35, "voltage_v": 14.8}
+    "specs": {"capacity_mah": 3300, "cells": 4, "c_rate": 35, "voltage_v": 14.8, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -53,7 +53,7 @@
     "component_type": "battery",
     "mass_g": 480,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 5000, "cells": 4, "c_rate": 30, "voltage_v": 14.8}
+    "specs": {"capacity_mah": 5000, "cells": 4, "c_rate": 30, "voltage_v": 14.8, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -61,7 +61,7 @@
     "component_type": "battery",
     "mass_g": 490,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 3300, "cells": 6, "c_rate": 30, "voltage_v": 22.2}
+    "specs": {"capacity_mah": 3300, "cells": 6, "c_rate": 30, "voltage_v": 22.2, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -69,7 +69,7 @@
     "component_type": "battery",
     "mass_g": 700,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 5000, "cells": 6, "c_rate": 30, "voltage_v": 22.2}
+    "specs": {"capacity_mah": 5000, "cells": 6, "c_rate": 30, "voltage_v": 22.2, "chemistry": "lipo", "cell_voltage_v": 3.7}
   },
   {
     "manufacturer": "Generic",
@@ -77,6 +77,6 @@
     "component_type": "battery",
     "mass_g": 840,
     "source_version": "generic RC LiPo reference (gh-993)",
-    "specs": {"capacity_mah": 6000, "cells": 6, "c_rate": 30, "voltage_v": 22.2}
+    "specs": {"capacity_mah": 6000, "cells": 6, "c_rate": 30, "voltage_v": 22.2, "chemistry": "lipo", "cell_voltage_v": 3.7}
   }
 ]

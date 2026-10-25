@@ -50,8 +50,8 @@ at the solved `n_prop` (on route A at the power limit `Q_m = eta_mot·P_mot,max 
 estimate, declared (ADR 0020):** it runs at the free-run rpm `K_v·U_bat`, which ignores the rpm drop
 under load — by this entry's own measurement (D-Power AL 28-13, APC 6x4E: 10 064 vs 8 973 rpm) the
 torque `∝ n_prop²` is about 26 % too high. It is covered by the existing `practice` warning that names
-route A (`Q-PT-6`). At the power limit it uses `eta_mot`, the sourced default 0.75 (Roxxy
-Motoren-Fibel, `defaults.yaml`). Both routes take the nominal battery voltage. The construction side sizes the motor
+route A (`Q-PT-6`). At the power limit it uses `eta_mot`: the motor's published `efficiency_pct`
+where the catalogue has one, else the starting value 0.75 (Roxxy Motoren-Fibel, `defaults.yaml`). Both routes take the nominal battery voltage. The construction side sizes the motor
 mount from it; the speed it is read at (static, `V = 0`, is the usual maximum) and any factor are the
 construction's and the evaluation's (A10). Source: the torque balance itself (Drela `motor1` §1.1);
 Sadraey §6.8.2 treats propeller reaction torque only as a roll-trim effect — no source for its
