@@ -27,7 +27,7 @@ def test_the_import_writes_a_loadable_model_and_a_report(tmp_path: Path) -> None
     assert import_to(write_canon(tmp_path), out) == 0
     model = load_canon_model(out / MODEL)
     assert model.importer_version == IMPORTER_VERSION
-    assert model.schema_version == 1
+    assert model.schema_version == 2
     assert sorted(path.name for path in out.iterdir()) == [REPORT, MODEL]
 
 

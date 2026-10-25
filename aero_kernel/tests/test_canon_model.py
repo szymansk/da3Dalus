@@ -18,7 +18,7 @@ def build(namespaces: dict[str, Any]) -> CanonModel:
 
 def test_minimal_model_is_valid() -> None:
     model = CanonModel.model_validate(base_model())
-    assert model.schema_version == 1
+    assert model.schema_version == 2
     assert model.namespaces["calc"].formulas["weight-from-mass"].tool == "APP"
 
 
@@ -30,8 +30,8 @@ def test_lookup_resolves_bare_and_qualified_slugs() -> None:
     assert model.quantity("other:aircraft-mass") is None
 
 
-@pytest.mark.parametrize("version", [0, 2, "1"])
-def test_only_schema_version_one(version: object) -> None:
+@pytest.mark.parametrize("version", [0, 1, "2"])
+def test_only_schema_version_two(version: object) -> None:
     raw = base_model()
     raw["schema_version"] = version
     with pytest.raises(ValidationError):

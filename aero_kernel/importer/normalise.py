@@ -13,13 +13,17 @@ import re
 from collections.abc import Callable
 from typing import cast
 
-from aero_kernel.canon.model import CostClass, Tool
+from aero_kernel.canon.model import CostClass
+from aero_kernel.canon.taxonomy import Tool
 from aero_kernel.errors import DEFAULT_NAMESPACE, IDENTIFIER_REGEX, SLUG_REGEX
 from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.parse import Entry, ParsedCanon
 from aero_kernel.importer.yamlvalue import as_list, as_mapping
 
-__all__ = ["DERIVED_COST", "normalise"]
+__all__ = ["DERIVED_COST", "QUANTITY_TAG_FAMILIES", "normalise"]
+
+# The tag families a quantity carries as fields; a formula carries ``direction``.
+QUANTITY_TAG_FAMILIES = ("module", "point", "stage", "group", "discipline")
 
 # Cost derived from the tool where the canon does not declare it (ch. 8.7); ``minutes`` is only declared.
 DERIVED_COST: dict[Tool, CostClass] = {
@@ -67,13 +71,47 @@ def _qualified_list(raw: object) -> object:
 # --- quantities and defaults ------------------------------------------------------------------
 
 
-def _quantity(entry: Entry) -> JsonDict:
-    """Normalise one quantity entry: the unit folds, everything else is carried as written."""
-    return {
+def _tag_values(entry: Entry, family: str, findings: list[Finding]) -> list[str]:
+    """Return the values of the entry's ``<family>/<value>`` tags; more than one is a finding."""
+    prefix = f"{family}/"
+    values = [
+        tag.removeprefix(prefix)
+        for tag in as_list(entry.front.get("tags")) or []
+        if isinstance(tag, str) and tag.startswith(prefix)
+    ]
+    if len(values) > 1:
+        findings.append(
+            Finding(
+                file=entry.file,
+                field=family,
+                message=f"more than one {family} tag ({', '.join(values)}): exactly one is allowed",
+            )
+        )
+    return values
+
+
+def _quantity(entry: Entry, findings: list[Finding]) -> JsonDict:
+    """Normalise one quantity entry: the unit folds, the tags become fields, the rest is as written."""
+    document: JsonDict = {
         name: _unit(value) if name == "unit" else value
         for name, value in entry.front.items()
-        if name in ("symbol", "unit", "role", "type", "uncertainty", "positive", "at_most")
+        if name
+        in (
+            "symbol",
+            "unit",
+            "role",
+            "type",
+            "uncertainty",
+            "positive",
+            "at_most",
+            "checks",
+        )
     }
+    for family in QUANTITY_TAG_FAMILIES:
+        values = _tag_values(entry, family, findings)
+        if values:
+            document[family] = values[0]
+    return document
 
 
 def _default(raw: dict[str, object]) -> JsonDict:
@@ -171,8 +209,18 @@ def _applications(
     return [_application(item, inputs, outputs) for item in items], ids
 
 
+def _default_direction(taxonomy: dict[str, object] | None) -> str | None:
+    """Return the id of the default direction of the raw taxonomy, if it names one."""
+    for item in as_list((taxonomy or {}).get("directions")) or []:
+        mapping = as_mapping(item)
+        if mapping is not None and mapping.get("default") is True:
+            identifier = mapping.get("id")
+            return identifier if isinstance(identifier, str) else None
+    return None
+
+
 def _formula(
-    entry: Entry, findings: list[Finding]
+    entry: Entry, default_direction: str | None, findings: list[Finding]
 ) -> tuple[JsonDict, list[object], list[str] | None]:
     """Normalise one formula entry except for its embeds; return it with its raw embeds items."""
     front = entry.front
@@ -187,6 +235,9 @@ def _formula(
         "outputs": outputs,
         "applications": applications,
     }
+    direction = _tag_values(entry, "direction", findings)
+    if direction or default_direction is not None:
+        doc["direction"] = direction[0] if direction else default_direction
     if "cost" in front:
         doc["cost"] = front["cost"]
     elif isinstance(tool, str) and tool in DERIVED_COST:
@@ -264,8 +315,11 @@ def normalise(parsed: ParsedCanon) -> tuple[JsonDict, list[Finding]]:
     applications_of: dict[str, list[str] | None] = {}
     documents: dict[str, JsonDict] = {}
     raw_embeds: dict[str, list[object]] = {}
+    default_direction = _default_direction(parsed.taxonomy)
     for slug, entry in parsed.formulas.items():
-        documents[slug], raw_embeds[slug], applications_of[slug] = _formula(entry, findings)
+        documents[slug], raw_embeds[slug], applications_of[slug] = _formula(
+            entry, default_direction, findings
+        )
     direct: dict[str, list[str]] = {}
     for slug, items in raw_embeds.items():
         direct[slug] = []
@@ -289,7 +343,10 @@ def normalise(parsed: ParsedCanon) -> tuple[JsonDict, list[Finding]]:
         document["embeds"] = direct[slug]
         document["embeds_closure"] = sorted(_closure(slug, direct)) if direct[slug] else []
     return {
-        "quantities": {slug: _quantity(entry) for slug, entry in parsed.quantities.items()},
+        "quantities": {
+            slug: _quantity(entry, findings) for slug, entry in parsed.quantities.items()
+        },
         "formulas": documents,
         "defaults": {slug: _default(raw) for slug, raw in parsed.defaults.items()},
+        "taxonomy": parsed.taxonomy or {},
     }, findings

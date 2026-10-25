@@ -160,7 +160,7 @@ def test_not_implemented_is_sorted_by_qualified_slug(flight_canon: CanonModel) -
         "calc1": Namespace(quantities=calc.quantities, formulas={"a-one": stall}),
     }
     model = CanonModel(
-        schema_version=1,
+        schema_version=2,
         content_hash=compute_content_hash(namespaces),
         importer_version="test",
         namespaces=namespaces,

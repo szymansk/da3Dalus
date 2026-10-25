@@ -11,6 +11,7 @@ tags:
   - point/best-glide
   - role/output
 type: scalar
+checks: minimum-drag-speed
 ---
 
 # Minimum-drag speed, closed-form Probe · `V_md,probe`

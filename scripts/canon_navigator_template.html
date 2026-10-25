@@ -299,14 +299,26 @@ const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
 // as borderline cases of the analysis they invert; "#design-separate" shows the separate column).
 const DESIGN_SEP=/design-separate/.test(location.hash);
 const SIDE=q=>(DESIGN_SEP&&DESIGN.has(q)&&!ANALYSIS.has(q))?'design':'analysis';
-const MODULES={'envelope-targets':'Envelope targets','design-targets':'Design targets',
-  'construction':'Construction','mass-and-balance':'Mass and balance','atmosphere':'Atmosphere and constants',
-  'control-deflections':'Control deflections','operating-point':'Operating point',
-  'conventions':'Defined values'};
+// The vocabulary of the tag families (taxonomy.yaml, carried by the canon model): names, order,
+// explanations and properties. The template holds none of it.
+const TAX=D.tax, DIR=Object.fromEntries(TAX.directions.map(v=>[v.id,v]));
+const LABELS=family=>Object.fromEntries(TAX[family].map(v=>[v.id,v.label]));
+const MODULES=LABELS('modules');
 const MODORDER=Object.keys(MODULES);
+const POINTS=LABELS('points'), PTORDER=Object.keys(POINTS);
+const STAGES=LABELS('stages'), STORDER=Object.keys(STAGES);
+const GROUPS=LABELS('groups'), GRORDER=Object.keys(GROUPS);
+const GMETA=Object.fromEntries(TAX.groups.map(v=>[v.id,v]));
+const DISC=LABELS('disciplines'), DORDER=Object.keys(DISC);
+const TOOLS=Object.fromEntries(TAX.tools.map(v=>[v.id,v.name]));
+const STABILITY=new Set(TAX.disciplines.filter(v=>v.stability).map(v=>v.id));
+const DESC={};
+for(const [kind,family] of [['module','modules'],['point','points'],['stage','stages'],['group','groups'],['discipline','disciplines']])
+  for(const v of TAX[family]) DESC[kind+':'+v.id]=v.explanation;
+DESC['discipline:design']=DIR.design.explanation;
 // Cross-cutting modules (maintainer 2026-10-24): nearly every formula depends on them, so they
 // stand in their own column on the right instead of layer 0; their edges show only on selection.
-const XCUT=new Set(['construction','mass-and-balance','atmosphere']);
+const XCUT=new Set(TAX.modules.filter(v=>v.cross_cutting).map(v=>v.id));
 const isX=q=>XCUT.has(Q[q].module);
 const SIDEGAP=70, SUBGAP=NH+16, HEAD=40;
 const slotW=NW+GAPX, FPAD=10, FHEAD=20, MODGAP=26, MAXCOLS=5;
@@ -320,9 +332,6 @@ const isLeft=q=>isX(q)||isRef(q);
 const REFCOLS=2, REFGAP=34, RW=REFCOLS*slotW-GAPX+2*FPAD;
 // Columns are disciplines (maintainer 2026-10-24, canon tag discipline/<name>): the question a
 // quantity answers. Rows are its stage (intermediate band) or operating point (final band).
-const DISC={'aerodynamics':'Aerodynamics','glide':'Glide performance','powered':'Powered performance',
-  'longitudinal':'Longitudinal stability and trim','lateral':'Lateral-directional stability and control','structure':'Structure and loads'};
-const DORDER=Object.keys(DISC);
 const COLOF={};
 for(const l of layers){ if(l===0) continue;
   for(const q of ORDER[l]){ if(isLeft(q)) continue; COLOF[q]=SIDE(q)==='design'?'design':Q[q].discipline; } }
@@ -370,20 +379,15 @@ const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
 // Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
 // in reading order inside each column; within a cluster: values of the point, then stability,
 // then the probes (closed-form checks).
-const POINTS={'stall':'Stall, clean','takeoff':'Take-off','approach':'Landing / approach','best-glide':'Best glide (V_md)',
-  'minimum-sink':'Minimum sink (V_mp)','full-throttle':'Full throttle','cruise-target':'Cruise target',
-  'manoeuvre':'Manoeuvre / structure','free':'Free operating point','over-mass':'Over mass','none':'No operating point'};
-const PTORDER=Object.keys(POINTS);
-const STAGES={'references':'Derived references','aero-model':'Aerodynamic model','operating-points':'Named operating points',
-  'propulsion-state':'Propulsion state','stability-structure':'Stability and structure'};
-const STORDER=Object.keys(STAGES);
-const KIND=q=>/probe$/.test(q)?2:/(static-margin|pitching-moment|dihedral|weathercock|spiral)/.test(q)?1:0;
+// A probe names the quantity it checks (canon field `checks`); the value links back to its probes.
+const PROBES={}; for(const q in Q) if(Q[q].checks) (PROBES[Q[q].checks] ||= []).push(q);
+const KIND=q=>Q[q].checks?2:STABILITY.has(Q[q].discipline)?1:0;
 // Both bands are clustered: the intermediate band by stage (canon tag stage/<name>), the final
 // band by operating point (point/<name>). Packing (maintainer 2026-10-24): clusters with the
 // widest coverage over the columns come first; a cluster shares a row with others when their
 // column spans do not overlap (first fit). One box per cluster spans its columns.
 const PFRAMES=[], PSPANS=[], SUBFRAMES=[];
-const SUBORDER=['aero-forces','aero-lift-curve','aero-stall','aero-parabola'], SUBHEAD=16;
+const SUBHEAD=16;
 const COLIX=x=>COLS.findIndex(c=>c.x===x);
 for(const [band,,inBand] of BANDS){
   BANDY[band]=yc;
@@ -396,7 +400,7 @@ for(const [band,,inBand] of BANDS){
       const g=qs.filter(q=>keyOf(q)===k).sort((a,b)=>(band==='final'?KIND(a)-KIND(b):0)||RANK[a]-RANK[b]);
       if(!g.length) continue;
       // sub-groups (canon tag group/) inside a stage cluster: each starts a new row block, framed
-      const subs=band==='final'?[]:[...new Set(g.map(q=>Q[q].group).filter(Boolean))].sort((a,b)=>SUBORDER.indexOf(a)-SUBORDER.indexOf(b));
+      const subs=band==='final'?[]:[...new Set(g.map(q=>Q[q].group).filter(Boolean))].sort((a,b)=>GRORDER.indexOf(a)-GRORDER.indexOf(b));
       let fh;
       if(subs.length){
         let dy=FPAD;
@@ -439,16 +443,12 @@ for(const [band,,inBand] of BANDS){
 }
 // The cross-cutting column: upright framed modules, one node per row, below the top row.
 const XTOP=BANDY.inter-GAPY/2;
-for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==='design'?'Design':DISC[c.module]});
+for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==='design'?DIR.design.label:DISC[c.module]});
 // Cross-cutting modules and their derived references side by side (maintainer 2026-10-24):
 // each module's inputs on the left, the references derived from them (canon tags module/ and
 // group/) on the right, on the same level, so a row reads "input -> reference". The powertrain
 // is one box with the sub-clusters motor and propeller, and battery.
 SX.refs=XW+REFGAP;
-const GROUPS={'air-state':'Air state','weight-and-loading':'Weight and loading','geometry-references':'Geometry references',
-  'configurations':'Configurations','powertrain-motor-propeller':'Motor and propeller','powertrain-battery':'Battery',
-  'aero-forces':'Forces and state','aero-lift-curve':'Linear lift curve','aero-stall':'Stall','aero-parabola':'Fitted parabola (display)'};
-const GRORDER=Object.keys(GROUPS);
 { let y=XTOP+FHEAD;
   for(const m of MODORDER.filter(m=>XCUT.has(m))){
     const ins=Object.keys(Q).filter(q=>Q[q].module===m&&!isRef(q)).sort();
@@ -463,8 +463,8 @@ const GRORDER=Object.keys(GROUPS);
     for(const g of GRORDER){
       const qs=refs.filter(q=>Q[q].group===g).sort((a,b)=>RANK[a]-RANK[b]);
       if(!qs.length) continue;
-      const isPw=g.startsWith('powertrain-');
-      if(isPw&&!pw){ pw={y:ry}; ry+=FHEAD; }
+      const parent=GMETA[g].parent;
+      if(parent&&!pw){ pw={y:ry,parent}; ry+=FHEAD; }
       const rows=Math.ceil(qs.length/REFCOLS), fh=(rows-1)*SUBGAP+NH+2*FPAD;
       const gx=SX.refs, gw=RW;
       qs.forEach((q,i)=>{ P[q]={x:gx+FPAD+(i%REFCOLS)*slotW, y:ry+FPAD+Math.floor(i/REFCOLS)*SUBGAP}; });
@@ -472,9 +472,9 @@ const GRORDER=Object.keys(GROUPS);
       const t={band:'inter',key:g,label:GROUPS[g],x:gx,y:ry-FHEAD+2,w:gw,h:fh+FHEAD-2,sub:true};
       PSPANS.push(t);
       ry+=fh+FHEAD+4;
-      if(isPw) pw.end=ry;
+      if(parent) pw.end=ry;
     }
-    if(pw) PSPANS.push({band:'inter',key:'powertrain',label:'Powertrain',x:SX.refs-9,y:pw.y-FHEAD+2,w:RW+18,h:pw.end-pw.y+4});
+    if(pw) PSPANS.push({band:'inter',key:pw.parent,label:GROUPS[pw.parent],x:SX.refs-9,y:pw.y-FHEAD+2,w:RW+18,h:pw.end-pw.y+4});
     y=Math.max(y+lh, ry-FHEAD-4)+MODGAP+FHEAD;
   }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
@@ -500,7 +500,7 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
   for(const s of PSPANS){
     const st=s.band!=='final';
     if(!s.sub) cam.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:9,class:st?'sspan':'pspan'}));
-    const kind=s.band==='final'?'point':(s.key==='powertrain'||GROUPS[s.key])?'group':'stage';
+    const kind=s.band==='final'?'point':GROUPS[s.key]?'group':'stage';
     cam.appendChild(headingEl(s.x+(s.sub?2:8),s.y+13,'blocklab '+(st?'stlab':'ptlab'),s.label,kind,s.key)); }
   for(const sf of SUBFRAMES){ if(sf.y===undefined) continue;
     cam.appendChild(el('rect',{x:sf.x,y:sf.y,width:sf.w,height:sf.h,rx:6,class:'subframe'}));
@@ -544,8 +544,6 @@ function sym(q){
 let moved=false;
 const isOpt=q=>(prodBy[q]||[]).some(f=>F[f].kind==='optimization');
 // Which tool computes a value (formula frontmatter `tool`). Inputs carry none.
-const TOOLS={OPT:'asb.Opti + AeroBuildup (NeuralFoil-Profile)',AB:'AeroBuildup (NeuralFoil-Profile)',AVL:'AVL',
-  GEO:'AeroSandbox geometry',ATM:'AeroSandbox atmosphere',KAT:'Parts catalogue (DB)',APC:'APC propeller tables (DB)',APP:'App \u2014 own computation'};
 const toolOf=q=>[...new Set((prodBy[q]||[]).map(f=>F[f].tool||'APP'))];
 const nodeEls={};
 for(const q in Q){
@@ -634,6 +632,8 @@ function select(q){
     const col = st==='done'?'var(--good)':(st==='open'&&MVP.has(q))?'var(--mvp)':'var(--line-2)';
     if(Q[q].point) h+=`<p class="meta">Operating point: ${esc(POINTS[Q[q].point]||Q[q].point)}</p>`;
     if(Q[q].stage) h+=`<p class="meta">Stage: ${esc(STAGES[Q[q].stage]||Q[q].stage)}${Q[q].group?' \u00b7 '+esc(GROUPS[Q[q].group]||Q[q].group):''}</p>`;
+    if(Q[q].checks) h+=`<p class="meta">Probe: checks <a href="#" onclick="select('${Q[q].checks}');return false">${esc(sym(Q[q].checks))}</a></p>`;
+    if(PROBES[q]) h+=`<p class="meta">Checked by the probe${PROBES[q].length>1?'s':''}: ${PROBES[q].map(x=>`<a href="#" onclick="select('${x}');return false">${esc(sym(x))}</a>`).join(', ')}</p>`;
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   if(CONV[q]) h+=`<div class="blk"><div class="lab" style="color:var(--sel)">&#8776; Rests on a defined value \u00b7 ${CONV[q].length}</div>`+
     CONV[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(CONVS[c].value)} ${esc(CONVS[c].unit==='1'?'':CONVS[c].unit)}</b> <span class="sub">(${esc(c)}, convention)</span><br>${esc(CONVS[c].source)}<br><span class="sub">A value chosen without a published source, adopted on the maintainer&#8217;s word &#8212; the result is only as good as this choice.</span></div>`).join('')+`</div>`;
@@ -675,51 +675,12 @@ function select(q){
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
 }
-// Explanations of every heading, worded as in the canon README (tags module/, discipline/, stage/,
-// point/, group/); the README is the authority.
-const DESC={
- 'module:envelope-targets':'Targets that name an operating point or bound the envelope: the stall-speed margins of approach, touchdown and take-off, the cruise-speed target and the limit load factor.',
- 'module:design-targets':'Targets a design entry turns into a construction quantity: the static-margin target, the stall-speed target and the roll-rate targets (O1).',
- 'module:construction':'The airplane as built and its fitted components (motor, battery, propeller), with the references derived from them: geometry references, the take-off and landing configurations and the powertrain values. Cross-cutting: nearly every formula depends on it.',
- 'module:mass-and-balance':'The take-off mass and the centre of gravity, inputs of the canon (A6), with the weight and the wing loading derived from them. Cross-cutting.',
- 'module:atmosphere':'Altitude and the physical constants, with the air state derived from them: density, viscosity and speed of sound. Cross-cutting.',
- 'module:conventions':'Defined values: measurement conventions with a default but no published source, adopted on the maintainer\u2019s word. Every quantity that rests on one carries the \u2248 mark.',
- 'module:control-deflections':'Every device angle the caller sets: ailerons, elevator, rudder, flaps for take-off and landing, crow. The geometry stops are never read.',
- 'module:operating-point':'The free variables of a flight state: flight speed, angle of attack and load factor. Named points bind them instead.',
- 'discipline:aerodynamics':'Forces, the polar, stall, and the speeds set as a margin over the stall speed.',
- 'discipline:glide':'Unpowered performance: best glide, minimum sink, sink rate, glide distance, crow.',
- 'discipline:powered':'Thrust, climb, top speed, sustained turn, endurance and range on the battery, and their sweeps over the mass.',
- 'discipline:longitudinal':'Static stability and trim about the pitch axis: neutral point, static margin, the CG for a target margin, the CG envelope.',
- 'discipline:lateral':'Lateral-directional stability and roll control: dihedral and weathercock effect, spiral, fin volume, roll rate and the aileron deflection a roll target needs.',
- 'discipline:structure':'Manoeuvre and dive speeds, break load factors, spanwise loads and hinge moments.',
- 'discipline:design':'Design quantities: a target turned into a construction quantity (O1).',
- 'stage:aero-model':'The polar independent of the operating point: lift and drag, the lift-curve slope, zero-lift angle, C_L,max, the fitted parabola.',
- 'stage:operating-points':'Where the named speeds are born: V_S0, V_S,TO, V_md, V_mp, V_app, V_TO, V_A. Every final result of a point depends on them.',
- 'stage:propulsion-state':'The propeller at a flight speed: rotational speed, advance ratio, thrust coefficient.',
- 'stage:stability-structure':'The neutral point and the positive break load factor, on which the stability and structure results build.',
- 'point:stall':'C_L,max at n = 1 or −1, clean configuration.','point:takeoff':'The take-off configuration and its speeds.',
- 'point:approach':'The landing configuration and the approach at V_app = k_S · V_S0.',
- 'point:best-glide':'V_md, the minimum-drag speed; also the reference point of static stability.',
- 'point:minimum-sink':'V_mp, the minimum-sink speed.','point:full-throttle':'Power-limited points at full throttle.',
- 'point:cruise-target':'Only when a cruise-speed target is given.','point:manoeuvre':'V_A and the load factors.',
- 'point:free':'A state the caller sets (V, α, n); no named point yet — a visible gap against A2.',
- 'point:over-mass':'Sweeps over the take-off mass.','point:none':'Geometry or components only, no operating point.',
- 'group:air-state':'Density, viscosity and speed of sound at the altitude (ISA).','group:weight-and-loading':'Weight and wing loading.',
- 'group:geometry-references':'Reference area, span, mean aerodynamic chord, aspect ratio.','group:configurations':'The airplane in its take-off and landing configuration.',
- 'group:powertrain-motor-propeller':'Motor and propeller values from the catalogue, and the pack voltage they run on.',
- 'group:powertrain-battery':'Battery capacity, mass and specific energy, and the predicted battery mass.',
- 'group:powertrain':'The powertrain: motor, battery and propeller.',
- 'group:aero-forces':'Lift, drag, dynamic pressure, the required lift coefficient and the lift-to-drag ratio at a state.',
- 'group:aero-lift-curve':'The linear part of the lift curve: slope and zero-lift angle.',
- 'group:aero-stall':'The stall: C_L,max, the stall angle of attack and the polar at the stall Reynolds number.',
- 'group:aero-parabola':'The parabola fitted to the solver polar (C_D0, Oswald e, k): display only, never an input to performance (ADR 0026).',
-};
 const KINDNAME={module:'module',discipline:'discipline',stage:'stage',point:'operating point',group:'group'};
 function membersOf(kind,key){
   const all=Object.keys(Q).filter(q=>P[q]);
   if(kind==='module') return all.filter(q=>Q[q].module===key);
   if(kind==='discipline') return all.filter(q=>key==='design'?COLOF[q]==='design':Q[q].discipline===key&&COLOF[q]!=='design');
-  if(kind==='group'&&key==='powertrain') return all.filter(q=>(Q[q].group||'').startsWith('powertrain-'));
+  if(kind==='group'&&TAX.groups.some(v=>v.parent===key)) return all.filter(q=>(GMETA[Q[q].group]||{}).parent===key);
   return all.filter(q=>Q[q][kind]===key);
 }
 function selectGroup(kind,key,label){

@@ -233,9 +233,79 @@
       "title": "Default",
       "type": "object"
     },
+    "Direction": {
+      "additionalProperties": false,
+      "description": "The direction of a formula (``direction/<id>``).\n\nAttributes:\n    default: The direction of a formula that carries no ``direction/`` tag.",
+      "properties": {
+        "default": {
+          "default": false,
+          "title": "Default",
+          "type": "boolean"
+        },
+        "explanation": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Explanation",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "explanation"
+      ],
+      "title": "Direction",
+      "type": "object"
+    },
+    "Discipline": {
+      "additionalProperties": false,
+      "description": "The question a derived quantity answers (``discipline/<id>``).\n\nAttributes:\n    stability: The discipline is about static stability; its final results are shown after\n        the values of their operating point.",
+      "properties": {
+        "explanation": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Explanation",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        },
+        "stability": {
+          "default": false,
+          "title": "Stability",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "explanation"
+      ],
+      "title": "Discipline",
+      "type": "object"
+    },
     "Formula": {
       "additionalProperties": false,
-      "description": "A canon formula with its applications, checks, worlds and embeds (ch. 8.5, 8.13).\n\nAttributes:\n    kind: The formula's kind.\n    tool: The tool that evaluates it.\n    cost: Cost class: declared in the canon, otherwise derived from ``tool`` (ch. 8.7).\n    inputs: Default quantity per input parameter; ``None`` = bound per application.\n    outputs: Default quantity per output parameter; ``None`` = produced per application.\n    optional: Input parameters that may arrive as ``None``.\n    applications: The applications, at least one.\n    preconditions: Checks on inputs, run before the call.\n    postconditions: Checks on outputs, run after the call.\n    uncertainty: ``interval`` where the formula has method worlds.\n    worlds: The method worlds, exactly with ``uncertainty``.\n    embeds: Directly embedded applications, ``<ns>:<slug>.<application-id>``.\n    variables: Quantities the embedder solves for or sweeps itself, exactly with ``embeds``.\n    embeds_closure: Sorted, unique embeds reachable through ``embeds``, direct ones included.",
+      "description": "A canon formula with its applications, checks, worlds and embeds (ch. 8.5, 8.13).\n\nAttributes:\n    kind: The formula's kind.\n    tool: The tool that evaluates it.\n    cost: Cost class: declared in the canon, otherwise derived from ``tool`` (ch. 8.7).\n    inputs: Default quantity per input parameter; ``None`` = bound per application.\n    outputs: Default quantity per output parameter; ``None`` = produced per application.\n    optional: Input parameters that may arrive as ``None``.\n    applications: The applications, at least one.\n    preconditions: Checks on inputs, run before the call.\n    postconditions: Checks on outputs, run after the call.\n    uncertainty: ``interval`` where the formula has method worlds.\n    worlds: The method worlds, exactly with ``uncertainty``.\n    embeds: Directly embedded applications, ``<ns>:<slug>.<application-id>``.\n    variables: Quantities the embedder solves for or sweeps itself, exactly with ``embeds``.\n    embeds_closure: Sorted, unique embeds reachable through ``embeds``, direct ones included.\n    direction: The taxonomy direction (analysis or design); ``None`` only if the taxonomy has none.",
       "properties": {
         "applications": {
           "items": {
@@ -253,6 +323,19 @@
           ],
           "title": "Cost",
           "type": "string"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction"
         },
         "embeds": {
           "default": [],
@@ -399,9 +482,118 @@
       "title": "Formula",
       "type": "object"
     },
+    "Group": {
+      "additionalProperties": false,
+      "description": "A sub-cluster of a stage (``group/<id>``).\n\nAttributes:\n    parent: The group this one is a part of (the powertrain holds motor, propeller and battery).\n    stage: The stage whose quantities carry this group; ``None`` if the group only has children.\n    module: The module a ``references`` group derives from; ``None`` otherwise.",
+      "properties": {
+        "explanation": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Explanation",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        },
+        "module": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Module"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent"
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stage"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "explanation"
+      ],
+      "title": "Group",
+      "type": "object"
+    },
+    "Module": {
+      "additionalProperties": false,
+      "description": "A module groups the inputs and targets (``module/<id>``).\n\nAttributes:\n    cross_cutting: Nearly every formula depends on the module's quantities.\n    holds_targets: The module's quantities are targets (role ``target``), and only these.",
+      "properties": {
+        "cross_cutting": {
+          "default": false,
+          "title": "Cross Cutting",
+          "type": "boolean"
+        },
+        "explanation": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Explanation",
+          "type": "string"
+        },
+        "holds_targets": {
+          "default": false,
+          "title": "Holds Targets",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "explanation"
+      ],
+      "title": "Module",
+      "type": "object"
+    },
     "Namespace": {
       "additionalProperties": false,
-      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.",
+      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.\n    taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.",
       "properties": {
         "defaults": {
           "default": {},
@@ -430,6 +622,19 @@
           },
           "title": "Quantities",
           "type": "object"
+        },
+        "taxonomy": {
+          "$ref": "#/$defs/Taxonomy",
+          "default": {
+            "directions": [],
+            "disciplines": [],
+            "groups": [],
+            "modules": [],
+            "points": [],
+            "stages": [],
+            "tools": [],
+            "worlds": []
+          }
         }
       },
       "required": [
@@ -439,9 +644,39 @@
       "title": "Namespace",
       "type": "object"
     },
+    "Point": {
+      "additionalProperties": false,
+      "description": "An operating point or configuration a final result belongs to (``point/<id>``).",
+      "properties": {
+        "explanation": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Explanation",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "explanation"
+      ],
+      "title": "Point",
+      "type": "object"
+    },
     "Quantity": {
       "additionalProperties": false,
-      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.\n    at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),\n        otherwise omitted (``None``).",
+      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.\n    module: The taxonomy module of an input, target or reference; ``None`` where the quantity has none.\n    point: The taxonomy operating point of a final result.\n    stage: The taxonomy stage of an intermediate quantity.\n    group: The taxonomy group of a quantity inside its stage.\n    discipline: The taxonomy discipline of a derived quantity.\n    checks: The slug of the quantity this one verifies (a probe); ``None`` for any other.\n    at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),\n        otherwise omitted (``None``).",
       "properties": {
         "at_most": {
           "anyOf": [
@@ -454,6 +689,71 @@
           ],
           "default": null,
           "title": "At Most"
+        },
+        "checks": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checks"
+        },
+        "discipline": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Discipline"
+        },
+        "group": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Group"
+        },
+        "module": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Module"
+        },
+        "point": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Point"
         },
         "positive": {
           "anyOf": [
@@ -477,6 +777,19 @@
           ],
           "title": "Role",
           "type": "string"
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stage"
         },
         "symbol": {
           "minLength": 1,
@@ -551,10 +864,180 @@
       ],
       "title": "Quantity",
       "type": "object"
+    },
+    "Stage": {
+      "additionalProperties": false,
+      "description": "A role in the calculation chain an intermediate quantity has (``stage/<id>``).\n\nAttributes:\n    reference: The stage holds references: values derived from the inputs of a module. Their\n        quantities carry a module and a group, and no discipline.",
+      "properties": {
+        "explanation": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Explanation",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        },
+        "reference": {
+          "default": false,
+          "title": "Reference",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "explanation"
+      ],
+      "title": "Stage",
+      "type": "object"
+    },
+    "Taxonomy": {
+      "additionalProperties": false,
+      "description": "Every value of every tag family, in display order.\n\nA family without values is not used by the canon that carries this taxonomy: its tags are\nneither accepted nor required.\n\nAttributes:\n    modules: Modules of inputs and targets.\n    points: Operating points of final results.\n    stages: Stages of intermediate quantities, in the order of the calculation chain.\n    groups: Sub-clusters of the stages.\n    disciplines: The questions derived quantities answer.\n    directions: Formula directions.\n    tools: Tool codes with names.\n    worlds: Method worlds with their tool.",
+      "properties": {
+        "directions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Direction"
+          },
+          "title": "Directions",
+          "type": "array"
+        },
+        "disciplines": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Discipline"
+          },
+          "title": "Disciplines",
+          "type": "array"
+        },
+        "groups": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Group"
+          },
+          "title": "Groups",
+          "type": "array"
+        },
+        "modules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Module"
+          },
+          "title": "Modules",
+          "type": "array"
+        },
+        "points": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Point"
+          },
+          "title": "Points",
+          "type": "array"
+        },
+        "stages": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Stage"
+          },
+          "title": "Stages",
+          "type": "array"
+        },
+        "tools": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ToolInfo"
+          },
+          "title": "Tools",
+          "type": "array"
+        },
+        "worlds": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/World"
+          },
+          "title": "Worlds",
+          "type": "array"
+        }
+      },
+      "title": "Taxonomy",
+      "type": "object"
+    },
+    "ToolInfo": {
+      "additionalProperties": false,
+      "description": "A tool code with its name.\n\nAttributes:\n    id: The tool code a formula's ``tool`` field holds.\n    name: The tool's name as shown to readers.",
+      "properties": {
+        "id": {
+          "enum": [
+            "APP",
+            "ATM",
+            "GEO",
+            "AB",
+            "AVL",
+            "OPT",
+            "KAT",
+            "APC"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "ToolInfo",
+      "type": "object"
+    },
+    "World": {
+      "additionalProperties": false,
+      "description": "A method world with the tool that computes it.\n\nAttributes:\n    id: The world name a formula's ``worlds`` field holds.\n    tool: The tool whose version and settings the world's result depends on.",
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "tool": {
+          "enum": [
+            "APP",
+            "ATM",
+            "GEO",
+            "AB",
+            "AVL",
+            "OPT",
+            "KAT",
+            "APC"
+          ],
+          "title": "Tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "tool"
+      ],
+      "title": "World",
+      "type": "object"
     }
   },
   "additionalProperties": false,
-  "description": "The interpreted canon the kernel runs on (ch. 8.9); the content of ``canon_model.json``.\n\nAttributes:\n    schema_version: Version of this model shape; ``1``.\n    content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).\n    importer_version: Version of the importer that wrote the model.\n    namespaces: Quantities and formulas per namespace; every reference inside is qualified.",
+  "description": "The interpreted canon the kernel runs on (ch. 8.9); the content of ``canon_model.json``.\n\nAttributes:\n    schema_version: Version of this model shape; ``2``.\n    content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).\n    importer_version: Version of the importer that wrote the model.\n    namespaces: Quantities and formulas per namespace; every reference inside is qualified.",
   "properties": {
     "content_hash": {
       "pattern": "^sha256:[0-9a-f]{64}$",
@@ -577,7 +1060,7 @@
       "type": "object"
     },
     "schema_version": {
-      "const": 1,
+      "const": 2,
       "title": "Schema Version",
       "type": "integer"
     }

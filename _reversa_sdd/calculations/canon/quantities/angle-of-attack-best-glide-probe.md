@@ -11,6 +11,7 @@ tags:
   - point/best-glide
   - role/output
 type: scalar
+checks: angle-of-attack-best-glide
 ---
 
 # Angle of attack at best glide, Probe · `alpha_bg,probe`

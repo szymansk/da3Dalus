@@ -56,7 +56,7 @@ FORMULA_DROPPED = frozenset(
     }
 )
 QUANTITY_CARRIED = frozenset(
-    {"symbol", "unit", "role", "type", "positive", "at_most", "uncertainty"}
+    {"symbol", "unit", "role", "type", "positive", "at_most", "uncertainty", "checks"}
 )
 QUANTITY_DROPPED = frozenset({"canon", "kind", "status", "tags"})
 
@@ -82,6 +82,7 @@ _QUANTITY_SHAPE = {
     "role": "string",
     "type": "string",
     "uncertainty": "string",
+    "checks": "string",
 }
 _QUANTITY_REQUIRED = ("symbol", "unit", "role", "type")
 
@@ -114,6 +115,7 @@ class ParsedCanon:
         formulas: The formula entries by slug.
         quantities: The quantity entries by slug.
         defaults: The raw ``defaults.yaml`` entries by slug.
+        taxonomy: The raw ``taxonomy.yaml`` document; ``None`` while it is unreadable.
         findings: Everything stage 1 found.
     """
 
@@ -122,6 +124,7 @@ class ParsedCanon:
     defaults: dict[str, dict[str, object]] = field(
         default_factory=lambda: dict[str, dict[str, object]]()
     )
+    taxonomy: dict[str, object] | None = None
     findings: list[Finding] = field(default_factory=lambda: list[Finding]())
 
 
@@ -401,11 +404,55 @@ def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
             )
 
 
+def _read_taxonomy(canon_dir: Path, parsed: ParsedCanon) -> None:
+    """Read ``taxonomy.yaml``; the model types check its content."""
+    path = canon_dir / "taxonomy.yaml"
+    file = "taxonomy.yaml"
+    if not path.is_file():
+        parsed.findings.append(
+            Finding(
+                file=file,
+                field="document",
+                message="missing: the canon states the values of its tag families here",
+            )
+        )
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+        document: object = load_unique(text)
+    except (OSError, UnicodeDecodeError) as exc:
+        parsed.findings.append(
+            Finding(file=file, field="document", message=f"unreadable: {_one_line(exc)}")
+        )
+        return
+    except DuplicateKeyError as exc:
+        parsed.findings.append(
+            Finding(
+                file=file,
+                field=".".join((*exc.path, str(exc.key))),
+                message=f"duplicate key {exc.key!r} (line {exc.line})",
+            )
+        )
+        return
+    except yaml.YAMLError as exc:
+        parsed.findings.append(
+            Finding(file=file, field="document", message=f"invalid YAML: {_one_line(exc)}")
+        )
+        return
+    mapping = as_mapping(document)
+    if mapping is None:
+        parsed.findings.append(
+            Finding(file=file, field="document", message="must be a mapping family: [values]")
+        )
+        return
+    parsed.taxonomy = {str(key): item for key, item in mapping.items()}
+
+
 def parse_canon(canon_dir: Path) -> ParsedCanon:
     """Run stage 1 over a canon directory.
 
     Args:
-        canon_dir: The canon document directory (``formulas/``, ``quantities/``, ``defaults.yaml``).
+        canon_dir: The canon document directory (``formulas/``, ``quantities/``, ``defaults.yaml``, ``taxonomy.yaml``).
 
     Returns:
         The parsed entries and every stage-1 finding; the entries are only meaningful if there is
@@ -420,4 +467,5 @@ def parse_canon(canon_dir: Path) -> ParsedCanon:
     _read_entries(canon_dir, "formulas", parsed)
     _read_entries(canon_dir, "quantities", parsed)
     _read_defaults(canon_dir, parsed)
+    _read_taxonomy(canon_dir, parsed)
     return parsed

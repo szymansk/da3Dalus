@@ -65,7 +65,7 @@ def with_hash(namespaces: dict[str, Any]) -> dict[str, Any]:
     """Wrap ``namespaces`` in a complete model dict with the correct content hash."""
     parsed = _NAMESPACES.validate_python(copy.deepcopy(namespaces))
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "content_hash": compute_content_hash(parsed),
         "importer_version": "0.1.0",
         "namespaces": copy.deepcopy(namespaces),

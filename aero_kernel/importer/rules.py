@@ -9,6 +9,7 @@ and a message. Every rule lives here and nowhere else (one home per rule).
 from aero_kernel.canon.model import Application, CanonModel, Formula, Namespace
 from aero_kernel.errors import DEFAULT_NAMESPACE
 from aero_kernel.importer.findings import Finding
+from aero_kernel.importer.tag_rules import check_tags
 
 __all__ = ["A9_TARGET_NAME_EXCEPTIONS", "FORBIDDEN_NAME_SEGMENTS", "check_model"]
 
@@ -338,5 +339,6 @@ def check_model(model: CanonModel) -> list[Finding]:
         members = _cycle_members(content)
         findings.extend(_cycles(members))
         findings.extend(_embeds(content, members))
+        findings.extend(check_tags(content))
     unique = dict.fromkeys(findings)
     return sorted(unique, key=lambda finding: (finding.file, finding.field, finding.message))

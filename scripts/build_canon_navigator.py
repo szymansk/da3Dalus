@@ -5,11 +5,15 @@ The navigator is **derived, never maintained**: it is regenerated from
 generated HTML instead would recreate exactly the duplicate problem requirement A1 warns
 about.
 
-Edges are exact per application: they come from the bindings of the imported canon model
-(`aero_kernel/canon/canon_model.json`), so a formula with several applications links each
-output only to the inputs of its own application. The page also marks the implementation
-status in `aero_kernel` (an `@formula("<slug>")` in `aero_kernel/formulas/`) and the MVP
-(the upstream closure of `MVP_RESULTS`).
+The imported canon model (`aero_kernel/canon/canon_model.json`) is the source of everything
+structural: the quantities and formulas with their roles, tools, worlds and validated tags, the
+bindings the edges come from (exact per application, so a formula with several applications links
+each output only to the inputs of its own application) and the taxonomy (`taxonomy.yaml`: names,
+order, explanations and properties of every tag family). The template holds drawing logic and UI
+text only. What the model does not carry stays in the Markdown entries: the prose a reader sees
+(description, canonical form, source paragraph, status) and the issues an entry declares itself.
+The page also marks the implementation status in `aero_kernel` (an `@formula("<slug>")` in
+`aero_kernel/formulas/`) and the MVP (the upstream closure of `MVP_RESULTS`).
 
 Run:   poetry run python scripts/build_canon_navigator.py
 Check: poetry run python scripts/build_canon_navigator.py --check   (CI: fails if stale)
@@ -22,6 +26,11 @@ import json
 import pathlib
 import re
 import sys
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))  # the script runs from scripts/, the package sits at the root
+
+from aero_kernel.importer.normalise import QUANTITY_TAG_FAMILIES  # noqa: E402
 
 #: Edges the layering breaks, with the reason. A naming collapse, not a fixed point: one
 #: name covering a swept measurement and a modelled value. (The second one, a generic
@@ -93,35 +102,46 @@ def to_tex(form: str) -> str | None:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def read_canon(root: pathlib.Path) -> tuple[dict, dict]:
+def _by_file(item: tuple[str, dict]) -> str:
+    """Sort key: the order of the entry files (``a-b.md`` before ``a.md``), which the layout follows."""
+    return item[0] + ".md"
+
+
+def read_canon(root: pathlib.Path, model: dict) -> tuple[dict, dict]:
+    """Quantities and formulas: structure from the canon model, prose from the Markdown entries."""
+    calc = model["namespaces"]["calc"]
     quantities = {}
-    for f in sorted((root / "quantities").glob("*.md")):
-        t = f.read_text(encoding="utf-8")
+    for slug, mq in sorted(calc["quantities"].items(), key=_by_file):
+        t = (root / "quantities" / f"{slug}.md").read_text(encoding="utf-8")
         m = re.search(r"^# .+?\n+(.+?)(?:\n\n|\Z)", t.split("---", 2)[2], re.S | re.M)
-        quantities[f.stem] = {
-            "symbol": _front(t, "symbol"),
-            "unit": _front(t, "unit"),
-            "role": _front(t, "role"),
-            "unc": _front(t, "uncertainty"),
+        quantities[slug] = {
+            "symbol": mq["symbol"],
+            "unit": _front(t, "unit"),  # as written: the model folds the em dash into 1
+            "role": mq["role"],
+            "unc": mq["uncertainty"] or "",
             "desc": " ".join(m.group(1).split()) if m else "",
+            "type": mq["type"],
+            **{family: mq[family] or "" for family in QUANTITY_TAG_FAMILIES},
+            "checks": mq["checks"] or "",
         }
     formulas = {}
-    for f in sorted((root / "formulas").glob("*.md")):
-        t = f.read_text(encoding="utf-8")
+    for slug, mf in sorted(calc["formulas"].items(), key=_by_file):
+        t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
         cf = re.search(r"\*\*Canonical form\*\*\s*\n+```[a-z]*\n(.*?)\n```", t, re.S)
         form = cf.group(1).strip() if cf else ""
-        produces = re.search(r"\*\*Produces\*\*.*?\*\*from\*\*(.*)", t)
         source = re.search(r"\*\*Source\.\*\*.*?\n\n> (.+?)(?:\n\n|\Z)", t, re.S)
-        ins = re.findall(r"\[\[([a-z0-9-]+)\]\]", produces.group(1)) if produces else []
-        formulas[f.stem] = {
+        formulas[slug] = {
             "out": [o.strip() for o in _front(t, "output").split(",") if o.strip()],
-            "ins": [i for i in ins if i in quantities],
+            "ins": [],
             "form": form,
             "tex": _front(t, "tex") or to_tex(form),
-            "kind": _front(t, "kind"),
-            "tool": _front(t, "tool") or "APP",
+            "kind": mf["kind"],
+            "tool": mf["tool"],
             "status": _front(t, "status"),
             "src": " ".join(source.group(1).split())[:420] if source else "",
+            "worlds": mf["worlds"],
+            "issues": entry_issues(t),
+            "direction": mf["direction"],
         }
     return quantities, formulas
 
@@ -140,7 +160,6 @@ MVP_RESULTS = (
 #: Open MVP formulas and their ticket; an entry is removed when the formula is implemented.
 OPEN_TICKETS: dict[str, str] = {}
 
-REPO = pathlib.Path(__file__).resolve().parent.parent
 CANON_DIR = REPO / "_reversa_sdd/calculations/canon"
 OUT_PATH = CANON_DIR / "navigator.html"
 MODEL_PATH = REPO / "aero_kernel/canon/canon_model.json"
@@ -201,40 +220,6 @@ def entry_issues(text: str) -> list:
             }
         )
     return issues
-
-
-def add_front_fields(root: pathlib.Path, quantities: dict, formulas: dict) -> None:
-    """Quantity type and formula worlds, which the navigator shows."""
-    for slug, q in quantities.items():
-        t = (root / "quantities" / f"{slug}.md").read_text(encoding="utf-8")
-        q["type"] = _front(t, "type") or "scalar"
-        tags = re.findall(r"^\s+-\s+(\S+)\s*$", t.split("---", 2)[1], re.M)
-        modules = [x.split("/", 1)[1] for x in tags if x.startswith("module/")]
-        if len(modules) > 1:
-            raise SystemExit(f"quantity {slug} has more than one module tag: {modules}")
-        q["module"] = modules[0] if modules else ""
-        points = [x.split("/", 1)[1] for x in tags if x.startswith("point/")]
-        if len(points) > 1:
-            raise SystemExit(f"quantity {slug} has more than one point tag: {points}")
-        q["point"] = points[0] if points else ""
-        stages = [x.split("/", 1)[1] for x in tags if x.startswith("stage/")]
-        if len(stages) > 1:
-            raise SystemExit(f"quantity {slug} has more than one stage tag: {stages}")
-        q["stage"] = stages[0] if stages else ""
-        groups = [x.split("/", 1)[1] for x in tags if x.startswith("group/")]
-        if len(groups) > 1:
-            raise SystemExit(f"quantity {slug} has more than one group tag: {groups}")
-        q["group"] = groups[0] if groups else ""
-        disciplines = [x.split("/", 1)[1] for x in tags if x.startswith("discipline/")]
-        if len(disciplines) > 1:
-            raise SystemExit(f"quantity {slug} has more than one discipline tag: {disciplines}")
-        q["discipline"] = disciplines[0] if disciplines else ""
-    for slug, f in formulas.items():
-        t = (root / "formulas" / f"{slug}.md").read_text(encoding="utf-8")
-        f["worlds"] = [w.strip() for w in _front(t, "worlds").strip("[]").split(",") if w.strip()]
-        f["issues"] = entry_issues(t)
-        tags = re.findall(r"^\s+-\s+(\S+)\s*$", t.split("---", 2)[1], re.M)
-        f["direction"] = "design" if "direction/design" in tags else "analysis"
 
 
 def application_edges(formulas: dict, quantities: dict, model: dict) -> list:
@@ -364,37 +349,35 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
         else:
             status[q] = "open"
     data["status"] = status
-    untagged = sorted(q for q in data["inputs"] if not quantities[q]["module"])
-    if untagged:
-        raise SystemExit(f"inputs and targets without a module/<name> tag: {untagged}")
-    intermediate = set(quantities) - set(data["inputs"]) - set(data["outputs"])
-    unstaged = sorted(q for q in intermediate if not quantities[q]["stage"])
-    if unstaged:
-        raise SystemExit(f"intermediate quantities without a stage/<name> tag: {unstaged}")
-    loose = sorted(
-        q
-        for q in intermediate
-        if quantities[q]["stage"] == "references"
-        and not (quantities[q]["module"] and quantities[q]["group"])
-    )
-    if loose:
-        raise SystemExit(f"references without module/<name> and group/<name> tags: {loose}")
-    derived = set(quantities) - set(data["inputs"])
-    undisciplined = sorted(
-        q
-        for q in derived
-        if quantities[q]["stage"] != "references" and not quantities[q]["discipline"]
-    )
-    if undisciplined:
-        raise SystemExit(f"derived quantities without a discipline/<name> tag: {undisciplined}")
-    unpointed = sorted(q for q in data["outputs"] if not quantities[q]["point"])
-    if unpointed:
-        raise SystemExit(f"final results without a point/<name> tag: {unpointed}")
     design_out = {o for f in formulas.values() if f["direction"] == "design" for o in f["out"]}
     data["design"] = sorted(closure(design_out, pred))
     data["analysis"] = sorted(closure(set(quantities) - design_out - set(data["inputs"]), pred))
     data["mvp"] = sorted(mvp)
     data["mvp_results"] = list(MVP_RESULTS)
+
+
+def plausibility(data: dict) -> list:
+    """Module tags that contradict what a reference derives from; a hint, never a refusal.
+
+    A reference (a quantity of a stage the taxonomy marks as ``reference``) belongs to the module
+    its inputs come from. If all inputs upstream of it stand in one module and the reference is
+    tagged with another, the tag or the dependency is probably wrong.
+    """
+    quantities = data["Q"]
+    reference_stages = {s["id"] for s in data["tax"]["stages"] if s.get("reference")}
+    pred = {q: set() for q in quantities}
+    for a, b, _ in data["edges"]:
+        pred[b].add(a)
+    notes = []
+    for q, d in sorted(quantities.items()):
+        if d["stage"] not in reference_stages:
+            continue
+        sources = {quantities[x]["module"] for x in closure({q}, pred) if x in data["inputs"]}
+        if len(sources) == 1 and d["module"] not in sources:
+            notes.append(
+                f"{q} is tagged module/{d['module']} but derives only from module/{next(iter(sources))}"
+            )
+    return notes
 
 
 def convention_marks(data: dict, model: dict) -> None:
@@ -459,13 +442,13 @@ def to_ascii(html: str) -> str:
 
 def build() -> tuple[str, dict]:
     """The navigator page and its data, from the canon, the canon model and the kernel."""
-    quantities, formulas = read_canon(CANON_DIR)
-    add_front_fields(CANON_DIR, quantities, formulas)
     model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    quantities, formulas = read_canon(CANON_DIR, model)
     edges = application_edges(formulas, quantities, model)
     data = layout(quantities, formulas, edges)
     kernel_status(data, KERNEL_FORMULAS)
     convention_marks(data, model)
+    data["tax"] = model["namespaces"]["calc"]["taxonomy"]
     data["stand"] = model["content_hash"][:12]
     template = pathlib.Path(__file__).with_name("canon_navigator_template.html")
     payload = json.dumps(data, ensure_ascii=True, separators=(",", ":")).replace("</", "<\\/")
@@ -476,6 +459,8 @@ def build() -> tuple[str, dict]:
 
 def main(argv: list) -> None:
     html, data = build()
+    for note in plausibility(data):
+        print(f"plausibility: {note}", file=sys.stderr)
     if "--check" in argv:
         current = OUT_PATH.read_text(encoding="ascii") if OUT_PATH.exists() else ""
         if current != html:

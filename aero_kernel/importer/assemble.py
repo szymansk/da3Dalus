@@ -126,6 +126,10 @@ def _problem_finding(problem: CanonProblem) -> Finding:
 def _finding(entry: ErrorDetails, location: tuple[int | str, ...]) -> Finding:
     """Turn one validation error into a finding."""
     message = _message(entry)
+    if location and location[0] == "taxonomy":
+        return Finding(
+            file="taxonomy.yaml", field=_path(location[1:]) or "document", message=message
+        )
     if len(location) >= 2 and location[0] in _SECTIONS:
         slug = str(location[1])
         rest = (slug, *location[2:]) if location[0] == "defaults" else location[2:]
@@ -195,7 +199,7 @@ def assemble(namespace: dict[str, object]) -> tuple[CanonModel | None, list[Find
         content = {DEFAULT_NAMESPACE: validated}
         model = CanonModel.model_validate(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "content_hash": compute_content_hash(content),
                 "importer_version": IMPORTER_VERSION,
                 "namespaces": {DEFAULT_NAMESPACE: validated.model_dump(mode="json")},

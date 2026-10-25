@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:19c882370a189a616a837054aa47897cb4f789d595e3354b67e1d388f7586d85",
+  "content_hash": "sha256:376e8cd2c7a25f8467f88b0c7e473219cb0fa0fc5a097001bbf47042d80608fa",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -29,6 +29,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -66,6 +67,7 @@
             }
           ],
           "cost": "minutes",
+          "direction": null,
           "embeds": [
             "calc:weigh-twice.default"
           ],
@@ -110,6 +112,7 @@
             }
           ],
           "cost": "instant",
+          "direction": null,
           "embeds": [
             "calc:weight-from-mass.default",
             "calc:weighing.clean"
@@ -169,6 +172,7 @@
             }
           ],
           "cost": "seconds",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -212,6 +216,7 @@
             }
           ],
           "cost": "instant",
+          "direction": null,
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
@@ -248,8 +253,14 @@
       "quantities": {
         "aircraft-mass": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "m",
           "type": "scalar",
           "uncertainty": null,
@@ -257,8 +268,14 @@
         },
         "airplane": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "airplane",
           "type": "airplane",
           "uncertainty": null,
@@ -266,8 +283,14 @@
         },
         "gravity": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": true,
           "role": "input",
+          "stage": null,
           "symbol": "g",
           "type": "scalar",
           "uncertainty": null,
@@ -275,8 +298,14 @@
         },
         "ratio": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "input",
+          "stage": null,
           "symbol": "r",
           "type": "scalar",
           "uncertainty": null,
@@ -284,8 +313,14 @@
         },
         "weight": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W",
           "type": "scalar",
           "uncertainty": null,
@@ -293,8 +328,14 @@
         },
         "weight-estimate": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_e",
           "type": "scalar",
           "uncertainty": "interval",
@@ -302,8 +343,14 @@
         },
         "weight-flapped": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_f",
           "type": "scalar",
           "uncertainty": null,
@@ -311,8 +358,14 @@
         },
         "weight-outer": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_o",
           "type": "scalar",
           "uncertainty": null,
@@ -320,8 +373,14 @@
         },
         "weight-twice": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_2",
           "type": "scalar",
           "uncertainty": null,
@@ -329,15 +388,73 @@
         },
         "weight-weighed": {
           "at_most": null,
+          "checks": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
           "positive": null,
           "role": "derived",
+          "stage": null,
           "symbol": "W_w",
           "type": "scalar",
           "uncertainty": null,
           "unit": "N"
         }
+      },
+      "taxonomy": {
+        "directions": [],
+        "disciplines": [],
+        "groups": [],
+        "modules": [],
+        "points": [],
+        "stages": [],
+        "tools": [
+          {
+            "id": "APP",
+            "name": "App"
+          },
+          {
+            "id": "AB",
+            "name": "AeroBuildup"
+          },
+          {
+            "id": "AVL",
+            "name": "AVL"
+          },
+          {
+            "id": "OPT",
+            "name": "Optimisation"
+          },
+          {
+            "id": "ATM",
+            "name": "Atmosphere"
+          },
+          {
+            "id": "GEO",
+            "name": "Geometry"
+          },
+          {
+            "id": "KAT",
+            "name": "Catalogue"
+          },
+          {
+            "id": "APC",
+            "name": "Propeller tables"
+          }
+        ],
+        "worlds": [
+          {
+            "id": "simple",
+            "tool": "APP"
+          },
+          {
+            "id": "detailed",
+            "tool": "AVL"
+          }
+        ]
       }
     }
   },
-  "schema_version": 1
+  "schema_version": 2
 }

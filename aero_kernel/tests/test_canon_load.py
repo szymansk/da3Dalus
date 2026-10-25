@@ -62,7 +62,7 @@ def assert_internal(error: CanonLoadError) -> None:
     assert kernel_error.hint == "Report it; attach input and provenance."
 
 
-@pytest.mark.parametrize("version", [2, 0, "1", True, None])
+@pytest.mark.parametrize("version", [1, 3, 0, "2", True, None])
 def test_unknown_schema_version_is_refused_before_type_validation(
     tmp_path: Path, version: object
 ) -> None:
@@ -72,8 +72,14 @@ def test_unknown_schema_version_is_refused_before_type_validation(
     with pytest.raises(CanonLoadError) as caught:
         load_canon_model(write_model(tmp_path, raw))
     assert_internal(caught.value)
-    assert caught.value.error.detail == {"schema_version": version, "supported": 1}
+    assert caught.value.error.detail == {"schema_version": version, "supported": 2}
     assert "schema_version" in caught.value.error.message
+
+
+def test_the_current_schema_version_loads(tmp_path: Path) -> None:
+    raw = base_model()
+    assert raw["schema_version"] == 2
+    assert load_canon_model(write_model(tmp_path, raw)).schema_version == 2
 
 
 def test_missing_schema_version_is_refused(tmp_path: Path) -> None:
@@ -178,7 +184,7 @@ def failures(tmp_path: Path) -> list[CanonLoadError]:
     corrupt.write_text("{not json", encoding="utf-8")
     deep = tmp_path / "deep.json"
     deep.write_text("[" * 200_000, encoding="utf-8")
-    wrong_version = dict(base_model(), schema_version=2)
+    wrong_version = dict(base_model(), schema_version=1)
     invalid = dict(base_model(), importer_version="")
     paths = [
         tmp_path / "absent.json",

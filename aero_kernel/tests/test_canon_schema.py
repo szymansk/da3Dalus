@@ -60,7 +60,7 @@ QUANTITY = ("namespaces", "calc", "quantities", "weight")
     ("path", "key", "value"),
     [
         ((), "extra", 1),
-        ((), "schema_version", 2),
+        ((), "schema_version", 1),
         ((), "schema_version", True),
         (QUANTITY, "unit", "furlong"),
         (FORMULA, "tool", "X"),
