@@ -1,13 +1,13 @@
 {
-  "content_hash": "sha256:1dd79f5d893e1dea734c15833f943eaf0d57769a4cb30fd09be8af2b95ca69d6",
+  "content_hash": "sha256:68a84773f79b9ac097032787ad12d924b41cfe1c05a494b37d9d942643d845ea",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
       "defaults": {
         "altitude": {
-          "basis": "convention",
+          "basis": "definition",
           "regime": "regime-independent",
-          "source": "maintainer 2026-10-25: without a stated altitude the atmosphere is evaluated at the ISA reference, mean sea level (U.S. Standard Atmosphere 1976); the designer overrides it, e.g. for a field at 500 m",
+          "source": "the reference point of the International Standard Atmosphere (U.S. Standard Atmosphere 1976: geopotential altitude 0 at mean sea level, where rho = 1.225 kg/m^3); without a stated altitude the atmosphere is evaluated at its reference by definition - maintainer 2026-10-25; the designer overrides it, e.g. for a field at 500 m",
           "unit": "m",
           "value": 0.0
         },

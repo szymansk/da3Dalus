@@ -15,8 +15,8 @@
 altitude:
   value: 0
   unit: "m"
-  basis: convention
-  source: "maintainer 2026-10-25: without a stated altitude the atmosphere is evaluated at the ISA reference, mean sea level (U.S. Standard Atmosphere 1976); the designer overrides it, e.g. for a field at 500 m"
+  basis: definition
+  source: "the reference point of the International Standard Atmosphere (U.S. Standard Atmosphere 1976: geopotential altitude 0 at mean sea level, where rho = 1.225 kg/m^3); without a stated altitude the atmosphere is evaluated at its reference by definition - maintainer 2026-10-25; the designer overrides it, e.g. for a field at 500 m"
   regime: "regime-independent"
 
 approach-speed-margin-target:

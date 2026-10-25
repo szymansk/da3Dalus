@@ -43,7 +43,6 @@ def test_the_conventions_of_the_real_canon_are_stall_break_fraction_specific_ene
     defaults = load_canon_model(tmp_path / "canon_model.json").namespaces["calc"].defaults
     conventions = {slug for slug, default in defaults.items() if default.basis == "convention"}
     assert conventions == {
-        "altitude",
         "battery-specific-energy",
         "limit-load-factor",
         "stall-break-fraction",
@@ -53,6 +52,7 @@ def test_the_conventions_of_the_real_canon_are_stall_break_fraction_specific_ene
     assert defaults["battery-specific-energy"].value == 140
     assert defaults["tail-efficiency"].value == 0.65
     assert defaults["stall-break-fraction"].value == 0.10
+    assert defaults["altitude"].basis == "definition"
     assert defaults["gravity"].basis == "standard"
     assert defaults["load-factor"].basis == "definition"
 
