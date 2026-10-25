@@ -66,7 +66,54 @@ def test_conventions_stay_the_convention_basis_only() -> None:
     assert set(data["conv"]) == {"m", "w", "ld"}
 
 
-@pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention"])
+def test_starting_values_get_their_own_marking_and_are_not_conventions() -> None:
+    data, model = make({"g": default("start"), "m": default("convention")})
+    nav.default_marks(data, model)
+    assert set(data["conventions"]) == {"m"}
+    assert set(data["conv"]) == {"m", "w", "ld"}
+    assert set(data["starts"]) == {"g"}
+    assert set(data["start"]) == {"g", "w", "ld"}
+    assert data["start"]["w"] == ["g"]
+
+
+def test_starting_values_form_their_own_group_in_the_data_source_layer() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    assert "start" in {kind["id"] for kind in data["srckinds"]}
+    by_id = {source["id"]: source["kind"] for source in data["src"]}
+    assert by_id["default:static-margin-target"] == "start"
+    assert by_id["default:altitude"] == "start"
+    assert by_id["default:gravity"] == "default"
+
+
+def test_data_source_nodes_carry_the_input_they_refine() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    quantities = model["namespaces"]["calc"]["quantities"]
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    parents = {source["id"]: source["parent"] for source in data["src"]}
+    assert parents["component:battery.capacity_mah"] == "components"
+    assert parents["geometry:total_mass_kg"] == "airplane"
+    assert parents["default:gravity"] == ""
+    # a source that feeds the input itself is that input's root, never its child (no 2-cycle)
+    assert parents["component:battery"] == ""
+    assert parents["geometry:$"] == ""
+    for source in data["src"]:
+        if source["kind"] in ("default", "start", "app", "evaluation"):
+            assert source["parent"] == "", source["id"]
+        assert source["parent"] not in source["qs"], source["id"]
+    for source in data["src"]:
+        assert source["parent"] in ("", *quantities), source["id"]
+        if source["parent"]:
+            assert quantities[source["parent"]]["role"] == "input"
+    battery = next(s for s in data["src"] if s["id"] == "component:battery.capacity_mah")
+    assert "battery-charge-capacity" in battery["qs"]
+
+
+@pytest.mark.parametrize("basis", ["definition", "standard", "sourced", "convention", "start"])
 def test_a_default_of_a_quantity_the_navigator_lacks_fails_for_any_basis(basis: str) -> None:
     data, model = make({"ghost": default(basis)})
     with pytest.raises(SystemExit, match=r"defaults for quantities the canon lacks.*ghost"):

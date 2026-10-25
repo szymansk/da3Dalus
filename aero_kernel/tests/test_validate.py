@@ -41,7 +41,7 @@ def _document() -> dict[str, Any]:
                 }
             },
         },
-        "values": {"aircraft-mass": 1.5, "sea-level-air-density": 1.225},
+        "values": {"aircraft-mass": 1.5, "gravity": 9.80665},
     }
 
 
@@ -127,7 +127,7 @@ class TestPositiveQuantities:
     def test_values_are_checked_for_finiteness_only(self) -> None:
         # admissibility of a value (mass > 0, ...) comes from the canon model, not from here
         document = _document()
-        document["values"] = {"aircraft-mass": -2.0, "sea-level-air-density": 0.0, "gravity": 0.0}
+        document["values"] = {"aircraft-mass": -2.0, "altitude": 0.0, "gravity": 0.0}
         assert _validate(document) == ()
 
     def test_non_positive_detail_carries_the_value(self) -> None:

@@ -103,14 +103,14 @@ async def test_eta_of_one_is_admissible() -> None:
     assert only(result).status is QuantityStatus.OK
 
 
-async def test_the_quantity_has_a_sourced_default() -> None:
+async def test_the_quantity_has_a_starting_value_default() -> None:
     namespace = shipped_build().model.namespaces["calc"]
     quantity = namespace.quantities["tail-efficiency"]
     assert (quantity.symbol, quantity.unit, quantity.role) == ("eta_h", "1", "input")
     assert quantity.positive is True
     assert close(quantity.at_most, 1.0, 1e-12)
     assert (
-        namespace.defaults["tail-efficiency"].basis == "sourced"
+        namespace.defaults["tail-efficiency"].basis == "start"
     )  # Lennon Ch. 7/8, maintainer 2026-10-25
 
 

@@ -7,6 +7,10 @@
 #              sourced     taken from a cited source
 #              convention  a chosen value with no published source, adopted on the maintainer's
 #                          word; the navigator marks every calculation that rests on one
+#              start       a defined starting value for a design, expected to be changed by the
+#                          designer (maintainer 2026-10-25, #1258); may be sourced - the source
+#                          field carries the citation independently of the basis; the navigator
+#                          marks it separately ("to be set by the designer")
 #   source — the citation
 #   regime — ADR 0028: why the value holds for RC/UAV (chord Re 3e4–1e6, Mach <= 0.3, no wheel
 #            brakes), or "regime-independent"
@@ -15,8 +19,8 @@
 altitude:
   value: 0
   unit: "m"
-  basis: definition
-  source: "the reference point of the International Standard Atmosphere (U.S. Standard Atmosphere 1976: geopotential altitude 0 at mean sea level, where rho = 1.225 kg/m^3); without a stated altitude the atmosphere is evaluated at its reference by definition - maintainer 2026-10-25; the designer overrides it, e.g. for a field at 500 m"
+  basis: start
+  source: "the reference point of the International Standard Atmosphere (U.S. Standard Atmosphere 1976: geopotential altitude 0 at mean sea level, where rho = 1.225 kg/m^3); a starting value (maintainer 2026-10-25, #1258): the designer sets the field altitude, e.g. 500 m"
   regime: "regime-independent"
 
 approach-speed-margin-target:
@@ -54,13 +58,6 @@ motor-efficiency:
   source: "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point"
   regime: "RC brushless motors (the source's subject); at P_max copper loss grows with I², so the efficiency lies below the peak band and the lower bound fits"
 
-sea-level-air-density:
-  value: 1.225
-  unit: "kg/m^3"
-  basis: standard
-  source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa"
-  regime: "regime-independent (a high or hot field lies below it; field density stays an input)"
-
 takeoff-speed-margin-target:
   value: 1.1
   unit: "1"
@@ -85,20 +82,27 @@ stall-break-fraction:
 tail-efficiency:
   value: 0.65
   unit: "1"
-  basis: sourced
-  source: "Lennon, Basics of R/C Model Aircraft Design (1996) Ch. 7/8: conventional tail near the wing wake 0.65 (T-tail 0.9, in the wake 0.4); Sadraey, Aircraft Design (2013) Eq. 6.28 §6.2.1: 0.85–0.95 conventional, 1 T-tail, full-scale; maintainer decision 2026-10-24 (#1205); basis sourced (Lennon gives the value), maintainer 2026-10-25"
+  basis: start
+  source: "Lennon, Basics of R/C Model Aircraft Design (1996) Ch. 7/8: conventional tail near the wing wake 0.65 (T-tail 0.9, in the wake 0.4); Sadraey, Aircraft Design (2013) Eq. 6.28 §6.2.1: 0.85–0.95 conventional, 1 T-tail, full-scale; maintainer decision 2026-10-24 (#1205); basis start (a starting value; Lennon gives the value), maintainer 2026-10-25"
   regime: "not checked at RC Reynolds number: the wing wake is thicker at low Re, by an amount no source quantifies; Lennon's model-scale value is used instead of the full-scale 0.85–0.95. The designer overrides it per airplane"
 
 battery-specific-energy:
   value: 140
   unit: "Wh/kg"
-  basis: convention
+  basis: start
   source: "maintainer, 2026-10-25 (#1235): pack level, a round value inside 128–159 Wh/kg; that band comes from the catalogue's ten 'Generic LiPo' entries, which are placeholder data, not manufacturer datasheets — no published pack value is cited yet"
   regime: "RC LiPo packs, pack level (wiring, balance lead, shrink included); the cell-level figure of the cited RC-Network value (152.8 Wh/kg) is higher by construction"
 
 limit-load-factor:
   value: 10
   unit: "1"
-  basis: convention
+  basis: start
   source: "maintainer, 2026-10-25 (canon review of maneuvering-speed): 10 g instead of the former 3; measured loads on models are 6–19 g (spar sizing); to be replaced by a mission table with its structure-mass consequence (#1242)"
   regime: "RC/UAV models: far above the transport and FAR 23 values (2.5–6 g), inside the measured 6–19 g; the designer overrides it per airplane"
+
+static-margin-target:
+  value: 0.10
+  unit: "1"
+  basis: start
+  source: "Drela, Basic Aircraft Design Rules (MIT 16.Unified Lab 11, 2009), Eq. (2): S.M. = 0.05...0.15; maintainer 2026-10-25 (#1258): 0.10 as the starting value, the designer sets the target per airplane"
+  regime: "stated for model aircraft (RC)"

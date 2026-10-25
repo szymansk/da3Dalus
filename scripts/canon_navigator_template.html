@@ -191,7 +191,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>formula implemented, quantity not scalar &#8212; v1 does not return it</span>
       <span><svg width="22" height="14" aria-hidden="true"><rect x="0" y="9" width="22" height="3.5" rx="1.5" fill="var(--mvp)"/></svg>belongs to the MVP (bar under the node)</span>
       <span><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--ink-3);margin:0 6px 0 2px">2/4</span>one of several outputs of the same calculation (top right); selecting it outlines the others</span>
-      <span id="issueLegend" style="display:block">marks at the bottom left of a node (click it for why) &#8212; open issues block approval; notes and defined values do not:</span>
+      <span id="issueLegend" style="display:block">marks at the bottom left of a node (click it for why) &#8212; open issues block approval; notes, defined values and starting values do not:</span>
     </div>
     <p class="stat" id="kstat"></p>
   </div>
@@ -262,13 +262,15 @@ const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \
   approximation:{icon:'~',label:'Approximation where a law belongs',col:'var(--mvp)'},
   dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
 IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
-const CONV=D.conv||{}, CONVS=D.conventions||{}, DEFS=D.defaults||{};
+IKIND.start={icon:'\u2299',label:'Rests on a starting value \u2014 to be set by the designer',col:'var(--mvp)',defined:true};
+const CONV=D.conv||{}, CONVS=D.conventions||{}, START=D.start||{}, STARTS=D.starts||{}, DEFS=D.defaults||{};
+const SRCBYID={};
 const APPR=D.appr||{}, QSTAT=D.qstat||{}, QDATA=D.qdata||{};
 const BLOCKING=i=>!IKIND[kindOf(i)].info;
 const kindOf=i=>i.kind==='source'?(/^No published/.test(i.title)?'nosource':'partial'):i.kind;
 const ISSUES={}; for(const f in D.F) for(const o of D.F[f].out) if((D.F[f].issues||[]).length) (ISSUES[o] ||= []).push(...D.F[f].issues.map(i=>({...i,formula:f})));
 // every mark a node carries: its issue kinds, then the defined value (not a problem, never blocking)
-const KINDS=q=>[...new Set((ISSUES[q]||[]).map(kindOf))].concat(CONV[q]?['convention']:[]);
+const KINDS=q=>[...new Set((ISSUES[q]||[]).map(kindOf))].concat(CONV[q]?['convention']:[]).concat(START[q]?['start']:[]);
 const STATUS=D.status||{}, MVP=new Set(D.mvp||[]), DESIGN=new Set(D.design||[]), ANALYSIS=new Set(D.analysis||[]);
 const TARGETS=new Set(Object.keys(Q).filter(q=>Q[q].role==='target'));
 
@@ -487,6 +489,7 @@ SX.refs=XW+REFGAP;
   }
   yc=Math.max(yc,y-FHEAD+GAPY-MODGAP);
 }
+const pick=id=>SRCBYID[id]&&SRCBYID[id].src?selectSource(SRCBYID[id].src):select(id);
 const SRC=D.src||[], MISS=D.miss||[], SRCKINDS=D.srckinds||[];
 const SP={}, SRCFRAMES=[], SRCNODES=[];
 { let y=XTOP+FHEAD;
@@ -563,6 +566,7 @@ for(const [a,b,f] of D.edges){
   cam.appendChild(e); edgeEls.push({e,a,b});
 }
 function sym(q){
+  if(!Q[q]) return (SRCBYID[q]||{}).label||q;
   const s=(Q[q].symbol||q).replace(/\\/g,'').trim();
   // Greek names become letters also when a subscript follows (alpha_bg, delta_a, Delta_alpha_break).
   const g={alpha:'\u03b1',beta:'\u03b2',gamma:'\u03b3',Delta:'\u0394',delta:'\u03b4',eta:'\u03b7',lambda:'\u03bb',
@@ -610,9 +614,18 @@ for(const q in Q){
 
 // The data sources: nodes and edges into the quantities that name them (shown on selection, like the
 // cross-cutting edges). They join the reach maps so that selecting a quantity lights its sources.
-for(const n of SRCNODES){ pred[n.id]=[]; succ[n.id]=n.qs.map(q=>[q,'']); n.qs.forEach(q=>pred[q].push([n.id,''])); }
+for(const n of SRCNODES) SRCBYID[n.id]=n;
+for(const n of SRCNODES){ const par=n.src&&n.src.parent&&Q[n.src.parent]?n.src.parent:'';
+  pred[n.id]=par?[[par,'']]:[]; succ[n.id]=n.qs.map(q=>[q,'']); n.qs.forEach(q=>pred[q].push([n.id,'']));
+  if(par) succ[par].push([n.id,'']); n.parent=par; }
 for(const n of SRCNODES){
   const p1=SP[n.id];
+  if(n.parent){
+    const p0=P[n.parent], toLeft0=p0.x+NW<=SX.src;
+    const x0=toLeft0?p0.x+NW:p0.x, y0=p0.y+NH/2, x1=toLeft0?p1.x:p1.x+SRCW, y1=p1.y+NH/2, dx=Math.max(30,Math.abs(x1-x0)/2)*(toLeft0?1:-1);
+    const e=el('path',{class:'edge xedge srcedge',d:`M${x0},${y0} C${x0+dx},${y0} ${x1-dx},${y1} ${x1},${y1}`});
+    cam.appendChild(e); edgeEls.push({e,a:n.parent,b:n.id});
+  }
   for(const q of n.qs){
     const p2=P[q], toLeft=p2.x+NW<=SX.src;
     const x1=toLeft?p1.x:p1.x+SRCW, y1=p1.y+NH/2, x2=toLeft?p2.x+NW:p2.x, y2=p2.y+NH/2, dx=Math.max(30,Math.abs(x2-x1)/2)*(toLeft?-1:1);
@@ -686,6 +699,8 @@ function select(q){
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
   if(CONV[q]) h+=`<div class="blk"><div class="lab" style="color:var(--sel)">&#8776; Rests on a defined value \u00b7 ${CONV[q].length}</div>`+
     CONV[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(CONVS[c].value)} ${esc(CONVS[c].unit==='1'?'':CONVS[c].unit)}</b> <span class="sub">(${esc(c)}, convention)</span><br>${esc(CONVS[c].source)}<br><span class="sub">A value chosen without a published source, adopted on the maintainer&#8217;s word &#8212; the result is only as good as this choice.</span></div>`).join('')+`</div>`;
+  if(START[q]) h+=`<div class="blk"><div class="lab" style="color:var(--mvp)">&#8857; Rests on a starting value \u2014 to be set by the designer \u00b7 ${START[q].length}</div>`+
+    START[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(STARTS[c].value)} ${esc(STARTS[c].unit==='1'?'':STARTS[c].unit)}</b> <span class="sub">(${esc(c)}, starting value)</span><br>${esc(STARTS[c].source)}<br><span class="sub">A defined starting value for a design, expected to be changed by the designer &#8212; the result holds for this value only.</span></div>`).join('')+`</div>`;
   if(QSTAT[q]==='unmapped') h+=`<div class="blk"><div class="lab" style="color:var(--bad)">Data source \u00b7 unmapped</div><p class="sub" style="margin:0">No demonstrated source in our data (geometry, component catalogue, default, app field, evaluation); stage 2 of every formula reading it stays open.</p></div>`;
   else if(QDATA[q]) h+=`<div class="blk"><div class="lab">Data source \u00b7 approved</div><ul class="lnk" style="display:block">`+QDATA[q].map(x=>`<li style="display:block;cursor:default">${esc(x)}</li>`).join('')+`</ul></div>`;
   if(DEFS[q]){ const d=DEFS[q], link=x=>`<li data-q="${esc(x)}" title="${esc(x)}">${esc(sym(x))}</li>`;
@@ -735,7 +750,7 @@ function select(q){
     uniq.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
   else h+=`<div class="blk"><div class="lab">Feeds</div><p class="sub" style="margin:0">Nothing \u2014 this is a final result.</p></div>`;
   info.innerHTML=h;
-  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
 }
 function selectSource(x){
@@ -745,7 +760,7 @@ function selectSource(x){
    <p class="desc">${esc(kind.explanation)}</p>
    <div class="blk"><div class="lab">Feeds \u00b7 ${x.qs.length}</div><ul class="lnk">`+
    x.qs.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
-  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
 }
 const KINDNAME={module:'module',discipline:'discipline',stage:'stage',point:'operating point',group:'group'};
 function membersOf(kind,key){
@@ -768,7 +783,7 @@ function selectGroup(kind,key,label){
     direct.map(o=>`<li data-q="${esc(o)}" title="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`
     : `<div class="blk"><div class="lab">Directly influences</div><p class="sub" style="margin:0">Nothing.</p></div>`;
   info.innerHTML=h;
-  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
 }
 function selectModule(m){ selectGroup('module',m,MODULES[m]||m); }
 // a clickable heading: SVG text with the selection behaviour of a module frame
@@ -787,7 +802,7 @@ qi.addEventListener('input',()=>{
   const m=Object.keys(Q).filter(k=>k.includes(v)||(Q[k].symbol||'').toLowerCase().includes(v)
     ||(Q[k].unit||'').toLowerCase().includes(v)).slice(0,18);
   hits.innerHTML=m.map(k=>`<li data-q="${esc(k)}">${esc(k)}<span class="u">${esc(Q[k].unit||'')}</span></li>`).join('');
-  hits.querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{select(li.dataset.q);qi.value='';hits.innerHTML='';}));
+  hits.querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{pick(li.dataset.q);qi.value='';hits.innerHTML='';}));
 });
 // Camera
 let k=1,tx=0,ty=0;

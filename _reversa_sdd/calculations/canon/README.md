@@ -410,6 +410,11 @@ A `status:` in a quantity entry is a finding.
 | `app` | `<Class>.<field>` of a pydantic model under `app/schemas/` | the designer enters it in the app |
 | `evaluation` | a name | it is the result of the evaluation or of the selection graph (Urmodell) |
 
+A `geometry` source refines the cross-cutting input `airplane`, a `component` source the input `components`
+(`DATA_KIND_PARENT` in `aero_kernel/canon/model.py`); the navigator draws such a source node under that
+input, so selecting a quantity lights its source and, one step further, the input. `default`, `app` and
+`evaluation` sources have no parent quantity.
+
 An unmapped input is a **finding listed in `IMPORT_REPORT.md`** ("Approval, stage 2"), not an error:
 the report is the work list, and the navigator shows on every formula "formula ✓ / inputs k of n"
 with the missing inputs and why (no source, or produced by a formula that is not approved).
@@ -589,12 +594,19 @@ as a mapping `<slug>: {value, unit, basis, source, regime}` (maintainer, 2026-10
 
 - `value` — in the quantity's canon unit;
 - `unit` — that unit, repeated so the file reads on its own;
-- `basis` — what kind of value it is, one of four terms: `definition` (true by definition of the quantity,
+- `basis` — what kind of value it is, one of five terms: `definition` (true by definition of the quantity,
   e.g. load factor 1 in level flight), `standard` (a published standard value: ISA, standard gravity),
   `sourced` (taken from a cited source, also where the source offers a band and the entry picks an edge)
   and `convention` (a chosen value **without a published source**, adopted on the maintainer's word,
-  e.g. `stall-break-fraction`, `tail-efficiency`). The navigator marks every quantity whose computation rests on a
-  `convention` default, and its whole downstream closure (the "Conventions" view);
+  e.g. `stall-break-fraction`) and `start` (a defined starting value for a design, expected to be changed
+  by the designer; it may be sourced, the `source` field carries the citation independently of the basis;
+  e.g. `static-margin-target`, `altitude`, `limit-load-factor`, `battery-specific-energy`, `tail-efficiency`).
+  Maintainer 2026-10-25 (#1258): "belegter Startwert finde ich gut". `start` is distinct from `convention`: a
+  convention is fixed by us so that a calculation is defined and the designer normally does not change it;
+  a starting value is meant to be set by the designer. The navigator marks every quantity whose computation
+  rests on a `convention` default, and its whole downstream closure (the "Conventions" view); starting values
+  get their own marker ("starting value — to be set by the designer") and their own group in the data-source
+  layer, so the convention marking stays meaningful;
 - `source` — the citation;
 - `regime` — the ADR 0028 check of why the value holds for RC/UAV (chord Re 3·10⁴–1·10⁶, Mach ≤ 0.3,
   no wheel brakes), or `regime-independent`.
@@ -801,12 +813,12 @@ applications:
     produce: {v: takeoff-speed}
 ```
 
-A **quantity** (`sea-level-air-density`) — its default is in `defaults.yaml`:
+A **quantity** (`gravity`) — its default is in `defaults.yaml`:
 
 ```yaml
 kind: quantity
-symbol: rho_0
-unit: kg/m^3
+symbol: g
+unit: m/s^2
 role: input
 type: scalar
 positive: true
