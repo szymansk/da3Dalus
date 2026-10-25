@@ -11,6 +11,9 @@ tags:
   - group/powertrain-motor-propeller
   - role/derived
 type: scalar
+data:
+  - component:battery.cells
+  - default:cell-voltage-nominal
 ---
 
 # Battery voltage · `U_bat`

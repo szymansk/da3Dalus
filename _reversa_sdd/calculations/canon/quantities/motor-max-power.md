@@ -11,6 +11,7 @@ tags:
   - group/powertrain-motor-propeller
   - role/derived
 type: scalar
+data: component:brushless_motor.max_power_w
 ---
 
 # Motor power rating · `P_mot,max`

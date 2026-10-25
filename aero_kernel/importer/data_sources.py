@@ -7,7 +7,8 @@ A ``data`` source is ``<kind>:<location>`` (canon README "Two stages", #1251). T
                maps and arrays are stepped through without a segment (``wings.x_secs.chord``);
                ``$`` is the whole document
 ``component``  ``<type>`` or ``<type>.<field>`` in the component-type seed of
-               ``app/services/component_type_service.py``
+               ``app/services/component_type_service.py``; a column every component has
+               (``mass_g``) is a field of any type
 ``default``    a key of ``defaults.yaml``
 ``app``        ``<Class>.<field>`` of a pydantic model under ``app/schemas/``
 ``evaluation`` a name; nothing to check it against, it is read by the maintainer
@@ -36,6 +37,7 @@ __all__ = [
 
 GEOMETRY_SCHEMA = Path("docs/geometry-format/airplane-geometry.schema.json")
 COMPONENT_SEED = Path("app/services/component_type_service.py")
+COMPONENT_MODEL = Path("app/models/component.py")
 APP_SCHEMAS = Path("app/schemas")
 
 
@@ -47,11 +49,13 @@ class Catalogue:
         geometry: The geometry JSON schema.
         components: Component type to its field names; ``None`` for a type whose schema the seed
             builds with a helper call, so that only the type is checkable.
+        component_columns: The columns every component has, whatever its type (``mass_g``).
         app_fields: Pydantic class name to its field names.
     """
 
     geometry: object | None = None
     components: Mapping[str, frozenset[str] | None] | None = None
+    component_columns: frozenset[str] = frozenset()
     app_fields: Mapping[str, frozenset[str]] | None = None
 
 
@@ -112,6 +116,20 @@ def _class_fields(tree: ast.AST) -> dict[str, frozenset[str]]:
     return classes
 
 
+def _columns(tree: ast.AST, class_name: str) -> frozenset[str]:
+    """Collect the ``name = Column(...)`` attributes of one class."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return frozenset(
+                target.id
+                for item in node.body
+                if isinstance(item, ast.Assign) and isinstance(item.value, ast.Call)
+                for target in item.targets
+                if isinstance(target, ast.Name)
+            )
+    return frozenset()
+
+
 def load_catalogue(repo_root: Path) -> Catalogue:
     """Read the repository facts under ``repo_root``; a file that is missing leaves its kind unchecked."""
     schema_path = repo_root / GEOMETRY_SCHEMA
@@ -131,7 +149,15 @@ def load_catalogue(repo_root: Path) -> Catalogue:
         for path in sorted(schemas.glob("*.py")):
             for name, fields in _class_fields(ast.parse(path.read_text(encoding="utf-8"))).items():
                 app_fields[name] = app_fields.get(name, frozenset()) | fields
-    return Catalogue(geometry=geometry, components=components, app_fields=app_fields)
+    model_path = repo_root / COMPONENT_MODEL
+    columns = (
+        _columns(ast.parse(model_path.read_text(encoding="utf-8")), "ComponentModel")
+        if model_path.is_file()
+        else frozenset[str]()
+    )
+    return Catalogue(
+        geometry=geometry, components=components, component_columns=columns, app_fields=app_fields
+    )
 
 
 def _ref_target(schema: object, ref: str) -> object:
@@ -182,13 +208,13 @@ def _geometry_problem(schema: object, location: str) -> str | None:
 
 
 def _component_problem(
-    components: Mapping[str, frozenset[str] | None], location: str
+    components: Mapping[str, frozenset[str] | None], columns: frozenset[str], location: str
 ) -> str | None:
     type_name, _, field = location.partition(".")
     if type_name not in components:
         return f"no component type {type_name!r} in {COMPONENT_SEED}"
     fields = components[type_name]
-    if field and fields is not None and field not in fields:
+    if field and fields is not None and field not in fields and field not in columns:
         return f"component type {type_name!r} has no field {field!r} in {COMPONENT_SEED}"
     return None
 
@@ -210,7 +236,7 @@ def location_problem(source: str, catalogue: Catalogue, defaults: frozenset[str]
     if kind == "geometry" and catalogue.geometry is not None:
         return _geometry_problem(catalogue.geometry, location)
     if kind == "component" and catalogue.components is not None:
-        return _component_problem(catalogue.components, location)
+        return _component_problem(catalogue.components, catalogue.component_columns, location)
     if kind == "app" and catalogue.app_fields is not None:
         return _app_problem(catalogue.app_fields, location)
     return None

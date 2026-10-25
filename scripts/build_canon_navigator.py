@@ -442,6 +442,24 @@ def default_marks(data: dict, model: dict) -> None:
     data["conv"] = {q: sorted(v) for q, v in sorted(conv.items())}
 
 
+#: The five kinds of data source (canon README, "Two-stage approval"): id, label, explanation.
+SOURCE_KINDS = (
+    (
+        "geometry",
+        "Geometry format",
+        "A field of the airplane geometry document (docs/geometry-format).",
+    ),
+    ("component", "Component catalogue", "A field of a component type in the parts catalogue."),
+    ("default", "Defaults", "An entry of defaults.yaml: a value the canon states with its source."),
+    ("app", "Designer input in the app", "A named field the designer enters in the app."),
+    (
+        "evaluation",
+        "Evaluation result",
+        "The result of the evaluation or of the selection graph (Urmodell).",
+    ),
+)
+
+
 def approval_marks(data: dict, model: dict) -> None:
     """Two-stage approval (#1251): per formula stage 1 and inputs k of n, per quantity its derived status.
 
@@ -462,6 +480,21 @@ def approval_marks(data: dict, model: dict) -> None:
     data["qstat"] = approval.quantity_status
     quantities = model["namespaces"]["calc"]["quantities"]
     data["qdata"] = {q: v["data"] for q, v in sorted(quantities.items()) if v.get("data")}
+    data["srckinds"] = [
+        {"id": k, "label": label, "explanation": text} for k, label, text in SOURCE_KINDS
+    ]
+    fed: dict = {}
+    for quantity, sources in data["qdata"].items():
+        for source in sources:
+            fed.setdefault(source, []).append(quantity)
+    order = {k: i for i, (k, _, _) in enumerate(SOURCE_KINDS)}
+    data["src"] = [
+        {"id": source, "kind": source.split(":", 1)[0], "loc": source.split(":", 1)[1], "qs": qs}
+        for source, qs in sorted(
+            fed.items(), key=lambda item: (order[item[0].split(":", 1)[0]], item[0])
+        )
+    ]
+    data["miss"] = sorted(q for q, status in data["qstat"].items() if status == "unmapped")
 
 
 def binding_constants(model_formulas: dict) -> dict:

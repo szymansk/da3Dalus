@@ -383,6 +383,16 @@ above, without "inputs approved". Stage 1 is the formula's `status`, set by the 
 **demonstrated source in our data**, recorded on the quantity as `data:` (below). Only both stages
 make a formula fully approved — a test oracle.
 
+**Pure data reads (maintainer, 2026-10-25).** `data:` is also allowed on a quantity produced by a
+formula that is a *pure data read* — criterion: `tool: KAT`, a formula that takes its outputs from the
+parts catalogue (today `airplane-components`). Such a quantity names the catalogue field it is read from
+(`motor-voltage-constant: component:brushless_motor.kv_rpm_per_volt`) or, where it is computed from
+catalogue fields in the same formula, the fields and defaults it rests on (`battery-voltage`). The
+importer checks that each field exists. A quantity of such a formula **without** `data:` is one the
+catalogue does not carry (the circuit resistance `R_m`, #1149: `rm_ohm` is the winding resistance, not the
+circuit's); a formula consuming it reports it as unmapped in stage 2. Every other produced quantity takes
+its approval from its producer and may not carry `data:`.
+
 **Quantity status is derived, not a field.** A produced quantity has the status of its producers;
 a supplied one is `approved` exactly when its `data:` is set and resolves, otherwise `unmapped`.
 A `status:` in a quantity entry is a finding.
@@ -392,7 +402,7 @@ A `status:` in a quantity entry is a finding.
 | kind | location | what it proves |
 |---|---|---|
 | `geometry` | a dotted property path in `docs/geometry-format/airplane-geometry.schema.json` | the geometry format carries the value |
-| `component` | `<component_type>` or `<component_type>.<field>` of the component-type seed | the parts catalogue carries it |
+| `component` | `<component_type>` or `<component_type>.<field>` of the component-type seed, or a column every component has (`mass_g`) | the parts catalogue carries it |
 | `default` | a key of `defaults.yaml` | the canon states it with its source |
 | `app` | `<Class>.<field>` of a pydantic model under `app/schemas/` | the designer enters it in the app |
 | `evaluation` | a name | it is the result of the evaluation or of the selection graph (Urmodell) |
@@ -567,7 +577,7 @@ stay. Added:
 | `checks` | only on a probe | the slug of the quantity the probe verifies (see Probe above); must be another quantity of the canon |
 | `positive` | optional, only on `type: scalar` with role `input` or `target` (positivity is a property of a number) | `true` when the quantity is strictly greater than zero **by its definition**; omit otherwise (`false` is an error — one spelling). A default of such a quantity (`defaults.yaml`) must be > 0 (a mass, a density, gravity) — a fact about the quantity, not a design judgement (A10). A supplied value ≤ 0 is rejected. Not set where zero or a negative value is meaningful (angles, deflections, altitude, a speed that may be 0). Example: `aircraft-mass` carries `positive: true` |
 | `at_most` | optional, only on `type: scalar` with role `input` or `target` | the largest admissible value, a number (an efficiency is at most 1). A supplied value above it is rejected (`value_above_maximum`); a default of such a quantity must not exceed it. Example: `tail-efficiency` carries `positive: true` and `at_most: 1` |
-| `data` | optional; for a quantity no formula produces (a formula-produced quantity with `data` is a finding) | where the quantity comes from in our data: one `<kind>:<location>` or a list of them, the kinds and locations of "Two-stage approval". The importer validates the kind and, where it can read the repository, that the location exists: a geometry path in the schema, a component type or field in the seed (`app/services/component_type_service.py`), a `defaults.yaml` key, an `<Class>.<field>` under `app/schemas/`. `evaluation` is not checked. Example: `aircraft-mass` carries `data: geometry:total_mass_kg` |
+| `data` | optional; for a quantity no formula produces, or one a pure data read (`tool: KAT`) produces; on any other produced quantity it is a finding | where the quantity comes from in our data: one `<kind>:<location>` or a list of them, the kinds and locations of "Two-stage approval". The importer validates the kind and, where it can read the repository, that the location exists: a geometry path in the schema, a component type or field in the seed (`app/services/component_type_service.py`), a `defaults.yaml` key, an `<Class>.<field>` under `app/schemas/`. `evaluation` is not checked. Example: `aircraft-mass` carries `data: geometry:total_mass_kg` |
 
 #### Defaults — `defaults.yaml`
 

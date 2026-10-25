@@ -12,6 +12,9 @@ tags:
   - group/powertrain-battery
   - role/derived
 type: scalar
+data:
+  - component:battery.capacity_mah
+  - component:battery.c_rate
 ---
 
 # Allowed continuous battery current · `I_bat,max`

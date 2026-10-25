@@ -152,22 +152,28 @@ def _producers(content: Namespace) -> list[Finding]:
 
 
 def _data_on_produced(content: Namespace) -> list[Finding]:
-    """A ``data`` source belongs to a quantity no formula produces (two-stage approval, #1251)."""
-    produced = {
-        _bare(slug)
-        for formula in content.formulas.values()
-        for application in formula.applications
-        for slug in _produced(application).values()
-    }
+    """A ``data`` source belongs to a supplied quantity, or one only a pure data read produces.
+
+    A pure data read is a formula of tool ``KAT`` (the parts catalogue): its outputs are read from, or
+    computed from, catalogue fields, so they may name those fields (two-stage approval, #1251).
+    """
+    makers: dict[str, set[str]] = {}
+    for formula_slug, formula in content.formulas.items():
+        for application in formula.applications:
+            for slug in _produced(application).values():
+                makers.setdefault(_bare(slug), set()).add(formula_slug)
     return [
         Finding(
             file=_quantity_file(slug),
             field="data",
-            message="this quantity is produced by a formula, which is its source; "
-            "'data:' belongs to quantities no formula produces",
+            message="this quantity is produced by a formula that is not a pure data read (tool KAT): "
+            "its source is that formula; 'data:' belongs to supplied quantities and to quantities "
+            "a catalogue read produces",
         )
         for slug, quantity in sorted(content.quantities.items())
-        if quantity.data is not None and slug in produced
+        if quantity.data is not None
+        and slug in makers
+        and any(content.formulas[maker].tool != "KAT" for maker in makers[slug])
     ]
 
 

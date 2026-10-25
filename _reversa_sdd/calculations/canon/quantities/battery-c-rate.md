@@ -12,6 +12,7 @@ tags:
   - group/powertrain-battery
   - role/derived
 type: scalar
+data: component:battery.c_rate
 ---
 
 # Continuous discharge rate · `C_rate`

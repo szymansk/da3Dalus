@@ -5,7 +5,7 @@ from pathlib import Path
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.importer.approval import derive_approval
 from aero_kernel.importer.pipeline import ImportResult, import_canon
-from aero_kernel.tests.importer_builders import MINI_CANON, write_canon
+from aero_kernel.tests.importer_builders import MINI_CANON, _formula, _quantity, write_canon
 
 RATIO = "quantities/ratio.md"
 GRAVITY = "quantities/gravity.md"
@@ -107,3 +107,49 @@ def test_the_report_lists_unmapped_inputs(tmp_path: Path) -> None:
     unmapped = result.report.split("### Unmapped inputs")[-1]
     assert "| gravity |" in unmapped
     assert "| aircraft-mass |" not in unmapped
+
+
+def read_canon(data: str) -> dict[str, str | None]:
+    """A catalogue read (tool KAT) producing one quantity, and a formula that consumes it."""
+    return {
+        "quantities/stored-mass.md": _quantity("stored-mass", "m_s", "kg", "derived", data),
+        "quantities/weight-read.md": _quantity("weight-read", "W_r", "N", "derived"),
+        "formulas/catalogue-read.md": _formula(
+            "catalogue-read",
+            "kind: procedure\ntool: KAT\ninputs: {m: aircraft-mass}\noutputs: {x: stored-mass}\n",
+        ),
+        "formulas/weight-of-stored.md": _formula(
+            "weight-of-stored",
+            "kind: law\ntool: APP\ninputs: {m: stored-mass, g: gravity}\noutputs: {w: weight-read}\n",
+        ),
+    }
+
+
+def test_a_catalogue_read_may_name_the_field_it_reads(tmp_path: Path) -> None:
+    result = run(tmp_path, read_canon("data: component:battery.capacity_mah\n"))
+    assert model_of(result).namespaces["calc"].quantities["stored-mass"].data == [
+        "component:battery.capacity_mah"
+    ]
+
+
+def test_a_quantity_read_from_the_catalogue_counts_when_it_names_its_field(tmp_path: Path) -> None:
+    model = model_of(run(tmp_path, read_canon("data: component:battery.capacity_mah\n")))
+    stage1 = {"catalogue-read": "approved", "weight-of-stored": "draft"}
+    approval = derive_approval(model, stage1)
+    row = next(r for r in approval.formulas if r.formula == "weight-of-stored")
+    assert [i.quantity for i in row.missing] == ["gravity"]
+    assert approval.quantity_status["stored-mass"] == "approved"
+
+
+def test_a_quantity_the_catalogue_does_not_carry_is_unmapped_for_its_consumer(
+    tmp_path: Path,
+) -> None:
+    model = model_of(run(tmp_path, read_canon("")))
+    stage1 = {"catalogue-read": "approved", "weight-of-stored": "draft"}
+    approval = derive_approval(model, stage1)
+    row = next(r for r in approval.formulas if r.formula == "weight-of-stored")
+    missing = {i.quantity: i.basis for i in row.missing}
+    assert "stored-mass" in missing
+    assert "catalogue" in missing["stored-mass"]
+    assert approval.quantity_status["stored-mass"] == "unmapped"
+    assert "stored-mass" in approval.unmapped

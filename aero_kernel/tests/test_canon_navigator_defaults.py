@@ -125,3 +125,16 @@ def test_every_missing_input_is_named_with_its_reason() -> None:
             assert missing["why"] == "no data source" or "not approved" in missing["why"]
             unmapped = data["qstat"][missing["q"]] == "unmapped"
             assert unmapped == (missing["why"] == "no data source")
+
+
+def test_the_navigator_lists_every_data_source_with_what_it_feeds_and_the_missing_ones() -> None:
+    model = json.loads((REPO / "aero_kernel" / "canon" / "canon_model.json").read_text("utf-8"))
+    formulas = {slug: {"status": "draft"} for slug in model["namespaces"]["calc"]["formulas"]}
+    data: dict[str, Any] = {"F": formulas}
+    nav.approval_marks(data, model)
+    kinds = {kind["id"] for kind in data["srckinds"]}
+    assert {source["kind"] for source in data["src"]} <= kinds
+    fed = {q for source in data["src"] for q in source["qs"]}
+    assert fed == set(data["qdata"])
+    assert set(data["miss"]).isdisjoint(fed)
+    assert set(data["miss"]) == {q for q, s in data["qstat"].items() if s == "unmapped"}

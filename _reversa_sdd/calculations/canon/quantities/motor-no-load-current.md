@@ -11,6 +11,7 @@ tags:
   - group/powertrain-motor-propeller
   - role/derived
 type: scalar
+data: component:brushless_motor.io_no_load_a
 ---
 
 # Motor no-load current · `I_0`

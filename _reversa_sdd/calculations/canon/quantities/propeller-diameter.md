@@ -11,6 +11,7 @@ tags:
   - group/powertrain-motor-propeller
   - role/derived
 type: scalar
+data: component:propeller.diameter_in
 ---
 
 # Propeller diameter · `D_prop`

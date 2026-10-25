@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b2dcce2a002d26f6943cda005980135bbc923c37e384d9413496387ce051a0d3",
+  "content_hash": "sha256:b4ac0f6f4d570013c3df1b100de9eaa62b69166041104026a934c7bc91e2e541",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -3642,7 +3642,9 @@
         "battery-c-rate": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:battery.c_rate"
+          ],
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
@@ -3658,7 +3660,11 @@
         "battery-capacity": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:battery.capacity_mah",
+            "component:battery.cells",
+            "default:cell-voltage-nominal"
+          ],
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
@@ -3674,7 +3680,9 @@
         "battery-charge-capacity": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:battery.capacity_mah"
+          ],
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
@@ -3706,7 +3714,10 @@
         "battery-current-allowed": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:battery.capacity_mah",
+            "component:battery.c_rate"
+          ],
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
@@ -3722,7 +3733,9 @@
         "battery-mass": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:battery.mass_g"
+          ],
           "discipline": null,
           "group": "powertrain-battery",
           "module": "construction",
@@ -3788,7 +3801,10 @@
         "battery-voltage": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:battery.cells",
+            "default:cell-voltage-nominal"
+          ],
           "discipline": null,
           "group": "powertrain-motor-propeller",
           "module": "construction",
@@ -4918,7 +4934,9 @@
         "motor-max-power": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:brushless_motor.max_power_w"
+          ],
           "discipline": null,
           "group": "powertrain-motor-propeller",
           "module": "construction",
@@ -4934,7 +4952,9 @@
         "motor-no-load-current": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:brushless_motor.io_no_load_a"
+          ],
           "discipline": null,
           "group": "powertrain-motor-propeller",
           "module": "construction",
@@ -4966,7 +4986,9 @@
         "motor-voltage-constant": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:brushless_motor.kv_rpm_per_volt"
+          ],
           "discipline": null,
           "group": "powertrain-motor-propeller",
           "module": "construction",
@@ -5062,7 +5084,9 @@
         "propeller-diameter": {
           "at_most": null,
           "checks": null,
-          "data": null,
+          "data": [
+            "component:propeller.diameter_in"
+          ],
           "discipline": null,
           "group": "powertrain-motor-propeller",
           "module": "construction",

@@ -4,7 +4,8 @@ Stage 1 is the formula's own ``status``, set by the maintainer. Stage 2 is deriv
 set by hand: every input of the formula is either produced by a stage-1-approved formula, or a
 supplied quantity with a ``data:`` source in our data. A quantity's status follows from the same
 rule: a produced quantity has the status of its producers, a supplied one is ``approved`` exactly
-when it has a source.
+when it has a source. A quantity produced by a pure data read (a formula of tool ``KAT``) needs
+both: its producer approved and a source naming the catalogue field.
 """
 
 from dataclasses import dataclass
@@ -108,6 +109,11 @@ def _inputs(content: Namespace, formula: str) -> list[str]:
     return sorted(read)
 
 
+def _is_read(content: Namespace, makers: list[str] | set[str]) -> bool:
+    """Whether every producer is a pure data read: a formula of tool ``KAT``, the parts catalogue."""
+    return all(content.formulas[maker].tool == "KAT" for maker in makers)
+
+
 def _input_state(
     content: Namespace,
     quantity: str,
@@ -117,15 +123,21 @@ def _input_state(
 ) -> InputState:
     """Judge one input of ``formula``: produced by an approved formula, or with a data source."""
     makers = sorted(producers.get(quantity, set()) - {formula})
-    if makers:
-        draft = [maker for maker in makers if stage1.get(maker, "draft") != "approved"]
-        if draft:
-            return InputState(quantity, False, f"produced by {', '.join(draft)} (not approved)")
-        return InputState(quantity, True, f"produced by {', '.join(makers)}")
     data = content.quantities[quantity].data
+    if not makers:
+        return (
+            InputState(quantity, True, ", ".join(data))
+            if data
+            else InputState(quantity, False, "no data source")
+        )
+    draft = [maker for maker in makers if stage1.get(maker, "draft") != "approved"]
+    if draft:
+        return InputState(quantity, False, f"produced by {', '.join(draft)} (not approved)")
+    if not _is_read(content, makers):
+        return InputState(quantity, True, f"produced by {', '.join(makers)}")
     if data:
-        return InputState(quantity, True, ", ".join(data))
-    return InputState(quantity, False, "no data source")
+        return InputState(quantity, True, f"read from {', '.join(data)}")
+    return InputState(quantity, False, "no data source (the catalogue does not carry it)")
 
 
 def _quantity_status(
@@ -137,7 +149,10 @@ def _quantity_status(
         makers = producers.get(slug)
         if makers:
             approved = all(stage1.get(maker, "draft") == "approved" for maker in makers)
-            status[slug] = "approved" if approved else "draft"
+            if approved and _is_read(content, makers) and not quantity.data:
+                status[slug] = UNMAPPED
+            else:
+                status[slug] = "approved" if approved else "draft"
         else:
             status[slug] = "approved" if quantity.data else UNMAPPED
     return status

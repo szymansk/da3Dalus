@@ -54,7 +54,12 @@ def test_a_geometry_path_the_schema_lacks_is_a_problem(source: str, catalogue: C
 
 
 @pytest.mark.parametrize(
-    "source", ["component:brushless_motor", "component:brushless_motor.kv_rpm_per_volt"]
+    "source",
+    [
+        "component:brushless_motor",
+        "component:brushless_motor.kv_rpm_per_volt",
+        "component:battery.mass_g",
+    ],
 )
 def test_a_component_type_and_field_of_the_seed_resolve(source: str, catalogue: Catalogue) -> None:
     assert problem(source, catalogue) is None

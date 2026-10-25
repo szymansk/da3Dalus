@@ -11,6 +11,7 @@ tags:
   - group/powertrain-battery
   - role/derived
 type: scalar
+data: component:battery.mass_g
 ---
 
 # Battery component mass · `m_bat`

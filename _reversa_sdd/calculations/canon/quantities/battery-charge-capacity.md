@@ -12,6 +12,7 @@ tags:
   - group/powertrain-battery
   - role/derived
 type: scalar
+data: component:battery.capacity_mah
 ---
 
 # Battery charge capacity · `Q_bat`
