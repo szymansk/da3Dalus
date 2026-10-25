@@ -411,9 +411,12 @@ A `status:` in a quantity entry is a finding.
 | `evaluation` | a name | it is the result of the evaluation or of the selection graph (Urmodell) |
 
 A `geometry` source refines the cross-cutting input `airplane`, a `component` source the input `components`
-(`DATA_KIND_PARENT` in `aero_kernel/canon/model.py`); the navigator draws such a source node under that
-input, so selecting a quantity lights its source and, one step further, the input. `default`, `app` and
-`evaluation` sources have no parent quantity.
+(`DATA_KIND_PARENT` in `aero_kernel/canon/model.py`). The navigator draws a framed kind as one frame per
+collection in the data-source column (`battery`, `brushless_motor`, `propeller`; `airplane` for geometry)
+with the field sources inside; the whole-collection source (`component:battery`, `geometry:$`) is that
+frame, not a node of its own. The frame carries the edge from the input and is selectable (it selects
+all its fields), so selecting a quantity lights its field source and, one step further, the input.
+`default`, `app` and `evaluation` sources have no parent quantity and no frame.
 
 An unmapped input is a **finding listed in `IMPORT_REPORT.md`** ("Approval, stage 2"), not an error:
 the report is the work list, and the navigator shows on every formula "formula ✓ / inputs k of n"
