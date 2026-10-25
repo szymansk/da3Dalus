@@ -12,6 +12,7 @@ from aero_kernel.solvers.asb_airplane import (
 )
 from aero_kernel.tests.asb_fakes import (
     FAKE_AC_X,
+    FAKE_CENTRELINE_AREA,
     FAKE_CENTRELINE_GAP,
     FAKE_REFERENCE,
     FakeAirfoil,
@@ -144,10 +145,10 @@ def test_an_airplane_without_a_main_wing_is_a_defect_of_the_caller() -> None:
 
 
 def test_the_reference_values_are_asbs_own_values_of_the_main_wing() -> None:
-    """ASB normalises C_L by these (ADR 0022): area(), span(centreline distance), MAC."""
+    """ASB normalises C_L by these (ADR 0022): area and span with the centreline gap, and the MAC."""
     kwargs = converted().kwargs
     area, span, chord = FAKE_REFERENCE["Main"]
-    assert kwargs["s_ref"] == area
+    assert kwargs["s_ref"] == area + FAKE_CENTRELINE_AREA
     assert kwargs["b_ref"] == span + FAKE_CENTRELINE_GAP
     assert kwargs["c_ref"] == chord
 
@@ -158,13 +159,26 @@ def test_the_main_wing_is_chosen_by_surface_type_not_by_list_position() -> None:
     document["wings"] = {"Fin": document["wings"]["Fin"], "Main": document["wings"]["Main"]}
     kwargs = to_asb_airplane(AirplaneGeometry.model_validate(document)).kwargs
     assert [w.kwargs["name"] for w in kwargs["wings"]] == ["Fin", "Main"]
-    assert kwargs["s_ref"] == FAKE_REFERENCE["Main"][0]
+    assert kwargs["s_ref"] == FAKE_REFERENCE["Main"][0] + FAKE_CENTRELINE_AREA
 
 
-def test_the_main_wing_properties_ask_asb_with_its_default_area_and_the_centreline_span() -> None:
+def test_every_area_and_span_call_sets_the_type_and_the_centreline_flag_explicitly() -> None:
+    """No reliance on ASB's defaults (gh-1262): the fake wing refuses a call without both."""
+    wings = converted().kwargs["wings"]
+    asked = [call for wing in wings for call in wing.calls]
+    assert ("area", {"type": "planform", "include_centerline_distance": True}) in asked
+    assert ("span", {"type": "yz", "include_centerline_distance": True}) in asked
+    assert all(
+        options.get("include_centerline_distance") is True
+        for name, options in asked
+        if name in ("area", "span")
+    )
+
+
+def test_the_main_wing_properties_include_the_centreline_gap_in_area_and_span() -> None:
     properties = main_wing_properties(geometry())
     assert (properties.s_ref, properties.c_mac) == (
-        FAKE_REFERENCE["Main"][0],
+        FAKE_REFERENCE["Main"][0] + FAKE_CENTRELINE_AREA,
         FAKE_REFERENCE["Main"][2],
     )
     assert properties.b_ref == FAKE_REFERENCE["Main"][1] + FAKE_CENTRELINE_GAP
@@ -174,6 +188,7 @@ def test_the_surface_properties_are_asbs_with_the_ac_less_a_quarter_mac() -> Non
     """AR = b^2 / S of ASB's own two values; x_le_MAC = x_AC - 0.25 c_MAC (gh-1253)."""
     area, span, chord = FAKE_REFERENCE["Fin"]
     found = surface_properties(geometry(), "Fin")
+    area += FAKE_CENTRELINE_AREA
     span += FAKE_CENTRELINE_GAP
     assert (found.area, found.span, found.c_mac) == (area, span, chord)
     assert found.aspect_ratio == span**2 / area
@@ -181,7 +196,7 @@ def test_the_surface_properties_are_asbs_with_the_ac_less_a_quarter_mac() -> Non
 
 
 def test_a_main_wing_without_a_planform_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(FAKE_REFERENCE, "Main", (0.0, 1.7, 0.21))
+    monkeypatch.setitem(FAKE_REFERENCE, "Main", (-FAKE_CENTRELINE_AREA, 1.7, 0.21))
     document = geometry()
     with pytest.raises(FormulaError) as raised:
         main_wing_properties(document)

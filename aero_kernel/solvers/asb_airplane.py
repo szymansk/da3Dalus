@@ -26,6 +26,14 @@ from aero_kernel.surface_chain import ChainPoint, oriented_chain
 
 logger = logging.getLogger(__name__)
 
+# The flags of every ASB area and span call: set here, never left to ASB's defaults (gh-1262).
+# ``area`` measures the lofted planform and ``span`` the y-z extent, both carried to the centreline
+# plane: a root off y = 0 is extruded to it with the wing's geometric chord, as the reference wing
+# runs through the fuselage (Scholz, Wing Design 7.1).
+AREA_TYPE = "planform"
+SPAN_TYPE = "yz"
+INCLUDE_CENTRELINE = True
+
 # The aerodynamic centre of a surface lies at a quarter of its mean aerodynamic chord.
 AC_FRACTION = 0.25
 
@@ -191,17 +199,20 @@ def _main_wing_key(airplane: AirplaneGeometry) -> str:
 def _surface(wing: Any, aerodynamic_center_x: float) -> SurfaceProperties:  # noqa: ANN401  # untyped aerosandbox boundary
     """AeroSandbox's planform values of a wing, as ``asb.Airplane`` takes them for its reference.
 
-    ``area()`` is the planform area without the gap at the centreline, while ``span`` includes the
-    centreline distance (declared in the canon entry ``airplane-geometry``, not changed). The aspect
-    ratio is ``span^2 / area`` of those two, and the leading edge of the MAC is the aerodynamic
-    centre less a quarter of the MAC (the same MAC definition, gh-1253).
+    Area and span both include the centreline gap, with ``type`` and ``include_centerline_distance``
+    passed explicitly (gh-1262). This holds for every surface that goes through here, the main wing
+    and the tail alike: a mirrored surface is a reference surface carried through the fuselage to
+    the centreline, and for a root on y = 0 the flag changes nothing. The aspect ratio is
+    ``span^2 / area`` of those two, and the leading edge of the MAC is the aerodynamic centre less
+    a quarter of the MAC (the same MAC definition, gh-1253); ``mean_aerodynamic_chord()`` and
+    ``aerodynamic_center()`` take no flag.
 
     Raises:
         FormulaError: ``unsupported_configuration`` if area, span or MAC is not a positive finite
             number (a wing with no planform, e.g. all its sections at one y).
     """
-    area = float(wing.area())
-    span = float(wing.span(include_centerline_distance=True))
+    area = float(wing.area(type=AREA_TYPE, include_centerline_distance=INCLUDE_CENTRELINE))
+    span = float(wing.span(type=SPAN_TYPE, include_centerline_distance=INCLUDE_CENTRELINE))
     c_mac = float(wing.mean_aerodynamic_chord())
     if not all(math.isfinite(v) and v > 0.0 for v in (area, span, c_mac)):
         raise FormulaError(
@@ -251,9 +262,10 @@ def surface_properties(airplane: AirplaneGeometry, key: str) -> SurfacePropertie
 def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
     """Return AeroSandbox's ``S_ref``, ``b_ref`` and ``c_MAC`` of the one wing of type ``main_wing``.
 
-    The wing is converted like in :func:`to_asb_airplane` and measured with ``Wing.area()``,
-    ``Wing.span(include_centerline_distance=True)`` and ``Wing.mean_aerodynamic_chord()``: what
-    ``asb.Airplane`` infers when the main wing is its first wing (maintainer, 2026-10-25).
+    The wing is converted like in :func:`to_asb_airplane` and measured with
+    ``Wing.area(type="planform", include_centerline_distance=True)``,
+    ``Wing.span(type="yz", include_centerline_distance=True)`` and ``Wing.mean_aerodynamic_chord()``
+    (maintainer, 2026-10-25, gh-1262).
 
     Args:
         airplane: The validated geometry document, which has exactly one main wing.

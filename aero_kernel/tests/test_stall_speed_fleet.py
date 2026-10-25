@@ -31,11 +31,11 @@ SLUGS = (
 # Regression goldens at sea level, mass of the fleet member, ISA, AeroSandbox's S_ref of the main wing
 # (gh-1240; V_S and alpha_S did not move, the lift coefficients did), NeuralFoil model size xlarge.
 BRYAN_V_S = 5.2453741  # m/s
-BRYAN_CL_MAX, BRYAN_ALPHA_S = 1.2555483, 13.1987303
+BRYAN_CL_MAX, BRYAN_ALPHA_S = 1.2548391, 13.1987303
 BRYAN_V_S_SMALL = 5.2894317  # m/s, the small model of the prototype
 JAGUAR_V_S = 6.2992129  # m/s
-JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 1.0019847, 9.9252911
-JAGUAR_CL_MIN = -0.7858288
+JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 0.9985795, 9.9252911
+JAGUAR_CL_MIN = -0.7831582
 
 
 def sea_level_air() -> AirState:

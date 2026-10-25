@@ -11,6 +11,7 @@ from aero_kernel.solvers.asb_airplane import main_wing_properties, surface_prope
 from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.tests.asb_fakes import (
     FAKE_AC_X,
+    FAKE_CENTRELINE_AREA,
     FAKE_CENTRELINE_GAP,
     FAKE_REFERENCE,
     install_fake_aerosandbox,
@@ -34,7 +35,7 @@ async def test_the_main_wing_reference_is_what_asb_reports(monkeypatch: pytest.M
     area, span, chord = FAKE_REFERENCE["Main"]
     reference = await GeometryAdapter(SolverRuntime()).main_wing_reference(airplane())
     assert (reference.s_ref, reference.b_ref, reference.c_mac) == (
-        area,
+        area + FAKE_CENTRELINE_AREA,
         span + FAKE_CENTRELINE_GAP,
         chord,
     )
@@ -58,7 +59,11 @@ async def test_the_surface_reference_is_what_asb_reports(monkeypatch: pytest.Mon
     monkeypatch.setattr(geometry_module, "surface_properties", surface_properties)
     area, span, chord = FAKE_REFERENCE["Main"]
     found = await GeometryAdapter(SolverRuntime()).surface_reference(airplane(), "Main")
-    assert (found.area, found.span, found.c_mac) == (area, span + FAKE_CENTRELINE_GAP, chord)
+    assert (found.area, found.span, found.c_mac) == (
+        area + FAKE_CENTRELINE_AREA,
+        span + FAKE_CENTRELINE_GAP,
+        chord,
+    )
     assert found.x_le_mac == FAKE_AC_X["Main"] - 0.25 * chord
 
 

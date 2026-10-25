@@ -46,17 +46,19 @@ WORLDS = ("textbook", "pappas", "avl")
 # BRYAN 0.1398911924/0.1401394435 -> 0.1398961691/0.1402057906 m, JAGUAR 0.1180210991/0.1238206059 ->
 # 0.1181103705/0.1239713559 m; the eta = 0.9 values below moved from 0.1441142600/0.1233721388.
 GOLDEN_NP = {
-    FleetMember.BRYAN: (0.1398961691, 0.1402057906, 0.144039),
-    FleetMember.JAGUAR: (0.1181103705, 0.1239713559, 0.126344),
+    FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.144039),
+    FleetMember.JAGUAR: (0.1180376743, 0.1238461117, 0.126344),
 }
+# Since #1262 the area includes the centreline gap: textbook/Pappas BRYAN 0.1398961691/0.1402057906 ->
+# 0.1398843329/0.1401811762 m, JAGUAR 0.1181103705/0.1239713559 -> 0.1180376743/0.1238461117 m.
 # The textbook world with the former constant given explicitly as tail-efficiency (continuity).
-GOLDEN_TEXTBOOK_ETA_09 = {FleetMember.BRYAN: 0.1441218653, FleetMember.JAGUAR: 0.1234884884}
+GOLDEN_TEXTBOOK_ETA_09 = {FleetMember.BRYAN: 0.1441059605, FleetMember.JAGUAR: 0.1233923918}
 # AeroSandbox's c_MAC of the main wing (gh-1240); it was the kernel's projected 0.13277219 / 0.10504547.
 C_MAC = {member: member.asb_reference[2] for member in FleetMember}
 # BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral
 # point of the template's own aligned mesh under the kernel's conditions at that C_L:
 # scripts/sim_export/crrcsim/avl_kernel_reference.py, AVL_CONVERGENCE.md "Kernel conditions".
-BRYAN_CL_MD = 0.6229294
+BRYAN_CL_MD = 0.6225775
 BRYAN_TEMPLATE_X_NP = 0.144023
 SM_TARGET = 0.10
 ABS_M = 1e-4  # the regression tolerance of the AVL world
