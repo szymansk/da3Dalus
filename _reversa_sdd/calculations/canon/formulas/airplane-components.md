@@ -88,3 +88,5 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > C-rate is read and the allowed current stays in this entry; `R_m` and `I_0` are optional and only
 > published values are used (route B where Ri is published, route A otherwise, #1149, debt #1236). The
 > implementation checklist item holds vacuously: there is no implementation yet (#1238).
+>
+> **Approval confirmed** (maintainer, 2026-10-25) with the input `cell-voltage-nominal` (#1244): `U_bat = cells · u_cell`; with the default 3.7 V (LiPo, sourced) the result is unchanged.
