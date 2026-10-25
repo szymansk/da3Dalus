@@ -14,7 +14,7 @@ type: scalar
 
 # Vertical tail volume · `V_V`
 
-Effective fin area times tail arm over wing area times span; for a V-tail the fin share is `S·sin²ν`.
+Effective fin area times tail arm `l_V,25` (quarter-chord MAC of the wing to that of the fin) over wing area times span; for a V-tail the fin share is `S·sin²ν`.
 
 **Unit.** `1`
 

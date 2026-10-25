@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:3ea72caa97709eeba89a875827bfdca99d23cb43941d9c8b18eb556c0cc5d9e9",
+  "content_hash": "sha256:ce20b3e88a56ff3f29672a19c8c0c7fd178ef04b7983ad7df80c25de39073718",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -720,7 +720,7 @@
               "given": null,
               "id": "default",
               "produce": {
-                "x_cg_sm": "calc:cg-for-target-margin"
+                "x_cg_sm": "calc:centre-of-gravity-design"
               },
               "when": null
             }
@@ -737,7 +737,7 @@
           "kind": "law",
           "optional": [],
           "outputs": {
-            "x_cg_sm": "calc:cg-for-target-margin"
+            "x_cg_sm": "calc:centre-of-gravity-design"
           },
           "postconditions": [],
           "preconditions": [],
@@ -1292,7 +1292,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v": "calc:approach-speed",
-                "x_cg": "calc:centre-of-gravity"
+                "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
               "id": "default",
@@ -1315,7 +1315,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v": "calc:approach-speed",
-            "x_cg": "calc:centre-of-gravity"
+            "x_cg": "calc:centre-of-gravity-design"
           },
           "kind": "procedure",
           "optional": [],
@@ -1341,7 +1341,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v": "calc:minimum-drag-speed",
-                "x_cg": "calc:centre-of-gravity"
+                "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
               "id": "default",
@@ -1364,7 +1364,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v": "calc:minimum-drag-speed",
-            "x_cg": "calc:centre-of-gravity"
+            "x_cg": "calc:centre-of-gravity-design"
           },
           "kind": "procedure",
           "optional": [],
@@ -2742,9 +2742,11 @@
             {
               "bind": {
                 "airplane": "calc:airplane",
+                "b_ref": "calc:wing-span",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
+                "s_ref": "calc:wing-reference-area",
                 "v_md": "calc:minimum-drag-speed"
               },
               "given": null,
@@ -2761,9 +2763,11 @@
           "embeds_closure": [],
           "inputs": {
             "airplane": "calc:airplane",
+            "b_ref": "calc:wing-span",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
+            "s_ref": "calc:wing-reference-area",
             "v_md": "calc:minimum-drag-speed"
           },
           "kind": "law",
@@ -3021,13 +3025,13 @@
             {
               "bind": {
                 "c_mac": "calc:mean-aerodynamic-chord",
-                "x_cg": "calc:centre-of-gravity",
+                "x_cg": "calc:centre-of-gravity-measured",
                 "x_np": "calc:neutral-point"
               },
               "given": null,
               "id": "default",
               "produce": {
-                "sm": "calc:static-margin"
+                "sm": "calc:static-margin-measured"
               },
               "when": null
             }
@@ -3038,13 +3042,13 @@
           "embeds_closure": [],
           "inputs": {
             "c_mac": "calc:mean-aerodynamic-chord",
-            "x_cg": "calc:centre-of-gravity",
+            "x_cg": "calc:centre-of-gravity-measured",
             "x_np": "calc:neutral-point"
           },
           "kind": "law",
           "optional": [],
           "outputs": {
-            "sm": "calc:static-margin"
+            "sm": "calc:static-margin-measured"
           },
           "postconditions": [],
           "preconditions": [],
@@ -3062,7 +3066,7 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "v_md": "calc:minimum-drag-speed",
-                "x_cg": "calc:centre-of-gravity"
+                "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
               "id": "default",
@@ -3083,7 +3087,7 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "v_md": "calc:minimum-drag-speed",
-            "x_cg": "calc:centre-of-gravity"
+            "x_cg": "calc:centre-of-gravity-design"
           },
           "kind": "procedure",
           "optional": [],
@@ -3209,7 +3213,9 @@
           "applications": [
             {
               "bind": {
-                "airplane": "calc:airplane"
+                "airplane": "calc:airplane",
+                "b_ref": "calc:wing-span",
+                "s_ref": "calc:wing-reference-area"
               },
               "given": null,
               "id": "with_vertical_tail",
@@ -3224,7 +3230,9 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
-            "airplane": "calc:airplane"
+            "airplane": "calc:airplane",
+            "b_ref": "calc:wing-span",
+            "s_ref": "calc:wing-reference-area"
           },
           "kind": "law",
           "optional": [],
@@ -3970,10 +3978,28 @@
           "uncertainty": null,
           "unit": "V"
         },
-        "centre-of-gravity": {
+        "centre-of-gravity-design": {
           "at_most": null,
           "checks": null,
           "data": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
+          "positive": null,
+          "role": "derived",
+          "stage": "stability-structure",
+          "symbol": "x_cg,design",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
+        "centre-of-gravity-measured": {
+          "at_most": null,
+          "checks": null,
+          "data": [
+            "evaluation:balanced-cg-of-existing-aircraft"
+          ],
           "discipline": null,
           "group": null,
           "module": "mass-and-balance",
@@ -3981,7 +4007,7 @@
           "positive": null,
           "role": "input",
           "stage": null,
-          "symbol": "x_CG",
+          "symbol": "x_cg,meas",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
@@ -3999,22 +4025,6 @@
           "stage": null,
           "symbol": "x_fwd(m), x_aft(m)",
           "type": "curve_pair",
-          "uncertainty": null,
-          "unit": "m"
-        },
-        "cg-for-target-margin": {
-          "at_most": null,
-          "checks": null,
-          "data": null,
-          "discipline": "longitudinal",
-          "group": null,
-          "module": null,
-          "point": "best-glide",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "x_CG,SM",
-          "type": "scalar",
           "uncertainty": null,
           "unit": "m"
         },
@@ -5564,7 +5574,7 @@
           "uncertainty": null,
           "unit": "m/s"
         },
-        "static-margin": {
+        "static-margin-measured": {
           "at_most": null,
           "checks": null,
           "data": null,
@@ -5575,14 +5585,14 @@
           "positive": null,
           "role": "output",
           "stage": null,
-          "symbol": "SM",
+          "symbol": "SM_meas",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
         },
         "static-margin-probe": {
           "at_most": null,
-          "checks": "static-margin",
+          "checks": "static-margin-target",
           "data": null,
           "discipline": "longitudinal",
           "group": null,

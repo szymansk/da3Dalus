@@ -70,12 +70,12 @@ async def run(member: FleetMember, eta: float | None = None) -> ComputeResult:
             "values": {
                 "aircraft-mass": member.mass_kg,
                 "altitude": 0.0,
-                "centre-of-gravity": CG[member],
+                "centre-of-gravity-measured": CG[member],
                 **extra,
             },
         }
     )
-    return await compute(aircraft, request("neutral-point", "static-margin"))
+    return await compute(aircraft, request("neutral-point", "static-margin-measured"))
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
@@ -225,20 +225,20 @@ async def test_a_ventral_fin_gives_the_same_neutral_point() -> None:
 async def test_cg_for_target_margin_is_the_neutral_point_less_the_target_per_world(
     member: FleetMember,
 ) -> None:
-    """One compute: x_CG,SM = x_NP - SM_target c_MAC per world, and its margin is the target."""
+    """One compute: x_cg,design = x_NP - SM_target c_MAC per world, and its margin is the target."""
     aircraft = AircraftInput.model_validate(
         {
             "airplane": reference_document(member),
             "values": {
                 "aircraft-mass": member.mass_kg,
                 "altitude": 0.0,
-                "centre-of-gravity": CG[member],
+                "centre-of-gravity-measured": CG[member],
                 "static-margin-target": SM_TARGET,
             },
         }
     )
     result = await compute(
-        aircraft, request("neutral-point", "static-margin", "cg-for-target-margin")
+        aircraft, request("neutral-point", "static-margin-measured", "centre-of-gravity-design")
     )
     assert all(q.status is QuantityStatus.OK for q in result.quantities), result
     neutral, margin, target_cg = result.quantities

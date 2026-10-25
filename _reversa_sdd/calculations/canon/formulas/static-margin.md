@@ -5,7 +5,7 @@ kind: law
 tool: APP
 shape: law
 status: draft
-output: static-margin
+output: static-margin-measured
 source_status: SOURCED
 dimensional_check: BALANCES
 tags:
@@ -15,9 +15,9 @@ tags:
   - shape/law
   - kind/law
   - status/draft
-tex: SM = \frac{x_{NP} - x_{CG}}{c_{MAC}}
-inputs: {x_np: neutral-point, x_cg: centre-of-gravity, c_mac: mean-aerodynamic-chord}
-outputs: {sm: static-margin}
+tex: SM_{meas} = \frac{x_{NP} - x_{cg,meas}}{c_{MAC}}
+inputs: {x_np: neutral-point, x_cg: centre-of-gravity-measured, c_mac: mean-aerodynamic-chord}
+outputs: {sm: static-margin-measured}
 ---
 
 # Static margin
@@ -25,12 +25,12 @@ outputs: {sm: static-margin}
 **Canonical form**
 
 ```
-SM = 1 / c_MAC * (x_NP - x_CG)
+SM_meas = 1 / c_MAC * (x_NP - x_cg_meas)
 ```
 
-**Produces** [[static-margin]]  ·  **from** [[neutral-point]] · [[centre-of-gravity]] · [[mean-aerodynamic-chord]]
+**Produces** [[static-margin-measured]]  ·  **from** [[neutral-point]] · [[centre-of-gravity-measured]] · [[mean-aerodynamic-chord]]
 
-**Kind: a law** — the analysis direction: given where the CG is, how stable is the aircraft.
+**Kind: a law** — the analysis direction: given where the CG is, how stable is the aircraft. The CG here is [[centre-of-gravity-measured]] (an existing aircraft, measured or taken from the plan), the result [[static-margin-measured]]: no design result depends on it; it is the path for checking an existing design and later for flight calibration (BELEMNITOS).
 Positive is stable. Decided in §2.3.
 
 **Source.** 🟢 Standard definition (Sadraey Eq. 11.18, §11.6.2; Scholz, *Flugmechanik*; RC practice uses the same
