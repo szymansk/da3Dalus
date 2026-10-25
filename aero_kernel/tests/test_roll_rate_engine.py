@@ -93,7 +93,7 @@ async def test_roll_rate_missing_aileron_deflection_is_missing_input() -> None:
 
 async def test_roll_rate_interval_two_worlds_end_to_end_with_stubs() -> None:
     """Hand values at V_app = 1.3 V_S (stub lift curve): AeroBuildup p = 3 rad/s -> 171.887 deg/s,
-    p_hat = 3 * b / (2 V); AVL p_hat = 0.25 -> p = 0.25 * 2 V / b rad/s."""
+    p_hat = 3 * b / (2 V); AVL p_hat = 0.08 (inside its range) -> p = 0.08 * 2 V / b rad/s."""
     airplane = plane()
     result = await run("roll-rate-approach", "roll-rate-nondimensional-approach")
     p, p_hat = result.quantities
@@ -102,11 +102,11 @@ async def test_roll_rate_interval_two_worlds_end_to_end_with_stubs() -> None:
     assert set(p.interval.worlds) == set(WORLDS)
     speed, b_ref = v_app(airplane), 0.8
     assert close(p.interval.worlds["roll-rate=aerobuildup"], math.degrees(3.0), 1e-12)
-    assert close(p.interval.worlds["roll-rate=avl"], math.degrees(0.25 * 2.0 * speed / b_ref), 1e-9)
+    assert close(p.interval.worlds["roll-rate=avl"], math.degrees(0.08 * 2.0 * speed / b_ref), 1e-9)
     assert p_hat.interval is not None
     assert set(p_hat.interval.worlds) == set(WORLDS)
     assert close(p_hat.interval.worlds["roll-rate=aerobuildup"], 3.0 * b_ref / (2.0 * speed), 1e-9)
-    assert close(p_hat.interval.worlds["roll-rate=avl"], 0.25, 1e-9)
+    assert close(p_hat.interval.worlds["roll-rate=avl"], 0.08, 1e-9)
     assert p_hat.unit == "1"
 
 
@@ -215,3 +215,62 @@ async def test_approach_speed_default_target_used_inherited() -> None:
     quantity = only(await run("roll-rate-approach"))
     (warning,) = [w for w in quantity.warnings if w.code == "default_target_used"]
     assert warning.origin == "approach-speed-margin-target"
+
+
+AB_WORLD, AVL_WORLD = WORLDS
+
+
+def avl_roll(p_hat: float) -> StubAvl:
+    avl = StubAvl()
+    avl.p_hat = p_hat
+    return avl
+
+
+@pytest.mark.parametrize("p_hat", [0.08, 0.10])
+async def test_the_avl_world_stays_in_the_interval_up_to_and_at_the_limit(p_hat: float) -> None:
+    """Decision (b): |p b / 2V| <= 0.10 is inside AVL's stated range, both worlds form the interval."""
+    quantity = only(await run("roll-rate-nondimensional-approach", avl=avl_roll(p_hat)))
+    assert quantity.interval is not None
+    assert set(quantity.interval.worlds) == set(WORLDS)
+    assert "world_outside_validity" not in [w.code for w in quantity.warnings]
+
+
+@pytest.mark.parametrize("p_hat", [0.1001, 0.25, -0.25])
+async def test_the_avl_world_beyond_the_limit_is_dropped_and_declared(p_hat: float) -> None:
+    """Decision (b), maintainer 2026-10-25: outside |p b / 2V| <= 0.10 the interval is AeroBuildup alone."""
+    delta = -20.0 if p_hat < 0 else 20.0
+    avl = avl_roll(abs(p_hat))
+    result = await run(
+        "roll-rate-approach", "roll-rate-nondimensional-approach", avl=avl, delta=delta
+    )
+    for quantity in result.quantities:
+        assert quantity.interval is not None
+        assert set(quantity.interval.worlds) == {AB_WORLD}
+        assert quantity.interval.min == quantity.interval.max
+        (warning,) = [w for w in quantity.warnings if w.code == "world_outside_validity"]
+        assert warning.world == AVL_WORLD
+        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.detail["limit"] == 0.1
+        assert warning.detail["p_hat"] == p_hat
+        assert "AVL" in warning.message
+
+
+async def test_the_excluded_avl_value_of_p_is_in_the_warning_not_in_the_interval() -> None:
+    quantity = only(await run("roll-rate-approach", avl=avl_roll(0.25)))
+    assert quantity.interval is not None
+    (warning,) = [w for w in quantity.warnings if w.code == "world_outside_validity"]
+    excluded = warning.detail["p_deg_s"]
+    assert isinstance(excluded, float)
+    assert close(excluded, math.degrees(0.25 * 2.0 * v_app(plane()) / 0.8), 1e-9)
+    assert excluded not in quantity.interval.worlds.values()
+
+
+async def test_a_failing_aerobuildup_world_stays_an_error_beside_an_excluded_avl_world() -> None:
+    opti = StubOpti()
+    opti.roll_failure = FormulaError(
+        ErrorCategory.NOT_CONVERGED, "not_converged", "no roll", "check the speed"
+    )
+    quantity = only(await run("roll-rate-approach", opti=opti, avl=avl_roll(0.25)))
+    assert quantity.status is QuantityStatus.ERROR
+    assert quantity.error is not None
+    assert quantity.error.code == "not_converged"
