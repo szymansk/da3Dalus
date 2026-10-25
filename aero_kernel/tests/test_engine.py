@@ -19,6 +19,7 @@ from aero_kernel.schema import (
     ReasonCode,
 )
 from aero_kernel.tests.engine_builders import (
+    A_POLAR,
     NO_SOLVERS,
     STANDARD,
     Impl,
@@ -588,12 +589,12 @@ async def test_a_long_run_with_a_failed_predecessor_is_upstream_failed() -> None
 # --- exported outputs of a type v1 cannot carry (amendment 1.1, Q38) ----------------------------
 
 
-async def test_a_polar_is_discarded_and_its_scalar_sibling_is_produced_once() -> None:
+async def test_a_requested_polar_is_not_a_result_and_its_scalar_sibling_is_produced_once() -> None:
     calls: list[str] = []
 
     async def polar_twin(x: Inputs, ctx: Context) -> Mapping[str, object]:
         calls.append("called")
-        return {"pol": object(), "s": 5.0}
+        return {"pol": A_POLAR, "s": 5.0}
 
     result = await run("polar-q", "polar-scalar-q", overrides={"polar-twin": polar_twin})
     polar, scalar = result.quantities
@@ -612,16 +613,25 @@ async def test_a_missing_polar_key_is_internal() -> None:
     assert quantity.error.category is ErrorCategory.INTERNAL
 
 
-async def test_a_reader_of_a_polar_is_not_implemented() -> None:
-    quantity = await first("polar-read-q")
+async def test_a_reader_of_a_polar_is_handed_the_polar() -> None:
+    seen: list[object] = []
+
+    async def reader(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        seen.append(x["pol"])
+        return {"r": 2.0}
+
+    quantity = await first("polar-read-q", overrides={"polar-reader": reader})
+    assert (quantity.status, quantity.value) == (QuantityStatus.OK, 2.0)
+    assert seen == [A_POLAR]
+
+
+async def test_a_polar_output_that_is_no_polar_is_internal() -> None:
+    async def wrong(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        return {"pol": "not a polar", "s": 5.0}
+
+    quantity = await first("polar-scalar-q", overrides={"polar-twin": wrong})
     assert quantity.error is not None
-    assert (quantity.error.category, quantity.error.code) == (
-        ErrorCategory.NOT_IMPLEMENTED,
-        "unsupported_value_type",
-    )
-    assert quantity.error.message == (
-        "`polar-read-q` reads `polar-q` (a polar), which the kernel cannot carry yet."
-    )
+    assert quantity.error.category is ErrorCategory.INTERNAL
 
 
 async def test_a_requested_polar_is_non_scalar_result() -> None:
@@ -1394,17 +1404,17 @@ async def test_two_uncarried_reads_are_both_named_with_and() -> None:
     assert quantity.error is not None
     assert quantity.error.code == "unsupported_value_type"
     assert quantity.error.message == (
-        "`two-uncarried-q` reads `curve-q` (a curve) and `polar-q` (a polar), "
+        "`two-uncarried-q` reads `curve-q` (a curve) and `components` (a components), "
         "which the kernel cannot carry yet."
     )
-    assert quantity.error.detail == {"quantities": ["curve-q", "polar-q"]}
+    assert quantity.error.detail == {"quantities": ["curve-q", "components"]}
 
 
 async def test_three_uncarried_reads_are_listed_as_a_b_and_c() -> None:
     quantity = await first("three-uncarried-q")
     assert quantity.error is not None
     assert quantity.error.message == (
-        "`three-uncarried-q` reads `curve-q` (a curve), `polar-q` (a polar) and "
-        "`components` (a components), which the kernel cannot carry yet."
+        "`three-uncarried-q` reads `curve-q` (a curve), `components` (a components) and "
+        "`pair-q` (a curve_pair), which the kernel cannot carry yet."
     )
-    assert quantity.error.detail == {"quantities": ["curve-q", "polar-q", "components"]}
+    assert quantity.error.detail == {"quantities": ["curve-q", "components", "pair-q"]}

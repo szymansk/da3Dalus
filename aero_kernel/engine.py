@@ -50,6 +50,7 @@ from aero_kernel.schema import (
     DefaultUsed,
     Interval,
     KernelWarning,
+    Polar,
     Provenance,
     QuantityResult,
     QuantityStatus,
@@ -115,7 +116,7 @@ def _unit_of(build: Build, slug: str) -> str | None:
 
 
 # The quantity types a value of v1 can carry between nodes (``Value``).
-_CARRIED_TYPES = frozenset({"scalar", "airplane"})
+_CARRIED_TYPES = frozenset({"scalar", "airplane", "polar"})
 
 
 def _in_scope(entry: Check, node: Node) -> bool:
@@ -667,7 +668,7 @@ class _Call:
                 parameter = next(p.parameter for p in predecessor.produces if p.quantity == slug)
                 outputs = self._run_of(edge.predecessor, assignment).outputs
                 value = None if outputs is None else outputs[parameter]
-                return value if isinstance(value, float | AirplaneGeometry) else None
+                return value if isinstance(value, float | AirplaneGeometry | Polar) else None
         quantity = self.build.model.quantity(slug)
         if quantity is not None and quantity.type == "airplane":
             return self.airplane_at_rest
@@ -715,14 +716,14 @@ class _Call:
     def _check_outputs(self, node: Node, formula: Formula, returned: Mapping[str, object]) -> None:
         """Require exactly the output parameters, and a value of its type for each carried output.
 
-        The key of an output whose type v1 cannot carry (curve, polar, ...) must be present, but its
-        value is neither carried nor type-checked: the engine discards it, and whoever reads it is
+        The key of an output whose type v1 cannot carry (curve, ...) must be present, but its value
+        is neither carried nor type-checked: the engine discards it, and whoever reads it is
         ``not_implemented`` (``unsupported_value_type``). The type check for each such type arrives
-        with the unit that adds it to ``Value``.
+        with the unit that adds it to ``Value`` (the polar did with ``stall-break``).
 
         Raises:
             ValueError: If the formula returned other parameters than the canon declares.
-            TypeError: If an exposed scalar or airplane output is not a value of its type.
+            TypeError: If an exposed scalar, airplane or polar output is not a value of its type.
         """
         expected = set(formula.application(node.id.application).produce)
         if set(returned) != expected:
@@ -739,6 +740,9 @@ class _Call:
                 raise TypeError(msg)
             if quantity.type == "airplane" and not isinstance(value, AirplaneGeometry):
                 msg = f"output {produce.parameter} is not an airplane geometry"
+                raise TypeError(msg)
+            if quantity.type == "polar" and not isinstance(value, Polar):
+                msg = f"output {produce.parameter} is not a polar"
                 raise TypeError(msg)
 
     # --- results ---------------------------------------------------------------------------

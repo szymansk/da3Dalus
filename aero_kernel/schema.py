@@ -66,6 +66,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "avl_mesh_not_converged": WarningSeverity.DEFECT,
     "avl_roll_rate_beyond_range": WarningSeverity.DEFECT,
     "avl_refinement_unchecked": WarningSeverity.DEFECT,
+    "stall_break_resolution": WarningSeverity.DEFECT,
     "precondition_unchecked": WarningSeverity.PRACTICE,
     "precondition_violated": WarningSeverity.DEFECT,
     "postcondition_unchecked": WarningSeverity.PRACTICE,
@@ -428,6 +429,24 @@ class ComputeResult(BaseModel):
         return self
 
 
+class FlowConditions(BaseModel):
+    """The flow a polar was computed at: speed and the air state (so a reader can re-sweep it).
+
+    Attributes:
+        v_ms: True airspeed in m/s.
+        density: Air density in kg/m^3.
+        dynamic_viscosity: Dynamic viscosity in Pa s.
+        speed_of_sound: Speed of sound in m/s.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    v_ms: float = Field(gt=0.0, allow_inf_nan=False)
+    density: float = Field(gt=0.0, allow_inf_nan=False)
+    dynamic_viscosity: float = Field(gt=0.0, allow_inf_nan=False)
+    speed_of_sound: float = Field(gt=0.0, allow_inf_nan=False)
+
+
 class Polar(BaseModel):
     """A sampled whole-aircraft polar over angle of attack (ch. 8.12): the solver's own values.
 
@@ -436,6 +455,7 @@ class Polar(BaseModel):
         cl: Lift coefficient, normalised by the reference area of the airplane.
         cd: Drag coefficient (the solver's drag, not a fitted parabola, ADR 0026).
         cm: Pitching-moment coefficient about the airplane's reference point.
+        conditions: The flow the sweep was computed at; ``None`` for a polar built by hand.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -444,6 +464,7 @@ class Polar(BaseModel):
     cl: tuple[FiniteFloat, ...]
     cd: tuple[FiniteFloat, ...]
     cm: tuple[FiniteFloat, ...]
+    conditions: FlowConditions | None = None
 
     @model_validator(mode="after")
     def _check_series(self) -> Self:
