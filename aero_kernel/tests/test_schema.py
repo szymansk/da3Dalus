@@ -120,6 +120,7 @@ class TestKernelWarning:
             "reynolds_bubble_sensitive": WarningSeverity.PRACTICE,
             "mach_above_limit": WarningSeverity.PRACTICE,
             "mach_beyond_validity": WarningSeverity.DEFECT,
+            "minimum_sink_stall_limited": WarningSeverity.PRACTICE,
         }
 
     def test_carries_world_and_json_detail(self) -> None:

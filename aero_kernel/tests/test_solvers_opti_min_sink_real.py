@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
@@ -100,16 +99,27 @@ async def test_a_heavier_airplane_flies_the_minimum_sink_faster_by_the_square_ro
     assert math.isclose(heavy.cl_mp, light.cl_mp, rel_tol=1e-6)
 
 
-async def test_a_minimum_beyond_the_lift_peak_is_not_converged(
+async def test_a_minimum_beyond_the_lift_peak_is_returned_at_the_peak_flagged_stall_limited(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """With CD0 = 0.03 the parabolic minimum-sink lift coefficient (1.34) exceeds C_L,max (0.896):
-    the optimum would lie on the alpha bound, so the problem returns an error, never a value."""
+    the sink power is still falling at the lift peak, so the value is the stall boundary, flagged
+    (#1268, maintainer 2026-10-25): the alpha and C_L of the first peak, no margin."""
     install_parabolic(monkeypatch)
     monkeypatch.setattr(sys.modules[__name__], "CD0", 0.03)
     request = StallRequest(
         airplane=airplane(), mass_kg=MASS_KG, gravity=GRAVITY, n_load=1.0, air=sea_level()
     )
-    with pytest.raises(FormulaError) as raised:
-        opti_module.min_sink_worker(request)
-    assert raised.value.category is ErrorCategory.NOT_CONVERGED
+    solution = opti_module.min_sink_worker(request).value
+    assert solution.stall_limited is True
+    peak_alpha = math.degrees(math.sqrt(LIFT_SLOPE / (3 * CUBIC)))
+    assert math.isclose(solution.alpha_mp, peak_alpha, abs_tol=0.3)
+    assert math.isclose(solution.cl_mp, cl_of(solution.alpha_mp), rel_tol=1e-6)
+
+
+async def test_an_interior_minimum_is_not_flagged(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_parabolic(monkeypatch)
+    request = StallRequest(
+        airplane=airplane(), mass_kg=MASS_KG, gravity=GRAVITY, n_load=1.0, air=sea_level()
+    )
+    assert opti_module.min_sink_worker(request).value.stall_limited is False
