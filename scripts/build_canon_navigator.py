@@ -109,6 +109,22 @@ def _by_file(item: tuple[str, dict]) -> str:
     return item[0] + ".md"
 
 
+def quantity_notes(text: str) -> list:
+    """The paragraphs after the first one, up to the first labelled one (``**Unit.**`` ...).
+
+    The explanation of a quantity (what is measured, by which call, why) lives in the canon
+    Markdown; the navigator only shows it. Links ``[[x]]`` are shown as the bare slug.
+    """
+    body = re.sub(r"^\s*# .*\n", "", text.split("---", 2)[2], count=1)
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", body)]
+    notes = []
+    for paragraph in paragraphs[1:]:
+        if paragraph.startswith("**") or not paragraph:
+            break
+        notes.append(" ".join(re.sub(r"\[\[([^\]]+)\]\]", r"\1", paragraph).split()))
+    return notes
+
+
 def read_canon(root: pathlib.Path, model: dict) -> tuple[dict, dict]:
     """Quantities and formulas: structure from the canon model, prose from the Markdown entries."""
     calc = model["namespaces"]["calc"]
@@ -117,6 +133,7 @@ def read_canon(root: pathlib.Path, model: dict) -> tuple[dict, dict]:
         t = (root / "quantities" / f"{slug}.md").read_text(encoding="utf-8")
         m = re.search(r"^# .+?\n+(.+?)(?:\n\n|\Z)", t.split("---", 2)[2], re.S | re.M)
         quantities[slug] = {
+            "notes": quantity_notes(t),
             "symbol": mq["symbol"],
             "unit": _front(t, "unit"),  # as written: the model folds the em dash into 1
             "role": mq["role"],

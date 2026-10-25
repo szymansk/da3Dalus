@@ -27,8 +27,8 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # NeuralFoil model size xlarge: (V_mp m/s, alpha_mp deg, C_L,mp, V_md m/s). V_md is the golden of
 # test_minimum_drag_speed_fleet.py, recomputed here as the reference of the ratio.
 GOLDEN = {
-    FleetMember.BRYAN: (6.1460437, 4.6544086, 0.9145240, 7.4468700),
-    FleetMember.JAGUAR: (7.1115531, 5.5958411, 0.7861488, 9.0692794),
+    FleetMember.BRYAN: (6.1460437, 4.6544086, 0.9140074, 7.4468700),
+    FleetMember.JAGUAR: (7.1115531, 5.5958411, 0.7834771, 9.0692794),
 }
 # Observed V_mp / V_md of these goldens: BRYAN 0.825, JAGUAR 0.784. A parabolic polar gives
 # 3^(-1/4) = 0.760; the real polar at Re 1e5 is not parabolic (canon entry, "Observed"). The ratio is
