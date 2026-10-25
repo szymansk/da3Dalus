@@ -69,7 +69,8 @@
       "when_not": [],
       "below": "Pitch behaviour is very sensitive to the CG location, the aircraft resists gusts and other upsets poorly and generally wanders in pitch attitude, which makes precise pitch control difficult.",
       "below_severity": "bad",
-      "above_severity": "bad",
+      "above_severity": "caution",
+      "above_basis": "maintainer 2026-10-25: costs drag and mass (aft mass shifts the CG back) without a noticeable stability gain; Drela names no penalty above the range",
       "note": "Drela's V_h = S_h * l_h / (S * c) uses c = S/b and the arm from the CG; the canon quantity (#1273) uses c_MAC and the arm from the design CG (#1272)."
     },
     {
@@ -93,7 +94,8 @@
       "when_not": [],
       "below": "The aircraft tends to oscillate or wallow in yaw (Dutch roll) as the pilot gives rudder or aileron inputs, which makes precise directional control difficult; poor rudder roll authority in an aircraft that turns with the rudder only.",
       "below_severity": "bad",
-      "above_severity": "bad",
+      "above_severity": "caution",
+      "above_basis": "maintainer 2026-10-25: costs drag and mass (aft mass shifts the CG back) without a noticeable stability gain; Drela names no penalty above the range",
       "note": "Until #1272 the canon arm is l_V,25 (from the wing quarter-chord MAC), not Drela's arm from the CG."
     },
     {
