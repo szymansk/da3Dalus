@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:016d06e435f71df215d4cff306a5e108fa343a8b878f115cae7d017272805cce",
+  "content_hash": "sha256:03ad7fea7de3c32efd9bb7192f7a9b86b99deed1f2198d9bf4e6abf7a365682e",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -24,6 +24,13 @@
           "source": "standard gravity, CGPM 1901 / U.S. Standard Atmosphere 1976",
           "unit": "m/s^2",
           "value": 9.80665
+        },
+        "limit-load-factor": {
+          "basis": "convention",
+          "regime": "RC/UAV models: far above the transport and FAR 23 values (2.5–6 g), inside the measured 6–19 g; the designer overrides it per airplane",
+          "source": "maintainer, 2026-10-25 (canon review of maneuvering-speed): 10 g instead of the former 3; measured loads on models are 6–19 g (spar sizing); to be replaced by a mission table with its structure-mass consequence (#1242)",
+          "unit": "1",
+          "value": 10.0
         },
         "load-factor": {
           "basis": "definition",
