@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.solvers.asb_airplane import main_wing_properties
+from aero_kernel.solvers.asb_airplane import main_wing_properties, surface_properties
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 pytestmark = pytest.mark.aero
@@ -204,3 +204,57 @@ def test_a_wing_count_other_than_one_is_an_internal_guard_not_an_input_error() -
     airplane = AirplaneGeometry.model_validate({"name": "t"})
     with pytest.raises(ValueError, match="exactly one main wing"):
         main_wing_properties(airplane)
+
+
+def asb_surface(wing: dict[str, Any]) -> tuple[float, float, float, float, float]:
+    """(area, span, AR = b^2/S, MAC, x_le_MAC = x_AC - 0.25 MAC) from an independently built asb.Wing."""
+    asb: Any = importlib.import_module("aerosandbox")
+    built = asb.Wing(
+        name=wing["name"],
+        symmetric=wing["symmetric"],
+        xsecs=[
+            asb.WingXSec(
+                xyz_le=s["xyz_le"],
+                chord=s["chord"],
+                twist=s["twist"],
+                airfoil=asb.Airfoil("naca2412"),
+            )
+            for s in wing["x_secs"]
+        ],
+    )
+    area = float(built.area())
+    span = float(built.span(include_centerline_distance=True))
+    mac = float(built.mean_aerodynamic_chord())
+    x_ac = float(built.aerodynamic_center()[0])
+    return area, span, span**2 / area, mac, x_ac - 0.25 * mac
+
+
+def test_surface_properties_of_a_swept_polyhedral_twisted_wing_match_asb_directly() -> None:
+    wing = polyhedral_twisted_wing()
+    airplane = AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+    found = surface_properties(airplane, "Main")
+    assert agree(
+        (found.area, found.span, found.aspect_ratio, found.c_mac, found.x_le_mac),
+        asb_surface(wing),
+    )
+
+
+@pytest.mark.parametrize("member", list(FleetMember))
+def test_the_fleet_main_wing_and_tail_surfaces_match_asb_directly(member: FleetMember) -> None:
+    document = reference_document(member)
+    airplane = AirplaneGeometry.model_validate(document)
+    for key in ("Tragflaeche", "Hoehenleitwerk"):
+        found = surface_properties(airplane, key)
+        assert agree(
+            (found.area, found.span, found.aspect_ratio, found.c_mac, found.x_le_mac),
+            asb_surface(document["wings"][key]),
+        )
+
+
+def test_a_rectangular_wing_has_its_leading_edge_as_x_le_mac() -> None:
+    """Hand value: chord 0.2, leading edge x = 0.05: the AC is at 0.05 + 0.25 * 0.2, so x_le_MAC = 0.05."""
+    wing = wing_of(section(0.05, 0, 0, 0.2), section(0.05, 0.7, 0, 0.2))
+    airplane = AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+    found = surface_properties(airplane, "Main")
+    assert math.isclose(found.x_le_mac, 0.05, rel_tol=1e-12)
+    assert math.isclose(found.aspect_ratio, 1.4**2 / 0.28, rel_tol=1e-12)

@@ -7,7 +7,8 @@ from typing import Any
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.geometry_properties import MainWingProperties, surface_properties
+from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
+from aero_kernel.tests.planform_stand_in import stand_in_surface_properties
 
 # ``Any``: the fake stands in for an untyped third-party module; keyword arguments are recorded
 # exactly as passed.
@@ -40,6 +41,8 @@ FAKE_REFERENCE: dict[str, tuple[float, float, float]] = {
     "Main": (0.31, 1.7, 0.21),
     "Fin": (0.07, 0.4, 0.08),
 }
+# x of the aerodynamic centre the fake wing reports by name.
+FAKE_AC_X: dict[str, float] = {"Main": 0.12, "Fin": 0.55}
 FAKE_DEFAULT_REFERENCE = (1.0, 2.0, 0.5)
 # The span without the centreline distance is this much shorter than the one with it.
 FAKE_CENTRELINE_GAP = 0.1
@@ -66,6 +69,11 @@ class FakeWing:
         self.calls.append(("span", options))
         gap = FAKE_CENTRELINE_GAP if options.get("include_centerline_distance") else 0.0
         return self._reference()[1] + gap
+
+    def aerodynamic_center(self, **options: Any) -> list[float]:
+        """The aerodynamic centre: x from :data:`FAKE_AC_X`, on the centreline."""
+        self.calls.append(("aerodynamic_center", options))
+        return [FAKE_AC_X.get(str(self.name), 0.1), 0.0, 0.0]
 
     def mean_aerodynamic_chord(self, **options: Any) -> float:
         """The mean aerodynamic chord."""
@@ -116,5 +124,10 @@ def stand_in_main_wing_properties(airplane: AirplaneGeometry) -> MainWingPropert
     values (the aero tier compares those), only a deterministic stand-in at the solver boundary.
     """
     (main,) = [w for w in (airplane.wings or {}).values() if w.surface_type == "main_wing"]
-    surface = surface_properties(main)
+    surface = stand_in_surface_properties(main)
     return MainWingProperties(s_ref=surface.area, b_ref=surface.span, c_mac=surface.c_mac)
+
+
+def stand_in_surface_of(airplane: AirplaneGeometry, key: str) -> SurfaceProperties:
+    """The stand-in planform values of the wing under ``key`` (see :mod:`planform_stand_in`)."""
+    return stand_in_surface_properties((airplane.wings or {})[key])

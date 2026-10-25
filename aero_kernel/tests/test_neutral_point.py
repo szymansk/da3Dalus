@@ -8,6 +8,7 @@ from aero_kernel.build import shipped_build
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError, ToolRunTimeoutError
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.geometry_properties import SurfaceProperties
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -18,7 +19,7 @@ from aero_kernel.schema import (
     WarningSeverity,
 )
 from aero_kernel.solvers.opti import BestGlide
-from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
+from aero_kernel.tests.formula_builders import StubAtmosphere, StubGeometry, close, solvers_with
 from aero_kernel.tests.np_builders import CONVENTIONAL, StubAvl, airplane_with
 from aero_kernel.tests.stall_stubs import CD0, K, StubOpti
 
@@ -91,6 +92,35 @@ async def test_the_three_worlds_give_the_interval_with_the_hand_values() -> None
     assert quantity.interval.max == max(worlds.values())
     assert 0.12223 < X_NP_TEXTBOOK < 0.12224  # 0.0357738095 / 0.2923809524
     assert abs(K_TEXTBOOK - 0.65 * 10 / 21) < 1e-12
+
+
+async def test_the_textbook_and_pappas_worlds_take_the_surfaces_from_the_geo_adapter() -> None:
+    """S, AR, c_MAC and x_le_MAC are the adapter's (AeroSandbox's), not an integration of the sections."""
+    airplane = airplane_with(*CONVENTIONAL)
+    main_key, tail_key = list(airplane.wings or {})
+    surfaces = {
+        main_key: SurfaceProperties(area=0.3, span=1.8, aspect_ratio=10.8, c_mac=0.2, x_le_mac=0.0),
+        tail_key: SurfaceProperties(area=0.04, span=0.4, aspect_ratio=4.0, c_mac=0.1, x_le_mac=0.6),
+    }
+    geometry = StubGeometry(surfaces=surfaces)
+    solvers = solvers_with(
+        atmosphere=StubAtmosphere({0.0: RHO}), opti=StubOpti(), avl=StubAvl(), geometry=geometry
+    )
+    aircraft = AircraftInput.model_validate(
+        {"airplane": airplane, "values": {"aircraft-mass": MASS, "altitude": 0.0}}
+    )
+    result = await evaluate(
+        shipped_build(), aircraft, ComputeRequest(quantities=("neutral-point",)), solvers=solvers
+    )
+    worlds = only(result).interval.worlds  # type: ignore[union-attr]
+    main, tail = surfaces[main_key], surfaces[tail_key]
+    x_main, x_tail = 0.05, 0.625
+    weight = 1.0 - 3.24 / main.aspect_ratio
+    weight *= (tail.aspect_ratio / (tail.aspect_ratio + 2.0)) / (
+        main.aspect_ratio / (main.aspect_ratio + 2.0)
+    )
+    expected = (main.area * x_main + weight * tail.area * x_tail) / (main.area + weight * tail.area)
+    assert close(worlds["neutral-point=pappas"], expected, 1e-12)
 
 
 async def test_the_avl_world_is_asked_for_the_lift_coefficient_at_the_minimum_drag_speed() -> None:

@@ -19,14 +19,23 @@ from aero_kernel.geometry import (
     InlineAirfoil,
     Wing,
 )
-from aero_kernel.geometry_properties import MainWingProperties
+from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.graph import AILERON_ROLES
 from aero_kernel.solvers.devices import roll_deflection, roll_segments
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["load_aerosandbox", "main_wing_properties", "to_asb_airplane"]
+# The aerodynamic centre of a surface lies at a quarter of its mean aerodynamic chord.
+AC_FRACTION = 0.25
+
+__all__ = [
+    "AC_FRACTION",
+    "load_aerosandbox",
+    "main_wing_properties",
+    "surface_properties",
+    "to_asb_airplane",
+]
 
 # ``Any`` is the boundary to AeroSandbox, which ships no type information.
 
@@ -179,32 +188,64 @@ def _main_wing_key(airplane: AirplaneGeometry) -> str:
     return keys[0]
 
 
-def _reference(wing: Any) -> MainWingProperties:  # noqa: ANN401  # untyped aerosandbox boundary
-    """AeroSandbox's reference values of a wing: what ``asb.Airplane`` infers from its first wing.
+def _surface(wing: Any, aerodynamic_center_x: float) -> SurfaceProperties:  # noqa: ANN401  # untyped aerosandbox boundary
+    """AeroSandbox's planform values of a wing, as ``asb.Airplane`` takes them for its reference.
 
     ``area()`` is the planform area without the gap at the centreline, while ``span`` includes the
-    centreline distance, as ``asb.Airplane`` takes it (declared in the canon entry
-    ``airplane-geometry``, not changed).
+    centreline distance (declared in the canon entry ``airplane-geometry``, not changed). The aspect
+    ratio is ``span^2 / area`` of those two, and the leading edge of the MAC is the aerodynamic
+    centre less a quarter of the MAC (the same MAC definition, gh-1253).
 
     Raises:
-        FormulaError: ``unsupported_configuration`` if a value is not a positive finite number
-            (a wing with no planform, e.g. all its sections at one y).
+        FormulaError: ``unsupported_configuration`` if area, span or MAC is not a positive finite
+            number (a wing with no planform, e.g. all its sections at one y).
     """
-    values = {
-        "s_ref": float(wing.area()),
-        "b_ref": float(wing.span(include_centerline_distance=True)),
-        "c_mac": float(wing.mean_aerodynamic_chord()),
-    }
-    if not all(math.isfinite(v) and v > 0.0 for v in values.values()):
+    area = float(wing.area())
+    span = float(wing.span(include_centerline_distance=True))
+    c_mac = float(wing.mean_aerodynamic_chord())
+    if not all(math.isfinite(v) and v > 0.0 for v in (area, span, c_mac)):
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,
             "unsupported_configuration",
-            f"the main wing {wing.name!r} has no planform: AeroSandbox gives {values}",
-            "a main wing needs sections at different y; a vertical surface has no planform",
+            f"the wing {wing.name!r} has no planform: AeroSandbox gives area {area}, span {span}, "
+            f"mean aerodynamic chord {c_mac}",
+            "a wing needs sections at different y; a vertical surface has no planform",
             detail={"wing": str(wing.name)},
             parameter="airplane",
         )
-    return MainWingProperties(**values)
+    return SurfaceProperties(
+        area=area,
+        span=span,
+        aspect_ratio=span**2 / area,
+        c_mac=c_mac,
+        x_le_mac=aerodynamic_center_x - AC_FRACTION * c_mac,
+    )
+
+
+def _reference(wing: Any) -> MainWingProperties:  # noqa: ANN401  # untyped aerosandbox boundary
+    """AeroSandbox's reference values of a wing: what ``asb.Airplane`` infers from its first wing."""
+    surface = _surface(wing, 0.0)
+    return MainWingProperties(s_ref=surface.area, b_ref=surface.span, c_mac=surface.c_mac)
+
+
+def surface_properties(airplane: AirplaneGeometry, key: str) -> SurfaceProperties:
+    """Return AeroSandbox's planform values of the wing stored under ``key``.
+
+    The wing is converted like in :func:`to_asb_airplane`; ``x_le_MAC`` is
+    ``Wing.aerodynamic_center()[0] - 0.25 c_MAC`` (gh-1253).
+
+    Args:
+        airplane: The validated geometry document.
+        key: The key of the wing in ``airplane.wings``.
+
+    Returns:
+        Area, span, aspect ratio, MAC and the MAC's leading edge, in m^2, m, 1, m, m.
+
+    Raises:
+        FormulaError: As :func:`_wing` and :func:`_surface`.
+    """
+    wing = _wing(load_aerosandbox(), key, (airplane.wings or {})[key], 0.0)
+    return _surface(wing, float(wing.aerodynamic_center()[0]))
 
 
 def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
@@ -222,7 +263,7 @@ def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
 
     Raises:
         ValueError: If the document does not have exactly one main wing.
-        FormulaError: As :func:`_wing` and :func:`_reference`.
+        FormulaError: As :func:`_wing` and :func:`_surface`.
     """
     asb = load_aerosandbox()
     key = _main_wing_key(airplane)

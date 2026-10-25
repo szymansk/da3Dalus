@@ -54,6 +54,13 @@ carried through the whole downstream chain (A11 rule 4). One entry, one producer
   checked at RC Reynolds number (ADR 0028)**: the wing wake is thicker at low Re, unquantified. Pappas and AVL
   are unchanged: they imply `eta = 1`, so part of the textbook–Pappas gap is the choice of `eta_h`.
   Aerodynamic centres at 25 % of each surface's MAC.
+- **Geometry of the textbook and Pappas worlds (maintainer 2026-10-25, #1253).** Area, aspect ratio and MAC of
+  the main wing and of the horizontal tail are AeroSandbox's: `Wing.area()`, `AR = b²/S` with
+  `b = Wing.span(include_centerline_distance=True)`, and `Wing.mean_aerodynamic_chord()`; the leading edge of the MAC is
+  `x_le,MAC = x_AC − 0.25·c_MAC` with `x_AC` from `Wing.aerodynamic_center()` (the same MAC definition), so the
+  surface's aerodynamic centre is ASB's. The same route as [[airplane-geometry]] (one producer, ADR 0022); the
+  kernel's earlier own integration of the sections is gone. Quote: "Um ASB-konform zu sein, rechnen wir aus dem
+  ASB-Wert entsprechend zurück."
 - **Pappas world:** Dean Pappas, "If It Flies", *Model Aviation* 10/2009 (after von Mises/Prager/Kuerti),
   verbatim barycentre with downwash factor `1 - 3.24/AR_w` and aspect-ratio correction `1/(1 + 2/AR)`.
 - **AVL world:** vortex lattice with the wing's downwash at the tail; Drela's CLAF thickness rule as
@@ -96,7 +103,7 @@ uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/neutral_point.py` | EXACT | 🟢 | textbook (with the input `eta_h`) and Pappas barycentres as written; the AVL world calls the AVL adapter at C_L = m·g/(q·S_ref); every world declares `fuselage_not_modelled`; the interval over the worlds is formed by the engine (A11) |
+| `aero_kernel/formulas/neutral_point.py` | EXACT | 🟢 | textbook (with the input `eta_h`) and Pappas barycentres as written, with the surfaces measured by the GEO adapter (AeroSandbox, `aero_kernel/solvers/geometry.py`); the AVL world calls the AVL adapter at C_L = m·g/(q·S_ref); every world declares `fuselage_not_modelled`; the interval over the worlds is formed by the engine (A11) |
 
 ## Approval
 

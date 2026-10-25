@@ -5,8 +5,13 @@ from typing import Any
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.solvers.asb_airplane import main_wing_properties, to_asb_airplane
+from aero_kernel.solvers.asb_airplane import (
+    main_wing_properties,
+    surface_properties,
+    to_asb_airplane,
+)
 from aero_kernel.tests.asb_fakes import (
+    FAKE_AC_X,
     FAKE_CENTRELINE_GAP,
     FAKE_REFERENCE,
     FakeAirfoil,
@@ -163,6 +168,16 @@ def test_the_main_wing_properties_ask_asb_with_its_default_area_and_the_centreli
         FAKE_REFERENCE["Main"][2],
     )
     assert properties.b_ref == FAKE_REFERENCE["Main"][1] + FAKE_CENTRELINE_GAP
+
+
+def test_the_surface_properties_are_asbs_with_the_ac_less_a_quarter_mac() -> None:
+    """AR = b^2 / S of ASB's own two values; x_le_MAC = x_AC - 0.25 c_MAC (gh-1253)."""
+    area, span, chord = FAKE_REFERENCE["Fin"]
+    found = surface_properties(geometry(), "Fin")
+    span += FAKE_CENTRELINE_GAP
+    assert (found.area, found.span, found.c_mac) == (area, span, chord)
+    assert found.aspect_ratio == span**2 / area
+    assert found.x_le_mac == FAKE_AC_X["Fin"] - 0.25 * chord
 
 
 def test_a_main_wing_without_a_planform_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
