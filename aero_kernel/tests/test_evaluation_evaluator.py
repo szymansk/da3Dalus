@@ -215,3 +215,24 @@ def test_the_basis_of_a_side_is_in_the_explanation() -> None:
     verdict = judge(result_of(ok(SM, 0.4)), above_severity="caution", above_basis="maintainer")
     assert "maintainer" in verdict.explanation
     assert "caution" in verdict.explanation
+
+
+def test_a_vertical_tail_volume_above_the_band_is_a_caution_below_it_is_bad() -> None:
+    from pathlib import Path
+
+    from aero_kernel.importer.rule_table import load_rule_table
+
+    path = Path(__file__).resolve().parents[2] / "_reversa_sdd/calculations/evaluation/drela.yaml"
+    table = load_rule_table(path)
+    flags = facts(has_vertical_tail=True)
+    high = {
+        v.rule_id: v
+        for v in evaluate_rules(table, result_of(ok("vertical-tail-volume", 0.09)), flags)
+    }
+    low = {
+        v.rule_id: v
+        for v in evaluate_rules(table, result_of(ok("vertical-tail-volume", 0.01)), flags)
+    }
+    assert high["vertical-tail-volume"].status is RuleStatus.ABOVE
+    assert high["vertical-tail-volume"].severity is Severity.CAUTION
+    assert low["vertical-tail-volume"].severity is Severity.BAD

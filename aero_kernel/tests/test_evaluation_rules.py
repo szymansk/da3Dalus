@@ -220,3 +220,14 @@ def test_a_rule_table_outside_the_working_directory_is_refused(tmp_path: Path) -
 def test_a_rule_table_that_is_not_yaml_is_refused() -> None:
     with pytest.raises(ValueError, match="YAML"):
         load_rule_table(REPO / "aero_kernel" / "evaluation" / "rule_table.json")
+
+
+@pytest.mark.parametrize("rule_id", ["horizontal-tail-volume", "vertical-tail-volume"])
+def test_a_tail_volume_above_the_band_is_a_caution_below_it_stays_bad(rule_id: str) -> None:
+    rule = {r.id: r for r in load_rule_table(DRELA).rules}[rule_id]
+    assert rule.above_severity is Severity.CAUTION
+    assert rule.below_severity is Severity.BAD
+    assert rule.above_basis is not None
+    assert "maintainer 2026-10-25" in rule.above_basis
+    assert "drag and mass" in rule.above_basis
+    assert rule.below is not None
