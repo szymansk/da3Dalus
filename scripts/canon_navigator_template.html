@@ -98,6 +98,8 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .edge.srcmiss{stroke-dasharray:5 3}
 .srclab{font-size:10px;text-anchor:middle;dominant-baseline:central;fill:var(--ink-2)}
 .srcnode.srcmiss .srclab{fill:var(--bad)}
+.edge.srccheck{stroke-dasharray:2 3}
+.srcnode.srccheck .srclab{font-style:italic}
 .edge.xedge.up,.edge.xedge.down{display:inline}
 .sspan{fill:var(--hub-bg);fill-opacity:.25;stroke:var(--hub);stroke-opacity:.75;stroke-width:1.3}
 .sframe{fill:var(--hub-bg);fill-opacity:.35;stroke:var(--hub);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 3}
@@ -273,6 +275,10 @@ const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \
   dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
 IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
 IKIND.start={icon:'\u2299',label:'Rests on a starting value \u2014 to be set by the designer',col:'var(--mvp)',defined:true};
+const VRULES=D.validation_rules||{quantity:{},formula:{}};
+const RULE_KIND={input:'requirement on the input',tool:'limit of a tool',probe:'agreement of a probe'};
+const ruleHtml=r=>`<div class="cblk"><b>${esc(r.id)}</b> <span class="sub">(${esc(RULE_KIND[r.kind]||r.kind)} \u00b7 on violation: ${esc(r.on_violation)}${r.codes.length?' \u00b7 '+r.codes.map(esc).join(', '):''})</span><br>${esc(r.criterion)}`+
+  Object.entries(r.parameters).map(([n,p])=>`<br><b>${esc(n)} = ${esc(p.value)} ${esc(p.unit==='1'?'':p.unit)}</b> <span class="sub">(${esc(p.basis)}, ${esc(p.status)}${p.status==='pending'?' \u2014 awaiting the maintainer':', overridable by the caller; use is declared'})</span><br>${esc(p.source)}`).join('')+`</div>`;
 const CONV=D.conv||{}, CONVS=D.conventions||{}, START=D.start||{}, STARTS=D.starts||{}, DEFS=D.defaults||{};
 const SRCBYID={};
 const APPR=D.appr||{}, QSTAT=D.qstat||{}, QDATA=D.qdata||{};
@@ -360,8 +366,12 @@ if(DESIGN_SEP){ const n=Object.keys(COLOF).filter(q=>COLOF[q]==='design').length
 // Data sources (#1251, maintainer 2026-10-25): an explicit layer between the cross-cutting column
 // and the first formula column; each source feeds the quantities that name it, missing ones are marked.
 const SRCW=2*NW, SRCCOLW=SRCW+4*FPAD, SRCGAP=34;
-const SX={xcut:0, src:XW+REFGAP+RW+SRCGAP};
-{ let x=SX.src+SRCCOLW+SIDEGAP, prev=null;
+// Column order (#1300, builder constant COLUMN_ORDER): the page reads left to right along the data
+// flow, input objects -> their fields (data sources) -> derived references -> the analysis columns.
+const SX={};
+{ const widths={xcut:XW, src:SRCCOLW, refs:RW}; let cx=0;
+  for(const k of (D.colorder||['xcut','src','refs'])){ SX[k]=cx; cx+=widths[k]+(k==='refs'?SIDEGAP-REFGAP:REFGAP); } }
+{ let x=SX.refs+RW+SIDEGAP, prev=null;
   for(const c of COLS){
     if(prev&&prev!==c.side) x+=SIDEGAP-MODGAP;
     if(prev!==c.side) SX[c.side]=x;
@@ -381,6 +391,27 @@ const BANDS=[['inter','Intermediate',q=>!OUTPUTS.has(q)],['final','Final results
 const RANK={}; layers.forEach(l=>ORDER[l].forEach((q,i)=>{RANK[q]=l*10000+i;}));
 const BANDY={};
 let yc=HEAD;
+// The data sources: grouped by kind; those that feed only top-row quantities (inputs and targets of
+// the first layer) form a horizontal data layer above that row, reading top to bottom like the
+// column on the left reads left to right (#1302).
+const SRC=D.src||[], MISS=D.miss||[], SRCKINDS=D.srckinds||[];
+const SP={}, SRCFRAMES=[], SRCNODES=[], SRCSUB=[];
+const TOPQ=new Set(ORDER[0].filter(q=>!isX(q)));
+const srcGroups=SRCKINDS.map(k=>({id:k.id,label:k.label,missing:false,
+  items:SRC.filter(x=>x.kind===k.id).map(x=>({id:'src:'+x.id,label:(x.short||x.loc)+(x.check?' \u00b7 check only':''),title:x.id+(x.check?' (consistency check only)':''),qs:x.qs,src:x,
+    band:x.qs.length>0&&x.qs.every(q=>TOPQ.has(q))})),
+  frames:(D.srcframes||[]).filter(f=>f.kind===k.id)}));
+srcGroups.push({id:'missing',label:'Missing \u2014 no source yet',missing:true,frames:[],
+  items:MISS.map(q=>({id:'miss:'+q,label:'? '+q,title:'No demonstrated source for '+q,qs:[q],src:null,band:TOPQ.has(q)}))});
+const SRCBAND={x:SX.analysis,y:0,h:0,n:0};
+{ const BGAP=16, BHEAD=16; let x=SX.analysis; const y=yc+FHEAD+BHEAD;
+  for(const g of srcGroups){
+    const items=g.items.filter(it=>it.band); if(!items.length) continue;
+    const gw=items.length*(SRCW+BGAP)-BGAP+2*FPAD, gh=NH+2*FPAD;
+    SRCFRAMES.push({x,y,w:gw,h:gh,label:g.label+' \u00b7 '+items.length,missing:g.missing});
+    items.forEach((it,i)=>{ SP[it.id]={x:x+FPAD+i*(SRCW+BGAP),y:y+FPAD}; SRCNODES.push({...it,missing:g.missing}); });
+    x+=gw+MODGAP; SRCBAND.n+=items.length; }
+  if(SRCBAND.n){ SRCBAND.y=yc; SRCBAND.h=FHEAD+BHEAD+NH+2*FPAD; yc+=SRCBAND.h+GAPY; } }
 { // the top row: framed layer-0 modules, flowing left to right (targets first); with a separate
   // design column the design targets stand above it
   LY[0]=yc; let height=NH;
@@ -399,7 +430,7 @@ let yc=HEAD;
   }
   yc+=height-NH+GAPY;
 }
-const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW, ...(RULES.length?[SX.rules+RULECOLW]:[]));
+const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW, SX.refs+RW, ...(RULES.length?[SX.rules+RULECOLW]:[]));
 const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
 // Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
 // in reading order inside each column; within a cluster: values of the point, then stability,
@@ -473,7 +504,6 @@ for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==
 // each module's inputs on the left, the references derived from them (canon tags module/ and
 // group/) on the right, on the same level, so a row reads "input -> reference". The powertrain
 // is one box with the sub-clusters motor and propeller, and battery.
-SX.refs=XW+REFGAP;
 { let y=XTOP+FHEAD;
   for(const m of MODORDER.filter(m=>XCUT.has(m))){
     const ins=Object.keys(Q).filter(q=>Q[q].module===m&&!isRef(q)).sort();
@@ -506,16 +536,9 @@ SX.refs=XW+REFGAP;
 }
 const SRCSUBEL=[];
 const pick=id=>RULEBYID[id]?selectRule(RULEBYID[id]):SRCBYID[id]&&SRCBYID[id].src?selectSource(SRCBYID[id].src):select(id);
-const SRC=D.src||[], MISS=D.miss||[], SRCKINDS=D.srckinds||[];
-const SP={}, SRCFRAMES=[], SRCNODES=[], SRCSUB=[];
 { let y=XTOP+FHEAD;
-  const FRS=D.srcframes||[];
-  const groups=SRCKINDS.map(k=>({id:k.id,label:k.label,missing:false,
-    items:SRC.filter(x=>x.kind===k.id).map(x=>({id:'src:'+x.id,label:x.short||x.loc,title:x.id,qs:x.qs,src:x})),
-    frames:FRS.filter(f=>f.kind===k.id)}));
-  groups.push({id:'missing',label:'Missing \u2014 no source yet',missing:true,frames:[],
-    items:MISS.map(q=>({id:'miss:'+q,label:'? '+q,title:'No demonstrated source for '+q,qs:[q],src:null}))});
-  for(const g of groups){
+  for(const g0 of srcGroups){
+    const g={...g0,items:g0.items.filter(it=>!it.band)};
     if(!g.items.length) continue;
     // a framed source sits in the frame of its collection (builder grouping), a plain one on the group
     let cy=y+FPAD, n=0, bottom=y+2*FPAD+NH;
@@ -551,12 +574,14 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
   if(DESIGN_SEP) line(SX.design-SIDEGAP/2,6,SX.design-SIDEGAP/2,H+10);
   line(SX.analysis-SIDEGAP/2,XTOP-14,SX.analysis-SIDEGAP/2,H+10);
   line(SX.refs-REFGAP/2,XTOP-14,SX.refs-REFGAP/2,H+10);
+  line(SX.refs+RW+(SIDEGAP-REFGAP)/2,XTOP-14,SX.refs+RW+(SIDEGAP-REFGAP)/2,H+10);
   line(SX.xcut,XTOP-14,W,XTOP-14);
   for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
     if(side==='design'&&!DESIGN_SEP) continue;
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
-  { line(SX.src-SRCGAP/2,XTOP-14,SX.src-SRCGAP/2,H+10);
+  if(SRCBAND.n){ const t=el('text',{x:SRCBAND.x,y:SRCBAND.y+8,class:'colhead'}); t.textContent='Data sources of the inputs and targets'; cam.appendChild(t); }
+  { line(SX.src-REFGAP/2,XTOP-14,SX.src-REFGAP/2,H+10);
     const t=el('text',{x:SX.src,y:XTOP,class:'colhead'}); t.textContent='Data sources'; cam.appendChild(t);
     for(const f of SRCFRAMES){
       cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.missing?' srcmiss':'')}));
@@ -674,11 +699,15 @@ for(const n of SRCNODES){
   const p1=SP[n.id];
   for(const q of n.qs){
     const p2=P[q], toLeft=p2.x+NW<=SX.src;
-    const x1=toLeft?p1.x:p1.x+SRCW, y1=p1.y+NH/2, x2=toLeft?p2.x+NW:p2.x, y2=p2.y+NH/2, dx=Math.max(30,Math.abs(x2-x1)/2)*(toLeft?-1:1);
-    const e=el('path',{class:'edge xedge srcedge'+(n.missing?' srcmiss':''),d:`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`});
+    let d;
+    if(n.band){ const bx=p1.x+SRCW/2, by=p1.y+NH, qx=p2.x+NW/2, qy=p2.y, dy=Math.max(20,(qy-by)/2);
+      d=`M${bx},${by} C${bx},${by+dy} ${qx},${qy-dy} ${qx},${qy}`; }
+    else { const x1=toLeft?p1.x:p1.x+SRCW, y1=p1.y+NH/2, x2=toLeft?p2.x+NW:p2.x, y2=p2.y+NH/2, dx=Math.max(30,Math.abs(x2-x1)/2)*(toLeft?-1:1);
+      d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`; }
+    const e=el('path',{class:'edge xedge srcedge'+(n.missing?' srcmiss':'')+(n.src&&n.src.check?' srccheck':''),d});
     cam.appendChild(e); edgeEls.push({e,a:n.id,b:q});
   }
-  const g=el('g',{class:'node srcnode'+(n.missing?' srcmiss':''),transform:`translate(${p1.x},${p1.y})`,tabindex:'0',role:'button'});
+  const g=el('g',{class:'node srcnode'+(n.missing?' srcmiss':'')+(n.src&&n.src.check?' srccheck':''),transform:`translate(${p1.x},${p1.y})`,tabindex:'0',role:'button'});
   g.appendChild(el('rect',{width:SRCW,height:NH,rx:5,fill:'var(--panel)',stroke:n.missing?'var(--bad)':'var(--ink-3)','stroke-dasharray':n.missing?'4 3':'none'}));
   const t=el('text',{x:SRCW/2,y:NH/2,class:'srclab'}); t.textContent=n.label.length>26?n.label.slice(0,25)+'\u2026':n.label; g.appendChild(t);
   const tt=el('title',{}); tt.textContent=n.title; g.appendChild(tt);
@@ -785,6 +814,7 @@ function select(q){
       `<div class="lab" style="margin-top:8px">Rests on it \u00b7 ${d.quantities.length} quantities, ${d.formulas.length} formulas</div>`+
       `<ul class="lnk">${d.quantities.map(link).join('')}</ul>`+
       `<p class="sub" style="margin:6px 0 0">Formulas: ${d.formulas.map(esc).join(' \u00b7 ')}</p></div>`; }
+  if(VRULES.quantity[q]) h+=`<div class="blk"><div class="lab">Validation rules \u00b7 ${VRULES.quantity[q].length}</div>${VRULES.quantity[q].map(ruleHtml).join('')}</div>`;
   if(ISSUES[q]) h+=`<div class="blk"><div class="lab" style="color:var(--bad)">${ISSUES[q].some(BLOCKING)?'! Open issues \u00b7 '+ISSUES[q].filter(BLOCKING).length+' \u2014 block approval':'Notes'}</div>`+
     ISSUES[q].map(i=>`<div class="issue" style="border-color:${IKIND[kindOf(i)].col}"><b style="color:${IKIND[kindOf(i)].col}">${IKIND[kindOf(i)].icon} ${esc(i.title)}</b> <span class="sub">(${esc(i.formula)})</span><br>${esc(i.text)}</div>`).join('')+`</div>`;
   { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
@@ -804,6 +834,7 @@ function select(q){
               : `<div class="mono">${esc(e.form)}</div>
                  <p class="sub" style="margin:6px 0 0">Procedural form \u2014 not typeset as a formula.</p>`;
     h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; not in the kernel'}${e.ticket?' &#183; '+esc(e.ticket):''} &#183; ${e.direction==='design'?'<b>design</b> (O1)':'analysis'}</p>`;
+    if((VRULES.formula[f]||[]).length) h+=`<div class="lab" style="margin-top:10px">Validation rules \u00b7 ${VRULES.formula[f].length}</div>${VRULES.formula[f].map(ruleHtml).join('')}`;
     if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Method worlds: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
     const aps=(e.apps||[]).filter(a=>a.out.includes(q));
     for(const a of aps){

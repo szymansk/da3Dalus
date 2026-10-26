@@ -15,15 +15,16 @@ import time
 from collections.abc import Mapping
 from typing import ClassVar
 
+from aero_kernel.config import config
 from aero_kernel.errors import ErrorCategory, FormulaError, ToolRunTimeoutError
 from aero_kernel.geometry import Airfoil, AirplaneGeometry, InlineAirfoil
 from aero_kernel.geometry_properties import MainWingProperties
-from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
+from aero_kernel.rules import Rules
+from aero_kernel.runtime import SolverRuntime, WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, main_wing_properties
 from aero_kernel.solvers.avl_contour import repanel
 from aero_kernel.solvers.avl_mesh import (
-    JOIN_TOLERANCE_M,
     MESH_DECIMALS,
     SLIVER_STEPS,
     MeshSurface,
@@ -74,9 +75,6 @@ AVL_MAX_VORTICES = 6000
 AVL_MAX_SURFACES = 100
 # The check run uses this factor on both counts. 40/96 overflows AVL's vortex array on BRYAN.
 REFINE_FACTOR = 2
-# The disagreement of the two meshes above which the value is declared not converged, in mean
-# chords (0.5 % MAC, AVL_CONVERGENCE.md).
-REFINEMENT_TOLERANCE_MAC = 0.005
 # Every airfoil is repanelled to this many points per side (cosine spaced), whatever it had: AVL stops
 # at 399 contour points in total (its IBX limit; AeroSandbox's NACA 4-digit contour has 399 and a
 # fine inline contour more), and a repanelling done only when a contour is too large would be an
@@ -85,29 +83,6 @@ REFINEMENT_TOLERANCE_MAC = 0.005
 AIRFOIL_POINTS_PER_SIDE = 80
 # AVL's CLAF rule (avl_doc.txt): the lift-curve-slope factor 1 + 0.77 t/c.
 CLAF_PER_THICKNESS = 0.77
-# The disagreement of the two meshes above which a roll rate is declared not converged, relative to the
-# roll rate. Fixed before any measurement (maintainer decision, #1211 D8): it is the agreement asked of
-# the independent template reference, a mesh that moves p'b/2V by more is not converged for this use.
-ROLL_REFINEMENT_TOLERANCE = 0.01
-# AVL's primer gives -0.10 < pb/2V < 0.10 as the practical limit for roll rates, beyond which results
-# "should be interpreted with caution" (Avl/avl_doc.txt:121-141).
-ROLL_RATE_LIMIT = 0.10
-# The trimmed roll rate must agree with the linearised one, -Cld01 * delta / Clp from the stability
-# derivatives at the state without roll and deflection, to this relative difference (plus the print
-# floor below). A numerical sanity check of the solver, no domain threshold: the nonlinearity measured
-# on the fleet is 0.2-0.4 % (BRYAN 0.27932 against 0.28005, the unsplit file 0.2623 against 0.2634),
-# whereas a mesh on which AVL's Newton iteration lands on a spurious branch is off by a factor of
-# about 3 (BRYAN at 96 spanwise strips: 0.825 against 0.347, with the state without roll at an angle
-# of attack of 7.1 deg instead of 4.2 deg).
-ROLL_BRANCH_TOLERANCE = 0.10
-# AVL prints p'b/2V with five and the derivatives with six decimals.
-ROLL_PRINT_FLOOR = 2e-4
-# AVL prints the stability-axis rolling moment with five decimals; a larger residual is a defect of ours.
-ROLL_MOMENT_TOLERANCE = 1e-5
-# The control AVL echoes must be the commanded deflection (printed with five decimals).
-CONTROL_ECHO_TOLERANCE = 1e-4
-# AVL reaches the requested lift coefficient exactly; a larger miss is a defect of ours.
-CL_TOLERANCE = 1e-4
 # The longest one AVL run may take. The measured refined 20/48 run of BRYAN and JAGUAR takes 15 s and
 # the 20/96 run 45 s; AVL can also spin forever on a geometry it cannot solve (a chain it reads tip
 # first), so a run is never waited for longer than this. Expiry is a `timeout` error and the process
@@ -238,33 +213,62 @@ class AvlAdapter(SolverAdapter):
         "aerosandbox": "aerosandbox",
     }
 
+    def __init__(self, runtime: SolverRuntime, rules: Rules | None = None) -> None:
+        """Create the adapter.
+
+        Args:
+            runtime: The runtime of the owning ``compute()`` call.
+            rules: The rule parameters of the call (the canon's, with the caller's overrides). If
+                omitted, those of the shipped canon without overrides.
+        """
+        super().__init__(runtime)
+        if rules is None:
+            from aero_kernel.build import (
+                shipped_build,  # build imports this module
+            )
+
+            rules = Rules(shipped_build().model)
+        self.rules = rules
+
+    def roll_rate_limit(self) -> float:
+        """The largest ``|p b / 2V|`` for which AVL is used: the canon rule ``avl-roll-rate-validity``."""
+        return self.rules.value("avl-roll-rate-validity", "max_roll_rate_coefficient")
+
+    def join_tolerance_m(self) -> float:
+        """The distance in m under which two hinge-line ends are one: the canon rule ``hinge-line-continuity``."""
+        return self.rules.value("hinge-line-continuity", "join_tolerance")
+
     def settings(self) -> dict[str, JsonValue]:
         """Every constant that shapes an AVL result or decides value versus error: mesh, core, checks.
 
         Not listed: the AVL compile limits (``AVL_MAX_*``). They only gate a refusal before the run.
+        The tolerances of the self-checks are the kernel configuration (``config.yaml``); the roll-rate
+        limit and the join tolerance are rule parameters of the canon, with the caller's overrides.
         """
+        cfg = config()
         return {
             "avl_nchord": N_CHORD,
             "avl_nspan": N_SPAN,
             "avl_airfoil_points_per_side": AIRFOIL_POINTS_PER_SIDE,
             "avl_core_ratio": CORE_RATIO,
             "avl_refine_factor": REFINE_FACTOR,
-            "avl_refinement_tolerance_mac": REFINEMENT_TOLERANCE_MAC,
-            "avl_roll_refinement_tolerance": ROLL_REFINEMENT_TOLERANCE,
+            "avl_refinement_tolerance_mac": cfg.avl_refinement_tolerance_mac.value,
+            "avl_roll_refinement_tolerance": cfg.avl_roll_refinement_tolerance.value,
             "avl_roll_nchord_front": SPLIT_N_CHORD[0],
             "avl_roll_nchord_aft": SPLIT_N_CHORD[1],
-            "avl_roll_branch_tolerance": ROLL_BRANCH_TOLERANCE,
+            "avl_roll_branch_tolerance": cfg.avl_roll_branch_tolerance.value,
             "avl_chord_spacing": CHORD_SPACING,
             "avl_sliver_steps": SLIVER_STEPS,
             "avl_claf_per_thickness": CLAF_PER_THICKNESS,
-            "avl_roll_rate_limit": ROLL_RATE_LIMIT,
-            "avl_roll_print_floor": ROLL_PRINT_FLOOR,
-            "avl_roll_moment_tolerance": ROLL_MOMENT_TOLERANCE,
-            "avl_control_echo_tolerance": CONTROL_ECHO_TOLERANCE,
-            "avl_cl_tolerance": CL_TOLERANCE,
+            "avl_roll_rate_limit": self.roll_rate_limit(),
+            "avl_roll_print_floor": cfg.avl_roll_print_floor.value,
+            "avl_roll_moment_tolerance": cfg.avl_roll_moment_tolerance.value,
+            "avl_control_echo_tolerance": cfg.avl_control_echo_tolerance.value,
+            "avl_cl_tolerance": cfg.avl_cl_tolerance.value,
+            "avl_contour_margin": cfg.avl_contour_margin.value,
             "avl_max_run_s": AVL_MAX_RUN_S,
             "avl_mesh_decimals": MESH_DECIMALS,
-            "avl_join_tolerance_m": JOIN_TOLERANCE_M,
+            "avl_join_tolerance_m": self.join_tolerance_m(),
         }
 
     async def _contours(self, airfoils: tuple[Airfoil, ...]) -> tuple[Contour, ...]:
@@ -387,7 +391,7 @@ class AvlAdapter(SolverAdapter):
             msg = "the vortex lattice run did not complete (no neutral point in the output)"
             logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])
             raise RuntimeError(msg)
-        if abs(output.cl - cl) > CL_TOLERANCE:
+        if abs(output.cl - cl) > config().avl_cl_tolerance.value:
             msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
             raise RuntimeError(msg)
         return output
@@ -430,19 +434,22 @@ class AvlAdapter(SolverAdapter):
             msg = "the vortex lattice run did not complete (no steady roll in the output)"
             logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])
             raise RuntimeError(msg)
-        if abs(output.cl - cl) > CL_TOLERANCE:
+        if abs(output.cl - cl) > config().avl_cl_tolerance.value:
             msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
             raise RuntimeError(msg)
-        if abs(output.cl_stability) > ROLL_MOMENT_TOLERANCE:
+        if abs(output.cl_stability) > config().avl_roll_moment_tolerance.value:
             msg = (
                 f"the steady roll left a rolling moment of {output.cl_stability} in stability axes"
             )
             raise RuntimeError(msg)
-        if abs(output.control - delta) > CONTROL_ECHO_TOLERANCE:
+        if abs(output.control - delta) > config().avl_control_echo_tolerance.value:
             msg = f"the vortex lattice echoed the control at {output.control}, not the commanded {delta}"
             raise RuntimeError(msg)
         linear = -output.cl_delta * delta / output.cl_p
-        if abs(output.p_hat - linear) > ROLL_BRANCH_TOLERANCE * abs(linear) + ROLL_PRINT_FLOOR:
+        cfg = config()
+        if abs(output.p_hat - linear) > (
+            cfg.avl_roll_branch_tolerance.value * abs(linear) + cfg.avl_roll_print_floor.value
+        ):
             raise FormulaError(
                 ErrorCategory.NOT_CONVERGED,
                 "avl_roll_branch_inconsistent",
@@ -458,7 +465,7 @@ class AvlAdapter(SolverAdapter):
         """Find the neutral point of the airplane at a lift coefficient.
 
         Runs the declared mesh and the mesh refined by ``REFINE_FACTOR``; the declared mesh's
-        value is returned. A disagreement above ``REFINEMENT_TOLERANCE_MAC`` is a
+        value is returned. A disagreement above ``avl_refinement_tolerance_mac`` (``config.yaml``) is a
         ``avl_mesh_not_converged`` warning; a refined mesh that overflows AVL's array is
         ``avl_refinement_unchecked``.
 
@@ -482,8 +489,9 @@ class AvlAdapter(SolverAdapter):
         def number(airfoil: Airfoil) -> int:
             return numbers.setdefault(airfoil, len(numbers))
 
-        declared = mesh_surfaces(airplane, N_SPAN, number)
-        refined = mesh_surfaces(airplane, N_SPAN * REFINE_FACTOR, number)
+        join = self.join_tolerance_m()
+        declared = mesh_surfaces(airplane, N_SPAN, number, join_tolerance_m=join)
+        refined = mesh_surfaces(airplane, N_SPAN * REFINE_FACTOR, number, join_tolerance_m=join)
         contours = await self._contours(tuple(numbers))
         first = await self._run(declared, contours, N_CHORD, N_SPAN, cl, reference)
         warnings: list[KernelWarning] = []
@@ -496,7 +504,7 @@ class AvlAdapter(SolverAdapter):
             warnings.append(_unchecked_warning("neutral point", n_chord, n_span, error.code))
         else:
             delta = abs(second.x_np - first.x_np) / reference.c_mac
-            if delta > REFINEMENT_TOLERANCE_MAC:
+            if delta > config().avl_refinement_tolerance_mac.value:
                 warnings.append(
                     KernelWarning.of(
                         "avl_mesh_not_converged",
@@ -524,7 +532,7 @@ class AvlAdapter(SolverAdapter):
         point. Runs the declared mesh and the mesh refined by ``REFINE_FACTOR`` with the ends of
         the driven devices as stations; the declared mesh's value is returned. The result is
         reported against the primer's range, and a disagreement of the meshes above
-        ``ROLL_REFINEMENT_TOLERANCE`` is declared.
+        ``avl_roll_refinement_tolerance`` (``config.yaml``) is declared.
 
         Args:
             airplane: The validated geometry, devices at rest, with one main wing and at least one
@@ -564,10 +572,13 @@ class AvlAdapter(SolverAdapter):
         def number(airfoil: Airfoil) -> int:
             return numbers.setdefault(airfoil, len(numbers))
 
+        join = self.join_tolerance_m()
         refined_split = (SPLIT_N_CHORD[0] * REFINE_FACTOR, SPLIT_N_CHORD[1] * REFINE_FACTOR)
 
         def driven(n_span: int, split: tuple[int, int]) -> tuple[MeshSurface, ...]:
-            main, *others = mesh_surfaces(airplane, n_span, number, drive_roll=True)
+            main, *others = mesh_surfaces(
+                airplane, n_span, number, drive_roll=True, join_tolerance_m=join
+            )
             return (*split_at_hinge(main, split), *others)
 
         declared = driven(N_SPAN, SPLIT_N_CHORD)
@@ -578,13 +589,14 @@ class AvlAdapter(SolverAdapter):
             declared, contours, (N_CHORD, N_SPAN), (cl, delta_a_deg), reference, xyz_ref
         )
         warnings: list[KernelWarning] = []
-        if abs(first.p_hat) > ROLL_RATE_LIMIT:
+        roll_limit = self.roll_rate_limit()
+        if abs(first.p_hat) > roll_limit:
             warnings.append(
                 KernelWarning.of(
                     "avl_roll_rate_beyond_range",
                     "AVL's primer gives -0.10 < pb/2V < 0.10 as the practical limit for roll "
                     "rates, beyond which results should be interpreted with caution.",
-                    detail={"p_hat": first.p_hat, "limit": ROLL_RATE_LIMIT},
+                    detail={"p_hat": first.p_hat, "limit": roll_limit},
                 )
             )
         n_chord, n_span = N_CHORD * REFINE_FACTOR, N_SPAN * REFINE_FACTOR
@@ -599,7 +611,9 @@ class AvlAdapter(SolverAdapter):
                 raise
             warnings.append(_unchecked_warning("roll rate", n_chord, n_span, error.code))
         else:
-            if abs(second.p_hat - first.p_hat) > ROLL_REFINEMENT_TOLERANCE * abs(first.p_hat):
+            if abs(second.p_hat - first.p_hat) > (
+                config().avl_roll_refinement_tolerance.value * abs(first.p_hat)
+            ):
                 warnings.append(
                     KernelWarning.of(
                         "avl_mesh_not_converged",

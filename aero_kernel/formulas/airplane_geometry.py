@@ -1,39 +1,10 @@
 """Canon formula ``airplane-geometry``: S_ref, b_ref, c_MAC of the main wing (ARCHITECTURE ch. 8.5)."""
 
-from collections.abc import Mapping
-
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import airplane_of
-from aero_kernel.registry import CheckResult, formula, precondition
+from aero_kernel.registry import formula
 
 __all__ = ["airplane_geometry"]
-
-
-@precondition("airplane-geometry", "main_wing_has_spanwise_extent")
-def main_wing_has_spanwise_extent(x: Mapping[str, object]) -> CheckResult:
-    """The main wing extends further in y than in z over its stored sections (canon entry).
-
-    A vertical surface typed ``main_wing`` is refused before AeroSandbox measures it: ASB takes a
-    slant planform for one. The threshold (y-extent > z-extent, a mean inclination below 45 deg) is
-    the proposal of #1253 and awaits the maintainer's approval.
-    """
-    airplane = airplane_of(x)
-    for wing in (airplane.wings or {}).values():
-        if wing.surface_type != "main_wing":
-            continue
-        ys = [section.xyz_le[1] for section in wing.x_secs]
-        zs = [section.xyz_le[2] for section in wing.x_secs]
-        y_extent, z_extent = max(ys) - min(ys), max(zs) - min(zs)
-        if y_extent <= z_extent:
-            return CheckResult(
-                state="violated",
-                message=(
-                    f"the main wing {wing.name!r} extends {y_extent:.4g} m in y and {z_extent:.4g} m "
-                    "in z, so it is a vertical surface; check its surface type (a fin or a V-tail "
-                    "is not a main wing)"
-                ),
-            )
-    return CheckResult(state="held", message="the main wing extends further in y than in z")
 
 
 @formula("airplane-geometry")

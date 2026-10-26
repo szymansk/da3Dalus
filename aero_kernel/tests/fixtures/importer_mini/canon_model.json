@@ -1,8 +1,9 @@
 {
-  "content_hash": "sha256:ac04acac482517dae00a624c79210e2d6b2cd5bf4361798e0c9e9a285396b399",
+  "content_hash": "sha256:a640910acc89a979b278039fb85ea8ac4a72075009958f40b91e35779dc7a94b",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
+      "config": null,
       "defaults": {
         "gravity": {
           "basis": "standard",
@@ -254,6 +255,7 @@
         "aircraft-mass": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "geometry:total_mass_kg"
           ],
@@ -272,6 +274,7 @@
         "airplane": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -288,6 +291,7 @@
         "gravity": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -304,6 +308,7 @@
         "ratio": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -320,6 +325,7 @@
         "weight": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -336,6 +342,7 @@
         "weight-estimate": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -352,6 +359,7 @@
         "weight-flapped": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -368,6 +376,7 @@
         "weight-outer": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -384,6 +393,7 @@
         "weight-twice": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -400,6 +410,7 @@
         "weight-weighed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -414,6 +425,7 @@
           "unit": "N"
         }
       },
+      "rules": {},
       "taxonomy": {
         "directions": [],
         "disciplines": [],

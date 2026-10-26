@@ -3,11 +3,13 @@
 import math
 from collections.abc import Mapping
 
+from aero_kernel.build import shipped_build
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.context import Context, Solvers, Value
 from aero_kernel.errors import display_slug
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
+from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
@@ -87,6 +89,11 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_max_iterations": 300,
     "opt_active_bound_fraction": 1e-6,
     "opt_effectiveness_exponent": 2.751428551177291,
+    "opt_probe_tolerance": 1e-6,
+    "opt_peak_tolerance": 1e-6,
+    "opt_zero_span": 1e-15,
+    "opt_alpha_margin_deg": 1e-9,
+    "opt_hinge_floor": 1e-16,
 }
 
 
@@ -165,11 +172,13 @@ def solvers_with(
     geometry: GeometryAdapter | None = None,
 ) -> Solvers:
     """Solvers with the given adapters; one left out is the real one on a fresh runtime."""
+    rules = Rules(shipped_build().model)
     return Solvers(
         atmosphere=atmosphere or AtmosphereAdapter(SolverRuntime()),
         opti=opti or OptiAdapter(SolverRuntime()),
-        avl=avl or AvlAdapter(SolverRuntime()),
+        avl=avl or AvlAdapter(SolverRuntime(), rules),
         geometry=geometry or StubGeometry(),
+        rules=rules,
     )
 
 
