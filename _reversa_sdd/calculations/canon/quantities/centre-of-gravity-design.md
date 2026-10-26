@@ -11,6 +11,7 @@ tags:
   - stage/stability-structure
   - role/derived
 type: scalar
+figure: neutral-point
 ---
 
 # CG for the target static margin · `x_cg,design`

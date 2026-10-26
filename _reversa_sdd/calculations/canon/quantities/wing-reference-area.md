@@ -11,6 +11,7 @@ tags:
   - group/geometry-references
   - role/derived
 type: scalar
+figure: wing-area-span
 ---
 
 # Wing reference area · `S_ref`

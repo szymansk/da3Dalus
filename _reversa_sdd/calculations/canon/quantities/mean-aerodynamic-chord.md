@@ -11,6 +11,7 @@ tags:
   - group/geometry-references
   - role/derived
 type: scalar
+figure: mean-aerodynamic-chord
 ---
 
 # Mean aerodynamic chord · `c_MAC`

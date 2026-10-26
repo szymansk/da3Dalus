@@ -10,6 +10,7 @@ tags:
   - point/none
   - role/output
 type: scalar
+figure: tail-arms
 ---
 
 # Vertical tail volume · `V_V`
