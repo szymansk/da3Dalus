@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" role="img" aria-labelledby="fg-title fg-desc"><title id="fg-title">Mean aerodynamic chord and its leading-edge position</title><desc id="fg-desc">c_MAC is a length; x_le,MAC is the position where that length starts. Trapezoid half-wing (hand example, ASB 4.2.9 definitions): the aerodynamic centre is x_le,MAC + 0.25 c_MAC.</desc><style>
+.fg-t{fill:var(--ink,#23211C);font:12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-b{font-weight:600}
+.fg-m{fill:var(--ink-2,#6B675E);font:11px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-h{fill:var(--ink,#23211C);font:600 13px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-ln{stroke:var(--ink,#23211C);stroke-width:1.4;fill:none}
+.fg-thin{stroke:var(--ink-3,#9A958A);stroke-width:1;fill:none}
+.fg-dash{stroke-dasharray:5 4}
+.fg-wing{fill:var(--inp-bg,#EBF1F7);stroke:var(--inp,#4C7198);stroke-width:1.4}
+.fg-gap{fill:var(--hub-bg,#FAF2E4);stroke:var(--hub,#A67C3C);stroke-width:1.2;stroke-dasharray:4 3}
+.fg-acc{stroke:var(--sel,#6B4FA0);stroke-width:2;fill:none}
+.fg-accf{fill:var(--sel,#6B4FA0)}
+.fg-acct{fill:var(--sel,#6B4FA0);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-bad{stroke:var(--bad,#C0392B);stroke-width:2;fill:none}
+.fg-badf{fill:var(--bad,#C0392B)}
+.fg-badt{fill:var(--bad,#C0392B);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-good{stroke:var(--good,#2E8B57);stroke-width:2;fill:none}
+.fg-goodf{fill:var(--good,#2E8B57)}
+.fg-box{fill:var(--panel,#FFFFFF);stroke:var(--line-2,#CFC9BC);stroke-width:1}
+.fg-dot{fill:var(--ink,#23211C)}
+</style><polygon points="270,62 330,62 330,197 270,197" class="fg-gap"/><polygon points="330,62 810,134 810,224 330,242" class="fg-wing"/><line x1="270" y1="44" x2="270" y2="260" class="fg-thin fg-dash"/><text x="270" y="38" class="fg-m" text-anchor="middle">centreline y = 0</text><line x1="543.33" y1="94" x2="543.33" y2="234" class="fg-acc"/><circle cx="543.33" cy="94" r="3.5" class="fg-accf"/><circle cx="543.33" cy="234" r="3.5" class="fg-accf"/><text x="552.33" y="168" class="fg-acct" text-anchor="start">c_MAC = 0.233 m  (a length)</text><text x="552.33" y="88" class="fg-m" text-anchor="start">MAC at y = 0.456 m</text><line x1="208" y1="52" x2="208" y2="260" class="fg-thin"/><polygon points="208,266 205.4,259.5 210.6,259.5" class="fg-dot"/><text x="200" y="272" class="fg-m" text-anchor="end">x (aft)</text><line x1="203" y1="62" x2="213" y2="62" class="fg-ln"/><text x="198" y="66" class="fg-m" text-anchor="end">0  root LE</text><line x1="208" y1="94" x2="543.33" y2="94" class="fg-thin fg-dash"/><line x1="203" y1="94" x2="213" y2="94" class="fg-acc"/><text x="198" y="98" class="fg-acct" text-anchor="end">x_le,MAC = 0.053 m</text><line x1="203" y1="129" x2="543.33" y2="129" class="fg-thin fg-dash"/><text x="198" y="133" class="fg-t" text-anchor="end">x_AC = 0.112 m</text><line x1="203" y1="202" x2="213" y2="202" class="fg-bad"/><text x="198" y="220" class="fg-badt" text-anchor="end">c_MAC = 0.233 m is not a position</text><rect x="170" y="300" width="800" height="84" rx="6" class="fg-box"/><text x="184" y="322" class="fg-badt" text-anchor="start">Misreading</text><text x="184" y="342" class="fg-t" text-anchor="start">x = c_MAC (0.233 m) puts the MAC 0.180 m too far aft. c_MAC is how long the chord is;</text><text x="184" y="360" class="fg-t" text-anchor="start">where it starts is x_le,MAC = 0.053 m, and its trailing edge is x_le,MAC + c_MAC = 0.287 m.</text><text x="184" y="376" class="fg-m" text-anchor="start">Example: c_root 0.3 m at y = 0.1 m, c_tip 0.15 m at y = 0.9 m, tip leading edge 0.12 m aft.</text></svg>

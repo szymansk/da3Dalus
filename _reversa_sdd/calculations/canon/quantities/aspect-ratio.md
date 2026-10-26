@@ -11,6 +11,7 @@ tags:
   - group/geometry-references
   - role/derived
 type: scalar
+figure: aspect-ratio
 ---
 
 # Aspect ratio · `AR`

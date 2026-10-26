@@ -261,6 +261,29 @@ Three gates before `approved`:
 3. **Implementations** — every implementing node either agrees, or its deviation is
    declared and justified.
 
+### Figures
+
+Maintainer 2026-10-25 (#1252): "Grafiken liefern deutlich bessere Erklärungen als reine Formeln. Wenn
+es möglich ist, einen Wert oder eine Formel anhand einer einfachen Grafik zu visualisieren, dann müssen
+wir das im Navigator tun — insbesondere bei geometrischen Themen."
+
+- **The rule.** An entry whose quantity or relation a simple picture explains has a figure. Geometric
+  entries (a length, an area, a position, an angle, a distribution along the span) always do; the approval
+  checklist gets the item **Figure** for them: the figure exists, is current, and shows the definition.
+- **What a figure shows.** The definition on one simple example with numbers: inputs labelled, the result
+  marked, and the typical misreading where one exists (the MAC length read as a position, the area
+  without the centreline gap next to the span with it). Numbers come from a stated hand example computed
+  in the script (and checked against the real tool in the aero tier, `test_canon_figures_aero.py`),
+  never typed into a drawing and never invented.
+- **How it is made.** `figures/<name>.py` defines `CAPTION` and `build() -> str` (SVG text); the shared
+  `figures/_svg.py` and `figures/_example.py` hold the drawing helpers and the hand example. `scripts/build_canon_figures.py`
+  writes `figures/<name>.svg` (deterministic, committed); CI runs it with `--check`, like the navigator.
+- **How an entry names it.** A quantity entry carries `figure: <name>` in its front matter (a dropped
+  field: the canon model does not carry it). Several entries may name one figure. The caption is the SVG's
+  `<desc>`, written once, in the script. The navigator embeds the SVG inline in the quantity's panel
+  (click to enlarge); it builds from the figure files and the front matter and knows no figure itself.
+  A named figure that does not exist, and a figure no entry names, are errors.
+
 ### Preconditions belong to the binding
 
 A formula can be exact and its application still wrong, because the inputs bound to it do

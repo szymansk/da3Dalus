@@ -10,6 +10,7 @@ tags:
   - role/target
 type: scalar
 data: default:static-margin-target
+figure: neutral-point
 ---
 
 # Static-margin target · `SM_target`

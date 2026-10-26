@@ -10,6 +10,7 @@ tags:
   - point/free
   - role/output
 type: curve
+figure: spanwise-loads
 ---
 
 # Spanwise bending moment of the main wing · `M(y)`
