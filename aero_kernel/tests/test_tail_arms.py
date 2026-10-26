@@ -193,10 +193,9 @@ async def test_a_horizontal_arm_needs_exactly_one_horizontal_tail(tail: bool) ->
         wings = {k: w.model_dump() for k, w in (airplane.wings or {}).items()}
         wings["second"] = {**wings["htail"], "name": "second"}
         airplane = AirplaneGeometry.model_validate({"name": "two", "wings": wings})
+    context = context_with(StubAtmosphere({}))
     with pytest.raises(FormulaError) as raised:
-        await horizontal_tail_arm(
-            {"airplane": airplane, "x_cg": 0.1}, context_with(StubAtmosphere({}))
-        )
+        await horizontal_tail_arm({"airplane": airplane, "x_cg": 0.1}, context)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
     assert raised.value.code == "unsupported_layout"
 

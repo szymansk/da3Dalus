@@ -123,8 +123,9 @@ def test_a_wing_without_a_finite_aerodynamic_centre_is_refused(
         "aerodynamic_center",
         _nan_centre,
     )
+    plane = airplane()
     with pytest.raises(FormulaError) as raised:
-        quarter_chord_mac_x(airplane(), "Main")
+        quarter_chord_mac_x(plane, "Main")
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
