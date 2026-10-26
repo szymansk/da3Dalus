@@ -7,8 +7,10 @@ from typing import Any
 import pytest
 from aero_kernel import compute
 from aero_kernel.build import shipped_build
+from aero_kernel.canon.model import CanonModel
 from aero_kernel.rules import Rules, rule_override_errors
 from aero_kernel.schema import AircraftInput
+from aero_kernel.tests.canon_builders import base_namespaces, with_hash
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.validate import validate_aircraft
 
@@ -96,7 +98,6 @@ def test_the_section_threshold_comes_from_the_canon() -> None:
     [
         ("no-such-rule.x", "unknown_rule_parameter"),
         (f"{RULE}.no_such", "unknown_rule_parameter"),
-        ("static-margin-probe-agreement.agreement_tolerance", "rule_parameter_pending"),
         (f"{RULE}.max_inclination", "non_finite_number"),
     ],
 )
@@ -106,10 +107,46 @@ def test_a_bad_override_is_an_input_error(key: str, code: str) -> None:
     assert (error.code, error.input_path) == (code, f"rule_overrides.{key}")
 
 
+def pending_model() -> CanonModel:
+    """A model whose rules.yaml-equivalent table has a pending parameter (a proposal, not decided)."""
+    namespaces = base_namespaces()
+    namespaces["calc"]["rules"] = {
+        "a-proposal": {
+            "applies_to": {"quantity": "aircraft-mass"},
+            "kind": "input",
+            "on_violation": "error",
+            "criterion": "The value stays below a limit that is only proposed.",
+            "parameters": {
+                "limit": {
+                    "value": 5.0,
+                    "unit": "kg",
+                    "basis": "convention",
+                    "status": "pending",
+                    "source": "a proposal awaiting the maintainer",
+                    "regime": "regime-independent",
+                }
+            },
+        }
+    }
+    return CanonModel.model_validate(with_hash(namespaces))
+
+
+def test_overriding_a_pending_parameter_is_an_input_error() -> None:
+    (error,) = rule_override_errors({"a-proposal.limit": 1.0}, pending_model())
+    assert (error.code, error.input_path) == (
+        "rule_parameter_pending",
+        "rule_overrides.a-proposal.limit",
+    )
+
+
 def test_a_pending_parameter_is_never_read() -> None:
-    rules = Rules(MODEL)
+    rules = Rules(pending_model())
     with pytest.raises(ValueError, match="pending"):
-        rules.value("static-margin-probe-agreement", "agreement_tolerance")
+        rules.value("a-proposal", "limit")
+
+
+def test_the_adopted_probe_tolerance_is_read_as_five_percent_mac() -> None:
+    assert Rules(MODEL).value("static-margin-probe-agreement", "agreement_tolerance") == 0.05
 
 
 @pytest.mark.asyncio
