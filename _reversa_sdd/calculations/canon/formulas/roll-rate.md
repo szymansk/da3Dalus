@@ -30,6 +30,7 @@ inputs:
 outputs: {p: roll-rate-approach, p_hat: roll-rate-nondimensional-approach}
 applications:
   - id: approach
+    bind: {airplane: airplane-landing}
     when: has_aileron
 worlds: [aerobuildup, avl]
 ---
@@ -47,6 +48,8 @@ worlds: [aerobuildup, avl]
 
 **AVL world, valid only for `|pb/2V| ≤ 0.10` (decision (b) (maintainer, 2026-10-25, #1243): "a würde das Intervall verfälschen und dann ist nicht klar, welche Grenze belastbar ist", finding #1181).** AVL is linear in δ by construction (`Avl/src/amake.f:1184-1187`, "linearize about zero deflection"), and its primer gives `−0.10 < pb/2V < 0.10` as the practical limit for roll rates, beyond which results "should be interpreted with caution" (`Avl/avl_doc.txt:121-141`). The BRYAN AVL value `pb/2V = 0.276` lies outside it. **Decision (b):** the AVL world is excluded when its own result `|pb/2V|` exceeds 0.10 (both outputs, `roll-rate-approach` and `roll-rate-nondimensional-approach`, drop it together). Inside the range the interval spans both worlds; outside it the quantity is the AeroBuildup world alone, and the AVL world is not used — its value is not part of the interval. The exclusion is declared, never silent (ADR 0020, ADR 0027 point 8): the warning `world_outside_validity` names the world and carries the AVL value and the limit. The range is exactly the stated one: `|pb/2V| = 0.10` is inside. If AeroBuildup fails, the quantity is an error as before (a failed world is never dropped).
 
+**The approach application binds the landing configuration (maintainer decision 2026-10-26, #1212: "v_app mit Klappen").** `V_app = k · V_S,LDG` comes from the landing configuration ([[approach-speed]], [[stall-speed]] application `landing`), so the roll rate at that speed is evaluated on the same airplane: `airplane-landing`, the flaps at `flap-deflection-landing` ([[airplane-configuration]]), not the clean `airplane`. Without flaps `airplane-landing` is the airplane itself, so nothing changes for a flapless aircraft. **Flaperons:** the landing deflection is the symmetric bias of the surface and the aileron deflection `δ_a` is applied antisymmetrically on top (D9/D10: flaperons XOR ailerons + flaps) — the right half at `δ_f − δ_a`, the left at `δ_f + δ_a` in the geometry's sign (trailing edge down positive). In the AeroBuildup world that is two control surfaces on the same rib at the same hinge (one symmetric, one antisymmetric; AeroSandbox adds their angle shifts `τ·δ` and multiplies their drag factors, so the drag factor of a flaperon is the product of the two, not the factor of the sum); in the AVL world two control variables on the same stations (`flap` symmetric, `aileron` antisymmetric). The flap deflection is held while the aileron is varied, also in AVL's linear consistency run. The roll-rate target at cruise ([[roll-rate-target-cruise]]) and `aileron-deflection-required` at cruise stay on the clean airplane. Roll rate at `V_max` is not part of this (#1312). **Validity:** the flap model of both worlds is the one declared in [[airplane-configuration]] (AeroBuildup: `τ·δ`, no separation, the section's `C_L,max` is not raised; AVL: linear in δ); at landing deflections the roll rate carries both caveats, declared as `control_surface_fit_range_unknown` (AeroBuildup) and `avl_flap_linearised` (AVL).
+
 **Steady roll, defined once (maintainer decision on #1211, 2026-10-24; this entry and the two that reference it).** Both worlds solve the same steady roll: rotation about the stability x axis through the airplane's reference point `xyz_ref`, the stability-axis rolling moment zero, β = 0, pitch and stability-axis yaw rate zero, no yaw balance — AVL's default axes (`Avl/src/avl.f:652`, `aoper.f:1120`); in AeroBuildup `p_b = p cos α`, `r_b = p sin α`.
 
 **Sign.** A positive δ_a commands a roll to the right (right trailing edge up); the roll rate is then positive, a negative δ_a gives the mirrored result.
@@ -60,7 +63,7 @@ solve for alpha, p (steady roll at V, at the given aileron deflection):   L(V, a
 evaluated at V = V_app;   p_hat = p * b_ref / (2 * V_app)
 ```
 
-**Produces** [[roll-rate-approach]] · [[roll-rate-nondimensional-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[approach-speed]] · [[wing-span]] · [[aileron-deflection]]
+**Produces** [[roll-rate-approach]] · [[roll-rate-nondimensional-approach]]  ·  **from** [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[approach-speed]] · [[wing-span]] · [[aileron-deflection]]
 
 **Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. One symmetric aileron angle ±δ_a; an up/down differential is not modelled (out of the MVP, maintainer 2026-10-01).
 
@@ -91,7 +94,7 @@ speed.
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/roll_rate.py` | EXACT | 🟢 | both worlds as written; declares `hinge_line_averaged` (AeroBuildup), a deflection beyond the reference range, and the AVL world outside `|pb/2V| ≤ 0.10` (`world_outside_validity`, decision (b), #1243); the interval over the remaining worlds is formed by the engine (A11) |
+| `aero_kernel/formulas/roll_rate.py` | EXACT | 🟢 | both worlds as written, on `airplane-landing` (#1212: flaps in both worlds, a flaperon's landing deflection as symmetric bias); declares `hinge_line_averaged` (AeroBuildup), a deflection beyond the reference range, and the AVL world outside `|pb/2V| ≤ 0.10` (`world_outside_validity`, decision (b), #1243); the interval over the remaining worlds is formed by the engine (A11) |
 
 ## Approval
 

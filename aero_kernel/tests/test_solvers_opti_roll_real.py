@@ -159,3 +159,41 @@ async def test_jaguar_at_forty_degrees_fails_loudly_and_never_returns_a_value() 
                 airplane, FleetMember.JAGUAR.mass_kg, 9.80665, air, 8.188976805083124, 40.0
             )
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
+
+
+def rv7_landing() -> AirplaneGeometry:
+    """RV-7 with its flaps at the maintainer's guessed landing deflection (30 deg)."""
+    from aero_kernel.devices import with_flaps_at
+
+    plane = AirplaneGeometry.model_validate(reference_document(FleetMember.RV7))
+    return with_flaps_at(plane, 30.0)
+
+
+async def test_a_flap_down_raises_the_lift_at_a_fixed_angle_of_attack() -> None:
+    """The sign of the mapping: trailing edge down positive in AeroSandbox, so a positive flap
+    deflection shifts the lift curve up (RV-7: C_L at 0 deg 0.358 clean, 0.444 with 30 deg)."""
+    from aero_kernel.solvers.aerobuildup import sweep_polar
+
+    plane = AirplaneGeometry.model_validate(reference_document(FleetMember.RV7))
+    clean = sweep_polar(to_asb_airplane(plane), sea_level(), 6.8, (0.0, 1.0), "xlarge")
+    flapped = sweep_polar(to_asb_airplane(rv7_landing()), sea_level(), 6.8, (0.0, 1.0), "xlarge")
+    assert flapped.cl[0] > clean.cl[0]
+    assert math.isclose(flapped.cl[0], 0.444, abs_tol=5e-3)  # regression of this build
+
+
+async def test_a_deflected_flap_alone_does_not_roll_and_the_command_comes_on_top() -> None:
+    """RV-7 with landing flaps at 12 m/s (the approach speed is below the window of AeroBuildup's
+    kinked flapped curve, see test_roll_rate_fleet): a symmetric flap gives no roll rate, the
+    aileron gives the regression value, and the negative command mirrors it."""
+    async with SolverRuntime(max_workers=1) as runtime:
+        adapter = OptiAdapter(runtime)
+        args = (FleetMember.RV7.mass_kg, GRAVITY, sea_level(), 12.0)
+        rest = await adapter.steady_roll(rv7_landing(), *args, 0.0)
+        plus = await adapter.steady_roll(rv7_landing(), *args, 20.0)
+        minus = await adapter.steady_roll(rv7_landing(), *args, -20.0)
+    assert math.isclose(rest.p_rad_s, 0.0, abs_tol=1e-8)
+    assert math.isclose(plus.p_rad_s, 7.5628661, rel_tol=1e-4)
+    assert math.isclose(minus.p_rad_s, -plus.p_rad_s, rel_tol=1e-6)
+    (fit,) = [w for w in plus.warnings if w.code == "control_surface_fit_range_unknown"]
+    assert fit.detail["flaps"] == [{"wing": "main_wing", "device": "flaps", "deflection_deg": 30.0}]
+    assert "min_confidence" in fit.detail

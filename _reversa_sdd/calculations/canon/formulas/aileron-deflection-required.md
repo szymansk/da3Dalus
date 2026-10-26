@@ -33,7 +33,7 @@ applications:
     given: [roll-rate-target-cruise, cruise-speed-target]
     when: has_aileron
   - id: approach
-    bind: {v: approach-speed, p_target: roll-rate-target-approach}
+    bind: {airplane: airplane-landing, v: approach-speed, p_target: roll-rate-target-approach}
     produce: {delta_a_req: aileron-deflection-required-approach}
     given: [roll-rate-target-approach]
     when: has_aileron
@@ -64,7 +64,9 @@ world aerobuildup:  search delta_a upward from 0 until p(delta_a) stops increasi
 world avl:          linear in delta; delta_a,req solved directly
 ```
 
-**Produces** [[aileron-deflection-required-cruise]] · [[aileron-deflection-required-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed-target]] · [[approach-speed]] · [[roll-rate-target-cruise]] · [[roll-rate-target-approach]]
+**Produces** [[aileron-deflection-required-cruise]] · [[aileron-deflection-required-approach]]  ·  **from** [[airplane]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed-target]] · [[approach-speed]] · [[roll-rate-target-cruise]] · [[roll-rate-target-approach]]
+
+**The approach application binds the landing configuration (maintainer decision 2026-10-26, #1212: "v_app mit Klappen").** `V_app = k · V_S,LDG` comes from the landing configuration, so `δ_a,req` at that speed is solved on `airplane-landing` — the flaps at `flap-deflection-landing` ([[airplane-configuration]]) — not on the clean `airplane`; the cruise application stays on the clean airplane. For a flaperon the landing deflection is the symmetric bias and `δ_a` is applied antisymmetrically on top; the details and the declared caveats are those of [[roll-rate]]. Without flaps `airplane-landing` is the airplane itself. (Binding change only; the entry's status is unchanged.)
 
 **Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. One symmetric aileron angle ±δ_a; an up/down differential is not modelled (out of the MVP, maintainer 2026-10-01).
 

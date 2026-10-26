@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e07787d23924de1f92bf2fea8384b7a10e9a7858b0d861a4ed62fe2c311c18f1",
+  "content_hash": "sha256:bf810d6a1e01aced0a311b46db72bfc722b9af19395b6abc8ac22d6ae3278727",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -306,7 +306,7 @@
             },
             {
               "bind": {
-                "airplane": "calc:airplane",
+                "airplane": "calc:airplane-landing",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "p_target": "calc:roll-rate-target-approach",
@@ -2584,7 +2584,7 @@
             {
               "bind": {
                 "a": "calc:speed-of-sound",
-                "airplane": "calc:airplane",
+                "airplane": "calc:airplane-landing",
                 "b_ref": "calc:wing-span",
                 "delta_a": "calc:aileron-deflection",
                 "g": "calc:gravity",

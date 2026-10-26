@@ -283,14 +283,28 @@ async def test_wiesel_roll_rate_waits_for_the_stall_speed_the_fuselage_blocks() 
         assert "because `stall-speed-landing` failed" in quantity.error.message
 
 
-async def test_rv7_roll_rate_waits_for_the_landing_stall_speed_with_deflected_flaps() -> None:
-    """RV-7's flaps are set to the maintainer's guess (landing 30 deg); the kernel does not yet pass
-    deflected control surfaces to AeroBuildup and declares it rather than computing the clean
-    airplane, so the approach speed and the roll rate wait for it."""
+# RV-7 on approach (#1212): the landing configuration, flaps at 30 deg, V_app = 1.3 * 6.8076 m/s.
+RV7_AVL_P_DEG_S, RV7_AVL_P_HAT = 270.74438, 0.21892
+
+
+async def test_rv7_roll_on_approach_is_evaluated_on_the_landing_configuration() -> None:
+    """Maintainer decision 2026-10-26: the approach roll uses the landing configuration. The airplane
+    is computed with its flaps (the approach speed is no longer upstream-failed), the AVL world
+    gives a value (regression), and the AeroBuildup world declares that the flapped wing cannot carry
+    its weight at V_app before the first C_L peak of the sweep (C_L 0.681 needed, first peak 0.651):
+    the flapped lift curve of AeroBuildup has a local peak far below the stall (a tau * delta kink),
+    so the quantity is an error with the AVL value in worlds_ok, never a world dropped (A11)."""
     for quantity in (await run(FleetMember.RV7)).quantities:
         assert quantity.status is QuantityStatus.ERROR, quantity.slug
         assert quantity.error is not None
-        assert quantity.error.code == "upstream_failed"
-        assert quantity.error.detail["causes"] == [
-            {"quantity": "stall-speed-landing", "code": "unsupported_configuration"}
-        ]
+        assert (quantity.error.category, quantity.error.code) == (
+            ErrorCategory.NOT_CONVERGED,
+            "not_converged",
+        )
+        assert close(float(quantity.error.detail["cl_needed"]), 0.6811605, 1e-5)  # pyright: ignore[reportArgumentType]
+        assert close(float(quantity.error.detail["cl_peak"]), 0.6505555, 1e-5)  # pyright: ignore[reportArgumentType]
+        worlds_ok = quantity.error.detail["worlds_ok"]
+        assert isinstance(worlds_ok, dict)
+        assert set(worlds_ok) == {AVL}
+        golden = RV7_AVL_P_DEG_S if quantity.slug == SLUGS[0] else RV7_AVL_P_HAT
+        assert close(float(worlds_ok[AVL]), golden, 1e-4), quantity.slug  # pyright: ignore[reportArgumentType]

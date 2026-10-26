@@ -71,6 +71,8 @@ The limitation was first noted in ANFORDERUNGEN.md, § "Rollwirkung gegen die ge
 15–25° at Re ≈ 60 000, unverified); both describe it as a NeuralFoil flap model, which the code does not
 confirm (#1181). Landing settings typically lie above that range.
 
+**How the tools are given the flaps (#1212).** The deflection is the angle itself, trailing edge down positive, the same on both halves. AeroBuildup receives one symmetric `ControlSurface` at the mean of the segment's root and tip hinge (`hinge_line_averaged` where they differ); AVL a `flap` control (SgnDup +1) on the stations of the flap, driven at the deflection. A flaperon carries the deflection as its symmetric bias; the aileron command comes on top ([[roll-rate]]). Declared with every value that is computed on a deflected flap: AeroBuildup `control_surface_fit_range_unknown` (the flap shifts the section's lift curve by `τ·δ`; the section's `C_L,max` is that of the clean airfoil, so a real flap's maximum-lift gain is not modelled — `stall-speed-takeoff`/`-landing` are the kernel's regression values, not validated against a flapped wing), AVL `avl_flap_linearised`.
+
 **Source.** 🔴 NO SOURCE FOUND — a construction step, adopted on the maintainer's statement in
 [[stall-speed]] (2026-10-02). No published source exists for a construction step; the rules
 above are **adopted on the maintainer's authority** (statement 2026-10-02, confirmed 2026-10-24).
@@ -83,7 +85,7 @@ deflections; landing settings of RC models lie above the unverified 15–25° ra
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/airplane_configuration.py` | EXACT | 🟢 | flaps reaching AeroBuildup/AVL are refused until #1212; without flaps the configured airplane is the airplane |
+| `aero_kernel/formulas/airplane_configuration.py` | EXACT | 🟢 | the configured flaps reach AeroBuildup (symmetric control surface) and AVL (symmetric control `flap`) since #1212; without flaps the configured airplane is the airplane |
 
 ## Approval
 

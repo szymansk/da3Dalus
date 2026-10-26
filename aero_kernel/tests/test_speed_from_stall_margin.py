@@ -16,8 +16,15 @@ from aero_kernel.solvers.opti import OptiAdapter, Stall, StallRequest, StallSolu
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.solver_builders import InProcessRuntime
-from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, StubOpti, consistent_stall, lift_curve
-from aero_kernel.tests.test_stall_speed_engine import RHO, V_CLEAN, aircraft, by_slug, run
+from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, StubOpti, lift_curve
+from aero_kernel.tests.test_stall_speed_engine import (
+    RHO,
+    V_CLEAN,
+    aircraft,
+    by_slug,
+    flap_aware_stall,
+    run,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -108,31 +115,30 @@ async def test_flapped_aircraft_without_a_landing_deflection_is_upstream_failed(
     assert approach.error.category is ErrorCategory.UPSTREAM_FAILED
 
 
-async def test_flapped_aircraft_approach_upstream_failed(
+async def test_flapped_aircraft_approach_speed_is_computed_with_the_landing_flap(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A flapped landing is refused by the real adapter (no flap mapping, M3); the approach speed
-    is upstream_failed, never the clean speed times the margin."""
+    """The real adapter is given the flapped landing airplane: the approach speed is the margin
+    times the flapped landing stall speed, never the clean speed times the margin."""
     adapter = OptiAdapter(InProcessRuntime())
+    seen: list[AirplaneGeometry] = []
 
     def worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
+        seen.append(request.airplane)
         return WorkerOutcome(
-            value=consistent_stall(
-                request.airplane, request.mass_kg, request.gravity, request.n_load, request.air
-            ),
-            diagnostics=WorkerDiagnostics(duration_s=0.0),
+            value=flap_aware_stall(request), diagnostics=WorkerDiagnostics(duration_s=0.0)
         )
 
     monkeypatch.setattr(opti_module, "stall_worker", worker)
     solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=adapter)
     result = await evaluate(
         shipped_build(),
-        aircraft(True, **{"flap-deflection-landing": 30.0}),
+        aircraft(True, **{"flap-deflection-landing": 30.0, "approach-speed-margin-target": 1.3}),
         ComputeRequest(quantities=("approach-speed",)),
         solvers=solvers,
     )
     (approach,) = result.quantities
-    assert approach.status is QuantityStatus.ERROR
-    assert approach.value is None
-    assert approach.error is not None
-    assert approach.error.category is ErrorCategory.UPSTREAM_FAILED
+    assert approach.status is QuantityStatus.OK
+    assert [flap_deflection(a) for a in seen] == [30.0]
+    assert close(approach.value, 1.3 * V_CLEAN / math.sqrt(1.3), 1e-9)
+    assert not close(approach.value, 1.3 * V_CLEAN, 1e-3)

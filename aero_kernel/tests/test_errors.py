@@ -583,6 +583,8 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "missing_hinge": ErrorCategory.INVALID_INPUT,
         "unsupported_layout": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "roll_device_on_unmirrored_surface": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "flap_on_unmirrored_surface": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "flap_deflections_differ": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "hinge_line_discontinuous": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "avl_array_limit": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "avl_roll_branch_inconsistent": ErrorCategory.NOT_CONVERGED,

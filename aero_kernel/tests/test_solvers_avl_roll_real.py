@@ -113,3 +113,23 @@ async def test_the_constants_are_what_the_reference_script_prints() -> None:
     assert set(found) == {"BRYAN", "JAGUAR"}
     for member in INDEPENDENT:
         assert math.isclose(found[member.name], INDEPENDENT[member], abs_tol=1e-5), member
+
+
+async def test_a_deflected_flap_alone_does_not_roll_in_avl_and_the_command_comes_on_top() -> None:
+    """RV-7 with landing flaps (30 deg) at C_L 0.7: the symmetric flap gives no roll (the sign and
+    symmetry of the flap control), the aileron gives the regression value (0.21929 against 0.22094
+    clean) and the negative command mirrors it. The flap is declared as linearised."""
+    from aero_kernel.devices import with_flaps_at
+
+    clean = AirplaneGeometry.model_validate(reference_document(FleetMember.RV7))
+    landing = with_flaps_at(clean, 30.0)
+    async with SolverRuntime(max_workers=1) as runtime:
+        adapter = AvlAdapter(runtime)
+        rest = await adapter.steady_roll(landing, 0.7, 0.0)
+        plus = await adapter.steady_roll(landing, 0.7, 20.0)
+        minus = await adapter.steady_roll(landing, 0.7, -20.0)
+    assert math.isclose(rest.p_hat, 0.0, abs_tol=1e-4)
+    assert math.isclose(plus.p_hat, 0.21929, abs_tol=1e-4)
+    assert math.isclose(minus.p_hat, -plus.p_hat, abs_tol=1e-4)
+    for found in (rest, plus, minus):
+        assert "avl_flap_linearised" in {w.code for w in found.warnings}

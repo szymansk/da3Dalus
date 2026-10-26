@@ -17,9 +17,15 @@ def mesh_surfaces(
     airfoil_index: Callable[[Airfoil], int],
     *,
     drive_roll: bool = False,
+    drive_flaps: bool = False,
 ) -> tuple[MeshSurface, ...]:
     """The aligned mesh with the canon's join tolerance."""
     join = Rules(shipped_build().model).value("hinge-line-continuity", "join_tolerance")
     return _mesh_surfaces(
-        airplane, n_wing, airfoil_index, join_tolerance_m=join, drive_roll=drive_roll
+        airplane,
+        n_wing,
+        airfoil_index,
+        join_tolerance_m=join,
+        drive_roll=drive_roll,
+        drive_flaps=drive_flaps,
     )

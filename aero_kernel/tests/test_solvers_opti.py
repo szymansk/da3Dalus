@@ -108,14 +108,12 @@ async def test_the_adapter_declares_the_neuralfoil_model_size_it_passes() -> Non
     assert opti_module.NEURALFOIL_MODEL_SIZE == "xlarge"
 
 
-@pytest.mark.parametrize(
-    ("role", "deflection"), [("flap", 30.0), ("aileron", -5.0), ("flaperon", 0.5)]
-)
+@pytest.mark.parametrize(("role", "deflection"), [("aileron", -5.0), ("elevator", 2.0)])
 async def test_a_deflected_control_surface_is_refused_not_computed_as_clean(
     monkeypatch: pytest.MonkeyPatch, role: str, deflection: float
 ) -> None:
-    """The conversion does not pass devices to AeroBuildup yet (it comes with the roll-rate step);
-    a deflected airplane would silently be computed as the clean one."""
+    """Only flaps are passed to AeroBuildup (a configuration); any other deflected device would
+    silently be computed as at rest, so it is refused."""
     called: list[object] = []
 
     def worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
@@ -132,6 +130,47 @@ async def test_a_deflected_control_surface_is_refused_not_computed_as_clean(
     assert "flap-1" in raised.value.message
     assert role in raised.value.message
     assert called == []
+
+
+async def test_a_deflected_flap_reaches_the_worker_and_is_declared(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The landing configuration: the worker is given the flap, never the clean airplane, and the
+    result carries the averaged-hinge-free model caveat with the flap in its detail."""
+    seen: list[StallRequest] = []
+
+    def worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
+        seen.append(request)
+        return WorkerOutcome(value=solution(), diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+    monkeypatch.setattr(opti_module, "stall_worker", worker)
+    flapped = airplane(device=("flap", 30.0), hinge=0.8)
+    result = await OptiAdapter(InProcessRuntime()).stall(flapped, 1.5, 9.81, 1.0, AIR)
+    assert seen[0].airplane == flapped
+    (warning,) = [w for w in result.warnings if w.code == "control_surface_fit_range_unknown"]
+    assert warning.severity == "practice"
+    assert warning.detail == {
+        "flaps": [{"wing": "Main", "device": "flap-1", "deflection_deg": 30.0}]
+    }
+    assert "C_L,max" in warning.message
+
+
+async def test_a_flap_without_a_hinge_is_invalid_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution()))
+    with pytest.raises(FormulaError) as raised:
+        await OptiAdapter(InProcessRuntime()).stall(
+            airplane(device=("flap", 30.0)), 1.5, 9.81, 1.0, AIR
+        )
+    assert (raised.value.category, raised.value.code) == (
+        ErrorCategory.INVALID_INPUT,
+        "missing_hinge",
+    )
+
+
+async def test_a_clean_stall_has_no_flap_caveat(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution()))
+    result = await OptiAdapter(InProcessRuntime()).stall(airplane(), 1.5, 9.81, 1.0, AIR)
+    assert all(w.code != "control_surface_fit_range_unknown" for w in result.warnings)
 
 
 async def test_a_device_at_rest_is_no_obstacle(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -248,8 +248,10 @@ nothing failed. The category enum holds only the eight rows above.
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
   declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
   `roll_device_on_unmirrored_surface` — a device acting as aileron sits on a wing that is not mirrored (no
-  fleet aircraft has one, ADR 0021; `detail`: wing key, device label, role); `missing_hinge`
-  (`invalid_input`) — a driven roll device without `rel_chord_root`, the tool's default hinge is never used;
+  fleet aircraft has one, ADR 0021; `detail`: wing key, device label, role); `flap_on_unmirrored_surface` —
+  the same for a deflected flap (`flap`, `flaperon`, #1212); `missing_hinge`
+  (`invalid_input`) — a driven roll device or a deflected flap without `rel_chord_root`, the tool's default hinge is never used;
+  `flap_deflections_differ` — deflected flaps at different angles reach AVL, which holds them as one control variable;
   `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
   value per section; `detail`: wing key, y).
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
@@ -290,9 +292,13 @@ Sources:
   gives about 1.5-2.1 % MAC forward (BRYAN) and 0.7-1.0 % (JAGUAR), inside Sadraey's "about ±5 % c̄"
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`defect`)
-- the averaged hinge line of a roll device (`hinge_line_averaged`, `practice`, ch. 8.8): AeroBuildup holds one
-  hinge per segment, so a tapered hinge line is replaced by the mean of its root and tip (`detail`: wing key,
-  device, `root`, `tip`, `used`)
+- the averaged hinge line of a roll device or deflected flap (`hinge_line_averaged`, `practice`, ch. 8.8):
+  AeroBuildup holds one hinge per segment, so a tapered hinge line is replaced by the mean of its root and tip
+  (`detail`: wing key, device, `root`, `tip`, `used`)
+- the model range of a deflected flap (#1212, ch. 8.8): `control_surface_fit_range_unknown` (`practice`) from
+  AeroBuildup, whose flap is the shift `tau * delta` of the clean section's angle of attack (the section's
+  C_L,max is not raised; `detail.flaps`: wing, device, `deflection_deg`), and `avl_flap_linearised`
+  (`practice`) from AVL, whose flap rotates the panel normals linearly in the deflection, without separation
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
@@ -718,7 +724,7 @@ caller's responsibility.
     (root first, a surface stored on −y or tip first gives the same mesh, ADR 0022). AVL runs through
     `run_process`; the lift coefficient is constrained (`a c`), not trimmed. AVL exit or output that is not
     understood, or a `CLtot` that misses the request by more than 1e-4, is `internal` (a defect of ours); a
-    vortex array overflow of the declared mesh is `avl_array_limit` (AVL signals it either by its overflow message or, on a very fine mesh, by a LAPACK "illegal value" with exit 0; both count). One AVL run never takes longer than `AVL_MAX_RUN_S` (120 s, far above the measured 15 s refined run; AVL can spin forever on a geometry it cannot solve): expiry kills the process group and is a `timeout` error of the quantity (`detail.run_limit_s`), distinct from the request's time budget. A deflected control device is refused (`unsupported_configuration`, the refusal shared with the AeroBuildup adapter), because no CONTROL is written. **Refinement check:** the adapter runs
+    vortex array overflow of the declared mesh is `avl_array_limit` (AVL signals it either by its overflow message or, on a very fine mesh, by a LAPACK "illegal value" with exit 0; both count). One AVL run never takes longer than `AVL_MAX_RUN_S` (120 s, far above the measured 15 s refined run; AVL can spin forever on a geometry it cannot solve): expiry kills the process group and is a `timeout` error of the quantity (`detail.run_limit_s`), distinct from the request's time budget. The neutral point is that of the clean airplane: a deflected control device is refused there (`unsupported_configuration`, the refusal shared with the AeroBuildup adapter), because its mesh writes no CONTROL. The steady roll is given the flaps of a configuration (the flap bullet below). **Refinement check:** the adapter runs
     the declared mesh and the same mesh refined by `avl_refine_factor` (both counts), returns the declared
     value, and declares `avl_mesh_not_converged` if the two differ by more than
     `avl_refinement_tolerance_mac` of the mean chord, `avl_refinement_unchecked` if the refined mesh
@@ -743,7 +749,7 @@ caller's responsibility.
       the interval is the AeroBuildup world alone (ch. 8.13). The adapter's own `defect` warning
       `avl_roll_rate_beyond_range` stays: it is the tool's statement, the exclusion is the canon's decision.
     - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
-      one sweep on the **clean** (unrolled) airplane: with the deflection the curve has kinks and its first
+      one sweep on the airplane **without the roll command** (its configured flaps stay): with the deflection the curve has kinks and its first
       local maximum lies far below the stall (trainer: C_L 0.364 at 1° against a clean peak of 1.233 at 16°),
       so a sweep on the rolled airplane brackets nothing. The window only keeps IPOPT on the physical branch;
       local stall under the deflection is reported by the diagnostics of the deflected evaluation. The
@@ -771,6 +777,26 @@ caller's responsibility.
       `reason`; a declared run off the branch is an error.
       The other fixed arrays count too: 500 strips (`NSMAX`, mirror images and both pieces of the split
       wing included), 100 surfaces, 6000 vortices; each overflow message is `avl_array_limit`.
+    - *Flaps of a configuration (#1212; maintainer 2026-10-26: the approach applications bind
+      `airplane-landing`).* `airplane-configuration` sets the flaps' `deflection_deg`; the tools are given
+      them as the device rows `solvers/devices.flap_segments`: a device of role `flap` or `flaperon` off its
+      rest position, on a mirrored surface (`flap_on_unmirrored_surface`), with a hinge (`missing_hinge`).
+      The angle is the angle itself, trailing edge down positive, the same on both halves. *AeroBuildup:* one
+      symmetric `ControlSurface` per flap segment at the mean hinge (`hinge_line_averaged` where root and tip
+      differ); any other deflected device stays refused, and `sweep` (the polar of the stall break, always the
+      clean airplane) refuses a flap too, because it returns no warnings. *AVL:* a `flap` control (SgnDup +1,
+      gain 1) on the stations of the flap, driven as a second control variable; the control numbers are the order
+      of first appearance in the file (`control_order`), so the commands and the derivative name `Cld0k`
+      follow the written file; the flap is held at its angle in both runs, also in the consistency run, and its
+      echo is checked. All flaps of a configuration are at one angle (`flap_deflections_differ` otherwise); the
+      neutral point stays on the clean airplane. *Flaperon:* the deflection is the symmetric bias, the roll
+      command comes on top as the antisymmetric surface of the same rib and hinge (AeroBuildup adds the two
+      angle shifts and multiplies the two drag factors; AVL has two controls on the same stations). Where a
+      roll control and a flap meet with different hinges the split follows the more forward one and the other
+      is measured from it. Declared: `control_surface_fit_range_unknown` (AeroBuildup: the flap shifts the
+      section's lift curve, its C_L,max stays the clean airfoil's, so a flapped wing's first C_L peak can lie
+      *below* the clean one and the approach window of the roll can find no peak above the weight; RV-7) and
+      `avl_flap_linearised` (AVL: linear in δ, no separation).
     - *Driven stations.* The main wing of a driven run has one sine-to-tip distribution over the half span,
       `y = (b/2) sin(π/2 t)` (AVL's `Sspace` −2 from root to tip, `avl_doc.txt:1043-1048`), the device ends
       exact: their `t` is rounded to a strip count and `t` runs evenly inside each of the three pieces

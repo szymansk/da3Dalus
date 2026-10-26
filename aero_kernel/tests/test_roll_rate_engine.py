@@ -276,3 +276,75 @@ async def test_a_failing_aerobuildup_world_stays_an_error_beside_an_excluded_avl
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.error is not None
     assert quantity.error.code == "not_converged"
+
+
+def flap_and_aileron() -> AirplaneGeometry:
+    """A flap on the first panel and an aileron on the second of the 0.4 m half-span wing."""
+    document = wing_geometry((0.0, 0.2, 0.4), 1, aileron(0.78, 0.78)).model_dump(
+        mode="json", exclude_none=True
+    )
+    first = document["wings"]["Main"]["x_secs"][0]
+    first["trailing_edge_device"] = {
+        "name": "flap",
+        "role": "flap",
+        "rel_chord_root": 0.78,
+        "rel_chord_tip": 0.78,
+    }
+    return AirplaneGeometry.model_validate(document)
+
+
+def deflections(airplane: AirplaneGeometry) -> dict[str, float | None]:
+    """The deflection of every device of the main wing by role."""
+    return {
+        s.trailing_edge_device.role: s.trailing_edge_device.deflection_deg
+        for s in (airplane.wings or {})["Main"].x_secs
+        if s.trailing_edge_device is not None
+    }
+
+
+async def test_the_approach_roll_is_evaluated_on_the_landing_configuration_in_both_worlds() -> None:
+    """Maintainer decision 2026-10-26 (#1212): V_app comes from the landing configuration, so the
+    roll at V_app is evaluated with the flaps at flap-deflection-landing, never on the clean airplane."""
+    opti, avl = StubOpti(), StubAvl()
+    result = await run(
+        "roll-rate-approach",
+        airplane=flap_and_aileron(),
+        opti=opti,
+        avl=avl,
+        extra={"flap-deflection-landing": 30.0},
+    )
+    assert only(result).status is QuantityStatus.OK, result
+    ((asb_plane, *_),) = opti.roll_calls
+    ((avl_plane, _, delta),) = avl.roll_calls
+    for airplane in (asb_plane, avl_plane):
+        assert deflections(airplane) == {"flap": 30.0, "aileron": 0.0}
+    assert delta == 20.0  # the aileron command stays the caller's parameter
+
+
+async def test_a_flaperon_gets_the_landing_deflection_as_bias_and_the_command_separately() -> None:
+    opti, avl = StubOpti(), StubAvl()
+    await run(
+        "roll-rate-approach",
+        airplane=plane("flaperon"),
+        opti=opti,
+        avl=avl,
+        extra={"flap-deflection-landing": 25.0},
+    )
+    ((asb_plane, *_, asb_delta),) = opti.roll_calls
+    ((avl_plane, _, avl_delta),) = avl.roll_calls
+    assert deflections(asb_plane) == deflections(avl_plane) == {"flaperon": 25.0}
+    assert asb_delta == avl_delta == 20.0
+
+
+async def test_a_flapped_approach_roll_without_a_landing_deflection_is_upstream_failed() -> None:
+    quantity = only(await run("roll-rate-approach", airplane=flap_and_aileron()))
+    assert quantity.status is QuantityStatus.ERROR
+    assert quantity.error is not None
+    assert quantity.error.category is ErrorCategory.UPSTREAM_FAILED
+
+
+async def test_a_flapless_approach_roll_is_unchanged() -> None:
+    opti = StubOpti()
+    await run("roll-rate-approach", opti=opti, extra={"flap-deflection-landing": 30.0})
+    ((airplane, *_),) = opti.roll_calls
+    assert airplane == plane()

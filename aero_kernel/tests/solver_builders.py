@@ -24,8 +24,12 @@ def airplane(
     device: tuple[str, float] | None = None,
     tail_chords: tuple[float, ...] | None = None,
     surface_deflection: float | None = None,
+    hinge: float | None = None,
 ) -> AirplaneGeometry:
-    """A main wing of the given chords; ``device`` is (role, deflection_deg) on the first panel."""
+    """A main wing of the given chords; ``device`` is (role, deflection_deg) on the first panel.
+
+    ``hinge`` gives the device its hinge position (fraction of chord), which a flap needs.
+    """
     sections: list[dict[str, Any]] = [
         {"xyz_le": [0.0, 0.3 * i, 0.0], "chord": c, "twist": 0.0, "airfoil": "naca2412"}
         for i, c in enumerate(chords)
@@ -36,6 +40,8 @@ def airplane(
             "name": "flap-1",
             "role": role,
             "deflection_deg": deflection,
+            "rel_chord_root": hinge,
+            "rel_chord_tip": hinge,
         }
     if surface_deflection is not None:
         sections[0]["control_surface"] = {"name": "cs-1", "deflection": surface_deflection}
