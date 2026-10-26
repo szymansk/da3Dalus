@@ -1,5 +1,6 @@
 """The location check of ``data:`` sources against the repository's own files (#1251)."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from aero_kernel.importer.data_sources import (
     load_catalogue,
     location_problem,
 )
+from aero_kernel.importer.pipeline import import_canon
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANON = REPO_ROOT / "_reversa_sdd" / "calculations" / "canon"
@@ -94,3 +96,11 @@ def test_a_default_is_a_key_of_defaults_yaml(catalogue: Catalogue) -> None:
 def test_a_kind_without_repository_facts_is_not_checked() -> None:
     assert problem("geometry:anything.at.all", Catalogue()) is None
     assert problem("evaluation:static-margin", Catalogue()) is None
+
+
+def test_the_real_canon_states_the_mass_source_and_the_geometry_check() -> None:
+    model = import_canon(CANON).model_json
+    assert model is not None
+    mass = json.loads(model)["namespaces"]["calc"]["quantities"]["aircraft-mass"]
+    assert mass["data"] == ["app:AssumptionRead.effective_value"]
+    assert mass["consistency"] == ["geometry:total_mass_kg"]

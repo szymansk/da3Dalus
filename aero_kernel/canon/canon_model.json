@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b66cca22ead2061874828d46b9472ea5f4cc7688c904548d7dd0fcbece49c62a",
+  "content_hash": "sha256:a3fe66cf2e45c28c51ee7a82b86c4f77703137a72e5dd0578e52e58713e9dc10",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -3283,6 +3283,7 @@
         "advance-ratio": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -3299,6 +3300,7 @@
         "aileron-deflection": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:OperatingPointSchema.control_deflections"
           ],
@@ -3317,6 +3319,7 @@
         "aileron-deflection-required-approach": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -3333,6 +3336,7 @@
         "aileron-deflection-required-cruise": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -3349,6 +3353,7 @@
         "air-density": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "air-state",
@@ -3365,8 +3370,11 @@
         "aircraft-mass": {
           "at_most": null,
           "checks": null,
-          "data": [
+          "consistency": [
             "geometry:total_mass_kg"
+          ],
+          "data": [
+            "app:AssumptionRead.effective_value"
           ],
           "discipline": null,
           "group": null,
@@ -3383,6 +3391,7 @@
         "airplane": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "geometry:$"
           ],
@@ -3401,6 +3410,7 @@
         "airplane-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "configurations",
@@ -3417,6 +3427,7 @@
         "airplane-takeoff": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "configurations",
@@ -3433,6 +3444,7 @@
         "alpha-break": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -3449,6 +3461,7 @@
         "altitude": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:altitude",
             "app:OperatingPointSchema.altitude"
@@ -3468,6 +3481,7 @@
         "angle-of-attack": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:OperatingPointSchema.alpha"
           ],
@@ -3486,6 +3500,7 @@
         "angle-of-attack-best-glide": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -3502,6 +3517,7 @@
         "angle-of-attack-best-glide-probe": {
           "at_most": null,
           "checks": "angle-of-attack-best-glide",
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -3518,6 +3534,7 @@
         "angle-of-attack-minimum-sink": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -3534,6 +3551,7 @@
         "angle-of-attack-minimum-sink-probe": {
           "at_most": null,
           "checks": "angle-of-attack-minimum-sink",
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -3550,6 +3568,7 @@
         "angle-of-attack-stall": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-stall",
@@ -3566,6 +3585,7 @@
         "approach-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -3582,6 +3602,7 @@
         "approach-speed-margin-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:approach-speed-margin-target",
             "app:Goals.approach_speed_margin_vs_ldg"
@@ -3601,6 +3622,7 @@
         "aspect-ratio": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "geometry-references",
@@ -3617,6 +3639,7 @@
         "battery-c-rate": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:battery.c_rate"
           ],
@@ -3635,6 +3658,7 @@
         "battery-capacity": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:battery.capacity_mah",
             "component:battery.cells",
@@ -3655,6 +3679,7 @@
         "battery-charge-capacity": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:battery.capacity_mah"
           ],
@@ -3673,6 +3698,7 @@
         "battery-current": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -3689,6 +3715,7 @@
         "battery-current-allowed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:battery.capacity_mah",
             "component:battery.c_rate"
@@ -3708,6 +3735,7 @@
         "battery-energy-required": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "powertrain-battery",
@@ -3724,6 +3752,7 @@
         "battery-mass": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:battery.mass_g"
           ],
@@ -3742,6 +3771,7 @@
         "battery-power": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -3758,6 +3788,7 @@
         "battery-specific-energy": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:battery-specific-energy"
           ],
@@ -3776,6 +3807,7 @@
         "battery-voltage": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:battery.cells",
             "default:cell-voltage-nominal"
@@ -3795,6 +3827,7 @@
         "best-angle-of-climb-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -3811,6 +3844,7 @@
         "best-rate-of-climb-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -3827,6 +3861,7 @@
         "break-load-factor-negative": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -3843,6 +3878,7 @@
         "break-load-factor-positive": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -3859,6 +3895,7 @@
         "butterfly-approach-speed-curve": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -3875,6 +3912,7 @@
         "butterfly-glide-angle-curve": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -3891,6 +3929,7 @@
         "butterfly-max-mix": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -3907,6 +3946,7 @@
         "butterfly-stall-speed-curve": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -3923,6 +3963,7 @@
         "cell-voltage-nominal": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:battery.cell_voltage_v",
             "component:battery.chemistry",
@@ -3943,6 +3984,7 @@
         "centre-of-gravity-design": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "longitudinal",
           "group": null,
@@ -3959,6 +4001,7 @@
         "centre-of-gravity-measured": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "evaluation:balanced-cg-of-existing-aircraft"
           ],
@@ -3977,6 +4020,7 @@
         "cg-envelope-over-mass": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "longitudinal",
           "group": null,
@@ -3993,6 +4037,7 @@
         "climb-rate-over-mass": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4009,6 +4054,7 @@
         "components": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:brushless_motor",
             "component:battery",
@@ -4029,6 +4075,7 @@
         "crow-aileron-deflection": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -4045,6 +4092,7 @@
         "crow-flap-deflection": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -4061,6 +4109,7 @@
         "cruise-speed-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:Goals.cruise_speed_mps"
           ],
@@ -4079,6 +4128,7 @@
         "dihedral-effect-app": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -4095,6 +4145,7 @@
         "dihedral-effect-md": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -4111,6 +4162,7 @@
         "dive-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -4127,6 +4179,7 @@
         "drag-coefficient-parabolic": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-parabola",
@@ -4143,6 +4196,7 @@
         "drag-force": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-forces",
@@ -4159,6 +4213,7 @@
         "dynamic-pressure": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-forces",
@@ -4175,6 +4230,7 @@
         "dynamic-viscosity": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "air-state",
@@ -4191,6 +4247,7 @@
         "elevator-deflection-down": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:OperatingPointSchema.control_deflections"
           ],
@@ -4209,6 +4266,7 @@
         "elevator-deflection-up": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:OperatingPointSchema.control_deflections"
           ],
@@ -4227,6 +4285,7 @@
         "endurance-at-cruise-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4243,6 +4302,7 @@
         "endurance-estimate": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4259,6 +4319,7 @@
         "flap-deflection-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:OperatingPointSchema.control_deflections"
           ],
@@ -4277,6 +4338,7 @@
         "flap-deflection-takeoff": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:OperatingPointSchema.control_deflections"
           ],
@@ -4295,6 +4357,7 @@
         "flight-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:OperatingPointSchema.velocity"
           ],
@@ -4313,6 +4376,7 @@
         "gravity": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:gravity"
           ],
@@ -4331,6 +4395,7 @@
         "hinge-moment": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -4347,6 +4412,7 @@
         "induced-drag-factor": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-parabola",
@@ -4363,6 +4429,7 @@
         "inverted-max-lift-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -4379,6 +4446,7 @@
         "lift-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-forces",
@@ -4395,6 +4463,7 @@
         "lift-coefficient-best-glide": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -4411,6 +4480,7 @@
         "lift-coefficient-minimum-sink": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -4427,6 +4497,7 @@
         "lift-curve-slope": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-lift-curve",
@@ -4443,6 +4514,7 @@
         "lift-force": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-forces",
@@ -4459,6 +4531,7 @@
         "lift-to-drag-ratio": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-forces",
@@ -4475,6 +4548,7 @@
         "limit-load-factor": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:limit-load-factor"
           ],
@@ -4493,6 +4567,7 @@
         "load-factor": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:load-factor"
           ],
@@ -4511,6 +4586,7 @@
         "maneuvering-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -4527,6 +4603,7 @@
         "max-climb-angle": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4543,6 +4620,7 @@
         "max-endurance": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4559,6 +4637,7 @@
         "max-level-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4575,6 +4654,7 @@
         "max-lift-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-stall",
@@ -4591,6 +4671,7 @@
         "max-lift-coefficient-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -4607,6 +4688,7 @@
         "max-lift-coefficient-takeoff": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -4623,6 +4705,7 @@
         "max-lift-to-drag-probe": {
           "at_most": null,
           "checks": "max-lift-to-drag-ratio",
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -4639,6 +4722,7 @@
         "max-lift-to-drag-ratio": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -4655,6 +4739,7 @@
         "max-mass-level-flight": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4671,6 +4756,7 @@
         "max-mass-lift-off": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4687,6 +4773,7 @@
         "max-mass-structure": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -4703,6 +4790,7 @@
         "max-range": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4719,6 +4807,7 @@
         "max-rate-of-climb": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4735,6 +4824,7 @@
         "max-sustained-turn-rate": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4751,6 +4841,7 @@
         "max-sustained-turn-rate-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4767,6 +4858,7 @@
         "mean-aerodynamic-chord": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "geometry-references",
@@ -4783,6 +4875,7 @@
         "mean-geometric-chord": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -4799,6 +4892,7 @@
         "min-sustained-turn-radius": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4815,6 +4909,7 @@
         "min-sustained-turn-radius-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4831,6 +4926,7 @@
         "minimum-drag-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -4847,6 +4943,7 @@
         "minimum-drag-speed-probe": {
           "at_most": null,
           "checks": "minimum-drag-speed",
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -4863,6 +4960,7 @@
         "minimum-sink-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -4879,6 +4977,7 @@
         "motor-circuit-resistance": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:brushless_motor.rm_ohm"
           ],
@@ -4897,6 +4996,7 @@
         "motor-efficiency": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:brushless_motor.efficiency_pct",
             "default:motor-efficiency"
@@ -4916,6 +5016,7 @@
         "motor-max-power": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:brushless_motor.max_power_w"
           ],
@@ -4934,6 +5035,7 @@
         "motor-no-load-current": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:brushless_motor.io_no_load_a"
           ],
@@ -4952,6 +5054,7 @@
         "motor-torque": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -4968,6 +5071,7 @@
         "motor-voltage-constant": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:brushless_motor.kv_rpm_per_volt"
           ],
@@ -4986,6 +5090,7 @@
         "neutral-point": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "longitudinal",
           "group": null,
@@ -5002,6 +5107,7 @@
         "oswald-efficiency": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-parabola",
@@ -5018,6 +5124,7 @@
         "pitching-moment-slope": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "longitudinal",
           "group": null,
@@ -5034,6 +5141,7 @@
         "polar-stall": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-stall",
@@ -5050,6 +5158,7 @@
         "predicted-battery-mass": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "powertrain-battery",
@@ -5066,6 +5175,7 @@
         "propeller-diameter": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "component:propeller.diameter_in"
           ],
@@ -5084,6 +5194,7 @@
         "propeller-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5100,6 +5211,7 @@
         "propeller-speed-part-load": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5116,6 +5228,7 @@
         "range-at-cruise-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5132,6 +5245,7 @@
         "range-estimate": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5148,6 +5262,7 @@
         "roll-rate-approach": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5164,6 +5279,7 @@
         "roll-rate-cruise": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5180,6 +5296,7 @@
         "roll-rate-nondimensional-approach": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5196,6 +5313,7 @@
         "roll-rate-target-approach": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -5212,6 +5330,7 @@
         "roll-rate-target-cruise": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:Handling.roll_rate_target_dps"
           ],
@@ -5230,6 +5349,7 @@
         "rudder-deflection": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "app:OperatingPointSchema.control_deflections"
           ],
@@ -5248,6 +5368,7 @@
         "sink-rate": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "glide",
           "group": null,
@@ -5264,6 +5385,7 @@
         "spanwise-bending-moment": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -5280,6 +5402,7 @@
         "spanwise-lift-distribution": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -5296,6 +5419,7 @@
         "spanwise-shear-force": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "structure",
           "group": null,
@@ -5312,6 +5436,7 @@
         "speed-of-sound": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "air-state",
@@ -5328,6 +5453,7 @@
         "speed-range-over-mass": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5344,6 +5470,7 @@
         "spiral-criterion-app": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5360,6 +5487,7 @@
         "spiral-criterion-md": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5376,6 +5504,7 @@
         "spiral-doubling-time-app": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5392,6 +5521,7 @@
         "spiral-doubling-time-md": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5408,6 +5538,7 @@
         "spiral-parameter": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5424,6 +5555,7 @@
         "stall-break-fraction": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:stall-break-fraction"
           ],
@@ -5442,6 +5574,7 @@
         "stall-break-width": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -5458,6 +5591,7 @@
         "stall-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -5474,6 +5608,7 @@
         "stall-speed-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -5490,6 +5625,7 @@
         "stall-speed-takeoff": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -5506,6 +5642,7 @@
         "stall-speed-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -5522,6 +5659,7 @@
         "static-margin-measured": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "longitudinal",
           "group": null,
@@ -5538,6 +5676,7 @@
         "static-margin-probe": {
           "at_most": null,
           "checks": "static-margin-target",
+          "consistency": null,
           "data": null,
           "discipline": "longitudinal",
           "group": null,
@@ -5554,6 +5693,7 @@
         "static-margin-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:static-margin-target"
           ],
@@ -5572,6 +5712,7 @@
         "static-thrust-to-weight": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5588,6 +5729,7 @@
         "tail-efficiency": {
           "at_most": 1.0,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:tail-efficiency"
           ],
@@ -5606,6 +5748,7 @@
         "takeoff-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -5622,6 +5765,7 @@
         "takeoff-speed-margin-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:takeoff-speed-margin-target",
             "app:Goals.takeoff_speed_margin_vs_to"
@@ -5641,6 +5785,7 @@
         "thrust-at-airspeed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5657,6 +5802,7 @@
         "thrust-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5673,6 +5819,7 @@
         "thrust-demand-ratio": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "powered",
           "group": null,
@@ -5689,6 +5836,7 @@
         "touchdown-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -5705,6 +5853,7 @@
         "touchdown-speed-margin-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": [
             "default:touchdown-speed-margin-target"
           ],
@@ -5723,6 +5872,7 @@
         "vertical-tail-volume": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5739,6 +5889,7 @@
         "weathercock-stability-app": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5755,6 +5906,7 @@
         "weathercock-stability-md": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "lateral",
           "group": null,
@@ -5771,6 +5923,7 @@
         "weight": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "weight-and-loading",
@@ -5787,6 +5940,7 @@
         "wing-loading": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "weight-and-loading",
@@ -5803,6 +5957,7 @@
         "wing-loading-limit-stall": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": null,
@@ -5819,6 +5974,7 @@
         "wing-reference-area": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "geometry-references",
@@ -5835,6 +5991,7 @@
         "wing-span": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": "geometry-references",
@@ -5851,6 +6008,7 @@
         "zero-lift-angle": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-lift-curve",
@@ -5867,6 +6025,7 @@
         "zero-lift-drag-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": "aerodynamics",
           "group": "aero-parabola",

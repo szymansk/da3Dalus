@@ -134,8 +134,12 @@ def test_a_whole_collection_source_is_a_frame_around_its_fields_not_a_node() -> 
     assert frames["geometry:$"]["parent"] == "airplane"
     assert "geometry:total_mass_kg" in frames["geometry:$"]["fields"]
     by_id = {source["id"]: source for source in data["src"]}
+    mass_check = by_id["geometry:total_mass_kg"]  # consistency only: in its frame, never a supplier
+    assert mass_check["check"] is True
+    assert mass_check["qs"] == ["aircraft-mass"]
     assert by_id["component:battery.cells"]["frame"] == "component:battery"
     assert by_id["default:gravity"]["frame"] == ""
+    assert not by_id["default:gravity"]["check"]
     assert by_id["component:battery.cells"]["short"] == "cells"  # the frame carries the type
     assert by_id["geometry:total_mass_kg"]["short"] == "total_mass_kg"
     framed = {f for frame in frames.values() for f in frame["fields"]}
@@ -187,7 +191,8 @@ def test_the_navigator_carries_stage_two_of_the_approval_per_formula_and_quantit
     assert stall["k"] == stall["n"]
     assert stall["missing"] == []
     assert data["qstat"]["aircraft-mass"] == "approved"
-    assert data["qdata"]["aircraft-mass"] == ["geometry:total_mass_kg"]
+    assert data["qdata"]["aircraft-mass"] == ["app:AssumptionRead.effective_value"]
+    assert data["qcheck"]["aircraft-mass"] == ["geometry:total_mass_kg"]
 
 
 def test_every_missing_input_is_named_with_its_root_cause() -> None:

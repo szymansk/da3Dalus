@@ -573,6 +573,13 @@ def approval_marks(data: dict, model: dict) -> None:
     for quantity, sources in data["qdata"].items():
         for source in sources:
             fed.setdefault(source, []).append(quantity)
+    checked: dict = {}
+    for quantity, entry in sorted(quantities.items()):
+        for source in entry.get("consistency") or []:
+            checked.setdefault(source, []).append(quantity)
+    data["qcheck"] = {
+        q: v["consistency"] for q, v in sorted(quantities.items()) if v.get("consistency")
+    }
     order = {k: i for i, (k, _, _) in enumerate(SOURCE_KINDS)}
     defaults = model["namespaces"]["calc"]["defaults"]
 
@@ -580,7 +587,9 @@ def approval_marks(data: dict, model: dict) -> None:
         kind, loc = source.split(":", 1)
         return "start" if kind == "default" and defaults[loc]["basis"] == "start" else kind
 
-    ordered = sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
+    ordered = sorted(
+        {**checked, **fed}.items(), key=lambda item: (order[kind_of(item[0])], item[0])
+    )
     frames: dict = {}
     for source, qs in ordered:
         frame = source_frame(source)
@@ -608,6 +617,7 @@ def approval_marks(data: dict, model: dict) -> None:
             "qs": qs,
             "parent": DATA_KIND_PARENT.get(source.split(":", 1)[0], ""),
             "frame": source_frame(source),
+            "check": source not in fed,
             "short": short_of(source),
         }
         for source, qs in ordered
