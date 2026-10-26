@@ -906,39 +906,37 @@ class CanonModel(BaseModel):
             raise _canon_error(problems)
         return self
 
+    @staticmethod
+    def _rule_target_problem(content: Namespace, slug: str, rule: Rule) -> str | None:
+        """Return what is wrong with the target of a rule: it must exist, and a quantity be an input."""
+        target = rule.applies_to
+        if target.quantity is not None:
+            found = content.quantities.get(target.quantity)
+            if found is not None and found.role in ("input", "target"):
+                return None
+            return f"rule {slug}: {target.quantity} is not an input or target quantity"
+        if target.formula in content.formulas:
+            return None
+        return f"rule {slug}: unknown formula {target.formula}"
+
     @model_validator(mode="after")
     def _check_rules(self) -> Self:
         """Require every rule to guard an existing input quantity or formula."""
-        problems: list[CanonProblem] = []
-        for namespace, content in self.namespaces.items():
-            for slug, rule in content.rules.items():
-                target = rule.applies_to
-                if target.quantity is not None:
-                    found = content.quantities.get(target.quantity)
-                    text = (
-                        None
-                        if found is not None and found.role in ("input", "target")
-                        else f"rule {slug}: {target.quantity} is not an input or target quantity"
-                    )
-                else:
-                    text = (
-                        None
-                        if target.formula in content.formulas
-                        else f"rule {slug}: unknown formula {target.formula}"
-                    )
-                if text is not None:
-                    problems.append(
-                        CanonProblem(
-                            namespace=namespace,
-                            section="rules",
-                            slug=slug,
-                            field="applies_to",
-                            side=None,
-                            application=None,
-                            parameter=None,
-                            text=text,
-                        )
-                    )
+        problems = [
+            CanonProblem(
+                namespace=namespace,
+                section="rules",
+                slug=slug,
+                field="applies_to",
+                side=None,
+                application=None,
+                parameter=None,
+                text=text,
+            )
+            for namespace, content in self.namespaces.items()
+            for slug, rule in content.rules.items()
+            if (text := self._rule_target_problem(content, slug, rule)) is not None
+        ]
         if problems:
             raise _canon_error(problems)
         return self

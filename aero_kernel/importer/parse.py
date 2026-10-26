@@ -123,12 +123,8 @@ class ParsedCanon:
 
     formulas: dict[str, Entry] = field(default_factory=lambda: dict[str, Entry]())
     quantities: dict[str, Entry] = field(default_factory=lambda: dict[str, Entry]())
-    defaults: dict[str, dict[str, object]] = field(
-        default_factory=lambda: dict[str, dict[str, object]]()
-    )
-    rules: dict[str, dict[str, object]] = field(
-        default_factory=lambda: dict[str, dict[str, object]]()
-    )
+    defaults: dict[str, dict[str, object]] = field(default_factory=lambda: {})
+    rules: dict[str, dict[str, object]] = field(default_factory=lambda: {})
     taxonomy: dict[str, object] | None = None
     findings: list[Finding] = field(default_factory=lambda: list[Finding]())
 

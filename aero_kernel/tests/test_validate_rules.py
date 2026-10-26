@@ -107,8 +107,9 @@ def test_a_bad_override_is_an_input_error(key: str, code: str) -> None:
 
 
 def test_a_pending_parameter_is_never_read() -> None:
+    rules = Rules(MODEL)
     with pytest.raises(ValueError, match="pending"):
-        Rules(MODEL).value("static-margin-probe-agreement", "agreement_tolerance")
+        rules.value("static-margin-probe-agreement", "agreement_tolerance")
 
 
 @pytest.mark.asyncio

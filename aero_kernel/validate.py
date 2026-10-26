@@ -77,6 +77,9 @@ UNREAD_FIELDS: Mapping[type[BaseModel], frozenset[str]] = {
 }
 
 
+WINGS_PATH = "airplane.wings"
+
+
 def _key_path(parent: str, key: str) -> str:
     """Extend a path by a dict key: ``parent["key"]``, the key JSON-escaped, unicode kept."""
     return f"{parent}[{json.dumps(key, ensure_ascii=False)}]"
@@ -358,7 +361,7 @@ def _wing_findings(wings: Mapping[str, Wing], rules: Rules) -> list[KernelError]
     """Check the wings: section count, span and each section."""
     findings: list[KernelError] = []
     for key, wing in wings.items():
-        path = _key_path("airplane.wings", key)
+        path = _key_path(WINGS_PATH, key)
         findings += _too_few_sections("Wing", key, len(wing.x_secs), path, rules)
         findings += _span_findings(wing, path)
         last = len(wing.x_secs) - 1
@@ -395,7 +398,7 @@ def _main_wing_count(wings: Mapping[str, Wing], rules: Rules) -> list[KernelErro
         KernelError(
             code="main_wing_count",
             category=ErrorCategory.INVALID_INPUT,
-            input_path="airplane.wings",
+            input_path=WINGS_PATH,
             message=f"The airplane has {count} wings with surface_type main_wing; it needs exactly {required}.",
             hint="Mark exactly one wing as main_wing; its area, span and chord are the reference values.",
             detail={"count": count},
@@ -426,7 +429,7 @@ def _main_wing_inclination(wings: Mapping[str, Wing], rules: Rules) -> list[Kern
             KernelError(
                 code="main_wing_without_spanwise_extent",
                 category=ErrorCategory.INVALID_INPUT,
-                input_path=_key_path("airplane.wings", key),
+                input_path=_key_path(WINGS_PATH, key),
                 message=(
                     f"The main wing {key!r} extends {y_extent:.4g} m in y and {z_extent:.4g} m in z: "
                     f"it is inclined by {inclination:.3g} deg, at least the {limit:g} deg a main wing "
