@@ -154,6 +154,8 @@ aero_kernel/
   errors.py         error catalogue (ch. 8.1): `ErrorCategory`, `KernelError`, the closed code table
                     (code → category), `FormulaError`, upstream aggregation; imports no other module
   __init__.py       public API; adds the NullHandler to the `aero_kernel` logger (ch. 8.14)
+  evaluation/       rules.py (rule table, shipped `rule_table.json`, check against the canon model) · evaluator.py (result + rule table → verdicts with a self-contained `text`, `summarize_verdicts`, red/yellow verdicts logged at INFO on `aero_kernel.evaluation`; #1289)
+                    the judgement the canon never makes (A10); pure; not called by `compute()` (#1276)
   tools/            robustness.py (#1178)
   tests/            unit, property, golden, traceability and error tests
 ```
@@ -166,6 +168,7 @@ aero_kernel/
 | `graph` | dependencies, worlds, error propagation | call tools |
 | `formulas/*` | exactly one canon formula | compute a second formula; judge thresholds (A10) |
 | `solvers/*` | call the tool, report its version, translate tool errors | know canon names |
+| `evaluation` | judge computed values against a rule table: inside, below, above, partly (interval), not applicable, not available | compute a physical quantity; hold a band in code (bands are data, `_reversa_sdd/calculations/evaluation/`); read YAML (Q12; `importer/rule_table.py` generates the shipped `evaluation/rule_table.json` from the YAML at dev time, `shipped_rule_table()` loads it) |
 | `cache` | map keys to results | change results |
 
 ## 6. Runtime view — one call
@@ -677,6 +680,7 @@ caller's responsibility.
     0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
     `FormulaError`; a dead worker discards the pool and becomes `internal`. Tested with a stub solver.
+  - **`minimum_sink_stall_limited`** (`practice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
     the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
     `|p·b/2V| > 0.10`, the documented range of the primer (`defect`). AeroBuildup with a deflected
@@ -1070,6 +1074,17 @@ implementation, not before (ADR 0021).
   other (R1); whether a value is assumed or measured is not the kernel's concern.
 - **The frame of position quantities** (#1203): `neutral-point` and `centre-of-gravity-measured` are x coordinates in
   the geometry frame of `airplane`, x aft positive, in metres. The app's own CG field follows in #1209.
+- **Kernel configuration** (maintainer, 2026-10-26, #1299). The numeric tolerances of the kernel's self-checks are
+  `config.yaml` in the canon root, imported into `namespaces.calc.config` (closed keys, `KernelConfig`) and read
+  through `aero_kernel/config.py`. Not overridable by the caller; part of the model hash and so of the build digest;
+  reported as solver settings. `AvlAdapter` and the `rules` it shares with the engine (`Solvers.rules`) hold the
+  overridable domain limits.
+- **Validation rules** (maintainer, 2026-10-25, #1260). A requirement on the input data or a limit of a tool is a
+  canon rule in `rules.yaml` (README, "Validation rules"); its thresholds are parameters, not literals. The
+  importer carries them into `namespaces.calc.rules`. `aero_kernel/rules.py` resolves a threshold for one call
+  (the canon value, or the caller's `AircraftInput.rule_overrides`) and remembers what it handed out;
+  `provenance.rules_used` declares it. The geometry rules run once in `validate_aircraft`, on every path.
+  A model that lacks a rule the kernel reads is a defect (`KeyError`), never a silent skip.
 - **Defaults** (maintainer, 2026-10-17, S5). A missing value is computed with its **default**, and the
   caller can set or override every value. Defaults are never hard-coded and never in a quantity entry:
   - **One settings file in the canon document**, `_reversa_sdd/calculations/canon/defaults.yaml`: a mapping
@@ -1590,7 +1605,6 @@ model (part of `IMPORT_REPORT.md`).
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
 | `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe |
 | `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe |
-| `relative-mass-deviation` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |

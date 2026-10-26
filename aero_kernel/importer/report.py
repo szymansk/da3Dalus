@@ -41,6 +41,8 @@ def report_text(model: CanonModel, approval: Approval) -> str:
         f"- formulas: {len(content.formulas)}",
         f"- quantities: {len(content.quantities)}",
         f"- defaults: {len(content.defaults)}",
+        f"- rules: {len(content.rules)}",
+        f"- kernel configuration values: {0 if content.config is None else len(type(content.config).model_fields)}",
         "",
         "## Appendix A: formulas",
         "",

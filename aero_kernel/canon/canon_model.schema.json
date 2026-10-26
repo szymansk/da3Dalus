@@ -138,6 +138,49 @@
       "title": "Check",
       "type": "object"
     },
+    "ConfigValue": {
+      "additionalProperties": false,
+      "description": "One tolerance of the configuration.\n\nAttributes:\n    value: The tolerance, a finite number greater than zero, in ``unit``.\n    unit: Its unit; ``1`` is dimensionless.\n    guards: What the check decides.\n    basis: ``solver-precision`` (the digits a tool prints), ``decision`` (fixed by the\n        maintainer) or ``numerical`` (a margin over floating-point noise).\n    source: Where the value comes from.",
+      "properties": {
+        "basis": {
+          "pattern": "^(solver-precision|decision|numerical)$",
+          "title": "Basis",
+          "type": "string"
+        },
+        "guards": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Guards",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source",
+          "type": "string"
+        },
+        "unit": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "exclusiveMinimum": 0.0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "unit",
+        "guards",
+        "basis",
+        "source"
+      ],
+      "title": "ConfigValue",
+      "type": "object"
+    },
     "ConstBinding": {
       "additionalProperties": false,
       "description": "A constant bound to an input parameter, with its source (ADR 0028).\n\nAttributes:\n    const: The value, in the parameter's unit.\n    source: Citation of where the constant comes from.",
@@ -162,7 +205,7 @@
     },
     "Default": {
       "additionalProperties": false,
-      "description": "A value the canon states for a supplied quantity, with its unit, basis, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``; it must equal the unit of the quantity.\n    basis: ``definition`` (true by definition), ``standard`` (a published standard value),\n        ``sourced`` (taken from a cited source), ``convention`` (chosen, no published source,\n        adopted on the maintainer's word) or ``start`` (a defined starting value for a design,\n        expected to be changed by the designer; it may be sourced).\n    source: Citation of where the value comes from (ADR 0028).\n    regime: The flight regime the value is valid for (ADR 0028).",
+      "description": "A value the canon states for a supplied quantity or a catalogue read, with its unit, basis, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``; it must equal the unit of the quantity.\n    basis: ``definition`` (true by definition), ``standard`` (a published standard value),\n        ``sourced`` (taken from a cited source), ``convention`` (chosen, no published source,\n        adopted on the maintainer's word) or ``start`` (a defined starting value for a design,\n        expected to be changed by the designer; it may be sourced).\n    source: Citation of where the value comes from (ADR 0028).\n    regime: The flight regime the value is valid for (ADR 0028).",
       "properties": {
         "basis": {
           "enum": [
@@ -554,6 +597,72 @@
       "title": "Group",
       "type": "object"
     },
+    "KernelConfig": {
+      "additionalProperties": false,
+      "description": "The closed set of the kernel's self-check tolerances (canon ``config.yaml``, gh-1299).",
+      "properties": {
+        "avl_cl_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_contour_margin": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_control_echo_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_refinement_tolerance_mac": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_roll_branch_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_roll_moment_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_roll_print_floor": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_roll_refinement_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_active_bound_fraction": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_alpha_margin_deg": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_hinge_floor": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_peak_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_probe_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_zero_span": {
+          "$ref": "#/$defs/ConfigValue"
+        }
+      },
+      "required": [
+        "avl_refinement_tolerance_mac",
+        "avl_roll_refinement_tolerance",
+        "avl_roll_branch_tolerance",
+        "avl_roll_print_floor",
+        "avl_roll_moment_tolerance",
+        "avl_control_echo_tolerance",
+        "avl_cl_tolerance",
+        "opt_probe_tolerance",
+        "opt_peak_tolerance",
+        "opt_zero_span",
+        "opt_active_bound_fraction",
+        "opt_alpha_margin_deg",
+        "opt_hinge_floor",
+        "avl_contour_margin"
+      ],
+      "title": "KernelConfig",
+      "type": "object"
+    },
     "Module": {
       "additionalProperties": false,
       "description": "A module groups the inputs and targets (``module/<id>``).\n\nAttributes:\n    cross_cutting: Nearly every formula depends on the module's quantities.\n    holds_targets: The module's quantities are targets (role ``target``), and only these.",
@@ -596,8 +705,19 @@
     },
     "Namespace": {
       "additionalProperties": false,
-      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.\n    taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.",
+      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity (or fallback of a catalogue read); absent = the caller must supply it.\n    rules: The validation rules with their overridable parameters (``rules.yaml``).\n    config: The kernel's self-check tolerances (``config.yaml``); never overridable.\n    taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.",
       "properties": {
+        "config": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KernelConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "defaults": {
           "default": {},
           "patternProperties": {
@@ -624,6 +744,16 @@
             }
           },
           "title": "Quantities",
+          "type": "object"
+        },
+        "rules": {
+          "default": {},
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/Rule"
+            }
+          },
+          "title": "Rules",
           "type": "object"
         },
         "taxonomy": {
@@ -679,7 +809,7 @@
     },
     "Quantity": {
       "additionalProperties": false,
-      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.\n    module: The taxonomy module of an input, target or reference; ``None`` where the quantity has none.\n    point: The taxonomy operating point of a final result.\n    stage: The taxonomy stage of an intermediate quantity.\n    group: The taxonomy group of a quantity inside its stage.\n    discipline: The taxonomy discipline of a derived quantity.\n    checks: The slug of the quantity this one verifies (a probe); ``None`` for any other.\n    at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),\n        otherwise omitted (``None``).\n    data: Where the quantity comes from in our data, each ``<kind>:<location>`` (a quantity no\n        formula produces; stage 2 of the approval); ``None`` while it has no demonstrated source.",
+      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.\n    module: The taxonomy module of an input, target or reference; ``None`` where the quantity has none.\n    point: The taxonomy operating point of a final result.\n    stage: The taxonomy stage of an intermediate quantity.\n    group: The taxonomy group of a quantity inside its stage.\n    discipline: The taxonomy discipline of a derived quantity.\n    checks: The slug of the quantity this one verifies (a probe); ``None`` for any other.\n    at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),\n        otherwise omitted (``None``).\n    data: Where the quantity comes from in our data, each ``<kind>:<location>`` (a quantity no\n        formula produces; stage 2 of the approval); ``None`` while it has no demonstrated source.\n    consistency: Sources that only check the supplied value and never supply it (the geometry's\n        ``total_mass_kg`` against the passed mass, #1302); ``None`` for any other quantity.",
       "properties": {
         "at_most": {
           "anyOf": [
@@ -705,6 +835,23 @@
           ],
           "default": null,
           "title": "Checks"
+        },
+        "consistency": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^(geometry|component|default|app|evaluation):\\S+$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Consistency"
         },
         "data": {
           "anyOf": [
@@ -885,6 +1032,183 @@
         "type"
       ],
       "title": "Quantity",
+      "type": "object"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "description": "A validation rule: a requirement on the input data or a limit of a tool (gh-1260).\n\nAttributes:\n    applies_to: The input quantity or the formula the rule guards.\n    kind: ``input`` (a requirement on the data), ``tool`` (a stated limit of a tool) or ``probe``\n        (the agreement tolerance of a probe with the value it checks).\n    on_violation: ``error`` refuses the input, ``warning`` declares it.\n    criterion: The criterion in words, with the thresholds named by their parameter.\n    parameters: The thresholds, by name; the caller may override an adopted one.\n    codes: The error codes the kernel reports for a violation (the rule's trace into the code); empty\n        while the kernel has no check for it yet.",
+      "properties": {
+        "applies_to": {
+          "$ref": "#/$defs/RuleTarget"
+        },
+        "codes": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Codes",
+          "type": "array"
+        },
+        "criterion": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Criterion",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "input",
+            "tool",
+            "probe"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "on_violation": {
+          "enum": [
+            "warning",
+            "error"
+          ],
+          "title": "On Violation",
+          "type": "string"
+        },
+        "parameters": {
+          "default": {},
+          "patternProperties": {
+            "^[a-z][a-z0-9_]*$": {
+              "$ref": "#/$defs/RuleParameter"
+            }
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "applies_to",
+        "kind",
+        "on_violation",
+        "criterion"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "RuleParameter": {
+      "additionalProperties": false,
+      "description": "A threshold of a validation rule, with its unit, basis, status, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``.\n    basis: ``definition``, ``standard``, ``sourced`` or ``convention`` (chosen, adopted on the\n        maintainer's word).\n    status: ``adopted``, or ``pending`` while it is a proposal the maintainer has not decided.\n    source: Where the value comes from.\n    regime: Why it holds in the RC/UAV regime (ADR 0028).",
+      "properties": {
+        "basis": {
+          "enum": [
+            "definition",
+            "standard",
+            "sourced",
+            "convention"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "regime": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Regime",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "adopted",
+            "pending"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "1",
+            "m",
+            "m^2",
+            "kg",
+            "s",
+            "deg",
+            "deg/s",
+            "m/s",
+            "m/s^2",
+            "1/s",
+            "1/rad",
+            "1/rad^2",
+            "N",
+            "N/m^2",
+            "N*m",
+            "N/m",
+            "Pa",
+            "Pa*s",
+            "kg/m^3",
+            "W",
+            "V",
+            "A",
+            "ohm",
+            "Wh",
+            "Wh/kg",
+            "rpm/V",
+            "mAh",
+            "1/h"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "unit",
+        "basis",
+        "status",
+        "source",
+        "regime"
+      ],
+      "title": "RuleParameter",
+      "type": "object"
+    },
+    "RuleTarget": {
+      "additionalProperties": false,
+      "description": "What a rule guards: one quantity (an input) or one formula, exactly one of the two.\n\nAttributes:\n    quantity: Slug of the input quantity the rule guards (``airplane``).\n    formula: Slug of the formula the rule is a precondition of.",
+      "properties": {
+        "formula": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Formula"
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantity"
+        }
+      },
+      "title": "RuleTarget",
       "type": "object"
     },
     "Stage": {

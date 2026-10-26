@@ -256,12 +256,15 @@ def check_data_sources(model: CanonModel, catalogue: Catalogue) -> list[Finding]
     defaults = frozenset(content.defaults)
     findings: list[Finding] = []
     for slug, quantity in sorted(content.quantities.items()):
-        for source in quantity.data or []:
-            message = location_problem(source, catalogue, defaults)
-            if message is not None:
-                findings.append(
-                    Finding(
-                        file=f"quantities/{slug}.md", field="data", message=f"{source}: {message}"
+        for field, sources in (("data", quantity.data), ("consistency", quantity.consistency)):
+            for source in sources or []:
+                message = location_problem(source, catalogue, defaults)
+                if message is not None:
+                    findings.append(
+                        Finding(
+                            file=f"quantities/{slug}.md",
+                            field=field,
+                            message=f"{source}: {message}",
+                        )
                     )
-                )
     return findings

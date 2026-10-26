@@ -212,6 +212,34 @@ def test_a_default_on_a_computed_quantity_is_rejected(role: str) -> None:
         build(with_defaults(namespaces, computed=GRAVITY_DEFAULT | {"unit": "N"}))
 
 
+def test_a_default_is_the_fallback_of_a_derived_quantity_that_is_read_from_our_data() -> None:
+    """gh-1245/#1290: a catalogue read may carry its default as the fallback when the field is absent."""
+    namespaces = base_namespaces()
+    namespaces["calc"]["quantities"]["read"] = {
+        "symbol": "r",
+        "unit": "N",
+        "role": "derived",
+        "type": "scalar",
+        "data": ["component:battery.cell_voltage_v"],
+    }
+    model = build(with_defaults(namespaces, read=GRAVITY_DEFAULT | {"unit": "N"}))
+    assert "read" in model.namespaces["calc"].defaults
+
+
+def test_a_derived_quantity_not_read_from_our_data_still_takes_no_default() -> None:
+    namespaces = base_namespaces()
+    namespaces["calc"]["quantities"]["computed"] = {
+        "symbol": "c",
+        "unit": "N",
+        "role": "derived",
+        "type": "scalar",
+        "data": ["default:gravity"],
+    }
+    with_default = with_defaults(namespaces, computed=GRAVITY_DEFAULT | {"unit": "N"})
+    with pytest.raises(ValidationError, match="role"):
+        build(with_default)
+
+
 def test_a_negative_default_is_accepted_on_a_quantity_that_is_not_positive() -> None:
     namespaces = base_namespaces()
     namespaces["calc"]["quantities"]["offset"] = {
@@ -476,14 +504,19 @@ def test_public_names_of_the_model_are_pinned() -> None:
             "CanonModel",
             "CanonProblem",
             "Check",
+            "ConfigValue",
             "ConstBinding",
             "CostClass",
             "DataSource",
             "Default",
             "Formula",
             "FormulaKind",
+            "KernelConfig",
             "Namespace",
             "OnViolation",
+            "Rule",
+            "RuleParameter",
+            "RuleTarget",
             "Quantity",
             "QuantityRole",
             "QuantityType",

@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: GEO
 shape: law
-status: draft
+status: approved
 output: wing-reference-area, wing-span, mean-aerodynamic-chord
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,10 +14,8 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs: {airplane: airplane}
-preconditions:
-  - {id: main_wing_has_spanwise_extent, parameter: airplane, on_violation: error}
 outputs:
   s_ref: wing-reference-area
   b_ref: wing-span
@@ -51,14 +49,14 @@ every coefficient stays referenced to the same area (ADR 0022); `asb.Airplane` w
 wing in the list, not the main wing, and with the mixed defaults of the next paragraph. A mirrored wing is built from its
 oriented chain (root first, y ≥ 0); sections that fold back in y are not supported.
 
-**Precondition `main_wing_has_spanwise_extent` (error; maintainer 2026-10-25, #1253).** A wing typed `main_wing`
-must extend further in y than in z: over its stored sections, `max y − min y > max z − min z`. Equal or less
-means the mean inclination of the whole wing is 45° or more, a vertical surface. AeroSandbox would measure it
-without complaint (a slant planform), so the kernel refuses it before the measurement, as
-`unsupported_configuration` (`precondition_violated`), with the hint to check the surface type. Criterion and
-threshold are the proposal of #1253 and **await the maintainer's approval**: the dihedral of a real main wing
-stays far below 45° (even a strong V, 10–15°; a winglet adds little y-extent and little z-extent to a wing
-whose y-extent dominates), whereas a fin or a V-tail typed `main_wing` has y ≤ z.
+**Rule `main-wing-spanwise-extent` (an input rule, `rules.yaml`; maintainer 2026-10-25, #1253, #1260).** A wing typed
+`main_wing` is inclined from the horizontal by less than `max_inclination` over its stored sections:
+`atan2(z-extent, y-extent) < max_inclination`, with `max_inclination` = 45° (a convention, adopted 2026-10-25;
+no published source). A wing with no y-extent is a vertical surface and is refused. AeroSandbox would measure it
+without complaint (a slant planform), so the kernel refuses the input before any calculation, on every path, as
+`invalid_input` (`main_wing_without_spanwise_extent`) with the hint to check the surface type. The threshold is a
+parameter, not a number in the code: an expert user with an unusual aircraft may override it
+(`rule_overrides`), and the override is declared in the provenance.
 
 **The centreline gap (#1262).** `asb.Airplane`, when it derives its reference values, takes `S_ref` with the
 default `include_centerline_distance=False` (the gap excluded) and `b_ref` with `True` (the gap included); ASB
@@ -94,10 +92,16 @@ would leave every number computed from them standing after a geometry edit.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-25). The main wing is chosen by `surface_type main_wing`; S_ref, b_ref
+> and c_MAC are AeroSandbox's values of that wing with the flags set explicitly — `area(type="planform",
+> include_centerline_distance=True)`, `span(type="yz", include_centerline_distance=True)`,
+> `mean_aerodynamic_chord()` (#1240, #1262): the reference wing runs through the fuselage (Scholz Wing Design
+> §7.1); the MAC carries no centreline flag in ASB, declared. The 45° main-wing inclination limit is a rule on
+> the input (`rules.yaml`, #1260), adopted the same day. Kernel verified against ASB in the aero tier. Stage 2
+> complete.

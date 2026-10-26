@@ -3,7 +3,7 @@ canon: minimum-drag-speed-closed-form
 entry: formula
 kind: law
 tool: APP
-shape: approximation
+shape: law
 status: draft
 output: minimum-drag-speed-probe
 source_status: SOURCED
@@ -12,7 +12,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
-  - shape/route
+  - shape/law
   - kind/law
   - status/draft
 inputs:
@@ -33,13 +33,13 @@ V_md,probe = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
 
 **Produces** [[minimum-drag-speed-probe]]  ·  **from** [[wing-loading]] · [[air-density]] · [[zero-lift-drag-coefficient]] · [[induced-drag-factor]]
 
-**Probe, nicht Erzeuger.** Die Autorität ist [[minimum-drag-speed-from-polar]]. Diese Form setzt konstanten Nullauftriebswiderstand und konstanten Streckungsfaktor voraus — bei unseren Reynoldszahlen hängen beide von der Geschwindigkeit ab. Der Vergleich beider Wege ist ein Test (ADR 0022), keine zweite Wahrheit.
+**The Probe of [[minimum-drag-speed]] (maintainer decision 2026-10-25).** Its output [[minimum-drag-speed-probe]] `checks` [[minimum-drag-speed]], the value of the optimisation in [[minimum-drag-speed-from-polar]], which is the authority. The closed form assumes a constant zero-lift drag and a constant induced-drag factor; at our Reynolds numbers both depend on the speed. Comparing the two routes is a test (ADR 0022), not a second truth.
+
+The formula itself is a law (Sadraey Eq. 4.80, an algebraic consequence of the parabolic polar); it is the quantity that is the probe, as for [[static-margin-probe]] and [[max-lift-to-drag-parabolic]].
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
-**Shape: a route.** This is one of several ways to the same quantity. The canon has chosen: the authority is [[minimum-drag-speed-from-polar]]; this closed form is its Probe — it requires that they **agree**.
-
-**Test that follows.** Both routes claim the same quantity by different means; they must agree. Where they do not, the polar is not parabolic — which is a statement about the aircraft, not a defect.
+**Test that follows.** The probe and the optimisation reach the same quantity by different means under one assumption, a parabolic polar. A large deviation means the polar is not parabolic. That is a statement about the aircraft, not a defect of either route; it is reported and never averaged or substituted.
 
 **Dimensional check.** 🟢 balances
 

@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: centre-of-gravity-design
 source_status: SOURCED
 dimensional_check: BALANCES
@@ -15,7 +15,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 tex: x_{cg,design} = x_{NP} - SM_{target}\,c_{MAC}
 inputs: {x_np: neutral-point, sm_target: static-margin-target, c_mac: mean-aerodynamic-chord}
 outputs: {x_cg_sm: centre-of-gravity-design}
@@ -47,11 +47,15 @@ battery and parts so that the real CG lands here.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-25): the design CG as the static-margin definition solved for the CG
+> (Sadraey Eq. 11.18), x_cg,design = x_NP − SM_target·c_MAC — the CG is a target from the wanted stability,
+> never an app input (ADR 0011). x_NP is an interval over worlds, so the design CG is one too, carried per
+> world (A11). SM_target is the sourced starting value 0.10 (Drela Eq. 2, #1258). Inherits the neutral
+> point's limits (fuselage not modelled). Kernel EXACT (🟢).

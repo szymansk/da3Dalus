@@ -5,7 +5,8 @@ import math
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces
+from aero_kernel.solvers.avl_mesh import MeshSurface
+from aero_kernel.tests.mesh_helpers import mesh_surfaces
 
 NSPAN = 12
 

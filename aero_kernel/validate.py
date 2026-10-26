@@ -24,6 +24,7 @@ from aero_kernel import geometry
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.geometry import Wing
+from aero_kernel.rules import Rules
 from aero_kernel.schema import AircraftInput, ComputeRequest, KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -74,6 +75,9 @@ UNREAD_FIELDS: Mapping[type[BaseModel], frozenset[str]] = {
     geometry.ControlSurface: frozenset(geometry.ControlSurface.model_fields) - {"deflection"},
     geometry.TrailingEdgeDevice: frozenset(geometry.TrailingEdgeDevice.model_fields) - _TED_READ,
 }
+
+
+WINGS_PATH = "airplane.wings"
 
 
 def _key_path(parent: str, key: str) -> str:
@@ -205,7 +209,7 @@ def _contour_thickness(points: tuple[tuple[float, float], ...]) -> float:
     return max(y - _interpolate(lower, x) for x, y in upper)
 
 
-def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]:
+def _airfoil_findings(airfoil: geometry.Airfoil, path: str, rules: Rules) -> list[KernelError]:
     """Check an airfoil: a NACA 4-digit designation or a valid contour with positive thickness."""
     if isinstance(airfoil, str):
         match = _NACA.fullmatch(airfoil)
@@ -231,21 +235,24 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
             ]
         return []
     points = airfoil.coordinates
+    minimum_points = int(rules.value("airfoil-resolvable", "min_contour_points"))
     coordinates_path = f"{path}.coordinates"
     findings: list[KernelError] = []
     finite = all(math.isfinite(c) for point in points for c in point)
     # the point count is its own cause and is judged whatever the values; the end-point rule and
     # the thickness need finite coordinates and are skipped otherwise (the walk reports those)
     trailing_edge = (
-        finite and len(points) >= 3 and points[0][0] == points[-1][0] == max(x for x, _ in points)
+        finite
+        and len(points) >= minimum_points
+        and points[0][0] == points[-1][0] == max(x for x, _ in points)
     )
-    if len(points) < 3 or (finite and not trailing_edge):
+    if len(points) < minimum_points or (finite and not trailing_edge):
         findings.append(
             _finding(
                 "invalid_airfoil_contour",
                 coordinates_path,
                 f"The airfoil contour at {coordinates_path} has {len(points)} point(s); it "
-                "needs at least 3, and its first and last point must lie at the largest x.",
+                f"needs at least {minimum_points}, and its first and last point must lie at the largest x.",
                 "Start and end the contour at the trailing edge (Selig order).",
             )
         )
@@ -269,7 +276,9 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
     return findings
 
 
-def _section_findings(x_sec: geometry.WingXSec, path: str, *, is_last: bool) -> list[KernelError]:
+def _section_findings(
+    x_sec: geometry.WingXSec, path: str, rules: Rules, *, is_last: bool
+) -> list[KernelError]:
     """Check one rib: finiteness, chord, airfoil, segment details on the last, control surface."""
     findings = _non_finite(x_sec, path)
     findings += _not_positive(
@@ -280,7 +289,7 @@ def _section_findings(x_sec: geometry.WingXSec, path: str, *, is_last: bool) -> 
         "m",
         "Give the chord a length > 0.",
     )
-    findings += _airfoil_findings(x_sec.airfoil, f"{path}.airfoil")
+    findings += _airfoil_findings(x_sec.airfoil, f"{path}.airfoil", rules)
     if is_last:
         details = {
             "trailing_edge_device": x_sec.trailing_edge_device,
@@ -311,16 +320,19 @@ def _section_findings(x_sec: geometry.WingXSec, path: str, *, is_last: bool) -> 
     return findings
 
 
-def _too_few_sections(kind: str, key: str, count: int, path: str) -> list[KernelError]:
-    """Report a wing or fuselage with fewer than two sections."""
-    if count >= 2:
+def _too_few_sections(
+    kind: str, key: str, count: int, path: str, rules: Rules
+) -> list[KernelError]:
+    """Report a wing or fuselage with fewer sections than the canon requires."""
+    minimum = int(rules.value("minimum-sections", "min_sections"))
+    if count >= minimum:
         return []
     return [
         _finding(
             "too_few_sections",
             f"{path}.x_secs",
-            f"{kind} {key!r} has {count} section(s); it needs at least 2.",
-            "Give it at least two sections.",
+            f"{kind} {key!r} has {count} section(s); it needs at least {minimum}.",
+            f"Give it at least {minimum} sections.",
             float(count),
         )
     ]
@@ -345,18 +357,20 @@ def _span_findings(wing: Wing, path: str) -> list[KernelError]:
     ]
 
 
-def _wing_findings(wings: Mapping[str, Wing]) -> list[KernelError]:
+def _wing_findings(wings: Mapping[str, Wing], rules: Rules) -> list[KernelError]:
     """Check the wings: section count, span and each section."""
     findings: list[KernelError] = []
     for key, wing in wings.items():
-        path = _key_path("airplane.wings", key)
-        findings += _too_few_sections("Wing", key, len(wing.x_secs), path)
+        path = _key_path(WINGS_PATH, key)
+        findings += _too_few_sections("Wing", key, len(wing.x_secs), path, rules)
         findings += _span_findings(wing, path)
         last = len(wing.x_secs) - 1
         for index, x_sec in enumerate(wing.x_secs):
-            findings += _section_findings(x_sec, f"{path}.x_secs[{index}]", is_last=index == last)
+            findings += _section_findings(
+                x_sec, f"{path}.x_secs[{index}]", rules, is_last=index == last
+            )
         findings += _missing_surface_type(wing, key, path)
-    return findings + _main_wing_count(wings)
+    return findings + _main_wing_count(wings, rules) + _main_wing_inclination(wings, rules)
 
 
 def _missing_surface_type(wing: Wing, key: str, path: str) -> list[KernelError]:
@@ -373,30 +387,76 @@ def _missing_surface_type(wing: Wing, key: str, path: str) -> list[KernelError]:
     ]
 
 
-def _main_wing_count(wings: Mapping[str, Wing]) -> list[KernelError]:
-    """Report an airplane that does not have exactly one wing of ``surface_type`` ``main_wing``."""
+def _main_wing_count(wings: Mapping[str, Wing], rules: Rules) -> list[KernelError]:
+    """Report an airplane that does not have the required number of ``main_wing`` wings."""
+    required = int(rules.value("one-main-wing", "required_main_wings"))
     count = sum(1 for wing in wings.values() if wing.surface_type == "main_wing")
-    if count == 1:
+    if count == required:
         return []
     logger.debug("finding main_wing_count at airplane.wings: %d", count)
     return [
         KernelError(
             code="main_wing_count",
             category=ErrorCategory.INVALID_INPUT,
-            input_path="airplane.wings",
-            message=f"The airplane has {count} wings with surface_type main_wing; it needs exactly one.",
+            input_path=WINGS_PATH,
+            message=f"The airplane has {count} wings with surface_type main_wing; it needs exactly {required}.",
             hint="Mark exactly one wing as main_wing; its area, span and chord are the reference values.",
             detail={"count": count},
         )
     ]
 
 
-def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[KernelError]:
+def _main_wing_inclination(wings: Mapping[str, Wing], rules: Rules) -> list[KernelError]:
+    """Report a ``main_wing`` that is inclined from the horizontal by ``max_inclination`` or more.
+
+    The inclination is that of the whole stored wing, ``atan2(z-extent, y-extent)``; a wing with no
+    y-extent is vertical (canon rule ``main-wing-spanwise-extent``, adopted 2026-10-25, #1253).
+    """
+    limit = rules.value("main-wing-spanwise-extent", "max_inclination")
+    findings: list[KernelError] = []
+    for key, wing in wings.items():
+        if wing.surface_type != "main_wing":
+            continue
+        ys = [x_sec.xyz_le[1] for x_sec in wing.x_secs]
+        zs = [x_sec.xyz_le[2] for x_sec in wing.x_secs]
+        if not ys or not all(math.isfinite(c) for c in (*ys, *zs)):
+            continue  # no sections or a non-finite one: other findings
+        y_extent, z_extent = max(ys) - min(ys), max(zs) - min(zs)
+        inclination = math.degrees(math.atan2(z_extent, y_extent))
+        if inclination < limit:
+            continue
+        findings.append(
+            KernelError(
+                code="main_wing_without_spanwise_extent",
+                category=ErrorCategory.INVALID_INPUT,
+                input_path=_key_path(WINGS_PATH, key),
+                message=(
+                    f"The main wing {key!r} extends {y_extent:.4g} m in y and {z_extent:.4g} m in z: "
+                    f"it is inclined by {inclination:.3g} deg, at least the {limit:g} deg a main wing "
+                    "may have, so it is a vertical surface."
+                ),
+                hint=(
+                    "Check the surface type of the wing: a fin or a V-tail is not a main wing. "
+                    "An expert may raise the rule parameter main-wing-spanwise-extent.max_inclination."
+                ),
+                detail={
+                    "y_extent_m": y_extent,
+                    "z_extent_m": z_extent,
+                    "max_inclination_deg": limit,
+                },
+            )
+        )
+    return findings
+
+
+def _fuselage_findings(
+    fuselages: Mapping[str, geometry.Fuselage], rules: Rules
+) -> list[KernelError]:
     """Check the fuselages: section count, semi-axes (0 allowed at the ends) and exponents."""
     findings: list[KernelError] = []
     for key, fuselage in fuselages.items():
         path = _key_path("airplane.fuselages", key)
-        findings += _too_few_sections("Fuselage", key, len(fuselage.x_secs), path)
+        findings += _too_few_sections("Fuselage", key, len(fuselage.x_secs), path, rules)
         last = len(fuselage.x_secs) - 1
         for index, x_sec in enumerate(fuselage.x_secs):
             section = f"{path}.x_secs[{index}]"
@@ -477,24 +537,33 @@ def _deflection_warnings(wings: Mapping[str, Wing]) -> list[KernelWarning]:
     return warnings
 
 
-def validate_aircraft(aircraft: AircraftInput) -> Validation:
+def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Validation:
     """Report every physically inadmissible value of an aircraft input, and the input's caveats.
 
     Pure and I/O free; collects all findings instead of stopping at the first. Empty ``errors``
     means the input is admissible. Findings follow the document, then ``values`` by slug.
     ``values`` are checked for finiteness only: their admissibility comes from the canon model.
 
+    The thresholds of the rules come from the canon (``rules.yaml``) through ``rules``, with the
+    caller's ``rule_overrides``; the geometry rules run here, once, on every path.
+
     Args:
         aircraft: The parsed input; geometry in metres and degrees, ``values`` in canon units.
+        rules: The thresholds of the call; the shipped canon's with the aircraft's overrides if
+            omitted.
 
     Returns:
         The ``invalid_input`` errors (each with the dotted ``input_path`` of the offending
         value) and the warnings about the input.
     """
+    if rules is None:
+        from aero_kernel.build import shipped_build  # build imports this module
+
+        rules = Rules(shipped_build().model, aircraft.rule_overrides)
     airplane = aircraft.airplane
     errors = _non_finite(airplane, "airplane", skip=frozenset({"wings", "fuselages"}))
-    errors += _wing_findings(airplane.wings or {})
-    errors += _fuselage_findings(airplane.fuselages or {})
+    errors += _wing_findings(airplane.wings or {}, rules)
+    errors += _fuselage_findings(airplane.fuselages or {}, rules)
     for slug in sorted(aircraft.values):
         errors += _non_finite(aircraft.values[slug], _values_path(slug))
     warnings = _mass_warnings(aircraft) + _deflection_warnings(airplane.wings or {})

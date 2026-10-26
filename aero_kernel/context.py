@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.rules import Rules
 from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
@@ -41,12 +42,15 @@ class Solvers:
         opti: The OPT adapter (the stall problem, IPOPT over AeroBuildup).
         avl: The AVL adapter (the neutral point).
         geometry: The GEO adapter (the reference values of the main wing, AeroSandbox's).
+        rules: The rule parameters of the call (the canon's, with the caller's overrides); the
+            adapters that read one share this object, so the provenance declares every use.
     """
 
     atmosphere: AtmosphereAdapter
     opti: OptiAdapter
     avl: AvlAdapter
     geometry: GeometryAdapter
+    rules: Rules
 
     def settings_of(self, tool: str) -> dict[str, JsonValue]:
         """Return the solver settings of the adapter of a canon tool code (``solver_settings``).

@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: AB
 shape: law
-status: draft
+status: approved
 output: pitching-moment-slope, static-margin-probe
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs:
   airplane: airplane
   m: aircraft-mass
@@ -44,6 +44,8 @@ truth (A7): a deviation beyond tolerance is reported, never averaged. The tolera
 method offset: AeroBuildup has no wing-tail downwash, which biases the probe toward a larger margin.
 Checking a measured CG is the path of [[static-margin-measured]], not of the probe.
 
+**Agreement tolerance (adopted, maintainer 2026-10-25, #1260).** The probe agrees with the target if the two margins differ by at most 0.05, 5 % of the mean aerodynamic chord: the parameter `agreement_tolerance` of the rule `static-margin-probe-agreement` in `rules.yaml` (basis `convention`). It rests on the spread of the neutral-point worlds (3-6 % MAC, textbook against AVL on BRYAN and JAGUAR) plus the declared bias of the probe. The caller may override it; the override is declared in the provenance.
+
 Unlike `x_NP`, `C_mα` **does** depend on the reference: its sign flips exactly at
 `x_ref = x_NP` (§2.3). That is why the Probe — and only the Probe — needs the CG, and it is [[centre-of-gravity-design]] (`x_cg,design`, produced by cg-for-target-margin), never an app input (maintainer 2026-10-25).
 
@@ -57,14 +59,18 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [x] **Convergence** — the criterion, and what is returned and declared on failure
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-25): −C_mα/C_Lα from AeroBuildup at V_md with the moment reference at the
+> design CG must reproduce SM_target — a test, not a second truth (A7); per world, since the design CG is an
+> interval. Declared: no wing–tail downwash, biased toward a larger margin. Agreement tolerance 0.05 (5 % MAC),
+> adopted the same day (`rules.yaml` `static-margin-probe-agreement`, #1260). No aero_kernel implementation yet
+> (#1277).

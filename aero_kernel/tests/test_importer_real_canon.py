@@ -34,7 +34,7 @@ def test_the_real_canon_imports_without_a_finding(tmp_path: Path) -> None:
         assert default.basis
 
 
-def test_the_real_canon_has_one_convention_and_five_starting_values(
+def test_the_real_canon_has_one_convention_and_seven_starting_values(
     tmp_path: Path,
 ) -> None:
     result = import_canon(CANON)
@@ -47,7 +47,9 @@ def test_the_real_canon_has_one_convention_and_five_starting_values(
     assert starts == {
         "altitude",
         "battery-specific-energy",
+        "cell-voltage-nominal",
         "limit-load-factor",
+        "motor-efficiency",
         "static-margin-target",
         "tail-efficiency",
     }

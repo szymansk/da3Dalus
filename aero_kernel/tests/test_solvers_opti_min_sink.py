@@ -5,6 +5,7 @@ import math
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
+from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.base import regime_by_wing
 from aero_kernel.solvers.opti import MinSinkSolution, OptiAdapter, StallRequest
@@ -138,7 +139,6 @@ async def test_the_worker_minimises_the_sink_power_drag_times_speed(
         (V_HIGH, 7.0, "V"),
         (V_LOW, 7.0, "V"),
         (9.0, opti_module.ALPHA_MIN_DEG, "alpha"),
-        (9.0, 15.75, "alpha"),  # the window's upper edge: the first peak itself
     ],
 )
 async def test_an_optimum_on_a_bound_is_not_converged_and_names_the_variable(
@@ -163,3 +163,52 @@ async def test_any_other_exception_stays_an_exception(monkeypatch: pytest.Monkey
     request = install_optimum(monkeypatch, 9.0, 7.0, error=ValueError("a bug"))
     with pytest.raises(ValueError, match="a bug"):
         opti_module.min_sink_worker(request)
+
+
+# The window of alpha ends at the first C_L peak itself (15.75 deg in the faked polar): an optimum
+# there is the stall-limited minimum sink (#1268, maintainer 2026-10-25): value and warning, not an error.
+PEAK_ALPHA = 15.75
+
+
+async def test_an_optimum_at_the_first_lift_peak_is_returned_flagged_stall_limited(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = install_optimum(monkeypatch, 9.0, PEAK_ALPHA, cl=1.2)
+    solution = opti_module.min_sink_worker(request).value
+    assert (solution.v_mp, solution.alpha_mp, solution.cl_mp) == (9.0, PEAK_ALPHA, 1.2)
+    assert solution.stall_limited is True
+
+
+async def test_an_interior_optimum_is_not_flagged(monkeypatch: pytest.MonkeyPatch) -> None:
+    request = install_optimum(monkeypatch, 9.0, 7.0)
+    assert opti_module.min_sink_worker(request).value.stall_limited is False
+
+
+async def test_a_stall_limited_optimum_still_refuses_a_speed_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = install_optimum(monkeypatch, V_HIGH, PEAK_ALPHA)
+    with pytest.raises(FormulaError) as raised:
+        opti_module.min_sink_worker(request)
+    assert raised.value.detail["variable"] == "V"
+
+
+async def test_the_adapter_declares_a_stall_limited_optimum_with_a_practice_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    limited = MinSinkSolution(v_mp=18.0, alpha_mp=PEAK_ALPHA, cl_mp=1.2, stall_limited=True)
+    monkeypatch.setattr(opti_module, "min_sink_worker", canned(limited))
+    result = await OptiAdapter(InProcessRuntime()).min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)
+    (warning,) = [w for w in result.warnings if w.code == "minimum_sink_stall_limited"]
+    assert warning.severity is WarningSeverity.PRACTICE
+    assert warning.detail["alpha_boundary_deg"] == PEAK_ALPHA
+    assert warning.detail["cl_boundary"] == 1.2
+    assert "still falling" in warning.message
+
+
+async def test_the_adapter_declares_nothing_for_an_interior_optimum(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(opti_module, "min_sink_worker", canned(sink(18.0)))
+    result = await OptiAdapter(InProcessRuntime()).min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)
+    assert [w.code for w in result.warnings] == []

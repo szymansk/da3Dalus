@@ -160,12 +160,19 @@ class TestWingSections:
         assert _codes(errors) == ["non_positive_length"]
         assert errors[0].detail == {"value": 0.0}
 
-    @pytest.mark.parametrize("tip", [[0.5, 0.0, 0.0], [0.0, 0.0, 0.5], [0.0, 0.5, 0.0]])
-    def test_a_chain_along_any_single_axis_has_span(self, tip: list[float]) -> None:
-        """A vertical fin changes only in z; a swept-back root-to-tip only in x."""
+    @pytest.mark.parametrize("tip", [[0.5, 0.0, 0.0], [0.0, 0.5, 0.0]])
+    def test_a_chain_along_x_or_y_has_span(self, tip: list[float]) -> None:
+        """A swept-back root-to-tip changes only in x."""
         document = _document()
         document["airplane"]["wings"]["Main wing"]["x_secs"][1]["xyz_le"] = tip
         assert _validate(document) == ()
+
+    def test_a_chain_along_z_has_span_but_is_no_main_wing(self) -> None:
+        """A vertical chain has a length (no non_positive_length); as a main wing it is refused by
+        the canon rule main-wing-spanwise-extent, as a fin it is fine."""
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["xyz_le"] = [0.0, 0.0, 0.5]
+        assert _codes(_validate(document)) == ["main_wing_without_spanwise_extent"]
 
     def test_a_zero_length_segment_is_no_finding(self) -> None:
         document = _document()

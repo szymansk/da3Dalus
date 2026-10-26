@@ -1,4 +1,4 @@
-"""Stage 1 of the import: read the front matter of every entry and ``defaults.yaml`` (ch. 8.9).
+"""Stage 1 of the import: read the front matter of every entry, ``defaults.yaml``, ``rules.yaml`` and ``config.yaml`` (ch. 8.9).
 
 Only the front matter is parsed; the prose below it is never read. This stage checks what can be
 checked without knowing the vocabularies: that a file is readable YAML, carries its markers and
@@ -8,6 +8,7 @@ quantity).
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -56,7 +57,18 @@ FORMULA_DROPPED = frozenset(
     }
 )
 QUANTITY_CARRIED = frozenset(
-    {"symbol", "unit", "role", "type", "positive", "at_most", "uncertainty", "checks", "data"}
+    {
+        "symbol",
+        "unit",
+        "role",
+        "type",
+        "positive",
+        "at_most",
+        "uncertainty",
+        "checks",
+        "data",
+        "consistency",
+    }
 )
 QUANTITY_DROPPED = frozenset({"canon", "kind", "tags"})
 
@@ -115,15 +127,17 @@ class ParsedCanon:
         formulas: The formula entries by slug.
         quantities: The quantity entries by slug.
         defaults: The raw ``defaults.yaml`` entries by slug.
+        rules: The raw ``rules.yaml`` entries by slug (the file is optional).
+        config: The raw ``config.yaml`` entries by name (the file is optional).
         taxonomy: The raw ``taxonomy.yaml`` document; ``None`` while it is unreadable.
         findings: Everything stage 1 found.
     """
 
     formulas: dict[str, Entry] = field(default_factory=lambda: dict[str, Entry]())
     quantities: dict[str, Entry] = field(default_factory=lambda: dict[str, Entry]())
-    defaults: dict[str, dict[str, object]] = field(
-        default_factory=lambda: dict[str, dict[str, object]]()
-    )
+    defaults: dict[str, dict[str, object]] = field(default_factory=lambda: {})
+    rules: dict[str, dict[str, object]] = field(default_factory=lambda: {})
+    config: dict[str, object] | None = None
     taxonomy: dict[str, object] | None = None
     findings: list[Finding] = field(default_factory=lambda: list[Finding]())
 
@@ -359,11 +373,56 @@ def _keep_default(slug: str, value: object, parsed: ParsedCanon) -> None:
     parsed.defaults[slug] = {str(key): item for key, item in entry.items()}
 
 
+def _keep_rule(slug: str, value: object, parsed: ParsedCanon) -> None:
+    """Keep one ``rules.yaml`` entry; the model types check its content."""
+    entry = as_mapping(value)
+    if entry is None:
+        parsed.findings.append(
+            Finding(
+                file="rules.yaml",
+                field=slug,
+                message="must be a mapping {applies_to, kind, on_violation, criterion, parameters}",
+            )
+        )
+        return
+    parsed.rules[slug] = {str(key): item for key, item in entry.items()}
+
+
+def _keep_config(name: str, value: object, parsed: ParsedCanon) -> None:
+    """Keep one ``config.yaml`` entry; the model types check its content and the closed key set."""
+    if parsed.config is None:
+        parsed.config = {}
+    parsed.config[name] = value
+
+
+def _read_config(canon_dir: Path, parsed: ParsedCanon) -> None:
+    """Read ``config.yaml``; the file is optional."""
+    _read_slug_map(canon_dir, "config.yaml", parsed, _keep_config, required=False)
+
+
 def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
     """Read ``defaults.yaml``; an empty file or ``{}`` means no defaults, a missing file is a finding."""
-    path = canon_dir / "defaults.yaml"
-    file = "defaults.yaml"
+    _read_slug_map(canon_dir, "defaults.yaml", parsed, _keep_default, required=True)
+
+
+def _read_rules(canon_dir: Path, parsed: ParsedCanon) -> None:
+    """Read ``rules.yaml``; the file is optional, an empty file means no rules."""
+    _read_slug_map(canon_dir, "rules.yaml", parsed, _keep_rule, required=False)
+
+
+def _read_slug_map(
+    canon_dir: Path,
+    file: str,
+    parsed: ParsedCanon,
+    keep: Callable[[str, object, ParsedCanon], None],
+    *,
+    required: bool,
+) -> None:
+    """Read a YAML file of ``<slug>: {...}`` entries; a missing required file is a finding."""
+    path = canon_dir / file
     if not path.is_file():
+        if not required:
+            return
         parsed.findings.append(
             Finding(
                 file=file,
@@ -406,7 +465,7 @@ def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
         return
     for key, value in mapping.items():
         if isinstance(key, str):
-            _keep_default(key, value, parsed)
+            keep(key, value, parsed)
         else:
             parsed.findings.append(
                 Finding(file=file, field=str(key), message="a slug must be a string")
@@ -476,5 +535,7 @@ def parse_canon(canon_dir: Path) -> ParsedCanon:
     _read_entries(canon_dir, "formulas", parsed)
     _read_entries(canon_dir, "quantities", parsed)
     _read_defaults(canon_dir, parsed)
+    _read_rules(canon_dir, parsed)
+    _read_config(canon_dir, parsed)
     _read_taxonomy(canon_dir, parsed)
     return parsed

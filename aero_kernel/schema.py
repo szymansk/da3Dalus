@@ -35,6 +35,7 @@ __all__ = [
     "QuantityStatus",
     "Reason",
     "ReasonCode",
+    "RuleUsed",
     "WarningSeverity",
     "dedupe_warnings",
 ]
@@ -75,6 +76,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "reynolds_bubble_sensitive": WarningSeverity.PRACTICE,
     "mach_above_limit": WarningSeverity.PRACTICE,
     "mach_beyond_validity": WarningSeverity.DEFECT,
+    "minimum_sink_stall_limited": WarningSeverity.PRACTICE,
 }
 
 
@@ -369,6 +371,28 @@ class DefaultUsed(BaseModel):
     source: str = Field(min_length=1)
 
 
+class RuleUsed(BaseModel):
+    """A threshold of a validation rule that the call used (gh-1260, ADR 0020).
+
+    Attributes:
+        rule: The rule id in the canon's ``rules.yaml``.
+        parameter: The name of the parameter.
+        value: The value used, in ``unit``: the canon's, or the caller's override.
+        unit: The unit of ``value``.
+        basis: What kind of value the canon's parameter is (``convention``, ``sourced`` ...).
+        overridden: Whether the caller's override replaced the canon value.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    rule: str = Field(min_length=1)
+    parameter: str = Field(min_length=1)
+    value: FiniteFloat
+    unit: str = Field(min_length=1)
+    basis: str = Field(min_length=1)
+    overridden: bool
+
+
 class Provenance(BaseModel):
     """What a result was computed with (ch. 8.4).
 
@@ -379,6 +403,7 @@ class Provenance(BaseModel):
         tool_versions: Version per tool (aerosandbox, NeuralFoil model, AVL).
         solver_settings: Solver settings of the call.
         defaults_used: Every canon default the call took.
+        rules_used: Every validation threshold the call used, with the caller's overrides marked.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -390,6 +415,7 @@ class Provenance(BaseModel):
     ] = Field(default_factory=dict)
     solver_settings: dict[str, JsonValue] = Field(default_factory=dict)
     defaults_used: tuple[DefaultUsed, ...] = ()
+    rules_used: tuple[RuleUsed, ...] = ()
 
     @model_validator(mode="after")
     def _check_solver_settings(self) -> Self:
@@ -488,6 +514,9 @@ class AircraftInput(BaseModel):
     Attributes:
         airplane: The geometry document; its millimetre fields are metres once parsed.
         values: Value per canon input or target slug, in the quantity's SI unit.
+        rule_overrides: Value per ``<rule>.<parameter>`` of the canon's ``rules.yaml``, for an expert
+            user whose aircraft breaks a convention (e.g. a main wing inclined past 45 deg); each
+            override used is declared in the provenance.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -496,6 +525,9 @@ class AircraftInput(BaseModel):
     values: dict[Annotated[str, Field(min_length=1)], Annotated[float, Field(strict=True)]] = Field(
         default_factory=dict
     )
+    rule_overrides: dict[
+        Annotated[str, Field(min_length=1)], Annotated[float, Field(strict=True)]
+    ] = Field(default_factory=dict)
 
 
 class ComputeRequest(BaseModel):

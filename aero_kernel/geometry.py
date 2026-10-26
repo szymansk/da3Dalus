@@ -383,7 +383,7 @@ class AirplaneGeometry(_Frozen):
 
     Attributes:
         name: Aeroplane name.
-        total_mass_kg: Total mass in kg; parsed but never used, mass comes from the values (ch. 8.11).
+        total_mass_kg: Total mass in kg; a consistency check only (a warning when it differs from the passed mass, a hint when the mass is missing), the mass itself always comes from the values (ch. 8.11, #1302).
         xyz_ref: Moment reference point in metres.
         wings: Wing surfaces by name.
         fuselages: Fuselage bodies by name.

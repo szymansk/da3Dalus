@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.exceptions import (
     ConflictError,
@@ -480,6 +481,15 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
                 "type": "number",
                 "unit": "W",
             },
+            # gh-1290: the efficiency the manufacturer publishes; absent for most motors.
+            {
+                "name": "efficiency_pct",
+                "label": "Wirkungsgrad",
+                "type": "number",
+                "unit": "%",
+                "min": 0,
+                "max": 100,
+            },
         ],
     },
     {
@@ -498,6 +508,21 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
             {"name": "cells", "label": "Zellen (S)", "type": "number", "required": True, "min": 1},
             {"name": "c_rate", "label": "C-Rate", "type": "number"},
             {"name": "voltage_v", "label": "Spannung", "type": "number", "unit": "V"},
+            # gh-1245: the chemistry and the datasheet's nominal cell voltage belong to the
+            # battery; the pack voltage voltage_v is cells * cell_voltage_v.
+            {
+                "name": "chemistry",
+                "label": "Chemie",
+                "type": "enum",
+                "options": ["lipo", "lihv", "life", "li_ion", "nimh"],
+            },
+            {
+                "name": "cell_voltage_v",
+                "label": "Nennspannung je Zelle",
+                "type": "number",
+                "unit": "V",
+                "min": 0,
+            },
         ],
     },
     {
@@ -691,9 +716,9 @@ def seed_default_types(db: Session) -> None:
     existing = {row[0] for row in db.query(ComponentTypeModel.name).all()}
     for seed in DEFAULT_SEED_TYPES:
         if seed["name"] in existing:
-            # gh-1008 / gh-1006: additively patch new schema fields onto existing
+            # gh-1008 / gh-1006 / gh-1245: additively patch new schema fields onto existing
             # ComponentTypes so already-seeded DBs gain them without a rebuild.
-            if seed["name"] in ("material", "brushless_motor"):
+            if seed["name"] in ("material", "brushless_motor", "battery"):
                 _patch_schema_fields(db, seed["name"], seed["schema"])
             continue
         db.add(
@@ -718,7 +743,8 @@ def _patch_schema_fields(db: Session, type_name: str, full_schema: list[dict[str
     row = db.query(ComponentTypeModel).filter(ComponentTypeModel.name == type_name).first()
     if row is None:
         return
-    current = _normalize_schema(row.schema_def)
+    # copy: appending to the column's own list is an in-place JSON mutation SQLAlchemy does not track
+    current = [dict(p) if isinstance(p, dict) else p for p in _normalize_schema(row.schema_def)]
     existing_names = {p.get("name") for p in current if isinstance(p, dict)}
     changed = False
     for prop in full_schema:
@@ -727,6 +753,7 @@ def _patch_schema_fields(db: Session, type_name: str, full_schema: list[dict[str
             changed = True
     if changed:
         row.schema_def = current
+        flag_modified(row, "schema_def")
         db.flush()
 
 

@@ -39,17 +39,22 @@ __all__ = [
     "CanonModel",
     "CanonProblem",
     "Check",
+    "ConfigValue",
     "ConstBinding",
     "CostClass",
     "DataSource",
     "Default",
     "Formula",
     "FormulaKind",
+    "KernelConfig",
     "Namespace",
     "OnViolation",
     "Quantity",
     "QuantityRole",
     "QuantityType",
+    "Rule",
+    "RuleParameter",
+    "RuleTarget",
     "Tool",
     "Unit",
     "WhenTerm",
@@ -111,7 +116,7 @@ DefaultBasis = Literal["definition", "standard", "sourced", "convention", "start
 
 
 class Default(BaseModel):
-    """A value the canon states for a supplied quantity, with its unit, basis, source and regime.
+    """A value the canon states for a supplied quantity or a catalogue read, with its unit, basis, source and regime.
 
     Attributes:
         value: The value, in ``unit``.
@@ -168,6 +173,8 @@ class Quantity(BaseModel):
             otherwise omitted (``None``).
         data: Where the quantity comes from in our data, each ``<kind>:<location>`` (a quantity no
             formula produces; stage 2 of the approval); ``None`` while it has no demonstrated source.
+        consistency: Sources that only check the supplied value and never supply it (the geometry's
+            ``total_mass_kg`` against the passed mass, #1302); ``None`` for any other quantity.
     """
 
     model_config = _MODEL_CONFIG
@@ -186,6 +193,7 @@ class Quantity(BaseModel):
     checks: Slug | None = None
     at_most: FiniteNumber | None = None
     data: Annotated[list[DataSource], Field(min_length=1)] | None = None
+    consistency: Annotated[list[DataSource], Field(min_length=1)] | None = None
 
     @field_validator("positive", mode="before")
     @classmethod
@@ -216,6 +224,13 @@ class Quantity(BaseModel):
         if self.data is not None and len(set(self.data)) != len(self.data):
             msg = "data names a source twice"
             raise ValueError(msg)
+        if self.consistency is not None:
+            if len(set(self.consistency)) != len(self.consistency):
+                msg = "consistency names a source twice"
+                raise ValueError(msg)
+            if set(self.consistency) & set(self.data or ()):
+                msg = "consistency names a source that data supplies: a source either supplies or checks"
+                raise ValueError(msg)
         return self
 
     @model_validator(mode="after")
@@ -504,13 +519,139 @@ SlugKey = Annotated[str, _anchored(SLUG_REGEX)]
 NamespaceKey = Annotated[str, _anchored(NAMESPACE_REGEX)]
 
 
+RuleName = Annotated[str, _anchored(NAMESPACE_REGEX)]
+"""A snake_case name: a rule parameter or an error code."""
+
+RuleBasis = Literal["definition", "standard", "sourced", "convention"]
+"""What kind of value a rule parameter is; ``convention`` is a chosen value adopted on the maintainer's word."""
+
+RuleStatus = Literal["adopted", "pending"]
+"""``pending`` is a proposal awaiting the maintainer's word: the kernel never reads it."""
+
+RuleKind = Literal["input", "tool", "probe"]
+"""``input`` is a requirement on the input data, ``tool`` a stated limit of a tool, ``probe`` the agreement tolerance of a probe with the value it checks."""
+
+
+class RuleParameter(BaseModel):
+    """A threshold of a validation rule, with its unit, basis, status, source and regime.
+
+    Attributes:
+        value: The value, in ``unit``.
+        unit: The unit of ``value``.
+        basis: ``definition``, ``standard``, ``sourced`` or ``convention`` (chosen, adopted on the
+            maintainer's word).
+        status: ``adopted``, or ``pending`` while it is a proposal the maintainer has not decided.
+        source: Where the value comes from.
+        regime: Why it holds in the RC/UAV regime (ADR 0028).
+    """
+
+    model_config = _MODEL_CONFIG
+
+    value: FiniteNumber
+    unit: Unit
+    basis: RuleBasis
+    status: RuleStatus
+    source: NonBlank
+    regime: NonBlank
+
+
+class RuleTarget(BaseModel):
+    """What a rule guards: one quantity (an input) or one formula, exactly one of the two.
+
+    Attributes:
+        quantity: Slug of the input quantity the rule guards (``airplane``).
+        formula: Slug of the formula the rule is a precondition of.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    quantity: Slug | None = None
+    formula: Slug | None = None
+
+    @model_validator(mode="after")
+    def _check_one_target(self) -> Self:
+        """Require exactly one of ``quantity`` and ``formula``."""
+        if (self.quantity is None) == (self.formula is None):
+            msg = "a rule names exactly one of quantity and formula"
+            raise ValueError(msg)
+        return self
+
+
+class Rule(BaseModel):
+    """A validation rule: a requirement on the input data or a limit of a tool (gh-1260).
+
+    Attributes:
+        applies_to: The input quantity or the formula the rule guards.
+        kind: ``input`` (a requirement on the data), ``tool`` (a stated limit of a tool) or ``probe``
+            (the agreement tolerance of a probe with the value it checks).
+        on_violation: ``error`` refuses the input, ``warning`` declares it.
+        criterion: The criterion in words, with the thresholds named by their parameter.
+        parameters: The thresholds, by name; the caller may override an adopted one.
+        codes: The error codes the kernel reports for a violation (the rule's trace into the code); empty
+            while the kernel has no check for it yet.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    applies_to: RuleTarget
+    kind: RuleKind
+    on_violation: Literal["warning", "error"]
+    criterion: NonBlank
+    codes: list[RuleName] = []
+    parameters: dict[RuleName, RuleParameter] = {}
+
+
+class ConfigValue(BaseModel):
+    """One tolerance of the configuration.
+
+    Attributes:
+        value: The tolerance, a finite number greater than zero, in ``unit``.
+        unit: Its unit; ``1`` is dimensionless.
+        guards: What the check decides.
+        basis: ``solver-precision`` (the digits a tool prints), ``decision`` (fixed by the
+            maintainer) or ``numerical`` (a margin over floating-point noise).
+        source: Where the value comes from.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    value: Annotated[float, Field(strict=True, gt=0.0, allow_inf_nan=False)]
+    unit: NonBlank
+    guards: NonBlank
+    basis: Annotated[str, Field(pattern=r"^(solver-precision|decision|numerical)$")]
+    source: NonBlank
+
+
+class KernelConfig(BaseModel):
+    """The closed set of the kernel's self-check tolerances (canon ``config.yaml``, gh-1299)."""
+
+    model_config = _MODEL_CONFIG
+
+    avl_refinement_tolerance_mac: ConfigValue
+    avl_roll_refinement_tolerance: ConfigValue
+    avl_roll_branch_tolerance: ConfigValue
+    avl_roll_print_floor: ConfigValue
+    avl_roll_moment_tolerance: ConfigValue
+    avl_control_echo_tolerance: ConfigValue
+    avl_cl_tolerance: ConfigValue
+    opt_probe_tolerance: ConfigValue
+    opt_peak_tolerance: ConfigValue
+    opt_zero_span: ConfigValue
+    opt_active_bound_fraction: ConfigValue
+    opt_alpha_margin_deg: ConfigValue
+    opt_hinge_floor: ConfigValue
+    avl_contour_margin: ConfigValue
+
+
 class Namespace(BaseModel):
     """One canon of the model: its quantities, formulas and defaults, keyed by bare slug.
 
     Attributes:
         quantities: The quantity vocabulary.
         formulas: The formulas.
-        defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.
+        defaults: The stated default per supplied scalar quantity (or fallback of a catalogue read); absent = the caller must supply it.
+        rules: The validation rules with their overridable parameters (``rules.yaml``).
+        config: The kernel's self-check tolerances (``config.yaml``); never overridable.
         taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.
     """
 
@@ -519,14 +660,27 @@ class Namespace(BaseModel):
     quantities: dict[SlugKey, Quantity]
     formulas: dict[SlugKey, Formula]
     defaults: dict[SlugKey, Default] = {}
+    rules: dict[SlugKey, Rule] = {}
+    config: KernelConfig | None = None
     taxonomy: Taxonomy = Taxonomy()
+
+
+def _is_catalogue_read(quantity: Quantity) -> bool:
+    """Whether a derived quantity is read from a catalogue field (``data: component:...``).
+
+    Such a read may carry a default as its fallback for a part whose field is absent (#1245,
+    #1290); the producer applies it and declares it with a warning (ADR 0020).
+    """
+    return quantity.role == "derived" and any(
+        source.startswith("component:") for source in quantity.data or ()
+    )
 
 
 def _default_problem(where: str, default: Default, quantity: Quantity | None) -> str | None:
     """Return what is wrong with a default against its quantity, or ``None``."""
     if quantity is None:
         return f"default of unknown quantity {where}"
-    if quantity.role not in ("input", "target"):
+    if quantity.role not in ("input", "target") and not _is_catalogue_read(quantity):
         return f"default of {where}: role must be input or target, not {quantity.role}"
     if quantity.type != "scalar":
         return f"default of {where}: quantity must be a scalar, not {quantity.type}"
@@ -569,7 +723,7 @@ class CanonProblem(TypedDict):
 
     Attributes:
         namespace: Namespace of the entry.
-        section: ``formulas`` or ``defaults``.
+        section: ``formulas``, ``defaults`` or ``rules``.
         slug: Slug of the entry.
         field: Field of the entry, e.g. ``applications[1].bind.m``; empty for the whole entry.
         side: ``inputs`` or ``outputs`` for a formula-level default, ``bind`` or ``produce`` for an
@@ -580,7 +734,7 @@ class CanonProblem(TypedDict):
     """
 
     namespace: str
-    section: Literal["formulas", "defaults"]
+    section: Literal["formulas", "defaults", "rules"]
     slug: str
     field: str
     side: Literal["inputs", "outputs", "bind", "produce"] | None
@@ -591,7 +745,7 @@ class CanonProblem(TypedDict):
 
 def _describe(problem: CanonProblem) -> str:
     """Render a problem as the one-line message a plain ``str(error)`` shows."""
-    if problem["section"] == "defaults":
+    if problem["section"] in ("defaults", "rules"):
         return problem["text"]
     return f"{problem['namespace']}:{problem['slug']}: {problem['text']}"
 
@@ -804,6 +958,41 @@ class CanonModel(BaseModel):
                             text=text,
                         )
                     )
+        if problems:
+            raise _canon_error(problems)
+        return self
+
+    @staticmethod
+    def _rule_target_problem(content: Namespace, slug: str, rule: Rule) -> str | None:
+        """Return what is wrong with the target of a rule: it must exist, and a quantity be an input."""
+        target = rule.applies_to
+        if target.quantity is not None:
+            found = content.quantities.get(target.quantity)
+            if found is not None and found.role in ("input", "target"):
+                return None
+            return f"rule {slug}: {target.quantity} is not an input or target quantity"
+        if target.formula in content.formulas:
+            return None
+        return f"rule {slug}: unknown formula {target.formula}"
+
+    @model_validator(mode="after")
+    def _check_rules(self) -> Self:
+        """Require every rule to guard an existing input quantity or formula."""
+        problems = [
+            CanonProblem(
+                namespace=namespace,
+                section="rules",
+                slug=slug,
+                field="applies_to",
+                side=None,
+                application=None,
+                parameter=None,
+                text=text,
+            )
+            for namespace, content in self.namespaces.items()
+            for slug, rule in content.rules.items()
+            if (text := self._rule_target_problem(content, slug, rule)) is not None
+        ]
         if problems:
             raise _canon_error(problems)
         return self
