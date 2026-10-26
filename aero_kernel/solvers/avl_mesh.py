@@ -31,7 +31,6 @@ from aero_kernel.surface_chain import ChainPoint, oriented_chain
 from pydantic import BaseModel, ConfigDict
 
 __all__ = [
-    "JOIN_TOLERANCE_M",
     "MESH_DECIMALS",
     "SLIVER_STEPS",
     "MeshControl",
@@ -45,9 +44,6 @@ __all__ = [
 SLIVER_STEPS = 0.3
 # Stations are merged when they agree to this many decimals (metres).
 MESH_DECIMALS = 9
-# Two positions closer than this (metres) are the same rib: the station of a device end and the rib
-# it was read from agree to rounding.
-JOIN_TOLERANCE_M = 1e-8
 
 
 class MeshControl(BaseModel):
@@ -210,11 +206,14 @@ class _Span(BaseModel):
     x_end: float
 
 
-def _driven_spans(wing_key: str, chain: Sequence[ChainPoint]) -> list[_Span]:
+def _driven_spans(
+    wing_key: str, chain: Sequence[ChainPoint], join_tolerance_m: float
+) -> list[_Span]:
     """The driven segments of the oriented chain with the absolute hinge line of each.
 
     The hinge line of a segment runs straight from ``x_le + h c`` at its start to the same at its
-    end (AVL interpolates the same line between sections, ``amake.f:415-419``).
+    end (AVL interpolates the same line between sections, ``amake.f:415-419``). Two positions closer
+    than ``join_tolerance_m`` (canon rule ``hinge-line-continuity``) are the same rib.
 
     Raises:
         FormulaError: ``unsupported_configuration`` (``hinge_line_discontinuous``) if two driven
@@ -237,8 +236,8 @@ def _driven_spans(wing_key: str, chain: Sequence[ChainPoint]) -> list[_Span]:
             )
         )
     for before, after in pairwise(spans):
-        joined = math.isclose(before.y_end, after.y_start, abs_tol=JOIN_TOLERANCE_M)
-        if joined and not math.isclose(before.x_end, after.x_start, abs_tol=JOIN_TOLERANCE_M):
+        joined = math.isclose(before.y_end, after.y_start, abs_tol=join_tolerance_m)
+        if joined and not math.isclose(before.x_end, after.x_start, abs_tol=join_tolerance_m):
             raise FormulaError(
                 ErrorCategory.UNSUPPORTED_CONFIGURATION,
                 "hinge_line_discontinuous",
@@ -251,7 +250,7 @@ def _driven_spans(wing_key: str, chain: Sequence[ChainPoint]) -> list[_Span]:
     return spans
 
 
-def _device_ends(spans: Sequence[_Span]) -> list[float]:
+def _device_ends(spans: Sequence[_Span], join_tolerance_m: float) -> list[float]:
     """The spanwise ends of the devices: the two ends of every run of joined driven segments.
 
     The ribs inside a device are not breaks; like all ribs they are interpolated between stations.
@@ -260,21 +259,23 @@ def _device_ends(spans: Sequence[_Span]) -> list[float]:
     for index, span in enumerate(spans):
         previous = spans[index - 1] if index else None
         if previous is None or not math.isclose(
-            previous.y_end, span.y_start, abs_tol=JOIN_TOLERANCE_M
+            previous.y_end, span.y_start, abs_tol=join_tolerance_m
         ):
             ends.append(span.y_start)
         following = spans[index + 1] if index + 1 < len(spans) else None
         if following is None or not math.isclose(
-            span.y_end, following.y_start, abs_tol=JOIN_TOLERANCE_M
+            span.y_end, following.y_start, abs_tol=join_tolerance_m
         ):
             ends.append(span.y_end)
     return ends
 
 
-def _control_at(y: float, spans: Sequence[_Span], section: MeshSection) -> MeshControl | None:
+def _control_at(
+    y: float, spans: Sequence[_Span], section: MeshSection, join_tolerance_m: float
+) -> MeshControl | None:
     """The roll control of a station: on a driven span (ends inclusive), hinge from its line."""
     for span in spans:
-        if span.y_start - JOIN_TOLERANCE_M <= y <= span.y_end + JOIN_TOLERANCE_M:
+        if span.y_start - join_tolerance_m <= y <= span.y_end + join_tolerance_m:
             fraction = (y - span.y_start) / (span.y_end - span.y_start)
             x_line = span.x_start + min(max(fraction, 0.0), 1.0) * (span.x_end - span.x_start)
             return MeshControl(
@@ -375,6 +376,7 @@ def mesh_surfaces(
     n_wing: int,
     airfoil_index: Callable[[Airfoil], int],
     *,
+    join_tolerance_m: float,
     drive_roll: bool = False,
 ) -> tuple[MeshSurface, ...]:
     """The aligned mesh: main wing, horizontal tail, then the other surfaces by name.
@@ -383,6 +385,9 @@ def mesh_surfaces(
         airplane: A geometry of a supported layout (one main wing).
         n_wing: Strips over the main wing's span.
         airfoil_index: Numbers an airfoil for the adapter's coordinate files.
+        join_tolerance_m: Two positions closer than this (m) are the same rib: the station of a
+            device end and the rib it was read from agree to rounding (canon rule
+            ``hinge-line-continuity``).
         drive_roll: Whether the devices acting as aileron are driven in this run: their ends
             become stations of the main wing (and, inside its span, of the tail) and every station
             on a device carries a control. ``False`` is the clean mesh. The main wing is the first
@@ -416,12 +421,12 @@ def mesh_surfaces(
     step = (y_tip - y_root) / n_wing
     main_stations = _uniform(y_root, y_tip, n_wing)
     if drive_roll:
-        spans = _driven_spans(main_key, main_chain)
-        main_stations = _sine_to_tip(y_root, y_tip, n_wing, _device_ends(spans))
+        spans = _driven_spans(main_key, main_chain, join_tolerance_m)
+        main_stations = _sine_to_tip(y_root, y_tip, n_wing, _device_ends(spans, join_tolerance_m))
 
     def main_section(y: float) -> MeshSection:
         section = _section_at(main_chain, 1, y, airfoil_index)
-        control = _control_at(y, spans, section)
+        control = _control_at(y, spans, section, join_tolerance_m)
         return section if control is None else section.model_copy(update={"control": control})
 
     surfaces = [

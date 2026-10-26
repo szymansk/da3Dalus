@@ -22,6 +22,7 @@ stands, because it is the polar the other quantities (``polar-stall``) are publi
 import math
 from collections.abc import Mapping
 
+from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.values import airplane_of, number
@@ -61,7 +62,7 @@ def _half_step_grid(alpha_s: float) -> list[float]:
     """
     count = round((ALPHA_MAX_DEG - ALPHA_MIN_DEG) / HALF_STEP_DEG)
     lattice = (ALPHA_MIN_DEG + k * HALF_STEP_DEG for k in range(count + 1))
-    return [alpha_s, *(a for a in lattice if a > alpha_s + 1e-9)]
+    return [alpha_s, *(a for a in lattice if a > alpha_s + config().opt_alpha_margin_deg.value)]
 
 
 @formula("stall-break")

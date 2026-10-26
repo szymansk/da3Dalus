@@ -43,7 +43,7 @@ from aero_kernel.graph import (
     unmet_condition,
 )
 from aero_kernel.registry import CheckResult
-from aero_kernel.rules import Rules, rule_override_errors
+from aero_kernel.rules import rule_override_errors
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -1064,7 +1064,8 @@ async def evaluate(
     """
     call_id = secrets.token_hex(4)
     started = time.perf_counter()
-    rules = Rules(build.model, aircraft.rule_overrides)
+    rules = solvers.rules
+    rules.begin(aircraft.rule_overrides)
     override_errors = rule_override_errors(aircraft.rule_overrides, build.model)
     validation = validate_aircraft(aircraft, rules)
     errors = (

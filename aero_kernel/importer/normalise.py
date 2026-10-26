@@ -374,5 +374,6 @@ def normalise(parsed: ParsedCanon) -> tuple[JsonDict, list[Finding]]:
         "formulas": documents,
         "defaults": {slug: _default(raw) for slug, raw in parsed.defaults.items()},
         "rules": {slug: _rule(raw) for slug, raw in parsed.rules.items()},
+        **({} if parsed.config is None else {"config": parsed.config}),
         "taxonomy": parsed.taxonomy or {},
     }, findings

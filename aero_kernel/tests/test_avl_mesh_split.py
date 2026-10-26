@@ -3,8 +3,9 @@
 import math
 
 import pytest
-from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces, split_at_hinge
+from aero_kernel.solvers.avl_mesh import MeshSurface, split_at_hinge
 from aero_kernel.solvers.avl_writer import avl_geometry
+from aero_kernel.tests.mesh_helpers import mesh_surfaces
 from aero_kernel.tests.test_solvers_roll_devices import aileron, wing_geometry
 
 HINGE = 0.78

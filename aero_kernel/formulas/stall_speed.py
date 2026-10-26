@@ -11,6 +11,7 @@ they decide whether the solver's own answer is self-consistent, not whether the 
 import math
 from collections.abc import Mapping
 
+from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import CheckResult, formula, postcondition
@@ -26,15 +27,6 @@ __all__ = [
     "optimum_at_first_cl_trough",
     "stall_speed",
 ]
-
-# Relative disagreement allowed between V_S and the closed form with the polar's C_L at alpha_S
-# (the Probe of the canon entry). IPOPT's default convergence tolerance is 1e-8 on the scaled
-# constraint, so 1e-6 leaves two decades for the scaling and the sweep's float rounding.
-PROBE_TOLERANCE = 1e-6
-# C_L,max may fall short of the sampled first peak by this much (absolute). alpha_S is itself a
-# sample of the sweep at V_S, so the comparison is between two samples of one curve: the tolerance
-# only absorbs numerical noise.
-PEAK_TOLERANCE = 1e-6
 
 
 @formula("stall-speed")
@@ -106,7 +98,7 @@ def cl_max_at_stall_reynolds_number(
     weight = abs(number(x, "n_load")) * number(x, "m") * number(x, "g")
     probe = math.sqrt(2.0 * weight / (number(x, "rho") * area * abs(cl_sample)))
     deviation = abs(v_s - probe) / v_s
-    if deviation > PROBE_TOLERANCE:
+    if deviation > config().opt_probe_tolerance.value:
         return CheckResult(
             state="violated",
             message=(
@@ -130,7 +122,7 @@ def _first_extremum_check(y: Mapping[str, object], *, upright: bool) -> CheckRes
         )
     alpha_s, cl_max = number(y, "alpha_s"), number(y, "cl_max")
     peak_alpha, peak_cl = polar.alpha_deg[index], polar.cl[index]
-    if abs(peak_alpha - alpha_s) > ALPHA_STEP_DEG + 1e-9:
+    if abs(peak_alpha - alpha_s) > ALPHA_STEP_DEG + config().opt_alpha_margin_deg.value:
         return CheckResult(
             state="violated",
             message=(
@@ -139,7 +131,7 @@ def _first_extremum_check(y: Mapping[str, object], *, upright: bool) -> CheckRes
             ),
         )
     beyond = (peak_cl - cl_max) if upright else (cl_max - peak_cl)
-    if beyond > PEAK_TOLERANCE:
+    if beyond > config().opt_peak_tolerance.value:
         return CheckResult(
             state="violated",
             message=f"C_L = {cl_max} lies {beyond:.2e} short of the first sampled {what} {peak_cl}",

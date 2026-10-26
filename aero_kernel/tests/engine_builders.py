@@ -4,12 +4,13 @@ from collections.abc import Callable, Coroutine, Mapping
 from typing import Any
 
 # ``Any`` is the raw-JSON boundary: hand-written model dicts that the canon model validates.
-from aero_kernel.build import Build
+from aero_kernel.build import Build, shipped_build
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.context import Context, Inputs, Solvers
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.graph import CanonGraph
 from aero_kernel.registry import Registry
+from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import AircraftInput, ComputeRequest, Polar
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
@@ -22,11 +23,13 @@ from aero_kernel.tests.wing_builders import main_wing_document
 Impl = Callable[[Inputs, Context], Coroutine[object, object, Mapping[str, object]]]
 
 # For the engine tests whose stub formulas use no solver; the runtime never starts a thread or a pool.
+_RULES = Rules(shipped_build().model)
 NO_SOLVERS = Solvers(
     atmosphere=AtmosphereAdapter(SolverRuntime()),
     opti=OptiAdapter(SolverRuntime()),
-    avl=AvlAdapter(SolverRuntime()),
+    avl=AvlAdapter(SolverRuntime(), _RULES),
     geometry=StubGeometry(),
+    rules=_RULES,
 )
 
 

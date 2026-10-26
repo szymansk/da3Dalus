@@ -7,7 +7,8 @@ from typing import Any
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.solvers.avl_mesh import MeshSurface, mesh_surfaces
+from aero_kernel.solvers.avl_mesh import MeshSurface
+from aero_kernel.tests.mesh_helpers import mesh_surfaces
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 
@@ -268,3 +269,15 @@ def test_a_roll_device_off_the_main_wing_is_unsupported() -> None:
         mesh_surfaces(airplane, 12, lambda _a: 0, drive_roll=True)
     assert raised.value.code == "unsupported_layout"
     assert raised.value.detail["wing"] == "Tail"
+
+
+def test_the_join_tolerance_decides_whether_a_small_hinge_jump_is_a_discontinuity() -> None:
+    """A hinge line that jumps by about 1e-7 m: a break under the canon's 1e-8 m, one rib under 1e-5 m."""
+    from aero_kernel.solvers.avl_mesh import mesh_surfaces as raw_mesh_surfaces
+
+    airplane = AirplaneGeometry.model_validate(two_segment_document(0.7800005))
+    with pytest.raises(FormulaError) as raised:
+        raw_mesh_surfaces(airplane, 12, lambda _a: 0, drive_roll=True, join_tolerance_m=1e-8)
+    assert raised.value.code == "hinge_line_discontinuous"
+    surfaces = raw_mesh_surfaces(airplane, 12, lambda _a: 0, drive_roll=True, join_tolerance_m=1e-5)
+    assert surfaces

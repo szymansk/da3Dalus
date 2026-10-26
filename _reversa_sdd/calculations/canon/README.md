@@ -625,6 +625,20 @@ Value bounds of a supplied quantity are not rules in this file: they are the qua
 `at_most`. What guards the API itself (an unknown slug, a value given for a computed quantity, the time budget)
 is a programming guard and stays in the code.
 
+#### Kernel configuration — `config.yaml` (maintainer, 2026-10-26, #1299)
+
+"Ich würde das in eine config.yaml packen, die aber nicht vom Anwender überschrieben werden kann." The numeric
+tolerances of the kernel's own self-checks (AVL mesh refinement, the solver-echo checks, the stall postconditions)
+are not canon statements, not rules and not defaults. They live in `config.yaml` in the canon root as
+`<name>: {value, unit, guards, basis, source}` with a **closed set of keys** (the model refuses a missing or an
+unknown one) and `basis` one of `solver-precision` (the digits a tool prints), `decision` (fixed by the maintainer)
+or `numerical` (a margin over floating-point noise). The importer carries the file into the canon model
+(`namespaces.calc.config`), so a changed value changes the model hash, the build digest and every cache key; the
+kernel runs without reading YAML. There is **no override path**: no `AircraftInput` field, no rule parameter, no
+value slug. The adapters report the values as solver settings of their tool in the provenance. A domain limit
+(`avl-roll-rate-validity`, `hinge-line-continuity`) is not configuration: it stays an overridable rule in
+`rules.yaml`.
+
 #### Defaults — `defaults.yaml`
 
 Defaults do not live in the quantity entries. They live in one file, `defaults.yaml` in the canon root,

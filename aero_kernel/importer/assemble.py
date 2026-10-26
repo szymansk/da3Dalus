@@ -126,6 +126,8 @@ def _problem_finding(problem: CanonProblem) -> Finding:
 def _finding(entry: ErrorDetails, location: tuple[int | str, ...]) -> Finding:
     """Turn one validation error into a finding."""
     message = _message(entry)
+    if location and location[0] == "config":
+        return Finding(file="config.yaml", field=_path(location[1:]) or "document", message=message)
     if location and location[0] == "taxonomy":
         return Finding(
             file="taxonomy.yaml", field=_path(location[1:]) or "document", message=message

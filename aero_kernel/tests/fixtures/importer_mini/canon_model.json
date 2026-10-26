@@ -1,8 +1,9 @@
 {
-  "content_hash": "sha256:bddf3b7779194930883ff2e12240832a66b7a73cf6eb5d6ae224c0b650a4f74b",
+  "content_hash": "sha256:a640910acc89a979b278039fb85ea8ac4a72075009958f40b91e35779dc7a94b",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
+      "config": null,
       "defaults": {
         "gravity": {
           "basis": "standard",
