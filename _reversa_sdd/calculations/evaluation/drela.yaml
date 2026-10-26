@@ -15,8 +15,8 @@
 #
 # Definition differences to keep in mind (stated on epic #1259):
 #   - Drela's c is the average chord S/b; the canon uses c_MAC. They differ for a tapered wing.
-#   - Drela measures tail arms from the CG. The canon's vertical-tail-volume and spiral-parameter
-#     still use l_V,25 until #1272 moves them to the design CG.
+#   - Drela measures tail arms from the CG. Since #1272 the canon's vertical-tail-volume and
+#     spiral-parameter use l_V,CG from the design CG, as Drela does.
 source: "M. Drela, Lab 11 Notes - Basic Aircraft Design Rules, MIT 16.Unified, 16 Apr 2009"
 rules:
   - id: static-margin-design
@@ -82,8 +82,7 @@ rules:
     above_severity: caution
     above_basis: "maintainer 2026-10-25: costs drag and mass (aft mass shifts the CG back) without a noticeable stability gain; Drela names no penalty above the range"
     note: >-
-      Until #1272 the canon arm is l_V,25 (from the wing quarter-chord MAC), not Drela's arm from
-      the CG.
+      The canon arm is l_V,CG from the design CG (#1272), Drela's definition.
 
   - id: spiral-stability
     title: Spiral stability

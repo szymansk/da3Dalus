@@ -96,7 +96,7 @@
       "below_severity": "bad",
       "above_severity": "caution",
       "above_basis": "maintainer 2026-10-25: costs drag and mass (aft mass shifts the CG back) without a noticeable stability gain; Drela names no penalty above the range",
-      "note": "Until #1272 the canon arm is l_V,25 (from the wing quarter-chord MAC), not Drela's arm from the CG."
+      "note": "The canon arm is l_V,CG from the design CG (#1272), Drela's definition."
     },
     {
       "id": "spiral-stability",
