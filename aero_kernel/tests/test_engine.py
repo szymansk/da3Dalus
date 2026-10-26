@@ -1212,6 +1212,37 @@ async def test_an_unsupported_read_fails_only_its_reader() -> None:
     assert result.quantities[1].status is QuantityStatus.OK
 
 
+# --- the geometry's mass is a hint, never a value (#1302) ---------------------------------------
+
+
+async def test_a_missing_mass_names_the_geometry_mass_in_the_hint_but_never_uses_it() -> None:
+    document = airplane_document()
+    document["total_mass_kg"] = 0.151
+    unset = AircraftInput.model_validate({"airplane": document, "values": {"gravity": 9.81}})
+    result = await evaluate(make_build(), unset, request("weight"), solvers=NO_SOLVERS)
+    quantity = result.quantities[0]
+    assert quantity.status is QuantityStatus.ERROR
+    assert quantity.value is None
+    error = quantity.error
+    assert error is not None
+    assert error.code == "missing_input"
+    assert error.input_path == "values.aircraft-mass"
+    assert error.hint == (
+        "Supply `aircraft-mass` in `values`. `aircraft-mass` is not set; the geometry file states "
+        "total_mass_kg = 0.151 kg - pass it explicitly to use it."
+    )
+
+
+async def test_a_missing_mass_without_a_geometry_mass_has_no_such_hint() -> None:
+    unset = AircraftInput.model_validate(
+        {"airplane": airplane_document(), "values": {"gravity": 9.81}}
+    )
+    result = await evaluate(make_build(), unset, request("weight"), solvers=NO_SOLVERS)
+    error = result.quantities[0].error
+    assert error is not None
+    assert error.hint == "Supply `aircraft-mass` in `values`."
+
+
 # --- several missing inputs (N7) ----------------------------------------------------------------
 
 

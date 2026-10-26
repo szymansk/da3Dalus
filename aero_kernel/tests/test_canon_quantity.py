@@ -119,3 +119,21 @@ def test_positive_is_the_boolean_true_and_nothing_that_reads_as_true(value: obje
 
 def test_positive_true_is_accepted() -> None:
     assert make_quantity(positive=True).positive is True
+
+
+def test_a_quantity_may_name_sources_that_only_check_its_supplied_value() -> None:
+    quantity = make_quantity(
+        data=["app:AssumptionRead.effective_value"], consistency=["geometry:total_mass_kg"]
+    )
+    assert quantity.consistency == ["geometry:total_mass_kg"]
+    assert make_quantity().consistency is None
+
+
+def test_a_consistency_source_is_not_also_a_supplying_source() -> None:
+    with pytest.raises(ValidationError, match="consistency"):
+        make_quantity(data=["geometry:total_mass_kg"], consistency=["geometry:total_mass_kg"])
+
+
+def test_a_consistency_source_follows_the_data_source_vocabulary() -> None:
+    with pytest.raises(ValidationError):
+        make_quantity(consistency=["web:somewhere"])

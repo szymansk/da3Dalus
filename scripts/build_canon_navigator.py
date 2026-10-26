@@ -467,6 +467,34 @@ def default_marks(data: dict, model: dict) -> None:
         data[rests_on] = {q: sorted(v) for q, v in sorted(marked.items())}
 
 
+def validation_rule_marks(data: dict, model: dict) -> None:
+    """Show the validation rules of the canon model at the quantity or formula they guard (#1260).
+
+    The rules are read from the canon model (``rules.yaml``), never typed in here. A rule that
+    guards a quantity or formula the navigator lacks is an error. ``validation_rules`` holds ``quantity`` and
+    ``formula`` mappings from slug to the rules guarding it, each with its criterion, kind, error
+    codes and parameters (value, unit, basis, status, source, regime).
+    """
+    rules = model["namespaces"]["calc"].get("rules", {})
+    shown: dict = {"quantity": {}, "formula": {}}
+    for rule_id, rule in sorted(rules.items()):
+        kind, slug = next((k, v) for k, v in rule["applies_to"].items() if v is not None)
+        known = data["Q"] if kind == "quantity" else data["F"]
+        if slug not in known:
+            raise SystemExit(f"rule {rule_id} guards {kind} {slug}, which the canon lacks")
+        shown[kind].setdefault(slug, []).append(
+            {
+                "id": rule_id,
+                "kind": rule["kind"],
+                "on_violation": rule["on_violation"],
+                "criterion": rule["criterion"],
+                "codes": rule["codes"],
+                "parameters": rule["parameters"],
+            }
+        )
+    data["validation_rules"] = shown
+
+
 #: The five kinds of data source (canon README, "Two-stage approval"): id, label, explanation.
 SOURCE_KINDS = (
     (
@@ -488,6 +516,11 @@ SOURCE_KINDS = (
         "The result of the evaluation or of the selection graph (Urmodell).",
     ),
 )
+
+
+#: Left-to-right order of the leading columns (#1300): the cross-cutting input objects, their fields
+#: (the data sources), then the derived references; the analysis columns follow.
+COLUMN_ORDER = ["xcut", "src", "refs"]
 
 
 def source_frame(source: str) -> str:
@@ -532,6 +565,7 @@ def approval_marks(data: dict, model: dict) -> None:
     data["qstat"] = approval.quantity_status
     quantities = model["namespaces"]["calc"]["quantities"]
     data["qdata"] = {q: v["data"] for q, v in sorted(quantities.items()) if v.get("data")}
+    data["colorder"] = COLUMN_ORDER
     data["srckinds"] = [
         {"id": k, "label": label, "explanation": text} for k, label, text in SOURCE_KINDS
     ]
@@ -539,6 +573,13 @@ def approval_marks(data: dict, model: dict) -> None:
     for quantity, sources in data["qdata"].items():
         for source in sources:
             fed.setdefault(source, []).append(quantity)
+    checked: dict = {}
+    for quantity, entry in sorted(quantities.items()):
+        for source in entry.get("consistency") or []:
+            checked.setdefault(source, []).append(quantity)
+    data["qcheck"] = {
+        q: v["consistency"] for q, v in sorted(quantities.items()) if v.get("consistency")
+    }
     order = {k: i for i, (k, _, _) in enumerate(SOURCE_KINDS)}
     defaults = model["namespaces"]["calc"]["defaults"]
 
@@ -546,7 +587,9 @@ def approval_marks(data: dict, model: dict) -> None:
         kind, loc = source.split(":", 1)
         return "start" if kind == "default" and defaults[loc]["basis"] == "start" else kind
 
-    ordered = sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
+    ordered = sorted(
+        {**checked, **fed}.items(), key=lambda item: (order[kind_of(item[0])], item[0])
+    )
     frames: dict = {}
     for source, qs in ordered:
         frame = source_frame(source)
@@ -574,6 +617,7 @@ def approval_marks(data: dict, model: dict) -> None:
             "qs": qs,
             "parent": DATA_KIND_PARENT.get(source.split(":", 1)[0], ""),
             "frame": source_frame(source),
+            "check": source not in fed,
             "short": short_of(source),
         }
         for source, qs in ordered
@@ -654,6 +698,7 @@ def build() -> tuple[str, dict]:
     data = layout(quantities, formulas, edges)
     kernel_status(data, KERNEL_FORMULAS)
     default_marks(data, model)
+    validation_rule_marks(data, model)
     approval_marks(data, model)
     rule_marks(data, load_rule_table(RULES_PATH), model)
     data["tax"] = model["namespaces"]["calc"]["taxonomy"]

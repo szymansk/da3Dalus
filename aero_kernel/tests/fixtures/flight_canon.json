@@ -1,8 +1,9 @@
 {
-  "content_hash": "sha256:33612f2fc035176726719ba04a79883d105663ad76858adf132a3db75588e12b",
+  "content_hash": "sha256:81eea884ecb29fb98cc7244925c2285592e6f84f5942f272c00fc007ff1e67e3",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
+      "config": null,
       "defaults": {
         "air-density": {
           "basis": "standard",
@@ -404,6 +405,7 @@
         "air-density": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -420,6 +422,7 @@
         "aircraft-mass": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -436,6 +439,7 @@
         "airplane": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -452,6 +456,7 @@
         "airplane-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -468,6 +473,7 @@
         "approach-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -484,6 +490,7 @@
         "approach-speed-margin-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -500,6 +507,7 @@
         "butterfly-speed-range": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -516,6 +524,7 @@
         "butterfly-stall-speed-curve": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -532,6 +541,7 @@
         "cruise-speed-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -548,6 +558,7 @@
         "flap-deflection-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -564,6 +575,7 @@
         "gravity": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -580,6 +592,7 @@
         "inverted-max-lift-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -596,6 +609,7 @@
         "max-lift-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -612,6 +626,7 @@
         "max-lift-coefficient-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -628,6 +643,7 @@
         "max-mass-level-flight": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -644,6 +660,7 @@
         "neutral-point": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -660,6 +677,7 @@
         "polar-stall": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -676,6 +694,7 @@
         "roll-rate-cruise": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -692,6 +711,7 @@
         "stall-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -708,6 +728,7 @@
         "stall-speed-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -720,6 +741,96 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
+        }
+      },
+      "rules": {
+        "airfoil-resolvable": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "invalid_airfoil_contour"
+          ],
+          "criterion": "A contour has at least min_contour_points points.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "min_contour_points": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "three points are the least that enclose an area",
+              "status": "adopted",
+              "unit": "1",
+              "value": 3.0
+            }
+          }
+        },
+        "main-wing-spanwise-extent": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "main_wing_without_spanwise_extent"
+          ],
+          "criterion": "A main wing is inclined by less than max_inclination.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "max_inclination": {
+              "basis": "convention",
+              "regime": "regime-independent",
+              "source": "adopted by the maintainer on 2026-10-25",
+              "status": "adopted",
+              "unit": "deg",
+              "value": 45.0
+            }
+          }
+        },
+        "minimum-sections": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "too_few_sections"
+          ],
+          "criterion": "A wing and a fuselage have at least min_sections sections.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "min_sections": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "a lofted surface is defined by at least two sections",
+              "status": "adopted",
+              "unit": "1",
+              "value": 2.0
+            }
+          }
+        },
+        "one-main-wing": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "main_wing_count"
+          ],
+          "criterion": "The airplane has exactly required_main_wings main wings.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "required_main_wings": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "one reference wing per airplane",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1.0
+            }
+          }
         }
       },
       "taxonomy": {

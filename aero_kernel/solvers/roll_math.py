@@ -8,6 +8,8 @@ import math
 from collections.abc import Sequence
 from typing import Any, Protocol
 
+from aero_kernel.config import config
+
 __all__ = [
     "EFFECTIVENESS_EXPONENT",
     "AngleFunctions",
@@ -45,7 +47,7 @@ def control_effectiveness(hinge: float) -> float:
     Returns:
         ``1 - h^2.7514``: the effective angle of attack added is ``tau * deflection``.
     """
-    return 1.0 - max(0.0, hinge + 1e-16) ** EFFECTIVENESS_EXPONENT
+    return 1.0 - max(0.0, hinge + config().opt_hinge_floor.value) ** EFFECTIVENESS_EXPONENT
 
 
 # ``Any`` below: a CasADi expression in the optimiser, a float in the fast tier; AeroSandbox ships no
@@ -119,7 +121,9 @@ def alpha_for_lift_coefficient(
         if cl[k - 1] <= wanted <= cl[k]:
             span = cl[k] - cl[k - 1]
             fraction = (
-                0.0 if math.isclose(span, 0.0, abs_tol=1e-15) else (wanted - cl[k - 1]) / span
+                0.0
+                if math.isclose(span, 0.0, abs_tol=config().opt_zero_span.value)
+                else (wanted - cl[k - 1]) / span
             )
             return alphas_deg[k - 1] + fraction * (alphas_deg[k] - alphas_deg[k - 1])
     return None

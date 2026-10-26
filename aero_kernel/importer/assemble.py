@@ -25,13 +25,13 @@ __all__ = ["assemble", "findings_of"]
 _VALUE_ERROR = "Value error, "
 _SCALARS = (str, int, float, bool, type(None))
 _SHORT = 60  # a written value longer than this is not repeated in a finding
-_SECTIONS = ("quantities", "formulas", "defaults")
+_SECTIONS = ("quantities", "formulas", "defaults", "rules")
 
 
 def _file_of(section: str, slug: str, namespace: str = DEFAULT_NAMESPACE) -> str:
     """Return the canon file a section/slug of the model comes from."""
-    if section == "defaults":
-        return "defaults.yaml"
+    if section in ("defaults", "rules"):
+        return f"{section}.yaml"
     prefix = "" if namespace == DEFAULT_NAMESPACE else f"{namespace}/"
     return f"{prefix}{section}/{slug}.md"
 
@@ -117,7 +117,7 @@ def _is_merged_copy(problem: CanonProblem, written: set[tuple[str, str, str, str
 def _problem_finding(problem: CanonProblem) -> Finding:
     """Turn one located problem of a whole-model rule into a finding."""
     section, slug = problem["section"], problem["slug"]
-    field = slug if section == "defaults" else problem["field"] or "entry"
+    field = slug if section in ("defaults", "rules") else problem["field"] or "entry"
     return Finding(
         file=_file_of(section, slug, problem["namespace"]), field=field, message=problem["text"]
     )
@@ -126,13 +126,15 @@ def _problem_finding(problem: CanonProblem) -> Finding:
 def _finding(entry: ErrorDetails, location: tuple[int | str, ...]) -> Finding:
     """Turn one validation error into a finding."""
     message = _message(entry)
+    if location and location[0] == "config":
+        return Finding(file="config.yaml", field=_path(location[1:]) or "document", message=message)
     if location and location[0] == "taxonomy":
         return Finding(
             file="taxonomy.yaml", field=_path(location[1:]) or "document", message=message
         )
     if len(location) >= 2 and location[0] in _SECTIONS:
         slug = str(location[1])
-        rest = (slug, *location[2:]) if location[0] == "defaults" else location[2:]
+        rest = (slug, *location[2:]) if location[0] in ("defaults", "rules") else location[2:]
         return Finding(
             file=_file_of(str(location[0]), slug),
             field=_path(tuple(rest)) or "entry",

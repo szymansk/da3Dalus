@@ -680,6 +680,7 @@ caller's responsibility.
     0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
     `FormulaError`; a dead worker discards the pool and becomes `internal`. Tested with a stub solver.
+  - **`minimum_sink_stall_limited`** (`practice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
     the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
     `|p·b/2V| > 0.10`, the documented range of the primer (`defect`). AeroBuildup with a deflected
@@ -1073,6 +1074,17 @@ implementation, not before (ADR 0021).
   other (R1); whether a value is assumed or measured is not the kernel's concern.
 - **The frame of position quantities** (#1203): `neutral-point` and `centre-of-gravity-measured` are x coordinates in
   the geometry frame of `airplane`, x aft positive, in metres. The app's own CG field follows in #1209.
+- **Kernel configuration** (maintainer, 2026-10-26, #1299). The numeric tolerances of the kernel's self-checks are
+  `config.yaml` in the canon root, imported into `namespaces.calc.config` (closed keys, `KernelConfig`) and read
+  through `aero_kernel/config.py`. Not overridable by the caller; part of the model hash and so of the build digest;
+  reported as solver settings. `AvlAdapter` and the `rules` it shares with the engine (`Solvers.rules`) hold the
+  overridable domain limits.
+- **Validation rules** (maintainer, 2026-10-25, #1260). A requirement on the input data or a limit of a tool is a
+  canon rule in `rules.yaml` (README, "Validation rules"); its thresholds are parameters, not literals. The
+  importer carries them into `namespaces.calc.rules`. `aero_kernel/rules.py` resolves a threshold for one call
+  (the canon value, or the caller's `AircraftInput.rule_overrides`) and remembers what it handed out;
+  `provenance.rules_used` declares it. The geometry rules run once in `validate_aircraft`, on every path.
+  A model that lacks a rule the kernel reads is a defect (`KeyError`), never a silent skip.
 - **Defaults** (maintainer, 2026-10-17, S5). A missing value is computed with its **default**, and the
   caller can set or override every value. Defaults are never hard-coded and never in a quantity entry:
   - **One settings file in the canon document**, `_reversa_sdd/calculations/canon/defaults.yaml`: a mapping

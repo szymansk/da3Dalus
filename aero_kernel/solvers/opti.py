@@ -18,6 +18,7 @@ from itertools import pairwise
 from typing import Any, ClassVar, cast
 
 import numpy as np
+from aero_kernel.config import config
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
@@ -87,8 +88,6 @@ MAX_ITERATIONS = 300
 # cost does not matter. The size is a named constant recorded in Provenance.solver_settings; a
 # caller-selectable accuracy level comes only when a caller needs it.
 NEURALFOIL_MODEL_SIZE = "xlarge"
-# A bound counts as active when the optimum lies within this fraction of the variable's range.
-ACTIVE_BOUND_FRACTION = 1e-6
 
 
 class StallRequest(BaseModel):
@@ -186,6 +185,8 @@ class MinSinkSolution(BaseModel):
         v_mp: Minimum-sink speed in m/s.
         alpha_mp: The angle of attack at the optimum in degrees.
         cl_mp: The lift coefficient at the optimum.
+        stall_limited: ``True`` if the optimum is the stall boundary, not an interior optimum: the
+            sink power was still falling at the first C_L peak, where the window of alpha ends.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -193,6 +194,7 @@ class MinSinkSolution(BaseModel):
     v_mp: float
     alpha_mp: float
     cl_mp: float
+    stall_limited: bool = False
 
 
 class MinSink(BaseModel):
@@ -363,12 +365,15 @@ class _Solved:
         alpha: The optimal angle of attack in degrees.
         aero: The AeroBuildup result expressions, to be read at the optimum with :meth:`value`.
         value: Reads an expression of the problem at the optimum.
+        at_upper_alpha: ``True`` if the optimum lies on the upper bound of alpha (only asked for by
+            the minimum-sink problem, where that bound is the first C_L peak).
     """
 
     speed: float
     alpha: float
     aero: Any
     value: Callable[[Any], float]
+    at_upper_alpha: bool = False
 
 
 def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG) -> _Bracketed:
@@ -450,7 +455,7 @@ def _reject_active_bound(name: str, value: float, bounds: tuple[float, float], w
         FormulaError: ``not_converged`` naming the variable.
     """
     lower, upper = bounds
-    margin = ACTIVE_BOUND_FRACTION * (upper - lower)
+    margin = config().opt_active_bound_fraction.value * (upper - lower)
     if value - lower < margin or upper - value < margin:
         raise _not_converged(
             f"the optimum of the {what} problem lies on the bound of {name}",
@@ -466,6 +471,8 @@ def _solve(
     objective: Callable[[Any, Any], Any],
     init: tuple[float, float],
     what: str,
+    *,
+    upper_alpha_is_a_result: bool = False,
 ) -> _Solved:
     """Minimise ``objective(speed, aero)`` subject to ``L = lift`` on the bracketed window.
 
@@ -475,9 +482,12 @@ def _solve(
         objective: The expression to minimise, from the speed variable and the AeroBuildup result.
         init: The initial speed in m/s and angle of attack in degrees.
         what: The name of the problem, for the error messages.
+        upper_alpha_is_a_result: An optimum on the upper bound of alpha is returned, flagged in
+            :attr:`_Solved.at_upper_alpha`, instead of refused (minimum sink, #1268).
 
     Raises:
-        FormulaError: ``not_converged`` if IPOPT fails or the optimum lies on a bound.
+        FormulaError: ``not_converged`` if IPOPT fails or the optimum lies on a bound (the upper
+            bound of alpha excepted where ``upper_alpha_is_a_result``).
     """
     asb = load_aerosandbox()
     opti = asb.Opti()
@@ -497,8 +507,17 @@ def _solve(
     solved = _ipopt(opti, what, SPEED_HINT)
     v_opt, alpha_opt = float(solved(speed)), float(solved(alpha))
     _reject_active_bound("V", v_opt, (problem.v_low, problem.v_high), what)
-    _reject_active_bound("alpha", alpha_opt, (problem.low, problem.high), what)
-    return _Solved(speed=v_opt, alpha=alpha_opt, aero=aero, value=lambda e: float(solved(e)))
+    margin = config().opt_active_bound_fraction.value * (problem.high - problem.low)
+    at_upper = upper_alpha_is_a_result and problem.high - alpha_opt < margin
+    if not at_upper:
+        _reject_active_bound("alpha", alpha_opt, (problem.low, problem.high), what)
+    return _Solved(
+        speed=v_opt,
+        alpha=alpha_opt,
+        aero=aero,
+        value=lambda e: float(solved(e)),
+        at_upper_alpha=at_upper,
+    )
 
 
 def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
@@ -617,6 +636,17 @@ SINK_SPEED_FACTOR = 1.15
 SINK_ALPHA_FRACTION = 0.6
 
 
+def _stall_limited_warning(solution: MinSinkSolution) -> KernelWarning:
+    """The declaration of a minimum sink at the stall boundary (ADR 0020, ``practice``)."""
+    return KernelWarning.of(
+        "minimum_sink_stall_limited",
+        "minimum sink limited by stall: the sink power D*V is still falling at the first C_L peak "
+        f"(alpha {solution.alpha_mp:.2f} deg, C_L {solution.cl_mp:.3f}); the value is the stall "
+        "boundary, not an interior optimum, and carries no safety margin",
+        detail={"alpha_boundary_deg": solution.alpha_mp, "cl_boundary": solution.cl_mp},
+    )
+
+
 def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
     """Solve the minimum-sink problem in the pool worker (canon ``minimum-sink-speed-from-polar``).
 
@@ -624,9 +654,11 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
     then IPOPT minimises ``D V`` subject to ``L = n m g``. At fixed weight ``D V`` is proportional
     to the sink rate, and AeroBuildup forms the Reynolds number from ``V`` inside the constraint.
     The peak is the end of the pre-stall branch: a polar whose sink rate is still falling there has
-    its minimum limited by the stall, not at an interior optimum, and that optimum sits on the bound
-    of alpha. A bound active at the optimum is an error, never a value (no stall-limited
-    substitute, ADR 0020).
+    its minimum limited by the stall, not at an interior optimum, and that optimum sits on the upper
+    bound of alpha. That case is returned at the boundary (V, alpha and C_L at the first C_L peak, no
+    safety margin: A10) with ``stall_limited`` set, which the adapter declares (#1268, maintainer
+    2026-10-25, ADR 0020). A bound of V or the lower bound of alpha active at the optimum is still an
+    error, and so is a sweep with no peak at all (no bracket).
 
     Args:
         request: The problem; ``n_load`` must be positive.
@@ -646,11 +678,13 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
         lambda speed, aero: aero["D"] * speed,
         (SINK_SPEED_FACTOR * problem.v_bracket, SINK_ALPHA_FRACTION * problem.alpha_peak),
         "minimum-sink",
+        upper_alpha_is_a_result=True,
     )
     solution = MinSinkSolution(
         v_mp=optimum.speed,
         alpha_mp=optimum.alpha,
         cl_mp=optimum.value(optimum.aero["CL"]),
+        stall_limited=optimum.at_upper_alpha,
     )
     diagnostics = _diagnostics(started)
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
@@ -996,8 +1030,13 @@ class OptiAdapter(SolverAdapter):
             "opt_v_min_ms": V_MIN_MS,
             "opt_v_max_mach": V_MAX_MACH,
             "opt_max_iterations": MAX_ITERATIONS,
-            "opt_active_bound_fraction": ACTIVE_BOUND_FRACTION,
+            "opt_active_bound_fraction": config().opt_active_bound_fraction.value,
             "opt_effectiveness_exponent": EFFECTIVENESS_EXPONENT,
+            "opt_probe_tolerance": config().opt_probe_tolerance.value,
+            "opt_peak_tolerance": config().opt_peak_tolerance.value,
+            "opt_zero_span": config().opt_zero_span.value,
+            "opt_alpha_margin_deg": config().opt_alpha_margin_deg.value,
+            "opt_hinge_floor": config().opt_hinge_floor.value,
         }
 
     def _request(
@@ -1149,7 +1188,7 @@ class OptiAdapter(SolverAdapter):
             air: The air state.
 
         Returns:
-            The solution and the regime warnings of its speed.
+            The solution and the warnings of its speed (regime, and the stall-limited declaration).
 
         Raises:
             FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for
@@ -1159,6 +1198,8 @@ class OptiAdapter(SolverAdapter):
         request = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(min_sink_worker, request)
         warnings = _regime_warnings(airplane, solution.v_mp, air)
+        if solution.stall_limited:
+            warnings.append(_stall_limited_warning(solution))
         logger.debug("minimum-sink speed %.4f m/s at %.2f deg", solution.v_mp, solution.alpha_mp)
         return MinSink(solution=solution, warnings=tuple(warnings))
 

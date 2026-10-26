@@ -13,7 +13,6 @@ import math
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
-from aero_kernel.solvers.avl import ROLL_RATE_LIMIT
 
 __all__ = ["roll_rate"]
 
@@ -54,13 +53,14 @@ def exclude_avl_beyond_range(ctx: Context, p_hat: float, p_deg_s: float) -> None
         p_hat: The nondimensional roll rate ``p b / 2V`` AVL gave (signed).
         p_deg_s: The same roll rate in deg/s.
     """
-    if abs(p_hat) > ROLL_RATE_LIMIT:
+    limit = ctx.solvers.rules.value("avl-roll-rate-validity", "max_roll_rate_coefficient")
+    if abs(p_hat) > limit:
         ctx.warn(
             "world_outside_validity",
             f"The AVL world gives p b / 2V = {p_hat:g}, outside AVL's stated range of "
-            f"|p b / 2V| <= {ROLL_RATE_LIMIT:g} (AVL is linear in the deflection). It is not used: "
+            f"|p b / 2V| <= {limit:g} (AVL is linear in the deflection). It is not used: "
             "the interval is the AeroBuildup world alone.",
-            {"p_hat": p_hat, "p_deg_s": p_deg_s, "limit": ROLL_RATE_LIMIT},
+            {"p_hat": p_hat, "p_deg_s": p_deg_s, "limit": limit},
         )
 
 

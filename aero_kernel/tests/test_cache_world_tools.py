@@ -3,6 +3,7 @@
 from typing import Any
 
 import pytest
+from aero_kernel import config as config_module
 from aero_kernel.cache import cache_key
 from aero_kernel.context import Solvers
 from aero_kernel.runtime import SolverRuntime
@@ -95,7 +96,6 @@ def test_a_new_avl_binary_keeps_the_aerobuildup_world_cached() -> None:
         "V_MIN_MS",
         "V_MAX_MACH",
         "MAX_ITERATIONS",
-        "ACTIVE_BOUND_FRACTION",
         "EFFECTIVENESS_EXPONENT",
     ],
 )
@@ -114,14 +114,8 @@ def test_a_changed_optimisation_setting_misses_the_cache_in_the_aerobuildup_worl
         "CHORD_SPACING",
         "SLIVER_STEPS",
         "CLAF_PER_THICKNESS",
-        "ROLL_RATE_LIMIT",
-        "ROLL_PRINT_FLOOR",
-        "ROLL_MOMENT_TOLERANCE",
-        "CONTROL_ECHO_TOLERANCE",
-        "CL_TOLERANCE",
         "AVL_MAX_RUN_S",
         "MESH_DECIMALS",
-        "JOIN_TOLERANCE_M",
     ],
 )
 def test_a_changed_avl_constant_misses_the_cache_in_the_avl_world(
@@ -136,3 +130,66 @@ def test_a_changed_avl_constant_misses_the_cache_in_the_avl_world(
 def test_the_optimisation_constants_are_part_of_the_solver_settings() -> None:
     settings = solvers_with().settings_of("OPT")
     assert settings == OPT_SETTINGS
+
+
+def _with_config_value(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    """Make the shipped configuration state a different value for ``name``."""
+    shipped = config_module.config()
+    entry = getattr(shipped, name)
+    changed = shipped.model_copy(update={name: entry.model_copy(update={"value": entry.value * 2})})
+    monkeypatch.setattr(avl_module, "config", lambda: changed)
+    monkeypatch.setattr(opti_module, "config", lambda: changed)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "avl_refinement_tolerance_mac",
+        "avl_roll_refinement_tolerance",
+        "avl_roll_branch_tolerance",
+        "avl_roll_print_floor",
+        "avl_roll_moment_tolerance",
+        "avl_control_echo_tolerance",
+        "avl_cl_tolerance",
+    ],
+)
+def test_a_changed_avl_config_value_misses_the_cache_in_the_avl_world(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    solvers = solvers_with()
+    before = node_key(solvers, "avl")
+    _with_config_value(monkeypatch, name)
+    assert node_key(solvers, "avl") != before
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "opt_probe_tolerance",
+        "opt_peak_tolerance",
+        "opt_zero_span",
+        "opt_active_bound_fraction",
+        "opt_alpha_margin_deg",
+        "opt_hinge_floor",
+    ],
+)
+def test_a_changed_optimisation_config_value_misses_the_cache_in_the_aerobuildup_world(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    solvers = solvers_with()
+    before = node_key(solvers, "aerobuildup")
+    _with_config_value(monkeypatch, name)
+    assert node_key(solvers, "aerobuildup") != before
+
+
+@pytest.mark.parametrize(
+    "override",
+    ["avl-roll-rate-validity.max_roll_rate_coefficient", "hinge-line-continuity.join_tolerance"],
+)
+def test_an_overridden_rule_parameter_misses_the_cache_in_the_avl_world(override: str) -> None:
+    """A rule parameter the caller overrides shapes the AVL result, so it is part of the key."""
+    solvers = solvers_with()
+    solvers.rules.begin()
+    before = node_key(solvers, "avl")
+    solvers.rules.begin({override: 0.5})
+    assert node_key(solvers, "avl") != before

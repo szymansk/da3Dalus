@@ -9,6 +9,7 @@ from aero_kernel.cache import build_digest
 from aero_kernel.canon.load import CanonLoadError
 from aero_kernel.context import Solvers
 from aero_kernel.engine import evaluate, log_call
+from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import (
     AircraftInput,
@@ -67,7 +68,8 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
         log_call(call_id, request, result, started, "the shipped canon model is not loaded")
         return result
     # Resources are never global (ch. 8.10): this call owns its runtime and releases it before
-    # returning, also on cancellation.
+    # returning, also on cancellation. The rule parameters are the call's too.
+    rules = Rules(build.model)
     async with SolverRuntime() as runtime:
         return await evaluate(
             build,
@@ -76,7 +78,8 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
             solvers=Solvers(
                 atmosphere=AtmosphereAdapter(runtime),
                 opti=OptiAdapter(runtime),
-                avl=AvlAdapter(runtime),
+                avl=AvlAdapter(runtime, rules),
                 geometry=GeometryAdapter(runtime),
+                rules=rules,
             ),
         )
