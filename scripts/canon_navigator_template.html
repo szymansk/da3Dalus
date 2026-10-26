@@ -354,8 +354,12 @@ if(DESIGN_SEP){ const n=Object.keys(COLOF).filter(q=>COLOF[q]==='design').length
 // Data sources (#1251, maintainer 2026-10-25): an explicit layer between the cross-cutting column
 // and the first formula column; each source feeds the quantities that name it, missing ones are marked.
 const SRCW=2*NW, SRCCOLW=SRCW+4*FPAD, SRCGAP=34;
-const SX={xcut:0, src:XW+REFGAP+RW+SRCGAP};
-{ let x=SX.src+SRCCOLW+SIDEGAP, prev=null;
+// Column order (#1300, builder constant COLUMN_ORDER): the page reads left to right along the data
+// flow, input objects -> their fields (data sources) -> derived references -> the analysis columns.
+const SX={};
+{ const widths={xcut:XW, src:SRCCOLW, refs:RW}; let cx=0;
+  for(const k of (D.colorder||['xcut','src','refs'])){ SX[k]=cx; cx+=widths[k]+(k==='refs'?SIDEGAP-REFGAP:REFGAP); } }
+{ let x=SX.refs+RW+SIDEGAP, prev=null;
   for(const c of COLS){
     if(prev&&prev!==c.side) x+=SIDEGAP-MODGAP;
     if(prev!==c.side) SX[c.side]=x;
@@ -393,7 +397,7 @@ let yc=HEAD;
   }
   yc+=height-NH+GAPY;
 }
-const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW, ...(RULES.length?[SX.rules+RULECOLW]:[]));
+const W=Math.max(...COLS.map(c=>c.x+c.w), ...FRAMES.map(f=>f.x+f.w), SX.src+SRCCOLW, SX.refs+RW, ...(RULES.length?[SX.rules+RULECOLW]:[]));
 const derived=layers.filter(l=>l>0).flatMap(l=>ORDER[l]).filter(q=>!isLeft(q));
 // Final results are clustered by operating point (canon tag point/<name>), the clusters stacked
 // in reading order inside each column; within a cluster: values of the point, then stability,
@@ -467,7 +471,6 @@ for(const c of COLS) COLHEADS.push({x:c.x,y:XTOP+6,key:c.module,label:c.module==
 // each module's inputs on the left, the references derived from them (canon tags module/ and
 // group/) on the right, on the same level, so a row reads "input -> reference". The powertrain
 // is one box with the sub-clusters motor and propeller, and battery.
-SX.refs=XW+REFGAP;
 { let y=XTOP+FHEAD;
   for(const m of MODORDER.filter(m=>XCUT.has(m))){
     const ins=Object.keys(Q).filter(q=>Q[q].module===m&&!isRef(q)).sort();
@@ -545,12 +548,13 @@ const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAt
   if(DESIGN_SEP) line(SX.design-SIDEGAP/2,6,SX.design-SIDEGAP/2,H+10);
   line(SX.analysis-SIDEGAP/2,XTOP-14,SX.analysis-SIDEGAP/2,H+10);
   line(SX.refs-REFGAP/2,XTOP-14,SX.refs-REFGAP/2,H+10);
+  line(SX.refs+RW+(SIDEGAP-REFGAP)/2,XTOP-14,SX.refs+RW+(SIDEGAP-REFGAP)/2,H+10);
   line(SX.xcut,XTOP-14,W,XTOP-14);
   for(const [side,label] of [['analysis','Analysis \u2014 what a given airplane does'],['design','Design \u2014 target \u2192 construction quantity (O1)']]){
     if(side==='design'&&!DESIGN_SEP) continue;
     const t=el('text',{x:SX[side],y:14,class:'colhead'}); t.textContent=label; cam.appendChild(t); }
   { const t=el('text',{x:SX.xcut,y:XTOP,class:'colhead'}); t.textContent='Cross-cutting'; cam.appendChild(t); }
-  { line(SX.src-SRCGAP/2,XTOP-14,SX.src-SRCGAP/2,H+10);
+  { line(SX.src-REFGAP/2,XTOP-14,SX.src-REFGAP/2,H+10);
     const t=el('text',{x:SX.src,y:XTOP,class:'colhead'}); t.textContent='Data sources'; cam.appendChild(t);
     for(const f of SRCFRAMES){
       cam.appendChild(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:7,class:'frame'+(f.missing?' srcmiss':'')}));
