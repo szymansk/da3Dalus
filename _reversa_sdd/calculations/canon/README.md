@@ -410,6 +410,8 @@ A `status:` in a quantity entry is a finding.
 | `app` | `<Class>.<field>` of a pydantic model under `app/schemas/` | the designer enters it in the app |
 | `evaluation` | a name | it is the result of the evaluation or of the selection graph (Urmodell) |
 
+A quantity may also name `consistency:` sources — `<kind>:<location>` like `data`, validated the same way — that only check the supplied value and never supply it (`aircraft-mass`: `geometry:total_mass_kg`, #1302). They do not count for the approval; the navigator draws them in their frame marked "consistency check only".
+
 A `geometry` source refines the cross-cutting input `airplane`, a `component` source the input `components`
 (`DATA_KIND_PARENT` in `aero_kernel/canon/model.py`). The navigator draws a framed kind as one frame per
 collection in the data-source column (`battery`, `brushless_motor`, `propeller`; `airplane` for geometry)

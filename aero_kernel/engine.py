@@ -682,14 +682,15 @@ class _Call:
             return self.airplane_at_rest
         return self.values.get(slug) if quantity is not None and quantity.type == "scalar" else None
 
-    @staticmethod
     def _missing_input(
-        node: Node, quantity: str, formula_slug: str, missing: Sequence[str]
+        self, node: Node, quantity: str, formula_slug: str, missing: Sequence[str]
     ) -> KernelError:
         """The ``missing_input`` error of a node that reads values nobody supplied.
 
         One error for all of them; its ``input_path`` is the first missing input in the formula's
-        parameter order (every other one is in ``detail.inputs``).
+        parameter order (every other one is in ``detail.inputs``). A missing ``aircraft-mass`` is
+        never read from the geometry (maintainer 2026-10-26, #1302), but the hint names the
+        geometry's ``total_mass_kg`` where the file states one.
         """
         shown = [display_slug(slug) for slug in missing]
         verb = "was" if len(shown) == 1 else "were"
@@ -702,8 +703,19 @@ class _Call:
             input_path=f"values.{shown[0]}",
             message=f"`{quantity}` needs {join_names([f'`{n}`' for n in shown])}, "
             f"which {verb} not supplied.",
-            hint=f"Supply {join_names([f'`{n}`' for n in shown])} in `values`.",
+            hint=f"Supply {join_names([f'`{n}`' for n in shown])} in `values`."
+            + self._geometry_mass_hint(shown),
             detail={"inputs": list[JsonValue](shown)},
+        )
+
+    def _geometry_mass_hint(self, shown: Sequence[str]) -> str:
+        """The sentence that names the geometry's mass for a missing ``aircraft-mass``, or ``""``."""
+        stated = self.aircraft.airplane.total_mass_kg
+        if "aircraft-mass" not in shown or stated is None:
+            return ""
+        return (
+            f" `aircraft-mass` is not set; the geometry file states total_mass_kg = {stated} kg"
+            " - pass it explicitly to use it."
         )
 
     def _input_path(self, node: Node, formula: Formula, parameter: str | None) -> str | None:

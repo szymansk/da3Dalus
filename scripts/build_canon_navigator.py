@@ -518,6 +518,11 @@ SOURCE_KINDS = (
 )
 
 
+#: Left-to-right order of the leading columns (#1300): the cross-cutting input objects, their fields
+#: (the data sources), then the derived references; the analysis columns follow.
+COLUMN_ORDER = ["xcut", "src", "refs"]
+
+
 def source_frame(source: str) -> str:
     """The frame a data source is drawn in, or ``""`` for a source of a kind that has none.
 
@@ -560,6 +565,7 @@ def approval_marks(data: dict, model: dict) -> None:
     data["qstat"] = approval.quantity_status
     quantities = model["namespaces"]["calc"]["quantities"]
     data["qdata"] = {q: v["data"] for q, v in sorted(quantities.items()) if v.get("data")}
+    data["colorder"] = COLUMN_ORDER
     data["srckinds"] = [
         {"id": k, "label": label, "explanation": text} for k, label, text in SOURCE_KINDS
     ]
@@ -567,6 +573,13 @@ def approval_marks(data: dict, model: dict) -> None:
     for quantity, sources in data["qdata"].items():
         for source in sources:
             fed.setdefault(source, []).append(quantity)
+    checked: dict = {}
+    for quantity, entry in sorted(quantities.items()):
+        for source in entry.get("consistency") or []:
+            checked.setdefault(source, []).append(quantity)
+    data["qcheck"] = {
+        q: v["consistency"] for q, v in sorted(quantities.items()) if v.get("consistency")
+    }
     order = {k: i for i, (k, _, _) in enumerate(SOURCE_KINDS)}
     defaults = model["namespaces"]["calc"]["defaults"]
 
@@ -574,7 +587,9 @@ def approval_marks(data: dict, model: dict) -> None:
         kind, loc = source.split(":", 1)
         return "start" if kind == "default" and defaults[loc]["basis"] == "start" else kind
 
-    ordered = sorted(fed.items(), key=lambda item: (order[kind_of(item[0])], item[0]))
+    ordered = sorted(
+        {**checked, **fed}.items(), key=lambda item: (order[kind_of(item[0])], item[0])
+    )
     frames: dict = {}
     for source, qs in ordered:
         frame = source_frame(source)
@@ -602,6 +617,7 @@ def approval_marks(data: dict, model: dict) -> None:
             "qs": qs,
             "parent": DATA_KIND_PARENT.get(source.split(":", 1)[0], ""),
             "frame": source_frame(source),
+            "check": source not in fed,
             "short": short_of(source),
         }
         for source, qs in ordered

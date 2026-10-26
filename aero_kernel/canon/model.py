@@ -173,6 +173,8 @@ class Quantity(BaseModel):
             otherwise omitted (``None``).
         data: Where the quantity comes from in our data, each ``<kind>:<location>`` (a quantity no
             formula produces; stage 2 of the approval); ``None`` while it has no demonstrated source.
+        consistency: Sources that only check the supplied value and never supply it (the geometry's
+            ``total_mass_kg`` against the passed mass, #1302); ``None`` for any other quantity.
     """
 
     model_config = _MODEL_CONFIG
@@ -191,6 +193,7 @@ class Quantity(BaseModel):
     checks: Slug | None = None
     at_most: FiniteNumber | None = None
     data: Annotated[list[DataSource], Field(min_length=1)] | None = None
+    consistency: Annotated[list[DataSource], Field(min_length=1)] | None = None
 
     @field_validator("positive", mode="before")
     @classmethod
@@ -221,6 +224,13 @@ class Quantity(BaseModel):
         if self.data is not None and len(set(self.data)) != len(self.data):
             msg = "data names a source twice"
             raise ValueError(msg)
+        if self.consistency is not None:
+            if len(set(self.consistency)) != len(self.consistency):
+                msg = "consistency names a source twice"
+                raise ValueError(msg)
+            if set(self.consistency) & set(self.data or ()):
+                msg = "consistency names a source that data supplies: a source either supplies or checks"
+                raise ValueError(msg)
         return self
 
     @model_validator(mode="after")
