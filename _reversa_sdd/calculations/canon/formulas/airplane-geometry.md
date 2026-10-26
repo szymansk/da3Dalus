@@ -92,10 +92,16 @@ would leave every number computed from them standing after a geometry edit.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-25). The main wing is chosen by `surface_type main_wing`; S_ref, b_ref
+> and c_MAC are AeroSandbox's values of that wing with the flags set explicitly — `area(type="planform",
+> include_centerline_distance=True)`, `span(type="yz", include_centerline_distance=True)`,
+> `mean_aerodynamic_chord()` (#1240, #1262): the reference wing runs through the fuselage (Scholz Wing Design
+> §7.1); the MAC carries no centreline flag in ASB, declared. The 45° main-wing inclination limit is a rule on
+> the input (`rules.yaml`, #1260), adopted the same day. Kernel verified against ASB in the aero tier. Stage 2
+> complete.
