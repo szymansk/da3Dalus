@@ -23,4 +23,4 @@ Speed at which the steady-glide sink rate is lowest; physically also the best-en
 
 **Produced by.** [[minimum-sink-speed-from-polar]]
 
-**Used by.** [[endurance-and-range]]
+**Used by.** [[endurance-and-range]] · [[lateral-static-stability-mp]] · [[spiral-parameter]]

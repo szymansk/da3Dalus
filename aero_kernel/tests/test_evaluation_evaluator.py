@@ -172,7 +172,7 @@ def test_the_shipped_table_judges_a_hand_made_result() -> None:
     result = result_of(
         ok("static-margin-target", 0.08),
         ok("vertical-tail-volume", 0.01),
-        ok("spiral-parameter", 5.0),
+        ok("spiral-parameter-md", 5.0),
     )
     verdicts = {v.rule_id: v for v in evaluate_rules(table, result, facts(has_vertical_tail=True))}
     assert verdicts["static-margin-design"].status is RuleStatus.INSIDE

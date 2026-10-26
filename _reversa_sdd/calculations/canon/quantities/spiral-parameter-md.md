@@ -1,7 +1,7 @@
 ---
-canon: spiral-parameter
+canon: spiral-parameter-md
 kind: quantity
-symbol: B_spiral
+symbol: B_spiral,md
 unit: 1
 role: output
 tags:
@@ -12,9 +12,9 @@ tags:
 type: scalar
 ---
 
-# Spiral parameter · `B`
+# Spiral parameter at the minimum-drag speed · `B_spiral,md`
 
-Drela's spiral parameter `l_V,CG·Γ_eq/(b·C_L)`; above about 5 the spiral is stable.
+Drela's spiral parameter `l_V,CG·Γ_eq/(b·C_L)` with `C_L` at `V_md`; above about 5 the spiral is stable.
 
 **Unit.** `1` (numerically with `Γ_eq` in degrees, as Drela defines it)
 

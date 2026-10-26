@@ -5,12 +5,12 @@ kind: law
 tool: APP
 shape: law
 status: draft
-output: spiral-parameter
-source_status: SOURCED
+output: spiral-parameter-md, spiral-parameter-mp
+source_status: PARTIAL
 dimensional_check: PROCEDURAL
 tags:
   - canon/formula
-  - source/sourced
+  - source/partial
   - dim/procedural
   - shape/law
   - kind/law
@@ -24,7 +24,10 @@ inputs:
   g: gravity
   rho: air-density
   v_md: minimum-drag-speed
-outputs: {b_spiral: spiral-parameter}
+  v_mp: minimum-sink-speed
+outputs:
+  b_spiral_md: spiral-parameter-md
+  b_spiral_mp: spiral-parameter-mp
 applications:
   - id: with_vertical_tail
     when: has_vertical_tail
@@ -35,10 +38,35 @@ applications:
 **Canonical form**
 
 ```
-Gamma_eq := geometry(airplane)   # (equivalent) dihedral in degrees
-C_L = m * g / (0.5 * rho * V_md^2 * S_ref)
-B   = l_V_CG * Gamma_eq / (b_ref * C_L)
+Gamma_eq := geometry(airplane)   # strip-theory equivalent dihedral in degrees, derived below
+C_L(V)   = m * g / (0.5 * rho * V^2 * S_ref)
+B_md     = l_V_CG * Gamma_eq / (b_ref * C_L(V_md))
+B_mp     = l_V_CG * Gamma_eq / (b_ref * C_L(V_mp))
 ```
+
+Drela's Eq. 8 names no flight condition for `C_L`. The canon computes **both** values as separate
+outputs (maintainer 2026-10-26, #1309): `B_md` at the minimum-drag speed and `B_mp` at the minimum-sink
+speed, the circling condition. With a parabolic polar `C_L(V_mp) = √3·C_L(V_md)`, so `B_mp ≈ 0.58·B_md`.
+Which value governs is a judgement of the evaluation, by control layout (A10).
+
+**Equivalent dihedral `Gamma_eq` of a polyhedral wing — DERIVED, not printed.** No source prints it:
+Drela defines a single dihedral, and Beron-Rawdon (1990) is unread. The canon adopts the strip-theory
+weighting of the dihedral contribution to `C_lβ` (maintainer 2026-10-26, option (a)), applying Sadraey
+Eq. 5.35 (`Δα ≈ β·Γ`) per strip. Over the semi-span of the main wing, with `y` the spanwise coordinate
+from the aircraft centre line and `c(y)` the local chord:
+
+```
+Gamma_eq = ∫ Gamma(y) * c(y) * y dy  /  ∫ c(y) * y dy
+```
+
+For a wing of panels `i` with constant panel dihedral `Gamma_i` and chord linear in `y`,
+`W_i = ∫ c(y) * y dy` over panel `i` (closed form: Simpson's rule is exact for this quadratic). Check: inner 60 % flat, outer 40 %
+at 10°, constant chord → `Gamma_eq ≈ 6.4°` (the root-to-tip line would give about 4°, which is rejected).
+
+*Conditions.* Constant section lift-curve slope along the span; sweep neglected; induced-flow coupling
+between strips neglected. Strip theory therefore **over-weights outboard panels**. *Later cross-check:*
+AVL `C_lβ` on a polyhedral fleet member. The `Gamma_eq` of the eHawk prototype script uses the same rule,
+so there is one producer (ADR 0022).
 
 `S_ref` and `b_ref` are [[wing-reference-area]] and [[wing-span]], produced by [[airplane-geometry]] (AeroSandbox's
 definition, measured on the main wing; maintainer 2026-10-25). This entry does not read the wing area or span
@@ -46,11 +74,12 @@ from the airplane itself: one producer per number a user sees (ADR 0022). Only t
 the arm `l_V,CG` is [[vertical-tail-arm]], measured from the computed design CG ([[centre-of-gravity-design]]) as Drela defines it
 (maintainer 2026-10-25, #1272); the former `l_V,25` is removed (ADR 0021). The arm is an interval over the neutral-point worlds, so `B` is one value per world (A11).
 
-**Produces** [[spiral-parameter]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[wing-span]] · [[vertical-tail-arm]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]]
+**Produces** [[spiral-parameter-md]] · [[spiral-parameter-mp]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[wing-span]] · [[vertical-tail-arm]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]] · [[minimum-sink-speed]]
 
 **Kind: a law.** A geometric spiral-stability measure for aircraft with a tail, deterministic and
 independent of any solver — the RC practice's counterpart to the spiral criterion of
 [[lateral-static-stability-md]] (K27).
+The spiral criterion is also computed at V_mp by [[lateral-static-stability-mp]].
 
 **Precondition.** The aircraft has a fin or a V-tail behind the wing (`l_V,CG` is a tail arm). Not computed
 for tailless aircraft.
@@ -60,8 +89,9 @@ experienced pilot; rudder-only models V_V·B = 0.10–0.20 for roll authority. B
 
 **Dimensional check.** 🟢 balances by hand — m / m; `Γ_eq` enters as a number in degrees (Drela's definition); the checker sees a geometry extraction (procedural).
 
-**Source.** 🟢 SOURCED — Drela, MIT 16.Unified *Design Rules*, Eqs 8–10; Beron-Rawdon, *Model Aviation*
-9/1990 (equivalent dihedral for polyhedral).
+**Source.** 🟡 PARTIAL — `B` itself: 🟢 Drela, MIT 16.Unified *Design Rules*, Eqs 8–10. `Gamma_eq` for polyhedral wings: derived
+here from Sadraey Eq. 5.35 per strip, **not printed in any source** (Beron-Rawdon, *Model Aviation* 9/1990, is unread);
+adopted on the maintainer's authority (2026-10-26, #1309).
 
 **Validity in the RC/UAV regime (ADR 0028).** Stated for RC sailplanes and models; the stability threshold is empirical.
 
