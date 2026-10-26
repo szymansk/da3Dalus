@@ -59,14 +59,18 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [x] **Convergence** — the criterion, and what is returned and declared on failure
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-25): −C_mα/C_Lα from AeroBuildup at V_md with the moment reference at the
+> design CG must reproduce SM_target — a test, not a second truth (A7); per world, since the design CG is an
+> interval. Declared: no wing–tail downwash, biased toward a larger margin. Agreement tolerance 0.05 (5 % MAC),
+> adopted the same day (`rules.yaml` `static-margin-probe-agreement`, #1260). No aero_kernel implementation yet
+> (#1277).
