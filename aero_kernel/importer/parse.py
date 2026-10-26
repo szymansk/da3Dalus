@@ -57,7 +57,18 @@ FORMULA_DROPPED = frozenset(
     }
 )
 QUANTITY_CARRIED = frozenset(
-    {"symbol", "unit", "role", "type", "positive", "at_most", "uncertainty", "checks", "data"}
+    {
+        "symbol",
+        "unit",
+        "role",
+        "type",
+        "positive",
+        "at_most",
+        "uncertainty",
+        "checks",
+        "data",
+        "consistency",
+    }
 )
 QUANTITY_DROPPED = frozenset({"canon", "kind", "tags"})
 

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:ace69ef29e0f4eae8f795664ab1a64348cc665c627e859e9324df1cb4bc6c17e",
+  "content_hash": "sha256:f517f6449f6aac21c161979a16033ffa02e7bc1c0dd779c47417fb2ad4b1c567",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -404,6 +404,7 @@
         "air-density": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -420,6 +421,7 @@
         "aircraft-mass": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -436,6 +438,7 @@
         "airplane": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -452,6 +455,7 @@
         "airplane-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -468,6 +472,7 @@
         "approach-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -484,6 +489,7 @@
         "approach-speed-margin-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -500,6 +506,7 @@
         "butterfly-speed-range": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -516,6 +523,7 @@
         "butterfly-stall-speed-curve": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -532,6 +540,7 @@
         "cruise-speed-target": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -548,6 +557,7 @@
         "flap-deflection-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -564,6 +574,7 @@
         "gravity": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -580,6 +591,7 @@
         "inverted-max-lift-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -596,6 +608,7 @@
         "max-lift-coefficient": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -612,6 +625,7 @@
         "max-lift-coefficient-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -628,6 +642,7 @@
         "max-mass-level-flight": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -644,6 +659,7 @@
         "neutral-point": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -660,6 +676,7 @@
         "polar-stall": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -676,6 +693,7 @@
         "roll-rate-cruise": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -692,6 +710,7 @@
         "stall-speed": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
@@ -708,6 +727,7 @@
         "stall-speed-landing": {
           "at_most": null,
           "checks": null,
+          "consistency": null,
           "data": null,
           "discipline": null,
           "group": null,
