@@ -14,7 +14,7 @@ type: scalar
 
 # Spiral parameter · `B`
 
-Drela's spiral parameter `l_V,25·Γ_eq/(b·C_L)`; above about 5 the spiral is stable.
+Drela's spiral parameter `l_V,CG·Γ_eq/(b·C_L)`; above about 5 the spiral is stable.
 
 **Unit.** `1` (numerically with `Γ_eq` in degrees, as Drela defines it)
 

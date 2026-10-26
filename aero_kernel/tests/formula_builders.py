@@ -16,7 +16,11 @@ from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
-from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties, stand_in_surface_of
+from aero_kernel.tests.asb_fakes import (
+    stand_in_main_wing_properties,
+    stand_in_quarter_chord_x,
+    stand_in_surface_of,
+)
 from pydantic import JsonValue
 
 # The canon formulas that have an implementation (slugs, qualified); grows with each slice.
@@ -38,6 +42,8 @@ IMPLEMENTED = {
     "calc:speed-from-stall-margin",
     "calc:roll-rate",
     "calc:cg-for-target-margin",
+    "calc:horizontal-tail-arm",
+    "calc:vertical-tail-arm",
 }
 
 
@@ -163,6 +169,11 @@ class StubGeometry(GeometryAdapter):
         """Return the stand-in planform values of the wing, or the fixed ones given to the stub."""
         self.asked.append(airplane)
         return self.surfaces.get(key) or stand_in_surface_of(airplane, key)
+
+    async def quarter_chord_mac_x(self, airplane: AirplaneGeometry, key: str) -> float:
+        """Return the stand-in position of the wing's quarter-chord MAC."""
+        self.asked.append(airplane)
+        return stand_in_quarter_chord_x((airplane.wings or {})[key])
 
 
 def solvers_with(

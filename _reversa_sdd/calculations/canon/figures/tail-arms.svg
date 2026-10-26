@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" role="img" aria-labelledby="fg-title fg-desc"><title id="fg-title">Tail arms and tail volumes</title><desc id="fg-desc">Tail arms l_H,25 and l_V,25 run from the wing's quarter-chord MAC to the tail's; V_H and V_V are arm times tail area over wing area times chord or span. Hand example. Arms from the design CG (l_H,CG, l_V,CG, Drela's definition) follow with #1272.</desc><style>
+.fg-t{fill:var(--ink,#23211C);font:12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-b{font-weight:600}
+.fg-m{fill:var(--ink-2,#6B675E);font:11px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-h{fill:var(--ink,#23211C);font:600 13px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-ln{stroke:var(--ink,#23211C);stroke-width:1.4;fill:none}
+.fg-thin{stroke:var(--ink-3,#9A958A);stroke-width:1;fill:none}
+.fg-dash{stroke-dasharray:5 4}
+.fg-wing{fill:var(--inp-bg,#EBF1F7);stroke:var(--inp,#4C7198);stroke-width:1.4}
+.fg-gap{fill:var(--hub-bg,#FAF2E4);stroke:var(--hub,#A67C3C);stroke-width:1.2;stroke-dasharray:4 3}
+.fg-acc{stroke:var(--sel,#6B4FA0);stroke-width:2;fill:none}
+.fg-accf{fill:var(--sel,#6B4FA0)}
+.fg-acct{fill:var(--sel,#6B4FA0);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-bad{stroke:var(--bad,#C0392B);stroke-width:2;fill:none}
+.fg-badf{fill:var(--bad,#C0392B)}
+.fg-badt{fill:var(--bad,#C0392B);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-good{stroke:var(--good,#2E8B57);stroke-width:2;fill:none}
+.fg-goodf{fill:var(--good,#2E8B57)}
+.fg-box{fill:var(--panel,#FFFFFF);stroke:var(--line-2,#CFC9BC);stroke-width:1}
+.fg-dot{fill:var(--ink,#23211C)}
+</style><line x1="47" y1="180" x2="410" y2="180" class="fg-thin fg-dash"/><rect x="63.5" y="165.15" width="313.5" height="29.7" rx="8" class="fg-box"/><polygon points="80,180 119.6,343.35 169.1,343.35 179,180" class="fg-wing"/><polygon points="80,180 119.6,16.65 169.1,16.65 179,180" class="fg-wing"/><polygon points="347.3,180 357.2,267.45 373.7,267.45 377,180" class="fg-wing"/><polygon points="347.3,180 357.2,92.55 373.7,92.55 377,180" class="fg-wing"/><rect x="350.6" y="176.04" width="33" height="7.92" rx="0" class="fg-gap"/><circle cx="116.85" cy="180" r="4" class="fg-accf"/><circle cx="360.5" cy="180" r="4" class="fg-accf"/><circle cx="367.1" cy="180" r="4" class="fg-badf"/><line x1="116.85" y1="380" x2="360.5" y2="380" class="fg-acc"/><polygon points="116.85,380 123.35,377.4 123.35,382.6" class="fg-accf"/><polygon points="360.5,380 354,382.6 354,377.4" class="fg-accf"/><text x="238.68" y="372" class="fg-acct" text-anchor="middle">l_H,25 = 0.738 m</text><line x1="116.85" y1="412" x2="367.1" y2="412" class="fg-bad"/><polygon points="116.85,412 123.35,409.4 123.35,414.6" class="fg-badf"/><polygon points="367.1,412 360.6,414.6 360.6,409.4" class="fg-badf"/><text x="241.98" y="404" class="fg-badt" text-anchor="middle">l_V,25 = 0.758 m</text><line x1="116.85" y1="180" x2="116.85" y2="380" class="fg-thin fg-dash"/><line x1="360.5" y1="180" x2="360.5" y2="380" class="fg-thin fg-dash"/><line x1="367.1" y1="180" x2="367.1" y2="412" class="fg-thin fg-dash"/><text x="140.85" y="8.65" class="fg-m" text-anchor="middle">wing</text><text x="360.5" y="84.55" class="fg-m" text-anchor="middle">H-tail</text><text x="391.1" y="206" class="fg-m" text-anchor="start">fin (top view: a line)</text><text x="560" y="80" class="fg-h" text-anchor="start">V_V = S_V l_V,25 / (S_ref b_ref)</text><text x="560" y="100" class="fg-t" text-anchor="start">= 0.035 x 0.758 / (0.405 x 1.80) = 0.0364</text><text x="560" y="126" class="fg-h" text-anchor="start">V_H = S_H l_H,25 / (S_ref c_MAC)</text><text x="560" y="146" class="fg-t" text-anchor="start">S_H = 0.07 m², l_H,25 = 0.738 m</text><circle cx="565" cy="200" r="4" class="fg-accf"/><text x="576" y="204" class="fg-m" text-anchor="start">quarter-chord MAC of the wing and of the H-tail</text><circle cx="565" cy="220" r="4" class="fg-badf"/><text x="576" y="224" class="fg-m" text-anchor="start">quarter-chord MAC of the fin</text><text x="560" y="262" class="fg-badt" text-anchor="start">Not Drela's arm yet: his l is measured from the CG.</text></svg>

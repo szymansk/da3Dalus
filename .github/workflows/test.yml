@@ -119,6 +119,11 @@ jobs:
         # rule_table.json is generated from _reversa_sdd/calculations/evaluation/drela.yaml.
         run: poetry run python -m aero_kernel.importer.rule_table --check
 
+      - name: Canon figures are current (build_canon_figures --check)
+        # The SVG figures of the canon are generated from in-tree scripts; a change to a script
+        # regenerates the committed SVG in the same change.
+        run: poetry run python scripts/build_canon_figures.py --check
+
       - name: Canon navigator is current (build_canon_navigator --check)
         # The navigator is derived from the canon, the canon model and the aero_kernel formulas
         # (implementation status, MVP). A change to any of them regenerates it in the same change.

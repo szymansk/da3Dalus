@@ -41,6 +41,7 @@ __all__ = [
     "AC_FRACTION",
     "load_aerosandbox",
     "main_wing_properties",
+    "quarter_chord_mac_x",
     "surface_properties",
     "to_asb_airplane",
 ]
@@ -257,6 +258,37 @@ def surface_properties(airplane: AirplaneGeometry, key: str) -> SurfacePropertie
     """
     wing = _wing(load_aerosandbox(), key, (airplane.wings or {})[key], 0.0)
     return _surface(wing, float(wing.aerodynamic_center()[0]))
+
+
+def quarter_chord_mac_x(airplane: AirplaneGeometry, key: str) -> float:
+    """Return x of the quarter-chord MAC of the wing stored under ``key``, as AeroSandbox measures it.
+
+    ``Wing.aerodynamic_center(chord_fraction=0.25)[0]`` of the wing converted like in
+    :func:`to_asb_airplane` (gh-1272). Unlike :func:`surface_properties` it asks for no area or
+    span, so it also serves a vertical surface, whose projected planform is empty.
+
+    Args:
+        airplane: The validated geometry document.
+        key: The key of the wing in ``airplane.wings``.
+
+    Returns:
+        x in m, in the geometry frame, aft positive.
+
+    Raises:
+        FormulaError: As :func:`_wing`; ``unsupported_configuration`` if ASB gives no finite x.
+    """
+    wing = _wing(load_aerosandbox(), key, (airplane.wings or {})[key], 0.0)
+    x = float(wing.aerodynamic_center(chord_fraction=AC_FRACTION)[0])
+    if not math.isfinite(x):
+        raise FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "unsupported_configuration",
+            f"the wing {wing.name!r} has no aerodynamic centre: AeroSandbox gives x = {x}",
+            "a wing needs sections with a non-zero area; check its chords and positions",
+            detail={"wing": str(wing.name)},
+            parameter="airplane",
+        )
+    return x
 
 
 def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:
