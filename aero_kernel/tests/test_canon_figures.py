@@ -3,6 +3,7 @@
 import importlib.util
 import math
 import pathlib
+import sys
 import xml.etree.ElementTree as ET
 from types import ModuleType
 
@@ -28,7 +29,7 @@ runner = load(SCRIPT, "build_canon_figures")
 @pytest.fixture(scope="module")
 def example() -> ModuleType:
     with pytest.MonkeyPatch.context() as patch:
-        patch.syspath_prepend(str(FIGURES))
+        patch.setattr(sys, "path", [str(FIGURES), *sys.path])
         return load(FIGURES / "_example.py", "canon_figure_example")
 
 
@@ -78,7 +79,7 @@ def test_the_neutral_point_worlds_lie_aft_of_the_wing_and_ahead_of_the_tail(
 
 
 def test_the_stall_break_procedure_brackets_the_crossing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.syspath_prepend(str(FIGURES))
+    monkeypatch.setattr(sys, "path", [str(FIGURES), *sys.path])
     figure = load(FIGURES / "stall_break.py", "canon_figure_stall_break")
     samples = figure.polar()
     alpha_s, cl_max, alpha_break, width = figure.stall_break(samples, 0.10)
@@ -96,7 +97,7 @@ def test_the_stall_break_procedure_brackets_the_crossing(monkeypatch: pytest.Mon
 def test_the_spanwise_loads_integrate_to_the_weight_and_the_elliptic_root_moment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.syspath_prepend(str(FIGURES))
+    monkeypatch.setattr(sys, "path", [str(FIGURES), *sys.path])
     figure = load(FIGURES / "spanwise_loads.py", "canon_figure_spanwise_loads")
     example = load(FIGURES / "_example.py", "canon_figure_example2")
     _, _, shear, moment = figure.loads()
