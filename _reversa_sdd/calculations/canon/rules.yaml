@@ -162,11 +162,41 @@ aerobuildup-no-deflected-device:
   codes: [unsupported_configuration]
 
 avl-mesh-layout:
-  applies_to: {formula: neutral-point}
+  applies_to: {formula: roll-rate}
   kind: tool
   on_violation: error
-  criterion: "The AVL mesh drives roll devices of one kind of surface at a time and needs a continuous hinge line: a hinge line that jumps between joined driven segments (hinge_line_discontinuous) and a layout the mesh cannot drive (unsupported_layout) are refused."
-  codes: [unsupported_layout, hinge_line_discontinuous]
+  criterion: "The AVL mesh drives the roll devices of the main wing only: a roll device on another surface (unsupported_layout) is refused. The continuity of the hinge line is the rule hinge-line-continuity."
+  codes: [unsupported_layout]
+
+hinge-line-continuity:
+  applies_to: {formula: roll-rate}
+  kind: input
+  on_violation: error
+  criterion: "Two driven segments of a roll device that meet at a rib (their positions in y closer than join_tolerance) have the same hinge position there: AVL holds one hinge position per section. The same distance decides that a station of a device end and the rib it was read from are one rib."
+  codes: [hinge_line_discontinuous]
+  parameters:
+    join_tolerance:
+      value: 1.0e-8
+      unit: m
+      basis: convention
+      status: adopted
+      source: "a numerical identity of two positions of one rib; no published source (maintainer 2026-10-26, #1299: a domain limit that stays an overridable rule parameter)"
+      regime: "regime-independent: a statement about the geometry document, not about the flow"
+
+avl-roll-rate-validity:
+  applies_to: {formula: roll-rate}
+  kind: tool
+  on_violation: warning
+  criterion: "AVL is linear in the deflection: the AVL world of the roll rate is used while |p b / 2V| is at most max_roll_rate_coefficient; beyond it the world is declared outside its validity and dropped from the interval (A11)."
+  codes: [avl_roll_rate_beyond_range, world_outside_validity]
+  parameters:
+    max_roll_rate_coefficient:
+      value: 0.10
+      unit: "1"
+      basis: sourced
+      status: adopted
+      source: "AVL primer (Avl/avl_doc.txt:121-141): -0.10 < pb/2V < 0.10 is the practical limit for roll rates, beyond which results should be interpreted with caution; adopted for the AVL world by the maintainer on #1243, 2026-10-25"
+      regime: "RC/UAV: model roll rates stay inside the primer's range at approach speed (BRYAN 0.29, JAGUAR 0.28 at 20 deg are beyond it, which is why the AVL world is dropped there); the limit is a property of AVL's linearisation, not of the flow regime"
 
 avl-array-limit:
   applies_to: {formula: neutral-point}

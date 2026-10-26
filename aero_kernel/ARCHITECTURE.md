@@ -1074,6 +1074,11 @@ implementation, not before (ADR 0021).
   other (R1); whether a value is assumed or measured is not the kernel's concern.
 - **The frame of position quantities** (#1203): `neutral-point` and `centre-of-gravity-measured` are x coordinates in
   the geometry frame of `airplane`, x aft positive, in metres. The app's own CG field follows in #1209.
+- **Kernel configuration** (maintainer, 2026-10-26, #1299). The numeric tolerances of the kernel's self-checks are
+  `config.yaml` in the canon root, imported into `namespaces.calc.config` (closed keys, `KernelConfig`) and read
+  through `aero_kernel/config.py`. Not overridable by the caller; part of the model hash and so of the build digest;
+  reported as solver settings. `AvlAdapter` and the `rules` it shares with the engine (`Solvers.rules`) hold the
+  overridable domain limits.
 - **Validation rules** (maintainer, 2026-10-25, #1260). A requirement on the input data or a limit of a tool is a
   canon rule in `rules.yaml` (README, "Validation rules"); its thresholds are parameters, not literals. The
   importer carries them into `namespaces.calc.rules`. `aero_kernel/rules.py` resolves a threshold for one call

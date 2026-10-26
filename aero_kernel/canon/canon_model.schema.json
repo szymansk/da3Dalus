@@ -138,6 +138,49 @@
       "title": "Check",
       "type": "object"
     },
+    "ConfigValue": {
+      "additionalProperties": false,
+      "description": "One tolerance of the configuration.\n\nAttributes:\n    value: The tolerance, a finite number greater than zero, in ``unit``.\n    unit: Its unit; ``1`` is dimensionless.\n    guards: What the check decides.\n    basis: ``solver-precision`` (the digits a tool prints), ``decision`` (fixed by the\n        maintainer) or ``numerical`` (a margin over floating-point noise).\n    source: Where the value comes from.",
+      "properties": {
+        "basis": {
+          "pattern": "^(solver-precision|decision|numerical)$",
+          "title": "Basis",
+          "type": "string"
+        },
+        "guards": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Guards",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source",
+          "type": "string"
+        },
+        "unit": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "exclusiveMinimum": 0.0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "unit",
+        "guards",
+        "basis",
+        "source"
+      ],
+      "title": "ConfigValue",
+      "type": "object"
+    },
     "ConstBinding": {
       "additionalProperties": false,
       "description": "A constant bound to an input parameter, with its source (ADR 0028).\n\nAttributes:\n    const: The value, in the parameter's unit.\n    source: Citation of where the constant comes from.",
@@ -554,6 +597,72 @@
       "title": "Group",
       "type": "object"
     },
+    "KernelConfig": {
+      "additionalProperties": false,
+      "description": "The closed set of the kernel's self-check tolerances (canon ``config.yaml``, gh-1299).",
+      "properties": {
+        "avl_cl_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_contour_margin": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_control_echo_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_refinement_tolerance_mac": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_roll_branch_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_roll_moment_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_roll_print_floor": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "avl_roll_refinement_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_active_bound_fraction": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_alpha_margin_deg": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_hinge_floor": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_peak_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_probe_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_zero_span": {
+          "$ref": "#/$defs/ConfigValue"
+        }
+      },
+      "required": [
+        "avl_refinement_tolerance_mac",
+        "avl_roll_refinement_tolerance",
+        "avl_roll_branch_tolerance",
+        "avl_roll_print_floor",
+        "avl_roll_moment_tolerance",
+        "avl_control_echo_tolerance",
+        "avl_cl_tolerance",
+        "opt_probe_tolerance",
+        "opt_peak_tolerance",
+        "opt_zero_span",
+        "opt_active_bound_fraction",
+        "opt_alpha_margin_deg",
+        "opt_hinge_floor",
+        "avl_contour_margin"
+      ],
+      "title": "KernelConfig",
+      "type": "object"
+    },
     "Module": {
       "additionalProperties": false,
       "description": "A module groups the inputs and targets (``module/<id>``).\n\nAttributes:\n    cross_cutting: Nearly every formula depends on the module's quantities.\n    holds_targets: The module's quantities are targets (role ``target``), and only these.",
@@ -596,8 +705,19 @@
     },
     "Namespace": {
       "additionalProperties": false,
-      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity (or fallback of a catalogue read); absent = the caller must supply it.\n    rules: The validation rules with their overridable parameters (``rules.yaml``).\n    taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.",
+      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity (or fallback of a catalogue read); absent = the caller must supply it.\n    rules: The validation rules with their overridable parameters (``rules.yaml``).\n    config: The kernel's self-check tolerances (``config.yaml``); never overridable.\n    taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.",
       "properties": {
+        "config": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KernelConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "defaults": {
           "default": {},
           "patternProperties": {

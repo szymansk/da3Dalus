@@ -1,0 +1,116 @@
+# Kernel configuration (#1299, maintainer 2026-10-26): the numeric tolerances of the kernel's own
+# self-checks. "Ich würde das in eine config.yaml packen, die aber nicht vom Anwender überschrieben
+# werden kann." They are not rules and not defaults: no AircraftInput field, no rule parameter and
+# no value slug reaches them. The importer carries the file into canon_model.json (namespaces.calc.config)
+# as one closed set of keys, so a changed value changes the model hash, the build digest and with it every
+# cache key; the kernel runs without reading YAML (Q12). The values appear in the provenance as solver
+# settings of the tool whose check they guard.
+#
+# <name>:
+#   value   the tolerance, in `unit`
+#   unit    "1" is a dimensionless (relative or fractional) value
+#   guards  what the check decides
+#   basis   solver-precision  the digits a tool prints or converges to
+#           decision          a value the maintainer fixed
+#           numerical         a margin over floating-point noise
+#   source  where the value comes from
+# The domain limits (ROLL_RATE_LIMIT, JOIN_TOLERANCE_M) are not here: they are overridable rule
+# parameters in the canon's rules.yaml.
+
+avl_refinement_tolerance_mac:
+  value: 0.005
+  unit: "1"
+  guards: "Neutral point: the disagreement of the declared and the refined AVL mesh, in mean chords, above which the value is declared not converged."
+  basis: decision
+  source: "0.5 % MAC (scripts/sim_export/crrcsim/AVL_CONVERGENCE.md)"
+
+avl_roll_refinement_tolerance:
+  value: 0.01
+  unit: "1"
+  guards: "Roll rate: the relative disagreement of the declared and the refined AVL mesh above which the roll rate is declared not converged."
+  basis: decision
+  source: "maintainer, #1211 D8: fixed before any measurement; the agreement asked of the independent template reference"
+
+avl_roll_branch_tolerance:
+  value: 0.10
+  unit: "1"
+  guards: "Roll rate: the trimmed roll rate must agree with the linearised one from the stability derivatives to this relative difference, else AVL's Newton iteration landed on a spurious branch."
+  basis: decision
+  source: "a numerical sanity check of the solver, no domain threshold: the nonlinearity measured on the fleet is 0.2-0.4 %, a spurious branch is off by a factor of about 3 (#1211)"
+
+avl_roll_print_floor:
+  value: 0.0002
+  unit: "1"
+  guards: "Roll rate: added to the branch check as the print resolution of AVL's p'b/2V (five decimals) and its derivatives (six)."
+  basis: solver-precision
+  source: "AVL prints p'b/2V with five and the derivatives with six decimals"
+
+avl_roll_moment_tolerance:
+  value: 0.00001
+  unit: "1"
+  guards: "Roll rate: the stability-axis rolling moment left by the steady roll; a larger residual is a defect of ours."
+  basis: solver-precision
+  source: "AVL prints the stability-axis rolling moment with five decimals"
+
+avl_control_echo_tolerance:
+  value: 0.0001
+  unit: deg
+  guards: "Roll rate: the control AVL echoes must be the commanded deflection."
+  basis: solver-precision
+  source: "AVL prints the control with five decimals"
+
+avl_cl_tolerance:
+  value: 0.0001
+  unit: "1"
+  guards: "AVL neutral point and roll rate: AVL reaches the requested lift coefficient; a larger miss is a defect of ours."
+  basis: solver-precision
+  source: "AVL prints C_L with five decimals"
+
+opt_probe_tolerance:
+  value: 0.000001
+  unit: "1"
+  guards: "Stall speed, postcondition: the relative disagreement allowed between V_S and the closed form with the polar's C_L at alpha_S."
+  basis: numerical
+  source: "IPOPT's default convergence tolerance is 1e-8 on the scaled constraint, so 1e-6 leaves two decades for the scaling and the sweep's float rounding"
+
+opt_peak_tolerance:
+  value: 0.000001
+  unit: "1"
+  guards: "Stall speed, postcondition: C_L,max may fall short of the sampled first peak by this much; both are samples of one curve, so it only absorbs numerical noise."
+  basis: numerical
+  source: "float noise between two samples of one sweep"
+
+opt_zero_span:
+  value: 1.0e-15
+  unit: "1"
+  guards: "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference."
+  basis: numerical
+  source: "a margin over floating-point noise of C_L, which is of order 1"
+
+opt_alpha_margin_deg:
+  value: 1.0e-9
+  unit: deg
+  guards: "Angle comparisons of the stall checks and the half-step sweep grid: two angles closer than this are the same sample of the lattice."
+  basis: numerical
+  source: "float noise of an angle that is a multiple of a quarter degree; many orders below the sweep step"
+
+opt_hinge_floor:
+  value: 1.0e-16
+  unit: "1"
+  guards: "Control effectiveness: added to the hinge position so a hinge at exactly 0 does not raise 0 to a fractional power."
+  basis: numerical
+  source: "the smallest margin that keeps the power well defined at a hinge position of 0"
+
+avl_contour_margin:
+  value: 1.0e-9
+  unit: "1"
+  guards: "AVL airfoil file: an airfoil point may lie this far outside the unit chord (rounding of a repanelled contour) before the file is refused."
+  basis: numerical
+  source: "rounding of a contour whose x runs from 0 to 1"
+
+opt_active_bound_fraction:
+  value: 1.0e-6
+  unit: "1"
+  guards: "Optimisation: an optimum within this fraction of the range of a variable lies on its bound, and a value on a bound is no optimum (ADR 0020), so it is refused."
+  basis: numerical
+  source: "IPOPT's bound push keeps an interior optimum a few 1e-8 of the range from its bound; 1e-6 separates it from a bound the solver reached"

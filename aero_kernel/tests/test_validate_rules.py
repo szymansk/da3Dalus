@@ -206,3 +206,21 @@ def test_the_test_builders_state_the_geometry_rules_as_the_shipped_canon_does() 
                 canon.unit,
                 canon.basis,
             ), (rule_id, name)
+
+
+def test_the_roll_rate_limit_is_a_rule_parameter_the_caller_may_override() -> None:
+    from aero_kernel.formulas.roll_rate import exclude_avl_beyond_range
+    from aero_kernel.tests.formula_builders import StubAtmosphere, context_with
+
+    key = "avl-roll-rate-validity.max_roll_rate_coefficient"
+    default = context_with(StubAtmosphere({}))
+    default.solvers.rules.begin()
+    exclude_avl_beyond_range(default, 0.3, 100.0)
+    assert [w.code for w in default.warnings] == ["world_outside_validity"]
+    assert default.warnings[0].detail["limit"] == 0.10
+    wide = context_with(StubAtmosphere({}))
+    wide.solvers.rules.begin({key: 0.5})
+    exclude_avl_beyond_range(wide, 0.3, 100.0)
+    assert wide.warnings == ()
+    (used,) = [u for u in wide.solvers.rules.used() if u.rule == "avl-roll-rate-validity"]
+    assert (used.value, used.overridden, used.basis) == (0.5, True, "sourced")

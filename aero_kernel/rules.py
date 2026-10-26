@@ -32,6 +32,15 @@ class Rules:
         self._overrides = dict(overrides or {})
         self._used: dict[tuple[str, str], RuleUsed] = {}
 
+    def begin(self, overrides: Mapping[str, float] | None = None) -> None:
+        """Start a call: take its overrides and forget what an earlier call used.
+
+        Args:
+            overrides: The caller's ``rule_overrides`` of this call.
+        """
+        self._overrides = dict(overrides or {})
+        self._used = {}
+
     def value(self, rule: str, parameter: str) -> float:
         """Return a threshold: the caller's override, else the canon's value; and remember it.
 

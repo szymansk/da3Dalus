@@ -2,7 +2,6 @@
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.solvers.avl_mesh import mesh_surfaces
 from aero_kernel.solvers.avl_writer import (
     AvlOutput,
     airfoil_file,
@@ -10,6 +9,7 @@ from aero_kernel.solvers.avl_writer import (
     avl_geometry,
     parse_avl_output,
 )
+from aero_kernel.tests.mesh_helpers import mesh_surfaces
 from aero_kernel.tests.np_builders import CONVENTIONAL, airplane_with, surface
 
 S_REF, C_REF, B_REF = 0.28, 0.2, 1.4

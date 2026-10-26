@@ -9,6 +9,7 @@ caller puts beside the geometry file (nothing here touches the disk).
 import re
 from collections.abc import Sequence
 
+from aero_kernel.config import config
 from aero_kernel.solvers.avl_mesh import MeshSurface
 from pydantic import BaseModel, ConfigDict
 
@@ -96,8 +97,9 @@ def airfoil_file(name: str, coordinates: Sequence[tuple[float, float]]) -> str:
     Raises:
         ValueError: If a point lies outside the unit chord (AVL then returns nonsense).
     """
+    margin = config().avl_contour_margin.value
     for x, _ in coordinates:
-        if not -1e-9 <= x <= 1.0 + 1e-9:
+        if not -margin <= x <= 1.0 + margin:
             msg = f"airfoil point x = {x} lies outside the unit chord"
             raise ValueError(msg)
     body = "\n".join(f"{x:.8f} {y:.8f}" for x, y in coordinates)

@@ -1,8 +1,9 @@
 {
-  "content_hash": "sha256:ace69ef29e0f4eae8f795664ab1a64348cc665c627e859e9324df1cb4bc6c17e",
+  "content_hash": "sha256:7cb636d8aec40389875b70e5ff9614743394f91e534bb7ccbeea2d0766328d2e",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
+      "config": null,
       "defaults": {
         "air-density": {
           "basis": "standard",

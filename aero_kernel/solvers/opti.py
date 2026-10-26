@@ -18,6 +18,7 @@ from itertools import pairwise
 from typing import Any, ClassVar, cast
 
 import numpy as np
+from aero_kernel.config import config
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
@@ -87,8 +88,6 @@ MAX_ITERATIONS = 300
 # cost does not matter. The size is a named constant recorded in Provenance.solver_settings; a
 # caller-selectable accuracy level comes only when a caller needs it.
 NEURALFOIL_MODEL_SIZE = "xlarge"
-# A bound counts as active when the optimum lies within this fraction of the variable's range.
-ACTIVE_BOUND_FRACTION = 1e-6
 
 
 class StallRequest(BaseModel):
@@ -456,7 +455,7 @@ def _reject_active_bound(name: str, value: float, bounds: tuple[float, float], w
         FormulaError: ``not_converged`` naming the variable.
     """
     lower, upper = bounds
-    margin = ACTIVE_BOUND_FRACTION * (upper - lower)
+    margin = config().opt_active_bound_fraction.value * (upper - lower)
     if value - lower < margin or upper - value < margin:
         raise _not_converged(
             f"the optimum of the {what} problem lies on the bound of {name}",
@@ -508,7 +507,7 @@ def _solve(
     solved = _ipopt(opti, what, SPEED_HINT)
     v_opt, alpha_opt = float(solved(speed)), float(solved(alpha))
     _reject_active_bound("V", v_opt, (problem.v_low, problem.v_high), what)
-    margin = ACTIVE_BOUND_FRACTION * (problem.high - problem.low)
+    margin = config().opt_active_bound_fraction.value * (problem.high - problem.low)
     at_upper = upper_alpha_is_a_result and problem.high - alpha_opt < margin
     if not at_upper:
         _reject_active_bound("alpha", alpha_opt, (problem.low, problem.high), what)
@@ -1031,8 +1030,13 @@ class OptiAdapter(SolverAdapter):
             "opt_v_min_ms": V_MIN_MS,
             "opt_v_max_mach": V_MAX_MACH,
             "opt_max_iterations": MAX_ITERATIONS,
-            "opt_active_bound_fraction": ACTIVE_BOUND_FRACTION,
+            "opt_active_bound_fraction": config().opt_active_bound_fraction.value,
             "opt_effectiveness_exponent": EFFECTIVENESS_EXPONENT,
+            "opt_probe_tolerance": config().opt_probe_tolerance.value,
+            "opt_peak_tolerance": config().opt_peak_tolerance.value,
+            "opt_zero_span": config().opt_zero_span.value,
+            "opt_alpha_margin_deg": config().opt_alpha_margin_deg.value,
+            "opt_hinge_floor": config().opt_hinge_floor.value,
         }
 
     def _request(

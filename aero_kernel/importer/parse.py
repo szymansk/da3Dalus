@@ -1,4 +1,4 @@
-"""Stage 1 of the import: read the front matter of every entry, ``defaults.yaml`` and ``rules.yaml`` (ch. 8.9).
+"""Stage 1 of the import: read the front matter of every entry, ``defaults.yaml``, ``rules.yaml`` and ``config.yaml`` (ch. 8.9).
 
 Only the front matter is parsed; the prose below it is never read. This stage checks what can be
 checked without knowing the vocabularies: that a file is readable YAML, carries its markers and
@@ -117,6 +117,7 @@ class ParsedCanon:
         quantities: The quantity entries by slug.
         defaults: The raw ``defaults.yaml`` entries by slug.
         rules: The raw ``rules.yaml`` entries by slug (the file is optional).
+        config: The raw ``config.yaml`` entries by name (the file is optional).
         taxonomy: The raw ``taxonomy.yaml`` document; ``None`` while it is unreadable.
         findings: Everything stage 1 found.
     """
@@ -125,6 +126,7 @@ class ParsedCanon:
     quantities: dict[str, Entry] = field(default_factory=lambda: dict[str, Entry]())
     defaults: dict[str, dict[str, object]] = field(default_factory=lambda: {})
     rules: dict[str, dict[str, object]] = field(default_factory=lambda: {})
+    config: dict[str, object] | None = None
     taxonomy: dict[str, object] | None = None
     findings: list[Finding] = field(default_factory=lambda: list[Finding]())
 
@@ -375,6 +377,18 @@ def _keep_rule(slug: str, value: object, parsed: ParsedCanon) -> None:
     parsed.rules[slug] = {str(key): item for key, item in entry.items()}
 
 
+def _keep_config(name: str, value: object, parsed: ParsedCanon) -> None:
+    """Keep one ``config.yaml`` entry; the model types check its content and the closed key set."""
+    if parsed.config is None:
+        parsed.config = {}
+    parsed.config[name] = value
+
+
+def _read_config(canon_dir: Path, parsed: ParsedCanon) -> None:
+    """Read ``config.yaml``; the file is optional."""
+    _read_slug_map(canon_dir, "config.yaml", parsed, _keep_config, required=False)
+
+
 def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
     """Read ``defaults.yaml``; an empty file or ``{}`` means no defaults, a missing file is a finding."""
     _read_slug_map(canon_dir, "defaults.yaml", parsed, _keep_default, required=True)
@@ -511,5 +525,6 @@ def parse_canon(canon_dir: Path) -> ParsedCanon:
     _read_entries(canon_dir, "quantities", parsed)
     _read_defaults(canon_dir, parsed)
     _read_rules(canon_dir, parsed)
+    _read_config(canon_dir, parsed)
     _read_taxonomy(canon_dir, parsed)
     return parsed

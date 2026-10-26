@@ -39,12 +39,14 @@ __all__ = [
     "CanonModel",
     "CanonProblem",
     "Check",
+    "ConfigValue",
     "ConstBinding",
     "CostClass",
     "DataSource",
     "Default",
     "Formula",
     "FormulaKind",
+    "KernelConfig",
     "Namespace",
     "OnViolation",
     "Quantity",
@@ -589,6 +591,48 @@ class Rule(BaseModel):
     parameters: dict[RuleName, RuleParameter] = {}
 
 
+class ConfigValue(BaseModel):
+    """One tolerance of the configuration.
+
+    Attributes:
+        value: The tolerance, a finite number greater than zero, in ``unit``.
+        unit: Its unit; ``1`` is dimensionless.
+        guards: What the check decides.
+        basis: ``solver-precision`` (the digits a tool prints), ``decision`` (fixed by the
+            maintainer) or ``numerical`` (a margin over floating-point noise).
+        source: Where the value comes from.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    value: Annotated[float, Field(strict=True, gt=0.0, allow_inf_nan=False)]
+    unit: NonBlank
+    guards: NonBlank
+    basis: Annotated[str, Field(pattern=r"^(solver-precision|decision|numerical)$")]
+    source: NonBlank
+
+
+class KernelConfig(BaseModel):
+    """The closed set of the kernel's self-check tolerances (canon ``config.yaml``, gh-1299)."""
+
+    model_config = _MODEL_CONFIG
+
+    avl_refinement_tolerance_mac: ConfigValue
+    avl_roll_refinement_tolerance: ConfigValue
+    avl_roll_branch_tolerance: ConfigValue
+    avl_roll_print_floor: ConfigValue
+    avl_roll_moment_tolerance: ConfigValue
+    avl_control_echo_tolerance: ConfigValue
+    avl_cl_tolerance: ConfigValue
+    opt_probe_tolerance: ConfigValue
+    opt_peak_tolerance: ConfigValue
+    opt_zero_span: ConfigValue
+    opt_active_bound_fraction: ConfigValue
+    opt_alpha_margin_deg: ConfigValue
+    opt_hinge_floor: ConfigValue
+    avl_contour_margin: ConfigValue
+
+
 class Namespace(BaseModel):
     """One canon of the model: its quantities, formulas and defaults, keyed by bare slug.
 
@@ -597,6 +641,7 @@ class Namespace(BaseModel):
         formulas: The formulas.
         defaults: The stated default per supplied scalar quantity (or fallback of a catalogue read); absent = the caller must supply it.
         rules: The validation rules with their overridable parameters (``rules.yaml``).
+        config: The kernel's self-check tolerances (``config.yaml``); never overridable.
         taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.
     """
 
@@ -606,6 +651,7 @@ class Namespace(BaseModel):
     formulas: dict[SlugKey, Formula]
     defaults: dict[SlugKey, Default] = {}
     rules: dict[SlugKey, Rule] = {}
+    config: KernelConfig | None = None
     taxonomy: Taxonomy = Taxonomy()
 
 
