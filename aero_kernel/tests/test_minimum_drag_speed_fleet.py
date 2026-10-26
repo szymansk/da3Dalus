@@ -39,7 +39,7 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 GOLDEN = {
     FleetMember.BRYAN: (7.4468700, 7.7276780, 1.3379343, 0.6225775),
     FleetMember.JAGUAR: (9.0692794, 10.4719556, 2.1200951, 0.4817366),
-    FleetMember.BELEMNITOS: (8.1093176, 16.2656360, 2.7189558, 0.6703972),
+    FleetMember.BELEMNITOS: (5.3792137, 13.8824812, 4.1222829, 0.7756370),
     FleetMember.RV7: (10.2315110, 9.5383095, 2.7798438, 0.5096129),
 }
 # The aircraft whose tip chords fall below the Re band at 10 m/s as well as into the bubble-sensitive

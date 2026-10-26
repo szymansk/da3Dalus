@@ -42,7 +42,7 @@ class FleetMember(Enum):
     )
     BELEMNITOS = (
         "belemnitos/flugzeug.json",
-        0.550,  # approx., maintainer 2026-10-25 (the source says 0.28)
+        0.280,  # estimated total mass, maintainer 2026-10-26; exact value after the build
         (0.1997453990895134, 1.4992332323342878, 0.1398699109383301),
     )
     WIESEL = (
@@ -128,6 +128,8 @@ def reference_document(member: FleetMember) -> dict[str, Any]:
 # (``n_lower != n``; AeroSandbox has one exponent per section). The kernel declares this as an
 # ``unsupported_configuration`` error naming the first such section, so every quantity that needs
 # the AeroSandbox airplane is recorded as that error for these two aircraft (README, "Results").
+# The kernel will take such a section as an equivalent symmetric one: #1307. Until then the error is
+# the expected result; when #1307 lands these entries and their tests are re-recorded as values.
 FUSELAGE_REJECTED = {
     FleetMember.CHEKKER: ("Rumpf", 0),
     FleetMember.WIESEL: ("fuselage", 9),
@@ -158,3 +160,16 @@ def assert_rejected_for_the_fuselage(
             "AeroSandbox has one shape exponent per section"
         ), quantity.slug
     assert roots or not rooted, "no quantity carries the fuselage error itself"
+
+
+# RV-7 has flaps and the DB gives no deflection: the take-off and landing configurations are the
+# maintainer's guess (2026-10-26), passed as caller parameters like any design input. The other
+# aircraft have no flap, so they take none.
+FLAP_DEFLECTIONS_DEG = {
+    FleetMember.RV7: {"flap-deflection-takeoff": 15.0, "flap-deflection-landing": 30.0},
+}
+
+
+def flap_values(member: FleetMember) -> dict[str, float]:
+    """The flap deflection inputs of this aircraft (empty without flaps)."""
+    return dict(FLAP_DEFLECTIONS_DEG.get(member, {}))

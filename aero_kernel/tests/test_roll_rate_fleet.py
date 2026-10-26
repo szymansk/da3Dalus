@@ -28,6 +28,7 @@ from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import (
     FleetMember,
     assert_rejected_for_the_fuselage,
+    flap_values,
     reference_document,
 )
 
@@ -39,18 +40,18 @@ AB, AVL = "roll-rate=aerobuildup", "roll-rate=avl"
 GOLDEN_P = {
     FleetMember.BRYAN: (490.14462, 410.51230),
     FleetMember.JAGUAR: (346.50673, 419.59114),
-    FleetMember.BELEMNITOS: (158.23681, 166.64859),
+    FleetMember.BELEMNITOS: (115.91897, 120.59319),
 }
 GOLDEN_P_HAT = {
     FleetMember.BRYAN: (0.3431387, 0.28739),
     FleetMember.JAGUAR: (0.2304946, 0.27911),
-    FleetMember.BELEMNITOS: (0.2567702, 0.27042),
+    FleetMember.BELEMNITOS: (0.2599288, 0.27041),
 }
 # V_app = 1.3 V_S (m/s) of the slice-3 stall golden path; the fleet has no flap, so V_S,landing = V_S.
 V_APP = {
     FleetMember.BRYAN: 6.818986359246604,
     FleetMember.JAGUAR: 8.188976805083124,
-    FleetMember.BELEMNITOS: 8.062679893656751,
+    FleetMember.BELEMNITOS: 5.834674251667882,
 }
 HINGE_SEGMENTS = {FleetMember.BRYAN: 4, FleetMember.JAGUAR: 6, FleetMember.BELEMNITOS: 0}
 _CACHE: dict[tuple[FleetMember, float], ComputeResult] = {}
@@ -65,6 +66,7 @@ async def run(member: FleetMember, delta: float = 20.0) -> ComputeResult:
                     "aircraft-mass": member.mass_kg,
                     "altitude": 0.0,
                     "aileron-deflection": delta,
+                    **flap_values(member),
                 },
             }
         )
@@ -146,9 +148,10 @@ async def test_the_approach_speed_is_1p3_stall_speed_of_the_clean_airplane(
     approach, landing, clean = (
         await compute(aircraft, request("approach-speed", "stall-speed-landing", "stall-speed"))
     ).quantities
-    assert landing.value == clean.value
     assert approach.value is not None
+    assert landing.value is not None
     assert clean.value is not None
+    assert landing.value == clean.value
     assert close(approach.value, 1.3 * clean.value, 1e-12)
     assert close(approach.value, V_APP[member], 1e-9)
 
@@ -213,7 +216,7 @@ async def test_the_regression_values_of_the_fit_range_warning() -> None:
     expected = {
         FleetMember.BRYAN: (0.6547296, "Hoehenleitwerk", 18.692106, "Tragflaeche"),
         FleetMember.JAGUAR: (0.4667034, "Tragflaeche", 14.617064, "Tragflaeche"),
-        FleetMember.BELEMNITOS: (0.5690204, "V-Leitwerk", 15.983402, "Tragflaeche"),
+        FleetMember.BELEMNITOS: (0.8018459, "V-Leitwerk", 16.349829, "Tragflaeche"),
     }
     for member, (confidence, low_wing, alpha, high_wing) in expected.items():
         (fit,) = [
@@ -280,13 +283,14 @@ async def test_wiesel_roll_rate_waits_for_the_stall_speed_the_fuselage_blocks() 
         assert "because `stall-speed-landing` failed" in quantity.error.message
 
 
-async def test_rv7_roll_rate_waits_for_the_landing_flap_deflection_nobody_gave() -> None:
-    """RV-7 has flaps: no landing configuration without a deflection, so no approach speed and no
-    roll rate (the deflection is a design input, never invented)."""
+async def test_rv7_roll_rate_waits_for_the_landing_stall_speed_with_deflected_flaps() -> None:
+    """RV-7's flaps are set to the maintainer's guess (landing 30 deg); the kernel does not yet pass
+    deflected control surfaces to AeroBuildup and declares it rather than computing the clean
+    airplane, so the approach speed and the roll rate wait for it."""
     for quantity in (await run(FleetMember.RV7)).quantities:
         assert quantity.status is QuantityStatus.ERROR, quantity.slug
         assert quantity.error is not None
         assert quantity.error.code == "upstream_failed"
         assert quantity.error.detail["causes"] == [
-            {"quantity": "airplane-landing", "code": "missing_input"}
+            {"quantity": "stall-speed-landing", "code": "unsupported_configuration"}
         ]

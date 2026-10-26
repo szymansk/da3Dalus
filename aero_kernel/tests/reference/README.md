@@ -23,7 +23,7 @@ file name into inline coordinates when it loads a document.
 | source | `~/Downloads/da3dalus-import/modelle/chekker/flugzeug.json` | `~/Downloads/da3dalus-import/belemnitos/flugzeug.json` |
 | SHA-256 of the source file | `7be944658e150e02c389650dbb8a1e2103e096052547213640bb11f2b154cd6f` | `ef8c818d4a38cf5a30087530a4dfcaef544d975b9fac98535433cd9bccfa9023` |
 | SHA-256 of the source as canonical JSON | `01779a0cc90e44b98ea4a49ab8fd949472f0305f1701f60b39b0e8aaf755e3c4` | `747c570e5527ccfc604a7e466ed2049d96b04b29b05550d07940230241a5754e` |
-| mass | 0.439 kg (`total_mass_kg` in the source; it is also the DB's value) | 0.550 kg, approx., maintainer 2026-10-25 (the source's `total_mass_kg` is 0.28 kg and stays in the copy; tests pass the mass as a value) |
+| mass | 0.439 kg (`total_mass_kg` in the source; it is also the DB's value) | 0.280 kg, estimated total mass, maintainer 2026-10-26, exact value after the build (equal to the source's `total_mass_kg`, which stays in the copy; tests pass the mass as a value) |
 | reference point | `xyz_ref` (0.17893, 0, -0.0264) m | `xyz_ref` (0.0564, 0, 0) m |
 
 | | WIESEL | RV-7 |
@@ -136,11 +136,12 @@ expected result:
 | aircraft | recorded outcome |
 |---|---|
 | BRYAN, JAGUAR | every formula computes (values in the test files) |
-| BELEMNITOS | stall, glide, sink, stall-break and roll-rate compute (the roll in the AeroBuildup world only: AVL's `p'b/2V` is beyond its range, as for BRYAN and JAGUAR). The neutral point is `unsupported_layout`: the surfaces are `main_wing` and `v_tail`. The passed 0.55 kg against the source's 0.28 kg is declared as `conflicting_mass` |
-| RV-7 | stall, glide, sink, stall-break and the neutral point compute. The take-off and landing configurations (flaps, no deflection given) are `missing_input`, so `stall-speed-takeoff/-landing` and the roll rate are `upstream_failed`: the flap deflection is a design input and is not invented |
-| CHEKKER | every quantity that builds the AeroSandbox airplane is `unsupported_configuration`: section 0 of the fuselage `Rumpf` has `n_lower != n`. The roll rate is `not_applicable` (no aileron) |
+| BELEMNITOS | stall, glide, sink, stall-break and roll-rate compute (the roll in the AeroBuildup world only: AVL's `p'b/2V` is beyond its range, as for BRYAN and JAGUAR). The neutral point is `unsupported_layout`: the surfaces are `main_wing` and `v_tail`. The mass equals the source's, so no `conflicting_mass` is declared. V-tail neutral points come with #1208 |
+| RV-7 | clean stall, glide, sink, stall-break and the neutral point compute. The DB gives its flaps no deflection; the flap deflections are the maintainer's guess (take-off 15 deg, landing 30 deg, "guessed, maintainer 2026-10-26"), passed as caller parameters (`FLAP_DEFLECTIONS_DEG` in `reference_fleet.py`). The kernel does not yet pass deflected control surfaces to AeroBuildup and declares it (`unsupported_configuration`), so `stall-speed-takeoff/-landing` are that error and the approach speed and the roll rate are `upstream_failed` on it. Its export carries no mass, so there is no source mass to conflict with the 0.500 kg |
+| CHEKKER | every quantity that builds the AeroSandbox airplane is `unsupported_configuration`: section 0 of the fuselage `Rumpf` has `n_lower != n` (the kernel will take such sections as an equivalent symmetric one: #1307; until then this error is the expected result). The roll rate is `not_applicable` (no aileron) |
 | WIESEL | as CHEKKER: section 9 of the fuselage `fuselage` has `n_lower != n` |
 
-The neutral-point goldens of the aircraft that compute use a CG that is a convention of the test
-(25 % of the AeroSandbox MAC aft of the main wing's root leading edge), not the aircraft's CG; it
-moves the static margin, never the neutral point.
+The static-margin goldens of the aircraft that compute use the design CG of the canon
+(`cg-for-target-margin`: x_cg = x_NP - SM_target c_MAC with SM_target = 0.10, the canon's start
+value) taken from the kernel, per neutral-point world; never a hand-chosen position. Where one CG
+is needed, it is that of the AVL world. It moves the static margin, never the neutral point.

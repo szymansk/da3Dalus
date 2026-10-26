@@ -26,7 +26,7 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 GOLDEN = {
     FleetMember.BRYAN: (14.7822439, 1.5835136, 13.1987303),
     FleetMember.JAGUAR: (11.0671515, 1.1418603, 9.9252912),
-    FleetMember.BELEMNITOS: (11.5946412, 1.5440665, 10.0505747),
+    FleetMember.BELEMNITOS: (11.0568417, 1.4866984, 9.5701434),
     FleetMember.RV7: (16.3483882, 1.2300212, 15.1183671),
 }
 

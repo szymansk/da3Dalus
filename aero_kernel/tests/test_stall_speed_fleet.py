@@ -20,6 +20,7 @@ from aero_kernel.tests.reference_fleet import (
     FUSELAGE_REJECTED,
     FleetMember,
     assert_rejected_for_the_fuselage,
+    flap_values,
     reference_document,
 )
 
@@ -42,8 +43,8 @@ JAGUAR_V_S = 6.2992129  # m/s
 JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 0.9985795, 9.9252911
 JAGUAR_CL_MIN = -0.7831582
 # (V_S m/s, C_L,max, alpha_S deg, C_L,min) of the aircraft added by gh-1284; the takeoff and landing
-# speeds equal V_S where the airplane has no flap.
-BELEMNITOS_GOLDEN = (6.2020615, 1.1461162, 10.0505747, -0.4956493)
+# speeds equal V_S where the airplane has no flap (BELEMNITOS).
+BELEMNITOS_GOLDEN = (4.4882110, 1.1141652, 9.5701434, -0.4784755)
 RV7_GOLDEN = (6.6001580, 1.2246480, 15.1183671, -0.8329524)
 
 
@@ -60,7 +61,7 @@ async def stall_result(member: FleetMember) -> ComputeResult:
     aircraft = AircraftInput.model_validate(
         {
             "airplane": reference_document(member),
-            "values": {"aircraft-mass": member.mass_kg, "altitude": 0.0},
+            "values": {"aircraft-mass": member.mass_kg, "altitude": 0.0, **flap_values(member)},
         }
     )
     return await compute(aircraft, request(*SLUGS))
@@ -178,8 +179,8 @@ async def test_jaguar_regression_goldens() -> None:
 
 
 async def test_belemnitos_regression_goldens() -> None:
-    """No flap: take-off and landing are the clean airplane. The passed 0.55 kg differs from the
-    source's total_mass_kg 0.28 kg; the kernel says so and uses the passed one (ch. 8.11)."""
+    """No flap: take-off and landing are the clean airplane. The passed 0.28 kg equals the source's
+    total_mass_kg (estimated, maintainer 2026-10-26), so no conflicting_mass is declared."""
     result = await stall_result(FleetMember.BELEMNITOS)
     assert_goldens_are_pinned_to_their_tools(result)
     quantities = {q.slug: q for q in result.quantities}
@@ -197,16 +198,15 @@ async def test_belemnitos_regression_goldens() -> None:
         assert close(quantities[slug].value, golden, 1e-5), slug
     for slug in ("stall-speed-takeoff", "stall-speed-landing"):
         assert quantities[slug].value == quantities["stall-speed"].value
-    conflict = [w for w in quantities["stall-speed"].warnings if w.code == "conflicting_mass"]
-    assert [w.detail for w in conflict] == [
-        {"aircraft_mass_kg": 0.55, "geometry_total_mass_kg": 0.28}
-    ]
+    for quantity in quantities.values():
+        assert "conflicting_mass" not in {w.code for w in quantity.warnings}
 
 
-async def test_rv7_regression_goldens_and_the_flap_that_has_no_deflection() -> None:
-    """RV-7 has flaps and the DB gives no deflection: the clean stall speed computes, the take-off
-    and landing configurations have no value (``missing_input``, airplane-configuration), and so
-    the quantities that wait for them. The deflection is a design input, never invented."""
+async def test_rv7_regression_goldens_and_the_deflected_flap_the_kernel_does_not_yet_take() -> None:
+    """RV-7 has flaps and the DB gives no deflection; the maintainer's guess (2026-10-26) is passed
+    as caller parameters: take-off 15 deg, landing 30 deg. The kernel does not yet pass deflected
+    control surfaces to AeroBuildup and declares it instead of computing the clean airplane
+    (ADR 0020), so the two configured stall speeds are that structured error."""
     result = await stall_result(FleetMember.RV7)
     assert_goldens_are_pinned_to_their_tools(result)
     quantities = {q.slug: q for q in result.quantities}
@@ -222,18 +222,17 @@ async def test_rv7_regression_goldens_and_the_flap_that_has_no_deflection() -> N
     ):
         assert quantities[slug].status is QuantityStatus.OK, slug
         assert close(quantities[slug].value, golden, 1e-5), slug
-    for slug in ("stall-speed-takeoff", "stall-speed-landing"):
+    for slug, deflection in (("stall-speed-takeoff", 15.0), ("stall-speed-landing", 30.0)):
         assert quantities[slug].status is QuantityStatus.ERROR, slug
         assert quantities[slug].value is None, slug
         error = quantities[slug].error
         assert error is not None
-        assert error.code == "upstream_failed", slug
-        assert error.detail["causes"] == [
-            {
-                "quantity": "airplane-" + slug.removeprefix("stall-speed-"),
-                "code": "missing_input",
-            }
-        ], slug
+        assert error.code == "unsupported_configuration", slug
+        assert error.message == (
+            "deflected control surfaces are not yet passed to AeroBuildup: "
+            f"'flaps' (role flap) of the wing 'main_wing' is at {deflection} deg"
+        ), slug
+        assert error.detail == {"wing": "main_wing", "device": "flaps", "role": "flap"}, slug
 
 
 @pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))

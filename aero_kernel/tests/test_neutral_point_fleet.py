@@ -34,25 +34,13 @@ def main_wing_root_le_x(member: FleetMember) -> float:
     return float(main["x_secs"][0]["xyz_le"][0])
 
 
-# The aircraft added by gh-1284 have no CG of the maintainer (BELEMNITOS' and CHEKKER's masses are
-# approximate or the file's, RV-7's and WIESEL's are not weighed). The regression CG is a convention
-# of this test, not a property of the aircraft: 25 % of the AeroSandbox MAC aft of the main wing's
-# root leading edge. It moves the static margin, never the neutral point.
-CG_CONVENTION_OF_MAC = 0.25
-
-
 CG = {
     FleetMember.BRYAN: 0.1368,
     FleetMember.JAGUAR: main_wing_root_le_x(FleetMember.JAGUAR) + JAGUAR_CG_AFT_OF_ROOT_LE,
-    **{
-        member: main_wing_root_le_x(member) + CG_CONVENTION_OF_MAC * member.asb_reference[2]
-        for member in (
-            FleetMember.CHEKKER,
-            FleetMember.BELEMNITOS,
-            FleetMember.WIESEL,
-            FleetMember.RV7,
-        )
-    },
+    # the design CG of the canon (cg-for-target-margin, SM_target 0.10) in the AVL world, from the
+    # kernel's centre-of-gravity-design; test_cg_for_target_margin... checks it. Never a hand-chosen
+    # position (maintainer 2026-10-26).
+    FleetMember.RV7: 0.241646,
 }
 WORLDS = ("textbook", "pappas", "avl")
 # Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
@@ -277,6 +265,8 @@ async def test_cg_for_target_margin_is_the_neutral_point_less_the_target_per_wor
         x = {"x_np": x_np, "sm_target": margin.interval.worlds[world], "c_mac": C_MAC[member]}
         back = await cg_for_target_margin(x, context_with(StubAtmosphere({})))
         assert abs(back["x_cg_sm"] - CG[member]) < 1e-9, (member, world)
+    if member is FleetMember.RV7:  # its CG is the design CG of the AVL world
+        assert abs(target_cg.interval.worlds["neutral-point=avl"] - CG[member]) < 1e-9
 
 
 @pytest.mark.parametrize(
@@ -292,9 +282,22 @@ async def test_the_aircraft_without_a_neutral_point_have_the_recorded_error(
     member: FleetMember, code: str, cause: str | None
 ) -> None:
     """CHEKKER and WIESEL: the C_L of the neutral point comes from the minimum-drag speed, which
-    AeroSandbox cannot compute for their fuselages (README). BELEMNITOS: a V-tail is not a
-    horizontal tail, the layout is declared unsupported. The static margin waits for the point."""
-    neutral, margin = (await run(member)).quantities
+    AeroSandbox cannot compute for their fuselages (README, #1307). BELEMNITOS: a V-tail is not a
+    horizontal tail, the layout is declared unsupported (V-tail neutral points: #1208). The design
+    CG, which is the neutral point less the target margin, waits for the point."""
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": reference_document(member),
+            "values": {
+                "aircraft-mass": member.mass_kg,
+                "altitude": 0.0,
+                "static-margin-target": SM_TARGET,
+            },
+        }
+    )
+    neutral, design = (
+        await compute(aircraft, request("neutral-point", "centre-of-gravity-design"))
+    ).quantities
     assert neutral.status is QuantityStatus.ERROR
     assert neutral.error is not None
     assert neutral.error.code == code
@@ -304,6 +307,6 @@ async def test_the_aircraft_without_a_neutral_point_have_the_recorded_error(
         assert neutral.error.detail["causes"] == [
             {"quantity": cause, "code": "unsupported_configuration"}
         ]
-    assert margin.status is QuantityStatus.ERROR
-    assert margin.error is not None
-    assert margin.error.code == "upstream_failed"
+    assert design.status is QuantityStatus.ERROR
+    assert design.error is not None
+    assert design.error.code == "upstream_failed"

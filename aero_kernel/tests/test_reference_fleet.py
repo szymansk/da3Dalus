@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 from aero_kernel.schema import AircraftInput
-from aero_kernel.tests.reference_fleet import REFERENCE_DIR, FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import (
+    FLAP_DEFLECTIONS_DEG,
+    REFERENCE_DIR,
+    FleetMember,
+    reference_document,
+)
 from aero_kernel.validate import validate_aircraft
 
 # Recorded in reference/README.md: the SHA-256 of each source as canonical JSON.
@@ -122,12 +127,19 @@ def test_the_masses_are_the_recorded_ones() -> None:
     assert json.loads(FleetMember.JAGUAR.json_path.read_text())["total_mass_kg"] is None
     assert FleetMember.CHEKKER.mass_kg == 0.439  # total_mass_kg of the source
     assert json.loads(FleetMember.CHEKKER.json_path.read_text())["total_mass_kg"] == 0.439
-    assert FleetMember.BELEMNITOS.mass_kg == 0.550  # approx., maintainer 2026-10-25
+    # estimated total mass, maintainer 2026-10-26; exact value after the build: equal to the source's
+    assert FleetMember.BELEMNITOS.mass_kg == 0.280
     assert json.loads(FleetMember.BELEMNITOS.json_path.read_text())["total_mass_kg"] == 0.28
     assert FleetMember.WIESEL.mass_kg == 0.625  # aeroplanes.total_mass_kg of the app DB
     assert "total_mass_kg" not in json.loads(FleetMember.WIESEL.json_path.read_text())
 
     assert FleetMember.RV7.mass_kg == 0.500  # approx., maintainer 2026-10-25
+    # the export carries no mass, so there is nothing to conflict with
+    assert "total_mass_kg" not in json.loads(FleetMember.RV7.json_path.read_text())
+    # flaps without a deflection in the DB: the maintainer's guess, 2026-10-26
+    assert FLAP_DEFLECTIONS_DEG == {
+        FleetMember.RV7: {"flap-deflection-takeoff": 15.0, "flap-deflection-landing": 30.0}
+    }
 
 
 def test_the_readme_records_every_hash_the_tests_check() -> None:

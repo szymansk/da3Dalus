@@ -34,11 +34,11 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 GOLDEN = {
     FleetMember.BRYAN: (6.1460437, 4.6544086, 0.9140074, 7.4468700),
     FleetMember.JAGUAR: (7.1115531, 5.5958411, 0.7834771, 9.0692794),
-    FleetMember.BELEMNITOS: (7.0054862, 5.1787384, 0.8983058, 8.1093176),
+    FleetMember.BELEMNITOS: (4.9079007, 5.7739549, 0.9317612, 5.3792137),
     FleetMember.RV7: (8.0806222, 7.2014265, 0.8170156, 10.2315110),
 }
 OUTSIDE_RE_BAND = {FleetMember.BRYAN, FleetMember.JAGUAR, FleetMember.BELEMNITOS}
-# Observed V_mp / V_md of these goldens: BRYAN 0.825, JAGUAR 0.784, BELEMNITOS 0.864, RV-7 0.790. A parabolic polar gives
+# Observed V_mp / V_md of these goldens: BRYAN 0.825, JAGUAR 0.784, BELEMNITOS 0.912, RV-7 0.790. A parabolic polar gives
 # 3^(-1/4) = 0.760; the real polar at Re 1e5 is not parabolic (canon entry, "Observed"). The ratio is
 # reported, not asserted as a tolerance: no source gives one for a computed polar.
 
