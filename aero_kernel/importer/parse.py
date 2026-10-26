@@ -51,6 +51,7 @@ FORMULA_DROPPED = frozenset(
         "shape",
         "tags",
         "tex",
+        "figure",
         "source_status",
         "dimensional_check",
     }
@@ -58,7 +59,7 @@ FORMULA_DROPPED = frozenset(
 QUANTITY_CARRIED = frozenset(
     {"symbol", "unit", "role", "type", "positive", "at_most", "uncertainty", "checks", "data"}
 )
-QUANTITY_DROPPED = frozenset({"canon", "kind", "tags"})
+QUANTITY_DROPPED = frozenset({"canon", "kind", "tags", "figure"})
 
 # Container type of each field: str, mapping or list. Required fields are listed apart.
 _FORMULA_SHAPE = {

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 370" role="img" aria-labelledby="fg-title fg-desc"><title id="fg-title">Reference area and span with the centreline gap</title><desc id="fg-desc">The reference wing runs through the fuselage: S_ref counts the strip between the centreline and the root, b_ref is measured from the centreline. Hand example, ASB 4.2.9 flags include_centerline_distance=True.</desc><style>
+.fg-t{fill:var(--ink,#23211C);font:12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-b{font-weight:600}
+.fg-m{fill:var(--ink-2,#6B675E);font:11px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-h{fill:var(--ink,#23211C);font:600 13px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-ln{stroke:var(--ink,#23211C);stroke-width:1.4;fill:none}
+.fg-thin{stroke:var(--ink-3,#9A958A);stroke-width:1;fill:none}
+.fg-dash{stroke-dasharray:5 4}
+.fg-wing{fill:var(--inp-bg,#EBF1F7);stroke:var(--inp,#4C7198);stroke-width:1.4}
+.fg-gap{fill:var(--hub-bg,#FAF2E4);stroke:var(--hub,#A67C3C);stroke-width:1.2;stroke-dasharray:4 3}
+.fg-acc{stroke:var(--sel,#6B4FA0);stroke-width:2;fill:none}
+.fg-accf{fill:var(--sel,#6B4FA0)}
+.fg-acct{fill:var(--sel,#6B4FA0);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-bad{stroke:var(--bad,#C0392B);stroke-width:2;fill:none}
+.fg-badf{fill:var(--bad,#C0392B)}
+.fg-badt{fill:var(--bad,#C0392B);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-good{stroke:var(--good,#2E8B57);stroke-width:2;fill:none}
+.fg-goodf{fill:var(--good,#2E8B57)}
+.fg-box{fill:var(--panel,#FFFFFF);stroke:var(--line-2,#CFC9BC);stroke-width:1}
+.fg-dot{fill:var(--ink,#23211C)}
+</style><polygon points="560,70 593,70 593,144.25 560,144.25" class="fg-gap"/><polygon points="593,70 857,109.6 857,159.1 593,169" class="fg-wing"/><polygon points="560,70 527,70 527,144.25 560,144.25" class="fg-gap"/><polygon points="527,70 263,109.6 263,159.1 527,169" class="fg-wing"/><line x1="560" y1="32" x2="560" y2="181" class="fg-thin fg-dash"/><line x1="263" y1="40" x2="857" y2="40" class="fg-acc"/><polygon points="263,40 269.5,37.4 269.5,42.6" class="fg-accf"/><polygon points="857,40 850.5,42.6 850.5,37.4" class="fg-accf"/><text x="560" y="33" class="fg-acct" text-anchor="middle">b_ref = 1.80 m (from the centreline)</text><line x1="857" y1="35" x2="857" y2="109.6" class="fg-thin"/><line x1="263" y1="35" x2="263" y2="109.6" class="fg-thin"/><line x1="263" y1="201" x2="527" y2="201" class="fg-acc"/><polygon points="263,201 269.5,198.4 269.5,203.6" class="fg-accf"/><polygon points="527,201 520.5,203.6 520.5,198.4" class="fg-accf"/><text x="395" y="201" class="fg-acct" text-anchor="middle"></text><line x1="593" y1="201" x2="857" y2="201" class="fg-acc"/><polygon points="593,201 599.5,198.4 599.5,203.6" class="fg-accf"/><polygon points="857,201 850.5,203.6 850.5,198.4" class="fg-accf"/><text x="725" y="201" class="fg-acct" text-anchor="middle"></text><text x="560" y="225" class="fg-m" text-anchor="middle">b_panels = 1.60 m (the two panels, without the gap)</text><text x="565" y="119.5" class="fg-m" text-anchor="start">gap</text><text x="40" y="118" class="fg-h" text-anchor="start">Area</text><text x="40" y="138" class="fg-t" text-anchor="start">panels only:  0.360 m²</text><text x="40" y="156" class="fg-t" text-anchor="start">+ two gaps:   0.045 m²</text><text x="40" y="176" class="fg-acct" text-anchor="start">S_ref = 0.405 m²</text><text x="40" y="196" class="fg-m" text-anchor="start">gap strip: root extruded to the centreline</text><text x="40" y="212" class="fg-m" text-anchor="start">with the geometric chord 0.225 m (ASB)</text><rect x="30" y="270" width="360" height="84" rx="6" class="fg-box"/><text x="44" y="290" class="fg-badt" text-anchor="start">Misreading</text><text x="44" y="308" class="fg-t" text-anchor="start">Area without the gap (0.36 m²) with the span</text><text x="44" y="324" class="fg-t" text-anchor="start">with it (1.80 m) gives AR = 9.00,</text><text x="44" y="340" class="fg-t" text-anchor="start">not the consistent AR = 8.00.</text></svg>

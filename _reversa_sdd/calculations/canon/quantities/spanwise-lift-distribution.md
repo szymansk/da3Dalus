@@ -10,6 +10,7 @@ tags:
   - point/free
   - role/output
 type: curve
+figure: spanwise-loads
 ---
 
 # Spanwise lift distribution of the main wing · `l(y)`

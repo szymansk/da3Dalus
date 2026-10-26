@@ -154,6 +154,14 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .lnk li{border:1px solid var(--line-2);border-radius:4px;padding:2px 8px;font-size:12px;
   cursor:pointer;background:var(--bg)}
 .lnk li:hover{border-color:var(--sel);color:var(--sel)}
+.fig{margin:0}
+.fig svg{width:100%;height:auto;display:block;background:var(--bg);border:1px solid var(--line);border-radius:6px;cursor:zoom-in}
+.fig figcaption{font-size:12px;color:var(--ink-2);margin-top:6px;line-height:1.45}
+#figzoom{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;cursor:zoom-out}
+#figzoom.on{display:flex}
+#figzoom .box{background:var(--panel);border-radius:8px;padding:14px;width:min(1100px,94vw);max-height:92vh;overflow:auto}
+#figzoom svg{width:100%;height:auto;display:block}
+#figzoom p{font-size:13px;color:var(--ink-2);margin:10px 2px 0}
 .empty{color:var(--ink-3);font-size:13px;font-family:"STIX Two Text",Georgia,serif;
   font-style:italic;margin-top:40px}
 @media (max-width:900px){
@@ -175,6 +183,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <button data-mode="done" aria-pressed="false">Implemented</button>
       <button data-mode="problems" aria-pressed="false" title="Quantities whose formula declares an open issue">Problems</button>
       <button data-mode="defaults" aria-pressed="false" title="Quantities that carry a default (defaults.yaml)">Defaults</button>
+      <button data-mode="figures" aria-pressed="false" title="Quantities that carry a figure">Figures</button>
     </div>
     <div class="seg ichips" id="issueChips" role="group" aria-label="Issue kind" style="margin-top:6px"></div>
     <div class="seg" role="group" aria-label="Direction" style="margin-top:6px">
@@ -243,6 +252,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 </main>
 
 <div class="info" id="info"></div>
+<div id="figzoom" role="dialog" aria-label="Figure"></div>
 </div>
 
 <script>window.__DATA__=__CANON_DATA__;</script>
@@ -761,6 +771,7 @@ function select(q){
     if(Q[q].checks) h+=`<p class="meta">Probe: checks <a href="#" onclick="select('${Q[q].checks}');return false">${esc(sym(Q[q].checks))}</a></p>`;
     if(PROBES[q]) h+=`<p class="meta">Checked by the probe${PROBES[q].length>1?'s':''}: ${PROBES[q].map(x=>`<a href="#" onclick="select('${x}');return false">${esc(sym(x))}</a>`).join(', ')}</p>`;
     h+=`<p class="kst" style="border-color:${col}">${txt}${MVP.has(q)&&st!=='input'?' &#183; <b style="color:var(--mvp)">MVP</b>':''}</p>`; }
+  if(Q[q].fig){ const fg=D.figs[Q[q].fig]; h+=`<div class="blk"><div class="lab">Figure</div><figure class="fig" data-fig="${esc(Q[q].fig)}" title="Click to enlarge">${fg.svg}<figcaption>${esc(fg.caption)}</figcaption></figure></div>`; }
   if(CONV[q]) h+=`<div class="blk"><div class="lab" style="color:var(--sel)">&#8776; Rests on a defined value \u00b7 ${CONV[q].length}</div>`+
     CONV[q].map(c=>`<div class="cblk"><b>${esc(sym(c))} = ${esc(CONVS[c].value)} ${esc(CONVS[c].unit==='1'?'':CONVS[c].unit)}</b> <span class="sub">(${esc(c)}, convention)</span><br>${esc(CONVS[c].source)}<br><span class="sub">A value chosen without a published source, adopted on the maintainer&#8217;s word &#8212; the result is only as good as this choice.</span></div>`).join('')+`</div>`;
   if(START[q]) h+=`<div class="blk"><div class="lab" style="color:var(--mvp)">&#8857; Rests on a starting value \u2014 to be set by the designer \u00b7 ${START[q].length}</div>`+
@@ -817,10 +828,18 @@ function select(q){
   else h+=`<div class="blk"><div class="lab">Feeds</div><p class="sub" style="margin:0">Nothing \u2014 this is a final result.</p></div>`;
   info.innerHTML=h;
   info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>pick(li.dataset.q)));
+  info.querySelectorAll('[data-fig]').forEach(f=>f.addEventListener('click',()=>zoomFigure(f.dataset.fig)));
   if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
 }
 const bandText=(b,unit)=>{ const u=unit==='1'?'':' '+unit, lo=b.min, hi=b.max;
   return lo!==undefined&&hi!==undefined?`${lo}\u2026${hi}${u}`:lo!==undefined?`${b.min_inclusive===false?'>':'\u2265'} ${lo}${u}`:`${b.max_inclusive===false?'<':'\u2264'} ${hi}${u}`; };
+const zoomEl=document.getElementById('figzoom');
+function zoomFigure(name){
+  const fg=D.figs[name];
+  zoomEl.innerHTML=`<div class="box">${fg.svg}<p>${esc(fg.caption)}</p></div>`; zoomEl.classList.add('on');
+}
+zoomEl.addEventListener('click',()=>zoomEl.classList.remove('on'));
+addEventListener('keydown',ev=>{ if(ev.key==='Escape') zoomEl.classList.remove('on'); });
 function selectRule(r){
   sel={module:r.id,members:new Set([r.id])}; paint();
   const when=[...(r.when||[]).map(t=>'`'+t+'`'),...(r.when_not||[]).map(t=>'not `'+t+'`')];
@@ -932,7 +951,7 @@ addEventListener('resize',fit);
   bt.addEventListener('click',()=>{ location.hash=DESIGN_SEP?'':'design-separate'; location.reload(); }); }
 let mode='all';
 function applyMode(){
-  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!(ISSUES[q]&&ISSUES[q].some(BLOCKING)) : mode.startsWith('issue:')?KINDS(q).includes(mode.slice(6)) : mode==='design'?DESIGN.has(q) : mode==='defaults'?!!DEFS[q] : ANALYSIS.has(q));
+  const on=q=> mode==='all' || (mode==='mvp'?MVP.has(q) : mode==='done'?STATUS[q]==='done' : mode==='problems'?!!(ISSUES[q]&&ISSUES[q].some(BLOCKING)) : mode.startsWith('issue:')?KINDS(q).includes(mode.slice(6)) : mode==='design'?DESIGN.has(q) : mode==='defaults'?!!DEFS[q] : mode==='figures'?!!Q[q].fig : ANALYSIS.has(q));
   for(const q in nodeEls) nodeEls[q].classList.toggle('off',!on(q));
   edgeEls.forEach(({e,a,b})=>e.classList.toggle('off',!(on(a)&&on(b))));
   document.querySelectorAll('.seg button[data-mode]').forEach(bt=>bt.setAttribute('aria-pressed',String(bt.dataset.mode===mode)));

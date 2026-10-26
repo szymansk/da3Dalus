@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" role="img" aria-labelledby="fg-title fg-desc"><title id="fg-title">Aspect ratio of two wings of equal area</title><desc id="fg-desc">Aspect ratio is span squared over area: the same area S_ref spread over a long span is slender (high AR), over a short span stubby (low AR). Hand example from the reference wing.</desc><style>
+.fg-t{fill:var(--ink,#23211C);font:12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-b{font-weight:600}
+.fg-m{fill:var(--ink-2,#6B675E);font:11px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-h{fill:var(--ink,#23211C);font:600 13px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-ln{stroke:var(--ink,#23211C);stroke-width:1.4;fill:none}
+.fg-thin{stroke:var(--ink-3,#9A958A);stroke-width:1;fill:none}
+.fg-dash{stroke-dasharray:5 4}
+.fg-wing{fill:var(--inp-bg,#EBF1F7);stroke:var(--inp,#4C7198);stroke-width:1.4}
+.fg-gap{fill:var(--hub-bg,#FAF2E4);stroke:var(--hub,#A67C3C);stroke-width:1.2;stroke-dasharray:4 3}
+.fg-acc{stroke:var(--sel,#6B4FA0);stroke-width:2;fill:none}
+.fg-accf{fill:var(--sel,#6B4FA0)}
+.fg-acct{fill:var(--sel,#6B4FA0);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-bad{stroke:var(--bad,#C0392B);stroke-width:2;fill:none}
+.fg-badf{fill:var(--bad,#C0392B)}
+.fg-badt{fill:var(--bad,#C0392B);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-good{stroke:var(--good,#2E8B57);stroke-width:2;fill:none}
+.fg-goodf{fill:var(--good,#2E8B57)}
+.fg-box{fill:var(--panel,#FFFFFF);stroke:var(--line-2,#CFC9BC);stroke-width:1}
+.fg-dot{fill:var(--ink,#23211C)}
+</style><rect x="60" y="40" width="540" height="67.5" rx="0" class="fg-wing"/><text x="630" y="67.75" class="fg-m" text-anchor="start">this example</text><text x="630" y="85.75" class="fg-t" text-anchor="start">b = 1.80 m,  S = 0.405 m²</text><text x="630" y="105.75" class="fg-acct" text-anchor="start">AR = b²/S = 8.00</text><rect x="164.66" y="177.5" width="330.68" height="110.23" rx="0" class="fg-wing"/><text x="630" y="226.61" class="fg-m" text-anchor="start">a stubby wing</text><text x="630" y="244.61" class="fg-t" text-anchor="start">b = 1.10 m,  S = 0.405 m²</text><text x="630" y="264.61" class="fg-acct" text-anchor="start">AR = b²/S = 3.00</text><text x="60" y="337.73" class="fg-m" text-anchor="start">AR = 8.00 here: 1.80² / 0.405. b and S are the reference values (centreline gap in both).</text></svg>

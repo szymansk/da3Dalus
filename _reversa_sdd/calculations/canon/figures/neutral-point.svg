@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 375" role="img" aria-labelledby="fg-title fg-desc"><title id="fg-title">Neutral point, design CG and static margin on the MAC</title><desc id="fg-desc">On the MAC (0 % at its leading edge): the neutral point is an interval over method worlds (textbook, Pappas; AVL is the third world and needs a solver); the design CG sits SM_target ahead of it, x_cg,design = x_NP - SM_target c_MAC. Hand example, canon default SM_target.</desc><style>
+.fg-t{fill:var(--ink,#23211C);font:12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-b{font-weight:600}
+.fg-m{fill:var(--ink-2,#6B675E);font:11px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-h{fill:var(--ink,#23211C);font:600 13px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-ln{stroke:var(--ink,#23211C);stroke-width:1.4;fill:none}
+.fg-thin{stroke:var(--ink-3,#9A958A);stroke-width:1;fill:none}
+.fg-dash{stroke-dasharray:5 4}
+.fg-wing{fill:var(--inp-bg,#EBF1F7);stroke:var(--inp,#4C7198);stroke-width:1.4}
+.fg-gap{fill:var(--hub-bg,#FAF2E4);stroke:var(--hub,#A67C3C);stroke-width:1.2;stroke-dasharray:4 3}
+.fg-acc{stroke:var(--sel,#6B4FA0);stroke-width:2;fill:none}
+.fg-accf{fill:var(--sel,#6B4FA0)}
+.fg-acct{fill:var(--sel,#6B4FA0);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-bad{stroke:var(--bad,#C0392B);stroke-width:2;fill:none}
+.fg-badf{fill:var(--bad,#C0392B)}
+.fg-badt{fill:var(--bad,#C0392B);font:600 12px 'Geist','Helvetica Neue',Arial,sans-serif}
+.fg-good{stroke:var(--good,#2E8B57);stroke-width:2;fill:none}
+.fg-goodf{fill:var(--good,#2E8B57)}
+.fg-box{fill:var(--panel,#FFFFFF);stroke:var(--line-2,#CFC9BC);stroke-width:1}
+.fg-dot{fill:var(--ink,#23211C)}
+</style><rect x="186.92" y="176" width="584.62" height="28" rx="0" class="fg-wing"/><text x="186.92" y="224" class="fg-m" text-anchor="middle">0 %  (x_le,MAC)</text><text x="771.54" y="224" class="fg-m" text-anchor="middle">100 %  (x_le,MAC + c_MAC)</text><line x1="333.08" y1="176" x2="333.08" y2="204" class="fg-thin"/><text x="333.08" y="224" class="fg-m" text-anchor="middle">25 %  (wing AC)</text><rect x="431.56" y="138" width="47.68" height="8" rx="0" class="fg-accf"/><line x1="431.56" y1="138" x2="431.56" y2="204" class="fg-acc"/><text x="425.56" y="132" class="fg-acct" text-anchor="end">textbook 41.8 %</text><line x1="479.24" y1="138" x2="479.24" y2="204" class="fg-acc"/><text x="485.24" y="118" class="fg-acct" text-anchor="start">Pappas 50.0 %</text><text x="431.56" y="90" class="fg-acct" text-anchor="start">x_NP, interval over the worlds</text><circle cx="373.1" cy="190" r="5" class="fg-goodf"/><text x="373.1" y="180" class="fg-m" text-anchor="middle">x_cg</text><line x1="373.1" y1="266" x2="431.56" y2="266" class="fg-good"/><polygon points="373.1,266 379.6,263.4 379.6,268.6" class="fg-goodf"/><polygon points="431.56,266 425.06,268.6 425.06,263.4" class="fg-goodf"/><text x="402.33" y="286" class="fg-t" text-anchor="middle">SM = 10 % (textbook)</text><circle cx="420.78" cy="190" r="5" class="fg-goodf"/><text x="420.78" y="218" class="fg-m" text-anchor="middle">x_cg</text><line x1="420.78" y1="300" x2="479.24" y2="300" class="fg-good"/><polygon points="420.78,300 427.28,297.4 427.28,302.6" class="fg-goodf"/><polygon points="479.24,300 472.74,302.6 472.74,297.4" class="fg-goodf"/><text x="450.01" y="320" class="fg-t" text-anchor="middle">SM = 10 % (Pappas)</text><text x="373.1" y="340" class="fg-t" text-anchor="middle">x_cg,design = x_NP - SM_target c_MAC</text><text x="60" y="360" class="fg-m" text-anchor="start">Hand example: c_MAC = 0.233 m, x_le,MAC = 0.053 m, tail efficiency 0.65, SM_target = 0.1 (canon starting value). Positive SM is stable; the CG must not pass the NP.</text></svg>

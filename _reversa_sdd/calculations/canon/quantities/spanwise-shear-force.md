@@ -10,6 +10,7 @@ tags:
   - point/free
   - role/output
 type: curve
+figure: spanwise-loads
 ---
 
 # Spanwise shear force of the main wing · `V(y)`

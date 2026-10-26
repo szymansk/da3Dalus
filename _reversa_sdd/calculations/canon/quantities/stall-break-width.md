@@ -10,6 +10,7 @@ tags:
   - point/stall
   - role/output
 type: scalar
+figure: stall-break
 ---
 
 # Stall break width · `Delta_alpha_break`

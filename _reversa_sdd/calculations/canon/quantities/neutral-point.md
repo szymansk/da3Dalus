@@ -11,6 +11,7 @@ tags:
   - stage/stability-structure
   - role/derived
 type: scalar
+figure: neutral-point
 ---
 
 # Neutral point · `x_NP`
