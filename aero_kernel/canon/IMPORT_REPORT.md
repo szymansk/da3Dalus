@@ -109,7 +109,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | induced-drag-factor | draft | 0 of 2 | aspect-ratio (not approved); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
 | lateral-static-stability-app | approved | 6 of 6 |  |
 | lateral-static-stability-md | approved | 6 of 6 |  |
-| lateral-static-stability-mp | draft | 6 of 6 |  |
+| lateral-static-stability-mp | approved | 6 of 6 |  |
 | lift-coefficient-required | draft | 5 of 5 |  |
 | lift-to-drag-ratio | draft | 2 of 2 |  |
 | linear-lift-curve-inverse | draft | 4 of 4 |  |
@@ -135,7 +135,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | spanwise-loads | approved | 6 of 6 |  |
 | spar-break-load-factor | draft | 5 of 5 |  |
 | speed-from-stall-margin | approved | 5 of 5 |  |
-| spiral-parameter | draft | 9 of 9 |  |
+| spiral-parameter | approved | 9 of 9 |  |
 | stall-break | approved | 5 of 5 |  |
 | stall-speed | approved | 8 of 8 |  |
 | stall-wing-loading-limit | approved | 2 of 3 | stall-speed-target (no data source) |
