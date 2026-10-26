@@ -450,6 +450,36 @@ def split_at_hinge(
     )
 
 
+def _refuse_undrivable(
+    airplane: AirplaneGeometry, main_key: str, *, drive_roll: bool, drive_flaps: bool
+) -> None:
+    """Apply the shared device rules of a driven run and refuse a driven device off the main wing."""
+    if drive_roll:
+        roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
+        _refuse_driven_device_off(airplane.wings or {}, main_key, AILERON_ROLES)
+    if drive_flaps:
+        flap_segments(airplane)  # the same rules for a deflected flap
+        _refuse_driven_device_off(airplane.wings or {}, main_key, FLAP_ROLES, deflected_only=True)
+
+
+def _main_spans(
+    main_key: str,
+    chain: Sequence[ChainPoint],
+    join_tolerance_m: float,
+    *,
+    drive_roll: bool,
+    drive_flaps: bool,
+) -> tuple[list[_Span], list[_Span]]:
+    """The roll spans and the flap spans of the main wing's chain (empty where not driven)."""
+    roll = _driven_spans(main_key, chain, join_tolerance_m, AILERON_ROLES) if drive_roll else []
+    flap = (
+        _driven_spans(main_key, chain, join_tolerance_m, FLAP_ROLES, deflected_only=True)
+        if drive_flaps
+        else []
+    )
+    return roll, flap
+
+
 def mesh_surfaces(
     airplane: AirplaneGeometry,
     n_wing: int,
@@ -492,15 +522,8 @@ def mesh_surfaces(
         msg = "the aligned mesh needs a main_wing"
         raise ValueError(msg)
     main = mains[0]
-    roll_spans: list[_Span] = []
-    flap_spans: list[_Span] = []
     main_key = next(key for key, wing in (airplane.wings or {}).items() if wing is main)
-    if drive_roll:
-        roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
-        _refuse_driven_device_off(airplane.wings or {}, main_key, AILERON_ROLES)
-    if drive_flaps:
-        flap_segments(airplane)  # the same rules for a deflected flap
-        _refuse_driven_device_off(airplane.wings or {}, main_key, FLAP_ROLES, deflected_only=True)
+    _refuse_undrivable(airplane, main_key, drive_roll=drive_roll, drive_flaps=drive_flaps)
     tails = [w for w in wings if w.surface_type == "horizontal_tail"]
     rest = sorted((w for w in wings if w is not main and w not in tails), key=lambda w: w.name)
 
@@ -508,12 +531,9 @@ def mesh_surfaces(
     y_root, y_tip = _root(main, main_chain), main_chain[-1].y
     step = (y_tip - y_root) / n_wing
     main_stations = _uniform(y_root, y_tip, n_wing)
-    if drive_roll:
-        roll_spans = _driven_spans(main_key, main_chain, join_tolerance_m, AILERON_ROLES)
-    if drive_flaps:
-        flap_spans = _driven_spans(
-            main_key, main_chain, join_tolerance_m, FLAP_ROLES, deflected_only=True
-        )
+    roll_spans, flap_spans = _main_spans(
+        main_key, main_chain, join_tolerance_m, drive_roll=drive_roll, drive_flaps=drive_flaps
+    )
     if drive_roll or drive_flaps:
         breaks = [
             *_device_ends(roll_spans, join_tolerance_m),

@@ -147,8 +147,9 @@ def test_the_flap_hinge_is_the_mean_with_the_declared_warning() -> None:
 
 
 def test_a_deflected_flap_without_hinge_is_invalid_input() -> None:
+    model = geometry(flap(root=None, tip=None, deflection_deg=30.0))
     with pytest.raises(FormulaError) as raised:
-        to_asb_airplane(geometry(flap(root=None, tip=None, deflection_deg=30.0)))
+        to_asb_airplane(model)
     assert (raised.value.category, raised.value.code) == (
         ErrorCategory.INVALID_INPUT,
         "missing_hinge",
@@ -156,8 +157,9 @@ def test_a_deflected_flap_without_hinge_is_invalid_input() -> None:
 
 
 def test_a_deflected_flap_on_an_unmirrored_surface_is_unsupported() -> None:
+    model = geometry(flap(deflection_deg=30.0), symmetric=False)
     with pytest.raises(FormulaError) as raised:
-        flap_segments(geometry(flap(deflection_deg=30.0), symmetric=False))
+        flap_segments(model)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
     assert raised.value.code == "flap_on_unmirrored_surface"
     assert raised.value.detail == {"wing": "Main", "device": "Flap", "role": "flap"}

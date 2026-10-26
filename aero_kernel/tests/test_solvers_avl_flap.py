@@ -296,8 +296,9 @@ async def test_without_a_deflected_flap_there_is_no_flap_control_and_no_caveat(f
 @pytest.mark.asyncio
 async def test_a_flap_echoed_at_another_angle_is_internal(fake: Path) -> None:
     configure(fake, echo_offset={FLAP_CONTROL: 0.5})
+    airplane = flapped_with_aileron()
     with pytest.raises(RuntimeError, match="echoed the flap"):
-        await roll(flapped_with_aileron())
+        await roll(airplane)
 
 
 @pytest.mark.asyncio
@@ -318,7 +319,8 @@ async def test_flaps_at_different_angles_are_unsupported(fake: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_a_deflected_non_flap_device_is_still_refused(fake: Path) -> None:
+    deflected = wing({1: device("aileron", 0.8, 0.8, 3.0)})
     with pytest.raises(FormulaError) as raised:
-        await roll(wing({1: device("aileron", 0.8, 0.8, 3.0)}))
+        await roll(deflected)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
     assert not (fake / "seen.json").exists()

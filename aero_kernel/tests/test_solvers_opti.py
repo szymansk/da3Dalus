@@ -158,10 +158,10 @@ async def test_a_deflected_flap_reaches_the_worker_and_is_declared(
 
 async def test_a_flap_without_a_hinge_is_invalid_input(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution()))
+    adapter = OptiAdapter(InProcessRuntime())
+    hingeless = airplane(device=("flap", 30.0))
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).stall(
-            airplane(device=("flap", 30.0)), 1.5, 9.81, 1.0, AIR
-        )
+        await adapter.stall(hingeless, 1.5, 9.81, 1.0, AIR)
     assert (raised.value.category, raised.value.code) == (
         ErrorCategory.INVALID_INPUT,
         "missing_hinge",

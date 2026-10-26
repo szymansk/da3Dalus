@@ -79,10 +79,10 @@ async def test_a_flap_without_a_hinge_is_invalid_input_before_any_solve(
 ) -> None:
     seen: list[RollRequest] = []
     monkeypatch.setattr(opti_module, "steady_roll_worker", canned(solution(), seen))
+    adapter = OptiAdapter(InProcessRuntime())
+    hingeless = flaperon(25.0, root=None, tip=None)
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).steady_roll(
-            flaperon(25.0, root=None, tip=None), MASS, GRAVITY, AIR, SPEED, 0.0
-        )
+        await adapter.steady_roll(hingeless, MASS, GRAVITY, AIR, SPEED, 0.0)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
     assert seen == []
 

@@ -8,7 +8,7 @@ carries both: its flap deflection is the symmetric bias and the roll command is 
 
 from aero_kernel.devices import FLAP_ROLES
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.geometry import AirplaneGeometry, TrailingEdgeDevice, Wing
+from aero_kernel.geometry import AirplaneGeometry, TrailingEdgeDevice, Wing, WingXSec
 from aero_kernel.graph import AILERON_ROLES
 from aero_kernel.schema import KernelWarning
 from pydantic import BaseModel, ConfigDict
@@ -23,6 +23,26 @@ __all__ = [
     "roll_segments",
     "segment_label",
 ]
+
+
+def _unmapped_deflection(
+    section: WingXSec, index: int, flaps_supported: bool
+) -> tuple[str, str, float] | None:
+    """The label, role and angle of a deflection on this section that the consumer is not given.
+
+    Args:
+        section: The section; its device and its aerodynamic view are checked.
+        index: The index of the section, naming an unnamed device.
+        flaps_supported: Whether the consumer maps a deflected flap device.
+    """
+    device, surface = section.trailing_edge_device, section.control_surface
+    if device is not None and device.deflection_deg:
+        if flaps_supported and device.role in FLAP_ROLES:
+            return None
+        return device.name or f"device {index}", device.role, device.deflection_deg
+    if surface is not None and surface.deflection:
+        return surface.name, "control_surface", surface.deflection
+    return None
 
 
 def refuse_deflected_devices(
@@ -45,19 +65,10 @@ def refuse_deflected_devices(
     """
     for key, wing in (airplane.wings or {}).items():
         for index, section in enumerate(wing.x_secs):
-            device, surface = section.trailing_edge_device, section.control_surface
-            if device is not None and device.deflection_deg:
-                if flaps_supported and device.role in FLAP_ROLES:
-                    continue
-                label, role, angle = (
-                    device.name or f"device {index}",
-                    device.role,
-                    device.deflection_deg,
-                )
-            elif surface is not None and surface.deflection:
-                label, role, angle = surface.name, "control_surface", surface.deflection
-            else:
+            found = _unmapped_deflection(section, index, flaps_supported)
+            if found is None:
                 continue
+            label, role, angle = found
             raise FormulaError(
                 ErrorCategory.UNSUPPORTED_CONFIGURATION,
                 "unsupported_configuration",
