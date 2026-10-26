@@ -126,3 +126,21 @@ and `~/Downloads/da3dalus-import/belemnitos/profile/` (BELEMNITOS' `mh32.dat` di
 `belemnitos_vlw_*.dat` and the CHEKKER files equal those in `components/airfoils/`). WIESEL's
 and RV-7's come from `components/airfoils/` of the main checkout (the `wiesel_*_kulfan.dat` files are
 untracked there), which is where the DB's airfoil paths point.
+
+## Results recorded for the fleet (regression, not validated)
+
+The goldens in the `test_*_fleet.py` files pin what this build computes (NeuralFoil xlarge, AVL
+3.40). Where a formula does not compute for an aircraft, the structured error is the recorded
+expected result:
+
+| aircraft | recorded outcome |
+|---|---|
+| BRYAN, JAGUAR | every formula computes (values in the test files) |
+| BELEMNITOS | stall, glide, sink, stall-break and roll-rate compute (the roll in the AeroBuildup world only: AVL's `p'b/2V` is beyond its range, as for BRYAN and JAGUAR). The neutral point is `unsupported_layout`: the surfaces are `main_wing` and `v_tail`. The passed 0.55 kg against the source's 0.28 kg is declared as `conflicting_mass` |
+| RV-7 | stall, glide, sink, stall-break and the neutral point compute. The take-off and landing configurations (flaps, no deflection given) are `missing_input`, so `stall-speed-takeoff/-landing` and the roll rate are `upstream_failed`: the flap deflection is a design input and is not invented |
+| CHEKKER | every quantity that builds the AeroSandbox airplane is `unsupported_configuration`: section 0 of the fuselage `Rumpf` has `n_lower != n`. The roll rate is `not_applicable` (no aileron) |
+| WIESEL | as CHEKKER: section 9 of the fuselage `fuselage` has `n_lower != n` |
+
+The neutral-point goldens of the aircraft that compute use a CG that is a convention of the test
+(25 % of the AeroSandbox MAC aft of the main wing's root leading edge), not the aircraft's CG; it
+moves the static margin, never the neutral point.

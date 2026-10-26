@@ -130,6 +130,12 @@ def test_the_masses_are_the_recorded_ones() -> None:
     assert FleetMember.RV7.mass_kg == 0.500  # approx., maintainer 2026-10-25
 
 
+def test_the_readme_records_every_hash_the_tests_check() -> None:
+    readme = Path(REFERENCE_DIR / "README.md").read_text()
+    for digest in (*SOURCE_CANONICAL_SHA256.values(), *AIRFOIL_SHA256.values()):
+        assert digest in readme
+
+
 @pytest.mark.parametrize("member", list(FleetMember))
 def test_a_reference_aircraft_parses_and_is_admissible(member: FleetMember) -> None:
     aircraft = AircraftInput.model_validate(

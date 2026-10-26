@@ -6,9 +6,14 @@ from typing import Any
 
 import numpy as np
 import pytest
+from aero_kernel.errors import FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.solvers.asb_airplane import main_wing_properties, to_asb_airplane
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import (
+    FUSELAGE_REJECTED,
+    FleetMember,
+    reference_document,
+)
 from aero_kernel.tests.test_solvers_asb_airplane import CONTOUR, geometry
 
 pytestmark = pytest.mark.aero
@@ -41,7 +46,7 @@ def test_the_real_airplane_carries_the_kernels_reference_values() -> None:
     )
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", [m for m in FleetMember if m not in FUSELAGE_REJECTED])
 def test_the_fleet_converts_and_aerobuildup_accepts_zero_size_fuselage_ends(
     member: FleetMember,
 ) -> None:
@@ -79,7 +84,7 @@ def aero_coefficients(airplane: AirplaneGeometry) -> dict[str, float]:
     return {key: float(np.ravel(result[key])[0]) for key in ("CL", "CD", "Cm")}
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", [m for m in FleetMember if m not in FUSELAGE_REJECTED])
 @pytest.mark.parametrize(("negative_y", "tip_first"), [(True, False), (False, True), (True, True)])
 def test_the_storage_of_a_mirrored_wing_does_not_change_the_aerodynamics(
     member: FleetMember, negative_y: bool, tip_first: bool
@@ -90,3 +95,18 @@ def test_the_storage_of_a_mirrored_wing_does_not_change_the_aerodynamics(
     variant = aero_coefficients(stored_variant(member, negative_y=negative_y, tip_first=tip_first))
     for key, value in reference.items():
         assert math.isclose(variant[key], value, rel_tol=1e-9, abs_tol=1e-12), key
+
+
+@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
+def test_a_fuselage_section_with_two_shape_exponents_is_declared_not_converted(
+    member: FleetMember,
+) -> None:
+    """CHEKKER's and WIESEL's fuselages have a section with n_lower != n; AeroSandbox has one
+    exponent per section, so the conversion refuses instead of choosing one (README)."""
+    name, section = FUSELAGE_REJECTED[member]
+    with pytest.raises(FormulaError) as raised:
+        to_asb_airplane(AirplaneGeometry.model_validate(reference_document(member)))
+    assert str(raised.value) == (
+        f"section {section} of the fuselage '{name}' has n_lower != n; "
+        "AeroSandbox has one shape exponent per section"
+    )

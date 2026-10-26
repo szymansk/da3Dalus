@@ -16,7 +16,12 @@ from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import StallRequest
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import (
+    FUSELAGE_REJECTED,
+    FleetMember,
+    assert_rejected_for_the_fuselage,
+    reference_document,
+)
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -36,6 +41,10 @@ BRYAN_V_S_SMALL = 5.2894317  # m/s, the small model of the prototype
 JAGUAR_V_S = 6.2992129  # m/s
 JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 0.9985795, 9.9252911
 JAGUAR_CL_MIN = -0.7831582
+# (V_S m/s, C_L,max, alpha_S deg, C_L,min) of the aircraft added by gh-1284; the takeoff and landing
+# speeds equal V_S where the airplane has no flap.
+BELEMNITOS_GOLDEN = (6.2020615, 1.1461162, 10.0505747, -0.4956493)
+RV7_GOLDEN = (6.6001580, 1.2246480, 15.1183671, -0.8329524)
 
 
 def sea_level_air() -> AirState:
@@ -166,3 +175,71 @@ async def test_jaguar_regression_goldens() -> None:
     assert close(quantities["inverted-max-lift-coefficient"].value, JAGUAR_CL_MIN, 1e-5)
     for slug in ("stall-speed-takeoff", "stall-speed-landing"):
         assert quantities[slug].value == quantities["stall-speed"].value
+
+
+async def test_belemnitos_regression_goldens() -> None:
+    """No flap: take-off and landing are the clean airplane. The passed 0.55 kg differs from the
+    source's total_mass_kg 0.28 kg; the kernel says so and uses the passed one (ch. 8.11)."""
+    result = await stall_result(FleetMember.BELEMNITOS)
+    assert_goldens_are_pinned_to_their_tools(result)
+    quantities = {q.slug: q for q in result.quantities}
+    assert all(q.status is QuantityStatus.OK for q in quantities.values()), quantities
+    for slug, golden in zip(
+        (
+            "stall-speed",
+            "max-lift-coefficient",
+            "angle-of-attack-stall",
+            "inverted-max-lift-coefficient",
+        ),
+        BELEMNITOS_GOLDEN,
+        strict=True,
+    ):
+        assert close(quantities[slug].value, golden, 1e-5), slug
+    for slug in ("stall-speed-takeoff", "stall-speed-landing"):
+        assert quantities[slug].value == quantities["stall-speed"].value
+    conflict = [w for w in quantities["stall-speed"].warnings if w.code == "conflicting_mass"]
+    assert [w.detail for w in conflict] == [
+        {"aircraft_mass_kg": 0.55, "geometry_total_mass_kg": 0.28}
+    ]
+
+
+async def test_rv7_regression_goldens_and_the_flap_that_has_no_deflection() -> None:
+    """RV-7 has flaps and the DB gives no deflection: the clean stall speed computes, the take-off
+    and landing configurations have no value (``missing_input``, airplane-configuration), and so
+    the quantities that wait for them. The deflection is a design input, never invented."""
+    result = await stall_result(FleetMember.RV7)
+    assert_goldens_are_pinned_to_their_tools(result)
+    quantities = {q.slug: q for q in result.quantities}
+    for slug, golden in zip(
+        (
+            "stall-speed",
+            "max-lift-coefficient",
+            "angle-of-attack-stall",
+            "inverted-max-lift-coefficient",
+        ),
+        RV7_GOLDEN,
+        strict=True,
+    ):
+        assert quantities[slug].status is QuantityStatus.OK, slug
+        assert close(quantities[slug].value, golden, 1e-5), slug
+    for slug in ("stall-speed-takeoff", "stall-speed-landing"):
+        assert quantities[slug].status is QuantityStatus.ERROR, slug
+        assert quantities[slug].value is None, slug
+        error = quantities[slug].error
+        assert error is not None
+        assert error.code == "upstream_failed", slug
+        assert error.detail["causes"] == [
+            {
+                "quantity": "airplane-" + slug.removeprefix("stall-speed-"),
+                "code": "missing_input",
+            }
+        ], slug
+
+
+@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
+async def test_the_fuselage_aerosandbox_cannot_take_is_the_recorded_result(
+    member: FleetMember,
+) -> None:
+    """CHEKKER's and WIESEL's fuselages carry a section with n_lower != n (README): the kernel
+    declares it instead of computing, for every stall quantity."""
+    assert_rejected_for_the_fuselage(member, (await stall_result(member)).quantities)

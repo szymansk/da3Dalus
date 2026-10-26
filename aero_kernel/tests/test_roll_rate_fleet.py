@@ -25,7 +25,11 @@ from aero_kernel.schema import (
 from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import close
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import (
+    FleetMember,
+    assert_rejected_for_the_fuselage,
+    reference_document,
+)
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -35,14 +39,20 @@ AB, AVL = "roll-rate=aerobuildup", "roll-rate=avl"
 GOLDEN_P = {
     FleetMember.BRYAN: (490.14462, 410.51230),
     FleetMember.JAGUAR: (346.50673, 419.59114),
+    FleetMember.BELEMNITOS: (158.23681, 166.64859),
 }
 GOLDEN_P_HAT = {
     FleetMember.BRYAN: (0.3431387, 0.28739),
     FleetMember.JAGUAR: (0.2304946, 0.27911),
+    FleetMember.BELEMNITOS: (0.2567702, 0.27042),
 }
 # V_app = 1.3 V_S (m/s) of the slice-3 stall golden path; the fleet has no flap, so V_S,landing = V_S.
-V_APP = {FleetMember.BRYAN: 6.818986359246604, FleetMember.JAGUAR: 8.188976805083124}
-HINGE_SEGMENTS = {FleetMember.BRYAN: 4, FleetMember.JAGUAR: 6}
+V_APP = {
+    FleetMember.BRYAN: 6.818986359246604,
+    FleetMember.JAGUAR: 8.188976805083124,
+    FleetMember.BELEMNITOS: 8.062679893656751,
+}
+HINGE_SEGMENTS = {FleetMember.BRYAN: 4, FleetMember.JAGUAR: 6, FleetMember.BELEMNITOS: 0}
 _CACHE: dict[tuple[FleetMember, float], ComputeResult] = {}
 
 
@@ -79,7 +89,7 @@ def codes(quantity: QuantityResult, world: str | None = None) -> list[str]:
     return [w.code for w in quantity.warnings if world is None or w.world == world]
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_P))
 async def test_roll_rate_goldens_per_world(member: FleetMember) -> None:
     p, p_hat = (await run(member)).quantities
     assert p.slug == SLUGS[0]
@@ -105,7 +115,7 @@ async def test_roll_rate_goldens_per_world(member: FleetMember) -> None:
                 assert abs(shown[world] - value) < (absolute or 0.0), (quantity.slug, world)
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_P))
 async def test_the_nondimensional_rate_is_p_b_over_two_v_in_both_worlds(
     member: FleetMember,
 ) -> None:
@@ -122,7 +132,7 @@ async def test_the_nondimensional_rate_is_p_b_over_two_v_in_both_worlds(
         assert close(rate_hat, expected, 1e-9), world
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_P))
 async def test_the_approach_speed_is_1p3_stall_speed_of_the_clean_airplane(
     member: FleetMember,
 ) -> None:
@@ -143,7 +153,7 @@ async def test_the_approach_speed_is_1p3_stall_speed_of_the_clean_airplane(
     assert close(approach.value, V_APP[member], 1e-9)
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_P))
 async def test_a_negative_command_gives_the_mirrored_roll_in_both_worlds(
     member: FleetMember,
 ) -> None:
@@ -160,7 +170,7 @@ async def test_a_negative_command_gives_the_mirrored_roll_in_both_worlds(
     assert abs(avl_minus + avl_plus) < 1e-4
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_P))
 async def test_the_warnings_of_the_roll(member: FleetMember) -> None:
     p, p_hat = (await run(member)).quantities
     for quantity in (p, p_hat):
@@ -185,7 +195,7 @@ async def test_the_warnings_of_the_roll(member: FleetMember) -> None:
         # the averaged hinge line: one declaration per driven segment, AeroBuildup world only
         averaged = [w for w in quantity.warnings if w.code == "hinge_line_averaged"]
         assert len(averaged) == HINGE_SEGMENTS[member]
-        assert {w.world for w in averaged} == {AB}
+        assert {w.world for w in averaged} == ({AB} if HINGE_SEGMENTS[member] else set())
         # NeuralFoil's confidence and the angle the net saw, a regression of the deflected strips
         (fit,) = [w for w in quantity.warnings if w.code == "control_surface_fit_range_unknown"]
         assert fit.world == AB
@@ -203,6 +213,7 @@ async def test_the_regression_values_of_the_fit_range_warning() -> None:
     expected = {
         FleetMember.BRYAN: (0.6547296, "Hoehenleitwerk", 18.692106, "Tragflaeche"),
         FleetMember.JAGUAR: (0.4667034, "Tragflaeche", 14.617064, "Tragflaeche"),
+        FleetMember.BELEMNITOS: (0.5690204, "V-Leitwerk", 15.983402, "Tragflaeche"),
     }
     for member, (confidence, low_wing, alpha, high_wing) in expected.items():
         (fit,) = [
@@ -248,3 +259,34 @@ async def test_a_world_that_does_not_converge_is_an_error_with_the_other_value_i
         worlds_ok = error.detail["worlds_ok"]
         assert isinstance(worlds_ok, dict)
         assert list(worlds_ok) == [AVL]
+
+
+async def test_chekker_has_no_aileron_so_the_roll_rate_is_not_applicable() -> None:
+    """CHEKKER has no aileron (its main wing carries no device): not an error, a stated reason."""
+    for quantity in (await run(FleetMember.CHEKKER)).quantities:
+        assert quantity.status is QuantityStatus.NOT_APPLICABLE, quantity.slug
+        assert quantity.value is None
+        assert quantity.reason is not None
+        assert quantity.reason.message == "The aircraft does not satisfy `has_aileron`."
+
+
+async def test_wiesel_roll_rate_waits_for_the_stall_speed_the_fuselage_blocks() -> None:
+    """The approach speed needs the landing stall speed, which needs the AeroSandbox airplane."""
+    quantities = (await run(FleetMember.WIESEL)).quantities
+    assert_rejected_for_the_fuselage(FleetMember.WIESEL, quantities, rooted=False)
+    for quantity in quantities:
+        assert quantity.error is not None
+        assert quantity.error.code == "upstream_failed"
+        assert "because `stall-speed-landing` failed" in quantity.error.message
+
+
+async def test_rv7_roll_rate_waits_for_the_landing_flap_deflection_nobody_gave() -> None:
+    """RV-7 has flaps: no landing configuration without a deflection, so no approach speed and no
+    roll rate (the deflection is a design input, never invented)."""
+    for quantity in (await run(FleetMember.RV7)).quantities:
+        assert quantity.status is QuantityStatus.ERROR, quantity.slug
+        assert quantity.error is not None
+        assert quantity.error.code == "upstream_failed"
+        assert quantity.error.detail["causes"] == [
+            {"quantity": "airplane-landing", "code": "missing_input"}
+        ]
