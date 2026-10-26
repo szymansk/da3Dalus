@@ -156,12 +156,30 @@ for t in (0.05, 0.10, 0.12):
 aus = json.loads((HERE / "ehawk_rumpf_auslegung.json").read_text())
 SH, SV, lH, Sw, b_mm, mac_mm = aus["SH"], aus["SV"], aus["lH"], aus["S"], aus["b"], aus["mac"]
 VH, VV = SH / Sw * lH / mac_mm, SV / Sw * lH / b_mm
-eda = np.degrees(
-    np.arctan2(
-        sum(x["xyz_le"][2] for x in d["wings"]["Tragflaeche"]["x_secs"][-1:]),
-        d["wings"]["Tragflaeche"]["x_secs"][-1]["xyz_le"][1],
-    )
-)
+
+
+def equivalent_dihedral_deg(x_secs):
+    """Strip-theory equivalent dihedral of one semi-span, in degrees.
+
+    Gamma_eq = int Gamma(y) c(y) y dy / int c(y) y dy over the semi-span (DERIVED, not printed:
+    constant section lift-curve slope, sweep and induced-flow coupling neglected; gh-1309).
+    Each panel has constant Gamma; chord is linear in y, so c*y is quadratic and Simpson is exact.
+    """
+    num = den = 0.0
+    for a, b in zip(x_secs[:-1], x_secs[1:], strict=True):
+        (y0, z0), (y1, z1) = a["xyz_le"][1:], b["xyz_le"][1:]
+        if y1 == y0:
+            continue
+        gamma = np.degrees(np.arctan2(z1 - z0, y1 - y0))
+        ym = 0.5 * (y0 + y1)
+        cm = 0.5 * (a["chord"] + b["chord"])
+        w = (y1 - y0) / 6.0 * (a["chord"] * y0 + 4.0 * cm * ym + b["chord"] * y1)
+        num += gamma * w
+        den += w
+    return num / den
+
+
+eda = equivalent_dihedral_deg(d["wings"]["Tragflaeche"]["x_secs"])
 Bpar = eda * (lH / b_mm) / 0.7
 print(
     f"\nDrela: V_H = {VH:.2f} (Band 0,3–0,6), V_V = {VV:.3f} (mit Querrudern 0,015–0,025), "

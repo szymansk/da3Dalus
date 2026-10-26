@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:4f1d999fce414f8b767064441c16bcacf1d6b28a2489a0c07cab7b33884a37bb",
+  "content_hash": "sha256:e07787d23924de1f92bf2fea8384b7a10e9a7858b0d861a4ed62fe2c311c18f1",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1511,6 +1511,55 @@
           "variables": [],
           "worlds": []
         },
+        "lateral-static-stability-mp": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "g": "calc:gravity",
+                "m": "calc:aircraft-mass",
+                "rho": "calc:air-density",
+                "v": "calc:minimum-sink-speed",
+                "x_cg": "calc:centre-of-gravity-design"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "c_l_beta": "calc:dihedral-effect-mp",
+                "c_n_beta": "calc:weathercock-stability-mp",
+                "e_spiral": "calc:spiral-criterion-mp",
+                "t2_spiral": "calc:spiral-doubling-time-mp"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "direction": "analysis",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "g": "calc:gravity",
+            "m": "calc:aircraft-mass",
+            "rho": "calc:air-density",
+            "v": "calc:minimum-sink-speed",
+            "x_cg": "calc:centre-of-gravity-design"
+          },
+          "kind": "procedure",
+          "optional": [],
+          "outputs": {
+            "c_l_beta": "calc:dihedral-effect-mp",
+            "c_n_beta": "calc:weathercock-stability-mp",
+            "e_spiral": "calc:spiral-criterion-mp",
+            "t2_spiral": "calc:spiral-doubling-time-mp"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "AVL",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
         "lift-coefficient-required": {
           "applications": [
             {
@@ -2843,12 +2892,14 @@
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
                 "s_ref": "calc:wing-reference-area",
-                "v_md": "calc:minimum-drag-speed"
+                "v_md": "calc:minimum-drag-speed",
+                "v_mp": "calc:minimum-sink-speed"
               },
               "given": null,
               "id": "with_vertical_tail",
               "produce": {
-                "b_spiral": "calc:spiral-parameter"
+                "b_spiral_md": "calc:spiral-parameter-md",
+                "b_spiral_mp": "calc:spiral-parameter-mp"
               },
               "when": "has_vertical_tail"
             }
@@ -2865,12 +2916,14 @@
             "m": "calc:aircraft-mass",
             "rho": "calc:air-density",
             "s_ref": "calc:wing-reference-area",
-            "v_md": "calc:minimum-drag-speed"
+            "v_md": "calc:minimum-drag-speed",
+            "v_mp": "calc:minimum-sink-speed"
           },
           "kind": "law",
           "optional": [],
           "outputs": {
-            "b_spiral": "calc:spiral-parameter"
+            "b_spiral_md": "calc:spiral-parameter-md",
+            "b_spiral_mp": "calc:spiral-parameter-mp"
           },
           "postconditions": [],
           "preconditions": [],
@@ -4333,6 +4386,23 @@
           "uncertainty": null,
           "unit": "1/rad"
         },
+        "dihedral-effect-mp": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "C_l_beta,mp",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
         "dive-speed": {
           "at_most": null,
           "checks": null,
@@ -5692,6 +5762,23 @@
           "uncertainty": null,
           "unit": "1/rad^2"
         },
+        "spiral-criterion-mp": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "E_spiral,mp",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad^2"
+        },
         "spiral-doubling-time-app": {
           "at_most": null,
           "checks": null,
@@ -5726,7 +5813,24 @@
           "uncertainty": null,
           "unit": "s"
         },
-        "spiral-parameter": {
+        "spiral-doubling-time-mp": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "T_2,spiral,mp",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "s"
+        },
+        "spiral-parameter-md": {
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5738,7 +5842,24 @@
           "positive": null,
           "role": "output",
           "stage": null,
-          "symbol": "B_spiral",
+          "symbol": "B_spiral,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "spiral-parameter-mp": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "B_spiral,mp",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
@@ -6124,6 +6245,23 @@
           "role": "output",
           "stage": null,
           "symbol": "C_n_beta,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
+        "weathercock-stability-mp": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "C_n_beta,mp",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad"
