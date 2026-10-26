@@ -35,7 +35,7 @@ avl_roll_branch_tolerance:
   value: 0.10
   unit: "1"
   guards: "Roll rate: the trimmed roll rate must agree with the linearised one from the stability derivatives to this relative difference, else AVL's Newton iteration landed on a spurious branch."
-  basis: decision
+  basis: numerical
   source: "a numerical sanity check of the solver, no domain threshold: the nonlinearity measured on the fleet is 0.2-0.4 %, a spurious branch is off by a factor of about 3 (#1211)"
 
 avl_roll_print_floor:
