@@ -518,6 +518,11 @@ SOURCE_KINDS = (
 )
 
 
+#: Left-to-right order of the leading columns (#1300): the cross-cutting input objects, their fields
+#: (the data sources), then the derived references; the analysis columns follow.
+COLUMN_ORDER = ["xcut", "src", "refs"]
+
+
 def source_frame(source: str) -> str:
     """The frame a data source is drawn in, or ``""`` for a source of a kind that has none.
 
@@ -560,6 +565,7 @@ def approval_marks(data: dict, model: dict) -> None:
     data["qstat"] = approval.quantity_status
     quantities = model["namespaces"]["calc"]["quantities"]
     data["qdata"] = {q: v["data"] for q, v in sorted(quantities.items()) if v.get("data")}
+    data["colorder"] = COLUMN_ORDER
     data["srckinds"] = [
         {"id": k, "label": label, "explanation": text} for k, label, text in SOURCE_KINDS
     ]
