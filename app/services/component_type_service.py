@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.exceptions import (
     ConflictError,
@@ -742,7 +743,8 @@ def _patch_schema_fields(db: Session, type_name: str, full_schema: list[dict[str
     row = db.query(ComponentTypeModel).filter(ComponentTypeModel.name == type_name).first()
     if row is None:
         return
-    current = _normalize_schema(row.schema_def)
+    # copy: appending to the column's own list is an in-place JSON mutation SQLAlchemy does not track
+    current = [dict(p) if isinstance(p, dict) else p for p in _normalize_schema(row.schema_def)]
     existing_names = {p.get("name") for p in current if isinstance(p, dict)}
     changed = False
     for prop in full_schema:
@@ -751,6 +753,7 @@ def _patch_schema_fields(db: Session, type_name: str, full_schema: list[dict[str
             changed = True
     if changed:
         row.schema_def = current
+        flag_modified(row, "schema_def")
         db.flush()
 
 
