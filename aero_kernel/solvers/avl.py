@@ -5,7 +5,8 @@ second on a mesh refined by a fixed factor as the validity check: the adapter re
 mesh's value and declares the disagreement as a ``defect`` warning (tool validity belongs to the
 adapter). It adds no regime warning of its own: those come with the minimum-drag speed and are
 inherited (#1203, M2). The steady roll drives the devices acting as aileron on the same mesh with
-their ends as stations, about the airplane's own reference point.
+their ends as stations, about the airplane's own reference point, with the flaps of the
+configuration held at their deflection (a symmetric control).
 """
 
 import asyncio
@@ -26,6 +27,7 @@ from aero_kernel.solvers.asb_airplane import load_aerosandbox, main_wing_propert
 from aero_kernel.solvers.avl_contour import repanel
 from aero_kernel.solvers.avl_mesh import (
     MESH_DECIMALS,
+    ROLL_CONTROL,
     SLIVER_STEPS,
     MeshSurface,
     mesh_surfaces,
@@ -41,11 +43,18 @@ from aero_kernel.solvers.avl_writer import (
     avl_commands,
     avl_geometry,
     avl_roll_commands,
+    control_order,
     parse_avl_output,
+    parse_flap_echo,
     parse_roll_output,
 )
 from aero_kernel.solvers.base import SolverAdapter
-from aero_kernel.solvers.devices import refuse_deflected_devices, roll_segments
+from aero_kernel.solvers.devices import (
+    FlapSegment,
+    flap_segments,
+    refuse_deflected_devices,
+    roll_segments,
+)
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
@@ -197,6 +206,50 @@ def _unchecked_warning(what: str, n_chord: int, n_span: int, reason: str) -> Ker
         f"The refined mesh {cause}, so the convergence of the {what} could not be checked.",
         detail={"n_chord": n_chord, "n_span": n_span, "reason": reason},
     )
+
+
+def _common_flap_deflection(flaps: list[FlapSegment]) -> float:
+    """The one deflection of the configuration's flaps (0 without a deflected flap).
+
+    AVL holds the flaps as one control variable, so every deflected flap has the same angle: the
+    configuration sets them all to the one deflection (canon ``airplane-configuration``).
+
+    Raises:
+        FormulaError: ``unsupported_configuration`` (``flap_deflections_differ``) if two deflected
+            flaps have different angles.
+    """
+    angles = {flap.deflection_deg for flap in flaps}
+    ordered: list[JsonValue] = [*sorted(angles)]
+    if len(angles) > 1:
+        raise FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "flap_deflections_differ",
+            f"the flaps are at different deflections ({ordered}); AVL holds them as one control",
+            "set every flap of the configuration to the same deflection",
+            detail={"deflections_deg": ordered},
+            parameter="airplane",
+        )
+    return next(iter(angles), 0.0)
+
+
+def _flap_warnings(flaps: list[FlapSegment]) -> list[KernelWarning]:
+    """The declared caveat of a deflected flap in AVL: linear in the deflection, no separation."""
+    if not flaps:
+        return []
+    return [
+        KernelWarning.of(
+            "avl_flap_linearised",
+            "AVL turns a deflected flap into a rotation of the panel normals, linear in the "
+            "deflection (amake.f:1184-1187), with no flow separation and no change of the "
+            "section's maximum lift; the value is the linear flap model's.",
+            detail={
+                "flaps": [
+                    {"wing": f.wing, "device": f.device, "deflection_deg": f.deflection_deg}
+                    for f in flaps
+                ]
+            },
+        )
+    ]
 
 
 class AvlAdapter(SolverAdapter):
@@ -401,7 +454,7 @@ class AvlAdapter(SolverAdapter):
         surfaces: tuple[MeshSurface, ...],
         contours: tuple[Contour, ...],
         mesh: tuple[int, int],
-        run: tuple[float, float],
+        run: tuple[float, float, float],
         reference: MainWingProperties,
         xyz_ref: tuple[float, float, float],
     ) -> RollOutput:
@@ -411,7 +464,7 @@ class AvlAdapter(SolverAdapter):
             surfaces: The mesh with the roll devices driven.
             contours: The airfoil contours.
             mesh: Chordwise and spanwise strip counts.
-            run: The lift coefficient and the aileron command in degrees.
+            run: The lift coefficient, the aileron command and the flap deflection in degrees.
             reference: The kernel's reference values.
             xyz_ref: The airplane's reference point.
 
@@ -420,16 +473,17 @@ class AvlAdapter(SolverAdapter):
             RuntimeError: If AVL fails, misses the lift coefficient, leaves a rolling moment or
                 echoes another control value (a defect of ours, reported as ``internal``).
         """
-        cl, delta = run
+        cl, delta, flap_deg = run
+        order = control_order(surfaces)
         stdout = await self._execute(
             surfaces,
             contours,
             mesh,
-            avl_roll_commands(cl, CORE_RATIO, delta),
+            avl_roll_commands(cl, CORE_RATIO, delta, order=order, flap_deg=flap_deg),
             reference,
             xyz_ref,
         )
-        output = parse_roll_output(stdout)
+        output = parse_roll_output(stdout, order.index(ROLL_CONTROL) + 1)
         if output is None:
             msg = "the vortex lattice run did not complete (no steady roll in the output)"
             logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])
@@ -445,6 +499,14 @@ class AvlAdapter(SolverAdapter):
         if abs(output.control - delta) > config().avl_control_echo_tolerance.value:
             msg = f"the vortex lattice echoed the control at {output.control}, not the commanded {delta}"
             raise RuntimeError(msg)
+        if flap_deg:
+            flap_echo = parse_flap_echo(stdout)
+            if (
+                flap_echo is None
+                or abs(flap_echo - flap_deg) > config().avl_control_echo_tolerance.value
+            ):
+                msg = f"the vortex lattice echoed the flap at {flap_echo}, not the commanded {flap_deg}"
+                raise RuntimeError(msg)
         linear = -output.cl_delta * delta / output.cl_p
         cfg = config()
         if abs(output.p_hat - linear) > (
@@ -482,7 +544,7 @@ class AvlAdapter(SolverAdapter):
             RuntimeError: If AVL fails (a defect, reported as ``internal``).
         """
         self.require_available()
-        refuse_deflected_devices(airplane, "AVL")
+        refuse_deflected_devices(airplane, "AVL", flaps_supported=False)
         reference = main_wing_properties(airplane)
         numbers: dict[Airfoil, int] = {}
 
@@ -554,7 +616,9 @@ class AvlAdapter(SolverAdapter):
                 the canon's ``has_aileron`` condition prevents it).
         """
         self.require_available()
-        refuse_deflected_devices(airplane, "AVL")
+        refuse_deflected_devices(airplane, "AVL", flaps_supported=True)
+        flaps = flap_segments(airplane)
+        flap_deg = _common_flap_deflection(flaps)
         if not math.isfinite(delta_a_deg):
             raise FormulaError(
                 ErrorCategory.INVALID_INPUT,
@@ -577,7 +641,12 @@ class AvlAdapter(SolverAdapter):
 
         def driven(n_span: int, split: tuple[int, int]) -> tuple[MeshSurface, ...]:
             main, *others = mesh_surfaces(
-                airplane, n_span, number, drive_roll=True, join_tolerance_m=join
+                airplane,
+                n_span,
+                number,
+                drive_roll=True,
+                drive_flaps=bool(flaps),
+                join_tolerance_m=join,
             )
             return (*split_at_hinge(main, split), *others)
 
@@ -586,9 +655,9 @@ class AvlAdapter(SolverAdapter):
         contours = await self._contours(tuple(numbers))
         xyz_ref = airplane.xyz_ref
         first = await self._run_roll(
-            declared, contours, (N_CHORD, N_SPAN), (cl, delta_a_deg), reference, xyz_ref
+            declared, contours, (N_CHORD, N_SPAN), (cl, delta_a_deg, flap_deg), reference, xyz_ref
         )
-        warnings: list[KernelWarning] = []
+        warnings: list[KernelWarning] = _flap_warnings(flaps)
         roll_limit = self.roll_rate_limit()
         if abs(first.p_hat) > roll_limit:
             warnings.append(
@@ -602,7 +671,12 @@ class AvlAdapter(SolverAdapter):
         n_chord, n_span = N_CHORD * REFINE_FACTOR, N_SPAN * REFINE_FACTOR
         try:
             second = await self._run_roll(
-                refined, contours, (n_chord, n_span), (cl, delta_a_deg), reference, xyz_ref
+                refined,
+                contours,
+                (n_chord, n_span),
+                (cl, delta_a_deg, flap_deg),
+                reference,
+                xyz_ref,
             )
         except FormulaError as error:
             # the declared run passed every check: a refined run that is beyond the arrays or off the

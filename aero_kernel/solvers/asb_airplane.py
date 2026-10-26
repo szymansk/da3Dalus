@@ -11,6 +11,8 @@ import math
 from typing import Any
 
 import numpy as np
+from aero_kernel.config import config
+from aero_kernel.devices import FLAP_ROLES
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import (
     Airfoil,
@@ -21,7 +23,7 @@ from aero_kernel.geometry import (
 )
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.graph import AILERON_ROLES
-from aero_kernel.solvers.devices import roll_deflection, roll_segments
+from aero_kernel.solvers.devices import flap_segments, roll_deflection, roll_segments
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 
 logger = logging.getLogger(__name__)
@@ -65,29 +67,69 @@ def _airfoil(asb: Any, airfoil: Airfoil) -> Any:  # noqa: ANN401  # untyped aero
     return asb.Airfoil(name=airfoil)
 
 
-def _section(
+def _flap_state(point: ChainPoint, drive_flaps: bool) -> tuple[float, float] | None:
+    """The deflection and the mean hinge of the flap on the strip that starts at ``point``, if any."""
+    device = point.device
+    if not (drive_flaps and device is not None and device.role in FLAP_ROLES):
+        return None
+    if not device.deflection_deg:
+        return None
+    if device.hinge_start is None or device.hinge_end is None:
+        msg = "a driven device without a hinge: flap_segments must have refused it"
+        raise ValueError(msg)
+    return device.deflection_deg, (device.hinge_start + device.hinge_end) / 2.0
+
+
+def _deflected(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    airfoil: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    flap: tuple[float, float],
+) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+    """The airfoil with its trailing edge rotated about the hinge: the geometry of a plain flap.
+
+    ``Airfoil.add_control_surface`` rotates the contour behind the hinge (trailing edge down
+    positive). The result is rebuilt as a plain airfoil from those coordinates, so that
+    AeroBuildup's NeuralFoil call normalises the deflected contour to its leading-edge to
+    trailing-edge chord and corrects the angle of attack by the rotation (a deflected contour is no
+    control surface: its ``ControlSurface.deflection`` stays 0, so the Hoerner drag factor is 1 and
+    nothing is counted twice).
+    """
+    deflection, hinge = flap
+    shaped = airfoil.add_control_surface(deflection=deflection, hinge_point_x=hinge)
+    return asb.Airfoil(name=f"{airfoil.name} flap {deflection:g}", coordinates=shaped.coordinates)
+
+
+def _xsec(
     asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
     point: ChainPoint,
+    flap: tuple[float, float] | None,
+    *,
+    starts_strip: bool,
     roll_deg: float,
     label: str,
 ) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Convert one rib of an oriented chain.
 
-    The geometry's own control-device state and the ``dihedral`` field are not passed: the airplane
-    is built with every device at 0 deg (ch. 8.11), and ``xyz_le`` already carries the dihedral.
-    Only the roll command makes a control surface: the rib that starts a roll segment gets one
-    antisymmetric surface at the mean of the segment's hinge positions, ASB's convention for the
-    strip a -> a+1. A mirrored surface is written on the positive side, root first, as the AVL
-    writer writes it, so the sign of the deflection is that of side +1 in both tools.
+    The geometry's ``dihedral`` field and the aerodynamic view's deflection are not passed:
+    ``xyz_le`` already carries the dihedral. A deflected flap (``flap``) is the airfoil's geometry
+    (:func:`_deflected`), not a control surface. The roll command makes the only control surface: on
+    the rib that starts a roll segment, one antisymmetric surface at the mean of the segment's hinge
+    positions, ASB's convention for the strip a -> a+1 (``tau * delta``). A flaperon has both: the
+    flap deflection is the geometric symmetric bias and the roll command comes on top. A mirrored
+    surface is written on the positive side, root first, as the AVL writer writes it, so the sign of
+    the deflection is that of side +1 in both tools.
     """
+    airfoil = _airfoil(asb, point.airfoil)
+    if flap is not None:
+        airfoil = _deflected(asb, airfoil, flap)
     kwargs: dict[str, Any] = {
         "xyz_le": [point.x, point.y, point.z],
         "chord": point.chord,
         "twist": point.twist,
-        "airfoil": _airfoil(asb, point.airfoil),
+        "airfoil": airfoil,
     }
     device = point.device
-    if roll_deg and device is not None and device.role in AILERON_ROLES:
+    if starts_strip and roll_deg and device is not None and device.role in AILERON_ROLES:
         if device.hinge_start is None or device.hinge_end is None:
             msg = "a driven device without a hinge: roll_segments must have refused it"
             raise ValueError(msg)
@@ -102,11 +144,55 @@ def _section(
     return asb.WingXSec(**kwargs)
 
 
+def _xsecs(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    key: str,
+    chain: list[ChainPoint],
+    roll_deg: float,
+    drive_flaps: bool,
+) -> list[Any]:
+    """The cross-sections of a chain; a rib between two strips of different flap state is two.
+
+    AeroBuildup blends the airfoil of the two bounding sections linearly over a strip and takes a
+    section's control surfaces for the strip that starts there. A deflected airfoil must therefore
+    sit on both sections of its strip and on no section of the next one: the rib where the flap
+    state changes is written twice at the same place, first as the end of the strip before and then
+    as the start of the strip after (a strip of zero width between them).
+    """
+    last = len(chain) - 1
+    xsecs: list[Any] = []
+    for index, point in enumerate(chain):
+        label = f"{key} device {index}"
+        starting = _flap_state(point, drive_flaps) if index < last else None
+        ending = _flap_state(chain[index - 1], drive_flaps) if index else None
+        if 0 < index < last and starting != ending:
+            xsecs.append(
+                _xsec(asb, point, ending, starts_strip=False, roll_deg=roll_deg, label=label)
+            )
+            later = point.model_copy(update={"y": point.y + config().opt_flap_rib_gap.value})
+            xsecs.append(
+                _xsec(asb, later, starting, starts_strip=True, roll_deg=roll_deg, label=label)
+            )
+        else:
+            xsecs.append(
+                _xsec(
+                    asb,
+                    point,
+                    starting if index < last else ending,
+                    starts_strip=index < last,
+                    roll_deg=roll_deg,
+                    label=label,
+                )
+            )
+    return xsecs
+
+
 def _wing(
     asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
     key: str,
     wing: Wing,
     roll_deg: float,
+    drive_flaps: bool = False,
 ) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Convert one lifting surface.
 
@@ -130,10 +216,7 @@ def _wing(
         ]
     return asb.Wing(
         name=wing.name,
-        xsecs=[
-            _section(asb, point, roll_deg, f"{key} device {index}")
-            for index, point in enumerate(chain)
-        ],
+        xsecs=_xsecs(asb, key, chain, roll_deg, drive_flaps),
         symmetric=wing.symmetric,
     )
 
@@ -326,8 +409,11 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
     Args:
         airplane: The validated geometry document (exactly one main wing).
         roll_deg: The aileron command in degrees, positive = roll to the right (ch. 8.8). Zero
-            builds the clean airplane, bit for bit; otherwise every segment with a roll device
-            gets one antisymmetric control surface (:func:`roll_segments`).
+            adds no roll surface; otherwise every segment with a roll device gets one
+            antisymmetric control surface (:func:`roll_segments`). The airplane's deflected flaps
+            (:func:`flap_segments`) are always built in, as the deflected contour of the flapped
+            strip's airfoils (:func:`_xsecs`); an airplane with every device at rest and no command
+            is the clean airplane, bit for bit.
 
     Returns:
         The ``asb.Airplane``, wings and fuselages in document order.
@@ -335,15 +421,23 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
     Raises:
         ValueError: If the document does not have exactly one main wing.
         FormulaError: ``unsupported_configuration`` for a fuselage ASB cannot represent, a roll
-            device on an unmirrored wing, or a mirrored wing whose sections fold back along y
-            (the oriented chain refuses it); ``invalid_input`` for a roll device without a hinge.
+            device or a deflected flap on an unmirrored wing, or a mirrored wing whose sections fold
+            back along y (the oriented chain refuses it); ``invalid_input`` for a roll device or a
+            deflected flap without a hinge.
     """
     asb = load_aerosandbox()
     main_key = _main_wing_key(airplane)
     if roll_deg:
         roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
-    built = {key: _wing(asb, key, wing, roll_deg) for key, wing in (airplane.wings or {}).items()}
-    reference = _reference(built[main_key])
+    flaps = flap_segments(airplane)  # the same rules for a deflected flap
+    built = {
+        key: _wing(asb, key, wing, roll_deg, drive_flaps=True)
+        for key, wing in (airplane.wings or {}).items()
+    }
+    # the reference is the planform of the wing without the extra ribs of a flap
+    reference = _reference(
+        _wing(asb, main_key, (airplane.wings or {})[main_key], 0.0) if flaps else built[main_key]
+    )
     wings = list(built.values())
     fuselages = [_fuselage(asb, fuselage) for fuselage in (airplane.fuselages or {}).values()]
     logger.debug(

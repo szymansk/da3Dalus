@@ -10,7 +10,12 @@ import re
 from collections.abc import Sequence
 
 from aero_kernel.config import config
-from aero_kernel.solvers.avl_mesh import MeshSurface
+from aero_kernel.solvers.avl_mesh import (
+    FLAP_CONTROL,
+    ROLL_CONTROL,
+    ROLL_SGN_DUP,
+    MeshSurface,
+)
 from pydantic import BaseModel, ConfigDict
 
 __all__ = [
@@ -21,7 +26,9 @@ __all__ = [
     "avl_commands",
     "avl_geometry",
     "avl_roll_commands",
+    "control_order",
     "parse_avl_output",
+    "parse_flap_echo",
     "parse_roll_output",
 ]
 
@@ -30,11 +37,12 @@ CHORD_SPACING = 1
 # One strip per neighbouring section pair; the spacing is moot for a single strip.
 _STRIP = "1   1"
 GEOMETRY_FILE = "airplane.avl"
-# The roll control: one name for every device acting as aileron, driven as AVL's control variable d1.
+# The roll control: one name for every device acting as aileron, driven as an AVL control variable.
 # SgnDup -1 makes the mirrored half deflect the other way (avl_doc.txt:755-757, an aileron on a
 # YDUPLICATE surface); the hinge vector 0 0 0 puts the hinge along the hinge line (avl_doc.txt:737-757).
-CONTROL_NAME = "aileron"
-SGN_DUP = -1
+# The flap control (:data:`FLAP_CONTROL`) is symmetric: SgnDup +1, written after the roll control.
+CONTROL_NAME = ROLL_CONTROL
+SGN_DUP = ROLL_SGN_DUP
 
 _NUMBER = r"(-?\d+\.\d*(?:[EeDd][-+]?\d+)?)"
 
@@ -168,11 +176,11 @@ def avl_geometry(
                 "CLAF",
                 f"{claf[section.airfoil]!r}",
             ]
-            if section.control is not None:
+            for control in section.controls():
                 lines += [
                     "CONTROL",
-                    f"{CONTROL_NAME} {section.control.gain!r} {section.control.x_hinge!r} "
-                    f"0.0 0.0 0.0 {SGN_DUP}",
+                    f"{control.name} {control.gain!r} {control.x_hinge!r} "
+                    f"0.0 0.0 0.0 {control.sgn_dup}",
                 ]
     return "\n".join(lines) + "\n"
 
@@ -182,18 +190,62 @@ def avl_commands(cl: float, core_ratio: float) -> str:
     return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nx\nst\n\n\nquit\n"
 
 
-def avl_roll_commands(cl: float, core_ratio: float, delta_deg: float) -> str:
+def control_order(surfaces: Sequence[MeshSurface]) -> tuple[str, ...]:
+    """The control variables of the file in AVL's numbering: the order of first appearance.
+
+    AVL numbers its controls ``d1``, ``d2``, ... by the first CONTROL line that names them, scanning
+    the surfaces and sections in file order, so the commands are built from the same scan that
+    :func:`avl_geometry` writes.
+
+    Args:
+        surfaces: The mesh as written.
+
+    Returns:
+        The distinct control names, ``d1`` first.
+    """
+    names: list[str] = []
+    for surface in surfaces:
+        for section in surface.sections:
+            for control in section.controls():
+                if control.name not in names:
+                    names.append(control.name)
+    return tuple(names)
+
+
+def avl_roll_commands(
+    cl: float,
+    core_ratio: float,
+    delta_deg: float,
+    *,
+    order: Sequence[str] = (ROLL_CONTROL,),
+    flap_deg: float = 0.0,
+) -> str:
     """The OPER dialogue of a steady roll.
 
-    Constrains ``C_L``, the stability-axis rolling moment to zero (``r rm 0``) and the aileron
-    control ``d1`` to the command and runs: the roll rate is the result, in AVL's default stability
-    axes (``avl.f:652``). Then it holds the roll rate (``r r 0``) and the aileron at zero, runs again
-    and prints the stability derivatives of that state, from which the adapter forms the linearised
-    roll rate ``-Cld01 * delta / Clp`` as a consistency check of the first result.
+    Constrains ``C_L``, the stability-axis rolling moment to zero (``r rm 0``), the roll control to
+    the command and a flap control to the flap deflection of the configuration, and runs: the roll
+    rate is the result, in AVL's default stability axes (``avl.f:652``). Then it holds the roll rate
+    (``r r 0``) and the roll control at zero with the flap unchanged, runs again and prints the
+    stability derivatives of that state, from which the adapter forms the linearised roll rate
+    ``-Cld0k * delta / Clp`` as a consistency check of the first result.
+
+    Args:
+        cl: The lift coefficient.
+        core_ratio: The vortex core ratio.
+        delta_deg: The roll command in degrees.
+        order: The control names in AVL's numbering (:func:`control_order`).
+        flap_deg: The flap deflection in degrees, for the flap control if the file has one.
     """
+
+    def constraints(roll: str) -> str:
+        values = {ROLL_CONTROL: roll, FLAP_CONTROL: f"{flap_deg!r}"}
+        return "".join(
+            f"d{index} d{index} {values[name]}\n" for index, name in enumerate(order, start=1)
+        )
+
     return (
-        f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nr rm 0\nd1 d1 {delta_deg!r}\nx\n"
-        "r r 0\nd1 d1 0\nx\nst\n\n\nquit\n"
+        f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nr rm 0\n{constraints(f'{delta_deg!r}')}x\n"
+        f"r r 0\n{constraints('0')}x\nst\n\n\nquit\n"
     )
 
 
@@ -215,10 +267,21 @@ def parse_avl_output(text: str) -> AvlOutput | None:
     return AvlOutput(x_np=x_np, cl=cl)
 
 
-def parse_roll_output(text: str) -> RollOutput | None:
+def parse_flap_echo(text: str) -> float | None:
+    """The flap control deflection AVL echoes in degrees, or ``None`` if the output has none."""
+    echo = re.search(rf"^\s*{re.escape(FLAP_CONTROL)}\s*=\s*{_NUMBER}", text, re.MULTILINE)
+    return None if echo is None else float(echo.group(1))
+
+
+def parse_roll_output(text: str, roll_index: int = 1) -> RollOutput | None:
     """Read ``p'b/2V``, ``CLtot``, ``Cl'tot`` and the control echo from a steady-roll run.
 
     The first hit of each key is taken: AVL also prints ``pb/2V`` (body axes) before ``p'b/2V``.
+
+    Args:
+        text: The output.
+        roll_index: The roll control's number in AVL's numbering, which names its derivative
+            ``Cld0<k>``.
 
     Returns:
         The values, or ``None`` if one is missing (the run did not complete).
@@ -226,7 +289,7 @@ def parse_roll_output(text: str) -> RollOutput | None:
     p_hat, cl = _first(text, "p'b/2V"), _first(text, "CLtot")
     cl_stability = _first(text, "Cl'tot")
     echo = re.search(rf"^\s*{re.escape(CONTROL_NAME)}\s*=\s*{_NUMBER}", text, re.MULTILINE)
-    cl_p, cl_delta = _first(text, "Clp"), _first(text, "Cld01")
+    cl_p, cl_delta = _first(text, "Clp"), _first(text, f"Cld{roll_index:02d}")
     if (
         p_hat is None
         or cl is None

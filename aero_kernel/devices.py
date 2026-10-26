@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 from aero_kernel.geometry import AirplaneGeometry, Wing, WingXSec
 
-__all__ = ["FLAP_ROLES", "devices_at_rest", "has_flap", "with_flaps_at"]
+__all__ = ["FLAP_ROLES", "devices_at_rest", "flap_deflections", "has_flap", "with_flaps_at"]
 
 # Every control surface that acts as a flap (maintainer, 2026-10-14): flaperons too.
 FLAP_ROLES = frozenset({"flap", "flaperon"})
@@ -89,3 +89,22 @@ def with_flaps_at(airplane: AirplaneGeometry, deflection_deg: float) -> Airplane
         )
 
     return _converted(airplane, flapped) if has_flap(airplane) else airplane
+
+
+def flap_deflections(airplane: AirplaneGeometry) -> list[tuple[str, str, float]]:
+    """The flaps off their rest position as ``(wing key, device label, deflection in deg)``.
+
+    Args:
+        airplane: The geometry with its devices as they are to be evaluated.
+
+    Returns:
+        One entry per flap segment in document order; empty for an airplane at rest.
+    """
+    return [
+        (key, device.name or f"device {index}", device.deflection_deg)
+        for key, wing in (airplane.wings or {}).items()
+        for index, section in enumerate(wing.x_secs)
+        if (device := section.trailing_edge_device) is not None
+        and device.role in FLAP_ROLES
+        and device.deflection_deg
+    ]

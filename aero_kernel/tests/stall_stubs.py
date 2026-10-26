@@ -10,6 +10,7 @@ from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import (
     BestGlide,
     BestGlideSolution,
+    DeflectionDiagnostics,
     MinSink,
     MinSinkSolution,
     OptiAdapter,
@@ -113,6 +114,7 @@ class StubOpti(OptiAdapter):
         self.sweep_calls: list[tuple[AirplaneGeometry, AirState, float, tuple[float, ...]]] = []
         self.roll_rad_s = 3.0  # |p| of the stub's steady roll, signed by the command
         self.roll_failure: Exception | None = None
+        self.roll_confidence: DeflectionDiagnostics | None = None
         self.roll_calls: list[tuple[AirplaneGeometry, float, float, AirState, float, float]] = []
         self.delay_s = delay_s
         self.calls: list[tuple[AirplaneGeometry, float, float, float, AirState]] = []
@@ -201,5 +203,8 @@ class StubOpti(OptiAdapter):
         if self.roll_failure is not None:
             raise self.roll_failure
         return SteadyRoll(
-            p_rad_s=math.copysign(self.roll_rad_s, delta_a_deg), alpha_deg=4.0, warnings=()
+            p_rad_s=math.copysign(self.roll_rad_s, delta_a_deg),
+            alpha_deg=4.0,
+            warnings=(),
+            confidence=self.roll_confidence,
         )

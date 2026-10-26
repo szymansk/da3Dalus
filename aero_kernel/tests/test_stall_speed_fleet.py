@@ -202,11 +202,40 @@ async def test_belemnitos_regression_goldens() -> None:
         assert "conflicting_mass" not in {w.code for w in quantity.warnings}
 
 
-async def test_rv7_regression_goldens_and_the_deflected_flap_the_kernel_does_not_yet_take() -> None:
+# RV-7 with the maintainer's guessed flaps (take-off 15 deg, landing 30 deg), regression of this build
+# (#1212, route A: the flap is the rotated contour behind the hinge, evaluated by NeuralFoil):
+# (V_S m/s, C_L,max, NeuralFoil's lowest analysis_confidence at the stall optimum).
+RV7_TAKEOFF = (6.3137959, 1.3382550, 0.8771531)
+RV7_LANDING = (6.2445456, 1.3681013, 0.4069260)
+
+
+async def rv7_values(*slugs: str) -> dict[str, float | None]:
+    """The values of the given quantities of RV-7 with the maintainer's guessed flaps."""
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": reference_document(FleetMember.RV7),
+            "values": {
+                "aircraft-mass": FleetMember.RV7.mass_kg,
+                "altitude": 0.0,
+                **flap_values(FleetMember.RV7),
+            },
+        }
+    )
+    result = await compute(aircraft, request(*slugs))
+    assert all(q.status is QuantityStatus.OK for q in result.quantities), result
+    return {q.slug: q.value for q in result.quantities}
+
+
+async def test_rv7_regression_goldens_and_the_flaps_computed_never_the_clean_airplane() -> None:
     """RV-7 has flaps and the DB gives no deflection; the maintainer's guess (2026-10-26) is passed
-    as caller parameters: take-off 15 deg, landing 30 deg. The kernel does not yet pass deflected
-    control surfaces to AeroBuildup and declares it instead of computing the clean airplane
-    (ADR 0020), so the two configured stall speeds are that structured error."""
+    as caller parameters: take-off 15 deg, landing 30 deg. Since #1212 AeroBuildup is given the
+    flaps, so the two configured stall speeds are computed with them: they differ from the clean
+    speed and carry the declared model range of the flap.
+
+    Regression, not validation. The flap raises C_L,max (1.22 clean, 1.34 and 1.37) and lowers the
+    stall speed (6.60 clean, 6.31 and 6.24 m/s), the right direction for a flap. NeuralFoil's
+    confidence at the stall optimum falls with the deflection (0.88 at 15 deg, 0.41 at 30 deg) and is
+    reported as a value in control_surface_fit_range_unknown (the threshold is a pending rule)."""
     result = await stall_result(FleetMember.RV7)
     assert_goldens_are_pinned_to_their_tools(result)
     quantities = {q.slug: q for q in result.quantities}
@@ -222,17 +251,44 @@ async def test_rv7_regression_goldens_and_the_deflected_flap_the_kernel_does_not
     ):
         assert quantities[slug].status is QuantityStatus.OK, slug
         assert close(quantities[slug].value, golden, 1e-5), slug
-    for slug, deflection in (("stall-speed-takeoff", 15.0), ("stall-speed-landing", 30.0)):
-        assert quantities[slug].status is QuantityStatus.ERROR, slug
-        assert quantities[slug].value is None, slug
-        error = quantities[slug].error
-        assert error is not None
-        assert error.code == "unsupported_configuration", slug
-        assert error.message == (
-            "deflected control surfaces are not yet passed to AeroBuildup: "
-            f"'flaps' (role flap) of the wing 'main_wing' is at {deflection} deg"
-        ), slug
-        assert error.detail == {"wing": "main_wing", "device": "flaps", "role": "flap"}, slug
+    assert "control_surface_fit_range_unknown" not in {
+        w.code for w in quantities["stall-speed"].warnings
+    }
+    for slug, golden, deflection in (
+        ("stall-speed-takeoff", RV7_TAKEOFF[0], 15.0),
+        ("stall-speed-landing", RV7_LANDING[0], 30.0),
+    ):
+        quantity = quantities[slug]
+        assert quantity.status is QuantityStatus.OK, slug
+        assert close(quantity.value, golden, 1e-5), slug
+        clean_speed = quantities["stall-speed"].value
+        assert clean_speed is not None
+        assert quantity.value is not None
+        assert quantity.value < clean_speed, slug  # a flap lowers the stall speed
+        assert not close(quantity.value, clean_speed, 1e-3), slug  # never the clean airplane's
+        (caveat,) = [w for w in quantity.warnings if w.code == "control_surface_fit_range_unknown"]
+        confidence = RV7_TAKEOFF[2] if slug.endswith("takeoff") else RV7_LANDING[2]
+        assert close(float(caveat.detail["min_confidence"]), confidence, 1e-5), slug  # pyright: ignore[reportArgumentType]
+        assert caveat.detail["flaps"] == [
+            {"wing": "main_wing", "device": "flaps", "deflection_deg": deflection}
+        ], slug
+        declared = {w.code for w in quantity.warnings}
+        # take-off (0.877, 15 deg) is inside the trusted range; landing (0.407) is not; neither
+        # deflection is above the 30 deg limit
+        assert ("flap_confidence_low" in declared) is (slug == "stall-speed-landing"), slug
+        assert "flap_deflection_beyond_validity" not in declared, slug
+    found = await rv7_values("max-lift-coefficient-takeoff", "max-lift-coefficient-landing")
+    assert close(found["max-lift-coefficient-takeoff"], RV7_TAKEOFF[1], 1e-5)
+    assert close(found["max-lift-coefficient-landing"], RV7_LANDING[1], 1e-5)
+
+
+async def test_rv7_speeds_from_the_configured_stall_speeds() -> None:
+    """The margins bind the configured stall speeds: V_app = 1.3 V_S,LDG, V_td = 1.1 V_S,LDG and
+    V_TO = 1.1 V_S,TO (default margins), so the flapped values enter and not the clean ones."""
+    found = await rv7_values("approach-speed", "touchdown-speed", "takeoff-speed")
+    assert close(found["approach-speed"], 1.3 * RV7_LANDING[0], 1e-6)
+    assert close(found["touchdown-speed"], 1.1 * RV7_LANDING[0], 1e-6)
+    assert close(found["takeoff-speed"], 1.1 * RV7_TAKEOFF[0], 1e-6)
 
 
 @pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))

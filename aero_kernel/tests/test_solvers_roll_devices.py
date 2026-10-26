@@ -194,5 +194,5 @@ def test_deflected_geometry_state_still_refused(on_device: bool) -> None:
         surface_deflection=None if on_device else 2.0,
     )
     with pytest.raises(FormulaError) as raised:
-        refuse_deflected_devices(model, "AeroBuildup")
+        refuse_deflected_devices(model, "AeroBuildup", flaps_supported=True)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION

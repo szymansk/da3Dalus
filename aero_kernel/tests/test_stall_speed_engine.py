@@ -17,18 +17,19 @@ from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
     ComputeResult,
+    FlowConditions,
     QuantityResult,
     QuantityStatus,
 )
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import OptiAdapter, StallRequest, StallSolution
+from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, StubAtmosphere, close, solvers_with
 from aero_kernel.tests.solver_builders import InProcessRuntime
 from aero_kernel.tests.stall_stubs import (
     INVERTED_TROUGH,
     UPRIGHT_PEAK,
     StubOpti,
-    consistent_stall,
     lift_curve,
 )
 
@@ -241,21 +242,38 @@ async def test_an_expired_time_budget_cancels_the_solve_and_reports_timeout() ->
     assert opti.cancelled
 
 
-async def test_a_flapped_landing_is_an_error_and_never_the_clean_speed(
+def flap_aware_stall(request: StallRequest) -> StallSolution:
+    """A self-consistent stall whose C_L,max rises by 1 % per degree of flap: the configuration the
+    solver was given shows in the value."""
+    deflection = flap_deflections(request.airplane)[0] or 0.0
+    alpha_s, cl_clean = UPRIGHT_PEAK
+    cl_max = cl_clean * (1.0 + deflection / 100.0)
+    area = stand_in_main_wing_properties(request.airplane).s_ref
+    v_s = math.sqrt(2.0 * request.mass_kg * request.gravity / (request.air.density * area * cl_max))
+    flow = FlowConditions(
+        v_ms=v_s,
+        density=request.air.density,
+        dynamic_viscosity=request.air.dynamic_viscosity,
+        speed_of_sound=request.air.speed_of_sound,
+    )
+    polar = lift_curve((alpha_s, cl_max), upright=True).model_copy(update={"conditions": flow})
+    return StallSolution(v_s=v_s, cl_max=cl_max, alpha_s=alpha_s, polar=polar)
+
+
+async def test_a_flapped_landing_reaches_the_solver_with_its_flap_and_never_as_the_clean_speed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The reviewer's reproduction: a flap and flap-deflection-landing = 30 deg. The conversion does
-    not pass devices to AeroBuildup yet, so the real adapter refuses instead of returning V_S1."""
+    """The reviewer's reproduction (a flap and flap-deflection-landing = 30 deg), now computed: the
+    real adapter hands the worker the flapped airplane, the landing value is the flapped one (it
+    differs from the clean speed) and the result declares the model range of the flap. The clean
+    speed is never returned for a flapped request."""
     adapter = OptiAdapter(InProcessRuntime())
     calls: list[StallRequest] = []
 
     def worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
         calls.append(request)
         return WorkerOutcome(
-            value=consistent_stall(
-                request.airplane, request.mass_kg, request.gravity, request.n_load, request.air
-            ),
-            diagnostics=WorkerDiagnostics(duration_s=0.0),
+            value=flap_aware_stall(request), diagnostics=WorkerDiagnostics(duration_s=0.0)
         )
 
     monkeypatch.setattr(opti_module, "stall_worker", worker)
@@ -270,9 +288,64 @@ async def test_a_flapped_landing_is_an_error_and_never_the_clean_speed(
     quantities = by_slug(result)
     assert quantities["stall-speed"].status is QuantityStatus.OK
     landing = quantities["stall-speed-landing"]
-    assert landing.status is QuantityStatus.ERROR
-    assert landing.value is None
-    assert landing.error is not None
-    assert landing.error.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
-    assert "flap" in landing.error.message
-    assert len(calls) == 1  # only the clean airplane reached a solver
+    assert landing.status is QuantityStatus.OK
+    assert landing.error is None
+    assert close(quantities["stall-speed"].value, V_CLEAN, 1e-9)
+    assert landing.value is not None
+    assert close(landing.value, V_CLEAN / math.sqrt(1.3), 1e-9)
+    assert sorted(flap_deflections(c.airplane)[0] or 0.0 for c in calls) == [0.0, 30.0]
+    (caveat,) = [w for w in landing.warnings if w.code == "control_surface_fit_range_unknown"]
+    assert caveat.detail["flaps"] == [
+        {"wing": "Main", "device": "device 0", "deflection_deg": 30.0}
+    ]
+    assert all(
+        w.code != "control_surface_fit_range_unknown" for w in quantities["stall-speed"].warnings
+    )
+
+
+async def test_the_flapped_stall_declares_a_low_confidence_and_an_over_limit_deflection() -> None:
+    """Rule flap-model-validity: the value is returned with a declared defect; a confidence at the
+    take-off configuration above the floor and a deflection at the limit declare nothing."""
+    from aero_kernel.solvers.opti import DeflectionDiagnostics
+
+    def diagnostics(value: float) -> DeflectionDiagnostics:
+        return DeflectionDiagnostics(
+            min_confidence=value,
+            min_confidence_wing="Main",
+            max_effective_alpha_deg=10.0,
+            max_effective_alpha_wing="Main",
+        )
+
+    class Confident(StubOpti):
+        async def stall(self, airplane, mass_kg, gravity, n_load, air):  # type: ignore[no-untyped-def,override]
+            stalled = await super().stall(airplane, mass_kg, gravity, n_load, air)
+            deflection = flap_deflections(airplane)[0] or 0.0
+            solution = stalled.solution.model_copy(
+                update={"diagnostics": diagnostics(0.877 if deflection < 20.0 else 0.407)}
+            )
+            return stalled.model_copy(update={"solution": solution})
+
+    values = {"flap-deflection-takeoff": 15.0, "flap-deflection-landing": 30.0}
+    result, _ = await run(
+        "stall-speed-takeoff", "stall-speed-landing", stub=Confident(), flap=True, values=values
+    )
+    found = by_slug(result)
+    assert [w.code for w in found["stall-speed-takeoff"].warnings] == []
+    (low,) = [w for w in found["stall-speed-landing"].warnings if w.code == "flap_confidence_low"]
+    assert low.detail == {"min_confidence": 0.407, "threshold": 0.85, "wing": "Main"}
+    assert not [
+        w
+        for w in found["stall-speed-landing"].warnings
+        if w.code == "flap_deflection_beyond_validity"
+    ]
+    over, _ = await run(
+        "stall-speed-landing", stub=Confident(), flap=True, values={"flap-deflection-landing": 31.0}
+    )
+    (declared,) = [
+        w
+        for w in by_slug(over)["stall-speed-landing"].warnings
+        if w.code == "flap_deflection_beyond_validity"
+    ]
+    assert declared.detail["flaps"] == [
+        {"wing": "Main", "device": "device 0", "deflection_deg": 31.0}
+    ]

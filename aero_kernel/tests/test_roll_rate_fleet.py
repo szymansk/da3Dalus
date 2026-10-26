@@ -283,14 +283,33 @@ async def test_wiesel_roll_rate_waits_for_the_stall_speed_the_fuselage_blocks() 
         assert "because `stall-speed-landing` failed" in quantity.error.message
 
 
-async def test_rv7_roll_rate_waits_for_the_landing_stall_speed_with_deflected_flaps() -> None:
-    """RV-7's flaps are set to the maintainer's guess (landing 30 deg); the kernel does not yet pass
-    deflected control surfaces to AeroBuildup and declares it rather than computing the clean
-    airplane, so the approach speed and the roll rate wait for it."""
-    for quantity in (await run(FleetMember.RV7)).quantities:
-        assert quantity.status is QuantityStatus.ERROR, quantity.slug
-        assert quantity.error is not None
-        assert quantity.error.code == "upstream_failed"
-        assert quantity.error.detail["causes"] == [
-            {"quantity": "stall-speed-landing", "code": "unsupported_configuration"}
-        ]
+# RV-7 on approach (#1212): the landing configuration, flaps at 30 deg (route A: the rotated contour),
+# V_app = 1.3 * 6.2445 m/s. Regression values of the AeroBuildup world; the AVL world (p_hat 0.2213,
+# beyond its range) is dropped from the interval and shown in its declaration.
+RV7_AB_P_DEG_S, RV7_AB_P_HAT = 226.38745, 0.1995581
+RV7_AVL_P_DEG_S, RV7_AVL_P_HAT = 251.05240, 0.2213
+RV7_ROLL_CONFIDENCE = 0.3927175
+
+
+async def test_rv7_roll_on_approach_is_evaluated_on_the_landing_configuration() -> None:
+    """Maintainer decision 2026-10-26: the approach roll uses the landing configuration. With the
+    flap as geometry the flapped C_L(alpha) curve has no spurious low peak any more, so the
+    AeroBuildup world converges (it failed with the tau * delta flap: C_L 0.681 needed, first peak
+    0.651). The AVL world is beyond its range and leaves the interval (decision (b) of #1243)."""
+    p, p_hat = (await run(FleetMember.RV7)).quantities
+    for quantity, golden, rel in ((p, RV7_AB_P_DEG_S, 1e-4), (p_hat, RV7_AB_P_HAT, 1e-4)):
+        found = worlds(quantity)
+        assert set(found) == {AB}, quantity.slug
+        assert close(found[AB], golden, rel), quantity.slug
+    shown = _detail(excluded_avl(p), "p_deg_s")
+    assert close(shown, RV7_AVL_P_DEG_S, 1e-4)
+    assert close(_detail(excluded_avl(p_hat), "p_hat"), RV7_AVL_P_HAT, 1e-3)
+    for world, code in ((AB, "control_surface_fit_range_unknown"), (AVL, "avl_flap_linearised")):
+        assert code in codes(p, world), (world, code)
+    (roll_caveat,) = [
+        w for w in p.warnings if w.code == "control_surface_fit_range_unknown" and w.world == AB
+    ]
+    assert "flap_confidence_low" in codes(p, AB)  # 0.393 is below the 0.85 floor
+    assert "flap_confidence_low" not in codes(p, AVL)
+    assert "flap_deflection_beyond_validity" not in codes(p)
+    assert close(float(roll_caveat.detail["min_confidence"]), RV7_ROLL_CONFIDENCE, 1e-4)  # pyright: ignore[reportArgumentType]

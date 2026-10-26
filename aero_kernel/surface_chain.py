@@ -24,6 +24,8 @@ class ChainDevice(BaseModel):
         hinge_start: Hinge position (fraction of chord) at the start of the oriented segment.
         hinge_end: Hinge position at the end of the oriented segment; the root hinge's where the
             format gives no tip hinge (ch. 6).
+        deflection_deg: The device's deflection in degrees as the airplane is to be evaluated
+            (trailing edge down positive); ``None`` or zero at rest.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -32,6 +34,7 @@ class ChainDevice(BaseModel):
     role: str
     hinge_start: float | None
     hinge_end: float | None
+    deflection_deg: float | None = None
 
 
 class ChainPoint(BaseModel):
@@ -134,4 +137,5 @@ def _device(wing: Wing, first: int, second: int) -> ChainDevice | None:
         role=device.role,
         hinge_start=tip if reversed_ else root,
         hinge_end=root if reversed_ else tip,
+        deflection_deg=device.deflection_deg,
     )

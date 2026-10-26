@@ -631,6 +631,9 @@
         "opt_alpha_margin_deg": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_flap_rib_gap": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_hinge_floor": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -658,6 +661,7 @@
         "opt_active_bound_fraction",
         "opt_alpha_margin_deg",
         "opt_hinge_floor",
+        "opt_flap_rib_gap",
         "avl_contour_margin"
       ],
       "title": "KernelConfig",

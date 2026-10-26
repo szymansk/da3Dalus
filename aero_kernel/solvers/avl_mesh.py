@@ -11,8 +11,8 @@ interpolated linearly between them. Meshing a surface at its own section breaks 
 different widths, and AVL's neutral point then depends on them (BRYAN: a root section stored 0.25 mm
 off the centreline gave a strip across its own mirror image and moved the neutral point by 3 % MAC).
 
-The one exception is a run that drives the roll devices (``drive_roll``): the ends of every driven
-device are stations then, because AVL controls a strip only if both bounding sections declare the
+The one exception is a run that drives the roll devices (``drive_roll``) or holds deflected flaps
+(``drive_flaps``): the ends of every driven device are stations then, because AVL controls a strip only if both bounding sections declare the
 control (``amake.f:397-399``), and the uniform stations that would leave a sliver next to such an end
 are dropped. The tail takes the wing's stations inside its span as always, so a break on the wing is
 a station on the tail too and the wing's trailing vortex there never meets a tail control point.
@@ -23,15 +23,22 @@ from bisect import bisect_right
 from collections.abc import Callable, Sequence
 from itertools import pairwise
 
+from aero_kernel.devices import FLAP_ROLES
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import Airfoil, AirplaneGeometry, Wing
 from aero_kernel.graph import AILERON_ROLES
-from aero_kernel.solvers.devices import roll_deflection, roll_segments
+from aero_kernel.solvers.devices import (
+    flap_segments,
+    roll_deflection,
+    roll_segments,
+)
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 from pydantic import BaseModel, ConfigDict
 
 __all__ = [
+    "FLAP_CONTROL",
     "MESH_DECIMALS",
+    "ROLL_CONTROL",
     "SLIVER_STEPS",
     "MeshControl",
     "MeshSection",
@@ -42,22 +49,37 @@ __all__ = [
 
 # A tail station closer to the tail tip than this many wing strip widths would leave a sliver strip.
 SLIVER_STEPS = 0.3
+# A flap control is the deflection itself: the variable is the angle, the gain one.
+FLAP_GAIN = 1.0
 # Stations are merged when they agree to this many decimals (metres).
 MESH_DECIMALS = 9
 
 
+# The two control variables of a run. The roll control is one name for every device acting as
+# aileron, driven antisymmetrically (SgnDup -1 makes the mirrored half deflect the other way,
+# avl_doc.txt:755-757); the flap control is one name for every deflected flap, symmetric (SgnDup +1).
+ROLL_CONTROL = "aileron"
+FLAP_CONTROL = "flap"
+ROLL_SGN_DUP = -1
+FLAP_SGN_DUP = 1
+
+
 class MeshControl(BaseModel):
-    """The roll control declared on a station (AVL ``CONTROL``).
+    """A control declared on a station (AVL ``CONTROL``).
 
     Attributes:
         gain: Deflection per unit of the control variable, on the side as written (+y).
         x_hinge: Hinge position as a fraction of the local chord.
+        name: The control variable's name: :data:`ROLL_CONTROL` or :data:`FLAP_CONTROL`.
+        sgn_dup: The sign of the mirrored half's deflection relative to the written one.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     gain: float
     x_hinge: float
+    name: str = ROLL_CONTROL
+    sgn_dup: int = ROLL_SGN_DUP
 
 
 class MeshSection(BaseModel):
@@ -71,6 +93,7 @@ class MeshSection(BaseModel):
         twist: Twist in degrees.
         airfoil: Index of the airfoil, as numbered by the caller's callback.
         control: The roll control declared here, if the station lies on a driven device.
+        flap: The flap control declared here, if the station lies on a deflected flap.
         chord_range: The part of the airfoil this piece of a split surface carries, as fractions
             of the chord (AVL ``AFIL x_min x_max``); ``None`` for the whole contour.
     """
@@ -84,7 +107,12 @@ class MeshSection(BaseModel):
     twist: float
     airfoil: int
     control: MeshControl | None = None
+    flap: MeshControl | None = None
     chord_range: tuple[float, float] | None = None
+
+    def controls(self) -> tuple[MeshControl, ...]:
+        """The controls declared here, the roll control first (the order they are written in)."""
+        return tuple(c for c in (self.control, self.flap) if c is not None)
 
 
 class MeshSurface(BaseModel):
@@ -207,13 +235,25 @@ class _Span(BaseModel):
 
 
 def _driven_spans(
-    wing_key: str, chain: Sequence[ChainPoint], join_tolerance_m: float
+    wing_key: str,
+    chain: Sequence[ChainPoint],
+    join_tolerance_m: float,
+    roles: frozenset[str],
+    *,
+    deflected_only: bool = False,
 ) -> list[_Span]:
     """The driven segments of the oriented chain with the absolute hinge line of each.
 
     The hinge line of a segment runs straight from ``x_le + h c`` at its start to the same at its
     end (AVL interpolates the same line between sections, ``amake.f:415-419``). Two positions closer
     than ``join_tolerance_m`` (canon rule ``hinge-line-continuity``) are the same rib.
+
+    Args:
+        wing_key: Key of the wing, for the message.
+        chain: The oriented chain of the main wing.
+        join_tolerance_m: The canon rule's join tolerance.
+        roles: The roles of the devices that make a span.
+        deflected_only: Only devices off their rest position make a span (the flaps).
 
     Raises:
         FormulaError: ``unsupported_configuration`` (``hinge_line_discontinuous``) if two driven
@@ -222,7 +262,9 @@ def _driven_spans(
     spans: list[_Span] = []
     for start, end in pairwise(chain):
         device = start.device
-        if device is None or device.role not in AILERON_ROLES:
+        if device is None or device.role not in roles:
+            continue
+        if deflected_only and not device.deflection_deg:
             continue
         if device.hinge_start is None or device.hinge_end is None:
             msg = "a driven device without a hinge: roll_segments must have refused it"
@@ -241,7 +283,7 @@ def _driven_spans(
             raise FormulaError(
                 ErrorCategory.UNSUPPORTED_CONFIGURATION,
                 "hinge_line_discontinuous",
-                f"the roll device of the wing {wing_key!r} has a hinge line with a jump at "
+                f"the driven device of the wing {wing_key!r} has a hinge line with a jump at "
                 f"y = {before.y_end:.6g} m",
                 "AVL holds one hinge position per section: make the hinge line continuous",
                 detail={"wing": wing_key, "y_m": before.y_end},
@@ -271,37 +313,58 @@ def _device_ends(spans: Sequence[_Span], join_tolerance_m: float) -> list[float]
 
 
 def _control_at(
-    y: float, spans: Sequence[_Span], section: MeshSection, join_tolerance_m: float
+    y: float,
+    spans: Sequence[_Span],
+    section: MeshSection,
+    join_tolerance_m: float,
+    control: tuple[str, int],
 ) -> MeshControl | None:
-    """The roll control of a station: on a driven span (ends inclusive), hinge from its line."""
+    """The control of a station: on a driven span (ends inclusive), hinge from its line.
+
+    Args:
+        y: The station.
+        spans: The driven spans of the control.
+        section: The mesh section at the station.
+        join_tolerance_m: The canon rule's join tolerance.
+        control: The control's name and the sign of its mirrored half.
+    """
+    name, sgn_dup = control
     for span in spans:
         if span.y_start - join_tolerance_m <= y <= span.y_end + join_tolerance_m:
             fraction = (y - span.y_start) / (span.y_end - span.y_start)
             x_line = span.x_start + min(max(fraction, 0.0), 1.0) * (span.x_end - span.x_start)
             return MeshControl(
-                gain=roll_deflection(1, 1.0), x_hinge=(x_line - section.x) / section.chord
+                gain=roll_deflection(1, 1.0) if name == ROLL_CONTROL else FLAP_GAIN,
+                x_hinge=(x_line - section.x) / section.chord,
+                name=name,
+                sgn_dup=sgn_dup,
             )
     return None
 
 
-def _refuse_driven_device_off(wings: dict[str, Wing], main_key: str) -> None:
-    """Refuse a roll device outside the main wing: nothing would drive it in the AVL file."""
+def _refuse_driven_device_off(
+    wings: dict[str, Wing], main_key: str, roles: frozenset[str], *, deflected_only: bool = False
+) -> None:
+    """Refuse a driven device outside the main wing: nothing would drive it in the AVL file."""
     for key, wing in wings.items():
         if key == main_key:
             continue
         for index, section in enumerate(wing.x_secs):
             device = section.trailing_edge_device
-            if device is not None and device.role in AILERON_ROLES:
-                label = device.name or f"device {index}"
-                raise FormulaError(
-                    ErrorCategory.UNSUPPORTED_CONFIGURATION,
-                    "unsupported_layout",
-                    f"the roll device {label!r} (role {device.role}) sits on {key!r}, not on the "
-                    "main wing",
-                    "the steady roll is driven by devices of the main wing only",
-                    detail={"wing": key, "device": label, "role": device.role},
-                    parameter="airplane",
-                )
+            if device is None or device.role not in roles:
+                continue
+            if deflected_only and not device.deflection_deg:
+                continue
+            label = device.name or f"device {index}"
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "unsupported_layout",
+                f"the driven device {label!r} (role {device.role}) sits on {key!r}, not on the "
+                "main wing",
+                "the steady roll is driven, and flaps are deflected, on the main wing only",
+                detail={"wing": key, "device": label, "role": device.role},
+                parameter="airplane",
+            )
 
 
 def split_at_hinge(
@@ -311,7 +374,8 @@ def split_at_hinge(
 
     Both pieces have the same stations, so the strips agree (``avl_doc.txt:1110-1117``: same
     component, same spanwise spacing). The split fraction of a station is the hinge position of its
-    control; a station off the devices takes the one of the nearest controlled station, a cut that
+    control (the most forward one where a roll control and a flap meet; the other is then measured
+    from the cut); a station off the devices takes the one of the nearest controlled station, a cut that
     is continuous and otherwise immaterial. The aft piece starts at the hinge with the leading-edge
     z unchanged (AVL tilts the normals by the incidence, it does not rotate the lattice,
     ``amake.f:497-511``) and carries the control with its hinge at its own leading edge, so the
@@ -324,12 +388,24 @@ def split_at_hinge(
     Returns:
         The front and the aft surface.
     """
-    controlled = [(s.y, s.control.x_hinge) for s in surface.sections if s.control is not None]
+
+    def cut_of(section: MeshSection) -> float | None:
+        """The split fraction a controlled station asks for: its most forward hinge."""
+        return min((c.x_hinge for c in section.controls()), default=None)
+
+    controlled = [(s.y, cut) for s in surface.sections if (cut := cut_of(s)) is not None]
 
     def split_of(section: MeshSection) -> float:
-        if section.control is not None:
-            return section.control.x_hinge
+        own = cut_of(section)
+        if own is not None:
+            return own
         return min(controlled, key=lambda c: abs(c[0] - section.y))[1]
+
+    def moved(control: MeshControl | None, cut: float) -> MeshControl | None:
+        """The control on the aft piece: its hinge measured from the cut (0 where the cut is it)."""
+        if control is None:
+            return None
+        return control.model_copy(update={"x_hinge": (control.x_hinge - cut) / (1.0 - cut)})
 
     front: list[MeshSection] = []
     aft: list[MeshSection] = []
@@ -337,18 +413,21 @@ def split_at_hinge(
         cut = split_of(section)
         front.append(
             section.model_copy(
-                update={"chord": cut * section.chord, "control": None, "chord_range": (0.0, cut)}
+                update={
+                    "chord": cut * section.chord,
+                    "control": None,
+                    "flap": None,
+                    "chord_range": (0.0, cut),
+                }
             )
         )
-        control = None
-        if section.control is not None:
-            control = MeshControl(gain=section.control.gain, x_hinge=0.0)
         aft.append(
             section.model_copy(
                 update={
                     "x": section.x + cut * section.chord,
                     "chord": (1.0 - cut) * section.chord,
-                    "control": control,
+                    "control": moved(section.control, cut),
+                    "flap": moved(section.flap, cut),
                     "chord_range": (cut, 1.0),
                 }
             )
@@ -371,6 +450,36 @@ def split_at_hinge(
     )
 
 
+def _refuse_undrivable(
+    airplane: AirplaneGeometry, main_key: str, *, drive_roll: bool, drive_flaps: bool
+) -> None:
+    """Apply the shared device rules of a driven run and refuse a driven device off the main wing."""
+    if drive_roll:
+        roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
+        _refuse_driven_device_off(airplane.wings or {}, main_key, AILERON_ROLES)
+    if drive_flaps:
+        flap_segments(airplane)  # the same rules for a deflected flap
+        _refuse_driven_device_off(airplane.wings or {}, main_key, FLAP_ROLES, deflected_only=True)
+
+
+def _main_spans(
+    main_key: str,
+    chain: Sequence[ChainPoint],
+    join_tolerance_m: float,
+    *,
+    drive_roll: bool,
+    drive_flaps: bool,
+) -> tuple[list[_Span], list[_Span]]:
+    """The roll spans and the flap spans of the main wing's chain (empty where not driven)."""
+    roll = _driven_spans(main_key, chain, join_tolerance_m, AILERON_ROLES) if drive_roll else []
+    flap = (
+        _driven_spans(main_key, chain, join_tolerance_m, FLAP_ROLES, deflected_only=True)
+        if drive_flaps
+        else []
+    )
+    return roll, flap
+
+
 def mesh_surfaces(
     airplane: AirplaneGeometry,
     n_wing: int,
@@ -378,6 +487,7 @@ def mesh_surfaces(
     *,
     join_tolerance_m: float,
     drive_roll: bool = False,
+    drive_flaps: bool = False,
 ) -> tuple[MeshSurface, ...]:
     """The aligned mesh: main wing, horizontal tail, then the other surfaces by name.
 
@@ -392,6 +502,9 @@ def mesh_surfaces(
             become stations of the main wing (and, inside its span, of the tail) and every station
             on a device carries a control. ``False`` is the clean mesh. The main wing is the first
             surface; :func:`split_at_hinge` splits it for the run.
+        drive_flaps: Whether the deflected flaps are held in this run: like ``drive_roll`` for the
+            devices of role ``flap`` or ``flaperon`` that are off their rest position, with the
+            symmetric control :data:`FLAP_CONTROL`. A flaperon carries both controls.
 
     Returns:
         The surfaces with their stations.
@@ -399,8 +512,9 @@ def mesh_surfaces(
     Raises:
         ValueError: If there is no ``main_wing``.
         FormulaError: ``unsupported_configuration`` for a driven device off the main wing or with
-            a discontinuous hinge line (``drive_roll`` only); the errors of
-            :func:`aero_kernel.solvers.devices.roll_segments`.
+            a discontinuous hinge line (``drive_roll`` or ``drive_flaps`` only); the errors of
+            :func:`aero_kernel.solvers.devices.roll_segments` and
+            :func:`aero_kernel.solvers.devices.flap_segments`.
     """
     wings = list((airplane.wings or {}).values())
     mains = [w for w in wings if w.surface_type == "main_wing"]
@@ -408,11 +522,8 @@ def mesh_surfaces(
         msg = "the aligned mesh needs a main_wing"
         raise ValueError(msg)
     main = mains[0]
-    spans: list[_Span] = []
     main_key = next(key for key, wing in (airplane.wings or {}).items() if wing is main)
-    if drive_roll:
-        roll_segments(airplane)  # the shared rules: mirrored surface, hinge given
-        _refuse_driven_device_off(airplane.wings or {}, main_key)
+    _refuse_undrivable(airplane, main_key, drive_roll=drive_roll, drive_flaps=drive_flaps)
     tails = [w for w in wings if w.surface_type == "horizontal_tail"]
     rest = sorted((w for w in wings if w is not main and w not in tails), key=lambda w: w.name)
 
@@ -420,14 +531,23 @@ def mesh_surfaces(
     y_root, y_tip = _root(main, main_chain), main_chain[-1].y
     step = (y_tip - y_root) / n_wing
     main_stations = _uniform(y_root, y_tip, n_wing)
-    if drive_roll:
-        spans = _driven_spans(main_key, main_chain, join_tolerance_m)
-        main_stations = _sine_to_tip(y_root, y_tip, n_wing, _device_ends(spans, join_tolerance_m))
+    roll_spans, flap_spans = _main_spans(
+        main_key, main_chain, join_tolerance_m, drive_roll=drive_roll, drive_flaps=drive_flaps
+    )
+    if drive_roll or drive_flaps:
+        breaks = [
+            *_device_ends(roll_spans, join_tolerance_m),
+            *_device_ends(flap_spans, join_tolerance_m),
+        ]
+        main_stations = _sine_to_tip(y_root, y_tip, n_wing, breaks)
 
     def main_section(y: float) -> MeshSection:
         section = _section_at(main_chain, 1, y, airfoil_index)
-        control = _control_at(y, spans, section, join_tolerance_m)
-        return section if control is None else section.model_copy(update={"control": control})
+        control = _control_at(
+            y, roll_spans, section, join_tolerance_m, (ROLL_CONTROL, ROLL_SGN_DUP)
+        )
+        flap = _control_at(y, flap_spans, section, join_tolerance_m, (FLAP_CONTROL, FLAP_SGN_DUP))
+        return section.model_copy(update={"control": control, "flap": flap})
 
     surfaces = [
         MeshSurface(

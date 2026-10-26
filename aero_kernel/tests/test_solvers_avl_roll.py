@@ -387,7 +387,7 @@ class RefinedRunFails(FakeAvl):
         surfaces: tuple[MeshSurface, ...],
         contours: tuple[Contour, ...],
         mesh: tuple[int, int],
-        run: tuple[float, float],
+        run: tuple[float, float, float],
         reference: MainWingProperties,
         xyz_ref: tuple[float, float, float],
     ) -> RollOutput:

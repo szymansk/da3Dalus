@@ -158,8 +158,30 @@ aerobuildup-no-deflected-device:
   applies_to: {formula: stall-speed}
   kind: tool
   on_violation: error
-  criterion: "AeroBuildup runs the clean airplane (devices at 0 deg, ARCHITECTURE 8.11): a deflected control device is refused rather than computed as the clean airplane."
+  criterion: "AeroBuildup is given the flaps of a configuration as deflected contours (#1212; the stall-speed applications takeoff and landing) and the roll command as an aileron surface; any other deflected control device is refused rather than computed as the clean airplane."
   codes: [unsupported_configuration]
+
+flap-model-validity:
+  applies_to: {formula: stall-speed}
+  kind: tool
+  on_violation: warning
+  criterion: "A flap is the rotated contour behind its hinge, evaluated by NeuralFoil (a plain, single-element flap; maintainer 2026-10-26, #1212). The result of stall-speed (take-off and landing applications) and of roll-rate (approach) is declared outside the model's trusted range when NeuralFoil's analysis_confidence of a section at the solution is below min_confidence (flap_confidence_low), and when a flap deflection is above max_flap_deflection (flap_deflection_beyond_validity). The value is computed and returned with the declaration, never withheld."
+  codes: [flap_confidence_low, flap_deflection_beyond_validity]
+  parameters:
+    min_confidence:
+      value: 0.85
+      unit: "1"
+      basis: convention
+      status: adopted
+      source: "the app's existing low-confidence flag for NeuralFoil polars, app/settings.py low_re_low_confidence_flag = 0.85 ('Low analysis confidence - validate with XFoil'); one threshold for one concept; adopted by the maintainer 2026-10-26, #1212. The kernel must not import app/ (E8), so the value is stated twice: a later change of either must change both. Measured on RV-7 (NACA 23013.5, Re 1e5, hinge 0.75): flap 15 deg gives confidence of at least 0.93 at the section, 30 deg 0.35 to 0.8"
+      regime: "RC/UAV: measured at chord Reynolds numbers 1e5 and 3e5, inside the band of ADR 0028"
+    max_flap_deflection:
+      value: 30.0
+      unit: deg
+      basis: convention
+      status: adopted
+      source: "plain-flap separation above about 40 deg (Scholz ch. 8 / Sadraey 5.12.2), earlier at low Re; 30 deg keeps a margin; adopted by the maintainer 2026-10-26, #1212"
+      regime: "transport and general-aviation material for the separation angle, not checked at model Reynolds number (ADR 0028); the adopted value is deliberately below it"
 
 avl-mesh-layout:
   applies_to: {formula: roll-rate}

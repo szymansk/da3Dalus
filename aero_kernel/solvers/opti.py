@@ -28,6 +28,9 @@ from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
 from aero_kernel.solvers.base import SolverAdapter, regime_by_wing
 from aero_kernel.solvers.devices import (
+    FlapSegment,
+    RollSegment,
+    flap_segments,
     refuse_deflected_devices,
     roll_hinge_warnings,
     roll_segments,
@@ -110,6 +113,28 @@ class StallRequest(BaseModel):
     air: AirState
 
 
+class DeflectionDiagnostics(BaseModel):
+    """What the deflected evaluation tells about NeuralFoil's validity (M1, ch. 8.8).
+
+    Recorded over every section of every wing, not just the ailerons'.
+
+    Attributes:
+        min_confidence: The lowest ``analysis_confidence`` of any section call.
+        min_confidence_wing: The wing key of that section.
+        max_effective_alpha_deg: The highest angle ``alpha + sum(tau * delta)`` any section saw:
+            the shift before NeuralFoil's 360-degree blend, which uses the unshifted angle for its
+            post-stall weight and is no part of tau.
+        max_effective_alpha_wing: The wing key of that section.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    min_confidence: float
+    min_confidence_wing: str
+    max_effective_alpha_deg: float
+    max_effective_alpha_wing: str
+
+
 class StallSolution(BaseModel):
     """The solution of the stall problem.
 
@@ -118,6 +143,8 @@ class StallSolution(BaseModel):
         cl_max: The lift coefficient at the optimum: C_L,max (n > 0) or C_L,min (n < 0).
         alpha_s: The angle of attack at the optimum in degrees.
         polar: The sweep at ``v_s``, with ``alpha_s`` among its samples.
+        diagnostics: What NeuralFoil's confidence is at the optimum of an airplane with deflected
+            flaps (one recording run at ``v_s`` and ``alpha_s``); ``None`` without a flap.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -126,6 +153,7 @@ class StallSolution(BaseModel):
     cl_max: float
     alpha_s: float
     polar: Polar
+    diagnostics: DeflectionDiagnostics | None = None
 
 
 class SweepRequest(BaseModel):
@@ -247,28 +275,6 @@ class RollRequest(BaseModel):
     delta_deg: float
 
 
-class DeflectionDiagnostics(BaseModel):
-    """What the deflected evaluation tells about NeuralFoil's validity (M1, ch. 8.8).
-
-    Recorded over every section of every wing, not just the ailerons'.
-
-    Attributes:
-        min_confidence: The lowest ``analysis_confidence`` of any section call.
-        min_confidence_wing: The wing key of that section.
-        max_effective_alpha_deg: The highest angle ``alpha + sum(tau * delta)`` any section saw:
-            the shift before NeuralFoil's 360-degree blend, which uses the unshifted angle for its
-            post-stall weight and is no part of tau.
-        max_effective_alpha_wing: The wing key of that section.
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    min_confidence: float
-    min_confidence_wing: str
-    max_effective_alpha_deg: float
-    max_effective_alpha_wing: str
-
-
 class RollSolution(BaseModel):
     """The solution of the steady-roll problem.
 
@@ -292,6 +298,7 @@ class SteadyRoll(BaseModel):
         p_rad_s: The roll rate about the stability x axis in rad/s (positive = right roll).
         alpha_deg: The angle of attack at the solution in degrees.
         warnings: The caveats (averaged hinge, deflection model, regime), without origin.
+        confidence: NeuralFoil's confidence at the solution (the recording run), if one was made.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -299,6 +306,7 @@ class SteadyRoll(BaseModel):
     p_rad_s: float
     alpha_deg: float
     warnings: tuple[KernelWarning, ...]
+    confidence: DeflectionDiagnostics | None = None
 
 
 def _not_converged(message: str, hint: str, **detail: float | str) -> FormulaError:
@@ -552,7 +560,18 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     angles = sorted({*_grid(), optimum.alpha})
     polar = sweep_polar(problem.airplane, request.air, optimum.speed, angles, NEURALFOIL_MODEL_SIZE)
     cl_max = polar.cl[polar.alpha_deg.index(optimum.alpha)]
-    solution = StallSolution(v_s=optimum.speed, cl_max=cl_max, alpha_s=optimum.alpha, polar=polar)
+    found = (
+        _flap_diagnostics(request, problem.airplane, optimum.speed, optimum.alpha)
+        if flap_segments(request.airplane)
+        else None
+    )
+    solution = StallSolution(
+        v_s=optimum.speed,
+        cl_max=cl_max,
+        alpha_s=optimum.alpha,
+        polar=polar,
+        diagnostics=found,
+    )
     diagnostics = _diagnostics(
         started,
         (f"bracketed at {problem.alpha_peak} deg with a sweep at {problem.v_bracket:.3f} m/s",),
@@ -740,38 +759,25 @@ def _recording_airfoil(
     return Recording(name=base.name, coordinates=base.coordinates)
 
 
-def _deflection_diagnostics(
+def _confidence_run(
     asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
-    request: RollRequest,
     airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
-    solution: tuple[float, float],
+    keys: Sequence[str],
+    operating_point: Any,  # noqa: ANN401  # untyped aerosandbox boundary
 ) -> DeflectionDiagnostics:
-    """One numeric AeroBuildup run at the optimum with every section's airfoil recording (M1).
+    """One numeric AeroBuildup run with every section's airfoil recording (M1).
 
     Args:
         asb: The ``aerosandbox`` module.
-        request: The problem.
-        airplane: The ``asb.Airplane`` the problem was solved on; its airfoils are replaced here.
-        solution: The optimal stability-axis roll rate in rad/s and angle of attack in degrees.
+        airplane: The ``asb.Airplane``; its airfoils are replaced here.
+        keys: The wing key of each wing of ``airplane``, in order.
+        operating_point: The ``asb.OperatingPoint`` to evaluate.
     """
     seen: list[_Seen] = []
-    keys = list((request.airplane.wings or {}).keys())
     for key, wing in zip(keys, airplane.wings, strict=True):
         for xsec in wing.xsecs:
             xsec.airfoil = _recording_airfoil(asb, xsec.airfoil, key, seen)
-    p_s, alpha = solution
-    p_body, r_body = body_rates(p_s, alpha, asb.numpy)
-    asb.AeroBuildup(
-        airplane,
-        asb.OperatingPoint(
-            atmosphere=FixedAtmosphere(request.air),
-            velocity=request.v_ms,
-            alpha=alpha,
-            p=p_body,
-            r=r_body,
-        ),
-        model_size=NEURALFOIL_MODEL_SIZE,
-    ).run()
+    asb.AeroBuildup(airplane, operating_point, model_size=NEURALFOIL_MODEL_SIZE).run()
     lowest = min(seen, key=lambda record: record.confidence)
     highest = max(seen, key=lambda record: record.effective_alpha)
     return DeflectionDiagnostics(
@@ -782,12 +788,55 @@ def _deflection_diagnostics(
     )
 
 
+def _deflection_diagnostics(
+    asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    request: RollRequest,
+    airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    solution: tuple[float, float],
+) -> DeflectionDiagnostics:
+    """The recording run at the optimum of the steady roll (M1).
+
+    Args:
+        asb: The ``aerosandbox`` module.
+        request: The problem.
+        airplane: The ``asb.Airplane`` the problem was solved on; its airfoils are replaced here.
+        solution: The optimal stability-axis roll rate in rad/s and angle of attack in degrees.
+    """
+    p_s, alpha = solution
+    p_body, r_body = body_rates(p_s, alpha, asb.numpy)
+    point = asb.OperatingPoint(
+        atmosphere=FixedAtmosphere(request.air),
+        velocity=request.v_ms,
+        alpha=alpha,
+        p=p_body,
+        r=r_body,
+    )
+    return _confidence_run(asb, airplane, list((request.airplane.wings or {}).keys()), point)
+
+
+def _flap_diagnostics(
+    request: StallRequest,
+    airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    speed: float,
+    alpha: float,
+) -> DeflectionDiagnostics:
+    """The recording run at the stall optimum of an airplane with deflected flaps.
+
+    NeuralFoil's ``analysis_confidence`` of the deflected contours is the one statement the kernel
+    has about whether a flapped section is inside the net's training data (a value, not a verdict,
+    A10).
+    """
+    asb = load_aerosandbox()
+    point = asb.OperatingPoint(atmosphere=FixedAtmosphere(request.air), velocity=speed, alpha=alpha)
+    return _confidence_run(asb, airplane, list((request.airplane.wings or {}).keys()), point)
+
+
 def _roll_window(request: RollRequest) -> tuple[float, float, float]:
     """The window of alpha on the pre-stall branch and the start value that carries the weight.
 
-    One sweep at V on the clean airplane (D9): the window ends one step past the first C_L peak,
-    the start is where the sweep reaches the C_L that carries ``m g``. The sweep is not made on
-    the rolled airplane: with the deflection the curve has kinks (the down-going section's
+    One sweep at V on the airplane without the roll command (D9), with its flaps as configured:
+    the window ends one step past the first C_L peak, the start is where the sweep reaches the C_L
+    that carries ``m g``. The sweep is not made on the rolled airplane: with the deflection the curve has kinks (the down-going section's
     NeuralFoil curve is shifted by tau * delta) and its first local maximum lies far below the
     stall (measured: C_L 0.364 at 1 deg against a clean peak of 1.233 at 16 deg), so it brackets
     nothing. The window only keeps IPOPT on the physical branch; local stall under the deflection
@@ -938,7 +987,7 @@ def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
     _reject_active_bound("alpha", alpha_opt, (low, high), "steady-roll")
     recorded = (
         _deflection_diagnostics(asb, request, airplane, (p_opt, alpha_opt))
-        if abs(request.delta_deg) > 0.0
+        if abs(request.delta_deg) > 0.0 or flap_segments(request.airplane)
         else None
     )
     solution = RollSolution(p_rad_s=p_opt, alpha_deg=alpha_opt, diagnostics=recorded)
@@ -966,20 +1015,59 @@ def _admissible_or_zero(value: float, *, positive: bool) -> bool:
     return math.isfinite(value) and (value > 0.0 if positive else True)
 
 
-def _fit_range_warning(found: DeflectionDiagnostics) -> KernelWarning:
-    """The declared caveat of the deflection model (ch. 8.8): its fit range is unknown."""
-    return KernelWarning.of(
-        "control_surface_fit_range_unknown",
-        "AeroBuildup models the deflection as tau * delta added to the angle of attack of the "
-        "clean airfoil, with a Hoerner drag factor; the delta range of the tau fit is unknown and "
-        "flow separation is not modelled",
-        detail={
+def _fit_range_warning(
+    found: DeflectionDiagnostics | None, flaps: Sequence[FlapSegment]
+) -> KernelWarning:
+    """The declared caveat of the deflection model (ch. 8.8): its fit range is unknown.
+
+    Args:
+        found: What the deflected evaluation tells about NeuralFoil's validity; ``None`` where
+            only the flaps of the configuration are deflected and no deflected run was made.
+        flaps: The deflected flap segments of the configuration, empty without flaps.
+    """
+    detail: dict[str, JsonValue] = {}
+    message = (
+        "AeroBuildup models an aileron deflection as tau * delta added to the angle of attack of "
+        "the clean airfoil, with a Hoerner drag factor; the delta range of the tau fit is unknown "
+        "and flow separation is not modelled"
+    )
+    if found is not None:
+        detail = {
             "min_confidence": found.min_confidence,
             "min_confidence_wing": found.min_confidence_wing,
             "max_effective_alpha_deg": found.max_effective_alpha_deg,
             "max_effective_alpha_wing": found.max_effective_alpha_wing,
-        },
-    )
+        }
+    if flaps:
+        message += (
+            "; a deflected flap is the rotated contour behind its hinge (a plain, single-element "
+            "flap) evaluated by NeuralFoil, whose analysis_confidence at such a contour can be "
+            "low at large deflections, and the flap is not a slot or a Fowler flap"
+        )
+        detail["flaps"] = [
+            {"wing": f.wing, "device": f.device, "deflection_deg": f.deflection_deg} for f in flaps
+        ]
+    return KernelWarning.of("control_surface_fit_range_unknown", message, detail=detail)
+
+
+def _flap_warnings(
+    flaps: Sequence[FlapSegment], found: DeflectionDiagnostics | None = None
+) -> list[KernelWarning]:
+    """The caveats of a configuration with deflected flaps: the averaged hinge and the model range.
+
+    Args:
+        flaps: The deflected flap segments, empty without flaps.
+        found: NeuralFoil's confidence at the solution, where a recording run was made.
+    """
+    if not flaps:
+        return []
+    return [*roll_hinge_warnings(list(flaps)), _fit_range_warning(found, flaps)]
+
+
+def _hinge_warnings(*groups: Sequence[RollSegment]) -> list[KernelWarning]:
+    """One ``hinge_line_averaged`` warning per device, also where it is both driven and a flap."""
+    unique = {(s.wing, s.index): s for group in groups for s in group}
+    return roll_hinge_warnings(list(unique.values()))
 
 
 def _regime_warnings(airplane: AirplaneGeometry, v_ms: float, air: AirState) -> list[KernelWarning]:
@@ -1037,6 +1125,7 @@ class OptiAdapter(SolverAdapter):
             "opt_zero_span": config().opt_zero_span.value,
             "opt_alpha_margin_deg": config().opt_alpha_margin_deg.value,
             "opt_hinge_floor": config().opt_hinge_floor.value,
+            "opt_flap_rib_gap_m": config().opt_flap_rib_gap.value,
         }
 
     def _request(
@@ -1048,16 +1137,22 @@ class OptiAdapter(SolverAdapter):
         air: AirState,
         *,
         upright_only: bool = False,
-    ) -> StallRequest:
+    ) -> tuple[StallRequest, list[FlapSegment]]:
         """Check the tool and the inputs of an Opti problem and build the worker's request.
+
+        Returns:
+            The request and the deflected flap segments of the configuration (empty without a
+            deflected flap), whose caveats lead the warnings of the result.
 
         Raises:
             FormulaError: ``tool_unavailable``; ``unsupported_configuration`` for a deflected
-                control surface; ``invalid_input`` for an inadmissible mass, gravity or load factor
-                (``upright_only``: the load factor must be positive).
+                control device other than a flap, or a flap on an unmirrored wing;
+                ``invalid_input`` for an inadmissible mass, gravity or load factor
+                (``upright_only``: the load factor must be positive) or a flap without a hinge.
         """
         self.require_available()
-        refuse_deflected_devices(airplane, "AeroBuildup")
+        refuse_deflected_devices(airplane, "AeroBuildup", flaps_supported=True)
+        flaps = flap_segments(airplane)
         for name, value, positive in (
             ("m", mass_kg, True),
             ("g", gravity, True),
@@ -1065,9 +1160,10 @@ class OptiAdapter(SolverAdapter):
         ):
             if not _admissible(value, positive=positive):
                 raise _invalid(f"{name} = {value} is not admissible", f"give a valid {name}", name)
-        return StallRequest(
+        request = StallRequest(
             airplane=airplane, mass_kg=mass_kg, gravity=gravity, n_load=n_load, air=air
         )
+        return request, flaps
 
     async def stall(
         self,
@@ -1093,9 +1189,10 @@ class OptiAdapter(SolverAdapter):
             FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for
                 an inadmissible input; ``not_converged`` as :func:`stall_worker`.
         """
-        request = self._request(airplane, mass_kg, gravity, n_load, air)
+        request, flaps = self._request(airplane, mass_kg, gravity, n_load, air)
         solution = await self.runtime.run_cpu(stall_worker, request)
-        warnings = _regime_warnings(airplane, solution.v_s, air)
+        warnings = _flap_warnings(flaps, solution.diagnostics)
+        warnings += _regime_warnings(airplane, solution.v_s, air)
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)
         return Stall(solution=solution, warnings=tuple(warnings))
 
@@ -1124,9 +1221,10 @@ class OptiAdapter(SolverAdapter):
                 an inadmissible input; ``unsupported_configuration`` for a deflected control
                 surface; ``not_converged`` as :func:`best_glide_worker`.
         """
-        request = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
+        request, flaps = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(best_glide_worker, request)
-        warnings = _regime_warnings(airplane, solution.v_md, air)
+        warnings = _flap_warnings(flaps)
+        warnings += _regime_warnings(airplane, solution.v_md, air)
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
 
@@ -1154,7 +1252,7 @@ class OptiAdapter(SolverAdapter):
                 control surface.
         """
         self.require_available()
-        refuse_deflected_devices(airplane, "AeroBuildup")
+        refuse_deflected_devices(airplane, "AeroBuildup", flaps_supported=False)
         if not _admissible(v_ms, positive=True):
             raise _invalid(f"V = {v_ms} is not admissible", "give a finite speed above 0", "v_s")
         angles = tuple(alphas_deg)
@@ -1195,9 +1293,10 @@ class OptiAdapter(SolverAdapter):
                 an inadmissible input; ``unsupported_configuration`` for a deflected control
                 surface; ``not_converged`` as :func:`min_sink_worker`.
         """
-        request = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
+        request, flaps = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(min_sink_worker, request)
-        warnings = _regime_warnings(airplane, solution.v_mp, air)
+        warnings = _flap_warnings(flaps)
+        warnings += _regime_warnings(airplane, solution.v_mp, air)
         if solution.stall_limited:
             warnings.append(_stall_limited_warning(solution))
         logger.debug("minimum-sink speed %.4f m/s at %.2f deg", solution.v_mp, solution.alpha_mp)
@@ -1215,7 +1314,8 @@ class OptiAdapter(SolverAdapter):
         """Solve the steady roll at the aileron command ``delta_a_deg`` (canon ``roll-rate``).
 
         Args:
-            airplane: The geometry with its devices at rest (a deflected state is refused).
+            airplane: The geometry with its flaps as configured (a flaperon's deflection is the
+                bias the command comes on top of); any other deflected device is refused.
             mass_kg: Mass in kg, > 0.
             gravity: Gravity in m/s^2, > 0.
             air: The air state.
@@ -1235,7 +1335,8 @@ class OptiAdapter(SolverAdapter):
                 defect of the caller; the canon's ``has_aileron`` condition prevents it).
         """
         self.require_available()
-        refuse_deflected_devices(airplane, "AeroBuildup")
+        refuse_deflected_devices(airplane, "AeroBuildup", flaps_supported=True)
+        flaps = flap_segments(airplane)
         for name, value, positive in (
             ("m", mass_kg, True),
             ("g", gravity, True),
@@ -1257,11 +1358,14 @@ class OptiAdapter(SolverAdapter):
             delta_deg=delta_a_deg,
         )
         solution = await self.runtime.run_cpu(steady_roll_worker, request)
-        warnings = [*roll_hinge_warnings(driven)]
-        if solution.diagnostics is not None:
-            warnings.append(_fit_range_warning(solution.diagnostics))
+        warnings = _hinge_warnings(driven, flaps)
+        if solution.diagnostics is not None or flaps:
+            warnings.append(_fit_range_warning(solution.diagnostics, flaps))
         warnings += _regime_warnings(airplane, v_ms, air)
         logger.debug("steady roll %.4f rad/s at %.2f deg", solution.p_rad_s, solution.alpha_deg)
         return SteadyRoll(
-            p_rad_s=solution.p_rad_s, alpha_deg=solution.alpha_deg, warnings=tuple(warnings)
+            p_rad_s=solution.p_rad_s,
+            alpha_deg=solution.alpha_deg,
+            warnings=tuple(warnings),
+            confidence=solution.diagnostics,
         )

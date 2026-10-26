@@ -640,6 +640,7 @@ class KernelConfig(BaseModel):
     opt_active_bound_fraction: ConfigValue
     opt_alpha_margin_deg: ConfigValue
     opt_hinge_floor: ConfigValue
+    opt_flap_rib_gap: ConfigValue
     avl_contour_margin: ConfigValue
 
 
