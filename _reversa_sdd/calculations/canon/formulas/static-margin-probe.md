@@ -44,6 +44,8 @@ truth (A7): a deviation beyond tolerance is reported, never averaged. The tolera
 method offset: AeroBuildup has no wing-tail downwash, which biases the probe toward a larger margin.
 Checking a measured CG is the path of [[static-margin-measured]], not of the probe.
 
+**Agreement tolerance (adopted, maintainer 2026-10-25, #1260).** The probe agrees with the target if the two margins differ by at most 0.05, 5 % of the mean aerodynamic chord: the parameter `agreement_tolerance` of the rule `static-margin-probe-agreement` in `rules.yaml` (basis `convention`). It rests on the spread of the neutral-point worlds (3-6 % MAC, textbook against AVL on BRYAN and JAGUAR) plus the declared bias of the probe. The caller may override it; the override is declared in the provenance.
+
 Unlike `x_NP`, `C_mα` **does** depend on the reference: its sign flips exactly at
 `x_ref = x_NP` (§2.3). That is why the Probe — and only the Probe — needs the CG, and it is [[centre-of-gravity-design]] (`x_cg,design`, produced by cg-for-target-margin), never an app input (maintainer 2026-10-25).
 
