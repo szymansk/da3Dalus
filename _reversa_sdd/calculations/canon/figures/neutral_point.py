@@ -31,7 +31,7 @@ def build() -> str:
     sm = canon_default("static-margin-target")
     worlds = [("textbook", percent_mac(np_textbook())), ("Pappas", percent_mac(np_pappas()))]
     near, far = min(w[1] for w in worlds), max(w[1] for w in worlds)
-    svg = Svg(900, 375, "Neutral point, design CG and static margin on the MAC", CAPTION)
+    svg = Svg(900, 410, "Neutral point, design CG and static margin on the MAC", CAPTION)
     svg.rect(at(0), MAC_Y - 14, at(100) - at(0), 28, "fg-wing")
     svg.text(at(0), MAC_Y + 34, "0 %  (x_le,MAC)", "fg-m", "middle")
     svg.text(at(100), MAC_Y + 34, "100 %  (x_le,MAC + c_MAC)", "fg-m", "middle")
@@ -55,16 +55,16 @@ def build() -> str:
         svg.circle(at(percent - sm * 100), MAC_Y, 5, "fg-goodf")
         svg.text(
             at(percent - sm * 100),
-            MAC_Y + 4 + (-14 if name == "textbook" else 24),
-            "x_cg",
+            MAC_Y - 24 if name == "textbook" else MAC_Y + 56,
+            f"x_cg,design ({name})",
             "fg-m",
-            "middle",
+            "end" if name == "textbook" else "middle",
         )
         svg.dim(
             at(percent - sm * 100),
-            MAC_Y + 76 + (34 if name == "Pappas" else 0),
+            MAC_Y + 96 + (34 if name == "Pappas" else 0),
             at(percent),
-            MAC_Y + 76 + (34 if name == "Pappas" else 0),
+            MAC_Y + 96 + (34 if name == "Pappas" else 0),
             f"SM = {sm * 100:.0f} % ({name})",
             "fg-good",
             "fg-goodf",
@@ -73,14 +73,14 @@ def build() -> str:
         )
     svg.text(
         at(worlds[0][1] - sm * 100),
-        MAC_Y + 150,
+        MAC_Y + 172,
         "x_cg,design = x_NP - SM_target c_MAC",
         "fg-t",
         "middle",
     )
     svg.text(
         60,
-        360,
+        395,
         f"Hand example: c_MAC = {c_mac():.3f} m, x_le,MAC = {x_le_mac():.3f} m, tail efficiency {ETA_TAIL}, "
         f"SM_target = {sm:g} (canon starting value). Positive SM is stable; the CG must not pass the NP.",
         "fg-m",

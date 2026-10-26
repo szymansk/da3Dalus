@@ -92,7 +92,7 @@ def build() -> str:
     svg.dim(px(alpha_s, 0)[0], y, px(alpha_break, 0)[0], y, f"width = {width:.2f} deg", shift=16)
     for alpha in (alpha_s, alpha_break):
         svg.line(px(alpha, 0)[0], bottom, px(alpha, 0)[0], y + 6, "fg-thin fg-dash")
-    left_text = 620
+    left_text = 660
     svg.text(left_text, 90, f"f = {f:g}", "fg-h")
     svg.text(left_text, 112, "the canon's cut, a convention", "fg-m")
     svg.text(left_text, 150, "Not C_L,max itself:", "fg-t")

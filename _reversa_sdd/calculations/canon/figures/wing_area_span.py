@@ -19,7 +19,8 @@ from _svg import Svg
 CAPTION = (
     "The reference wing runs through the fuselage: S_ref counts the strip between the centreline "
     "and the root, b_ref is measured from the centreline. Hand example, ASB 4.2.9 flags "
-    "include_centerline_distance=True."
+    "include_centerline_distance=True. ASB extrudes the gap strip with the wing's geometric (mean) "
+    "chord, not the root chord, so the strip is narrower than the textbook trapezoid's root chord suggests."
 )
 
 SCALE = 330.0
