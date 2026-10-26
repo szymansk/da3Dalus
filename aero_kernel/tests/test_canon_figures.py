@@ -3,7 +3,6 @@
 import importlib.util
 import math
 import pathlib
-import sys
 import xml.etree.ElementTree as ET
 from types import ModuleType
 
@@ -28,11 +27,9 @@ runner = load(SCRIPT, "build_canon_figures")
 
 @pytest.fixture(scope="module")
 def example() -> ModuleType:
-    sys.path.insert(0, str(FIGURES))
-    try:
+    with pytest.MonkeyPatch.context() as patch:
+        patch.syspath_prepend(str(FIGURES))
         return load(FIGURES / "_example.py", "canon_figure_example")
-    finally:
-        sys.path.remove(str(FIGURES))
 
 
 def test_every_figure_script_has_a_committed_svg_that_is_current() -> None:
@@ -80,12 +77,9 @@ def test_the_neutral_point_worlds_lie_aft_of_the_wing_and_ahead_of_the_tail(
         assert example.x_ac_wing() < x < example.X_AC_TAIL
 
 
-def test_the_stall_break_procedure_brackets_the_crossing() -> None:
-    sys.path.insert(0, str(FIGURES))
-    try:
-        figure = load(FIGURES / "stall_break.py", "canon_figure_stall_break")
-    finally:
-        sys.path.remove(str(FIGURES))
+def test_the_stall_break_procedure_brackets_the_crossing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.syspath_prepend(str(FIGURES))
+    figure = load(FIGURES / "stall_break.py", "canon_figure_stall_break")
     samples = figure.polar()
     alpha_s, cl_max, alpha_break, width = figure.stall_break(samples, 0.10)
     assert math.isclose(alpha_s, 12.0)
@@ -99,13 +93,12 @@ def test_the_stall_break_procedure_brackets_the_crossing() -> None:
         figure.stall_break(samples, 0.9999)
 
 
-def test_the_spanwise_loads_integrate_to_the_weight_and_the_elliptic_root_moment() -> None:
-    sys.path.insert(0, str(FIGURES))
-    try:
-        figure = load(FIGURES / "spanwise_loads.py", "canon_figure_spanwise_loads")
-        example = load(FIGURES / "_example.py", "canon_figure_example2")
-    finally:
-        sys.path.remove(str(FIGURES))
+def test_the_spanwise_loads_integrate_to_the_weight_and_the_elliptic_root_moment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(str(FIGURES))
+    figure = load(FIGURES / "spanwise_loads.py", "canon_figure_spanwise_loads")
+    example = load(FIGURES / "_example.py", "canon_figure_example2")
     _, _, shear, moment = figure.loads()
     weight = figure.LOAD_FACTOR * figure.MASS * figure.GRAVITY
     assert math.isclose(shear[0], weight / 2, rel_tol=1e-3)

@@ -51,20 +51,23 @@ def test_a_quantity_without_a_figure_gets_no_mark(tmp_path: pathlib.Path) -> Non
 
 def test_a_missing_svg_is_an_error(tmp_path: pathlib.Path) -> None:
     root = canon(tmp_path, svg=None)
+    data = data_of()
     with pytest.raises(SystemExit, match="demo"):
-        nav.figure_marks(data_of(), root)
+        nav.figure_marks(data, root)
 
 
 def test_an_svg_no_entry_names_is_an_error(tmp_path: pathlib.Path) -> None:
     root = canon(tmp_path, front="", svg=SVG)
+    data = data_of()
     with pytest.raises(SystemExit, match="demo"):
-        nav.figure_marks(data_of(), root)
+        nav.figure_marks(data, root)
 
 
 def test_a_figure_without_a_caption_is_an_error(tmp_path: pathlib.Path) -> None:
     root = canon(tmp_path, svg="<svg xmlns='http://www.w3.org/2000/svg'></svg>\n")
+    data = data_of()
     with pytest.raises(SystemExit, match="caption"):
-        nav.figure_marks(data_of(), root)
+        nav.figure_marks(data, root)
 
 
 def test_the_real_canon_embeds_every_figure() -> None:
