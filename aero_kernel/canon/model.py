@@ -50,6 +50,9 @@ __all__ = [
     "Quantity",
     "QuantityRole",
     "QuantityType",
+    "Rule",
+    "RuleParameter",
+    "RuleTarget",
     "Tool",
     "Unit",
     "WhenTerm",
@@ -504,6 +507,88 @@ SlugKey = Annotated[str, _anchored(SLUG_REGEX)]
 NamespaceKey = Annotated[str, _anchored(NAMESPACE_REGEX)]
 
 
+RuleName = Annotated[str, _anchored(NAMESPACE_REGEX)]
+"""A snake_case name: a rule parameter or an error code."""
+
+RuleBasis = Literal["definition", "standard", "sourced", "convention"]
+"""What kind of value a rule parameter is; ``convention`` is a chosen value adopted on the maintainer's word."""
+
+RuleStatus = Literal["adopted", "pending"]
+"""``pending`` is a proposal awaiting the maintainer's word: the kernel never reads it."""
+
+RuleKind = Literal["input", "tool", "probe"]
+"""``input`` is a requirement on the input data, ``tool`` a stated limit of a tool, ``probe`` the agreement tolerance of a probe with the value it checks."""
+
+
+class RuleParameter(BaseModel):
+    """A threshold of a validation rule, with its unit, basis, status, source and regime.
+
+    Attributes:
+        value: The value, in ``unit``.
+        unit: The unit of ``value``.
+        basis: ``definition``, ``standard``, ``sourced`` or ``convention`` (chosen, adopted on the
+            maintainer's word).
+        status: ``adopted``, or ``pending`` while it is a proposal the maintainer has not decided.
+        source: Where the value comes from.
+        regime: Why it holds in the RC/UAV regime (ADR 0028).
+    """
+
+    model_config = _MODEL_CONFIG
+
+    value: FiniteNumber
+    unit: Unit
+    basis: RuleBasis
+    status: RuleStatus
+    source: NonBlank
+    regime: NonBlank
+
+
+class RuleTarget(BaseModel):
+    """What a rule guards: one quantity (an input) or one formula, exactly one of the two.
+
+    Attributes:
+        quantity: Slug of the input quantity the rule guards (``airplane``).
+        formula: Slug of the formula the rule is a precondition of.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    quantity: Slug | None = None
+    formula: Slug | None = None
+
+    @model_validator(mode="after")
+    def _check_one_target(self) -> Self:
+        """Require exactly one of ``quantity`` and ``formula``."""
+        if (self.quantity is None) == (self.formula is None):
+            msg = "a rule names exactly one of quantity and formula"
+            raise ValueError(msg)
+        return self
+
+
+class Rule(BaseModel):
+    """A validation rule: a requirement on the input data or a limit of a tool (gh-1260).
+
+    Attributes:
+        applies_to: The input quantity or the formula the rule guards.
+        kind: ``input`` (a requirement on the data), ``tool`` (a stated limit of a tool) or ``probe``
+            (the agreement tolerance of a probe with the value it checks).
+        on_violation: ``error`` refuses the input, ``warning`` declares it.
+        criterion: The criterion in words, with the thresholds named by their parameter.
+        parameters: The thresholds, by name; the caller may override an adopted one.
+        codes: The error codes the kernel reports for a violation (the rule's trace into the code); empty
+            while the kernel has no check for it yet.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    applies_to: RuleTarget
+    kind: RuleKind
+    on_violation: Literal["warning", "error"]
+    criterion: NonBlank
+    codes: list[RuleName] = []
+    parameters: dict[RuleName, RuleParameter] = {}
+
+
 class Namespace(BaseModel):
     """One canon of the model: its quantities, formulas and defaults, keyed by bare slug.
 
@@ -511,6 +596,7 @@ class Namespace(BaseModel):
         quantities: The quantity vocabulary.
         formulas: The formulas.
         defaults: The stated default per supplied scalar quantity (or fallback of a catalogue read); absent = the caller must supply it.
+        rules: The validation rules with their overridable parameters (``rules.yaml``).
         taxonomy: The vocabulary of the tag families, with the world-to-tool mapping.
     """
 
@@ -519,6 +605,7 @@ class Namespace(BaseModel):
     quantities: dict[SlugKey, Quantity]
     formulas: dict[SlugKey, Formula]
     defaults: dict[SlugKey, Default] = {}
+    rules: dict[SlugKey, Rule] = {}
     taxonomy: Taxonomy = Taxonomy()
 
 
@@ -580,7 +667,7 @@ class CanonProblem(TypedDict):
 
     Attributes:
         namespace: Namespace of the entry.
-        section: ``formulas`` or ``defaults``.
+        section: ``formulas``, ``defaults`` or ``rules``.
         slug: Slug of the entry.
         field: Field of the entry, e.g. ``applications[1].bind.m``; empty for the whole entry.
         side: ``inputs`` or ``outputs`` for a formula-level default, ``bind`` or ``produce`` for an
@@ -591,7 +678,7 @@ class CanonProblem(TypedDict):
     """
 
     namespace: str
-    section: Literal["formulas", "defaults"]
+    section: Literal["formulas", "defaults", "rules"]
     slug: str
     field: str
     side: Literal["inputs", "outputs", "bind", "produce"] | None
@@ -602,7 +689,7 @@ class CanonProblem(TypedDict):
 
 def _describe(problem: CanonProblem) -> str:
     """Render a problem as the one-line message a plain ``str(error)`` shows."""
-    if problem["section"] == "defaults":
+    if problem["section"] in ("defaults", "rules"):
         return problem["text"]
     return f"{problem['namespace']}:{problem['slug']}: {problem['text']}"
 
@@ -809,6 +896,43 @@ class CanonModel(BaseModel):
                             section="defaults",
                             slug=slug,
                             field="",
+                            side=None,
+                            application=None,
+                            parameter=None,
+                            text=text,
+                        )
+                    )
+        if problems:
+            raise _canon_error(problems)
+        return self
+
+    @model_validator(mode="after")
+    def _check_rules(self) -> Self:
+        """Require every rule to guard an existing input quantity or formula."""
+        problems: list[CanonProblem] = []
+        for namespace, content in self.namespaces.items():
+            for slug, rule in content.rules.items():
+                target = rule.applies_to
+                if target.quantity is not None:
+                    found = content.quantities.get(target.quantity)
+                    text = (
+                        None
+                        if found is not None and found.role in ("input", "target")
+                        else f"rule {slug}: {target.quantity} is not an input or target quantity"
+                    )
+                else:
+                    text = (
+                        None
+                        if target.formula in content.formulas
+                        else f"rule {slug}: unknown formula {target.formula}"
+                    )
+                if text is not None:
+                    problems.append(
+                        CanonProblem(
+                            namespace=namespace,
+                            section="rules",
+                            slug=slug,
+                            field="applies_to",
                             side=None,
                             application=None,
                             parameter=None,

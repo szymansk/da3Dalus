@@ -263,6 +263,10 @@ const IKIND={broken:{icon:'\u2260',label:'App code departs from the canon (Ist \
   dimensions:{icon:'#',label:'Dimensional check not runnable',col:'var(--mvp)'}};
 IKIND.convention={icon:'\u2248',label:'Rests on a defined value (convention)',col:'var(--sel)',defined:true};
 IKIND.start={icon:'\u2299',label:'Rests on a starting value \u2014 to be set by the designer',col:'var(--mvp)',defined:true};
+const VRULES=D.validation_rules||{quantity:{},formula:{}};
+const RULE_KIND={input:'requirement on the input',tool:'limit of a tool',probe:'agreement of a probe'};
+const ruleHtml=r=>`<div class="cblk"><b>${esc(r.id)}</b> <span class="sub">(${esc(RULE_KIND[r.kind]||r.kind)} \u00b7 on violation: ${esc(r.on_violation)}${r.codes.length?' \u00b7 '+r.codes.map(esc).join(', '):''})</span><br>${esc(r.criterion)}`+
+  Object.entries(r.parameters).map(([n,p])=>`<br><b>${esc(n)} = ${esc(p.value)} ${esc(p.unit==='1'?'':p.unit)}</b> <span class="sub">(${esc(p.basis)}, ${esc(p.status)}${p.status==='pending'?' \u2014 awaiting the maintainer':', overridable by the caller; use is declared'})</span><br>${esc(p.source)}`).join('')+`</div>`;
 const CONV=D.conv||{}, CONVS=D.conventions||{}, START=D.start||{}, STARTS=D.starts||{}, DEFS=D.defaults||{};
 const SRCBYID={};
 const APPR=D.appr||{}, QSTAT=D.qstat||{}, QDATA=D.qdata||{};
@@ -774,6 +778,7 @@ function select(q){
       `<div class="lab" style="margin-top:8px">Rests on it \u00b7 ${d.quantities.length} quantities, ${d.formulas.length} formulas</div>`+
       `<ul class="lnk">${d.quantities.map(link).join('')}</ul>`+
       `<p class="sub" style="margin:6px 0 0">Formulas: ${d.formulas.map(esc).join(' \u00b7 ')}</p></div>`; }
+  if(VRULES.quantity[q]) h+=`<div class="blk"><div class="lab">Validation rules \u00b7 ${VRULES.quantity[q].length}</div>${VRULES.quantity[q].map(ruleHtml).join('')}</div>`;
   if(ISSUES[q]) h+=`<div class="blk"><div class="lab" style="color:var(--bad)">${ISSUES[q].some(BLOCKING)?'! Open issues \u00b7 '+ISSUES[q].filter(BLOCKING).length+' \u2014 block approval':'Notes'}</div>`+
     ISSUES[q].map(i=>`<div class="issue" style="border-color:${IKIND[kindOf(i)].col}"><b style="color:${IKIND[kindOf(i)].col}">${IKIND[kindOf(i)].icon} ${esc(i.title)}</b> <span class="sub">(${esc(i.formula)})</span><br>${esc(i.text)}</div>`).join('')+`</div>`;
   { const tl=toolOf(q); h+=`<p class="meta">Computed with: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (input)'}</p>`; }
@@ -793,6 +798,7 @@ function select(q){
               : `<div class="mono">${esc(e.form)}</div>
                  <p class="sub" style="margin:6px 0 0">Procedural form \u2014 not typeset as a formula.</p>`;
     h+=`<p class="sub" style="margin:8px 0 0">${esc(f)}${e.impl?' &#183; <span style="color:var(--good)">&#10003; '+esc(e.impl)+'</span>':' &#183; not in the kernel'}${e.ticket?' &#183; '+esc(e.ticket):''} &#183; ${e.direction==='design'?'<b>design</b> (O1)':'analysis'}</p>`;
+    if((VRULES.formula[f]||[]).length) h+=`<div class="lab" style="margin-top:10px">Validation rules \u00b7 ${VRULES.formula[f].length}</div>${VRULES.formula[f].map(ruleHtml).join('')}`;
     if(e.worlds&&e.worlds.length) h+=`<p class="sub" style="margin:4px 0 0">Method worlds: ${e.worlds.map(esc).join(' &#183; ')}</p>`;
     const aps=(e.apps||[]).filter(a=>a.out.includes(q));
     for(const a of aps){

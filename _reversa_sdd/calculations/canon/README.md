@@ -590,6 +590,39 @@ stay. Added:
 | `at_most` | optional, only on `type: scalar` with role `input` or `target` | the largest admissible value, a number (an efficiency is at most 1). A supplied value above it is rejected (`value_above_maximum`); a default of such a quantity must not exceed it. Example: `tail-efficiency` carries `positive: true` and `at_most: 1` |
 | `data` | optional; for a quantity no formula produces, or one a pure data read (`tool: KAT`) produces; on any other produced quantity it is a finding | where the quantity comes from in our data: one `<kind>:<location>` or a list of them, the kinds and locations of "Two-stage approval". The importer validates the kind and, where it can read the repository, that the location exists: a geometry path in the schema, a component type or field in the seed (`app/services/component_type_service.py`), a `defaults.yaml` key, an `<Class>.<field>` under `app/schemas/`. `evaluation` is not checked. Example: `aircraft-mass` carries `data: geometry:total_mass_kg` |
 
+#### Validation rules — `rules.yaml` (maintainer, 2026-10-25, #1260)
+
+"Solche Validierungsregeln gehören auch in den Kanon! Der Kanon soll unsere Anforderung genau abbilden." A
+requirement on the input data and a limit of a tool are canon statements, and every threshold in them is a
+parameter, never a number in the code ("Ich mag keine Magic Numbers im Code!"). They live in one file,
+`rules.yaml` in the canon root, next to `defaults.yaml` but separate from it, so that input defaults and rule
+parameters are not confused. The file is optional; an empty file means no rules. It is a mapping
+`<rule-id>: {applies_to, kind, on_violation, criterion, codes, parameters}`:
+
+- `applies_to` — `{quantity: <input quantity>}` (e.g. `airplane`: a requirement on the input data, checked once
+  at the input, **on every path**, because a rule that hangs on a formula is skipped by a request that does not
+  pass through it) or `{formula: <slug>}` (a requirement of that formula or a limit of its tool);
+- `kind` — `input` (a requirement on the input data), `tool` (a stated limit of a tool: the kernel refuses what
+  the tool cannot do rather than approximating it) or `probe` (the agreement tolerance of a probe with the value
+  it checks);
+- `on_violation` — `error` or `warning`;
+- `criterion` — the rule in words; a threshold is named by its parameter;
+- `codes` — the error codes the kernel reports for a violation; a test finds each of them in the kernel's code,
+  so a rule cannot name a check that does not exist;
+- `parameters` — `<name>: {value, unit, basis, status, source, regime}`. `basis` is `definition`, `standard`,
+  `sourced` or `convention`; `status` is `adopted`, or `pending` while the value is a proposal the maintainer has
+  not decided (the kernel refuses to read a pending value). `source` and `regime` are as for a default.
+
+The caller (an expert user with a very unusual aircraft) may override an adopted parameter with
+`AircraftInput.rule_overrides`, key `<rule-id>.<name>`. Every threshold the call used is declared in
+`provenance.rules_used` (`{rule, parameter, value, unit, basis, overridden}`), like a default taken (ADR 0020). An
+override of an unknown or a pending parameter is an `invalid_input`. The navigator shows the rules and their
+parameters at the quantity or formula they guard.
+
+Value bounds of a supplied quantity are not rules in this file: they are the quantity fields `positive` and
+`at_most`. What guards the API itself (an unknown slug, a value given for a computed quantity, the time budget)
+is a programming guard and stays in the code.
+
 #### Defaults — `defaults.yaml`
 
 Defaults do not live in the quantity entries. They live in one file, `defaults.yaml` in the canon root,

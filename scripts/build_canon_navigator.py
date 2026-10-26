@@ -467,6 +467,34 @@ def default_marks(data: dict, model: dict) -> None:
         data[rests_on] = {q: sorted(v) for q, v in sorted(marked.items())}
 
 
+def validation_rule_marks(data: dict, model: dict) -> None:
+    """Show the validation rules of the canon model at the quantity or formula they guard (#1260).
+
+    The rules are read from the canon model (``rules.yaml``), never typed in here. A rule that
+    guards a quantity or formula the navigator lacks is an error. ``validation_rules`` holds ``quantity`` and
+    ``formula`` mappings from slug to the rules guarding it, each with its criterion, kind, error
+    codes and parameters (value, unit, basis, status, source, regime).
+    """
+    rules = model["namespaces"]["calc"].get("rules", {})
+    shown: dict = {"quantity": {}, "formula": {}}
+    for rule_id, rule in sorted(rules.items()):
+        kind, slug = next((k, v) for k, v in rule["applies_to"].items() if v is not None)
+        known = data["Q"] if kind == "quantity" else data["F"]
+        if slug not in known:
+            raise SystemExit(f"rule {rule_id} guards {kind} {slug}, which the canon lacks")
+        shown[kind].setdefault(slug, []).append(
+            {
+                "id": rule_id,
+                "kind": rule["kind"],
+                "on_violation": rule["on_violation"],
+                "criterion": rule["criterion"],
+                "codes": rule["codes"],
+                "parameters": rule["parameters"],
+            }
+        )
+    data["validation_rules"] = shown
+
+
 #: The five kinds of data source (canon README, "Two-stage approval"): id, label, explanation.
 SOURCE_KINDS = (
     (
@@ -654,6 +682,7 @@ def build() -> tuple[str, dict]:
     data = layout(quantities, formulas, edges)
     kernel_status(data, KERNEL_FORMULAS)
     default_marks(data, model)
+    validation_rule_marks(data, model)
     approval_marks(data, model)
     rule_marks(data, load_rule_table(RULES_PATH), model)
     data["tax"] = model["namespaces"]["calc"]["taxonomy"]

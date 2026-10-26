@@ -366,6 +366,7 @@ class TestProvenance:
             "build_digest",
             "canon_model_hash",
             "defaults_used",
+            "rules_used",
             "solver_settings",
             "tool_versions",
         ]
@@ -614,6 +615,7 @@ def test_all_pins_the_public_names() -> None:
             "QuantityStatus",
             "Reason",
             "ReasonCode",
+            "RuleUsed",
             "WARNING_CATALOGUE",
             "WarningSeverity",
             "dedupe_warnings",
