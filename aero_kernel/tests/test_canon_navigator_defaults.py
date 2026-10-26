@@ -113,6 +113,11 @@ def test_data_source_nodes_carry_the_input_they_refine() -> None:
     assert "battery-charge-capacity" in battery["qs"]
 
 
+def test_the_data_source_column_stands_between_cross_cutting_and_the_references() -> None:
+    data, _ = source_data()
+    assert data["colorder"] == ["xcut", "src", "refs"]
+
+
 def test_a_whole_collection_source_is_a_frame_around_its_fields_not_a_node() -> None:
     data, _ = source_data()
     nodes = {source["id"] for source in data["src"]}
