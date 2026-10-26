@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: GEO
 shape: law
-status: draft
+status: approved
 output: vertical-tail-arm
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 tex: l_{V,CG} = x_{v,25} - x_{cg,design}
 inputs: {airplane: airplane, x_cg: centre-of-gravity-design}
 outputs: {l_v_cg: vertical-tail-arm}
@@ -72,10 +72,15 @@ a CG placed at the aft end of the interval gives a shorter arm than a fuselage-c
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-26): l_V,CG = x_v,25 − x_cg,design, the quarter-chord MAC of the one surface
+> typed `vertical_tail` or `v_tail` from AeroSandbox and the design CG from the approved
+> [[cg-for-target-margin]], once per neutral-point world (A11); Drela Design Rules Eqs 3, 7–10 (decision
+> 2026-10-25, #1259). A V-tail's arm is to its own quarter-chord MAC; the projection belongs to the tail volume
+> (#1208), and a V-tail aircraft gets no value until the neutral point covers it (#1208). Inherits the neutral
+> point's limits (fuselage not modelled). Kernel EXACT (🟢), goldens BRYAN/JAGUAR (#1305).

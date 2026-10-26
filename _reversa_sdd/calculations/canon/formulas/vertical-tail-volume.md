@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: vertical-tail-volume
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 inputs: {airplane: airplane, s_ref: wing-reference-area, b_ref: wing-span, l_v_cg: vertical-tail-arm}
 outputs: {v_v: vertical-tail-volume}
 applications:
@@ -27,13 +27,13 @@ applications:
 **Canonical form**
 
 ```
-S_V := geometry(airplane)   # fin area (V-tail: S_Vtail*sin^2(nu))
+S_V := Wing.area(type="planform", include_centerline_distance=False)   # ASB, the one vertical_tail/v_tail surface; V-tail: times sin^2(nu)
 V_V = S_V * l_V_CG / (S_ref * b_ref)
 ```
 
 `S_ref` and `b_ref` are [[wing-reference-area]] and [[wing-span]], produced by [[airplane-geometry]] (AeroSandbox's
 definition, measured on the main wing; maintainer 2026-10-25). This entry does not read the wing area or span
-from the airplane itself: one producer per number a user sees (ADR 0022). Only the fin area `S_V` is read from the airplane;
+from the airplane itself: one producer per number a user sees (ADR 0022). Only the fin area `S_V` is read from the airplane, as AeroSandbox's `Wing.area(type="planform", include_centerline_distance=False)` of the one surface typed `vertical_tail` or `v_tail`, both flags passed explicitly (maintainer 2026-10-26, no library defaults): `planform` is the true area of the mean camber surface, unprojected, which is right for a vertical surface (the `xy` projection of a fin is nearly zero); a fin has no centreline gap to count;
 the arm `l_V,CG` is [[vertical-tail-arm]].
 
 `S_V` is the fin area, for a V-tail its fin share `S_Vtail·sin²ν` (ν = panel angle to the horizontal);
@@ -67,11 +67,16 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-26): V_v = S_V · l_V,CG / (S_ref · b_ref) (Sadraey Eq. 6.74; Drela Eq. 7),
+> with the arm from the design CG (approved [[vertical-tail-arm]]), S_ref and b_ref from the approved
+> [[airplane-geometry]], and S_V as AeroSandbox's `Wing.area(type="planform", include_centerline_distance=False)`
+> of the one vertical_tail/v_tail surface, flags explicit (added at approval); V-tail fin share S·sin²ν
+> (McCombs 1996). One value per neutral-point world (A11). Bands belong to the evaluation (A10). Formula approved;
+> no kernel implementation yet (#1274); a V-tail gets a value with #1208.

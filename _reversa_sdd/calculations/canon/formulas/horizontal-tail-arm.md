@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: GEO
 shape: law
-status: draft
+status: approved
 output: horizontal-tail-arm
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 tex: l_{H,CG} = x_{h,25} - x_{cg,design}
 inputs: {airplane: airplane, x_cg: centre-of-gravity-design}
 outputs: {l_h_cg: horizontal-tail-arm}
@@ -69,10 +69,15 @@ a CG placed at the aft end of the interval gives a shorter arm than a fuselage-c
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-26): l_H,CG = x_h,25 − x_cg,design, the tail's quarter-chord MAC from
+> AeroSandbox (`Wing.aerodynamic_center`, one producer with the neutral point) and the design CG from the
+> approved [[cg-for-target-margin]] (SM_target 0.10), once per neutral-point world (A11). Drela measures the
+> arms from the CG (Design Rules Eqs 3, 7–10; decision 2026-10-25, #1259). Inherits the neutral point's limits
+> (fuselage not modelled → CG aft-biased, arm slightly short; BRYAN spread ≈ 4 mm, JAGUAR ≈ 8 mm). One
+> horizontal tail only; canard and V-tail with #1207/#1208. Kernel EXACT (🟢), goldens BRYAN/JAGUAR (#1305).
