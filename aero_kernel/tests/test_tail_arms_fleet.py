@@ -62,12 +62,6 @@ async def test_the_arms_per_world_are_the_regression_goldens(member: FleetMember
     result = await run(member)
     assert all(q.status is QuantityStatus.OK for q in result.quantities), result
     cg, l_h, l_v = result.quantities
-    print(
-        member.name,
-        [cg.interval.worlds[f"neutral-point={w}"] for w in WORLDS],
-        [l_h.interval.worlds[f"neutral-point={w}"] for w in WORLDS],
-        [l_v.interval.worlds[f"neutral-point={w}"] for w in WORLDS],
-    )
     for quantity, golden in ((cg, GOLDEN_CG), (l_h, GOLDEN_L_H), (l_v, GOLDEN_L_V)):
         assert quantity.interval is not None
         worlds = quantity.interval.worlds

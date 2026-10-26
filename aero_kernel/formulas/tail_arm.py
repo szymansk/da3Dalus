@@ -6,6 +6,7 @@ from collections.abc import Collection
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.values import airplane_of, number
+from pydantic import JsonValue
 
 __all__ = ["tail_arm_from_cg"]
 
@@ -37,16 +38,15 @@ async def tail_arm_from_cg(
     keys = [key for key, wing in wings if wing.surface_type in surface_types]
     if len(keys) != 1:
         found = sorted(str(wing.surface_type) for _, wing in wings)
+        counts: dict[str, JsonValue] = dict(Counter(str(wing.surface_type) for _, wing in wings))
+        detail: dict[str, JsonValue] = {"surface_types": list(found), "counts": counts}
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,
             "unsupported_layout",
             f"the tail arm needs exactly one {role} ({' or '.join(sorted(surface_types))}); "
             f"this airplane has {len(keys)} of them among the surfaces {', '.join(found)}",
             "a tailless wing, a canard, a tandem wing and a twin tail are not covered yet",
-            detail={
-                "surface_types": found,
-                "counts": dict(Counter(str(wing.surface_type) for _, wing in wings)),
-            },
+            detail=detail,
             parameter="airplane",
         )
     tail_x = await ctx.solvers.geometry.quarter_chord_mac_x(airplane, keys[0])

@@ -110,6 +110,10 @@ def test_the_quarter_chord_is_asked_with_an_explicit_chord_fraction(
     assert asked == [{"chord_fraction": 0.25}]
 
 
+def _nan_centre(*_args: object, **_options: object) -> list[float]:
+    return [float("nan"), 0.0, 0.0]
+
+
 def test_a_wing_without_a_finite_aerodynamic_centre_is_refused(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -117,7 +121,7 @@ def test_a_wing_without_a_finite_aerodynamic_centre_is_refused(
     monkeypatch.setattr(
         module.Wing,  # pyright: ignore[reportAttributeAccessIssue]
         "aerodynamic_center",
-        lambda self, **options: [float("nan"), 0.0, 0.0],
+        _nan_centre,
     )
     with pytest.raises(FormulaError) as raised:
         quarter_chord_mac_x(airplane(), "Main")
