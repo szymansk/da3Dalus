@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: spiral-parameter-md, spiral-parameter-mp
 source_status: PARTIAL
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 inputs:
   airplane: airplane
   s_ref: wing-reference-area
@@ -101,11 +101,20 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-26): Drela's spiral parameter B = l_V,CG·Γ_eq/(b_ref·C_L) (Design Rules
+> Eqs 8–10, after Rawdon), at **both** V_md and V_mp (Drela names no flight condition; B ∝ 1/C_L, so B_mp ≈ 0.58
+> B_md for a parabolic polar). The evaluation decides which governs by control layout: aileron aircraft can
+> counter-bank (yellow), rudder-only aircraft cannot hold against the spiral while circling (B_mp red) — "einem
+> Flugzeug nur mit SL kann man nicht stützen". Γ_eq by strip theory, ∫Γ·c·y dy / ∫c·y dy, **derived, not
+> printed** (Sadraey Eq. 5.35 per strip; constant section lift slope, sweep and induced coupling neglected →
+> outboard panels over-weighted); source PARTIAL, adopted on the maintainer's authority; to be cross-checked
+> against AVL C_lβ on a polyhedral fleet member. The root-to-tip-line rule is rejected as wrong. Arm from the
+> design CG (approved [[vertical-tail-arm]]); one value per neutral-point world (A11). No kernel
+> implementation yet (#1274).
