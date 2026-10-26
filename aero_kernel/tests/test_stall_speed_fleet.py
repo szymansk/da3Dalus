@@ -203,9 +203,10 @@ async def test_belemnitos_regression_goldens() -> None:
 
 
 # RV-7 with the maintainer's guessed flaps (take-off 15 deg, landing 30 deg), regression of this build
-# (#1212): (V_S m/s, C_L,max) of the configured airplane; AeroBuildup has no flap model of its own.
-RV7_TAKEOFF = (7.3680716, 0.9826803)
-RV7_LANDING = (6.8075663, 1.1511613)
+# (#1212, route A: the flap is the rotated contour behind the hinge, evaluated by NeuralFoil):
+# (V_S m/s, C_L,max, NeuralFoil's lowest analysis_confidence at the stall optimum).
+RV7_TAKEOFF = (6.3137959, 1.3382550, 0.8771531)
+RV7_LANDING = (6.2445456, 1.3681013, 0.4069260)
 
 
 async def rv7_values(*slugs: str) -> dict[str, float | None]:
@@ -231,11 +232,10 @@ async def test_rv7_regression_goldens_and_the_flaps_computed_never_the_clean_air
     flaps, so the two configured stall speeds are computed with them: they differ from the clean
     speed and carry the declared model range of the flap.
 
-    Regression, not validation: AeroBuildup shifts the section's angle of attack by tau * delta and
-    leaves its C_L,max alone, so the flapped airplane's first C_L peak lies *below* the clean one
-    (0.98 and 1.15 against 1.22) and its stall speed above (7.37 and 6.81 against 6.60 m/s), the
-    reverse of a real flap. The goldens pin what the build computes; the anomaly is a question to the
-    maintainer, declared on the results as control_surface_fit_range_unknown."""
+    Regression, not validation. The flap raises C_L,max (1.22 clean, 1.34 and 1.37) and lowers the
+    stall speed (6.60 clean, 6.31 and 6.24 m/s), the right direction for a flap. NeuralFoil's
+    confidence at the stall optimum falls with the deflection (0.88 at 15 deg, 0.41 at 30 deg) and is
+    reported as a value in control_surface_fit_range_unknown (the threshold is a pending rule)."""
     result = await stall_result(FleetMember.RV7)
     assert_goldens_are_pinned_to_their_tools(result)
     quantities = {q.slug: q for q in result.quantities}
@@ -263,8 +263,11 @@ async def test_rv7_regression_goldens_and_the_flaps_computed_never_the_clean_air
         assert close(quantity.value, golden, 1e-5), slug
         clean_speed = quantities["stall-speed"].value
         assert clean_speed is not None
+        assert quantity.value < clean_speed, slug  # a flap lowers the stall speed
         assert not close(quantity.value, clean_speed, 1e-3), slug  # never the clean airplane's
         (caveat,) = [w for w in quantity.warnings if w.code == "control_surface_fit_range_unknown"]
+        confidence = RV7_TAKEOFF[2] if slug.endswith("takeoff") else RV7_LANDING[2]
+        assert close(float(caveat.detail["min_confidence"]), confidence, 1e-5), slug  # pyright: ignore[reportArgumentType]
         assert caveat.detail["flaps"] == [
             {"wing": "main_wing", "device": "flaps", "deflection_deg": deflection}
         ], slug

@@ -9,8 +9,6 @@ from aero_kernel.tests.solver_builders import AIR, InProcessRuntime
 from aero_kernel.tests.test_solvers_opti_roll import GRAVITY, MASS, SPEED, canned, solution
 from aero_kernel.tests.test_solvers_roll_devices import wing_geometry
 
-pytestmark = pytest.mark.asyncio
-
 
 def flaperon(
     deflection: float | None, root: float | None = 0.78, tip: float | None = 0.80
@@ -28,6 +26,7 @@ def flaperon(
     )
 
 
+@pytest.mark.asyncio
 async def test_a_flaperon_with_a_bias_reaches_the_worker_and_declares_hinge_and_model_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -47,6 +46,7 @@ async def test_a_flaperon_with_a_bias_reaches_the_worker_and_declares_hinge_and_
     assert fit.detail["min_confidence"] == 0.61
 
 
+@pytest.mark.asyncio
 async def test_a_flap_bias_without_a_command_declares_the_model_range_without_diagnostics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -60,6 +60,7 @@ async def test_a_flap_bias_without_a_command_declares_the_model_range_without_di
     assert set(fit.detail) == {"flaps"}
 
 
+@pytest.mark.asyncio
 async def test_a_flaperon_at_rest_without_a_command_declares_nothing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -72,6 +73,7 @@ async def test_a_flaperon_at_rest_without_a_command_declares_nothing(
     assert roll.warnings == ()
 
 
+@pytest.mark.asyncio
 async def test_a_flap_without_a_hinge_is_invalid_input_before_any_solve(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -83,3 +85,45 @@ async def test_a_flap_without_a_hinge_is_invalid_input_before_any_solve(
         )
     assert raised.value.category is ErrorCategory.INVALID_INPUT
     assert seen == []
+
+
+def test_the_confidence_run_reports_the_lowest_confidence_and_its_wing() -> None:
+    """The recording pass (M1) over a fake AeroSandbox: every section call is seen, the lowest
+    NeuralFoil confidence and the highest angle win."""
+    import numpy as np
+
+    class Airfoil:
+        def __init__(self, name: str, coordinates: object) -> None:
+            self.name, self.coordinates = name, coordinates
+
+        def get_aero_from_neuralfoil(self, **kwargs: object) -> dict[str, object]:
+            confidence = 0.4 if self.name == "weak" else 0.9
+            return {"analysis_confidence": np.array([confidence, 0.95])}
+
+    class Xsec:
+        def __init__(self, name: str) -> None:
+            self.airfoil = Airfoil(name, None)
+
+    class Wing:
+        def __init__(self, *names: str) -> None:
+            self.xsecs = [Xsec(n) for n in names]
+
+    class Airplane:
+        def __init__(self) -> None:
+            self.wings = [Wing("fine", "fine"), Wing("fine", "weak")]
+
+    class AeroBuildup:
+        def __init__(self, airplane: Airplane, point: object, model_size: str) -> None:
+            self.airplane = airplane
+
+        def run(self) -> None:
+            for wing in self.airplane.wings:
+                for xsec in wing.xsecs:
+                    xsec.airfoil.get_aero_from_neuralfoil(alpha=np.array([5.0, 7.0]))
+
+    asb = type("Asb", (), {"Airfoil": Airfoil, "AeroBuildup": AeroBuildup})
+    found = opti_module._confidence_run(  # pyright: ignore[reportPrivateUsage]
+        asb, Airplane(), ["Main", "Tail"], object()
+    )
+    assert (found.min_confidence, found.min_confidence_wing) == (0.4, "Tail")
+    assert found.max_effective_alpha_deg == 7.0

@@ -283,28 +283,30 @@ async def test_wiesel_roll_rate_waits_for_the_stall_speed_the_fuselage_blocks() 
         assert "because `stall-speed-landing` failed" in quantity.error.message
 
 
-# RV-7 on approach (#1212): the landing configuration, flaps at 30 deg, V_app = 1.3 * 6.8076 m/s.
-RV7_AVL_P_DEG_S, RV7_AVL_P_HAT = 270.74438, 0.21892
+# RV-7 on approach (#1212): the landing configuration, flaps at 30 deg (route A: the rotated contour),
+# V_app = 1.3 * 6.2445 m/s. Regression values of the AeroBuildup world; the AVL world (p_hat 0.2213,
+# beyond its range) is dropped from the interval and shown in its declaration.
+RV7_AB_P_DEG_S, RV7_AB_P_HAT = 226.38745, 0.1995581
+RV7_AVL_P_DEG_S, RV7_AVL_P_HAT = 251.05240, 0.2213
+RV7_ROLL_CONFIDENCE = 0.3927175
 
 
 async def test_rv7_roll_on_approach_is_evaluated_on_the_landing_configuration() -> None:
-    """Maintainer decision 2026-10-26: the approach roll uses the landing configuration. The airplane
-    is computed with its flaps (the approach speed is no longer upstream-failed), the AVL world
-    gives a value (regression), and the AeroBuildup world declares that the flapped wing cannot carry
-    its weight at V_app before the first C_L peak of the sweep (C_L 0.681 needed, first peak 0.651):
-    the flapped lift curve of AeroBuildup has a local peak far below the stall (a tau * delta kink),
-    so the quantity is an error with the AVL value in worlds_ok, never a world dropped (A11)."""
-    for quantity in (await run(FleetMember.RV7)).quantities:
-        assert quantity.status is QuantityStatus.ERROR, quantity.slug
-        assert quantity.error is not None
-        assert (quantity.error.category, quantity.error.code) == (
-            ErrorCategory.NOT_CONVERGED,
-            "not_converged",
-        )
-        assert close(float(quantity.error.detail["cl_needed"]), 0.6811605, 1e-5)  # pyright: ignore[reportArgumentType]
-        assert close(float(quantity.error.detail["cl_peak"]), 0.6505555, 1e-5)  # pyright: ignore[reportArgumentType]
-        worlds_ok = quantity.error.detail["worlds_ok"]
-        assert isinstance(worlds_ok, dict)
-        assert set(worlds_ok) == {AVL}
-        golden = RV7_AVL_P_DEG_S if quantity.slug == SLUGS[0] else RV7_AVL_P_HAT
-        assert close(float(worlds_ok[AVL]), golden, 1e-4), quantity.slug  # pyright: ignore[reportArgumentType]
+    """Maintainer decision 2026-10-26: the approach roll uses the landing configuration. With the
+    flap as geometry the flapped C_L(alpha) curve has no spurious low peak any more, so the
+    AeroBuildup world converges (it failed with the tau * delta flap: C_L 0.681 needed, first peak
+    0.651). The AVL world is beyond its range and leaves the interval (decision (b) of #1243)."""
+    p, p_hat = (await run(FleetMember.RV7)).quantities
+    for quantity, golden, rel in ((p, RV7_AB_P_DEG_S, 1e-4), (p_hat, RV7_AB_P_HAT, 1e-4)):
+        found = worlds(quantity)
+        assert set(found) == {AB}, quantity.slug
+        assert close(found[AB], golden, rel), quantity.slug
+    shown = _detail(excluded_avl(p), "p_deg_s")
+    assert close(shown, RV7_AVL_P_DEG_S, 1e-4)
+    assert close(_detail(excluded_avl(p_hat), "p_hat"), RV7_AVL_P_HAT, 1e-3)
+    for world, code in ((AB, "control_surface_fit_range_unknown"), (AVL, "avl_flap_linearised")):
+        assert code in codes(p, world), (world, code)
+    (roll_caveat,) = [
+        w for w in p.warnings if w.code == "control_surface_fit_range_unknown" and w.world == AB
+    ]
+    assert close(float(roll_caveat.detail["min_confidence"]), RV7_ROLL_CONFIDENCE, 1e-4)  # pyright: ignore[reportArgumentType]

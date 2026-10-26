@@ -54,6 +54,8 @@ subject to:               L(V, alpha) = n * m * g
 **Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section, with the bound `ρ` and `μ`
 (`Re = ρ·V·c/μ`), and the Mach number from the bound `a` (#1201). Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
 
+**The take-off and landing applications bind a flapped airplane (#1212).** The flap of [[airplane-takeoff]] and [[airplane-landing]] is a geometric trailing-edge deflection of the flapped panel's airfoils, evaluated by NeuralFoil inside AeroBuildup — not the `τ·δ` angle shift, which cannot raise `C_L,max` (maintainer 2026-10-26; the full premise, the measured section values and the limits are in [[airplane-configuration]]). It is a single-element plain flap; NeuralFoil's `analysis_confidence` of the flapped sections is reported as a value with the result (`control_surface_fit_range_unknown`, `detail.min_confidence`). The textbook `ΔC_L,max` of a plain flap (Scholz Eq. 8.6) is at most a cross-check, never a second value.
+
 **Dimensional check.** ⚪ procedural — an optimisation problem, not an expression
 
 **Source.** 🟢 SOURCED

@@ -778,25 +778,32 @@ caller's responsibility.
       The other fixed arrays count too: 500 strips (`NSMAX`, mirror images and both pieces of the split
       wing included), 100 surfaces, 6000 vortices; each overflow message is `avl_array_limit`.
     - *Flaps of a configuration (#1212; maintainer 2026-10-26: the approach applications bind
-      `airplane-landing`).* `airplane-configuration` sets the flaps' `deflection_deg`; the tools are given
-      them as the device rows `solvers/devices.flap_segments`: a device of role `flap` or `flaperon` off its
-      rest position, on a mirrored surface (`flap_on_unmirrored_surface`), with a hinge (`missing_hinge`).
-      The angle is the angle itself, trailing edge down positive, the same on both halves. *AeroBuildup:* one
-      symmetric `ControlSurface` per flap segment at the mean hinge (`hinge_line_averaged` where root and tip
-      differ); any other deflected device stays refused, and `sweep` (the polar of the stall break, always the
-      clean airplane) refuses a flap too, because it returns no warnings. *AVL:* a `flap` control (SgnDup +1,
-      gain 1) on the stations of the flap, driven as a second control variable; the control numbers are the order
-      of first appearance in the file (`control_order`), so the commands and the derivative name `Cld0k`
-      follow the written file; the flap is held at its angle in both runs, also in the consistency run, and its
-      echo is checked. All flaps of a configuration are at one angle (`flap_deflections_differ` otherwise); the
-      neutral point stays on the clean airplane. *Flaperon:* the deflection is the symmetric bias, the roll
-      command comes on top as the antisymmetric surface of the same rib and hinge (AeroBuildup adds the two
-      angle shifts and multiplies the two drag factors; AVL has two controls on the same stations). Where a
-      roll control and a flap meet with different hinges the split follows the more forward one and the other
-      is measured from it. Declared: `control_surface_fit_range_unknown` (AeroBuildup: the flap shifts the
-      section's lift curve, its C_L,max stays the clean airfoil's, so a flapped wing's first C_L peak can lie
-      *below* the clean one and the approach window of the roll can find no peak above the weight; RV-7) and
-      `avl_flap_linearised` (AVL: linear in δ, no separation).
+      `airplane-landing`; the flap is geometry, route A).* `airplane-configuration` sets the flaps'
+      `deflection_deg`; the tools are given them as the device rows `solvers/devices.flap_segments`: a
+      device of role `flap` or `flaperon` off its rest position, on a mirrored surface
+      (`flap_on_unmirrored_surface`), with a hinge (`missing_hinge`). The angle is the angle itself, trailing
+      edge down positive, the same on both halves. *AeroBuildup:* the contour behind the mean hinge of the
+      segment is rotated (`Airfoil.add_control_surface`, rebuilt as a plain `Airfoil` so that NeuralFoil
+      normalises it to the leading-edge to trailing-edge chord), on both airfoils that bound the flapped
+      strip; a rib where the flap state changes is written twice, the second offset along y by `opt_flap_rib_gap` (AeroBuildup divides by the strip width: two sections at one place give NaN), so
+      the next strip keeps its own airfoil (`asb_airplane._xsecs`). `ControlSurface.deflection` stays 0 for
+      the flap (Hoerner factor 1, no double count); the `tau * delta` surface is the aileron's model only.
+      The reference values of the airplane are measured on the wing without the extra ribs. Any other
+      deflected device stays refused, and `sweep` (the polar of the stall break, always the clean airplane)
+      refuses a flap too, because it returns no warnings. *AVL:* a `flap` control (SgnDup +1, gain 1) on the
+      stations of the flap, driven as a second control variable; the control numbers are the order of first
+      appearance in the file (`control_order`), so the commands and the derivative name `Cld0k` follow the
+      written file; the flap is held at its angle in both runs, also in the consistency run, and its echo is
+      checked. All flaps of a configuration are at one angle (`flap_deflections_differ` otherwise); the
+      neutral point stays on the clean airplane. *Flaperon:* the deflection is the symmetric geometric bias,
+      the roll command comes on top as the antisymmetric `tau * delta` surface of the same rib and hinge (AVL:
+      two controls on the same stations). Where a roll control and a flap meet with different hinges the
+      split follows the more forward one and the other is measured from it. Declared:
+      `control_surface_fit_range_unknown` (AeroBuildup: single-element plain flap through NeuralFoil; the
+      lowest `analysis_confidence` of the sections at the stall or roll optimum is `detail.min_confidence`)
+      and `avl_flap_linearised` (AVL: linear in δ, no separation). The thresholds for a confidence warning
+      and a deflection warning are the pending parameters of the rule `flap-model-validity`; a pending
+      value is never read, so the kernel reports the values, not a verdict.
     - *Driven stations.* The main wing of a driven run has one sine-to-tip distribution over the half span,
       `y = (b/2) sin(π/2 t)` (AVL's `Sspace` −2 from root to tip, `avl_doc.txt:1043-1048`), the device ends
       exact: their `t` is rounded to a strip count and `t` runs evenly inside each of the three pieces

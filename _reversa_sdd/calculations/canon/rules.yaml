@@ -158,8 +158,29 @@ aerobuildup-no-deflected-device:
   applies_to: {formula: stall-speed}
   kind: tool
   on_violation: error
-  criterion: "AeroBuildup runs the clean airplane (devices at 0 deg, ARCHITECTURE 8.11): a deflected control device is refused rather than computed as the clean airplane."
+  criterion: "AeroBuildup is given the flaps of a configuration as deflected contours (#1212; the stall-speed applications takeoff and landing) and the roll command as an aileron surface; any other deflected control device is refused rather than computed as the clean airplane."
   codes: [unsupported_configuration]
+
+flap-model-validity:
+  applies_to: {formula: stall-speed}
+  kind: tool
+  on_violation: warning
+  criterion: "A flap is the rotated contour behind its hinge, evaluated by NeuralFoil (a plain, single-element flap; maintainer 2026-10-26, #1212). The result is declared when NeuralFoil's analysis_confidence of a flapped section is below min_confidence, and when a flap deflection is above max_flap_deflection. Both warnings wait for the maintainer's adoption: until then the kernel reads no threshold and reports the confidence and the deflections as values in control_surface_fit_range_unknown (A10: values, not verdicts)."
+  parameters:
+    min_confidence:
+      value: 0.9
+      unit: "1"
+      basis: convention
+      status: pending
+      source: "proposal from measurements (RV-7 NACA 23013.5, Re 1e5, hinge 0.75, NeuralFoil xlarge): flap 15 deg gives analysis_confidence at least 0.93, flap 30 deg gives 0.35 to 0.8 (0.53 at the C_L,max sample); NeuralFoil documents the confidence as the net's own estimate of how far the input lies inside its training data"
+      regime: "RC/UAV: measured at chord Reynolds numbers 1e5 and 3e5, inside the band of ADR 0028"
+    max_flap_deflection:
+      value: 30.0
+      unit: deg
+      basis: convention
+      status: pending
+      source: "proposal: the flow over a plain flap separates above about 40 deg (Scholz, Aircraft Design, high-lift chapter; Sadraey, Aircraft Design, ch. 4), and earlier at low Reynolds number; 30 deg is the maintainer's guessed landing deflection of the RV-7, so the proposal declares anything beyond it"
+      regime: "transport and general-aviation material for the separation angle, not checked at model Reynolds number (ADR 0028); the proposal is deliberately below it"
 
 avl-mesh-layout:
   applies_to: {formula: roll-rate}

@@ -101,6 +101,13 @@ opt_hinge_floor:
   basis: numerical
   source: "the smallest margin that keeps the power well defined at a hinge position of 0"
 
+opt_flap_rib_gap:
+  value: 1.0e-6
+  unit: m
+  guards: "Flap: the spanwise offset of the second section written at a rib where the flap state changes. AeroBuildup divides by the width of a strip, so two sections at the same place give NaN (measured: RV-7 with landing flaps)."
+  basis: numerical
+  source: "the smallest offset that keeps the strip well defined (measured: finite results at 1e-6 m, NaN at 0); a millionth of a metre moves the next strip's start by far less than the geometry's own tolerance"
+
 avl_contour_margin:
   value: 1.0e-9
   unit: "1"

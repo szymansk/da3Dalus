@@ -24,6 +24,14 @@ class FakeAirfoil:
         self.name = name
         self.coordinates = coordinates
 
+    def add_control_surface(
+        self, deflection: float = 0.0, hinge_point_x: float = 0.75
+    ) -> "FakeAirfoil":
+        """The deflected contour, recorded: ``coordinates`` says which contour, angle and hinge."""
+        return FakeAirfoil(
+            name=self.name, coordinates=("deflected", self.name, deflection, hinge_point_x)
+        )
+
 
 class FakeWingXSec:
     """Records ``asb.WingXSec(...)``."""
