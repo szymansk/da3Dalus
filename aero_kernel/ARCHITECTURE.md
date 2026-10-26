@@ -801,9 +801,14 @@ caller's responsibility.
       split follows the more forward one and the other is measured from it. Declared:
       `control_surface_fit_range_unknown` (AeroBuildup: single-element plain flap through NeuralFoil; the
       lowest `analysis_confidence` of the sections at the stall or roll optimum is `detail.min_confidence`)
-      and `avl_flap_linearised` (AVL: linear in δ, no separation). The thresholds for a confidence warning
-      and a deflection warning are the pending parameters of the rule `flap-model-validity`; a pending
-      value is never read, so the kernel reports the values, not a verdict.
+      and `avl_flap_linearised` (AVL: linear in δ, no separation). The rule `flap-model-validity`
+      (adopted by the maintainer 2026-10-26) adds two `defect` declarations ("outside the model's trusted
+      range", the word `reynolds_outside_band` and `avl_roll_rate_beyond_range` also use), the value still
+      computed: `flap_confidence_low` (`min_confidence` below 0.85, the app's `low_re_low_confidence_flag`,
+      duplicated because the kernel imports nothing from `app/`; `detail`: confidence, threshold, wing) from
+      `stall-speed` and the AeroBuildup world of `roll-rate`, and `flap_deflection_beyond_validity` (a flap
+      above 30 deg; `detail`: limit and flaps) from `stall-speed` and both roll worlds. Both thresholds
+      appear in `Provenance.rules_used` and can be overridden by the caller.
     - *Driven stations.* The main wing of a driven run has one sine-to-tip distribution over the half span,
       `y = (b/2) sin(π/2 t)` (AVL's `Sspace` −2 from root to tip, `avl_doc.txt:1043-1048`), the device ends
       exact: their `t` is rounded to a strip count and `t` runs evenly inside each of the three pieces

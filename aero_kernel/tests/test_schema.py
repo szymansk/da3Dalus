@@ -107,6 +107,8 @@ class TestKernelWarning:
             "aileron_deflection_beyond_reference": WarningSeverity.PRACTICE,
             "control_surface_fit_range_unknown": WarningSeverity.PRACTICE,
             "avl_flap_linearised": WarningSeverity.PRACTICE,
+            "flap_confidence_low": WarningSeverity.DEFECT,
+            "flap_deflection_beyond_validity": WarningSeverity.DEFECT,
             "fuselage_not_modelled": WarningSeverity.PRACTICE,
             "world_outside_validity": WarningSeverity.PRACTICE,
             "avl_mesh_not_converged": WarningSeverity.DEFECT,

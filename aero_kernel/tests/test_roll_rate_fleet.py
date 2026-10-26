@@ -309,4 +309,7 @@ async def test_rv7_roll_on_approach_is_evaluated_on_the_landing_configuration() 
     (roll_caveat,) = [
         w for w in p.warnings if w.code == "control_surface_fit_range_unknown" and w.world == AB
     ]
+    assert "flap_confidence_low" in codes(p, AB)  # 0.393 is below the 0.85 floor
+    assert "flap_confidence_low" not in codes(p, AVL)
+    assert "flap_deflection_beyond_validity" not in codes(p)
     assert close(float(roll_caveat.detail["min_confidence"]), RV7_ROLL_CONFIDENCE, 1e-4)  # pyright: ignore[reportArgumentType]

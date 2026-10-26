@@ -298,6 +298,7 @@ class SteadyRoll(BaseModel):
         p_rad_s: The roll rate about the stability x axis in rad/s (positive = right roll).
         alpha_deg: The angle of attack at the solution in degrees.
         warnings: The caveats (averaged hinge, deflection model, regime), without origin.
+        confidence: NeuralFoil's confidence at the solution (the recording run), if one was made.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -305,6 +306,7 @@ class SteadyRoll(BaseModel):
     p_rad_s: float
     alpha_deg: float
     warnings: tuple[KernelWarning, ...]
+    confidence: DeflectionDiagnostics | None = None
 
 
 def _not_converged(message: str, hint: str, **detail: float | str) -> FormulaError:
@@ -1362,5 +1364,8 @@ class OptiAdapter(SolverAdapter):
         warnings += _regime_warnings(airplane, v_ms, air)
         logger.debug("steady roll %.4f rad/s at %.2f deg", solution.p_rad_s, solution.alpha_deg)
         return SteadyRoll(
-            p_rad_s=solution.p_rad_s, alpha_deg=solution.alpha_deg, warnings=tuple(warnings)
+            p_rad_s=solution.p_rad_s,
+            alpha_deg=solution.alpha_deg,
+            warnings=tuple(warnings),
+            confidence=solution.diagnostics,
         )

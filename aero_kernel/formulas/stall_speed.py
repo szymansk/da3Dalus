@@ -13,6 +13,7 @@ from collections.abc import Mapping
 
 from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
+from aero_kernel.formulas.flap_validity import warn_flap_validity
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import CheckResult, formula, postcondition
 from aero_kernel.schema import Polar
@@ -53,6 +54,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, float | Polar]:
     )
     forward_warnings(ctx, stall.warnings)
     solution = stall.solution
+    warn_flap_validity(ctx, airplane_of(x), solution.diagnostics)
     return {
         "v_s": solution.v_s,
         "cl_max": solution.cl_max,

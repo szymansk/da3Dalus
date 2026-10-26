@@ -17,6 +17,7 @@ from aero_kernel.schema import (
     ReasonCode,
     WarningSeverity,
 )
+from aero_kernel.solvers.opti import DeflectionDiagnostics
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.np_builders import StubAvl
@@ -348,3 +349,94 @@ async def test_a_flapless_approach_roll_is_unchanged() -> None:
     await run("roll-rate-approach", opti=opti, extra={"flap-deflection-landing": 30.0})
     ((airplane, *_),) = opti.roll_calls
     assert airplane == plane()
+
+
+def confidence(value: float) -> DeflectionDiagnostics:
+    return DeflectionDiagnostics(
+        min_confidence=value,
+        min_confidence_wing="Main",
+        max_effective_alpha_deg=10.0,
+        max_effective_alpha_wing="Main",
+    )
+
+
+async def test_a_low_confidence_roll_on_the_landing_flap_is_declared_in_the_aerobuildup_world() -> (
+    None
+):
+    opti = StubOpti()
+    opti.roll_confidence = confidence(0.393)
+    quantity = only(
+        await run(
+            "roll-rate-approach",
+            airplane=flap_and_aileron(),
+            opti=opti,
+            extra={"flap-deflection-landing": 20.0},
+        )
+    )
+    (low,) = [w for w in quantity.warnings if w.code == "flap_confidence_low"]
+    assert (low.severity, low.world) == (WarningSeverity.DEFECT, "roll-rate=aerobuildup")
+    assert low.detail == {"min_confidence": 0.393, "threshold": 0.85, "wing": "Main"}
+    assert not [w for w in quantity.warnings if w.code == "flap_deflection_beyond_validity"]
+
+
+async def test_a_deflection_above_the_limit_is_declared_in_both_worlds_and_not_at_the_limit() -> (
+    None
+):
+    quantity = only(
+        await run(
+            "roll-rate-approach",
+            airplane=flap_and_aileron(),
+            extra={"flap-deflection-landing": 35.0},
+        )
+    )
+    beyond = [
+        w
+        for w in quantity.warnings
+        if w.code == "flap_deflection_beyond_validity" and w.world is not None
+    ]
+    assert sorted(str(w.world) for w in beyond) == sorted(
+        WORLDS
+    )  # also on the landing stall speed, world-less
+    assert beyond[0].severity is WarningSeverity.DEFECT
+    assert beyond[0].detail["limit_deg"] == 30.0
+    at_limit = only(
+        await run(
+            "roll-rate-approach",
+            airplane=flap_and_aileron(),
+            extra={"flap-deflection-landing": 30.0},
+        )
+    )
+    assert not [w for w in at_limit.warnings if w.code == "flap_deflection_beyond_validity"]
+
+
+async def test_the_flap_rule_values_are_in_the_provenance_and_an_override_works() -> None:
+    opti = StubOpti()
+    opti.roll_confidence = confidence(0.5)
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": flap_and_aileron(),
+            "values": {
+                "aircraft-mass": MASS,
+                "altitude": 0.0,
+                "aileron-deflection": 20.0,
+                "flap-deflection-landing": 20.0,
+            },
+            "rule_overrides": {"flap-model-validity.min_confidence": 0.4},
+        }
+    )
+    solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=opti, avl=StubAvl())
+    result = await evaluate(
+        shipped_build(),
+        aircraft,
+        ComputeRequest(quantities=("roll-rate-approach",)),
+        solvers=solvers,
+    )
+    assert not [w for w in only(result).warnings if w.code == "flap_confidence_low"]
+    (used,) = [
+        u
+        for u in result.provenance.rules_used
+        if (u.rule, u.parameter) == ("flap-model-validity", "min_confidence")
+    ]
+    assert (used.value, used.overridden, used.unit) == (0.4, True, "1")
+    limit = [u for u in result.provenance.rules_used if u.parameter == "max_flap_deflection"]
+    assert [(u.value, u.overridden) for u in limit] == [(30.0, False)]

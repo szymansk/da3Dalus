@@ -263,6 +263,7 @@ async def test_rv7_regression_goldens_and_the_flaps_computed_never_the_clean_air
         assert close(quantity.value, golden, 1e-5), slug
         clean_speed = quantities["stall-speed"].value
         assert clean_speed is not None
+        assert quantity.value is not None
         assert quantity.value < clean_speed, slug  # a flap lowers the stall speed
         assert not close(quantity.value, clean_speed, 1e-3), slug  # never the clean airplane's
         (caveat,) = [w for w in quantity.warnings if w.code == "control_surface_fit_range_unknown"]
@@ -271,6 +272,11 @@ async def test_rv7_regression_goldens_and_the_flaps_computed_never_the_clean_air
         assert caveat.detail["flaps"] == [
             {"wing": "main_wing", "device": "flaps", "deflection_deg": deflection}
         ], slug
+        declared = {w.code for w in quantity.warnings}
+        # take-off (0.877, 15 deg) is inside the trusted range; landing (0.407) is not; neither
+        # deflection is above the 30 deg limit
+        assert ("flap_confidence_low" in declared) is (slug == "stall-speed-landing"), slug
+        assert "flap_deflection_beyond_validity" not in declared, slug
     found = await rv7_values("max-lift-coefficient-takeoff", "max-lift-coefficient-landing")
     assert close(found["max-lift-coefficient-takeoff"], RV7_TAKEOFF[1], 1e-5)
     assert close(found["max-lift-coefficient-landing"], RV7_LANDING[1], 1e-5)

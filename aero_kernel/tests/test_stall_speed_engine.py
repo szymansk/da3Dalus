@@ -301,3 +301,51 @@ async def test_a_flapped_landing_reaches_the_solver_with_its_flap_and_never_as_t
     assert all(
         w.code != "control_surface_fit_range_unknown" for w in quantities["stall-speed"].warnings
     )
+
+
+async def test_the_flapped_stall_declares_a_low_confidence_and_an_over_limit_deflection() -> None:
+    """Rule flap-model-validity: the value is returned with a declared defect; a confidence at the
+    take-off configuration above the floor and a deflection at the limit declare nothing."""
+    from aero_kernel.solvers.opti import DeflectionDiagnostics
+
+    def diagnostics(value: float) -> DeflectionDiagnostics:
+        return DeflectionDiagnostics(
+            min_confidence=value,
+            min_confidence_wing="Main",
+            max_effective_alpha_deg=10.0,
+            max_effective_alpha_wing="Main",
+        )
+
+    class Confident(StubOpti):
+        async def stall(self, airplane, mass_kg, gravity, n_load, air):  # type: ignore[no-untyped-def,override]
+            stalled = await super().stall(airplane, mass_kg, gravity, n_load, air)
+            deflection = flap_deflections(airplane)[0] or 0.0
+            solution = stalled.solution.model_copy(
+                update={"diagnostics": diagnostics(0.877 if deflection < 20.0 else 0.407)}
+            )
+            return stalled.model_copy(update={"solution": solution})
+
+    values = {"flap-deflection-takeoff": 15.0, "flap-deflection-landing": 30.0}
+    result, _ = await run(
+        "stall-speed-takeoff", "stall-speed-landing", stub=Confident(), flap=True, values=values
+    )
+    found = by_slug(result)
+    assert [w.code for w in found["stall-speed-takeoff"].warnings] == []
+    (low,) = [w for w in found["stall-speed-landing"].warnings if w.code == "flap_confidence_low"]
+    assert low.detail == {"min_confidence": 0.407, "threshold": 0.85, "wing": "Main"}
+    assert not [
+        w
+        for w in found["stall-speed-landing"].warnings
+        if w.code == "flap_deflection_beyond_validity"
+    ]
+    over, _ = await run(
+        "stall-speed-landing", stub=Confident(), flap=True, values={"flap-deflection-landing": 31.0}
+    )
+    (declared,) = [
+        w
+        for w in by_slug(over)["stall-speed-landing"].warnings
+        if w.code == "flap_deflection_beyond_validity"
+    ]
+    assert declared.detail["flaps"] == [
+        {"wing": "Main", "device": "device 0", "deflection_deg": 31.0}
+    ]

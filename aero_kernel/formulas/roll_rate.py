@@ -11,6 +11,7 @@ range ``|p b / 2V| <= 0.10`` declares itself outside its validity and leaves the
 import math
 
 from aero_kernel.context import Context, Inputs
+from aero_kernel.formulas.flap_validity import warn_flap_validity
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
 
@@ -98,6 +99,7 @@ async def roll_rate(x: Inputs, ctx: Context) -> dict[str, float]:
             airplane, number(x, "m"), number(x, "g"), air_state(x), speed, delta
         )
         forward_warnings(ctx, steady.warnings)
+        warn_flap_validity(ctx, airplane, steady.confidence)
         rate = steady.p_rad_s
     elif world == "avl":
         dynamic_pressure = 0.5 * number(x, "rho") * speed**2
@@ -105,6 +107,7 @@ async def roll_rate(x: Inputs, ctx: Context) -> dict[str, float]:
         cl = number(x, "m") * number(x, "g") / (dynamic_pressure * reference.s_ref)
         found = await ctx.solvers.avl.steady_roll(airplane, cl, delta)
         forward_warnings(ctx, found.warnings)
+        warn_flap_validity(ctx, airplane, None)
         rate = found.p_hat * 2.0 * speed / span
         exclude_avl_beyond_range(ctx, found.p_hat, math.degrees(rate))
     else:

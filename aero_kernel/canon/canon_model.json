@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:2047f4b2deef1e79a06fc835dfe4f4f0d1e474b34840a62b15e2e4424d4a6549",
+  "content_hash": "sha256:bbeb9ce97f0cdcdeb21b4d1fcc2488858ad786a02c7ca94acad49e58fbfd9052",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6562,26 +6562,29 @@
             "formula": "stall-speed",
             "quantity": null
           },
-          "codes": [],
-          "criterion": "A flap is the rotated contour behind its hinge, evaluated by NeuralFoil (a plain, single-element flap; maintainer 2026-10-26, #1212). The result is declared when NeuralFoil's analysis_confidence of a flapped section is below min_confidence, and when a flap deflection is above max_flap_deflection. Both warnings wait for the maintainer's adoption: until then the kernel reads no threshold and reports the confidence and the deflections as values in control_surface_fit_range_unknown (A10: values, not verdicts).",
+          "codes": [
+            "flap_confidence_low",
+            "flap_deflection_beyond_validity"
+          ],
+          "criterion": "A flap is the rotated contour behind its hinge, evaluated by NeuralFoil (a plain, single-element flap; maintainer 2026-10-26, #1212). The result of stall-speed (take-off and landing applications) and of roll-rate (approach) is declared outside the model's trusted range when NeuralFoil's analysis_confidence of a section at the solution is below min_confidence (flap_confidence_low), and when a flap deflection is above max_flap_deflection (flap_deflection_beyond_validity). The value is computed and returned with the declaration, never withheld.",
           "kind": "tool",
           "on_violation": "warning",
           "parameters": {
             "max_flap_deflection": {
               "basis": "convention",
-              "regime": "transport and general-aviation material for the separation angle, not checked at model Reynolds number (ADR 0028); the proposal is deliberately below it",
-              "source": "proposal: the flow over a plain flap separates above about 40 deg (Scholz, Aircraft Design, high-lift chapter; Sadraey, Aircraft Design, ch. 4), and earlier at low Reynolds number; 30 deg is the maintainer's guessed landing deflection of the RV-7, so the proposal declares anything beyond it",
-              "status": "pending",
+              "regime": "transport and general-aviation material for the separation angle, not checked at model Reynolds number (ADR 0028); the adopted value is deliberately below it",
+              "source": "plain-flap separation above about 40 deg (Scholz ch. 8 / Sadraey 5.12.2), earlier at low Re; 30 deg keeps a margin; adopted by the maintainer 2026-10-26, #1212",
+              "status": "adopted",
               "unit": "deg",
               "value": 30.0
             },
             "min_confidence": {
               "basis": "convention",
               "regime": "RC/UAV: measured at chord Reynolds numbers 1e5 and 3e5, inside the band of ADR 0028",
-              "source": "proposal from measurements (RV-7 NACA 23013.5, Re 1e5, hinge 0.75, NeuralFoil xlarge): flap 15 deg gives analysis_confidence at least 0.93, flap 30 deg gives 0.35 to 0.8 (0.53 at the C_L,max sample); NeuralFoil documents the confidence as the net's own estimate of how far the input lies inside its training data",
-              "status": "pending",
+              "source": "the app's existing low-confidence flag for NeuralFoil polars, app/settings.py low_re_low_confidence_flag = 0.85 ('Low analysis confidence - validate with XFoil'); one threshold for one concept; adopted by the maintainer 2026-10-26, #1212. The kernel must not import app/ (E8), so the value is stated twice: a later change of either must change both. Measured on RV-7 (NACA 23013.5, Re 1e5, hinge 0.75): flap 15 deg gives confidence of at least 0.93 at the section, 30 deg 0.35 to 0.8",
+              "status": "adopted",
               "unit": "1",
-              "value": 0.9
+              "value": 0.85
             }
           }
         },
