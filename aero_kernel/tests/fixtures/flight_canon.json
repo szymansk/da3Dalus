@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:33612f2fc035176726719ba04a79883d105663ad76858adf132a3db75588e12b",
+  "content_hash": "sha256:ace69ef29e0f4eae8f795664ab1a64348cc665c627e859e9324df1cb4bc6c17e",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -720,6 +720,96 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
+        }
+      },
+      "rules": {
+        "airfoil-resolvable": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "invalid_airfoil_contour"
+          ],
+          "criterion": "A contour has at least min_contour_points points.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "min_contour_points": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "three points are the least that enclose an area",
+              "status": "adopted",
+              "unit": "1",
+              "value": 3.0
+            }
+          }
+        },
+        "main-wing-spanwise-extent": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "main_wing_without_spanwise_extent"
+          ],
+          "criterion": "A main wing is inclined by less than max_inclination.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "max_inclination": {
+              "basis": "convention",
+              "regime": "regime-independent",
+              "source": "adopted by the maintainer on 2026-10-25",
+              "status": "adopted",
+              "unit": "deg",
+              "value": 45.0
+            }
+          }
+        },
+        "minimum-sections": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "too_few_sections"
+          ],
+          "criterion": "A wing and a fuselage have at least min_sections sections.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "min_sections": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "a lofted surface is defined by at least two sections",
+              "status": "adopted",
+              "unit": "1",
+              "value": 2.0
+            }
+          }
+        },
+        "one-main-wing": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "main_wing_count"
+          ],
+          "criterion": "The airplane has exactly required_main_wings main wings.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "required_main_wings": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "one reference wing per airplane",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1.0
+            }
+          }
         }
       },
       "taxonomy": {

@@ -78,6 +78,93 @@ def world_taxonomy(content: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+GEOMETRY_RULES: dict[str, Any] = {
+    "minimum-sections": {
+        "applies_to": {"quantity": "airplane"},
+        "kind": "input",
+        "on_violation": "error",
+        "criterion": "A wing and a fuselage have at least min_sections sections.",
+        "codes": ["too_few_sections"],
+        "parameters": {
+            "min_sections": {
+                "value": 2.0,
+                "unit": "1",
+                "basis": "definition",
+                "status": "adopted",
+                "source": "a lofted surface is defined by at least two sections",
+                "regime": "regime-independent",
+            }
+        },
+    },
+    "airfoil-resolvable": {
+        "applies_to": {"quantity": "airplane"},
+        "kind": "input",
+        "on_violation": "error",
+        "criterion": "A contour has at least min_contour_points points.",
+        "codes": ["invalid_airfoil_contour"],
+        "parameters": {
+            "min_contour_points": {
+                "value": 3.0,
+                "unit": "1",
+                "basis": "definition",
+                "status": "adopted",
+                "source": "three points are the least that enclose an area",
+                "regime": "regime-independent",
+            }
+        },
+    },
+    "one-main-wing": {
+        "applies_to": {"quantity": "airplane"},
+        "kind": "input",
+        "on_violation": "error",
+        "criterion": "The airplane has exactly required_main_wings main wings.",
+        "codes": ["main_wing_count"],
+        "parameters": {
+            "required_main_wings": {
+                "value": 1.0,
+                "unit": "1",
+                "basis": "definition",
+                "status": "adopted",
+                "source": "one reference wing per airplane",
+                "regime": "regime-independent",
+            }
+        },
+    },
+    "main-wing-spanwise-extent": {
+        "applies_to": {"quantity": "airplane"},
+        "kind": "input",
+        "on_violation": "error",
+        "criterion": "A main wing is inclined by less than max_inclination.",
+        "codes": ["main_wing_without_spanwise_extent"],
+        "parameters": {
+            "max_inclination": {
+                "value": 45.0,
+                "unit": "deg",
+                "basis": "convention",
+                "status": "adopted",
+                "source": "adopted by the maintainer on 2026-10-25",
+                "regime": "regime-independent",
+            }
+        },
+    },
+}
+"""The geometry rules the kernel reads, as the shipped canon states them (a test pins the values)."""
+
+
+def with_geometry_rules(content: dict[str, Any]) -> dict[str, Any]:
+    """Give a hand-made namespace the geometry rules the kernel reads, and the ``airplane`` they guard.
+
+    The kernel validates every aircraft against the rules of the canon it runs on; a test model
+    that states none would have the kernel refuse every call.
+    """
+    quantities = content["quantities"]
+    quantities.setdefault(
+        "airplane", {"symbol": "airplane", "unit": "1", "role": "input", "type": "airplane"}
+    )
+    content.setdefault("rules", copy.deepcopy(GEOMETRY_RULES))
+    return content
+
+
 def with_hash(namespaces: dict[str, Any]) -> dict[str, Any]:
     """Wrap ``namespaces`` in a complete model dict with the correct content hash.
 

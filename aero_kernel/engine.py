@@ -43,6 +43,7 @@ from aero_kernel.graph import (
     unmet_condition,
 )
 from aero_kernel.registry import CheckResult
+from aero_kernel.rules import Rules, rule_override_errors
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -56,6 +57,7 @@ from aero_kernel.schema import (
     QuantityStatus,
     Reason,
     ReasonCode,
+    RuleUsed,
     dedupe_warnings,
 )
 from aero_kernel.validate import validate_aircraft, validate_request, validate_values
@@ -990,10 +992,12 @@ def _provenance(
     defaults: tuple[DefaultUsed, ...] = (),
     tool_versions: Mapping[str, str] | None = None,
     solver_settings: Mapping[str, JsonValue] | None = None,
+    rules_used: tuple[RuleUsed, ...] = (),
 ) -> Provenance:
     """The provenance of a call on a loaded build."""
     return Provenance(
         defaults_used=defaults,
+        rules_used=rules_used,
         tool_versions=dict(tool_versions or {}),
         solver_settings=dict(solver_settings or {}),
         build_digest=build.digest,
@@ -1048,14 +1052,19 @@ async def evaluate(
     """
     call_id = secrets.token_hex(4)
     started = time.perf_counter()
-    validation = validate_aircraft(aircraft)
+    rules = Rules(build.model, aircraft.rule_overrides)
+    override_errors = rule_override_errors(aircraft.rule_overrides, build.model)
+    validation = validate_aircraft(aircraft, rules)
     errors = (
-        validation.errors
+        override_errors
+        + validation.errors
         + validate_values(aircraft.values, build.model)
         + validate_request(request)
     )
     if errors:
-        result = ComputeResult(input_errors=errors, provenance=_provenance(build))
+        result = ComputeResult(
+            input_errors=errors, provenance=_provenance(build, rules_used=rules.used())
+        )
         log_call(call_id, request, result, started)
         return result
     subtree = build.graph.subtree(request.quantities)
@@ -1081,7 +1090,11 @@ async def evaluate(
     result = ComputeResult(
         quantities=tuple(results[slug] for slug in request.quantities),
         provenance=_provenance(
-            build, call.defaults_used(), call.tool_versions, call.solver_settings
+            build,
+            call.defaults_used(),
+            call.tool_versions,
+            call.solver_settings,
+            rules.used(),
         ),
     )
     log_call(call_id, request, result, started)

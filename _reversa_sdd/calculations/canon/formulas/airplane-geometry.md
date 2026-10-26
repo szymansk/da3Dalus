@@ -16,8 +16,6 @@ tags:
   - kind/procedure
   - status/approved
 inputs: {airplane: airplane}
-preconditions:
-  - {id: main_wing_has_spanwise_extent, parameter: airplane, on_violation: error}
 outputs:
   s_ref: wing-reference-area
   b_ref: wing-span
@@ -51,14 +49,14 @@ every coefficient stays referenced to the same area (ADR 0022); `asb.Airplane` w
 wing in the list, not the main wing, and with the mixed defaults of the next paragraph. A mirrored wing is built from its
 oriented chain (root first, y ≥ 0); sections that fold back in y are not supported.
 
-**Precondition `main_wing_has_spanwise_extent` (error; maintainer 2026-10-25, #1253).** A wing typed `main_wing`
-must extend further in y than in z: over its stored sections, `max y − min y > max z − min z`. Equal or less
-means the mean inclination of the whole wing is 45° or more, a vertical surface. AeroSandbox would measure it
-without complaint (a slant planform), so the kernel refuses it before the measurement, as
-`unsupported_configuration` (`precondition_violated`), with the hint to check the surface type. Criterion and
-threshold are the proposal of #1253 and **adopted by the maintainer (2026-10-25)**: the dihedral of a real main wing
-stays far below 45° (even a strong V, 10–15°; a winglet adds little y-extent and little z-extent to a wing
-whose y-extent dominates), whereas a fin or a V-tail typed `main_wing` has y ≤ z.
+**Rule `main-wing-spanwise-extent` (an input rule, `rules.yaml`; maintainer 2026-10-25, #1253, #1260).** A wing typed
+`main_wing` is inclined from the horizontal by less than `max_inclination` over its stored sections:
+`atan2(z-extent, y-extent) < max_inclination`, with `max_inclination` = 45° (a convention, adopted 2026-10-25;
+no published source). A wing with no y-extent is a vertical surface and is refused. AeroSandbox would measure it
+without complaint (a slant planform), so the kernel refuses the input before any calculation, on every path, as
+`invalid_input` (`main_wing_without_spanwise_extent`) with the hint to check the surface type. The threshold is a
+parameter, not a number in the code: an expert user with an unusual aircraft may override it
+(`rule_overrides`), and the override is declared in the provenance.
 
 **The centreline gap (#1262).** `asb.Airplane`, when it derives its reference values, takes `S_ref` with the
 default `include_centerline_distance=False` (the gap excluded) and `b_ref` with `True` (the gap included); ASB

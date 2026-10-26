@@ -122,6 +122,25 @@ def _default(raw: dict[str, object]) -> JsonDict:
     return {name: _unit(value) if name == "unit" else value for name, value in raw.items()}
 
 
+def _rule(raw: dict[str, object]) -> JsonDict:
+    """Normalise one ``rules.yaml`` entry: the unit of each parameter folds, the rest is carried."""
+    document: JsonDict = dict(raw)
+    parameters = as_mapping(raw.get("parameters"))
+    if parameters is not None:
+        document["parameters"] = {
+            str(name): _parameter(parameter) for name, parameter in parameters.items()
+        }
+    return document
+
+
+def _parameter(raw: object) -> object:
+    """Normalise one rule parameter; anything that is not a mapping is left for the model to refuse."""
+    mapping = as_mapping(raw)
+    if mapping is None:
+        return raw
+    return {str(name): _unit(value) if name == "unit" else value for name, value in mapping.items()}
+
+
 # --- formulas ---------------------------------------------------------------------------------
 
 
@@ -351,5 +370,6 @@ def normalise(parsed: ParsedCanon) -> tuple[JsonDict, list[Finding]]:
         },
         "formulas": documents,
         "defaults": {slug: _default(raw) for slug, raw in parsed.defaults.items()},
+        "rules": {slug: _rule(raw) for slug, raw in parsed.rules.items()},
         "taxonomy": parsed.taxonomy or {},
     }, findings

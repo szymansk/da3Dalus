@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from aero_kernel.canon.model import Namespace, compute_content_hash
-from aero_kernel.tests.canon_builders import world_taxonomy
+from aero_kernel.tests.canon_builders import GEOMETRY_RULES, world_taxonomy
 from pydantic import TypeAdapter
 
 # ``Any`` in this module is the raw-JSON boundary: the entries below are hand-written JSON-shaped
@@ -316,6 +316,7 @@ def build_flight_canon() -> str:
             "quantities": quantities,
             "formulas": formulas,
             "defaults": defaults,
+            "rules": GEOMETRY_RULES,
             "taxonomy": world_taxonomy({"formulas": formulas}),
         }
     }

@@ -4,7 +4,7 @@ from typing import Any
 
 # ``Any`` is the raw-JSON boundary: these are hand-written model dicts that the canon model validates.
 from aero_kernel.canon.model import CanonModel
-from aero_kernel.tests.canon_builders import with_hash
+from aero_kernel.tests.canon_builders import with_geometry_rules, with_hash
 
 
 def quantity(role: str = "derived", **extra: Any) -> dict[str, Any]:
@@ -50,5 +50,7 @@ def model_of(
     }
     if taxonomy is not None:
         content["taxonomy"] = taxonomy
+    if namespace == "calc":
+        with_geometry_rules(content)
     namespaces = {namespace: content}
     return CanonModel.model_validate(with_hash(namespaces))

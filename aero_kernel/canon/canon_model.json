@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e6db5aa7b555282ac725d51331c752bced2815fe6a9ba4a67dbd1da939031080",
+  "content_hash": "sha256:8a5b67ef78090c3ec25ccb29b5f799180728dc5ac356775468356975947583c5",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -424,14 +424,7 @@
             "s_ref": "calc:wing-reference-area"
           },
           "postconditions": [],
-          "preconditions": [
-            {
-              "applications": null,
-              "id": "main_wing_has_spanwise_extent",
-              "on_violation": "error",
-              "parameter": "airplane"
-            }
-          ],
+          "preconditions": [],
           "tool": "GEO",
           "uncertainty": null,
           "variables": [],
@@ -5886,6 +5879,327 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
+        }
+      },
+      "rules": {
+        "aerobuildup-no-deflected-device": {
+          "applies_to": {
+            "formula": "stall-speed",
+            "quantity": null
+          },
+          "codes": [
+            "unsupported_configuration"
+          ],
+          "criterion": "AeroBuildup runs the clean airplane (devices at 0 deg, ARCHITECTURE 8.11): a deflected control device is refused rather than computed as the clean airplane.",
+          "kind": "tool",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "aerosandbox-fuselage-shape": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "unsupported_configuration"
+          ],
+          "criterion": "AeroSandbox has no mirrored body and one shape exponent per fuselage section: a mirrored fuselage and a section with n_lower different from n are refused rather than approximated.",
+          "kind": "tool",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "airfoil-positive-thickness": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "non_positive_thickness"
+          ],
+          "criterion": "An airfoil has a maximum thickness greater than zero: a NACA designation with a thickness above 00, a contour whose upper surface lies above its lower surface somewhere.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "airfoil-resolvable": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "unresolved_airfoil",
+            "invalid_airfoil_contour"
+          ],
+          "criterion": "An airfoil is a NACA 4-digit designation or inline coordinates (the kernel loads no files); a contour has at least min_contour_points points and starts and ends at the trailing edge, the largest x (Selig order).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "min_contour_points": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "three points are the least that enclose an area; the first and last point being the trailing edge makes the order Selig",
+              "status": "adopted",
+              "unit": "1",
+              "value": 3.0
+            }
+          }
+        },
+        "avl-array-limit": {
+          "applies_to": {
+            "formula": "neutral-point",
+            "quantity": null
+          },
+          "codes": [
+            "avl_array_limit"
+          ],
+          "criterion": "AVL's vortex array has a fixed size; a mesh that overflows it is refused (avl_array_limit) and a refined check that overflows is declared, never silently dropped.",
+          "kind": "tool",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "avl-mesh-layout": {
+          "applies_to": {
+            "formula": "neutral-point",
+            "quantity": null
+          },
+          "codes": [
+            "unsupported_layout",
+            "hinge_line_discontinuous"
+          ],
+          "criterion": "The AVL mesh drives roll devices of one kind of surface at a time and needs a continuous hinge line: a hinge line that jumps between joined driven segments (hinge_line_discontinuous) and a layout the mesh cannot drive (unsupported_layout) are refused.",
+          "kind": "tool",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "avl-no-deflected-device": {
+          "applies_to": {
+            "formula": "neutral-point",
+            "quantity": null
+          },
+          "codes": [
+            "unsupported_configuration"
+          ],
+          "criterion": "AVL runs the clean airplane: the kernel writes no CONTROL, so a deflected control device is refused rather than computed as the clean airplane.",
+          "kind": "tool",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "control-surface-needs-device": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "control_surface_without_device"
+          ],
+          "criterion": "A control surface is given only on a section that has a trailing-edge device: the kernel takes role and hinge from the device.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "finite-numbers": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "non_finite_number"
+          ],
+          "criterion": "Every number of the geometry that the kernel reads is finite (no NaN, no infinity).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "flap-deflection-with-flaps": {
+          "applies_to": {
+            "formula": "airplane-configuration",
+            "quantity": null
+          },
+          "codes": [
+            "missing_input"
+          ],
+          "criterion": "An airplane that has flaps is given the flap deflection of the configuration; the kernel takes no default.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "isa-altitude-range": {
+          "applies_to": {
+            "formula": "air-density-isa",
+            "quantity": null
+          },
+          "codes": [
+            "invalid_input"
+          ],
+          "criterion": "The altitude lies inside the range of AeroSandbox's International Standard Atmosphere (the range is the tool's own, read from it).",
+          "kind": "tool",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "main-wing-spanwise-extent": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "main_wing_without_spanwise_extent"
+          ],
+          "criterion": "A wing of surface_type main_wing is inclined from the horizontal by less than max_inclination over its stored sections: arctan((max z - min z) / (max y - min y)) < max_inclination; a wing with no y-extent is a vertical surface and is refused. AeroSandbox would measure a vertical surface without complaint (a slant planform).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "max_inclination": {
+              "basis": "convention",
+              "regime": "regime-independent: a statement about the shape of the surface, not about the flow",
+              "source": "adopted by the maintainer on 2026-10-25 (#1253); no published source. The dihedral of a real main wing stays far below it, even a strong V (10-15 deg), while a fin or a V-tail typed main_wing has y-extent <= z-extent",
+              "status": "adopted",
+              "unit": "deg",
+              "value": 45.0
+            }
+          }
+        },
+        "minimum-sections": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "too_few_sections"
+          ],
+          "criterion": "A wing and a fuselage have at least min_sections sections: a surface needs a root and a tip.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "min_sections": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "a lofted surface is defined by at least two sections",
+              "status": "adopted",
+              "unit": "1",
+              "value": 2.0
+            }
+          }
+        },
+        "neutral-point-layout": {
+          "applies_to": {
+            "formula": "neutral-point",
+            "quantity": null
+          },
+          "codes": [
+            "unsupported_layout"
+          ],
+          "criterion": "The neutral point is defined for one main wing with one horizontal tail (any fins and winglets); a tailless wing, a canard, a tandem wing and a V-tail are refused (#1206, #1207, #1208).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "one-main-wing": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "main_wing_count"
+          ],
+          "criterion": "The airplane has exactly required_main_wings wings of surface_type main_wing: its area, span and chord are the reference values.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "required_main_wings": {
+              "basis": "definition",
+              "regime": "regime-independent",
+              "source": "one reference wing per airplane; biplanes are out of v1 (ARCHITECTURE 8.5)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1.0
+            }
+          }
+        },
+        "positive-lengths": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "non_positive_length"
+          ],
+          "criterion": "Every chord, every fuselage semi-axis (zero allowed at an end section) and every fuselage shape exponent is greater than zero, and the leading-edge chain of a wing has a length greater than zero.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "roll-device-on-mirrored-surface": {
+          "applies_to": {
+            "formula": "roll-rate",
+            "quantity": null
+          },
+          "codes": [
+            "roll_device_on_unmirrored_surface",
+            "missing_hinge"
+          ],
+          "criterion": "A roll device (aileron, flaperon, elevon) sits on a mirrored surface and has a hinge position (rel_chord_root); the tool's default hinge is never used.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "sections-monotone-in-y": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "unsupported_configuration"
+          ],
+          "criterion": "The sections of a mirrored surface run from the root outwards without doubling back in y (a fin: in z): a planform that doubles back would be counted twice.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "segment-details-not-on-last-section": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "segment_on_last_section"
+          ],
+          "criterion": "The last section of a wing carries no trailing-edge device, spar list or turbulator: it ends the wing and has no segment outboard of it.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "static-margin-probe-agreement": {
+          "applies_to": {
+            "formula": "static-margin-probe",
+            "quantity": null
+          },
+          "codes": [],
+          "criterion": "The static margin from the moment slope (the probe) agrees with the target static margin to within agreement_tolerance, in fractions of the mean aerodynamic chord; a larger deviation is reported, never averaged.",
+          "kind": "probe",
+          "on_violation": "warning",
+          "parameters": {
+            "agreement_tolerance": {
+              "basis": "convention",
+              "regime": "regime-independent as a statement about agreement; the value rests on the spread of the methods in the RC/UAV regime",
+              "source": "PROPOSAL, pending the maintainer's word: 5 % MAC. Reasoning: the neutral-point worlds spread 3-6 % MAC (textbook against AVL, BRYAN and JAGUAR), plus the declared probe bias (AeroBuildup has no wing-tail downwash)",
+              "status": "pending",
+              "unit": "1",
+              "value": 0.05
+            }
+          }
+        },
+        "surface-type-required": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "missing_surface_type"
+          ],
+          "criterion": "Every wing has a surface_type; the kernel never infers one from the planform (D9).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
         }
       },
       "taxonomy": {
