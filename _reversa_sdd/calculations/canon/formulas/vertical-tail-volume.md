@@ -15,7 +15,7 @@ tags:
   - shape/law
   - kind/law
   - status/draft
-inputs: {airplane: airplane, s_ref: wing-reference-area, b_ref: wing-span}
+inputs: {airplane: airplane, s_ref: wing-reference-area, b_ref: wing-span, l_v_cg: vertical-tail-arm}
 outputs: {v_v: vertical-tail-volume}
 applications:
   - id: with_vertical_tail
@@ -27,20 +27,21 @@ applications:
 **Canonical form**
 
 ```
-S_V, l_V_25 := geometry(airplane)   # fin area (V-tail: S_Vtail*sin^2(nu)), tail arm
-V_V = S_V * l_V_25 / (S_ref * b_ref)
+S_V := geometry(airplane)   # fin area (V-tail: S_Vtail*sin^2(nu))
+V_V = S_V * l_V_CG / (S_ref * b_ref)
 ```
 
 `S_ref` and `b_ref` are [[wing-reference-area]] and [[wing-span]], produced by [[airplane-geometry]] (AeroSandbox's
 definition, measured on the main wing; maintainer 2026-10-25). This entry does not read the wing area or span
-from the airplane itself: one producer per number a user sees (ADR 0022). Only the tail-specific geometry,
-`S_V` and `l_V,25`, is read from the airplane.
+from the airplane itself: one producer per number a user sees (ADR 0022). Only the fin area `S_V` is read from the airplane;
+the arm `l_V,CG` is [[vertical-tail-arm]].
 
 `S_V` is the fin area, for a V-tail its fin share `S_Vtail·sin²ν` (ν = panel angle to the horizontal);
-`l_V,25` runs from the wing's quarter-chord MAC (25 % MAC) to the fin's quarter-chord MAC.
-Drela measures from the CG; for the MVP the CG is taken as 25 % MAC (maintainer 2026-10-25). A CG-referenced variant (`l_V,CG`, `l_H,CG`, Drela's definition) may be added later as a separate quantity; the suffix names the reference point.
+`l_V,CG` runs from the computed design CG ([[centre-of-gravity-design]]) to the fin's quarter-chord MAC, exactly
+Drela's definition (maintainer 2026-10-25, #1272, superseding the reading of the CG as 25 % MAC). The arm is an interval
+over the neutral-point worlds, so `V_V` is one value per world (A11); the former `l_V,25` is removed, no formula needs it (ADR 0021).
 
-**Produces** [[vertical-tail-volume]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[wing-span]]
+**Produces** [[vertical-tail-volume]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[wing-span]] · [[vertical-tail-arm]]
 
 **Kind: a law.** A geometric ratio, deterministic and independent of any solver. It is the robust anchor
 next to the AVL derivatives (K27): RC practice and preliminary design size the fin with it, not with

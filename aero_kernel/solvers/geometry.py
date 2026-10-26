@@ -13,7 +13,11 @@ from typing import ClassVar
 
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
-from aero_kernel.solvers.asb_airplane import main_wing_properties, surface_properties
+from aero_kernel.solvers.asb_airplane import (
+    main_wing_properties,
+    quarter_chord_mac_x,
+    surface_properties,
+)
 from aero_kernel.solvers.base import SolverAdapter
 
 logger = logging.getLogger(__name__)
@@ -74,3 +78,21 @@ class GeometryAdapter(SolverAdapter):
         self.require_available()
         await asyncio.to_thread(importlib.import_module, "aerosandbox")
         return surface_properties(airplane, key)
+
+    async def quarter_chord_mac_x(self, airplane: AirplaneGeometry, key: str) -> float:
+        """Return x of the quarter-chord MAC of one wing, for the tail arms from the design CG.
+
+        Args:
+            airplane: The validated geometry document.
+            key: The key of the wing in ``airplane.wings``.
+
+        Returns:
+            ``Wing.aerodynamic_center(chord_fraction=0.25)[0]`` in m, geometry frame, aft positive.
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing;
+                ``unsupported_configuration`` for a wing without an aerodynamic centre.
+        """
+        self.require_available()
+        await asyncio.to_thread(importlib.import_module, "aerosandbox")
+        return quarter_chord_mac_x(airplane, key)
