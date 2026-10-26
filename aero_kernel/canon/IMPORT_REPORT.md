@@ -104,7 +104,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | dynamic-pressure | approved | 2 of 2 |  |
 | endurance-and-range | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
 | endurance-and-range-optimum | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
-| horizontal-tail-arm | draft | 2 of 2 |  |
+| horizontal-tail-arm | approved | 2 of 2 |  |
 | induced-drag-factor | draft | 0 of 2 | aspect-ratio (not approved); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
 | lateral-static-stability-app | approved | 6 of 6 |  |
 | lateral-static-stability-md | approved | 6 of 6 |  |
@@ -133,7 +133,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | spanwise-loads | approved | 6 of 6 |  |
 | spar-break-load-factor | draft | 5 of 5 |  |
 | speed-from-stall-margin | approved | 5 of 5 |  |
-| spiral-parameter | draft | 7 of 8 | vertical-tail-arm (not approved) |
+| spiral-parameter | draft | 8 of 8 |  |
 | stall-break | approved | 5 of 5 |  |
 | stall-speed | approved | 8 of 8 |  |
 | stall-wing-loading-limit | approved | 2 of 3 | stall-speed-target (no data source) |
@@ -141,8 +141,8 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | static-margin-probe | approved | 6 of 6 |  |
 | static-thrust-to-weight | draft | 11 of 11 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | thrust-at-airspeed-from-coefficient | draft | 2 of 4 | propeller-speed (motor-propeller-equilibrium: not approved); thrust-coefficient (propeller-table-lookup: not approved; advance-ratio-from-speed: not approved via propeller-table-lookup; motor-propeller-equilibrium: not approved via propeller-table-lookup, advance-ratio-from-speed) |
-| vertical-tail-arm | draft | 2 of 2 |  |
-| vertical-tail-volume | draft | 3 of 4 | vertical-tail-arm (not approved) |
+| vertical-tail-arm | approved | 2 of 2 |  |
+| vertical-tail-volume | approved | 4 of 4 |  |
 | weight-from-mass | approved | 2 of 2 |  |
 | wing-loading | draft | 3 of 3 |  |
 
