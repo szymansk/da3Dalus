@@ -15,8 +15,8 @@
 #
 # Definition differences to keep in mind (stated on epic #1259):
 #   - Drela's c is the average chord S/b; the canon uses c_MAC. They differ for a tapered wing.
-#   - Drela measures tail arms from the CG. The canon's vertical-tail-volume and spiral-parameter
-#     still use l_V,25 until #1272 moves them to the design CG.
+#   - Drela measures tail arms from the CG. Since #1272 the canon's vertical-tail-volume and
+#     spiral-parameter use l_V,CG from the design CG, as Drela does.
 source: "M. Drela, Lab 11 Notes - Basic Aircraft Design Rules, MIT 16.Unified, 16 Apr 2009"
 rules:
   - id: static-margin-design
@@ -82,12 +82,11 @@ rules:
     above_severity: caution
     above_basis: "maintainer 2026-10-25: costs drag and mass (aft mass shifts the CG back) without a noticeable stability gain; Drela names no penalty above the range"
     note: >-
-      Until #1272 the canon arm is l_V,25 (from the wing quarter-chord MAC), not Drela's arm from
-      the CG.
+      The canon arm is l_V,CG from the design CG (#1272), Drela's definition.
 
   - id: spiral-stability
     title: Spiral stability
-    quantity: {slug: spiral-parameter}
+    quantity: {slug: spiral-parameter-md}
     unit: "1"
     band: {min: 5.0, min_inclusive: false}
     source: "Drela rule (9), Eqs. 8-9"
@@ -104,7 +103,43 @@ rules:
           A small amount of spiral instability (B = 3...4, say) does not cause major difficulties
           for an experienced pilot.
     note: >-
-      B = l_V * Gamma / (b * C_L) with Gamma in degrees. Until #1272 the arm is l_V,25.
+      B = l_V,CG * Gamma_eq / (b * C_L) with Gamma in degrees, C_L at the minimum-drag speed. Drela
+      names no flight condition for C_L; the canon computes B at V_md and at V_mp (#1309) and the
+      two circling rules below judge B at V_mp by control layout.
+
+  - id: spiral-stability-circling-aileron
+    title: Spiral stability while circling (aircraft with ailerons)
+    quantity: {slug: spiral-parameter-mp}
+    unit: "1"
+    band: {min: 5.0, min_inclusive: false}
+    source: "Drela rule (9), Eqs. 8-9, evaluated at the minimum-sink speed (maintainer 2026-10-26, #1309)"
+    when: [has_vertical_tail, has_aileron]
+    below: >-
+      B < 5 is spirally unstable and B = 5 spirally neutral. At the circling condition (V_mp, where
+      C_L is about sqrt(3) times that at V_md, so B is about 0.58 times B at V_md) the aircraft
+      tends to tighten the turn on its own.
+    below_severity: caution
+    below_basis: "maintainer 2026-10-26: an aircraft with ailerons can counter-bank against the spiral (Drela himself says so), so a value below the threshold is a caution, not a defect"
+    note: >-
+      The same band as spiral-stability, applied to B at V_mp. The control layout is the typed
+      has_aileron fact of the geometry (D9/D10).
+
+  - id: spiral-stability-circling-rudder-only
+    title: Spiral stability while circling (rudder/elevator aircraft)
+    quantity: {slug: spiral-parameter-mp}
+    unit: "1"
+    band: {min: 5.0, min_inclusive: false}
+    source: "Drela rule (9), Eqs. 8-9, evaluated at the minimum-sink speed (maintainer 2026-10-26, #1309)"
+    when: [has_vertical_tail]
+    when_not: [has_aileron]
+    below: >-
+      B < 5 is spirally unstable and B = 5 spirally neutral. An aircraft with rudder and elevator
+      only cannot counter-bank, so it cannot hold against a spiral that tightens the turn while
+      circling: B at V_mp governs and a value below the threshold is a defect.
+    note: >-
+      The maintainer's basis (2026-10-26, translated): with ailerons one can counter-bank, as Drela
+      himself says, but an aircraft with rudder/elevator only cannot; if it tends to turn itself
+      into the turn while circling, that is not good.
 
   - id: rudder-roll-authority
     title: Rudder roll authority (rudder/elevator aircraft)
