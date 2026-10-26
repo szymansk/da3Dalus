@@ -84,8 +84,9 @@ async def test_the_aircraft_without_an_independent_reference_have_regression_val
 async def test_an_airplane_without_an_aileron_has_no_steady_roll() -> None:
     airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.CHEKKER))
     async with SolverRuntime(max_workers=1) as runtime:
+        adapter = AvlAdapter(runtime)
         with pytest.raises(ValueError, match="the steady roll needs a device acting as aileron"):
-            await AvlAdapter(runtime).steady_roll(airplane, 0.7, 20.0)
+            await adapter.steady_roll(airplane, 0.7, 20.0)
 
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/sim_export/crrcsim/avl_roll_reference.py"

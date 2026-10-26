@@ -104,8 +104,9 @@ def test_a_fuselage_section_with_two_shape_exponents_is_declared_not_converted(
     """CHEKKER's and WIESEL's fuselages have a section with n_lower != n; AeroSandbox has one
     exponent per section, so the conversion refuses instead of choosing one (README)."""
     name, section = FUSELAGE_REJECTED[member]
+    geometry = AirplaneGeometry.model_validate(reference_document(member))
     with pytest.raises(FormulaError) as raised:
-        to_asb_airplane(AirplaneGeometry.model_validate(reference_document(member)))
+        to_asb_airplane(geometry)
     assert str(raised.value) == (
         f"section {section} of the fuselage '{name}' has n_lower != n; "
         "AeroSandbox has one shape exponent per section"
