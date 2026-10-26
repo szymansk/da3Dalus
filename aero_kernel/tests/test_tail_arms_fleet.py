@@ -23,14 +23,17 @@ ABS_M = 1e-4  # the regression tolerance of the AVL world
 GOLDEN_CG = {
     FleetMember.BRYAN: (0.1266041726, 0.1269010159, 0.1307588397),
     FleetMember.JAGUAR: (0.1075391889, 0.1133476263, 0.1158455146),
+    FleetMember.RV7: (0.2378507, 0.2398105, 0.2416460),
 }
 GOLDEN_L_H = {
     FleetMember.BRYAN: (0.2972459914, 0.2969491481, 0.2930913242),
     FleetMember.JAGUAR: (0.2447503047, 0.2389418673, 0.2364439791),
+    FleetMember.RV7: (0.3942354, 0.3922757, 0.3904401),
 }
 GOLDEN_L_V = {
     FleetMember.BRYAN: (0.3157883688, 0.3154915255, 0.3116337017),
     FleetMember.JAGUAR: (0.2320591484, 0.2262507110, 0.2237528227),
+    FleetMember.RV7: (0.4082399, 0.4062802, 0.4044446),
 }
 
 
@@ -56,7 +59,7 @@ def key_of(member: FleetMember, surface_type: str) -> tuple[AirplaneGeometry, st
     return plane, key
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_CG))
 @pytest.mark.asyncio
 async def test_the_arms_per_world_are_the_regression_goldens(member: FleetMember) -> None:
     result = await run(member)
@@ -72,7 +75,7 @@ async def test_the_arms_per_world_are_the_regression_goldens(member: FleetMember
         assert quantity.interval.max == max(worlds.values())
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_CG))
 @pytest.mark.asyncio
 async def test_each_arm_is_asbs_quarter_chord_mac_less_the_design_cg_in_every_world(
     member: FleetMember,
@@ -91,10 +94,32 @@ async def test_each_arm_is_asbs_quarter_chord_mac_less_the_design_cg_in_every_wo
         assert abs(l_v.interval.worlds[world] - (x_fin - x_cg)) < 1e-9, world
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+# BELEMNITOS has a V-tail, no horizontal tail
+@pytest.mark.parametrize("member", [m for m in FleetMember if m is not FleetMember.BELEMNITOS])
 def test_the_tail_position_is_the_one_the_neutral_point_uses(member: FleetMember) -> None:
     """One authority (ADR 0022): x_le,MAC + 0.25 c_MAC of the planform values is the aerodynamic centre."""
     plane, tail_key = key_of(member, "horizontal_tail")
     surface = surface_properties(plane, tail_key)
     x_neutral_point_uses = surface.x_le_mac + AC_FRACTION * surface.c_mac
     assert abs(quarter_chord_mac_x(plane, tail_key) - x_neutral_point_uses) < 1e-12
+
+
+@pytest.mark.parametrize(
+    ("member", "cause", "code"),
+    [
+        (FleetMember.CHEKKER, "minimum-drag-speed", "unsupported_configuration"),
+        (FleetMember.WIESEL, "minimum-drag-speed", "unsupported_configuration"),
+        (FleetMember.BELEMNITOS, "neutral-point", "unsupported_layout"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_the_aircraft_without_a_neutral_point_have_no_design_cg_and_no_arms(
+    member: FleetMember, cause: str, code: str
+) -> None:
+    """The design CG and the arms wait for the neutral point: CHEKKER and WIESEL for the
+    minimum-drag speed their fuselages block (#1307), BELEMNITOS for a V-tail neutral point (#1208)."""
+    for quantity in (await run(member)).quantities:
+        assert quantity.status is QuantityStatus.ERROR, quantity.slug
+        assert quantity.error is not None
+        assert quantity.error.code == "upstream_failed"
+        assert quantity.error.detail["causes"] == [{"quantity": cause, "code": code}]

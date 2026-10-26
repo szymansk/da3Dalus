@@ -16,7 +16,12 @@ from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import StallRequest
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import (
+    FUSELAGE_REJECTED,
+    FleetMember,
+    assert_rejected_for_the_fuselage,
+    reference_document,
+)
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -34,7 +39,12 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 GOLDEN = {
     FleetMember.BRYAN: (7.4468700, 7.7276780, 1.3379343, 0.6225775),
     FleetMember.JAGUAR: (9.0692794, 10.4719556, 2.1200951, 0.4817366),
+    FleetMember.BELEMNITOS: (5.3792137, 13.8824812, 4.1222829, 0.7756370),
+    FleetMember.RV7: (10.2315110, 9.5383095, 2.7798438, 0.5096129),
 }
+# The aircraft whose tip chords fall below the Re band at 10 m/s as well as into the bubble-sensitive
+# range (README: RV-7's chords keep it inside the band).
+OUTSIDE_RE_BAND = {FleetMember.BRYAN, FleetMember.JAGUAR, FleetMember.BELEMNITOS}
 
 
 async def glide(member: FleetMember) -> ComputeResult:
@@ -47,7 +57,7 @@ async def glide(member: FleetMember) -> ComputeResult:
     return await compute(aircraft, request(*SLUGS))
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN))
 async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> None:
     result = await glide(member)
     assert all(q.status is QuantityStatus.OK for q in result.quantities), result
@@ -56,11 +66,28 @@ async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> 
     for quantity, value in zip(result.quantities, GOLDEN[member], strict=True):
         assert close(quantity.value, value, 1e-5), quantity.slug
         assert quantity.tool == "OPT"
-    assert {w.code for w in result.quantities[0].warnings} >= {
-        "reynolds_outside_band",
-        "reynolds_bubble_sensitive",
-    }  # ADR 0028: the tip chords are far below the band
-    assert {str(w.detail["wing"]) for w in result.quantities[0].warnings} >= {"Tragflaeche"}
+    expected = {"reynolds_bubble_sensitive"}
+    if member in OUTSIDE_RE_BAND:
+        expected.add("reynolds_outside_band")  # ADR 0028: the tip chords are far below the band
+    assert {w.code for w in result.quantities[0].warnings} >= expected
+    named = {
+        str(w.detail["wing"])
+        for w in result.quantities[0].warnings
+        if w.code.startswith("reynolds_")
+    }
+    # the surface that is out is named: the main wing, or for RV-7 (inside the band) its tails
+    assert named >= (
+        {member.main_wing_name} if member in OUTSIDE_RE_BAND else {"elevator", "rudder"}
+    )
+
+
+@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
+async def test_the_fuselage_aerosandbox_cannot_take_is_the_recorded_result(
+    member: FleetMember,
+) -> None:
+    """CHEKKER's and WIESEL's fuselages carry a section with n_lower != n (README): the kernel
+    declares it instead of computing, for every quantity that builds the AeroSandbox airplane."""
+    assert_rejected_for_the_fuselage(member, (await glide(member)).quantities)
 
 
 async def test_bryan_best_glide_where_the_prototype_found_it_with_the_small_model(

@@ -49,9 +49,17 @@ async def test_a_zero_command_gives_zero_roll() -> None:
 # about 0.5 % in opposite directions between 48 and 96 strips, so only the ratio is converged.
 INDEPENDENT = {FleetMember.BRYAN: 0.28679, FleetMember.JAGUAR: 0.28077}
 CONVERGENCE_CODES = {"avl_mesh_not_converged", "avl_refinement_unchecked"}
+# The reference script knows BRYAN and JAGUAR only. The aircraft added by gh-1284 have regression
+# values of the kernel's own AVL roll (C_L 0.7, delta 20 deg, the same mesh): not validated, a change
+# of code or tool is noticed. CHEKKER has no aileron.
+REGRESSION = {
+    FleetMember.BELEMNITOS: 0.27042,
+    FleetMember.WIESEL: 0.25762,
+    FleetMember.RV7: 0.22094,
+}
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(INDEPENDENT))
 async def test_the_driven_mesh_agrees_with_the_independent_reference_and_passes_its_refinement_check(
     member: FleetMember,
 ) -> None:
@@ -60,6 +68,25 @@ async def test_the_driven_mesh_agrees_with_the_independent_reference_and_passes_
         found = await AvlAdapter(runtime).steady_roll(airplane, 0.7, 20.0)
     assert math.isclose(found.p_hat, INDEPENDENT[member], rel_tol=1e-2)
     assert not CONVERGENCE_CODES & {w.code for w in found.warnings}
+
+
+@pytest.mark.parametrize("member", list(REGRESSION))
+async def test_the_aircraft_without_an_independent_reference_have_regression_values(
+    member: FleetMember,
+) -> None:
+    airplane = AirplaneGeometry.model_validate(reference_document(member))
+    async with SolverRuntime(max_workers=1) as runtime:
+        found = await AvlAdapter(runtime).steady_roll(airplane, 0.7, 20.0)
+    assert math.isclose(found.p_hat, REGRESSION[member], abs_tol=1e-4)
+    assert not CONVERGENCE_CODES & {w.code for w in found.warnings}
+
+
+async def test_an_airplane_without_an_aileron_has_no_steady_roll() -> None:
+    airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.CHEKKER))
+    async with SolverRuntime(max_workers=1) as runtime:
+        adapter = AvlAdapter(runtime)
+        with pytest.raises(ValueError, match="the steady roll needs a device acting as aileron"):
+            await adapter.steady_roll(airplane, 0.7, 20.0)
 
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/sim_export/crrcsim/avl_roll_reference.py"
@@ -84,5 +111,5 @@ async def test_the_constants_are_what_the_reference_script_prints() -> None:
         for match in re.finditer(r"^(BRYAN|JAGUAR) 96:(\d\.\d+)$", stdout.decode(), re.MULTILINE)
     }
     assert set(found) == {"BRYAN", "JAGUAR"}
-    for member in FleetMember:
+    for member in INDEPENDENT:
         assert math.isclose(found[member.name], INDEPENDENT[member], abs_tol=1e-5), member

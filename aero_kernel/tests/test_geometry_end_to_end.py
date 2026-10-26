@@ -1,11 +1,11 @@
-"""Slice 2 end to end: the geometry quantities of BRYAN and JAGUAR through the public ``compute()``.
+"""Slice 2 end to end: the geometry quantities of the reference fleet through the public ``compute()``.
 
 The main wing's S_ref, b_ref and c_MAC are checked against AeroSandbox's own values of an
 ``asb.Wing`` built independently (tests/test_geometry_properties.py, relative 1e-8); the derived
 quantities against hand formulas of those:
 
 - c_bar = S / b, AR = b^2 / S, W/S = m g / S with g = 9.80665 m/s^2 (the canon default) and the
-  mass of the fleet member (BRYAN 0.151 kg; JAGUAR 0.160 kg, approx., maintainer 2026-10-14).
+  mass of the fleet member (reference/README.md).
 
 The fleet test needs AeroSandbox (the reference values are its own), so it runs in the aero tier;
 the input-error tests stop before any computation and run in the fast tier.
@@ -45,16 +45,16 @@ async def test_the_geometry_quantities_of_the_fleet(member: FleetMember) -> None
     )
     result = await compute(aircraft, request(*SLUGS))
     quantities = by_slug(result)
-    assert all(q.status is QuantityStatus.OK for q in quantities.values()), result
-    s_ref, b_ref, c_mac = asb_values(document["wings"]["Tragflaeche"])
+    s_ref, b_ref, c_mac = asb_values(document["wings"][member.main_wing_name])
     expected = {
         "wing-reference-area": (s_ref, "m^2"),
         "wing-span": (b_ref, "m"),
         "mean-aerodynamic-chord": (c_mac, "m"),
         "mean-geometric-chord": (s_ref / b_ref, "m"),
         "aspect-ratio": (b_ref**2 / s_ref, "1"),
-        "wing-loading": (member.mass_kg * GRAVITY / s_ref, "N/m^2"),
     }
+    expected["wing-loading"] = (member.mass_kg * GRAVITY / s_ref, "N/m^2")
+    assert all(q.status is QuantityStatus.OK for q in quantities.values()), result
     for slug, (value, unit) in expected.items():
         assert close(quantities[slug].value, value, 1e-8), slug
         assert quantities[slug].unit == unit, slug

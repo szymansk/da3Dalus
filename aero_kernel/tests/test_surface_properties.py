@@ -92,7 +92,12 @@ def test_x_le_mac_equals_the_sampled_chord_weighted_leading_edge(
 @pytest.mark.parametrize("member", list(FleetMember))
 def test_the_fleet_tails_have_a_sane_mac_inside_their_own_chords(member: FleetMember) -> None:
     airplane = AirplaneGeometry.model_validate(reference_document(member))
-    (tail,) = [w for w in (airplane.wings or {}).values() if w.surface_type == "horizontal_tail"]
+    # BELEMNITOS' pitch surface is its V-tail
+    (tail,) = [
+        w
+        for w in (airplane.wings or {}).values()
+        if w.surface_type in ("horizontal_tail", "v_tail")
+    ]
     surface = surface_properties(tail)
     chords = [s.chord for s in tail.x_secs]
     assert min(chords) < surface.c_mac < max(chords)

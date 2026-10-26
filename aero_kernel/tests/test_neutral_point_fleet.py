@@ -37,6 +37,10 @@ def main_wing_root_le_x(member: FleetMember) -> float:
 CG = {
     FleetMember.BRYAN: 0.1368,
     FleetMember.JAGUAR: main_wing_root_le_x(FleetMember.JAGUAR) + JAGUAR_CG_AFT_OF_ROOT_LE,
+    # the design CG of the canon (cg-for-target-margin, SM_target 0.10) in the AVL world, from the
+    # kernel's centre-of-gravity-design; test_cg_for_target_margin... checks it. Never a hand-chosen
+    # position (maintainer 2026-10-26).
+    FleetMember.RV7: 0.241646,
 }
 WORLDS = ("textbook", "pappas", "avl")
 # Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
@@ -48,11 +52,16 @@ WORLDS = ("textbook", "pappas", "avl")
 GOLDEN_NP = {
     FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.144039),
     FleetMember.JAGUAR: (0.1180376743, 0.1238461117, 0.126344),
+    FleetMember.RV7: (0.2561507, 0.2581105, 0.259946),
 }
 # Since #1262 the area includes the centreline gap: textbook/Pappas BRYAN 0.1398961691/0.1402057906 ->
 # 0.1398843329/0.1401811762 m, JAGUAR 0.1181103705/0.1239713559 -> 0.1180376743/0.1238461117 m.
 # The textbook world with the former constant given explicitly as tail-efficiency (continuity).
-GOLDEN_TEXTBOOK_ETA_09 = {FleetMember.BRYAN: 0.1441059605, FleetMember.JAGUAR: 0.1233923918}
+GOLDEN_TEXTBOOK_ETA_09 = {
+    FleetMember.BRYAN: 0.1441059605,
+    FleetMember.JAGUAR: 0.1233923918,
+    FleetMember.RV7: 0.2627406,
+}
 # AeroSandbox's c_MAC of the main wing (gh-1240); it was the kernel's projected 0.13277219 / 0.10504547.
 C_MAC = {member: member.asb_reference[2] for member in FleetMember}
 # BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral
@@ -80,7 +89,7 @@ async def run(member: FleetMember, eta: float | None = None) -> ComputeResult:
     return await compute(aircraft, request("neutral-point", "static-margin-measured"))
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_NP))
 @pytest.mark.asyncio
 async def test_the_np_and_sm_intervals_per_world_are_the_regression_goldens(
     member: FleetMember,
@@ -105,7 +114,7 @@ async def test_the_np_and_sm_intervals_per_world_are_the_regression_goldens(
     assert set(result.provenance.tool_versions) >= {"avl-binary", "aerosandbox"}
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_NP))
 @pytest.mark.asyncio
 async def test_the_textbook_world_with_eta_09_given_reproduces_the_former_golden(
     member: FleetMember,
@@ -222,7 +231,7 @@ async def test_a_ventral_fin_gives_the_same_neutral_point() -> None:
     assert abs(got.x_np - want.x_np) < 1e-4
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN_NP))
 @pytest.mark.asyncio
 async def test_cg_for_target_margin_is_the_neutral_point_less_the_target_per_world(
     member: FleetMember,
@@ -256,3 +265,48 @@ async def test_cg_for_target_margin_is_the_neutral_point_less_the_target_per_wor
         x = {"x_np": x_np, "sm_target": margin.interval.worlds[world], "c_mac": C_MAC[member]}
         back = await cg_for_target_margin(x, context_with(StubAtmosphere({})))
         assert abs(back["x_cg_sm"] - CG[member]) < 1e-9, (member, world)
+    if member is FleetMember.RV7:  # its CG is the design CG of the AVL world
+        assert abs(target_cg.interval.worlds["neutral-point=avl"] - CG[member]) < 1e-9
+
+
+@pytest.mark.parametrize(
+    ("member", "code", "cause"),
+    [
+        (FleetMember.CHEKKER, "upstream_failed", "minimum-drag-speed"),
+        (FleetMember.WIESEL, "upstream_failed", "minimum-drag-speed"),
+        (FleetMember.BELEMNITOS, "unsupported_layout", None),
+    ],
+)
+@pytest.mark.asyncio
+async def test_the_aircraft_without_a_neutral_point_have_the_recorded_error(
+    member: FleetMember, code: str, cause: str | None
+) -> None:
+    """CHEKKER and WIESEL: the C_L of the neutral point comes from the minimum-drag speed, which
+    AeroSandbox cannot compute for their fuselages (README, #1307). BELEMNITOS: a V-tail is not a
+    horizontal tail, the layout is declared unsupported (V-tail neutral points: #1208). The design
+    CG, which is the neutral point less the target margin, waits for the point."""
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": reference_document(member),
+            "values": {
+                "aircraft-mass": member.mass_kg,
+                "altitude": 0.0,
+                "static-margin-target": SM_TARGET,
+            },
+        }
+    )
+    neutral, design = (
+        await compute(aircraft, request("neutral-point", "centre-of-gravity-design"))
+    ).quantities
+    assert neutral.status is QuantityStatus.ERROR
+    assert neutral.error is not None
+    assert neutral.error.code == code
+    if cause is None:
+        assert neutral.error.detail["surface_types"] == ["main_wing", "v_tail"]
+    else:
+        assert neutral.error.detail["causes"] == [
+            {"quantity": cause, "code": "unsupported_configuration"}
+        ]
+    assert design.status is QuantityStatus.ERROR
+    assert design.error is not None
+    assert design.error.code == "upstream_failed"

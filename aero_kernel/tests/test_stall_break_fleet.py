@@ -10,7 +10,12 @@ from aero_kernel import compute
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import (
+    FUSELAGE_REJECTED,
+    FleetMember,
+    assert_rejected_for_the_fuselage,
+    reference_document,
+)
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -21,6 +26,8 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 GOLDEN = {
     FleetMember.BRYAN: (14.7822439, 1.5835136, 13.1987303),
     FleetMember.JAGUAR: (11.0671515, 1.1418603, 9.9252912),
+    FleetMember.BELEMNITOS: (11.0568417, 1.4866984, 9.5701434),
+    FleetMember.RV7: (16.3483882, 1.2300212, 15.1183671),
 }
 
 
@@ -34,7 +41,7 @@ async def stall_break(member: FleetMember) -> ComputeResult:
     return await compute(aircraft, request(*SLUGS))
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN))
 async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> None:
     result = await stall_break(member)
     assert all(q.status is QuantityStatus.OK for q in result.quantities), result
@@ -47,7 +54,16 @@ async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> 
     assert used["stall-break-fraction"] == 0.10  # the convention, recorded with its source
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
+async def test_the_fuselage_aerosandbox_cannot_take_is_the_recorded_result(
+    member: FleetMember,
+) -> None:
+    """CHEKKER's and WIESEL's fuselages carry a section with n_lower != n (README): the stall angle
+    is the declared error and the break, which waits for it, fails upstream."""
+    assert_rejected_for_the_fuselage(member, (await stall_break(member)).quantities)
+
+
+@pytest.mark.parametrize("member", list(GOLDEN))
 async def test_the_resolution_check_finds_both_sweeps_in_agreement(member: FleetMember) -> None:
     """Halving the sweep step moves the break by less than one published step (0.25 deg): no
     ``stall_break_resolution`` defect on either reference airplane."""
@@ -56,7 +72,7 @@ async def test_the_resolution_check_finds_both_sweeps_in_agreement(member: Fleet
     assert "stall_break_resolution" not in codes
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", list(GOLDEN))
 async def test_the_width_is_the_break_minus_the_stall_angle(member: FleetMember) -> None:
     result = await stall_break(member)
     values = {q.slug: q.value for q in result.quantities}
