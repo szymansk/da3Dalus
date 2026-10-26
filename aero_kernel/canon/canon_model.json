@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:8a5b67ef78090c3ec25ccb29b5f799180728dc5ac356775468356975947583c5",
+  "content_hash": "sha256:b66cca22ead2061874828d46b9472ea5f4cc7688c904548d7dd0fcbece49c62a",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6181,8 +6181,8 @@
             "agreement_tolerance": {
               "basis": "convention",
               "regime": "regime-independent as a statement about agreement; the value rests on the spread of the methods in the RC/UAV regime",
-              "source": "PROPOSAL, pending the maintainer's word: 5 % MAC. Reasoning: the neutral-point worlds spread 3-6 % MAC (textbook against AVL, BRYAN and JAGUAR), plus the declared probe bias (AeroBuildup has no wing-tail downwash)",
-              "status": "pending",
+              "source": "maintainer 2026-10-25: 5 % MAC. Reasoning: the neutral-point worlds spread 3-6 % MAC (textbook against AVL, BRYAN and JAGUAR), plus the declared probe bias (AeroBuildup has no wing-tail downwash)",
+              "status": "adopted",
               "unit": "1",
               "value": 0.05
             }

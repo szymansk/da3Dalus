@@ -199,6 +199,6 @@ static-margin-probe-agreement:
       value: 0.05
       unit: "1"
       basis: convention
-      status: pending
-      source: "PROPOSAL, pending the maintainer's word: 5 % MAC. Reasoning: the neutral-point worlds spread 3-6 % MAC (textbook against AVL, BRYAN and JAGUAR), plus the declared probe bias (AeroBuildup has no wing-tail downwash)"
+      status: adopted
+      source: "maintainer 2026-10-25: 5 % MAC. Reasoning: the neutral-point worlds spread 3-6 % MAC (textbook against AVL, BRYAN and JAGUAR), plus the declared probe bias (AeroBuildup has no wing-tail downwash)"
       regime: "regime-independent as a statement about agreement; the value rests on the spread of the methods in the RC/UAV regime"
