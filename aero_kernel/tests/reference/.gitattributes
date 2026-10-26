@@ -1,0 +1,3 @@
+# Reference copies must stay byte-identical to their sources (test_reference_fleet checks SHA-256),
+# so git must never convert their line endings.
+* -text
