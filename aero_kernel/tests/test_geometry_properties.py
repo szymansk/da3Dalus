@@ -96,7 +96,7 @@ def test_the_fleet_main_wing_matches_asb_directly(member: FleetMember) -> None:
     document = reference_document(member)
     airplane = AirplaneGeometry.model_validate(document)
     result = main_wing_properties(airplane)
-    expected = asb_values(document["wings"]["Tragflaeche"])
+    expected = asb_values(document["wings"][member.main_wing_name])
     assert agree((result.s_ref, result.b_ref, result.c_mac), expected)
 
 
@@ -244,7 +244,7 @@ def test_surface_properties_of_a_swept_polyhedral_twisted_wing_match_asb_directl
 def test_the_fleet_main_wing_and_tail_surfaces_match_asb_directly(member: FleetMember) -> None:
     document = reference_document(member)
     airplane = AirplaneGeometry.model_validate(document)
-    for key in ("Tragflaeche", "Hoehenleitwerk"):
+    for key in (member.main_wing_name, member.tail_name):
         found = surface_properties(airplane, key)
         assert agree(
             (found.area, found.span, found.aspect_ratio, found.c_mac, found.x_le_mac),

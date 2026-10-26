@@ -1,0 +1,1208 @@
+{
+ "name": "Belemnitos",
+ "total_mass_kg": 0.28,
+ "xyz_ref": [
+  0.0564,
+  0.0,
+  0.0
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "name": "Tragflaeche",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "chord": 0.162,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "root",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard",
+       "spare_vector": [
+        0.037135,
+        0.999213,
+        0.013915
+       ],
+       "spare_origin": [
+        0.040577,
+        -6e-05,
+        0.002394
+       ]
+      },
+      {
+       "spare_support_dimension_width": 0.00642,
+       "spare_support_dimension_height": 0.00642,
+       "spare_position_factor": 0.55,
+       "spare_length": 0.07,
+       "spare_start": 0.0,
+       "spare_mode": "standard",
+       "spare_vector": [
+        0.0,
+        1.0,
+        0.0
+       ],
+       "spare_origin": [
+        0.089166,
+        -6.5e-05,
+        0.001364
+       ]
+      },
+      {
+       "spare_support_dimension_width": 0.00642,
+       "spare_support_dimension_height": 0.00642,
+       "spare_position_factor": 0.2,
+       "spare_length": 0.07,
+       "spare_start": 0.0,
+       "spare_mode": "standard",
+       "spare_vector": [
+        0.0,
+        1.0,
+        0.0
+       ],
+       "spare_origin": [
+        0.032471,
+        -5.5e-05,
+        0.002297
+       ]
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      9e-06,
+      0.019997,
+      0.000349
+     ],
+     "chord": 0.162,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.037135,
+        0.999213,
+        0.013915
+       ],
+       "spare_origin": [
+        0.041319,
+        0.019924,
+        0.002672
+       ]
+      },
+      {
+       "spare_support_dimension_width": 0.00642,
+       "spare_support_dimension_height": 0.00642,
+       "spare_position_factor": 0.25,
+       "spare_length": 0.06,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.0,
+        1.0,
+        0.0
+       ],
+       "spare_origin": [
+        0.089166,
+        0.019935,
+        0.001364
+       ]
+      },
+      {
+       "spare_support_dimension_width": 0.00642,
+       "spare_support_dimension_height": 0.00642,
+       "spare_position_factor": 0.25,
+       "spare_length": 0.06,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.0,
+        1.0,
+        0.0
+       ],
+       "spare_origin": [
+        0.032471,
+        0.019945,
+        0.002297
+       ]
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.0026,
+      0.219966,
+      0.003773
+     ],
+     "chord": 0.157,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.037135,
+        0.999213,
+        0.013915
+       ],
+       "spare_origin": [
+        0.048746,
+        0.219767,
+        0.005455
+       ]
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "rel_chord_root": 0.8,
+      "rel_chord_tip": 0.8,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.0,
+      "side_spacing_tip": 2.0,
+      "servo_placement": "top",
+      "rel_chord_servo_position": 0.414,
+      "rel_length_servo_position": 0.486,
+      "positive_deflection_deg": 35,
+      "negative_deflection_deg": 35,
+      "trailing_edge_offset_factor": 1.2,
+      "hinge_type": "top",
+      "symmetric": false,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "role": "aileron",
+      "deflection_deg": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.010711,
+      0.469928,
+      0.007925
+     ],
+     "chord": 0.132888889,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.037135,
+        0.999213,
+        0.013915
+       ],
+       "spare_origin": [
+        0.05803,
+        0.46957,
+        0.008934
+       ]
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "rel_chord_root": 0.8,
+      "rel_chord_tip": 0.8,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.0,
+      "side_spacing_tip": 2.0,
+      "servo_placement": "top",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 25,
+      "negative_deflection_deg": 25,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top",
+      "symmetric": false,
+      "servo": null,
+      "role": "aileron",
+      "deflection_deg": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.015744,
+      0.544917,
+      0.009103
+     ],
+     "chord": 0.123055556,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.037135,
+        0.999213,
+        0.013915
+       ],
+       "spare_origin": [
+        0.060815,
+        0.544511,
+        0.009977
+       ]
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "rel_chord_root": 0.8,
+      "rel_chord_tip": 0.8,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.0,
+      "side_spacing_tip": 2.0,
+      "servo_placement": "top",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 25,
+      "negative_deflection_deg": 25,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top",
+      "symmetric": false,
+      "servo": null,
+      "role": "aileron",
+      "deflection_deg": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.026779,
+      0.629904,
+      0.010298
+     ],
+     "chord": 0.105217778,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.037135,
+        0.999213,
+        0.013915
+       ],
+       "spare_origin": [
+        0.063972,
+        0.629444,
+        0.01116
+       ]
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "rel_chord_root": 0.8,
+      "rel_chord_tip": 0.8,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.0,
+      "side_spacing_tip": 2.0,
+      "servo_placement": "top",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 25,
+      "negative_deflection_deg": 25,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top",
+      "symmetric": false,
+      "servo": null,
+      "role": "aileron",
+      "deflection_deg": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.038793,
+      0.669898,
+      0.010681
+     ],
+     "chord": 0.09,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward",
+       "spare_vector": [
+        0.037135,
+        0.999213,
+        0.013915
+       ],
+       "spare_origin": [
+        0.065457,
+        0.669413,
+        0.011717
+       ]
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.046299,
+      0.689895,
+      0.010834
+     ],
+     "chord": 0.0795,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.053838,
+      0.704813,
+      0.012205
+     ],
+     "chord": 0.071,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.063909,
+      0.719537,
+      0.014804
+     ],
+     "chord": 0.062,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.076513,
+      0.733956,
+      0.01861
+     ],
+     "chord": 0.0525,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.091623,
+      0.742944,
+      0.0226
+     ],
+     "chord": 0.0405,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.109203,
+      0.746718,
+      0.025421
+     ],
+     "chord": 0.024,
+     "twist": 1.5,
+     "airfoil": "./components/airfoils/mh32.dat"
+    }
+   ]
+  },
+  "V-Leitwerk": {
+   "name": "V-Leitwerk",
+   "surface_type": "v_tail",
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.623181,
+      0.011093,
+      -0.01046
+     ],
+     "chord": 0.087884,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_00.dat",
+     "x_sec_type": "root",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.65,
+      "rel_chord_tip": 0.65,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.5,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.628798,
+      0.058636,
+      0.026142
+     ],
+     "chord": 0.07986,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_01.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.65,
+      "rel_chord_tip": 0.65,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.633947,
+      0.102217,
+      0.059693
+     ],
+     "chord": 0.072504,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_02.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.65,
+      "rel_chord_tip": 0.6449,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.637722,
+      0.125802,
+      0.07785
+     ],
+     "chord": 0.067536,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_03.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.6449,
+      "rel_chord_tip": 0.6277,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.643215,
+      0.147779,
+      0.09477
+     ],
+     "chord": 0.060929,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_04.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.6277,
+      "rel_chord_tip": 0.5941,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.650054,
+      0.166651,
+      0.109299
+     ],
+     "chord": 0.053135,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_05.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.5941,
+      "rel_chord_tip": 0.5364,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.657771,
+      0.181133,
+      0.120448
+     ],
+     "chord": 0.044685,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_06.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.5364,
+      "rel_chord_tip": 0.4646,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.664225,
+      0.188881,
+      0.126413
+     ],
+     "chord": 0.037839,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_07.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.4646,
+      "rel_chord_tip": 0.3796,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.669572,
+      0.192454,
+      0.129164
+     ],
+     "chord": 0.03231,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_08.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Ruder V-Leitwerk",
+      "role": "ruddervator",
+      "label": "Ruder V-Leitwerk (Balsa 2, Folienscharnier)",
+      "rel_chord_root": 0.3796,
+      "rel_chord_tip": 0.2891,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 22.8,
+       "width": 12.2,
+       "height": 22.7,
+       "leading_length": 5.9,
+       "latch_z": 16.0,
+       "latch_x": 4.75,
+       "latch_thickness": 2.5,
+       "latch_length": 32.3,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 1.5
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 28.0,
+      "negative_deflection_deg": 28.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     }
+    },
+    {
+     "xyz_le": [
+      0.673713,
+      0.193341,
+      0.129846
+     ],
+     "chord": 0.028125,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/belemnitos_vlw_09.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "name": "Rumpf",
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz": [
+      -0.3,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.2999,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.0002,
+     "b": 0.0002,
+     "n": 2.5
+    },
+    {
+     "xyz": [
+      -0.298,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.000692,
+     "b": 0.000682,
+     "n": 2.5
+    },
+    {
+     "xyz": [
+      -0.294,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.00203,
+     "b": 0.002001,
+     "n": 2.5
+    },
+    {
+     "xyz": [
+      -0.288,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.003922,
+     "b": 0.003865,
+     "n": 2.5
+    },
+    {
+     "xyz": [
+      -0.28,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.006234,
+     "b": 0.006142,
+     "n": 2.6
+    },
+    {
+     "xyz": [
+      -0.27,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.008792,
+     "b": 0.008663,
+     "n": 2.6
+    },
+    {
+     "xyz": [
+      -0.255,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.01196,
+     "b": 0.011784,
+     "n": 2.6
+    },
+    {
+     "xyz": [
+      -0.24,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.014344,
+     "b": 0.014133,
+     "n": 2.7
+    },
+    {
+     "xyz": [
+      -0.22,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.016338,
+     "b": 0.016098,
+     "n": 2.7
+    },
+    {
+     "xyz": [
+      -0.2,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.017,
+     "b": 0.01675,
+     "n": 2.8
+    },
+    {
+     "xyz": [
+      -0.16,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.017,
+     "b": 0.01675,
+     "n": 3.0
+    },
+    {
+     "xyz": [
+      -0.11,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.017,
+     "b": 0.01675,
+     "n": 4.5
+    },
+    {
+     "xyz": [
+      -0.082,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.017,
+     "b": 0.01675,
+     "n": 4.6
+    },
+    {
+     "xyz": [
+      -0.058,
+      0.0,
+      -0.01925
+     ],
+     "a": 0.017,
+     "b": 0.01675,
+     "n": 4.6
+    },
+    {
+     "xyz": [
+      -0.02,
+      0.0,
+      -0.017955
+     ],
+     "a": 0.01685,
+     "b": 0.017218,
+     "n": 4.5
+    },
+    {
+     "xyz": [
+      0.0,
+      0.0,
+      -0.017142
+     ],
+     "a": 0.016698,
+     "b": 0.017072,
+     "n": 4.4
+    },
+    {
+     "xyz": [
+      0.02,
+      0.0,
+      -0.018537
+     ],
+     "a": 0.016477,
+     "b": 0.014489,
+     "n": 4.3
+    },
+    {
+     "xyz": [
+      0.04,
+      0.0,
+      -0.018191
+     ],
+     "a": 0.0162,
+     "b": 0.013515,
+     "n": 4.2
+    },
+    {
+     "xyz": [
+      0.08,
+      0.0,
+      -0.016814
+     ],
+     "a": 0.015314,
+     "b": 0.012263,
+     "n": 4.1
+    },
+    {
+     "xyz": [
+      0.11,
+      0.0,
+      -0.016027
+     ],
+     "a": 0.0144,
+     "b": 0.011482,
+     "n": 4.1
+    },
+    {
+     "xyz": [
+      0.14,
+      0.0,
+      -0.015551
+     ],
+     "a": 0.013246,
+     "b": 0.011112,
+     "n": 4.1
+    },
+    {
+     "xyz": [
+      0.162,
+      0.0,
+      -0.01535
+     ],
+     "a": 0.0122,
+     "b": 0.011009,
+     "n": 3.8
+    },
+    {
+     "xyz": [
+      0.175,
+      0.0,
+      -0.016697
+     ],
+     "a": 0.011458,
+     "b": 0.009402,
+     "n": 2.6
+    },
+    {
+     "xyz": [
+      0.19,
+      0.0,
+      -0.017969
+     ],
+     "a": 0.0105,
+     "b": 0.00783,
+     "n": 2.5
+    },
+    {
+     "xyz": [
+      0.2049,
+      0.0,
+      -0.018994
+     ],
+     "a": 0.009507,
+     "b": 0.006508,
+     "n": 2.5
+    },
+    {
+     "xyz": [
+      0.205,
+      0.0,
+      -0.019
+     ],
+     "a": 0.005,
+     "b": 0.005,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.619,
+      0.0,
+      -0.019
+     ],
+     "a": 0.005,
+     "b": 0.005,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6192000000000001,
+      0.0,
+      -0.019
+     ],
+     "a": 0.0063,
+     "b": 0.0063,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6802999999999999,
+      0.0,
+      -0.019
+     ],
+     "a": 0.0063,
+     "b": 0.0063,
+     "n": 2.0
+    }
+   ]
+  }
+ }
+}

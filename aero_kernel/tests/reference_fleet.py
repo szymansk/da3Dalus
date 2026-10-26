@@ -33,6 +33,26 @@ class FleetMember(Enum):
         0.160,
         (0.06465165601284742, 0.624210916480389, 0.10498485405652615),
     )
+    CHEKKER = (
+        "chekker/flugzeug.json",
+        0.439,
+        (0.13593819641333416, 0.8641237898707764, 0.16147835300713256),
+    )
+    BELEMNITOS = (
+        "belemnitos/flugzeug.json",
+        0.550,  # approx., maintainer 2026-10-25 (the source says 0.28)
+        (0.1997453990895134, 1.4992332323342878, 0.1398699109383301),
+    )
+    WIESEL = (
+        "wiesel/wiesel.airplane.json",
+        0.625,
+        (0.14046014819687722, 0.9146176960978459, 0.16265318641915597),
+    )
+    RV7 = (
+        "rv7/rv7.airplane.json",
+        0.500,  # approx., maintainer 2026-10-25
+        (0.15006000000000005, 0.8200000000000003, 0.183),
+    )
 
     def __init__(
         self, relative_path: str, mass_kg: float, asb_reference: tuple[float, float, float]
@@ -40,6 +60,26 @@ class FleetMember(Enum):
         self.json_path = REFERENCE_DIR / relative_path
         self.mass_kg = mass_kg
         self.asb_reference = asb_reference
+
+    def wing_name(self, surface_type: str) -> str:
+        """The name of the one wing of this type in the copy."""
+        wings = json.loads(self.json_path.read_text())["wings"]
+        (name,) = [n for n, w in wings.items() if w["surface_type"] == surface_type]
+        return name
+
+    @property
+    def main_wing_name(self) -> str:
+        """The name of the main wing."""
+        return self.wing_name("main_wing")
+
+    @property
+    def tail_name(self) -> str:
+        """The name of the surface that trims the pitch: the horizontal tail or the V-tail."""
+        wings = json.loads(self.json_path.read_text())["wings"]
+        (name,) = [
+            n for n, w in wings.items() if w["surface_type"] in ("horizontal_tail", "v_tail")
+        ]
+        return name
 
     @property
     def reference(self) -> MainWingProperties:
