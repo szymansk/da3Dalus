@@ -14,6 +14,7 @@ from typing import ClassVar
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.solvers.asb_airplane import (
+    fin_area,
     main_wing_properties,
     quarter_chord_mac_x,
     surface_properties,
@@ -96,3 +97,22 @@ class GeometryAdapter(SolverAdapter):
         self.require_available()
         await asyncio.to_thread(importlib.import_module, "aerosandbox")
         return quarter_chord_mac_x(airplane, key)
+
+    async def fin_area(self, airplane: AirplaneGeometry, key: str) -> float:
+        """Return the fin area of one wing, for the vertical tail volume.
+
+        Args:
+            airplane: The validated geometry document.
+            key: The key of the one ``vertical_tail`` or ``v_tail`` wing in ``airplane.wings``.
+
+        Returns:
+            ``Wing.area(type="planform", include_centerline_distance=False)`` in m^2; a V-tail's
+            fin share, the panel areas times ``sin^2`` of the panel angle.
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing;
+                ``unsupported_configuration`` for a surface with no planform.
+        """
+        self.require_available()
+        await asyncio.to_thread(importlib.import_module, "aerosandbox")
+        return fin_area(airplane, key)

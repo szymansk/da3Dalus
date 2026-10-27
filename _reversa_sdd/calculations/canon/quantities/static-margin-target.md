@@ -19,4 +19,4 @@ The stability the designer wants. The mission proposes it (character bands, late
 
 **Unit.** `1`
 
-**Used by.** [[cg-for-target-margin]]
+**Used by.** [[cg-for-target-margin]] · [[static-margin-probe]]

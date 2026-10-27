@@ -124,6 +124,10 @@ class TestKernelWarning:
             "mach_above_limit": WarningSeverity.PRACTICE,
             "mach_beyond_validity": WarningSeverity.DEFECT,
             "minimum_sink_stall_limited": WarningSeverity.PRACTICE,
+            "aerobuildup_no_downwash": WarningSeverity.PRACTICE,
+            "static_margin_probe_disagrees": WarningSeverity.DEFECT,
+            "avl_body_equivalent_round": WarningSeverity.PRACTICE,
+            "spiral_halving_time_reported": WarningSeverity.PRACTICE,
             "fuselage_section_equivalent": WarningSeverity.PRACTICE,
         }
 

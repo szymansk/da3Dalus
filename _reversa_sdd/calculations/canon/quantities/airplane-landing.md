@@ -20,4 +20,4 @@ The [[airplane]] with its flaps set for the landing configuration. Without flaps
 
 **Produced by.** [[airplane-configuration]]
 
-**Used by.** [[aileron-deflection-required]] · [[butterfly-approach]] · [[mass-envelope]] · [[roll-rate]] · [[stall-speed]]
+**Used by.** [[aileron-deflection-required]] · [[butterfly-approach]] · [[lateral-static-stability-app]] · [[mass-envelope]] · [[roll-rate]] · [[stall-speed]]

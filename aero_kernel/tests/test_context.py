@@ -76,10 +76,25 @@ def test_the_geometry_tool_reports_the_versions_of_its_adapter() -> None:
     assert solvers.tool_versions_of("GEO") == {"aerosandbox": "4.5.6"}
 
 
-@pytest.mark.parametrize("tool", ["AB"])
+@pytest.mark.parametrize("tool", ["NO-SUCH-TOOL"])
 def test_a_tool_without_an_adapter_is_a_defect_not_an_empty_version(tool: str) -> None:
     with pytest.raises(ValueError, match=tool):
         SOLVERS.tool_versions_of(tool)
+
+
+def test_aerobuildup_is_run_by_the_optimiser_adapter_and_reports_its_versions_and_settings() -> (
+    None
+):
+    """The AB code of the canon (the probe) has no adapter of its own: the OPT adapter owns every
+    AeroBuildup call of the kernel (ADR 0022)."""
+
+    class Versioned(OptiAdapter):
+        def tool_versions(self) -> dict[str, str]:
+            return {"aerosandbox": "3.2.1"}
+
+    solvers = solvers_with(opti=Versioned(SolverRuntime()))
+    assert solvers.tool_versions_of("AB") == {"aerosandbox": "3.2.1"}
+    assert solvers.settings_of("AB") == solvers.opti.settings()
 
 
 def test_the_optimiser_tool_reports_the_versions_of_its_adapter() -> None:

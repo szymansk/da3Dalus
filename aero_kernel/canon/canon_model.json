@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:943eb651b4a7729dd5b88a1dd9302ad89721ffb998c0d9cd9f3e1f505dc27092",
+  "content_hash": "sha256:6e75a6342e7c54b7bb2f2bc5332fdf7ffd076efd5c04767f1c082b2982167f2a",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1470,7 +1470,7 @@
           "applications": [
             {
               "bind": {
-                "airplane": "calc:airplane",
+                "airplane": "calc:airplane-landing",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
@@ -1478,7 +1478,7 @@
                 "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
-              "id": "default",
+              "id": "approach",
               "produce": {
                 "c_l_beta": "calc:dihedral-effect-app",
                 "c_n_beta": "calc:weathercock-stability-app",
@@ -3266,10 +3266,13 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "rho": "calc:air-density",
+                "sm_target": "calc:static-margin-target",
                 "v_md": "calc:minimum-drag-speed",
                 "x_cg": "calc:centre-of-gravity-design"
               },
@@ -3287,10 +3290,13 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "rho": "calc:air-density",
+            "sm_target": "calc:static-margin-target",
             "v_md": "calc:minimum-drag-speed",
             "x_cg": "calc:centre-of-gravity-design"
           },

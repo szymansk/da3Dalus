@@ -38,6 +38,7 @@ class FakeWingXSec:
 
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
+        self.xyz_le = kwargs.get("xyz_le")
 
 
 class FakeControlSurface:
@@ -66,6 +67,8 @@ class FakeWing:
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
         self.name = kwargs.get("name")
+        self.symmetric = kwargs.get("symmetric")
+        self.xsecs = kwargs.get("xsecs")
         self.calls: list[tuple[str, dict[str, Any]]] = []
 
     def _reference(self) -> tuple[float, float, float]:
@@ -181,3 +184,21 @@ def stand_in_quarter_chord_x(wing: Wing) -> float:
         total += area
         moment += area * (mac_le + 0.25 * mac)
     return moment / total
+
+
+def stand_in_fin_area(wing: Wing) -> float:
+    """The fin area of a surface without AeroSandbox: true area of the lofted panels, a V-tail's fin share.
+
+    Per panel ``(c1 + c2) / 2`` times the panel's length in the y-z plane; a mirrored surface counts
+    both halves; a ``v_tail`` weights each panel by ``sin^2`` of its angle to the horizontal. A stand-in
+    for the fast tier (the real value is ASB's ``Wing.area(type="planform",
+    include_centerline_distance=False)``, compared in the aero tier).
+    """
+    axis = 1 if wing.symmetric else 2
+    chain = oriented_chain(wing, axis)
+    total = 0.0
+    for a, b in pairwise(chain):
+        run, rise = b.y - a.y, b.z - a.z
+        panel = (a.chord + b.chord) / 2.0 * math.hypot(run, rise)
+        total += panel * (rise**2 / (run**2 + rise**2) if wing.surface_type == "v_tail" else 1.0)
+    return total * (2.0 if wing.symmetric else 1.0)

@@ -29,6 +29,10 @@ Inputs = Mapping[str, Value | None]
 # Canon tool codes of formulas that call no adapter: pure relations and plain input reads (ch. 8.8).
 _PURE_TOOLS = frozenset({"APP", "KAT", "APC"})
 
+# Canon tool codes whose adapter carries another code: AeroBuildup (``AB``) is run by the OPT adapter,
+# which owns every AeroBuildup call of the kernel (ADR 0022); a second adapter would be a second producer.
+_ADAPTER_CODE = {"AB": "OPT"}
+
 
 @dataclass(frozen=True)
 class Solvers:
@@ -61,8 +65,9 @@ class Solvers:
         Returns:
             Name -> value; empty for a tool whose adapter fixes no setting, and for a pure tool.
         """
+        code = _ADAPTER_CODE.get(tool, tool)
         for adapter in (self.atmosphere, self.opti, self.avl, self.geometry):
-            if tool == adapter.tool:
+            if code == adapter.tool:
                 return adapter.settings()
         return {}
 
@@ -84,8 +89,9 @@ class Solvers:
         """
         if tool in _PURE_TOOLS:
             return {}
+        code = _ADAPTER_CODE.get(tool, tool)
         for adapter in (self.atmosphere, self.opti, self.avl, self.geometry):
-            if tool == adapter.tool:
+            if code == adapter.tool:
                 return dict(adapter.tool_versions())
         msg = f"no solver adapter for the tool {tool}"
         raise ValueError(msg)

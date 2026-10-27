@@ -24,6 +24,7 @@ from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime, WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, main_wing_properties
+from aero_kernel.solvers.avl_body import MeshBody, body_file_text, mesh_bodies
 from aero_kernel.solvers.avl_contour import repanel
 from aero_kernel.solvers.avl_mesh import (
     MESH_DECIMALS,
@@ -34,6 +35,8 @@ from aero_kernel.solvers.avl_mesh import (
     split_at_hinge,
 )
 from aero_kernel.solvers.avl_writer import (
+    BODY_NODES,
+    BODY_SPACING,
     CHORD_SPACING,
     GEOMETRY_FILE,
     AvlOutput,
@@ -42,10 +45,13 @@ from aero_kernel.solvers.avl_writer import (
     airfoil_file_name,
     avl_commands,
     avl_geometry,
+    avl_lateral_commands,
     avl_roll_commands,
+    body_file_name,
     control_order,
     parse_avl_output,
     parse_flap_echo,
+    parse_lateral_output,
     parse_roll_output,
 )
 from aero_kernel.solvers.base import SolverAdapter
@@ -59,7 +65,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["AvlAdapter", "AvlNeutralPoint", "AvlRoll", "Contour"]
+__all__ = ["AvlAdapter", "AvlLateral", "AvlNeutralPoint", "AvlRoll", "Contour"]
 
 # Mesh and vortex core, from the BRYAN mesh study (scripts/sim_export/crrcsim/AVL_CONVERGENCE.md):
 # aligned strips 10 chordwise / 24 spanwise converge to 0.3 % MAC against the next finer level;
@@ -137,6 +143,33 @@ class AvlRoll(BaseModel):
     warnings: tuple[KernelWarning, ...] = ()
 
 
+class AvlLateral(BaseModel):
+    """The lateral-directional stability-axis derivatives AVL found, and the caveats of the run.
+
+    The sideslip derivatives are per radian, the rate derivatives per ``p'b/2V`` and ``r'b/2V``;
+    the moment reference is the point the run was given.
+
+    Attributes:
+        c_l_beta: ``C_l,beta``.
+        c_n_beta: ``C_n,beta``.
+        c_l_p: ``C_l,p``.
+        c_n_p: ``C_n,p``.
+        c_l_r: ``C_l,r``.
+        c_n_r: ``C_n,r``.
+        warnings: The caveats of the run (the bodies' substitution), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    c_l_beta: float
+    c_n_beta: float
+    c_l_p: float
+    c_n_p: float
+    c_l_r: float
+    c_n_r: float
+    warnings: tuple[KernelWarning, ...] = ()
+
+
 class Contour(BaseModel):
     """An airfoil as AVL needs it.
 
@@ -206,6 +239,31 @@ def _unchecked_warning(what: str, n_chord: int, n_span: int, reason: str) -> Ker
         f"The refined mesh {cause}, so the convergence of the {what} could not be checked.",
         detail={"n_chord": n_chord, "n_span": n_span, "reason": reason},
     )
+
+
+def _body_warnings(bodies: tuple[MeshBody, ...]) -> list[KernelWarning]:
+    """The declaration of the fuselages as round bodies on a straight axis (ADR 0020, ``practice``)."""
+    if not bodies:
+        return []
+    return [
+        KernelWarning.of(
+            "avl_body_equivalent_round",
+            "AVL's body is round and axisymmetric on a straight axis, so each fuselage is replaced "
+            "by the round body of the same cross-section area at every section, on the axis through "
+            "the area-weighted centre of its sections; AVL's slender-body model of a fuselage has "
+            "'relatively limited' experience behind it (avl_doc.txt:99-119).",
+            detail={
+                "bodies": [
+                    {
+                        "fuselage": b.name,
+                        "axis_offset_m": b.axis_offset,
+                        "sections": len(b.stations),
+                    }
+                    for b in bodies
+                ]
+            },
+        )
+    ]
 
 
 def _common_flap_deflection(flaps: list[FlapSegment]) -> float:
@@ -311,6 +369,8 @@ class AvlAdapter(SolverAdapter):
             "avl_roll_nchord_aft": SPLIT_N_CHORD[1],
             "avl_roll_branch_tolerance": cfg.avl_roll_branch_tolerance.value,
             "avl_chord_spacing": CHORD_SPACING,
+            "avl_body_nodes": BODY_NODES,
+            "avl_body_spacing": BODY_SPACING,
             "avl_sliver_steps": SLIVER_STEPS,
             "avl_claf_per_thickness": CLAF_PER_THICKNESS,
             "avl_roll_rate_limit": self.roll_rate_limit(),
@@ -336,6 +396,7 @@ class AvlAdapter(SolverAdapter):
         commands: str,
         reference: MainWingProperties,
         xyz_ref: tuple[float, float, float],
+        bodies: tuple[MeshBody, ...] = (),
     ) -> str:
         """One AVL run on one mesh; returns the output text.
 
@@ -391,10 +452,13 @@ class AvlAdapter(SolverAdapter):
                 c_ref=reference.c_mac,
                 b_ref=reference.b_ref,
                 xyz_ref=xyz_ref,
+                bodies=bodies,
             ),
         }
         for index, contour in enumerate(contours):
             files[airfoil_file_name(index)] = airfoil_file(f"airfoil {index}", contour.coordinates)
+        for index, body in enumerate(bodies):
+            files[body_file_name(index)] = body_file_text(body)
         try:
             async with asyncio.timeout(AVL_MAX_RUN_S):
                 run = await self.runtime.run_process(
@@ -704,3 +768,88 @@ class AvlAdapter(SolverAdapter):
                     )
                 )
         return AvlRoll(p_hat=first.p_hat, warnings=tuple(warnings))
+
+    async def lateral_derivatives(
+        self, airplane: AirplaneGeometry, cl: float, x_cg: float
+    ) -> AvlLateral:
+        """Find the lateral-directional stability-axis derivatives at a lift coefficient (canon ``lateral-static-stability-*``).
+
+        One run of AVL on the declared mesh, the flaps of the configuration held at their deflection
+        (the symmetric ``flap`` control of the steady roll, linear in the deflection), the fuselages as bodies, the moment and rotation
+        reference at ``x_cg`` (y and z are the airplane's own reference point). AVL prints the
+        derivatives in its default stability axes. The bodies are round and axisymmetric in AVL, so
+        every fuselage is replaced by the round body of the same cross-section area; that is declared.
+
+        Args:
+            airplane: The validated geometry with one main wing; flaps as configured, any other
+                device at rest.
+            cl: The lift coefficient of the operating point.
+            x_cg: x of the moment reference in m (geometry frame, aft positive).
+
+        Returns:
+            The six derivatives and the adapter's warnings.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``unsupported_configuration`` for a deflected
+                device, a mirrored fuselage or the declared mesh overflowing AVL's array.
+            RuntimeError: If AVL fails or misses the lift coefficient (a defect, reported as
+                ``internal``).
+        """
+        self.require_available()
+        refuse_deflected_devices(airplane, "AVL", flaps_supported=True)
+        flaps = flap_segments(airplane)
+        flap_deg = _common_flap_deflection(flaps)
+        reference = main_wing_properties(airplane)
+        numbers: dict[Airfoil, int] = {}
+
+        def number(airfoil: Airfoil) -> int:
+            return numbers.setdefault(airfoil, len(numbers))
+
+        surfaces = mesh_surfaces(
+            airplane,
+            N_SPAN,
+            number,
+            drive_flaps=bool(flaps),
+            join_tolerance_m=self.join_tolerance_m(),
+        )
+        if flaps:
+            # a held flap splits the wing at its hinge, as for the steady roll (Drela's rule 3)
+            main, *others = surfaces
+            surfaces = (*split_at_hinge(main, SPLIT_N_CHORD), *others)
+        bodies = mesh_bodies(airplane)
+        contours = await self._contours(tuple(numbers))
+        xyz_ref = (x_cg, airplane.xyz_ref[1], airplane.xyz_ref[2])
+        stdout = await self._execute(
+            surfaces,
+            contours,
+            (N_CHORD, N_SPAN),
+            avl_lateral_commands(cl, CORE_RATIO, order=control_order(surfaces), flap_deg=flap_deg),
+            reference,
+            xyz_ref,
+            bodies,
+        )
+        output = parse_lateral_output(stdout)
+        if output is None:
+            msg = "the vortex lattice run did not complete (no lateral derivatives in the output)"
+            logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])
+            raise RuntimeError(msg)
+        if abs(output.cl - cl) > config().avl_cl_tolerance.value:
+            msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
+            raise RuntimeError(msg)
+        if flap_deg:
+            flap_echo = parse_flap_echo(stdout)
+            if (
+                flap_echo is None
+                or abs(flap_echo - flap_deg) > config().avl_control_echo_tolerance.value
+            ):
+                msg = f"the vortex lattice echoed the flap at {flap_echo}, not the commanded {flap_deg}"
+                raise RuntimeError(msg)
+        return AvlLateral(
+            c_l_beta=output.c_l_beta,
+            c_n_beta=output.c_n_beta,
+            c_l_p=output.c_l_p,
+            c_n_p=output.c_n_p,
+            c_l_r=output.c_l_r,
+            c_n_r=output.c_n_r,
+            warnings=(*_flap_warnings(flaps), *_body_warnings(bodies)),
+        )

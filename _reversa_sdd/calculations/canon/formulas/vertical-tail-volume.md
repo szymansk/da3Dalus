@@ -61,9 +61,11 @@ Drela's V-tail rule (BAENDER §3b).
 
 **Validity in the RC/UAV regime (ADR 0028).** Exact as geometry; the bands are RC values.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/vertical_tail_volume.py` | EXACT | 🟢 | `S_V` is ASB's `Wing.area(type="planform", include_centerline_distance=False)` of the one `vertical_tail`/`v_tail` surface, from the GEO adapter (`aero_kernel/solvers/geometry.py`, `fin_area`), both flags passed in code; a V-tail's fin share is the sum over its panels of ASB's planform area of that panel times sin²(panel angle); one value per neutral-point world, from the arm |
 
 ## Approval
 

@@ -1,6 +1,7 @@
 """The AVL input text and the reading of its output (ARCHITECTURE ch. 8.8).
 
-The one writer of ``.avl`` text in the kernel. It emits no BODY: the fuselage is not modelled. A
+The one writer of ``.avl`` text in the kernel. A BODY appears only for a run that is given bodies
+(:mod:`aero_kernel.solvers.avl_body`): the neutral point and the steady roll model no fuselage. A
 CONTROL appears only on the stations of a mesh that drives the roll devices (the clean file has none).
 Airfoil contours are separate files named ``af<i>.dat`` that the
 caller puts beside the geometry file (nothing here touches the disk).
@@ -10,6 +11,7 @@ import re
 from collections.abc import Sequence
 
 from aero_kernel.config import config
+from aero_kernel.solvers.avl_body import MeshBody
 from aero_kernel.solvers.avl_mesh import (
     FLAP_CONTROL,
     ROLL_CONTROL,
@@ -20,15 +22,19 @@ from pydantic import BaseModel, ConfigDict
 
 __all__ = [
     "AvlOutput",
+    "LateralOutput",
     "RollOutput",
     "airfoil_file",
     "airfoil_file_name",
     "avl_commands",
     "avl_geometry",
+    "avl_lateral_commands",
     "avl_roll_commands",
+    "body_file_name",
     "control_order",
     "parse_avl_output",
     "parse_flap_echo",
+    "parse_lateral_output",
     "parse_roll_output",
 ]
 
@@ -37,6 +43,11 @@ CHORD_SPACING = 1
 # One strip per neighbouring section pair; the spacing is moot for a single strip.
 _STRIP = "1   1"
 GEOMETRY_FILE = "airplane.avl"
+# Source and doublet nodes along a body axis, and their spacing: cosine (1.0), as for the strips. The
+# primer's own example uses 15 nodes (avl_doc.txt:947-949); a fuselage of 20-60 sections is resolved
+# by 20 cosine-spaced nodes, the line being smooth between the sections.
+BODY_NODES = 20
+BODY_SPACING = 1.0
 # The roll control: one name for every device acting as aileron, driven as an AVL control variable.
 # SgnDup -1 makes the mirrored half deflect the other way (avl_doc.txt:755-757, an aileron on a
 # YDUPLICATE surface); the hinge vector 0 0 0 puts the hinge along the hinge line (avl_doc.txt:737-757).
@@ -73,6 +84,33 @@ class RollOutput(BaseModel):
     cl_delta: float
 
 
+class LateralOutput(BaseModel):
+    """What the kernel reads from an AVL run for the lateral-directional derivatives.
+
+    The six derivatives are AVL's stability-axis values, ``C_l,beta`` and ``C_n,beta`` per radian of
+    sideslip, the rate derivatives per ``p'b/2V`` and ``r'b/2V``.
+
+    Attributes:
+        cl: The total lift coefficient AVL trimmed to.
+        c_l_beta: ``Clb``.
+        c_n_beta: ``Cnb``.
+        c_l_p: ``Clp``.
+        c_n_p: ``Cnp``.
+        c_l_r: ``Clr``.
+        c_n_r: ``Cnr``.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    cl: float
+    c_l_beta: float
+    c_n_beta: float
+    c_l_p: float
+    c_n_p: float
+    c_l_r: float
+    c_n_r: float
+
+
 class AvlOutput(BaseModel):
     """What the kernel reads from an AVL run.
 
@@ -90,6 +128,11 @@ class AvlOutput(BaseModel):
 def airfoil_file_name(index: int) -> str:
     """The file name of the contour of airfoil ``index``."""
     return f"af{index}.dat"
+
+
+def body_file_name(index: int) -> str:
+    """The file name of the outline of body ``index``."""
+    return f"body{index}.dat"
 
 
 def airfoil_file(name: str, coordinates: Sequence[tuple[float, float]]) -> str:
@@ -123,6 +166,7 @@ def avl_geometry(
     c_ref: float,
     b_ref: float,
     xyz_ref: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    bodies: Sequence[MeshBody] = (),
 ) -> str:
     """The ``.avl`` text of an airplane at Mach 0.
 
@@ -135,6 +179,8 @@ def avl_geometry(
         b_ref: Reference span in m.
         xyz_ref: The moment and rotation reference point in m (the origin for the neutral point,
             which does not depend on it; the airplane's own for a roll, which does).
+        bodies: The fuselages as round bodies, each read from its own file
+            (:func:`body_file_name`, :func:`aero_kernel.solvers.avl_body.body_file_text`).
 
     Returns:
         The file text.
@@ -182,12 +228,45 @@ def avl_geometry(
                     f"{control.name} {control.gain!r} {control.x_hinge!r} "
                     f"0.0 0.0 0.0 {control.sgn_dup}",
                 ]
+    for index, body in enumerate(bodies):
+        lines += [
+            "#" + "=" * 60,
+            "BODY",
+            body.name,
+            "#Nbody  Bspace",
+            f"{BODY_NODES}   {BODY_SPACING}",
+            "TRANSLATE",
+            f"{body.origin[0]!r} {body.origin[1]!r} {body.origin[2]!r}",
+            "BFIL",
+            body_file_name(index),
+        ]
     return "\n".join(lines) + "\n"
 
 
 def avl_commands(cl: float, core_ratio: float) -> str:
     """The OPER dialogue: vortex core ratio, ``C_L`` constraint, run, stability derivatives."""
     return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nx\nst\n\n\nquit\n"
+
+
+def avl_lateral_commands(
+    cl: float, core_ratio: float, *, order: Sequence[str] = (), flap_deg: float = 0.0
+) -> str:
+    """The OPER dialogue of the lateral derivatives: ``C_L`` constraint, held flap, run, derivatives.
+
+    The only control a lateral run holds is the symmetric flap of the configuration, at its
+    deflection; a file without controls gives the plain dialogue of :func:`avl_commands`.
+
+    Args:
+        cl: The lift coefficient.
+        core_ratio: The vortex core ratio.
+        order: The control names in AVL's numbering (:func:`control_order`), flap only.
+        flap_deg: The flap deflection in degrees.
+
+    Returns:
+        The command text.
+    """
+    held = "".join(f"d{index} d{index} {flap_deg!r}\n" for index, _ in enumerate(order, start=1))
+    return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\n{held}x\nst\n\n\nquit\n"
 
 
 def control_order(surfaces: Sequence[MeshSurface]) -> tuple[str, ...]:
@@ -265,6 +344,28 @@ def parse_avl_output(text: str) -> AvlOutput | None:
     if x_np is None or cl is None:
         return None
     return AvlOutput(x_np=x_np, cl=cl)
+
+
+def parse_lateral_output(text: str) -> LateralOutput | None:
+    """Read ``CLtot`` and the six lateral stability-axis derivatives from the output.
+
+    Returns:
+        The values, or ``None`` if one is missing (the run did not complete).
+    """
+    values = {key: _first(text, key) for key in ("CLtot", "Clb", "Cnb", "Clp", "Cnp", "Clr", "Cnr")}
+    if any(value is None for value in values.values()):
+        return None
+    return LateralOutput.model_validate(
+        {
+            "cl": values["CLtot"],
+            "c_l_beta": values["Clb"],
+            "c_n_beta": values["Cnb"],
+            "c_l_p": values["Clp"],
+            "c_n_p": values["Cnp"],
+            "c_l_r": values["Clr"],
+            "c_n_r": values["Cnr"],
+        }
+    )
 
 
 def parse_flap_echo(text: str) -> float | None:

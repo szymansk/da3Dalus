@@ -169,6 +169,8 @@ def test_the_settings_are_public_keys_with_their_values() -> None:
         "avl_roll_nchord_aft": 8,
         "avl_roll_branch_tolerance": 0.1,
         "avl_chord_spacing": 1,
+        "avl_body_nodes": 20,
+        "avl_body_spacing": 1.0,
         "avl_sliver_steps": 0.3,
         "avl_claf_per_thickness": 0.77,
         "avl_roll_rate_limit": 0.10,
