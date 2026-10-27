@@ -45,7 +45,7 @@ the physics at Re 30k–300k (`scripts/canon_checks/reference_fleet/NP_NIEDRIGE_
 is therefore the **interval** spanned by three accepted methods, each a self-consistent *world* that is
 carried through the whole downstream chain (A11 rule 4). One entry, one producer (ADR 0022, ADR 0027).
 
-- **Textbook world:** the barycentre form is the exact form of `h_n = h_ac + eta*V_H*(a_h/a)*(1 - de/da)`
+- **Textbook world:** the barycentre form is the exact form of `h_n = h_ac + eta*V̄_H*(a_h/a)*(1 - de/da)`
   with `K = eta*(a_h/a)*(1 - de/da)`, lift slopes `a = 2 pi AR/(AR+2)`, downwash `de/da = 2 a_w/(pi AR_w)`
   (**derived from** Sadraey Eq. 6.67, §6.7.12 — the barycentre is a rearrangement, not the printed form);
   `eta` is the input [[tail-efficiency]] (`eta_h`, default **0.65**, `basis: sourced`; Lennon, *Basics of

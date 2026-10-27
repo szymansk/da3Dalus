@@ -85,7 +85,7 @@ The spiral criterion is also computed at V_mp by [[lateral-static-stability-mp]]
 for tailless aircraft.
 
 **Values, not verdicts (A10).** Drela: B > 5 spirally stable, ≈ 5 neutral, 3–4 no difficulty for an
-experienced pilot; rudder-only models V_V·B = 0.10–0.20 for roll authority. Bands belong to the evaluation.
+experienced pilot; rudder-only models V̄_V·B = 0.10–0.20 for roll authority. Bands belong to the evaluation.
 
 **Dimensional check.** 🟢 balances by hand — m / m; `Γ_eq` enters as a number in degrees (Drela's definition); the checker sees a geometry extraction (procedural).
 

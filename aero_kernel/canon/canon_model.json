@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:cf397182724da634a43914d251d3ec4a5170ac031e1599f3188ae9a723b1c4ae",
+  "content_hash": "sha256:943eb651b4a7729dd5b88a1dd9302ad89721ffb998c0d9cd9f3e1f505dc27092",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -4791,7 +4791,7 @@
           "positive": null,
           "role": "output",
           "stage": null,
-          "symbol": "V_H",
+          "symbol": "V̄_H",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"
@@ -6387,7 +6387,7 @@
           "positive": null,
           "role": "output",
           "stage": null,
-          "symbol": "V_V",
+          "symbol": "V̄_V",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"

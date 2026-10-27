@@ -28,7 +28,7 @@ applications:
 
 ```
 S_V := Wing.area(type="planform", include_centerline_distance=False)   # ASB, the one vertical_tail/v_tail surface; V-tail: times sin^2(nu)
-V_V = S_V * l_V_CG / (S_ref * b_ref)
+V̄_V = S_V * l_V_CG / (S_ref * b_ref)
 ```
 
 `S_ref` and `b_ref` are [[wing-reference-area]] and [[wing-span]], produced by [[airplane-geometry]] (AeroSandbox's
@@ -39,7 +39,7 @@ the arm `l_V,CG` is [[vertical-tail-arm]].
 `S_V` is the fin area, for a V-tail its fin share `S_Vtail·sin²ν` (ν = panel angle to the horizontal);
 `l_V,CG` runs from the computed design CG ([[centre-of-gravity-design]]) to the fin's quarter-chord MAC, exactly
 Drela's definition (maintainer 2026-10-25, #1272, superseding the reading of the CG as 25 % MAC). The arm is an interval
-over the neutral-point worlds, so `V_V` is one value per world (A11); the former `l_V,25` is removed, no formula needs it (ADR 0021).
+over the neutral-point worlds, so `V̄_V` is one value per world (A11); the former `l_V,25` is removed, no formula needs it (ADR 0021).
 
 **Produces** [[vertical-tail-volume]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[wing-span]] · [[vertical-tail-arm]]
 
@@ -74,7 +74,7 @@ None in aero_kernel yet; no register node is mapped to this entry.
 - [x] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> **Approved** (maintainer, 2026-10-26): V_v = S_V · l_V,CG / (S_ref · b_ref) (Sadraey Eq. 6.74; Drela Eq. 7),
+> **Approved** (maintainer, 2026-10-26): V̄_V = S_V · l_V,CG / (S_ref · b_ref) (Sadraey Eq. 6.74; Drela Eq. 7),
 > with the arm from the design CG (approved [[vertical-tail-arm]]), S_ref and b_ref from the approved
 > [[airplane-geometry]], and S_V as AeroSandbox's `Wing.area(type="planform", include_centerline_distance=False)`
 > of the one vertical_tail/v_tail surface, flags explicit (added at approval); V-tail fin share S·sin²ν

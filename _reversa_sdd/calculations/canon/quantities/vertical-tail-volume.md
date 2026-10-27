@@ -1,7 +1,7 @@
 ---
 canon: vertical-tail-volume
 kind: quantity
-symbol: V_V
+symbol: V̄_V
 unit: 1
 role: output
 tags:
@@ -13,7 +13,7 @@ type: scalar
 figure: tail-arms
 ---
 
-# Vertical tail volume · `V_V`
+# Vertical tail volume · `V̄_V`
 
 Effective fin area times tail arm `l_V,CG` (design CG to the quarter-chord MAC of the fin) over wing area times span; for a V-tail the fin share is `S·sin²ν`.
 
