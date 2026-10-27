@@ -36,6 +36,7 @@ SLUGS = (
     "spiral-criterion-app",
     "spiral-doubling-time-app",
     "dihedral-effect-mp",
+    "roll-due-to-yaw-rate-mp",
     "weathercock-stability-mp",
     "spiral-criterion-mp",
     "spiral-doubling-time-mp",
@@ -64,6 +65,7 @@ GOLDEN = {
             -0.003881071616999998,
         ),
         "spiral-doubling-time-mp": (3.4677179965108755, 3.4801930056930392, 3.654574190584924),
+        "roll-due-to-yaw-rate-mp": (0.198492, 0.198411, 0.197361),
     },
     FleetMember.JAGUAR: {
         "vertical-tail-volume": (0.02241860994257862, 0.021857472431766837, 0.021616158168489292),
@@ -91,6 +93,7 @@ GOLDEN = {
         "weathercock-stability-mp": (0.03773, 0.036645, 0.036179),
         "spiral-criterion-mp": (-0.004331298048000001, -0.004164590823, -0.004092960631000002),
         "spiral-doubling-time-mp": (2.3096629279775573, 2.3350676133483383, 2.346627634877029),
+        "roll-due-to-yaw-rate-mp": (0.176848, 0.175885, 0.175469),
     },
     FleetMember.RV7: {
         "vertical-tail-volume": (0.08299981005376741, 0.08260137411188775, 0.08222818779390684),
@@ -106,6 +109,7 @@ GOLDEN = {
         "weathercock-stability-mp": (0.132902, 0.131928, 0.131016),
         "spiral-criterion-mp": (0.005651143291999998, 0.005747741324000001, 0.005838151786000001),
         "spiral-doubling-time-mp": (-6.3565948508987455, -6.2057826369791815, -6.0691432369182),
+        "roll-due-to-yaw-rate-mp": (0.187581, 0.186972, 0.186401),
     },
     FleetMember.CHEKKER: {
         "vertical-tail-volume": (0.042546551629209804, 0.04191818550080524, 0.04137168394275927),
@@ -125,6 +129,7 @@ GOLDEN = {
         "weathercock-stability-mp": (0.01732, 0.016187, 0.015202),
         "spiral-criterion-mp": (0.007542825768999999, 0.007773946279999999, 0.007974946856),
         "spiral-doubling-time-mp": (-1.173657637682534, -1.0931877655930589, -1.0270137560432142),
+        "roll-due-to-yaw-rate-mp": (0.23288, 0.230876, 0.229132),
     },
     FleetMember.WIESEL: {
         "vertical-tail-volume": (0.03972881444148937, 0.03888724528575182, 0.039253299538574225),
@@ -152,6 +157,7 @@ GOLDEN = {
         "weathercock-stability-mp": (0.046421, 0.044734, 0.045468),
         "spiral-criterion-mp": (0.0003720830140000004, 0.000522801388, 0.0004572379739999988),
         "spiral-doubling-time-mp": (-48.488364341622756, -33.4652578906001, -38.783355437738635),
+        "roll-due-to-yaw-rate-mp": (0.15037, 0.14847, 0.149297),
     },
 }
 

@@ -57,7 +57,9 @@ def _spiral_time(
     return root, math.copysign(math.log(2.0) / abs(root), root)
 
 
-async def lateral_stability(x: Inputs, ctx: Context) -> dict[str, float]:
+async def lateral_stability(
+    x: Inputs, ctx: Context, *, roll_due_to_yaw_rate: bool = False
+) -> dict[str, float]:
     """``C_l,beta``, ``C_n,beta``, the spiral criterion and its time from one AVL solution.
 
     AVL runs at ``C_L = m g / (1/2 rho V^2 S_ref)`` with the kernel's ``S_ref`` and the fuselages as
@@ -69,9 +71,12 @@ async def lateral_stability(x: Inputs, ctx: Context) -> dict[str, float]:
         x: ``airplane``, ``m`` in kg, ``g`` in m/s^2, ``rho`` in kg/m^3, ``x_cg`` the design CG in m
             and ``v`` the speed in m/s.
         ctx: The formula context; ``ctx.solvers.avl`` and ``ctx.solvers.geometry`` are the adapters.
+        roll_due_to_yaw_rate: Whether the entry also outputs ``C_l,r`` (``lateral-static-stability-mp``
+            does, maintainer decision 2026-10-27, #1275): the engine rejects an output the entry does
+            not declare.
 
     Returns:
-        ``c_l_beta`` and ``c_n_beta`` in 1/rad, ``e_spiral`` as AVL's derivatives give it (``C_l,beta`` per
+        ``c_l_beta`` and ``c_n_beta`` in 1/rad, with ``c_l_r`` (per ``r'b/2V``) if asked, ``e_spiral`` as AVL's derivatives give it (``C_l,beta`` per
         rad times ``C_n,r`` per ``r'b/2V``) and ``t2_spiral`` in s.
 
     Raises:
@@ -104,9 +109,12 @@ async def lateral_stability(x: Inputs, ctx: Context) -> dict[str, float]:
             "to halve, ln 2 / |lambda_s|, with a negative sign.",
             {"lambda_s": root, "halving_time_s": -time},
         )
-    return {
+    outputs = {
         "c_l_beta": found.c_l_beta,
         "c_n_beta": found.c_n_beta,
         "e_spiral": e_spiral,
         "t2_spiral": time,
     }
+    if roll_due_to_yaw_rate:
+        outputs["c_l_r"] = found.c_l_r
+    return outputs

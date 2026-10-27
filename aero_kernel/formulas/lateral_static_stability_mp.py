@@ -20,9 +20,9 @@ async def lateral_static_stability_mp(x: Inputs, ctx: Context) -> dict[str, floa
         ctx: The formula context.
 
     Returns:
-        ``c_l_beta``, ``c_n_beta``, ``e_spiral`` and ``t2_spiral``.
+        ``c_l_beta``, ``c_n_beta``, ``e_spiral``, ``t2_spiral`` and ``c_l_r`` (the roll derivative with yaw rate).
 
     Raises:
         FormulaError: As :func:`aero_kernel.formulas.lateral_stability.lateral_stability`.
     """
-    return await lateral_stability(x, ctx)
+    return await lateral_stability(x, ctx, roll_due_to_yaw_rate=True)

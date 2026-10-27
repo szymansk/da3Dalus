@@ -104,6 +104,17 @@ async def test_avl_runs_at_the_lift_balance_of_its_speed_about_each_worlds_desig
         assert close(cl, expected_cl, 1e-9)
 
 
+async def test_only_the_minimum_sink_point_outputs_the_roll_derivative_with_yaw_rate() -> None:
+    """Maintainer decision 2026-10-27 (#1275): C_l,r at V_mp for the turn sideslip, from the same AVL run."""
+    run = await run_chain("roll-due-to-yaw-rate-mp")
+    quantity = run.quantity("roll-due-to-yaw-rate-mp")
+    assert quantity.status is QuantityStatus.OK
+    assert quantity.interval is not None
+    assert all(value == 0.11 for value in quantity.interval.worlds.values())
+    md = await lateral_static_stability_md(inputs(), context(StubAvl(X_NP_AVL)))
+    assert set(md) == {"c_l_beta", "c_n_beta", "e_spiral", "t2_spiral"}
+
+
 async def test_a_stable_spiral_reports_the_halving_time_negative_and_declares_it() -> None:
     avl = StubAvl(X_NP_AVL)
     avl.lateral = AvlLateral(
