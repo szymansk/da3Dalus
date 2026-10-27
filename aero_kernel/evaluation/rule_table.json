@@ -183,8 +183,7 @@
       "id": "rudder-roll-authority",
       "title": "Rudder roll authority (rudder/elevator aircraft)",
       "quantity": {
-        "slug": "rudder-roll-authority",
-        "planned": "#1274"
+        "slug": "rudder-roll-authority-mp"
       },
       "unit": "1",
       "band": {
@@ -194,7 +193,7 @@
         "max_inclusive": true
       },
       "levels": [],
-      "source": "Drela rule (10), Eq. 10",
+      "source": "Drela rule (10), Eq. 10, evaluated at the minimum-sink speed (maintainer 2026-10-27, #1274)",
       "when": [
         "has_vertical_tail"
       ],

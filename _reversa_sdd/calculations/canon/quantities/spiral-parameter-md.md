@@ -8,6 +8,7 @@ tags:
   - canon/quantity
   - discipline/lateral
   - point/best-glide
+  - stage/stability-structure
   - role/output
 type: scalar
 ---
@@ -19,3 +20,5 @@ Drela's spiral parameter `l_V,CG·Γ_eq/(b·C_L)` with `C_L` at `V_md`; above ab
 **Unit.** `1` (numerically with `Γ_eq` in degrees, as Drela defines it)
 
 **Produced by.** [[spiral-parameter]]
+
+**Used by.** [[rudder-roll-authority]]

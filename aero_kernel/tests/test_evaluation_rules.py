@@ -103,7 +103,7 @@ def test_the_check_rejects_a_unit_that_differs_from_the_canon() -> None:
 
 def test_the_check_accepts_a_planned_quantity_the_canon_lacks() -> None:
     model = load_canon_model()
-    rule = rule_of(quantity={"slug": "rudder-roll-authority", "planned": "#1274"})
+    rule = rule_of(quantity={"slug": "a-quantity-still-to-come", "planned": "#9999"})
     assert check_rule_table(table_of(rule), model) == []
 
 
@@ -146,9 +146,7 @@ def test_the_shipped_table_holds_drelas_bands() -> None:
 def test_every_not_yet_computable_rule_names_its_ticket() -> None:
     table = load_rule_table(DRELA)
     planned = {r.id: r.quantity.planned for r in table.rules if r.quantity.planned}
-    assert planned == {
-        "rudder-roll-authority": "#1274",
-    }
+    assert planned == {}
 
 
 def test_the_shipped_json_equals_the_yaml() -> None:

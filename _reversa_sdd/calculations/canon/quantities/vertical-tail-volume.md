@@ -8,6 +8,7 @@ tags:
   - canon/quantity
   - discipline/lateral
   - point/none
+  - stage/stability-structure
   - role/output
 type: scalar
 figure: tail-arms
@@ -20,3 +21,5 @@ Effective fin area times tail arm `l_V,CG` (design CG to the quarter-chord MAC o
 **Unit.** `1`
 
 **Produced by.** [[vertical-tail-volume]]
+
+**Used by.** [[rudder-roll-authority]]

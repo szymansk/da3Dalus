@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:6e75a6342e7c54b7bb2f2bc5332fdf7ffd076efd5c04767f1c082b2982167f2a",
+  "content_hash": "sha256:e8812e5ebf4b806c3a0f21d380dc2034cddc5820ca56fd4fcdac04042b642764",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -2735,6 +2735,45 @@
             "aerobuildup",
             "avl"
           ]
+        },
+        "rudder-roll-authority": {
+          "applications": [
+            {
+              "bind": {
+                "b_spiral_md": "calc:spiral-parameter-md",
+                "b_spiral_mp": "calc:spiral-parameter-mp",
+                "v_v": "calc:vertical-tail-volume"
+              },
+              "given": null,
+              "id": "without_aileron",
+              "produce": {
+                "rra_md": "calc:rudder-roll-authority-md",
+                "rra_mp": "calc:rudder-roll-authority-mp"
+              },
+              "when": "has_no_aileron"
+            }
+          ],
+          "cost": "instant",
+          "direction": "analysis",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "b_spiral_md": "calc:spiral-parameter-md",
+            "b_spiral_mp": "calc:spiral-parameter-mp",
+            "v_v": "calc:vertical-tail-volume"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "rra_md": "calc:rudder-roll-authority-md",
+            "rra_mp": "calc:rudder-roll-authority-mp"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
         },
         "sink-rate": {
           "applications": [
@@ -5775,6 +5814,40 @@
           "uncertainty": null,
           "unit": "deg"
         },
+        "rudder-roll-authority-md": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "best-glide",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "V̄_V·B_md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "rudder-roll-authority-mp": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "V̄_V·B_mp",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
         "sink-rate": {
           "at_most": null,
           "checks": null,
@@ -5990,7 +6063,7 @@
           "point": "best-glide",
           "positive": null,
           "role": "output",
-          "stage": null,
+          "stage": "stability-structure",
           "symbol": "B_spiral,md",
           "type": "scalar",
           "uncertainty": null,
@@ -6007,7 +6080,7 @@
           "point": "minimum-sink",
           "positive": null,
           "role": "output",
-          "stage": null,
+          "stage": "stability-structure",
           "symbol": "B_spiral,mp",
           "type": "scalar",
           "uncertainty": null,
@@ -6392,7 +6465,7 @@
           "point": "none",
           "positive": null,
           "role": "output",
-          "stage": null,
+          "stage": "stability-structure",
           "symbol": "V̄_V",
           "type": "scalar",
           "uncertainty": null,
