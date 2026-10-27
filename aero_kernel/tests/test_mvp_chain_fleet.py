@@ -3,9 +3,9 @@
 Aero tier. The goldens are **regression, not validation** (aero_kernel/CLAUDE.md): they pin what this
 build computes, written by running the kernel at SM_target = 0.10 and the fleet masses of the README.
 Per quantity the three values are the neutral-point worlds textbook / Pappas / AVL. The aircraft the
-kernel cannot compute record the error it gives: BELEMNITOS' V-tail has no neutral point (#1208),
-CHEKKER's and WIESEL's fuselage sections block the speeds (#1307), and RV-7's flaps need a landing
-deflection for the approach speed of ``lateral-static-stability-app``.
+kernel cannot compute record the error it gives: BELEMNITOS' V-tail has no neutral point (#1208), and
+RV-7's flaps need a landing deflection for the approach speed of ``lateral-static-stability-app``.
+CHEKKER and WIESEL compute since #1307 (asymmetric fuselage sections).
 """
 
 from typing import Any
@@ -107,13 +107,57 @@ GOLDEN = {
         "spiral-criterion-mp": (0.005651143291999998, 0.005747741324000001, 0.005838151786000001),
         "spiral-doubling-time-mp": (-6.3565948508987455, -6.2057826369791815, -6.0691432369182),
     },
+    FleetMember.CHEKKER: {
+        "vertical-tail-volume": (0.042546551629209804, 0.04191818550080524, 0.04137168394275927),
+        "spiral-parameter-md": (1.2845980820454492, 1.2656259705003, 1.2491255767805247),
+        "spiral-parameter-mp": (0.8554188074942738, 0.8427852053891246, 0.831797529698),
+        "pitching-moment-slope": (-1.5595587307566676, -1.392390174606797, -1.2470006122770396),
+        "static-margin-probe": (0.3171375216474266, 0.28314366136553354, 0.2535785769853561),
+        "dihedral-effect-md": (-0.124651, -0.124693, -0.12473),
+        "weathercock-stability-md": (0.005753, 0.004657, 0.003705),
+        "spiral-criterion-md": (0.006432202177, 0.006583627014, 0.0067152360949999995),
+        "spiral-doubling-time-md": (-0.676009157397108, -0.6056980924994139, -0.5471834026151904),
+        "dihedral-effect-app": (-0.135866, -0.13593, -0.135985),
+        "weathercock-stability-app": (0.008742, 0.007634, 0.006671),
+        "spiral-criterion-app": (0.006900898919999999, 0.007074727484, 0.007225877743999999),
+        "spiral-doubling-time-app": (-0.8173664987185193, -0.7471403993758698, -0.6888284003262578),
+        "dihedral-effect-mp": (-0.161403, -0.161519, -0.16162),
+        "weathercock-stability-mp": (0.01732, 0.016187, 0.015202),
+        "spiral-criterion-mp": (0.007542825768999999, 0.007773946279999999, 0.007974946856),
+        "spiral-doubling-time-mp": (-1.173657637682534, -1.0931877655930589, -1.0270137560432142),
+    },
+    FleetMember.WIESEL: {
+        "vertical-tail-volume": (0.03972881444148937, 0.03888724528575182, 0.039253299538574225),
+        "spiral-parameter-md": (4.028012641050421, 3.9426878901036906, 3.9798012844600827),
+        "spiral-parameter-mp": (2.463369991980496, 2.4111888173453107, 2.433885871725516),
+        "pitching-moment-slope": (-1.3243032159540764, -1.0700535061683092, -1.1806435710670928),
+        "static-margin-probe": (0.26732632326361927, 0.21600300146763238, 0.23832691874180295),
+        "dihedral-effect-md": (-0.083991, -0.084106, -0.084056),
+        "weathercock-stability-md": (0.043255, 0.041521, 0.042275),
+        "spiral-criterion-md": (
+            0.0011887518259999993,
+            0.0012746439350000008,
+            0.0012373301410000008,
+        ),
+        "spiral-doubling-time-md": (-16.053050533818052, -14.453128455749342, -15.121128081003977),
+        "dihedral-effect-app": (-0.101737, -0.101908, -0.101834),
+        "weathercock-stability-app": (0.045006, 0.043302, 0.044043),
+        "spiral-criterion-app": (
+            0.0007094788889999998,
+            0.0008373537819999994,
+            0.0007817986109999982,
+        ),
+        "spiral-doubling-time-app": (-25.435770361130125, -20.866202192095763, -22.668109206889252),
+        "dihedral-effect-mp": (-0.111077, -0.111277, -0.11119),
+        "weathercock-stability-mp": (0.046421, 0.044734, 0.045468),
+        "spiral-criterion-mp": (0.0003720830140000004, 0.000522801388, 0.0004572379739999988),
+        "spiral-doubling-time-mp": (-48.488364341622756, -33.4652578906001, -38.783355437738635),
+    },
 }
 
 # Quantity -> the cause the kernel names, for the aircraft it cannot compute.
 UPSTREAM = {
     FleetMember.BELEMNITOS: {"neutral-point": "unsupported_layout"},
-    FleetMember.CHEKKER: {"minimum-drag-speed": "unsupported_configuration"},
-    FleetMember.WIESEL: {"minimum-drag-speed": "unsupported_configuration"},
 }
 # The approach speed of RV-7 needs the landing flap deflection, which the fleet run does not give.
 RV7_NEEDS_LANDING_DEFLECTION = tuple(s for s in SLUGS if s.endswith("-app"))
