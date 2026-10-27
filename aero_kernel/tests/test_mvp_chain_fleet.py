@@ -8,10 +8,14 @@ RV-7's flaps need a landing deflection for the approach speed of ``lateral-stati
 CHEKKER and WIESEL compute since #1307 (asymmetric fuselage sections).
 """
 
+import math
 from typing import Any
 
 import pytest
 from aero_kernel import compute
+from aero_kernel.evaluation import RuleStatus, evaluate_rules, shipped_rule_table
+from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.graph import facts_from_geometry
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.reference_fleet import FleetMember, flap_values, reference_document
@@ -19,9 +23,15 @@ from aero_kernel.tests.reference_fleet import FleetMember, flap_values, referenc
 pytestmark = [pytest.mark.aero]
 
 SM_TARGET = 0.10
+STANDARD_GRAVITY = 9.80665  # the kernel's default gravity (a canon input, so not echoed as a value)
 WORLDS = ("textbook", "pappas", "avl")
 REL = 2e-3  # the regression tolerance
 SLUGS = (
+    "horizontal-tail-volume",
+    "turn-sideslip",
+    "turn-sideslip-gain",
+    "rudder-roll-authority-md",
+    "rudder-roll-authority-mp",
     "vertical-tail-volume",
     "spiral-parameter-md",
     "spiral-parameter-mp",
@@ -66,6 +76,7 @@ GOLDEN = {
         ),
         "spiral-doubling-time-mp": (3.4677179965108755, 3.4801930056930392, 3.654574190584924),
         "roll-due-to-yaw-rate-mp": (0.198492, 0.198411, 0.197361),
+        "horizontal-tail-volume": (0.47784453880864197, 0.47736734162563543, 0.4711656094103268),
     },
     FleetMember.JAGUAR: {
         "vertical-tail-volume": (0.02241860994257862, 0.021857472431766837, 0.021616158168489292),
@@ -94,6 +105,7 @@ GOLDEN = {
         "spiral-criterion-mp": (-0.004331298048000001, -0.004164590823, -0.004092960631000002),
         "spiral-doubling-time-mp": (2.3096629279775573, 2.3350676133483383, 2.346627634877029),
         "roll-due-to-yaw-rate-mp": (0.176848, 0.175885, 0.175469),
+        "horizontal-tail-volume": (0.4961653106252867, 0.4843902684658993, 0.47932647292736197),
     },
     FleetMember.RV7: {
         "vertical-tail-volume": (0.08299981005376741, 0.08260137411188775, 0.08222818779390684),
@@ -118,6 +130,7 @@ GOLDEN = {
             0.003338640119000001,
         ),
         "spiral-doubling-time-app": (-8.06557909709055, -7.776385503427931, -7.51954205227241),
+        "horizontal-tail-volume": (0.46242042634810815, 0.4601217478084075, 0.4579687407869885),
     },
     FleetMember.CHEKKER: {
         "vertical-tail-volume": (0.042546551629209804, 0.04191818550080524, 0.04137168394275927),
@@ -138,6 +151,15 @@ GOLDEN = {
         "spiral-criterion-mp": (0.007542825768999999, 0.007773946279999999, 0.007974946856),
         "spiral-doubling-time-mp": (-1.173657637682534, -1.0931877655930589, -1.0270137560432142),
         "roll-due-to-yaw-rate-mp": (0.23288, 0.230876, 0.229132),
+        "horizontal-tail-volume": (0.424137752916356, 0.41757506031430747, 0.4118673660738451),
+        "turn-sideslip": (3.1449009926032696, 3.11559903212897, 3.0901319994044094),
+        "rudder-roll-authority-md": (0.0546552186205306, 0.05305274420606823, 0.05167842856738075),
+        "rudder-roll-authority-mp": (
+            0.036395120457652204,
+            0.03532802657683557,
+            0.034412864503033574,
+        ),
+        "turn-sideslip-gain": (1.4428480263687788, 1.429404590172054, 1.4177205791362455),
     },
     FleetMember.WIESEL: {
         "vertical-tail-volume": (0.03972881444148937, 0.03888724528575182, 0.039253299538574225),
@@ -166,6 +188,7 @@ GOLDEN = {
         "spiral-criterion-mp": (0.0003720830140000004, 0.000522801388, 0.0004572379739999988),
         "spiral-doubling-time-mp": (-48.488364341622756, -33.4652578906001, -38.783355437738635),
         "roll-due-to-yaw-rate-mp": (0.15037, 0.14847, 0.149297),
+        "horizontal-tail-volume": (0.5417262125334599, 0.5298328066511209, 0.5350060378396592),
     },
 }
 
@@ -173,6 +196,11 @@ GOLDEN = {
 UPSTREAM = {
     FleetMember.BELEMNITOS: {"neutral-point": "unsupported_layout"},
 }
+# The turn sideslip applies only without ailerons: CHEKKER is the one aileron-free member of the fleet.
+TURN_SIDESLIP = ("turn-sideslip", "turn-sideslip-gain")
+# The rudder roll authority has the same applicability (`has_no_aileron`).
+WITHOUT_AILERON_ONLY = (*TURN_SIDESLIP, "rudder-roll-authority-md", "rudder-roll-authority-mp")
+WITHOUT_TURN_SIDESLIP = tuple(m for m in FleetMember if m is not FleetMember.CHEKKER)
 # The approach point of RV-7 binds the landing configuration, which needs the landing flap deflection.
 RV7_NEEDS_LANDING_DEFLECTION = tuple(s for s in SLUGS if s.endswith("-app"))
 
@@ -240,6 +268,8 @@ async def test_the_unstable_spirals_of_bryan_and_jaguar_have_a_positive_doubling
 async def test_the_aircraft_the_kernel_cannot_compute_name_their_cause(member: FleetMember) -> None:
     causes = UPSTREAM[member]
     for quantity in (await run(member)).quantities:
+        if quantity.slug in WITHOUT_AILERON_ONLY:
+            continue  # a layout with ailerons has no turn sideslip to fail
         assert quantity.status is QuantityStatus.ERROR, quantity.slug
         assert quantity.error is not None
         assert quantity.error.code == "upstream_failed", quantity.slug
@@ -259,3 +289,78 @@ async def test_the_rv7_approach_point_needs_the_landing_deflection() -> None:
         assert error is not None
         assert error.code == "upstream_failed"
         assert error.detail["causes"] == [{"quantity": "airplane-landing", "code": "missing_input"}]
+
+
+@pytest.mark.parametrize("member", WITHOUT_TURN_SIDESLIP)
+@pytest.mark.asyncio
+async def test_with_ailerons_the_turn_sideslip_and_rudder_roll_authority_are_not_applicable(
+    member: FleetMember,
+) -> None:
+    by_slug = {q.slug: q for q in (await run(member)).quantities}
+    for slug in WITHOUT_AILERON_ONLY:
+        assert by_slug[slug].status is QuantityStatus.NOT_APPLICABLE, slug
+        assert by_slug[slug].interval is None
+
+
+@pytest.mark.asyncio
+async def test_the_belemnitos_v_tail_has_no_horizontal_tail_volume_without_a_neutral_point() -> (
+    None
+):
+    """A V-tail counts as a horizontal tail, so the entry applies and fails on its upstream (#1208)."""
+    by_slug = {q.slug: q for q in (await run(FleetMember.BELEMNITOS)).quantities}
+    error = by_slug["horizontal-tail-volume"].error
+    assert error is not None
+    assert error.code == "upstream_failed"
+
+
+@pytest.mark.parametrize("member", list(GOLDEN))
+@pytest.mark.asyncio
+async def test_the_drela_rules_judge_the_new_values_on_the_fleet(member: FleetMember) -> None:
+    """Both rules evaluate end to end: the volume inside Drela's band, the sideslip only for CHEKKER."""
+    airplane = AirplaneGeometry.model_validate(reference_document(member))
+    result = await run(member)
+    judged = evaluate_rules(shipped_rule_table(), result, facts_from_geometry(airplane))
+    verdicts = {v.rule_id: v for v in judged}
+    assert verdicts["horizontal-tail-volume"].status is RuleStatus.INSIDE
+    expected = RuleStatus.INSIDE if member is FleetMember.CHEKKER else RuleStatus.NOT_APPLICABLE
+    assert verdicts["turn-sideslip"].status is expected
+    assert verdicts["rudder-roll-authority"].status is (
+        RuleStatus.BELOW if member is FleetMember.CHEKKER else RuleStatus.NOT_APPLICABLE
+    )
+    if member is FleetMember.CHEKKER:
+        assert verdicts["turn-sideslip"].level == "below-typical-limit"
+
+
+@pytest.mark.asyncio
+async def test_the_chekker_sideslip_is_the_gain_times_the_worst_turn_yaw_rate() -> None:
+    """beta = kappa r_hat_max with r_hat_max = rho g b C_L,mp / (8 W/S), rebuilt from the canon's own outputs."""
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": reference_document(FleetMember.CHEKKER),
+            "values": {
+                "aircraft-mass": FleetMember.CHEKKER.mass_kg,
+                "altitude": 0.0,
+                "static-margin-target": SM_TARGET,
+            },
+        }
+    )
+    slugs = ("air-density", "wing-span", "wing-loading", "lift-coefficient-minimum-sink")
+    result = await compute(aircraft, request(*slugs, *TURN_SIDESLIP))
+    by_slug = {q.slug: q for q in result.quantities}
+    values: dict[str, float] = {}
+    for slug in slugs:
+        value = by_slug[slug].value
+        assert value is not None, slug
+        values[slug] = value
+    r_hat = (
+        values["air-density"]
+        * STANDARD_GRAVITY
+        * values["wing-span"]
+        * values["lift-coefficient-minimum-sink"]
+        / (8.0 * values["wing-loading"])
+    )
+    beta, kappa = by_slug["turn-sideslip"], by_slug["turn-sideslip-gain"]
+    assert beta.interval is not None
+    assert kappa.interval is not None
+    for world, gain in kappa.interval.worlds.items():
+        assert abs(beta.interval.worlds[world] - math.degrees(gain * r_hat)) <= 1e-9

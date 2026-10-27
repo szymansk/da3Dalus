@@ -507,8 +507,9 @@ quantity.
       - `canard`;
       - `tandem_wing` — `S_ref` still from the main wing only (the tandem rule is a later domain question);
       - `winglet` — only when modelled as a separate wing (winglet sections of the main wing stay part of it).
-    - `has_horizontal_tail`: some wing has `surface_type` `horizontal_tail` or `v_tail`.
-    - A vocabulary term whose fact is not computed yet (e.g. `has_horizontal_tail` until #1187) makes its
+    - `has_horizontal_tail`: some wing has `surface_type` `horizontal_tail` or `v_tail` (computed since
+      `horizontal-tail-volume`, #1273).
+    - A vocabulary term whose fact is not computed yet (`PENDING_WHEN_TERMS`; none today) makes its
       applications a declared `not_implemented`, never a `KeyError`.
     - `has_vertical_tail`: some wing has `surface_type` `vertical_tail` or `v_tail`.
     - **Ontology rule** (maintainer, 2026-10-17): terms that describe the aircraft's ontology — the surface

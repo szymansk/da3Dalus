@@ -33,7 +33,8 @@ from aero_kernel.tests.engine_builders import (
 )
 from aero_kernel.tests.wing_builders import airplane_document
 
-pytestmark = pytest.mark.asyncio
+# The builders' canon uses `has_horizontal_tail` as its example of a term whose fact is not computed yet.
+pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("pending_horizontal_tail")]
 
 
 async def run(

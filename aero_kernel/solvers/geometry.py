@@ -15,6 +15,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.solvers.asb_airplane import (
     fin_area,
+    horizontal_tail_area,
     main_wing_properties,
     quarter_chord_mac_x,
     surface_properties,
@@ -116,3 +117,22 @@ class GeometryAdapter(SolverAdapter):
         self.require_available()
         await asyncio.to_thread(importlib.import_module, "aerosandbox")
         return fin_area(airplane, key)
+
+    async def horizontal_tail_area(self, airplane: AirplaneGeometry, key: str) -> float:
+        """Return the area of the horizontal tail, for the horizontal tail volume.
+
+        Args:
+            airplane: The validated geometry document.
+            key: The key of the one ``horizontal_tail`` wing in ``airplane.wings``.
+
+        Returns:
+            ``Wing.area(type="planform", include_centerline_distance=True)`` in m^2: the gross
+            planform through the fuselage, the convention of the reference wing.
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing;
+                ``unsupported_configuration`` for a surface with no planform.
+        """
+        self.require_available()
+        await asyncio.to_thread(importlib.import_module, "aerosandbox")
+        return horizontal_tail_area(airplane, key)

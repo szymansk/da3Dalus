@@ -202,3 +202,12 @@ def stand_in_fin_area(wing: Wing) -> float:
         panel = (a.chord + b.chord) / 2.0 * math.hypot(run, rise)
         total += panel * (rise**2 / (run**2 + rise**2) if wing.surface_type == "v_tail" else 1.0)
     return total * (2.0 if wing.symmetric else 1.0)
+
+
+def stand_in_horizontal_tail_area(wing: Wing) -> float:
+    """The gross planform area of a horizontal tail without AeroSandbox, from the stand-in planform.
+
+    A stand-in for the fast tier (the real value is ASB's ``Wing.area(type="planform",
+    include_centerline_distance=True)``, compared in the aero tier).
+    """
+    return stand_in_surface_properties(wing).area

@@ -11,10 +11,10 @@ import pytest
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.asb_airplane import fin_area
+from aero_kernel.solvers.asb_airplane import fin_area, horizontal_tail_area
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
-from aero_kernel.tests.asb_fakes import stand_in_fin_area
+from aero_kernel.tests.asb_fakes import stand_in_fin_area, stand_in_horizontal_tail_area
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
@@ -38,6 +38,18 @@ def test_the_fin_area_is_the_planform_area_of_the_lofted_fin(member: FleetMember
     key = tail_key(airplane, "vertical_tail")
     wing = (airplane.wings or {})[key]
     assert close(fin_area(airplane, key), stand_in_fin_area(wing), 5e-3)
+
+
+@pytest.mark.parametrize(
+    "member", [FleetMember.BRYAN, FleetMember.JAGUAR, FleetMember.RV7, FleetMember.CHEKKER]
+)
+def test_the_horizontal_tail_area_is_the_gross_planform_area_of_the_lofted_tail(
+    member: FleetMember,
+) -> None:
+    airplane = plane(member)
+    key = tail_key(airplane, "horizontal_tail")
+    wing = (airplane.wings or {})[key]
+    assert close(horizontal_tail_area(airplane, key), stand_in_horizontal_tail_area(wing), 5e-3)
 
 
 def test_the_v_tail_share_is_the_planform_area_times_sin_squared_of_the_panel_angle() -> None:

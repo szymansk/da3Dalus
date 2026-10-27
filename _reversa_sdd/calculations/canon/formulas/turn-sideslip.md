@@ -121,9 +121,11 @@ and chord Re below 7·10⁴ — where laminar separation is the normal state (An
 error [no source for its size]. Drela's 5...15 deg is for full-scale-like aircraft; its RC applicability is [no source],
 and it belongs to the evaluation.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/turn_sideslip.py` | EXACT | 🟢 | `r̂_max = ρ g b C_L,mp / (8 W/S)`, `κ = −C_l,r / C_l,β` and `β_turn = degrees(κ r̂_max)`, all inputs the canon quantities (`dihedral-effect-mp` and `roll-due-to-yaw-rate-mp` from the one AVL run of `lateral-static-stability-mp`, no run of its own); the divisor 8 is the derived coefficient of step 3, a named constant. Rate derivatives are per rad as AVL gives them, so `κ` is dimensionless and `β` is converted from rad to deg for the output. The precondition `dihedral_effect_stabilising` is a registered check (`C_l,β < 0`, a NaN or non-negative value violates it; `on_violation: error` gives `precondition_violated`). Per neutral-point world, because both derivatives are about the design CG; applies when `has_no_aileron` (`aero_kernel/graph.py`), else `not_applicable` |
 
 ## Approval
 

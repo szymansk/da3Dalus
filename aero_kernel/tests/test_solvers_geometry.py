@@ -9,6 +9,7 @@ from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers import geometry as geometry_module
 from aero_kernel.solvers.asb_airplane import (
     fin_area,
+    horizontal_tail_area,
     main_wing_properties,
     quarter_chord_mac_x,
     surface_properties,
@@ -161,4 +162,26 @@ async def test_without_aerosandbox_the_fin_area_is_unavailable(
     document = airplane()
     with pytest.raises(FormulaError) as raised:
         await adapter.fin_area(document, "Main")
+    assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
+
+
+@pytest.mark.asyncio
+async def test_the_horizontal_tail_area_is_what_asb_reports(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_aerosandbox(monkeypatch)
+    monkeypatch.setattr(geometry_module, "horizontal_tail_area", horizontal_tail_area)
+    found = await GeometryAdapter(SolverRuntime()).horizontal_tail_area(airplane(), "Main")
+    assert abs(found - (FAKE_REFERENCE["Main"][0] + FAKE_CENTRELINE_AREA)) < 1e-12
+
+
+@pytest.mark.asyncio
+async def test_without_aerosandbox_the_horizontal_tail_area_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(sys.modules, "aerosandbox", None)
+    adapter = GeometryAdapter(SolverRuntime())
+    document = airplane()
+    with pytest.raises(FormulaError) as raised:
+        await adapter.horizontal_tail_area(document, "Main")
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE

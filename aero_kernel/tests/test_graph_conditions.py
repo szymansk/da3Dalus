@@ -55,6 +55,7 @@ FACT_NAMES = (
     "has_aileron",
     "has_elevator",
     "has_flap",
+    "has_horizontal_tail",
     "has_no_aileron",
     "has_rudder",
     "has_separate_flap_and_aileron",
@@ -314,7 +315,28 @@ def test_dihedral_counts_towards_the_planform_area() -> None:
     assert held.has_vertical_tail is False  # the dihedral wing is main, its trailing edge .3
 
 
-def test_a_pending_term_is_a_declared_not_implemented_error(flight_canon: CanonModel) -> None:
+@pytest.mark.parametrize(
+    ("surface_type", "expected"),
+    [
+        ("horizontal_tail", True),
+        ("v_tail", True),
+        ("vertical_tail", False),
+        ("main_wing", False),
+        ("canard", False),
+        (None, False),
+    ],
+)
+def test_the_horizontal_tail_is_read_from_the_surface_type(
+    surface_type: str | None, expected: bool
+) -> None:
+    """A V-tail counts as a horizontal tail (ontology D9); the fact never looks at the planform."""
+    surface = {**wing(sec(1.0, 0.0, 0.1), sec(1.0, 0.2, 0.1)), "surface_type": surface_type}
+    assert facts({"main": MAIN, "tail": surface}).has_horizontal_tail is expected
+
+
+def test_a_pending_term_is_a_declared_not_implemented_error(
+    flight_canon: CanonModel, pending_horizontal_tail: None
+) -> None:
     node = node_of(flight_canon, "roll-rate-cruise", "cruise").model_copy(
         update={"when": "has_horizontal_tail"}
     )
@@ -330,19 +352,19 @@ def test_every_when_term_has_a_fact_or_is_pending() -> None:
     """The next term added to the vocabulary cannot fall into the gap unannounced."""
     vocabulary = set(get_args(WhenTerm))
     implemented = set(WhenFacts.model_fields)
-    assert PENDING_WHEN_TERMS == {"has_horizontal_tail": "#1187"}
+    assert PENDING_WHEN_TERMS == {}  # every term of the vocabulary has its fact
     assert not implemented & PENDING_WHEN_TERMS.keys()
     assert vocabulary == implemented | PENDING_WHEN_TERMS.keys()
     for term in implemented:
         assert isinstance(ALL.holds(term), bool)  # type: ignore[arg-type]  # term is a Literal value
 
 
-def test_holds_refuses_a_pending_term_and_names_the_ticket() -> None:
+def test_holds_refuses_a_pending_term_and_names_the_ticket(pending_horizontal_tail: None) -> None:
     with pytest.raises(ValueError, match="#1187"):
         ALL.holds("has_horizontal_tail")
 
 
-def test_a_pending_when_term_does_not_mask_an_unmet_given() -> None:
+def test_a_pending_when_term_does_not_mask_an_unmet_given(pending_horizontal_tail: None) -> None:
     model = model_of(
         {"a": quantity("input"), "b": quantity("output")},
         {"f": formula({"x": "a"}, {"y": "b"}, when="has_horizontal_tail", given=["calc:a"])},

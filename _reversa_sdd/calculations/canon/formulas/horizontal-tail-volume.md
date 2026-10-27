@@ -65,9 +65,11 @@ the CG) belongs to the evaluation.
 **Validity in the RC/UAV regime (ADR 0028).** Exact as geometry; Drela's band is stated for RC and small aircraft.
 Inherits the neutral point's limits through the arm (fuselage not modelled → CG aft-biased, arm slightly short).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/horizontal_tail_volume.py` | EXACT | 🟢 | `S_H` is ASB's `Wing.area(type="planform", include_centerline_distance=True)` of the one `horizontal_tail` surface, from the GEO adapter (`aero_kernel/solvers/geometry.py`, `horizontal_tail_area` → `asb_airplane.horizontal_tail_area`), both flags passed in code; `S_ref`, `c_MAC` and the arm are the canon quantities, none recomputed; one value per neutral-point world. The surface is chosen by `surface_type == horizontal_tail` only (`tail_key`, as the arm): a V-tail is `unsupported_layout` until its share and neutral point exist (#1208), so the application `has_horizontal_tail` (which counts a V-tail, `aero_kernel/graph.py`) fails upstream for it, not silently. The reference chord is `c_MAC`, not Drela's `S/b` (declared above, maintainer 2026-10-27) |
 
 ## Approval
 

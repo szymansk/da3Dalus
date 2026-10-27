@@ -8,6 +8,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.solvers import asb_airplane
 from aero_kernel.solvers.asb_airplane import (
     fin_area,
+    horizontal_tail_area,
     main_wing_properties,
     surface_properties,
     to_asb_airplane,
@@ -325,4 +326,26 @@ def test_a_fin_without_a_planform_is_unsupported(monkeypatch: pytest.MonkeyPatch
     plane = geometry()
     with pytest.raises(FormulaError) as raised:
         fin_area(plane, "Fin")
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+
+
+def test_the_horizontal_tail_area_is_asbs_planform_area_with_the_centreline_distance() -> None:
+    """The gross planform through the fuselage, the convention of the reference wing (#1262)."""
+    area = horizontal_tail_area(geometry(), "Main")
+    assert near(area, FAKE_REFERENCE["Main"][0] + FAKE_CENTRELINE_AREA)
+
+
+def test_the_horizontal_tail_area_flags_are_passed_explicitly() -> None:
+    wing = FakeWing(name="Main")
+    asb_airplane._tail_planform(wing)  # pyright: ignore[reportPrivateUsage]
+    assert wing.calls == [("area", {"type": "planform", "include_centerline_distance": True})]
+
+
+def test_a_horizontal_tail_without_a_planform_is_unsupported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(FAKE_REFERENCE, "Fin", (-FAKE_CENTRELINE_AREA, 0.4, 0.08))
+    plane = geometry()
+    with pytest.raises(FormulaError, match="no horizontal tail area") as raised:
+        horizontal_tail_area(plane, "Fin")
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION

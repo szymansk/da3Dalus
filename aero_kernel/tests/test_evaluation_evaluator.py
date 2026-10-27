@@ -122,7 +122,7 @@ def test_an_excluded_term_that_does_not_hold_lets_the_rule_apply() -> None:
     assert verdict.status is RuleStatus.INSIDE
 
 
-def test_a_condition_without_a_fact_yet_is_not_available() -> None:
+def test_a_condition_without_a_fact_yet_is_not_available(pending_horizontal_tail: None) -> None:
     verdict = judge(result_of(ok(SM, 0.1)), when=["has_horizontal_tail"])
     assert verdict.status is RuleStatus.NOT_AVAILABLE
     assert "has_horizontal_tail" in verdict.explanation
@@ -173,14 +173,20 @@ def test_the_shipped_table_judges_a_hand_made_result() -> None:
         ok("static-margin-target", 0.08),
         ok("vertical-tail-volume", 0.01),
         ok("spiral-parameter-md", 5.0),
+        ok("horizontal-tail-volume", 0.2),
+        ok("turn-sideslip", 8.0, "deg"),
+        ok("turn-sideslip-gain", 1.1),
     )
-    verdicts = {v.rule_id: v for v in evaluate_rules(table, result, facts(has_vertical_tail=True))}
+    flags = facts(has_vertical_tail=True, has_horizontal_tail=True)
+    verdicts = {v.rule_id: v for v in evaluate_rules(table, result, flags)}
     assert verdicts["static-margin-design"].status is RuleStatus.INSIDE
     assert verdicts["static-margin-measured"].status is RuleStatus.NOT_AVAILABLE
     assert verdicts["vertical-tail-volume"].status is RuleStatus.BELOW
     assert verdicts["spiral-stability"].status is RuleStatus.BELOW  # B = 5 is neutral, not stable
-    assert verdicts["horizontal-tail-volume"].status is RuleStatus.NOT_AVAILABLE
-    assert verdicts["turn-sideslip"].status is RuleStatus.NOT_AVAILABLE
+    assert verdicts["horizontal-tail-volume"].status is RuleStatus.BELOW
+    assert verdicts["turn-sideslip"].status is RuleStatus.INSIDE
+    with_aileron = {v.rule_id: v for v in evaluate_rules(table, result, facts(has_aileron=True))}
+    assert with_aileron["turn-sideslip"].status is RuleStatus.NOT_APPLICABLE
 
 
 def test_a_side_without_a_meaning_says_the_source_names_no_consequence() -> None:

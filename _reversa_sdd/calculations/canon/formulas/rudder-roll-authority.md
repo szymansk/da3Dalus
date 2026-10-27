@@ -65,9 +65,11 @@ the band applies to the product as written).
 limits of its inputs: the strip-theory `Γ_eq` of the spiral parameter (derived, outboard panels over-weighted) and the
 neutral point's limits through the arms.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/rudder_roll_authority.py` | EXACT | 🟢 | the product `V̄_V · B` of the canon quantities `vertical-tail-volume` and `spiral-parameter-md` / `-mp`, none recomputed (ADR 0022); `B` as the spiral parameter defines it (`Γ_eq` in degrees), so the band applies as written; one value per neutral-point world; applies when `has_no_aileron`, else `not_applicable` |
 
 ## Approval
 

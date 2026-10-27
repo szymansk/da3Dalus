@@ -48,9 +48,15 @@ AC_FRACTION = 0.25
 FIN_AREA_TYPE = "planform"
 FIN_INCLUDE_CENTRELINE = False
 
+# The flags of the horizontal tail area (canon ``horizontal-tail-volume``, maintainer 2026-10-25, #1262):
+# the gross planform through the fuselage, the same convention as the reference wing.
+TAIL_AREA_TYPE = "planform"
+TAIL_INCLUDE_CENTRELINE = True
+
 __all__ = [
     "AC_FRACTION",
     "fin_area",
+    "horizontal_tail_area",
     "load_aerosandbox",
     "main_wing_properties",
     "quarter_chord_mac_x",
@@ -441,6 +447,45 @@ def fin_area(airplane: AirplaneGeometry, key: str) -> float:
             "unsupported_configuration",
             f"the surface {wing.name!r} has no fin area: AeroSandbox gives {area}",
             "a fin needs sections at different heights and a non-zero chord",
+            detail={"wing": str(wing.name)},
+            parameter="airplane",
+        )
+    return area
+
+
+def _tail_planform(wing: Any) -> float:  # noqa: ANN401  # untyped aerosandbox boundary
+    """``Wing.area`` of a horizontal tail with both flags passed explicitly (never ASB's defaults)."""
+    return float(
+        wing.area(type=TAIL_AREA_TYPE, include_centerline_distance=TAIL_INCLUDE_CENTRELINE)
+    )
+
+
+def horizontal_tail_area(airplane: AirplaneGeometry, key: str) -> float:
+    """Return the area ``S_H`` of the horizontal tail stored under ``key`` (canon ``horizontal-tail-volume``).
+
+    AeroSandbox's ``Wing.area(type="planform", include_centerline_distance=True)`` of the surface
+    converted like in :func:`to_asb_airplane`: the gross planform through the fuselage, the same
+    convention as the reference wing (maintainer 2026-10-25, #1262). Both flags are passed explicitly.
+
+    Args:
+        airplane: The validated geometry document.
+        key: The key of the one ``horizontal_tail`` wing in ``airplane.wings``.
+
+    Returns:
+        The area in m^2.
+
+    Raises:
+        FormulaError: As :func:`_wing`; ``unsupported_configuration`` if the area is not a positive
+            finite number (a surface with no planform).
+    """
+    wing = _wing(load_aerosandbox(), key, (airplane.wings or {})[key], 0.0)
+    area = _tail_planform(wing)
+    if not (math.isfinite(area) and area > 0.0):
+        raise FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "unsupported_configuration",
+            f"the surface {wing.name!r} has no horizontal tail area: AeroSandbox gives {area}",
+            "a horizontal tail needs sections at different spans and a non-zero chord",
             detail={"wing": str(wing.name)},
             parameter="airplane",
         )
