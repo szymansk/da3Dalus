@@ -54,6 +54,7 @@ IMPLEMENTED = {
     "calc:lateral-static-stability-app",
     "calc:lateral-static-stability-mp",
     "calc:turn-sideslip",
+    "calc:rudder-roll-authority",
 }
 
 

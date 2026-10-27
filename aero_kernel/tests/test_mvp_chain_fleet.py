@@ -23,6 +23,7 @@ from aero_kernel.tests.reference_fleet import FleetMember, flap_values, referenc
 pytestmark = [pytest.mark.aero]
 
 SM_TARGET = 0.10
+STANDARD_GRAVITY = 9.80665  # the kernel's default gravity (a canon input, so not echoed as a value)
 WORLDS = ("textbook", "pappas", "avl")
 REL = 2e-3  # the regression tolerance
 SLUGS = (
@@ -328,7 +329,7 @@ async def test_the_chekker_sideslip_is_the_gain_times_the_worst_turn_yaw_rate() 
             },
         }
     )
-    slugs = ("air-density", "gravity", "wing-span", "wing-loading", "lift-coefficient-minimum-sink")
+    slugs = ("air-density", "wing-span", "wing-loading", "lift-coefficient-minimum-sink")
     result = await compute(aircraft, request(*slugs, *TURN_SIDESLIP))
     by_slug = {q.slug: q for q in result.quantities}
     values: dict[str, float] = {}
@@ -338,7 +339,7 @@ async def test_the_chekker_sideslip_is_the_gain_times_the_worst_turn_yaw_rate() 
         values[slug] = value
     r_hat = (
         values["air-density"]
-        * values["gravity"]
+        * STANDARD_GRAVITY
         * values["wing-span"]
         * values["lift-coefficient-minimum-sink"]
         / (8.0 * values["wing-loading"])
