@@ -49,9 +49,9 @@ def test_a_rule_links_to_the_quantity_it_judges() -> None:
 
 def test_a_planned_rule_is_listed_without_a_quantity_node() -> None:
     data = data_of("static-margin-target")
-    rule = rule_of(id="later", quantity={"slug": "horizontal-tail-volume", "planned": "#1273"})
+    rule = rule_of(id="later", quantity={"slug": "turn-sideslip", "planned": "#1275"})
     nav.rule_marks(data, table_of(rule), MODEL)
-    assert data["rules"]["rules"][0]["quantity"]["planned"] == "#1273"
+    assert data["rules"]["rules"][0]["quantity"]["planned"] == "#1275"
 
 
 def test_a_rule_for_a_quantity_the_canon_lacks_is_an_error() -> None:
