@@ -19,12 +19,14 @@ from aero_kernel.geometry import (
     Airfoil,
     AirplaneGeometry,
     Fuselage,
+    FuselageXSecSuperEllipse,
     InlineAirfoil,
     Wing,
 )
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.graph import AILERON_ROLES
 from aero_kernel.solvers.devices import flap_segments, roll_deflection, roll_segments
+from aero_kernel.superellipse import equivalent_exponent
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 
 logger = logging.getLogger(__name__)
@@ -241,11 +243,30 @@ def _unsupported(message: str, hint: str, name: str) -> FormulaError:
     )
 
 
+def _fuselage_section(asb: Any, section: FuselageXSecSuperEllipse) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
+    """Convert one super-ellipse section: width ``2a``, height ``2b``, one shape exponent.
+
+    A section with two exponents becomes the symmetric section of the same width, height and centre
+    whose exponent keeps the cross-section area (:func:`equivalent_exponent`, gh-1307); input
+    validation declares the substitution (``fuselage_section_equivalent``).
+    """
+    shape = section.n
+    if section.n_lower is not None:
+        shape = equivalent_exponent(section.n, section.n_lower)
+    return asb.FuselageXSec(
+        xyz_c=list(section.xyz),
+        width=2.0 * section.a,
+        height=2.0 * section.b,
+        shape=shape,
+    )
+
+
 def _fuselage(asb: Any, fuselage: Fuselage) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """Convert one fuselage: super-ellipse sections, ``a`` and ``b`` as half width and height.
 
-    ASB takes the full width and height, one shape exponent per section and no mirrored body, so
-    ``n_lower`` different from ``n`` and ``symmetric`` bodies are refused rather than approximated.
+    ASB takes the full width and height, one shape exponent per section and no mirrored body, so a
+    ``symmetric`` body is refused rather than approximated; a section with ``n_lower`` different
+    from ``n`` is mapped to its equivalent symmetric section (:func:`_fuselage_section`).
     A section of size 0 (the nose or tail point of a lofted body) is accepted by ASB.
     """
     if fuselage.symmetric:
@@ -254,23 +275,7 @@ def _fuselage(asb: Any, fuselage: Fuselage) -> Any:  # noqa: ANN401  # untyped a
             "give both halves as separate fuselages, or one body on the centreline",
             fuselage.name,
         )
-    sections: list[Any] = []
-    for index, section in enumerate(fuselage.x_secs):
-        if section.n_lower is not None and section.n_lower != section.n:
-            raise _unsupported(
-                f"section {index} of the fuselage {fuselage.name!r} has n_lower != n; "
-                "AeroSandbox has one shape exponent per section",
-                "use one exponent n for the whole section",
-                fuselage.name,
-            )
-        sections.append(
-            asb.FuselageXSec(
-                xyz_c=list(section.xyz),
-                width=2.0 * section.a,
-                height=2.0 * section.b,
-                shape=section.n,
-            )
-        )
+    sections = [_fuselage_section(asb, section) for section in fuselage.x_secs]
     return asb.Fuselage(name=fuselage.name, xsecs=sections)
 
 

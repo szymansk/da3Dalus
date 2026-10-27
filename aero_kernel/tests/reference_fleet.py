@@ -1,13 +1,11 @@
 """Loading the reference fleet (``reference/``) as kernel input; see ``reference/README.md``."""
 
 import json
-from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 from aero_kernel.geometry_properties import MainWingProperties
-from aero_kernel.schema import QuantityResult, QuantityStatus
 
 REFERENCE_DIR = Path(__file__).resolve().parent / "reference"
 
@@ -122,44 +120,6 @@ def reference_document(member: FleetMember) -> dict[str, Any]:
                 "coordinates": read_selig_coordinates(member.json_path.parent / name)
             }
     return document
-
-
-# The fuselages AeroSandbox cannot take: a section whose upper and lower shape exponents differ
-# (``n_lower != n``; AeroSandbox has one exponent per section). The kernel declares this as an
-# ``unsupported_configuration`` error naming the first such section, so every quantity that needs
-# the AeroSandbox airplane is recorded as that error for these two aircraft (README, "Results").
-# The kernel will take such a section as an equivalent symmetric one: #1307. Until then the error is
-# the expected result; when #1307 lands these entries and their tests are re-recorded as values.
-FUSELAGE_REJECTED = {
-    FleetMember.CHEKKER: ("Rumpf", 0),
-    FleetMember.WIESEL: ("fuselage", 9),
-}
-
-
-def assert_rejected_for_the_fuselage(
-    member: FleetMember, quantities: Sequence[QuantityResult], *, rooted: bool = True
-) -> None:
-    """Every quantity is an error: the fuselage itself, or a quantity that waits for one.
-
-    ``rooted``: at least one quantity carries the fuselage error itself (not so when every quantity
-    only waits for another that is not among them).
-    """
-    name, section = FUSELAGE_REJECTED[member]
-    roots: list[QuantityResult] = []
-    for quantity in quantities:
-        assert quantity.status is QuantityStatus.ERROR, quantity.slug
-        assert quantity.value is None, quantity.slug
-        assert quantity.error is not None, quantity.slug
-        if quantity.error.code == "upstream_failed":
-            continue
-        roots.append(quantity)
-        assert quantity.error.code == "unsupported_configuration", quantity.slug
-        assert quantity.error.detail == {"fuselage": name}, quantity.slug
-        assert quantity.error.message == (
-            f"section {section} of the fuselage '{name}' has n_lower != n; "
-            "AeroSandbox has one shape exponent per section"
-        ), quantity.slug
-    assert roots or not rooted, "no quantity carries the fuselage error itself"
 
 
 # RV-7 has flaps and the DB gives no deflection: the take-off and landing configurations are the

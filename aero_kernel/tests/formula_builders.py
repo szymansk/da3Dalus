@@ -108,6 +108,7 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_alpha_margin_deg": 1e-9,
     "opt_hinge_floor": 1e-16,
     "opt_flap_rib_gap_m": 1e-6,
+    "opt_fuselage_area_tolerance": 1e-12,
 }
 
 

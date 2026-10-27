@@ -12,6 +12,7 @@ from aero_kernel.solvers.asb_airplane import (
     surface_properties,
     to_asb_airplane,
 )
+from aero_kernel.superellipse import equivalent_exponent
 from aero_kernel.tests.asb_fakes import (
     FAKE_AC_X,
     FAKE_CENTRELINE_AREA,
@@ -246,14 +247,18 @@ def test_a_mirrored_fuselage_is_unsupported() -> None:
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
-def test_different_upper_and_lower_exponents_are_unsupported() -> None:
-    """ASB has one shape exponent per section."""
+def test_different_upper_and_lower_exponents_become_one_equivalent_exponent() -> None:
+    """ASB has one shape exponent per section: width 2a, height 2b, the centre kept, and the
+    exponent that keeps the cross-section area (gh-1307)."""
     document = geometry_document()
-    document["fuselages"]["Body"]["x_secs"][1]["n_lower"] = 3.0
-    two_exponents = AirplaneGeometry.model_validate(document)
-    with pytest.raises(FormulaError) as raised:
-        to_asb_airplane(two_exponents)
-    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    section = document["fuselages"]["Body"]["x_secs"][1]
+    section["n_lower"] = 3.0
+    (body,) = to_asb_airplane(AirplaneGeometry.model_validate(document)).kwargs["fuselages"]
+    converted = body.kwargs["xsecs"][1].kwargs
+    assert converted["shape"] == equivalent_exponent(section["n"], 3.0)
+    assert converted["width"] == 2.0 * section["a"]
+    assert converted["height"] == 2.0 * section["b"]
+    assert converted["xyz_c"] == section["xyz"]
 
 
 def test_an_equal_lower_exponent_is_the_same_section() -> None:

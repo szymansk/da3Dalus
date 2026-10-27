@@ -128,6 +128,7 @@ class TestKernelWarning:
             "static_margin_probe_disagrees": WarningSeverity.DEFECT,
             "avl_body_equivalent_round": WarningSeverity.PRACTICE,
             "spiral_halving_time_reported": WarningSeverity.PRACTICE,
+            "fuselage_section_equivalent": WarningSeverity.PRACTICE,
         }
 
     def test_carries_world_and_json_detail(self) -> None:

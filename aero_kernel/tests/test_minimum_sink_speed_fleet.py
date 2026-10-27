@@ -11,9 +11,7 @@ from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import (
-    FUSELAGE_REJECTED,
     FleetMember,
-    assert_rejected_for_the_fuselage,
     reference_document,
 )
 
@@ -36,9 +34,17 @@ GOLDEN = {
     FleetMember.JAGUAR: (7.1115531, 5.5958411, 0.7834771, 9.0692794),
     FleetMember.BELEMNITOS: (4.9079007, 5.7739549, 0.9317612, 5.3792137),
     FleetMember.RV7: (8.0806222, 7.2014265, 0.8170156, 10.2315110),
+    FleetMember.CHEKKER: (7.4625361, 4.6061904, 0.9284639, 9.1449363),
+    FleetMember.WIESEL: (9.8057437, 6.4005273, 0.7409360, 12.5389487),
 }
-OUTSIDE_RE_BAND = {FleetMember.BRYAN, FleetMember.JAGUAR, FleetMember.BELEMNITOS}
-# Observed V_mp / V_md of these goldens: BRYAN 0.825, JAGUAR 0.784, BELEMNITOS 0.912, RV-7 0.790. A parabolic polar gives
+OUTSIDE_RE_BAND = {
+    FleetMember.BRYAN,
+    FleetMember.JAGUAR,
+    FleetMember.BELEMNITOS,
+    FleetMember.CHEKKER,
+    FleetMember.WIESEL,
+}
+# Observed V_mp / V_md of these goldens: BRYAN 0.825, JAGUAR 0.784, BELEMNITOS 0.912, RV-7 0.790, CHEKKER 0.816, WIESEL 0.782. A parabolic polar gives
 # 3^(-1/4) = 0.760; the real polar at Re 1e5 is not parabolic (canon entry, "Observed"). The ratio is
 # reported, not asserted as a tolerance: no source gives one for a computed polar.
 
@@ -66,15 +72,6 @@ async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> 
     if member in OUTSIDE_RE_BAND:
         expected.add("reynolds_outside_band")  # ADR 0028: the tip chords are far below the band
     assert {w.code for w in result.quantities[0].warnings} >= expected
-
-
-@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
-async def test_the_fuselage_aerosandbox_cannot_take_is_the_recorded_result(
-    member: FleetMember,
-) -> None:
-    """CHEKKER's and WIESEL's fuselages carry a section with n_lower != n (README): the kernel
-    declares it instead of computing, for every quantity that builds the AeroSandbox airplane."""
-    assert_rejected_for_the_fuselage(member, (await sink(member)).quantities)
 
 
 @pytest.mark.parametrize("member", list(GOLDEN))
