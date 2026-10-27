@@ -26,4 +26,4 @@ The call: `main_wing.area(type="planform", include_centerline_distance=True)`, b
 
 **Produced by.** [[airplane-geometry]]
 
-**Used by.** [[aspect-ratio]] · [[lift-coefficient-required]] · [[mean-geometric-chord]] · [[wing-loading]] · [[spiral-parameter]] · [[vertical-tail-volume]]
+**Used by.** [[aspect-ratio]] · [[lift-coefficient-required]] · [[mean-geometric-chord]] · [[wing-loading]] · [[spiral-parameter]] · [[vertical-tail-volume]] · [[horizontal-tail-volume]]

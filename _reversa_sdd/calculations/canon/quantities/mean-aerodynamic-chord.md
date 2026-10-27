@@ -26,4 +26,4 @@ The call: `main_wing.mean_aerodynamic_chord()`. For a flat wing, tapered or not,
 
 **Produced by.** [[airplane-geometry]]
 
-**Used by.** [[cg-for-target-margin]] · [[static-margin]]
+**Used by.** [[cg-for-target-margin]] · [[static-margin]] · [[horizontal-tail-volume]]

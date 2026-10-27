@@ -53,7 +53,7 @@ rules:
 
   - id: horizontal-tail-volume
     title: Horizontal tail volume
-    quantity: {slug: horizontal-tail-volume, planned: "#1273"}
+    quantity: {slug: horizontal-tail-volume}
     unit: "1"
     band: {min: 0.30, max: 0.60}
     source: "Drela rule (4), Eqs. 3-4"
