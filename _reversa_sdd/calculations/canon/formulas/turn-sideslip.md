@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: turn-sideslip, turn-sideslip-gain
 source_status: PARTIAL
 dimensional_check: BALANCES
@@ -14,7 +14,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 tex: \begin{aligned}\hat r_{max} &= \frac{\rho\,g\,b\,C_{L,mp}}{8\,W/S} \\ \kappa &= -\frac{C_{l,r}}{C_{l,\beta}} \\ \beta_{turn} &= \kappa\,\hat r_{max}\end{aligned}
 inputs:
   rho: air-density
@@ -127,14 +127,19 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Relation and method** — which equation it solves, and by which named method
+- [x] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
+- [x] **Convergence** — the criterion, and what is returned and declared on failure
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-27): Drela's turn sideslip for aircraft without ailerons (Design Rules p. 6–8,
+> band Eq. 11 in the evaluation), as the worst steady turn at φ = 45°, r̂_max = ρ·g·b·C_L,mp/(8·W/S) from the cos φ
+> kinematics (Drela's printed sin φ superseded, 🟡 inferred intent; decision 2026-10-26), and the roll balance
+> β = κ·r̂_max with κ = −C_l,r/C_l,β, both from AVL at V_mp (decision 2026-10-27: one producer, K27). Assumptions
+> declared: roll balance only, fuselage crude in AVL, inviscid. Applies when `has_no_aileron`; C_l,β < 0 required.
+> No kernel implementation yet.

@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: wing-loading
 source_status: SOURCED
 dimensional_check: BALANCES
@@ -14,7 +14,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 inputs: {m: aircraft-mass, g: gravity, s_ref: wing-reference-area}
 outputs: {w_s: wing-loading}
 ---
@@ -43,7 +43,9 @@ W/S = m * g / S_ref
 Scholz/Sadraey normally write the MASS loading m/S in kg/m^2 (or lb/ft^2), not the force loading N/m^2. RC writes g/dm^2 (Europe) or oz/ft^2 (Lennon: gliders <10-15, sport 15-20, pattern 23-26 oz/ft^2). Conversion, not disagreement - but it is where the second g enters.
 ```
 
-**Validity in the RC/UAV regime (ADR 0028).** Fully valid at 0.5-15 kg; wing loading is arguably the single most used RC design number. Caveat is presentational: RC users read g/dm^2 or oz/ft^2, and Lennon's mission bands are the ones they benchmark against. Producing this quantity in three places with two different g values (as the skeleton notes) is an ADR 0022 violation with no defence in either source.
+**Validity in the RC/UAV regime (ADR 0028).** Exact as a definition, independent of Reynolds and Mach number; mass is no criterion (ADR 0028, superseding the former "0.5–15 kg" wording, maintainer 2026-10-27). Presentational caveat: RC users read g/dm² or oz/ft², and Lennon's mission bands are the ones they benchmark against — a unit conversion, not a different quantity.
+
+**Declared deviation (ADR 0022, #1321).** The app produces this quantity in three places (`app/services/flight_envelope_service.py:88`, `app/services/field_length_service.py:200`, `app/services/mission_kpi_service.py:273`, the last with a literal g = 9.81). The canonical producer is this entry; the app duplicates are a ticketed defect, not an approved alternative.
 
 ## Implementations (4)
 
@@ -56,12 +58,14 @@ Scholz/Sadraey normally write the MASS loading m/S in kg/m^2 (or lb/ft^2), not t
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
-
+> **Approved** (maintainer, 2026-10-27): W/S = m·g/S_ref, the definition (Sadraey Eqs 4.30–4.31; Scholz §5.1;
+> Lennon ch. 4), g from [[gravity]] and S_ref from the approved [[airplane-geometry]]. At approval the regime text was
+> corrected to ADR 0028 (mass is no criterion) and the app's three producers were recorded as a declared ADR 0022
+> deviation, ticketed as #1321. Kernel EXACT (🟢).
