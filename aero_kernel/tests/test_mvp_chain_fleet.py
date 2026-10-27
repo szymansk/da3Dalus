@@ -30,6 +30,8 @@ SLUGS = (
     "horizontal-tail-volume",
     "turn-sideslip",
     "turn-sideslip-gain",
+    "rudder-roll-authority-md",
+    "rudder-roll-authority-mp",
     "vertical-tail-volume",
     "spiral-parameter-md",
     "spiral-parameter-mp",
@@ -151,6 +153,12 @@ GOLDEN = {
         "roll-due-to-yaw-rate-mp": (0.23288, 0.230876, 0.229132),
         "horizontal-tail-volume": (0.424137752916356, 0.41757506031430747, 0.4118673660738451),
         "turn-sideslip": (3.1449009926032696, 3.11559903212897, 3.0901319994044094),
+        "rudder-roll-authority-md": (0.0546552186205306, 0.05305274420606823, 0.05167842856738075),
+        "rudder-roll-authority-mp": (
+            0.036395120457652204,
+            0.03532802657683557,
+            0.034412864503033574,
+        ),
         "turn-sideslip-gain": (1.4428480263687788, 1.429404590172054, 1.4177205791362455),
     },
     FleetMember.WIESEL: {
@@ -190,6 +198,8 @@ UPSTREAM = {
 }
 # The turn sideslip applies only without ailerons: CHEKKER is the one aileron-free member of the fleet.
 TURN_SIDESLIP = ("turn-sideslip", "turn-sideslip-gain")
+# The rudder roll authority has the same applicability (`has_no_aileron`).
+WITHOUT_AILERON_ONLY = (*TURN_SIDESLIP, "rudder-roll-authority-md", "rudder-roll-authority-mp")
 WITHOUT_TURN_SIDESLIP = tuple(m for m in FleetMember if m is not FleetMember.CHEKKER)
 # The approach point of RV-7 binds the landing configuration, which needs the landing flap deflection.
 RV7_NEEDS_LANDING_DEFLECTION = tuple(s for s in SLUGS if s.endswith("-app"))
@@ -258,7 +268,7 @@ async def test_the_unstable_spirals_of_bryan_and_jaguar_have_a_positive_doubling
 async def test_the_aircraft_the_kernel_cannot_compute_name_their_cause(member: FleetMember) -> None:
     causes = UPSTREAM[member]
     for quantity in (await run(member)).quantities:
-        if quantity.slug in TURN_SIDESLIP:
+        if quantity.slug in WITHOUT_AILERON_ONLY:
             continue  # a layout with ailerons has no turn sideslip to fail
         assert quantity.status is QuantityStatus.ERROR, quantity.slug
         assert quantity.error is not None
@@ -283,9 +293,11 @@ async def test_the_rv7_approach_point_needs_the_landing_deflection() -> None:
 
 @pytest.mark.parametrize("member", WITHOUT_TURN_SIDESLIP)
 @pytest.mark.asyncio
-async def test_with_ailerons_the_turn_sideslip_is_not_applicable(member: FleetMember) -> None:
+async def test_with_ailerons_the_turn_sideslip_and_rudder_roll_authority_are_not_applicable(
+    member: FleetMember,
+) -> None:
     by_slug = {q.slug: q for q in (await run(member)).quantities}
-    for slug in TURN_SIDESLIP:
+    for slug in WITHOUT_AILERON_ONLY:
         assert by_slug[slug].status is QuantityStatus.NOT_APPLICABLE, slug
         assert by_slug[slug].interval is None
 
@@ -312,6 +324,9 @@ async def test_the_drela_rules_judge_the_new_values_on_the_fleet(member: FleetMe
     assert verdicts["horizontal-tail-volume"].status is RuleStatus.INSIDE
     expected = RuleStatus.INSIDE if member is FleetMember.CHEKKER else RuleStatus.NOT_APPLICABLE
     assert verdicts["turn-sideslip"].status is expected
+    assert verdicts["rudder-roll-authority"].status is (
+        RuleStatus.BELOW if member is FleetMember.CHEKKER else RuleStatus.NOT_APPLICABLE
+    )
     if member is FleetMember.CHEKKER:
         assert verdicts["turn-sideslip"].level == "below-typical-limit"
 
