@@ -27,7 +27,6 @@ from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import (
     FleetMember,
-    assert_rejected_for_the_fuselage,
     flap_values,
     reference_document,
 )
@@ -41,19 +40,27 @@ GOLDEN_P = {
     FleetMember.BRYAN: (490.14462, 410.51230),
     FleetMember.JAGUAR: (346.50673, 419.59114),
     FleetMember.BELEMNITOS: (115.91897, 120.59319),
+    FleetMember.WIESEL: (338.54708, 340.28853),
 }
 GOLDEN_P_HAT = {
     FleetMember.BRYAN: (0.3431387, 0.28739),
     FleetMember.JAGUAR: (0.2304946, 0.27911),
     FleetMember.BELEMNITOS: (0.2599288, 0.27041),
+    FleetMember.WIESEL: (0.2564309, 0.25775),
 }
 # V_app = 1.3 V_S (m/s) of the slice-3 stall golden path; the fleet has no flap, so V_S,landing = V_S.
 V_APP = {
     FleetMember.BRYAN: 6.818986359246604,
     FleetMember.JAGUAR: 8.188976805083124,
     FleetMember.BELEMNITOS: 5.834674251667882,
+    FleetMember.WIESEL: 10.537451950170093,
 }
-HINGE_SEGMENTS = {FleetMember.BRYAN: 4, FleetMember.JAGUAR: 6, FleetMember.BELEMNITOS: 0}
+HINGE_SEGMENTS = {
+    FleetMember.BRYAN: 4,
+    FleetMember.JAGUAR: 6,
+    FleetMember.BELEMNITOS: 0,
+    FleetMember.WIESEL: 9,
+}
 _CACHE: dict[tuple[FleetMember, float], ComputeResult] = {}
 
 
@@ -217,6 +224,7 @@ async def test_the_regression_values_of_the_fit_range_warning() -> None:
         FleetMember.BRYAN: (0.6547296, "Hoehenleitwerk", 18.692106, "Tragflaeche"),
         FleetMember.JAGUAR: (0.4667034, "Tragflaeche", 14.617064, "Tragflaeche"),
         FleetMember.BELEMNITOS: (0.8018459, "V-Leitwerk", 16.349829, "Tragflaeche"),
+        FleetMember.WIESEL: (0.0277381, "main_wing", 15.675805, "main_wing"),
     }
     for member, (confidence, low_wing, alpha, high_wing) in expected.items():
         (fit,) = [
@@ -271,16 +279,6 @@ async def test_chekker_has_no_aileron_so_the_roll_rate_is_not_applicable() -> No
         assert quantity.value is None
         assert quantity.reason is not None
         assert quantity.reason.message == "The aircraft does not satisfy `has_aileron`."
-
-
-async def test_wiesel_roll_rate_waits_for_the_stall_speed_the_fuselage_blocks() -> None:
-    """The approach speed needs the landing stall speed, which needs the AeroSandbox airplane."""
-    quantities = (await run(FleetMember.WIESEL)).quantities
-    assert_rejected_for_the_fuselage(FleetMember.WIESEL, quantities, rooted=False)
-    for quantity in quantities:
-        assert quantity.error is not None
-        assert quantity.error.code == "upstream_failed"
-        assert "because `stall-speed-landing` failed" in quantity.error.message
 
 
 # RV-7 on approach (#1212): the landing configuration, flaps at 30 deg (route A: the rotated contour),

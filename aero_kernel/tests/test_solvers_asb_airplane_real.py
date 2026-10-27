@@ -6,14 +6,11 @@ from typing import Any
 
 import numpy as np
 import pytest
-from aero_kernel.errors import FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.solvers.asb_airplane import main_wing_properties, to_asb_airplane
-from aero_kernel.tests.reference_fleet import (
-    FUSELAGE_REJECTED,
-    FleetMember,
-    reference_document,
-)
+from aero_kernel.superellipse import quadrant_area_fraction
+from aero_kernel.tests.formula_builders import close
+from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 from aero_kernel.tests.test_solvers_asb_airplane import CONTOUR, geometry
 
 pytestmark = pytest.mark.aero
@@ -46,7 +43,7 @@ def test_the_real_airplane_carries_the_kernels_reference_values() -> None:
     )
 
 
-@pytest.mark.parametrize("member", [m for m in FleetMember if m not in FUSELAGE_REJECTED])
+@pytest.mark.parametrize("member", list(FleetMember))
 def test_the_fleet_converts_and_aerobuildup_accepts_zero_size_fuselage_ends(
     member: FleetMember,
 ) -> None:
@@ -84,7 +81,7 @@ def aero_coefficients(airplane: AirplaneGeometry) -> dict[str, float]:
     return {key: float(np.ravel(result[key])[0]) for key in ("CL", "CD", "Cm")}
 
 
-@pytest.mark.parametrize("member", [m for m in FleetMember if m not in FUSELAGE_REJECTED])
+@pytest.mark.parametrize("member", list(FleetMember))
 @pytest.mark.parametrize(("negative_y", "tip_first"), [(True, False), (False, True), (True, True)])
 def test_the_storage_of_a_mirrored_wing_does_not_change_the_aerodynamics(
     member: FleetMember, negative_y: bool, tip_first: bool
@@ -97,17 +94,63 @@ def test_the_storage_of_a_mirrored_wing_does_not_change_the_aerodynamics(
         assert math.isclose(variant[key], value, rel_tol=1e-9, abs_tol=1e-12), key
 
 
-@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
-def test_a_fuselage_section_with_two_shape_exponents_is_declared_not_converted(
+# AeroSandbox's xsec_area is a closed-form fit of the gamma-function area, "error less than 0.6 %"
+# (its docstring); it is exact for n = 1 and n = 2.
+ASB_AREA_FIT_ERROR = 0.006
+
+
+@pytest.mark.parametrize("n", [1.0, 1.5, 2.0, 3.0, 10.0, 50.0])
+def test_the_exponent_is_the_shape_of_aerosandbox_and_the_area_matches_its_xsec_area(
+    n: float,
+) -> None:
+    """The kernel's ``n`` (``|y/a|^n + |z/b|^n = 1``) is ASB's ``shape``: the quadrant area
+    ``a b f(n)`` of ``superellipse`` against ASB's own ``xsec_area()`` of width 2a, height 2b."""
+    asb: Any = importlib.import_module("aerosandbox")
+    a, b = 0.03, 0.05
+    asb_area = float(asb.FuselageXSec(width=2.0 * a, height=2.0 * b, shape=n).xsec_area())
+    assert close(asb_area, 4.0 * a * b * quadrant_area_fraction(n), ASB_AREA_FIT_ERROR)
+
+
+def test_the_known_shapes_have_the_areas_of_the_diamond_and_the_ellipse() -> None:
+    asb: Any = importlib.import_module("aerosandbox")
+    diamond = float(asb.FuselageXSec(width=2.0, height=1.0, shape=1.0).xsec_area())
+    ellipse = float(asb.FuselageXSec(width=2.0, height=1.0, shape=2.0).xsec_area())
+    assert close(diamond, 1.0, 1e-9)  # the rhombus 2 x 1 has the area 1
+    assert close(ellipse, math.pi / 2.0, 1e-9)
+
+
+@pytest.mark.parametrize("member", [FleetMember.CHEKKER, FleetMember.WIESEL])
+def test_a_section_with_two_exponents_converts_to_a_section_with_the_area_of_its_two_halves(
     member: FleetMember,
 ) -> None:
-    """CHEKKER's and WIESEL's fuselages have a section with n_lower != n; AeroSandbox has one
-    exponent per section, so the conversion refuses instead of choosing one (README)."""
-    name, section = FUSELAGE_REJECTED[member]
-    geometry = AirplaneGeometry.model_validate(reference_document(member))
-    with pytest.raises(FormulaError) as raised:
-        to_asb_airplane(geometry)
-    assert str(raised.value) == (
-        f"section {section} of the fuselage '{name}' has n_lower != n; "
-        "AeroSandbox has one shape exponent per section"
-    )
+    """CHEKKER and WIESEL have sections with n_lower != n: the converted section has width 2a,
+    height 2b, the centre of the section and ASB's area of the two halves (within ASB's own fit)."""
+    plane = AirplaneGeometry.model_validate(reference_document(member))
+    converted = to_asb_airplane(plane)
+    seen = 0
+    for source, built in zip((plane.fuselages or {}).values(), converted.fuselages, strict=True):
+        for section, xsec in zip(source.x_secs, built.xsecs, strict=True):
+            assert list(xsec.xyz_c) == list(section.xyz)
+            assert (xsec.width, xsec.height) == (2.0 * section.a, 2.0 * section.b)
+            if section.n_lower is None or section.n_lower == section.n:
+                assert xsec.shape == section.n
+                continue
+            seen += 1
+            halves = (
+                2.0
+                * section.a
+                * section.b
+                * (quadrant_area_fraction(section.n) + quadrant_area_fraction(section.n_lower))
+            )
+            assert close(float(xsec.xsec_area()), halves, ASB_AREA_FIT_ERROR)
+    assert seen > 0
+
+
+@pytest.mark.parametrize("member", [FleetMember.CHEKKER, FleetMember.WIESEL])
+def test_the_substituted_fuselage_is_accepted_by_aerobuildup(member: FleetMember) -> None:
+    asb: Any = importlib.import_module("aerosandbox")
+    airplane = to_asb_airplane(AirplaneGeometry.model_validate(reference_document(member)))
+    result: dict[str, Any] = asb.AeroBuildup(
+        airplane, asb.OperatingPoint(velocity=10.0, alpha=5.0)
+    ).run()
+    assert all(math.isfinite(float(np.ravel(result[key])[0])) for key in ("CL", "CD", "Cm"))

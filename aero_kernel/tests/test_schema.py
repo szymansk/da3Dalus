@@ -124,6 +124,7 @@ class TestKernelWarning:
             "mach_above_limit": WarningSeverity.PRACTICE,
             "mach_beyond_validity": WarningSeverity.DEFECT,
             "minimum_sink_stall_limited": WarningSeverity.PRACTICE,
+            "fuselage_section_equivalent": WarningSeverity.PRACTICE,
         }
 
     def test_carries_world_and_json_detail(self) -> None:

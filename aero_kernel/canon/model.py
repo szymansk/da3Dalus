@@ -641,6 +641,7 @@ class KernelConfig(BaseModel):
     opt_alpha_margin_deg: ConfigValue
     opt_hinge_floor: ConfigValue
     opt_flap_rib_gap: ConfigValue
+    opt_fuselage_area_tolerance: ConfigValue
     avl_contour_margin: ConfigValue
 
 

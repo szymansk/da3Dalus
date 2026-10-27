@@ -80,6 +80,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "mach_above_limit": WarningSeverity.PRACTICE,
     "mach_beyond_validity": WarningSeverity.DEFECT,
     "minimum_sink_stall_limited": WarningSeverity.PRACTICE,
+    "fuselage_section_equivalent": WarningSeverity.PRACTICE,
 }
 
 

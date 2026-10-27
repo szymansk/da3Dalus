@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:25f075d6b5a7382f60c77ee8b2255d02b22cf580d0d8d1538236ee01e16b1d9d",
+  "content_hash": "sha256:73fe0f94ce424201be8e6a92f76ceb30fbd471108c106d02e8f14a7e169d3814",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -80,6 +80,13 @@
           "source": "the smallest offset that keeps the strip well defined (measured: finite results at 1e-6 m, NaN at 0); a millionth of a metre moves the next strip's start by far less than the geometry's own tolerance",
           "unit": "m",
           "value": 1e-06
+        },
+        "opt_fuselage_area_tolerance": {
+          "basis": "numerical",
+          "guards": "Fuselage section: the relative disagreement of the cross-section area of the equivalent symmetric section and of the section with two exponents, at which the bracketed search for the equivalent exponent stops.",
+          "source": "a margin over floating-point noise of the gamma-function area (about 1e-16): the search is a bisection, so the tolerance costs only a few extra halvings; a looser value would leave a visible area error in the drag build-up",
+          "unit": "1",
+          "value": 1e-12
         },
         "opt_hinge_floor": {
           "basis": "numerical",
@@ -6471,7 +6478,7 @@
           "codes": [
             "unsupported_configuration"
           ],
-          "criterion": "AeroSandbox has no mirrored body and one shape exponent per fuselage section: a mirrored fuselage and a section with n_lower different from n are refused rather than approximated.",
+          "criterion": "AeroSandbox has no mirrored body: a mirrored fuselage is refused rather than approximated. It has one shape exponent per fuselage section: a section with n_lower different from n is not refused but mapped to the equivalent symmetric section of the same width, height and centre and equal cross-section area, declared per section as the practice warning fuselage_section_equivalent (#1307, ADR 0020).",
           "kind": "tool",
           "on_violation": "error",
           "parameters": {}

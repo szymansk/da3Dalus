@@ -9,6 +9,7 @@ import pytest
 from aero_kernel import geometry
 from aero_kernel.errors import ErrorCategory, KernelError
 from aero_kernel.schema import AircraftInput, WarningSeverity
+from aero_kernel.superellipse import equivalent_exponent
 from aero_kernel.validate import UNREAD_FIELDS, Validation, validate_aircraft
 from pydantic import BaseModel
 
@@ -668,6 +669,47 @@ class TestConflictingMass:
 
 def _codes_of_warnings(result: Validation) -> list[str]:
     return [warning.code for warning in result.warnings]
+
+
+class TestFuselageSectionEquivalent:
+    """A section with two shape exponents is replaced by an equivalent one: declared (gh-1307)."""
+
+    def test_two_exponents_warn_once_naming_section_and_exponents(self) -> None:
+        document = _document()
+        section = document["airplane"]["fuselages"]["Body"]["x_secs"][1]
+        section["n"] = 2.0
+        section["n_lower"] = 6.0
+        (warning,) = _result(document).warnings
+        assert warning.code == "fuselage_section_equivalent"
+        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.origin == "airplane"
+        assert warning.detail == {
+            "section": 'airplane.fuselages["Body"].x_secs[1]',
+            "n": 2.0,
+            "n_lower": 6.0,
+            "n_equivalent": equivalent_exponent(2.0, 6.0),
+        }
+        assert 'airplane.fuselages["Body"].x_secs[1]' in warning.message
+        assert "6.0" in warning.message
+
+    @pytest.mark.parametrize("n_lower", [None, 2.0])
+    def test_equal_or_missing_lower_exponent_does_not_warn(self, n_lower: float | None) -> None:
+        document = _document()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][1]["n_lower"] = n_lower
+        assert _result(document).warnings == ()
+
+    def test_every_substituted_section_warns(self) -> None:
+        document = _document()
+        for section in document["airplane"]["fuselages"]["Body"]["x_secs"]:
+            section["n_lower"] = 3.0
+        assert len(_result(document).warnings) == 2
+
+    def test_a_non_positive_exponent_is_an_error_and_no_warning(self) -> None:
+        document = _document()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][1]["n_lower"] = -1.0
+        result = _result(document)
+        assert _codes(result.errors) == ["non_positive_exponent"]
+        assert result.warnings == ()
 
 
 class TestPassedMassNonFinite:

@@ -17,9 +17,7 @@ from aero_kernel.solvers.opti import StallRequest
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import (
-    FUSELAGE_REJECTED,
     FleetMember,
-    assert_rejected_for_the_fuselage,
     reference_document,
 )
 
@@ -41,10 +39,18 @@ GOLDEN = {
     FleetMember.JAGUAR: (9.0692794, 10.4719556, 2.1200951, 0.4817366),
     FleetMember.BELEMNITOS: (5.3792137, 13.8824812, 4.1222829, 0.7756370),
     FleetMember.RV7: (10.2315110, 9.5383095, 2.7798438, 0.5096129),
+    FleetMember.CHEKKER: (9.1449363, 9.2766026, 0.9118733, 0.6182677),
+    FleetMember.WIESEL: (12.5389487, 11.8938174, 3.0752193, 0.4531266),
 }
 # The aircraft whose tip chords fall below the Re band at 10 m/s as well as into the bubble-sensitive
 # range (README: RV-7's chords keep it inside the band).
-OUTSIDE_RE_BAND = {FleetMember.BRYAN, FleetMember.JAGUAR, FleetMember.BELEMNITOS}
+OUTSIDE_RE_BAND = {
+    FleetMember.BRYAN,
+    FleetMember.JAGUAR,
+    FleetMember.BELEMNITOS,
+    FleetMember.CHEKKER,
+    FleetMember.WIESEL,
+}
 
 
 async def glide(member: FleetMember) -> ComputeResult:
@@ -79,15 +85,6 @@ async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> 
     assert named >= (
         {member.main_wing_name} if member in OUTSIDE_RE_BAND else {"elevator", "rudder"}
     )
-
-
-@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
-async def test_the_fuselage_aerosandbox_cannot_take_is_the_recorded_result(
-    member: FleetMember,
-) -> None:
-    """CHEKKER's and WIESEL's fuselages carry a section with n_lower != n (README): the kernel
-    declares it instead of computing, for every quantity that builds the AeroSandbox airplane."""
-    assert_rejected_for_the_fuselage(member, (await glide(member)).quantities)
 
 
 async def test_bryan_best_glide_where_the_prototype_found_it_with_the_small_model(

@@ -1126,6 +1126,7 @@ class OptiAdapter(SolverAdapter):
             "opt_alpha_margin_deg": config().opt_alpha_margin_deg.value,
             "opt_hinge_floor": config().opt_hinge_floor.value,
             "opt_flap_rib_gap_m": config().opt_flap_rib_gap.value,
+            "opt_fuselage_area_tolerance": config().opt_fuselage_area_tolerance.value,
         }
 
     def _request(
