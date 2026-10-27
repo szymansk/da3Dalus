@@ -6,9 +6,43 @@ from collections.abc import Collection
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.values import airplane_of, number
+from aero_kernel.geometry import AirplaneGeometry
 from pydantic import JsonValue
 
-__all__ = ["tail_arm_from_cg"]
+__all__ = ["tail_arm_from_cg", "tail_key"]
+
+
+def tail_key(airplane: AirplaneGeometry, surface_types: Collection[str], role: str) -> str:
+    """The key of the one surface of the given types, chosen by ``surface_type`` only.
+
+    Args:
+        airplane: The validated geometry document.
+        surface_types: The ``surface_type`` values that count as the tail.
+        role: Name of the tail for the error message, e.g. ``horizontal tail``.
+
+    Returns:
+        The key of the wing in ``airplane.wings``.
+
+    Raises:
+        FormulaError: ``unsupported_configuration`` (``unsupported_layout``) unless exactly one
+            wing has one of the types.
+    """
+    wings = list((airplane.wings or {}).items())
+    keys = [key for key, wing in wings if wing.surface_type in surface_types]
+    if len(keys) != 1:
+        found = sorted(str(wing.surface_type) for _, wing in wings)
+        counts: dict[str, JsonValue] = dict(Counter(str(wing.surface_type) for _, wing in wings))
+        detail: dict[str, JsonValue] = {"surface_types": list(found), "counts": counts}
+        raise FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "unsupported_layout",
+            f"the tail arm needs exactly one {role} ({' or '.join(sorted(surface_types))}); "
+            f"this airplane has {len(keys)} of them among the surfaces {', '.join(found)}",
+            "a tailless wing, a canard, a tandem wing and a twin tail are not covered yet",
+            detail=detail,
+            parameter="airplane",
+        )
+    return keys[0]
 
 
 async def tail_arm_from_cg(
@@ -34,20 +68,6 @@ async def tail_arm_from_cg(
             has one of the types; from the adapter, unchanged.
     """
     airplane = airplane_of(x)
-    wings = list((airplane.wings or {}).items())
-    keys = [key for key, wing in wings if wing.surface_type in surface_types]
-    if len(keys) != 1:
-        found = sorted(str(wing.surface_type) for _, wing in wings)
-        counts: dict[str, JsonValue] = dict(Counter(str(wing.surface_type) for _, wing in wings))
-        detail: dict[str, JsonValue] = {"surface_types": list(found), "counts": counts}
-        raise FormulaError(
-            ErrorCategory.UNSUPPORTED_CONFIGURATION,
-            "unsupported_layout",
-            f"the tail arm needs exactly one {role} ({' or '.join(sorted(surface_types))}); "
-            f"this airplane has {len(keys)} of them among the surfaces {', '.join(found)}",
-            "a tailless wing, a canard, a tandem wing and a twin tail are not covered yet",
-            detail=detail,
-            parameter="airplane",
-        )
-    tail_x = await ctx.solvers.geometry.quarter_chord_mac_x(airplane, keys[0])
+    key = tail_key(airplane, surface_types, role)
+    tail_x = await ctx.solvers.geometry.quarter_chord_mac_x(airplane, key)
     return tail_x - number(x, "x_cg")

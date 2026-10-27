@@ -6,7 +6,7 @@ from typing import Any
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import KernelWarning
-from aero_kernel.solvers.avl import AvlAdapter, AvlNeutralPoint, AvlRoll
+from aero_kernel.solvers.avl import AvlAdapter, AvlLateral, AvlNeutralPoint, AvlRoll
 
 # Hand fixture: main wing half span 0.7 m, chord 0.2 m, leading edge x = 0.05 m (S = 0.28 m^2,
 # AR = 7, c_MAC = 0.2 m, x_ac = 0.10 m); tail half span 0.2 m, chord 0.1 m, leading edge x = 0.60 m
@@ -54,6 +54,12 @@ class StubAvl(AvlAdapter):
         )
         self.roll_calls: list[tuple[AirplaneGeometry, float, float]] = []
         self.roll_failure: Exception | None = None
+        # AVL's stability-axis derivatives of a conventional, spirally unstable airplane
+        self.lateral = AvlLateral(
+            c_l_beta=-0.05, c_n_beta=0.07, c_l_p=-0.55, c_n_p=-0.04, c_l_r=0.11, c_n_r=-0.06
+        )
+        self.lateral_calls: list[tuple[AirplaneGeometry, float, float]] = []
+        self.lateral_failure: Exception | None = None
 
     async def neutral_point(self, airplane: AirplaneGeometry, cl: float) -> AvlNeutralPoint:
         """Answer without AVL."""
@@ -70,3 +76,12 @@ class StubAvl(AvlAdapter):
         if self.roll_failure is not None:
             raise self.roll_failure
         return AvlRoll(p_hat=math.copysign(self.p_hat, delta_a_deg), warnings=self.canned_warnings)
+
+    async def lateral_derivatives(
+        self, airplane: AirplaneGeometry, cl: float, x_cg: float
+    ) -> AvlLateral:
+        """Answer the lateral derivatives without AVL: the canned ones, and record the call."""
+        self.lateral_calls.append((airplane, cl, x_cg))
+        if self.lateral_failure is not None:
+            raise self.lateral_failure
+        return self.lateral.model_copy(update={"warnings": self.canned_warnings})

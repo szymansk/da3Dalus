@@ -53,6 +53,9 @@ __all__ = [
     "DeflectionDiagnostics",
     "MinSink",
     "MinSinkSolution",
+    "MomentSlope",
+    "MomentSlopeRequest",
+    "MomentSlopeSolution",
     "OptiAdapter",
     "RollRequest",
     "RollSolution",
@@ -63,6 +66,7 @@ __all__ = [
     "SweepRequest",
     "best_glide_worker",
     "min_sink_worker",
+    "moment_slope_worker",
     "stall_worker",
     "steady_roll_worker",
     "sweep_worker",
@@ -1083,6 +1087,137 @@ def _diagnostics(started: float, notes: tuple[str, ...] = ()) -> WorkerDiagnosti
     )
 
 
+class MomentSlopeRequest(BaseModel):
+    """What the worker needs for the moment slope at the lift balance; plain data, picklable.
+
+    Attributes:
+        airplane: The geometry as evaluated (devices at rest, ch. 8.11).
+        mass_kg: Aircraft mass in kg, > 0.
+        gravity: Gravity in m/s^2, > 0.
+        air: The air state.
+        v_ms: True airspeed in m/s, > 0.
+        x_cg: x of the moment reference in m (geometry frame, aft positive); y and z are the
+            airplane's own reference point.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    mass_kg: float
+    gravity: float
+    air: AirState
+    v_ms: float
+    x_cg: float
+
+
+class MomentSlopeSolution(BaseModel):
+    """AeroBuildup's lift and pitching-moment slopes at the angle of attack of the lift balance.
+
+    Attributes:
+        alpha_deg: The angle of attack at which ``L = m g`` at the speed, in degrees.
+        cl: The lift coefficient there (the wanted one, to the sweep's interpolation).
+        cl_alpha: ``dC_L/dalpha`` in 1/rad.
+        cm_alpha: ``dC_m/dalpha`` about the moment reference in 1/rad.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    alpha_deg: float
+    cl: float
+    cl_alpha: float
+    cm_alpha: float
+
+
+class MomentSlope(BaseModel):
+    """A moment slope and the caveats of its operating point.
+
+    Attributes:
+        solution: The slopes.
+        warnings: Regime warnings (ADR 0028), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    solution: MomentSlopeSolution
+    warnings: tuple[KernelWarning, ...]
+
+
+def _scalar(value: object) -> float:
+    """One number out of an AeroBuildup result, which may be a one-element array."""
+    return float(np.asarray(value, dtype=float).reshape(-1).item())
+
+
+def moment_slope_worker(request: MomentSlopeRequest) -> WorkerOutcome[MomentSlopeSolution]:
+    """Find the angle of attack of ``L = m g`` at the speed and the stability derivatives there.
+
+    An alpha sweep at the speed brackets the first C_L peak, the wanted lift coefficient
+    ``m g / (1/2 rho V^2 S_ref)`` is interpolated on the branch before it, and AeroBuildup then runs
+    once at that angle with ``run_with_stability_derivatives`` for the alpha derivatives, the moment
+    reference at ``x_cg`` (canon ``static-margin-probe``). Runs in a pool worker.
+
+    Args:
+        request: The problem.
+
+    Returns:
+        The angle, the lift coefficient and the two slopes, with the worker's diagnostics.
+
+    Raises:
+        FormulaError: ``not_converged`` if the sweep has no C_L peak, the wanted lift coefficient
+            is not reached before it, or AeroBuildup gives no positive finite lift slope.
+    """
+    started = time.perf_counter()
+    asb = load_aerosandbox()
+    converted = to_asb_airplane(request.airplane)
+    wanted = (
+        request.mass_kg
+        * request.gravity
+        / (0.5 * request.air.density * request.v_ms**2 * converted.s_ref)
+    )
+    polar = sweep_polar(converted, request.air, request.v_ms, _grid(), NEURALFOIL_MODEL_SIZE)
+    peak = _bracket(polar, upright=True)
+    alpha = alpha_for_lift_coefficient(polar.alpha_deg, polar.cl, peak, wanted)
+    if alpha is None:
+        raise _not_converged(
+            f"the lift coefficient {wanted:.4f} of the lift balance is not reached before the first "
+            "C_L peak",
+            "the airplane cannot carry its weight at this speed on the pre-stall branch",
+            cl_wanted=wanted,
+            v_ms=request.v_ms,
+        )
+    reference = request.airplane.xyz_ref
+    found = asb.AeroBuildup(
+        converted,
+        asb.OperatingPoint(
+            atmosphere=FixedAtmosphere(request.air), velocity=request.v_ms, alpha=alpha
+        ),
+        xyz_ref=[request.x_cg, reference[1], reference[2]],
+        model_size=NEURALFOIL_MODEL_SIZE,
+        include_wave_drag=True,
+    ).run_with_stability_derivatives(alpha=True, beta=False, p=False, q=False, r=False)
+    solution = MomentSlopeSolution(
+        alpha_deg=alpha,
+        cl=_scalar(found["CL"]),
+        cl_alpha=_scalar(found["CLa"]),
+        cm_alpha=_scalar(found["Cma"]),
+    )
+    if not (math.isfinite(solution.cl_alpha) and solution.cl_alpha > 0.0):
+        raise _not_converged(
+            f"AeroBuildup gives the lift slope {solution.cl_alpha} per rad at {alpha:.2f} deg",
+            "the static margin from the moment slope needs a positive finite lift slope",
+            cl_alpha=str(solution.cl_alpha),
+            alpha_deg=alpha,
+        )
+    if not math.isfinite(solution.cm_alpha):
+        raise _not_converged(
+            f"AeroBuildup gives the moment slope {solution.cm_alpha} per rad at {alpha:.2f} deg",
+            "the moment slope is not a finite number",
+            cm_alpha=str(solution.cm_alpha),
+            alpha_deg=alpha,
+        )
+    diagnostics = WorkerDiagnostics(duration_s=time.perf_counter() - started)
+    return WorkerOutcome(value=solution, diagnostics=diagnostics)
+
+
 class OptiAdapter(SolverAdapter):
     """The stall, best-glide and minimum-sink problems solved with IPOPT over AeroBuildup, in the process pool.
 
@@ -1369,3 +1504,49 @@ class OptiAdapter(SolverAdapter):
             warnings=tuple(warnings),
             confidence=solution.diagnostics,
         )
+
+    async def moment_slope(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+        x_cg: float,
+    ) -> MomentSlope:
+        """AeroBuildup's ``C_L,alpha`` and ``C_m,alpha`` at the lift balance, about ``x_cg`` (canon ``static-margin-probe``).
+
+        Args:
+            airplane: The geometry with its devices at rest.
+            mass_kg: Mass in kg, > 0.
+            gravity: Gravity in m/s^2, > 0.
+            air: The air state.
+            v_ms: True airspeed in m/s, > 0.
+            x_cg: x of the moment reference in m (geometry frame, aft positive).
+
+        Returns:
+            The slopes and the regime warnings of the operating point.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``invalid_input`` for an inadmissible input;
+                ``unsupported_configuration`` for a deflected device; ``not_converged`` as
+                :func:`moment_slope_worker`.
+        """
+        self.require_available()
+        refuse_deflected_devices(airplane, "AeroBuildup", flaps_supported=False)
+        for name, value in (("m", mass_kg), ("g", gravity), ("v", v_ms)):
+            if not _admissible(value, positive=True):
+                raise _invalid(f"{name} = {value} is not admissible", f"give a valid {name}", name)
+        if not _admissible_or_zero(x_cg, positive=False):
+            raise _invalid(f"x_cg = {x_cg} is not admissible", "give a finite x_cg", "x_cg")
+        request = MomentSlopeRequest(
+            airplane=airplane, mass_kg=mass_kg, gravity=gravity, air=air, v_ms=v_ms, x_cg=x_cg
+        )
+        solution = await self.runtime.run_cpu(moment_slope_worker, request)
+        logger.debug(
+            "moment slope %.4f per rad, lift slope %.4f per rad at %.2f deg",
+            solution.cm_alpha,
+            solution.cl_alpha,
+            solution.alpha_deg,
+        )
+        return MomentSlope(solution=solution, warnings=tuple(_regime_warnings(airplane, v_ms, air)))

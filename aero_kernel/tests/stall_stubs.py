@@ -13,6 +13,8 @@ from aero_kernel.solvers.opti import (
     DeflectionDiagnostics,
     MinSink,
     MinSinkSolution,
+    MomentSlope,
+    MomentSlopeSolution,
     OptiAdapter,
     Stall,
     StallSolution,
@@ -116,6 +118,13 @@ class StubOpti(OptiAdapter):
         self.roll_failure: Exception | None = None
         self.roll_confidence: DeflectionDiagnostics | None = None
         self.roll_calls: list[tuple[AirplaneGeometry, float, float, AirState, float, float]] = []
+        # the moment slope of a probe whose neutral point is at ``probe_x_np`` with c_MAC ``probe_c_mac``
+        self.probe_x_np = 0.14
+        self.probe_c_mac = 0.2
+        self.probe_cl_alpha = 5.0
+        self.probe_cm_alpha: float | None = None  # None: consistent with probe_x_np
+        self.probe_failure: Exception | None = None
+        self.probe_calls: list[tuple[AirplaneGeometry, float, float, AirState, float, float]] = []
         self.delay_s = delay_s
         self.calls: list[tuple[AirplaneGeometry, float, float, float, AirState]] = []
         self.cancelled = False
@@ -208,3 +217,24 @@ class StubOpti(OptiAdapter):
             warnings=(),
             confidence=self.roll_confidence,
         )
+
+    async def moment_slope(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+        x_cg: float,
+    ) -> MomentSlope:
+        """Answer the moment slope without a solver: ``-C_m,alpha / C_L,alpha = (x_np - x_cg) / c_MAC``."""
+        self.probe_calls.append((airplane, mass_kg, gravity, air, v_ms, x_cg))
+        if self.probe_failure is not None:
+            raise self.probe_failure
+        cm_alpha = self.probe_cm_alpha
+        if cm_alpha is None:
+            cm_alpha = -self.probe_cl_alpha * (self.probe_x_np - x_cg) / self.probe_c_mac
+        solution = MomentSlopeSolution(
+            alpha_deg=4.0, cl=0.55, cl_alpha=self.probe_cl_alpha, cm_alpha=cm_alpha
+        )
+        return MomentSlope(solution=solution, warnings=())

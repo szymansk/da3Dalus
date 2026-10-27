@@ -28,7 +28,6 @@ def written(member: FleetMember, *, roll: bool) -> str:
         return numbers.setdefault(repr(airfoil), len(numbers))
 
     surfaces = mesh_surfaces(plane, 24, number, drive_roll=roll)
-    extra = {"xyz_ref": plane.xyz_ref} if roll else {}
     return avl_geometry(
         surfaces,
         [1.09] * len(numbers),
@@ -36,7 +35,7 @@ def written(member: FleetMember, *, roll: bool) -> str:
         s_ref=reference.s_ref,
         c_ref=reference.c_mac,
         b_ref=reference.b_ref,
-        **extra,
+        xyz_ref=plane.xyz_ref if roll else (0.0, 0.0, 0.0),
     )
 
 

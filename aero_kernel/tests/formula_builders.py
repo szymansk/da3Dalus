@@ -1,7 +1,7 @@
 """Builders for the formula tests: ``x`` built from the model (Q11) and a stub ATM adapter."""
 
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from aero_kernel.build import shipped_build
 from aero_kernel.canon.model import CanonModel
@@ -17,6 +17,7 @@ from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 from aero_kernel.tests.asb_fakes import (
+    stand_in_fin_area,
     stand_in_main_wing_properties,
     stand_in_quarter_chord_x,
     stand_in_surface_of,
@@ -44,6 +45,12 @@ IMPLEMENTED = {
     "calc:cg-for-target-margin",
     "calc:horizontal-tail-arm",
     "calc:vertical-tail-arm",
+    "calc:vertical-tail-volume",
+    "calc:spiral-parameter",
+    "calc:static-margin-probe",
+    "calc:lateral-static-stability-md",
+    "calc:lateral-static-stability-app",
+    "calc:lateral-static-stability-mp",
 }
 
 
@@ -156,6 +163,7 @@ class StubGeometry(GeometryAdapter):
         self.surfaces = dict(surfaces or {})
         self.versions = dict(versions or {"aerosandbox": "0.0-stub"})
         self.asked: list[AirplaneGeometry] = []
+        self.fin_keys: list[str] = []
 
     def tool_versions(self) -> dict[str, str]:
         """Return the versions the stub was given."""
@@ -175,6 +183,12 @@ class StubGeometry(GeometryAdapter):
         """Return the stand-in position of the wing's quarter-chord MAC."""
         self.asked.append(airplane)
         return stand_in_quarter_chord_x((airplane.wings or {})[key])
+
+    async def fin_area(self, airplane: AirplaneGeometry, key: str) -> float:
+        """Return the stand-in fin area of the wing (a V-tail's fin share)."""
+        self.asked.append(airplane)
+        self.fin_keys.append(key)
+        return stand_in_fin_area((airplane.wings or {})[key])
 
 
 def solvers_with(
@@ -209,3 +223,15 @@ def context_with(
 def close(actual: float | None, expected: float, rel: float) -> bool:
     """Whether ``actual`` equals ``expected`` to the relative tolerance ``rel``."""
     return actual is not None and math.isclose(actual, expected, rel_tol=rel)
+
+
+def near(actual: float | None, expected: float, tol: float = 1e-9) -> bool:
+    """Whether ``actual`` equals ``expected`` to the absolute tolerance ``tol``."""
+    return actual is not None and abs(actual - expected) <= tol
+
+
+def all_near(actual: Sequence[float], expected: Sequence[float], tol: float = 1e-9) -> bool:
+    """Whether two sequences agree element by element to the absolute tolerance ``tol``."""
+    return len(actual) == len(expected) and all(
+        near(a, e, tol) for a, e in zip(actual, expected, strict=True)
+    )

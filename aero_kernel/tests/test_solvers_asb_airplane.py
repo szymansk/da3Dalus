@@ -5,7 +5,9 @@ from typing import Any
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.solvers import asb_airplane
 from aero_kernel.solvers.asb_airplane import (
+    fin_area,
     main_wing_properties,
     surface_properties,
     to_asb_airplane,
@@ -18,8 +20,10 @@ from aero_kernel.tests.asb_fakes import (
     FakeAirfoil,
     FakeAirplane,
     FakeFuselage,
+    FakeWing,
     install_fake_aerosandbox,
 )
+from aero_kernel.tests.formula_builders import near
 
 NACA = "naca2412"
 CONTOUR = [[1.0, 0.0], [0.5, 0.05], [0.0, 0.0], [0.5, -0.04], [1.0, 0.0]]
@@ -257,3 +261,61 @@ def test_an_equal_lower_exponent_is_the_same_section() -> None:
     document["fuselages"]["Body"]["x_secs"][1]["n_lower"] = 2.5
     (body,) = to_asb_airplane(AirplaneGeometry.model_validate(document)).kwargs["fuselages"]
     assert body.kwargs["xsecs"][1].kwargs["shape"] == 2.5
+
+
+def v_tail_document(rows: list[tuple[float, float]]) -> AirplaneGeometry:
+    """The geometry with a mirrored ``v_tail`` through (y, z) leading-edge points."""
+    document = geometry_document()
+    section = {"twist": 0.0, "airfoil": NACA}
+    document["wings"]["VTail"] = {
+        "name": "VTail",
+        "surface_type": "v_tail",
+        "symmetric": True,
+        "x_secs": [
+            {**section, "xyz_le": [0.5, y, z], "chord": 0.1 - 0.01 * index}
+            for index, (y, z) in enumerate(rows)
+        ],
+    }
+    return AirplaneGeometry.model_validate(document)
+
+
+def test_the_fin_area_is_asbs_planform_area_without_the_centreline_distance() -> None:
+    area = fin_area(geometry(), "Fin")
+    assert area == FAKE_REFERENCE["Fin"][0]  # the fake adds its centreline area only when asked to
+
+
+def test_the_fin_area_flags_are_passed_explicitly() -> None:
+    """No reliance on ASB's defaults (maintainer 2026-10-26): the fake refuses a call without both."""
+    wing = FakeWing(name="Fin")
+    asb_airplane._fin_planform(wing)  # pyright: ignore[reportPrivateUsage]
+    assert wing.calls == [("area", {"type": "planform", "include_centerline_distance": False})]
+
+
+def test_a_v_tail_counts_the_fin_share_sin_squared_of_the_panel_angle() -> None:
+    """One panel at 45 degrees to the horizontal: sin^2 = 1/2 of the (fake) planform area 1.0."""
+    found = fin_area(v_tail_document([(0.05, 0.0), (0.25, 0.2)]), "VTail")
+    assert near(found, 0.5)
+
+
+def test_a_two_panel_v_tail_weights_each_panel_by_its_own_angle() -> None:
+    """Panel 1 at 45 degrees (sin^2 = 1/2), panel 2 vertical (sin^2 = 1): 0.5 + 1.0 of the fake area 1.0."""
+    found = fin_area(v_tail_document([(0.05, 0.0), (0.25, 0.2), (0.25, 0.4)]), "VTail")
+    assert near(found, 1.5)
+
+
+def test_a_flat_v_tail_panel_has_no_fin_share_and_a_flat_v_tail_no_area() -> None:
+    with pytest.raises(FormulaError, match="no fin area") as raised:
+        fin_area(v_tail_document([(0.05, 0.0), (0.25, 0.0)]), "VTail")
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+
+
+def test_a_panel_without_extent_is_skipped_and_the_others_count() -> None:
+    found = fin_area(v_tail_document([(0.05, 0.0), (0.25, 0.2), (0.25, 0.2)]), "VTail")
+    assert near(found, 0.5)
+
+
+def test_a_fin_without_a_planform_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(FAKE_REFERENCE, "Fin", (0.0, 0.4, 0.08))
+    with pytest.raises(FormulaError) as raised:
+        fin_area(geometry(), "Fin")
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION

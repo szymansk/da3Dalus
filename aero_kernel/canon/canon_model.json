@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:bbeb9ce97f0cdcdeb21b4d1fcc2488858ad786a02c7ca94acad49e58fbfd9052",
+  "content_hash": "sha256:0c2659833427cb19bec205059afe83ef4bd1600c8b9f37770e4cdf504e5561dd",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -3218,10 +3218,13 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "rho": "calc:air-density",
+                "sm_target": "calc:static-margin-target",
                 "v_md": "calc:minimum-drag-speed",
                 "x_cg": "calc:centre-of-gravity-design"
               },
@@ -3239,10 +3242,13 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "rho": "calc:air-density",
+            "sm_target": "calc:static-margin-target",
             "v_md": "calc:minimum-drag-speed",
             "x_cg": "calc:centre-of-gravity-design"
           },

@@ -95,9 +95,11 @@ adopted on the maintainer's authority (2026-10-26, #1309).
 
 **Validity in the RC/UAV regime (ADR 0028).** Stated for RC sailplanes and models; the stability threshold is empirical.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/spiral_parameter.py` | EXACT | 🟢 | `Gamma_eq` is `aero_kernel/dihedral.py`: the weight `∫c y dy` of each panel in closed form (the chord is linear in y, so the integral is exact, as Simpson's rule is for this quadratic), the panel dihedral `atan2(dz, dy)` of the oriented chain, the weighting from the root rib (no wing, no weight, in a centreline gap); an unmirrored main wing has no semi-span and is refused (`unsupported_layout`); `B_md` and `B_mp` per neutral-point world, from the arm |
 
 ## Approval
 

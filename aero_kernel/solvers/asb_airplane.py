@@ -8,6 +8,7 @@ main wing are AeroSandbox's own, read from the wing this conversion builds (:fun
 import importlib
 import logging
 import math
+from itertools import pairwise
 from typing import Any
 
 import numpy as np
@@ -39,8 +40,15 @@ INCLUDE_CENTRELINE = True
 # The aerodynamic centre of a surface lies at a quarter of its mean aerodynamic chord.
 AC_FRACTION = 0.25
 
+# The flags of the fin area (canon ``vertical-tail-volume``, maintainer 2026-10-26): ``planform`` is the
+# true area of the mean camber surface, unprojected, which is right for a vertical surface (the ``xy``
+# projection of a fin is nearly zero); a fin has no centreline gap to count.
+FIN_AREA_TYPE = "planform"
+FIN_INCLUDE_CENTRELINE = False
+
 __all__ = [
     "AC_FRACTION",
+    "fin_area",
     "load_aerosandbox",
     "main_wing_properties",
     "quarter_chord_mac_x",
@@ -372,6 +380,66 @@ def quarter_chord_mac_x(airplane: AirplaneGeometry, key: str) -> float:
             parameter="airplane",
         )
     return x
+
+
+def _fin_planform(wing: Any) -> float:  # noqa: ANN401  # untyped aerosandbox boundary
+    """``Wing.area`` of a fin with both flags passed explicitly (never ASB's defaults)."""
+    return float(wing.area(type=FIN_AREA_TYPE, include_centerline_distance=FIN_INCLUDE_CENTRELINE))
+
+
+def _v_tail_fin_share(asb: Any, wing: Any) -> float:  # noqa: ANN401  # untyped aerosandbox boundary
+    """The fin share of a V-tail: ``sum S_i sin^2(nu_i)`` over its panels (McCombs, Model Aviation 7/1996).
+
+    Each panel is a wing of its own two ribs, so the area is ASB's planform area of that panel;
+    ``sin^2(nu)`` is ``dz^2 / (dy^2 + dz^2)`` of the panel's leading-edge line (``nu`` is the panel
+    angle to the horizontal). A panel with no extent in y and z has no area and no share.
+    """
+    total = 0.0
+    for lower, upper in pairwise(wing.xsecs):
+        rise = float(upper.xyz_le[2] - lower.xyz_le[2])
+        run = float(upper.xyz_le[1] - lower.xyz_le[1])
+        if run == 0.0 and rise == 0.0:
+            continue
+        panel = asb.Wing(name=wing.name, symmetric=wing.symmetric, xsecs=[lower, upper])
+        total += _fin_planform(panel) * rise**2 / (run**2 + rise**2)
+    return total
+
+
+def fin_area(airplane: AirplaneGeometry, key: str) -> float:
+    """Return the fin area ``S_V`` of the wing stored under ``key`` (canon ``vertical-tail-volume``).
+
+    AeroSandbox's ``Wing.area(type="planform", include_centerline_distance=False)`` of the surface
+    converted like in :func:`to_asb_airplane`; for a ``v_tail`` the fin share, the sum over its
+    panels of that area times ``sin^2`` of the panel angle to the horizontal. Both flags are passed
+    explicitly (maintainer 2026-10-26).
+
+    Args:
+        airplane: The validated geometry document.
+        key: The key of the one ``vertical_tail`` or ``v_tail`` wing in ``airplane.wings``.
+
+    Returns:
+        The area in m^2.
+
+    Raises:
+        FormulaError: As :func:`_wing`; ``unsupported_configuration`` if the area is not a positive
+            finite number (a surface with no planform).
+    """
+    asb = load_aerosandbox()
+    document = (airplane.wings or {})[key]
+    wing = _wing(asb, key, document, 0.0)
+    area = (
+        _v_tail_fin_share(asb, wing) if document.surface_type == "v_tail" else _fin_planform(wing)
+    )
+    if not (math.isfinite(area) and area > 0.0):
+        raise FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "unsupported_configuration",
+            f"the surface {wing.name!r} has no fin area: AeroSandbox gives {area}",
+            "a fin needs sections at different heights and a non-zero chord",
+            detail={"wing": str(wing.name)},
+            parameter="airplane",
+        )
+    return area
 
 
 def main_wing_properties(airplane: AirplaneGeometry) -> MainWingProperties:

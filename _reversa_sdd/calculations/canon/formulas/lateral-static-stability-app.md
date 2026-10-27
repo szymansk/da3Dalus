@@ -78,9 +78,11 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 
 **Validity in the RC/UAV regime (ADR 0028).** The relations are scale-free: the static signs of `C_lβ` and `C_nβ` (Sadraey Eqs 12.5–12.6) and the spiral criterion, unstable when `|C_lβ·C_nr| < |C_lr·C_nβ|` (Sadraey §12.3.3). Mach ≤ 0.3 needs no correction (Anderson §1.10.3). The limit is the single tool: AVL is inviscid and attached with no stall (Budziak, Table 2.1), meant for thin surfaces "at small angles of attack and sideslip", and its slender-body fuselage has "relatively limited" experience and is to be used "with caution" (`avl_doc.txt:99-119`), consistent with the open fuselage share of `C_nβ`. On approach, at the higher `C_L`, laminar separation at chord Re below 7·10⁴ (Anderson §20.3.2) and the approach to stall (§4.13) are absent from every derivative [no source for their size at model scale]. The AeroBuildup block above is a judgement about sweep and V-tail sideslip terms, not about Reynolds number; below chord Re 7·10⁴ no world is validated, and calibration against flown aircraft stays open. The Table 12.15 doubling times are MIL-F-8785C criteria for piloted aircraft, their RC applicability is [no source], and they belong to the evaluation (A10).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/lateral_static_stability_app.py` | EXACT | 🟢 | the derivatives come from one AVL run (`aero_kernel/solvers/avl.py`, `lateral_derivatives`) at `C_L = m g / (½ ρ V² S_ref)` with the kernel's `S_ref`, the moment and rotation reference at the design CG (y, z from the airplane), the fuselages as BODY. AVL's body is round and axisymmetric on a straight axis, so each fuselage is the round body of the same section area (the super-ellipse area, upper and lower half with their own exponents) on the axis through the area-weighted section centres (`aero_kernel/solvers/avl_body.py`); declared as `avl_body_equivalent_round`. `E = C_lβ·C_nr − C_nβ·C_lr`, `λ_s = −(g/V)·E/(C_lβ·C_np − C_nβ·C_lp)` from AVL's derivatives (both per `p'b/2V`, `r'b/2V`), `T_2 = ln 2/λ_s` for `λ_s > 0`; for `λ_s < 0` the halving time `−ln 2/|λ_s|`, negative, declared as `spiral_halving_time_reported`; no finite time (`λ_s = 0`, zero denominator) is an error. No refined-mesh check of the lateral derivatives. Per neutral-point world, because the moment reference is the design CG. Binds the clean `airplane` with the approach speed `V_app` of the landing configuration (flapped), as the entry is written; #1212 binds the approach roll to `airplane-landing`, this entry stays on `airplane` until the maintainer decides |
 
 ## Approval
 
