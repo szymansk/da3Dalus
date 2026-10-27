@@ -290,6 +290,10 @@ Sources:
   aft and a static margin computed from it is over-reported (`static-margin-measured` inherits it). `practice`: a
   deliberate, declared simplification (maintainer 2026-10-24, #1205): USAF DATCOM 1978 §4.2.2.1 Method 1
   gives about 1.5-2.1 % MAC forward (BRYAN) and 0.7-1.0 % (JAGUAR), inside Sadraey's "about ±5 % c̄"
+- the equivalent fuselage section (`fuselage_section_equivalent`, `practice`, origin `airplane`, #1307): AeroSandbox has one
+  shape exponent per section, so a section with two is replaced by the symmetric one of the same width, height and
+  centre and the same cross-section area; `detail`: the section path, `n`, `n_lower`, `n_equivalent`. The perimeter
+  (wetted area) is kept only approximately
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`defect`)
 - the averaged hinge line of a roll device or deflected flap (`hinge_line_averaged`, `practice`, ch. 8.8):
@@ -1187,7 +1191,9 @@ model (ch. 8.3).
 **Validation (step 1, physical admissibility only).** `validate.validate_aircraft(aircraft: AircraftInput) ->
 Validation` returns `errors` (`KernelError`s of category `invalid_input`, all of them, not the first) and
 `warnings` (input facts the engine attaches to every dependent: `conflicting_mass`, origin
-`aircraft-mass`; `geometry_deflection_ignored`, origin `airplane`). It needs no canon model; the checks
+`aircraft-mass`; `geometry_deflection_ignored`, origin `airplane`; `fuselage_section_equivalent`, origin
+`airplane`, once per fuselage section with `n_lower` different from `n`, which the ASB conversion maps to the
+symmetric section of equal cross-section area, `superellipse.equivalent_exponent`, #1307). It needs no canon model but the kernel configuration's area tolerance; the checks
 of `values` slugs against the canon (`unknown_quantity`, `not_an_input`) are a second function added with
 the canon loader, not a stub now (ADR 0021). **A rule exists only for a field the kernel reads**;
 CAD-only fields (`number_interpolation_points`, servo geometry, step paths) are not validated. One rule,

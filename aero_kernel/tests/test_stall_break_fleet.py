@@ -11,9 +11,7 @@ from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import (
-    FUSELAGE_REJECTED,
     FleetMember,
-    assert_rejected_for_the_fuselage,
     reference_document,
 )
 
@@ -28,6 +26,8 @@ GOLDEN = {
     FleetMember.JAGUAR: (11.0671515, 1.1418603, 9.9252912),
     FleetMember.BELEMNITOS: (11.0568417, 1.4866984, 9.5701434),
     FleetMember.RV7: (16.3483882, 1.2300212, 15.1183671),
+    FleetMember.CHEKKER: (18.3309795, 9.4154012, 8.9155783),
+    FleetMember.WIESEL: (13.1242734, 1.2375227, 11.8867507),
 }
 
 
@@ -52,15 +52,6 @@ async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> 
         assert quantity.tool == "OPT"
     used = {d.slug: d.value for d in result.provenance.defaults_used}
     assert used["stall-break-fraction"] == 0.10  # the convention, recorded with its source
-
-
-@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
-async def test_the_fuselage_aerosandbox_cannot_take_is_the_recorded_result(
-    member: FleetMember,
-) -> None:
-    """CHEKKER's and WIESEL's fuselages carry a section with n_lower != n (README): the stall angle
-    is the declared error and the break, which waits for it, fails upstream."""
-    assert_rejected_for_the_fuselage(member, (await stall_break(member)).quantities)
 
 
 @pytest.mark.parametrize("member", list(GOLDEN))

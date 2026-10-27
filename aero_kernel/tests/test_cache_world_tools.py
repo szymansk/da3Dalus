@@ -172,6 +172,7 @@ def test_a_changed_avl_config_value_misses_the_cache_in_the_avl_world(
         "opt_alpha_margin_deg",
         "opt_hinge_floor",
         "opt_flap_rib_gap",
+        "opt_fuselage_area_tolerance",
     ],
 )
 def test_a_changed_optimisation_config_value_misses_the_cache_in_the_aerobuildup_world(

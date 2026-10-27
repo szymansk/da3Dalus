@@ -231,7 +231,7 @@ aerosandbox-fuselage-shape:
   applies_to: {quantity: airplane}
   kind: tool
   on_violation: error
-  criterion: "AeroSandbox has no mirrored body and one shape exponent per fuselage section: a mirrored fuselage and a section with n_lower different from n are refused rather than approximated."
+  criterion: "AeroSandbox has no mirrored body: a mirrored fuselage is refused rather than approximated. It has one shape exponent per fuselage section: a section with n_lower different from n is not refused but mapped to the equivalent symmetric section of the same width, height and centre and equal cross-section area, declared per section as the practice warning fuselage_section_equivalent (#1307, ADR 0020)."
   codes: [unsupported_configuration]
 
 isa-altitude-range:

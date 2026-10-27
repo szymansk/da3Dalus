@@ -634,6 +634,9 @@
         "opt_flap_rib_gap": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_fuselage_area_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_hinge_floor": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -662,6 +665,7 @@
         "opt_alpha_margin_deg",
         "opt_hinge_floor",
         "opt_flap_rib_gap",
+        "opt_fuselage_area_tolerance",
         "avl_contour_margin"
       ],
       "title": "KernelConfig",

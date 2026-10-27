@@ -121,3 +121,10 @@ opt_active_bound_fraction:
   guards: "Optimisation: an optimum within this fraction of the range of a variable lies on its bound, and a value on a bound is no optimum (ADR 0020), so it is refused."
   basis: numerical
   source: "IPOPT's bound push keeps an interior optimum a few 1e-8 of the range from its bound; 1e-6 separates it from a bound the solver reached"
+
+opt_fuselage_area_tolerance:
+  value: 1.0e-12
+  unit: "1"
+  guards: "Fuselage section: the relative disagreement of the cross-section area of the equivalent symmetric section and of the section with two exponents, at which the bracketed search for the equivalent exponent stops."
+  basis: numerical
+  source: "a margin over floating-point noise of the gamma-function area (about 1e-16): the search is a bisection, so the tolerance costs only a few extra halvings; a looser value would leave a visible area error in the drag build-up"
