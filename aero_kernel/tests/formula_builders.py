@@ -18,6 +18,7 @@ from aero_kernel.solvers.geometry import GeometryAdapter
 from aero_kernel.solvers.opti import OptiAdapter
 from aero_kernel.tests.asb_fakes import (
     stand_in_fin_area,
+    stand_in_horizontal_tail_area,
     stand_in_main_wing_properties,
     stand_in_quarter_chord_x,
     stand_in_surface_of,
@@ -44,6 +45,7 @@ IMPLEMENTED = {
     "calc:roll-rate",
     "calc:cg-for-target-margin",
     "calc:horizontal-tail-arm",
+    "calc:horizontal-tail-volume",
     "calc:vertical-tail-arm",
     "calc:vertical-tail-volume",
     "calc:spiral-parameter",
@@ -51,6 +53,7 @@ IMPLEMENTED = {
     "calc:lateral-static-stability-md",
     "calc:lateral-static-stability-app",
     "calc:lateral-static-stability-mp",
+    "calc:turn-sideslip",
 }
 
 
@@ -165,6 +168,7 @@ class StubGeometry(GeometryAdapter):
         self.versions = dict(versions or {"aerosandbox": "0.0-stub"})
         self.asked: list[AirplaneGeometry] = []
         self.fin_keys: list[str] = []
+        self.horizontal_tail_keys: list[str] = []
 
     def tool_versions(self) -> dict[str, str]:
         """Return the versions the stub was given."""
@@ -190,6 +194,12 @@ class StubGeometry(GeometryAdapter):
         self.asked.append(airplane)
         self.fin_keys.append(key)
         return stand_in_fin_area((airplane.wings or {})[key])
+
+    async def horizontal_tail_area(self, airplane: AirplaneGeometry, key: str) -> float:
+        """Return the stand-in gross planform area of the horizontal tail."""
+        self.asked.append(airplane)
+        self.horizontal_tail_keys.append(key)
+        return stand_in_horizontal_tail_area((airplane.wings or {})[key])
 
 
 def solvers_with(

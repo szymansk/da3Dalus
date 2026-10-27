@@ -242,7 +242,7 @@ async def test_the_first_build_imports_the_formulas_and_freezes_the_default_regi
         "shipped_build()\n"
         "assert 'aero_kernel.formulas' in sys.modules\n"
         "assert DEFAULT_REGISTRY.frozen\n"
-        "assert len(DEFAULT_REGISTRY.slugs()) == 25\n"
+        "assert len(DEFAULT_REGISTRY.slugs()) == 27\n"
     )
 
 

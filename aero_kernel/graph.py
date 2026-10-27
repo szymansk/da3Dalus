@@ -759,6 +759,8 @@ class WhenFacts(BaseModel):
         has_elevator: A device acts as elevator, elevon or ruddervator; a stabilator (an all-moving
             tail) has no hinge and counts for none of the hinge-moment terms.
         has_flap: A device acts as flap or flaperon.
+        has_horizontal_tail: Some wing has ``surface_type`` ``horizontal_tail`` or ``v_tail`` (a
+            V-tail counts as both a horizontal and a vertical tail, ontology D9).
         has_no_aileron: No device acts as aileron, flaperon or elevon (the complement of
             ``has_aileron``; the ``when`` vocabulary has no negation).
         has_rudder: A device acts as rudder or ruddervator.
@@ -772,6 +774,7 @@ class WhenFacts(BaseModel):
     has_aileron: bool
     has_elevator: bool
     has_flap: bool
+    has_horizontal_tail: bool
     has_no_aileron: bool
     has_rudder: bool
     has_separate_flap_and_aileron: bool
@@ -797,6 +800,7 @@ class WhenFacts(BaseModel):
             "has_aileron": self.has_aileron,
             "has_elevator": self.has_elevator,
             "has_flap": self.has_flap,
+            "has_horizontal_tail": self.has_horizontal_tail,
             "has_no_aileron": self.has_no_aileron,
             "has_rudder": self.has_rudder,
             "has_separate_flap_and_aileron": self.has_separate_flap_and_aileron,
@@ -805,7 +809,9 @@ class WhenFacts(BaseModel):
 
 
 # Terms of the closed vocabulary whose fact is not implemented yet, with the ticket that brings it.
-PENDING_WHEN_TERMS: Mapping[str, str] = {"has_horizontal_tail": "#1187"}
+PENDING_WHEN_TERMS: Mapping[str, str] = {}
+# A V-tail counts as both a horizontal and a vertical tail (ARCHITECTURE ch. 8.5).
+_HORIZONTAL_TAIL_TYPES = frozenset({"horizontal_tail", "v_tail"})
 AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
 # The hinge-moment terms: a device that has a hinge and acts in that role (a stabilator has none).
 _ELEVATOR_ROLES = frozenset({"elevator", "elevon", "ruddervator"})
@@ -884,6 +890,9 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
         has_aileron=has_aileron,
         has_elevator=any(role in _ELEVATOR_ROLES for _, role in devices),
         has_flap=any(role in _FLAP_ROLES for _, role in devices),
+        has_horizontal_tail=any(
+            wing.surface_type in _HORIZONTAL_TAIL_TYPES for wing in wings.values()
+        ),
         has_no_aileron=not has_aileron,
         has_rudder=any(role in _RUDDER_ROLES for _, role in devices),
         has_separate_flap_and_aileron=any(
