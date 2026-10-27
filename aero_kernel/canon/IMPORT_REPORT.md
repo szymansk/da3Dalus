@@ -146,7 +146,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | static-margin-probe | approved | 6 of 6 |  |
 | static-thrust-to-weight | draft | 11 of 11 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | thrust-at-airspeed-from-coefficient | draft | 2 of 4 | propeller-speed (motor-propeller-equilibrium: not approved); thrust-coefficient (propeller-table-lookup: not approved; advance-ratio-from-speed: not approved via propeller-table-lookup; motor-propeller-equilibrium: not approved via propeller-table-lookup, advance-ratio-from-speed) |
-| turn-sideslip | draft | 7 of 7 |  |
+| turn-sideslip | approved | 7 of 7 |  |
 | vertical-tail-arm | approved | 2 of 2 |  |
 | vertical-tail-volume | approved | 4 of 4 |  |
 | weight-from-mass | approved | 2 of 2 |  |
