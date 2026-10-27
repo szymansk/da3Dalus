@@ -123,8 +123,9 @@ def test_an_airplane_without_fuselages_has_no_bodies() -> None:
 def test_a_fuselage_avl_cannot_hold_is_unsupported(
     sections: list[dict[str, Any]], symmetric: bool, match: str
 ) -> None:
+    plane = with_fuselages(Rumpf=(sections, symmetric))
     with pytest.raises(FormulaError, match=match) as raised:
-        mesh_bodies(with_fuselages(Rumpf=(sections, symmetric)))
+        mesh_bodies(plane)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 

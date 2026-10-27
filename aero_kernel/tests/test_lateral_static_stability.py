@@ -207,8 +207,9 @@ async def test_a_spiral_without_a_finite_time_is_refused(
 ) -> None:
     avl = StubAvl(X_NP_AVL)
     avl.lateral = AvlLateral(**derivatives)
+    given, ctx = inputs(), context(avl)
     with pytest.raises(FormulaError, match=match) as raised:
-        await lateral_static_stability_md(inputs(), context(avl))
+        await lateral_static_stability_md(given, ctx)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
@@ -217,14 +218,16 @@ async def test_a_zero_denominator_with_a_non_zero_criterion_is_refused() -> None
     avl.lateral = AvlLateral(
         c_l_beta=-0.05, c_n_beta=0.0, c_l_p=-0.55, c_n_p=0.0, c_l_r=0.11, c_n_r=-0.06
     )
+    given, ctx = inputs(), context(avl)
     with pytest.raises(FormulaError, match="C_l,beta C_n,p") as raised:
-        await lateral_static_stability_md(inputs(), context(avl))
+        await lateral_static_stability_md(given, ctx)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
 async def test_a_lift_coefficient_that_is_not_positive_is_invalid_input() -> None:
+    given, ctx = inputs(m=0.0), context(StubAvl(X_NP_AVL))
     with pytest.raises(FormulaError) as raised:
-        await lateral_static_stability_md(inputs(m=0.0), context(StubAvl(X_NP_AVL)))
+        await lateral_static_stability_md(given, ctx)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 

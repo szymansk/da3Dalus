@@ -94,8 +94,9 @@ async def test_an_inadmissible_input_is_invalid_input(
 ) -> None:
     monkeypatch.setattr(opti_module, "moment_slope_worker", canned(SLOPES))
     plane = airplane()
+    adapter = OptiAdapter(InProcessRuntime())
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).moment_slope(plane, mass, gravity, AIR, speed, x_cg)
+        await adapter.moment_slope(plane, mass, gravity, AIR, speed, x_cg)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
     assert raised.value.parameter == parameter
 
@@ -103,18 +104,18 @@ async def test_an_inadmissible_input_is_invalid_input(
 async def test_a_deflected_control_surface_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(opti_module, "moment_slope_worker", canned(SLOPES))
     deflected = airplane(device=("aileron", 4.0))
+    adapter = OptiAdapter(InProcessRuntime())
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).moment_slope(
-            deflected, MASS, GRAVITY, AIR, SPEED, X_CG
-        )
+        await adapter.moment_slope(deflected, MASS, GRAVITY, AIR, SPEED, X_CG)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
     plane = airplane()
+    adapter = OptiAdapter(InProcessRuntime())
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).moment_slope(plane, MASS, GRAVITY, AIR, SPEED, X_CG)
+        await adapter.moment_slope(plane, MASS, GRAVITY, AIR, SPEED, X_CG)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 
@@ -201,8 +202,9 @@ async def test_a_curve_that_never_reaches_the_wanted_lift_is_not_converged(
         cm=(0.0,) * 5,
     )
     install(monkeypatch, polar=low)
+    given = request()
     with pytest.raises(FormulaError) as raised:
-        moment_slope_worker(request())
+        moment_slope_worker(given)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
     assert "lift balance" in raised.value.message
 
@@ -210,8 +212,9 @@ async def test_a_curve_that_never_reaches_the_wanted_lift_is_not_converged(
 async def test_a_sweep_without_a_peak_is_not_converged(monkeypatch: pytest.MonkeyPatch) -> None:
     rising = Polar(alpha_deg=(0.0, 1.0, 2.0), cl=(0.1, 0.2, 0.3), cd=(0.05,) * 3, cm=(0.0,) * 3)
     install(monkeypatch, polar=rising)
+    given = request()
     with pytest.raises(FormulaError) as raised:
-        moment_slope_worker(request())
+        moment_slope_worker(given)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
 
 
@@ -220,8 +223,9 @@ async def test_a_lift_slope_that_is_not_positive_and_finite_is_not_converged(
     monkeypatch: pytest.MonkeyPatch, cl_alpha: float
 ) -> None:
     install(monkeypatch, cl_alpha=cl_alpha)
+    given = request()
     with pytest.raises(FormulaError) as raised:
-        moment_slope_worker(request())
+        moment_slope_worker(given)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
     assert "lift slope" in raised.value.message
 
@@ -230,7 +234,8 @@ async def test_a_moment_slope_that_is_not_finite_is_not_converged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     install(monkeypatch, cm_alpha=math.nan)
+    given = request()
     with pytest.raises(FormulaError) as raised:
-        moment_slope_worker(request())
+        moment_slope_worker(given)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
     assert "moment slope" in raised.value.message

@@ -309,8 +309,9 @@ def test_a_two_panel_v_tail_weights_each_panel_by_its_own_angle() -> None:
 
 
 def test_a_flat_v_tail_panel_has_no_fin_share_and_a_flat_v_tail_no_area() -> None:
+    flat = v_tail_document([(0.05, 0.0), (0.25, 0.0)])
     with pytest.raises(FormulaError, match="no fin area") as raised:
-        fin_area(v_tail_document([(0.05, 0.0), (0.25, 0.0)]), "VTail")
+        fin_area(flat, "VTail")
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
@@ -321,6 +322,7 @@ def test_a_panel_without_extent_is_skipped_and_the_others_count() -> None:
 
 def test_a_fin_without_a_planform_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(FAKE_REFERENCE, "Fin", (0.0, 0.4, 0.08))
+    plane = geometry()
     with pytest.raises(FormulaError) as raised:
-        fin_area(geometry(), "Fin")
+        fin_area(plane, "Fin")
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION

@@ -47,14 +47,16 @@ def _spiral_time(
         FormulaError: ``unsupported_configuration`` if the denominator or the root is zero.
     """
     denominator = c_l_beta * c_n_p - c_n_beta * c_l_p
-    if denominator == 0.0:
+    try:
+        root = -(gravity / speed) * e_spiral / denominator
+    except ZeroDivisionError as error:
         raise _no_finite_time(
             "C_l,beta C_n,p - C_n,beta C_l,p is zero", {"denominator": denominator}
-        )
-    root = -(gravity / speed) * e_spiral / denominator
-    if root == 0.0:
-        raise _no_finite_time("the spiral criterion is zero", {"e_spiral": e_spiral})
-    return root, math.copysign(math.log(2.0) / abs(root), root)
+        ) from error
+    try:
+        return root, math.copysign(math.log(2.0) / abs(root), root)
+    except ZeroDivisionError as error:
+        raise _no_finite_time("the spiral criterion is zero", {"e_spiral": e_spiral}) from error
 
 
 async def lateral_stability(
@@ -88,7 +90,7 @@ async def lateral_stability(
     speed, gravity = number(x, "v"), number(x, "g")
     reference = await ctx.solvers.geometry.main_wing_reference(airplane)
     cl = number(x, "m") * gravity / (0.5 * number(x, "rho") * speed**2 * reference.s_ref)
-    if not cl > 0.0:
+    if math.isnan(cl) or cl <= 0.0:
         raise FormulaError(
             ErrorCategory.INVALID_INPUT,
             "invalid_input",

@@ -123,8 +123,7 @@ async def test_the_formula_is_the_closed_form_for_given_speeds() -> None:
 async def test_a_lift_coefficient_that_is_not_positive_is_invalid_input(
     override: dict[str, float],
 ) -> None:
+    given, ctx = inputs(polyhedral_airplane(), **override), context_with(StubAtmosphere({}))
     with pytest.raises(FormulaError) as raised:
-        await spiral_parameter(
-            inputs(polyhedral_airplane(), **override), context_with(StubAtmosphere({}))
-        )
+        await spiral_parameter(given, ctx)
     assert raised.value.category is ErrorCategory.INVALID_INPUT

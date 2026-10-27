@@ -130,6 +130,7 @@ async def test_a_deflected_device_is_refused() -> None:
 
     deflected = wing_geometry((0.0, 0.2, 0.4), 1, aileron(0.78, 0.80, deflection_deg=4.0))
     async with SolverRuntime() as runtime:
+        adapter = FakeAvl(runtime)
         with pytest.raises(FormulaError) as raised:
-            await FakeAvl(runtime).lateral_derivatives(deflected, 0.5, 0.1)
+            await adapter.lateral_derivatives(deflected, 0.5, 0.1)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION

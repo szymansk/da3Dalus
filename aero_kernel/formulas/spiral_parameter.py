@@ -1,5 +1,7 @@
 """Canon formula ``spiral-parameter``: Drela's B = l_V,CG Gamma_eq / (b_ref C_L) at V_md and V_mp (ch. 8.5)."""
 
+import math
+
 from aero_kernel.context import Context, Inputs
 from aero_kernel.dihedral import main_wing_dihedral_deg
 from aero_kernel.errors import ErrorCategory, FormulaError
@@ -15,7 +17,7 @@ def _spiral(arm: float, dihedral_deg: float, span: float, cl: float, speed: str)
     Raises:
         FormulaError: ``invalid_input`` for a lift coefficient that is not positive.
     """
-    if not cl > 0.0:
+    if math.isnan(cl) or cl <= 0.0:
         raise FormulaError(
             ErrorCategory.INVALID_INPUT,
             "invalid_input",

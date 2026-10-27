@@ -81,7 +81,7 @@ def _body(fuselage: Fuselage) -> MeshBody:
         )
     areas = [section_area(s) for s in sections]
     total = sum(areas)
-    if not total > 0.0:
+    if math.isnan(total) or total <= 0.0:
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,
             "unsupported_configuration",

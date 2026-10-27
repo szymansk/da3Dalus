@@ -403,7 +403,7 @@ def _v_tail_fin_share(asb: Any, wing: Any) -> float:  # noqa: ANN401  # untyped 
     for lower, upper in pairwise(wing.xsecs):
         rise = float(upper.xyz_le[2] - lower.xyz_le[2])
         run = float(upper.xyz_le[1] - lower.xyz_le[1])
-        if run == 0.0 and rise == 0.0:
+        if run**2 + rise**2 <= 0.0:
             continue
         panel = asb.Wing(name=wing.name, symmetric=wing.symmetric, xsecs=[lower, upper])
         total += _fin_planform(panel) * rise**2 / (run**2 + rise**2)

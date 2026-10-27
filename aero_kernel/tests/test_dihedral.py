@@ -69,15 +69,17 @@ def test_a_root_off_the_centreline_weights_only_the_wing_that_exists() -> None:
 
 
 def test_an_unmirrored_main_wing_has_no_semi_span_and_is_refused() -> None:
+    unmirrored = wing([(-1.0, 0.0, 0.2), (1.0, 0.0, 0.2)], symmetric=False)
     with pytest.raises(FormulaError, match="mirrored") as raised:
-        equivalent_dihedral_deg(wing([(-1.0, 0.0, 0.2), (1.0, 0.0, 0.2)], symmetric=False))
+        equivalent_dihedral_deg(unmirrored)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
     assert raised.value.code == "unsupported_layout"
 
 
 def test_a_wing_without_a_span_has_no_weighting_and_is_refused() -> None:
+    spanless = wing([(0.0, 0.0, 0.2), (0.0, 0.1, 0.2)])
     with pytest.raises(FormulaError, match="no span") as raised:
-        equivalent_dihedral_deg(wing([(0.0, 0.0, 0.2), (0.0, 0.1, 0.2)]))
+        equivalent_dihedral_deg(spanless)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
@@ -102,5 +104,6 @@ def test_the_main_wing_is_chosen_by_type_not_by_position() -> None:
 
     # the tail comes first in the document and has 45 degrees; the main wing is flat
     assert main_wing_dihedral_deg(plan("horizontal_tail", "main_wing")) == 0.0
+    two_tails = plan("horizontal_tail", "horizontal_tail")
     with pytest.raises(ValueError, match="exactly one main wing"):
-        main_wing_dihedral_deg(plan("horizontal_tail", "horizontal_tail"))
+        main_wing_dihedral_deg(two_tails)
