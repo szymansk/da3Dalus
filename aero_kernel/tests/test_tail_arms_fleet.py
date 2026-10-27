@@ -24,16 +24,22 @@ GOLDEN_CG = {
     FleetMember.BRYAN: (0.1266041726, 0.1269010159, 0.1307588397),
     FleetMember.JAGUAR: (0.1075391889, 0.1133476263, 0.1158455146),
     FleetMember.RV7: (0.2378507, 0.2398105, 0.2416460),
+    FleetMember.CHEKKER: (0.1744891, 0.1799456, 0.1846912),
+    FleetMember.WIESEL: (0.1756829, 0.1840378, 0.1804037),
 }
 GOLDEN_L_H = {
     FleetMember.BRYAN: (0.2972459914, 0.2969491481, 0.2930913242),
     FleetMember.JAGUAR: (0.2447503047, 0.2389418673, 0.2364439791),
     FleetMember.RV7: (0.3942354, 0.3922757, 0.3904401),
+    FleetMember.CHEKKER: (0.3526446, 0.3471881, 0.3424425),
+    FleetMember.WIESEL: (0.3805503, 0.3721954, 0.3758295),
 }
 GOLDEN_L_V = {
     FleetMember.BRYAN: (0.3157883688, 0.3154915255, 0.3116337017),
     FleetMember.JAGUAR: (0.2320591484, 0.2262507110, 0.2237528227),
     FleetMember.RV7: (0.4082399, 0.4062802, 0.4044446),
+    FleetMember.CHEKKER: (0.3694571, 0.3640006, 0.3592550),
+    FleetMember.WIESEL: (0.3944157, 0.3860609, 0.3896950),
 }
 
 
@@ -104,22 +110,13 @@ def test_the_tail_position_is_the_one_the_neutral_point_uses(member: FleetMember
     assert abs(quarter_chord_mac_x(plane, tail_key) - x_neutral_point_uses) < 1e-12
 
 
-@pytest.mark.parametrize(
-    ("member", "cause", "code"),
-    [
-        (FleetMember.CHEKKER, "minimum-drag-speed", "unsupported_configuration"),
-        (FleetMember.WIESEL, "minimum-drag-speed", "unsupported_configuration"),
-        (FleetMember.BELEMNITOS, "neutral-point", "unsupported_layout"),
-    ],
-)
 @pytest.mark.asyncio
-async def test_the_aircraft_without_a_neutral_point_have_no_design_cg_and_no_arms(
-    member: FleetMember, cause: str, code: str
-) -> None:
-    """The design CG and the arms wait for the neutral point: CHEKKER and WIESEL for the
-    minimum-drag speed their fuselages block (#1307), BELEMNITOS for a V-tail neutral point (#1208)."""
-    for quantity in (await run(member)).quantities:
+async def test_the_v_tail_aircraft_has_no_design_cg_and_no_arms() -> None:
+    """The design CG and the arms wait for the neutral point, which a V-tail has none of (#1208)."""
+    for quantity in (await run(FleetMember.BELEMNITOS)).quantities:
         assert quantity.status is QuantityStatus.ERROR, quantity.slug
         assert quantity.error is not None
         assert quantity.error.code == "upstream_failed"
-        assert quantity.error.detail["causes"] == [{"quantity": cause, "code": code}]
+        assert quantity.error.detail["causes"] == [
+            {"quantity": "neutral-point", "code": "unsupported_layout"}
+        ]

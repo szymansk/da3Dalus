@@ -41,7 +41,11 @@ CG = {
     # kernel's centre-of-gravity-design; test_cg_for_target_margin... checks it. Never a hand-chosen
     # position (maintainer 2026-10-26).
     FleetMember.RV7: 0.241646,
+    # CHEKKER and WIESEL likewise: the design CG of the AVL world (the geometry format has no CG)
+    FleetMember.CHEKKER: 0.18469116469928673,
+    FleetMember.WIESEL: 0.1804036813580844,
 }
+DESIGN_CG_MEMBERS = (FleetMember.RV7, FleetMember.CHEKKER, FleetMember.WIESEL)
 WORLDS = ("textbook", "pappas", "avl")
 # Regression goldens (m): x_NP per world; SM per world follows as (x_NP - CG) / c_MAC.
 # The textbook world takes the default tail efficiency 0.65 (#1205); it was 0.9 before:
@@ -53,6 +57,8 @@ GOLDEN_NP = {
     FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.144039),
     FleetMember.JAGUAR: (0.1180376743, 0.1238461117, 0.126344),
     FleetMember.RV7: (0.2561507, 0.2581105, 0.259946),
+    FleetMember.CHEKKER: (0.1906369, 0.1960934, 0.200839),
+    FleetMember.WIESEL: (0.1919482, 0.2003031, 0.196669),
 }
 # Since #1262 the area includes the centreline gap: textbook/Pappas BRYAN 0.1398961691/0.1402057906 ->
 # 0.1398843329/0.1401811762 m, JAGUAR 0.1181103705/0.1239713559 -> 0.1180376743/0.1238461117 m.
@@ -61,6 +67,8 @@ GOLDEN_TEXTBOOK_ETA_09 = {
     FleetMember.BRYAN: 0.1441059605,
     FleetMember.JAGUAR: 0.1233923918,
     FleetMember.RV7: 0.2627406,
+    FleetMember.CHEKKER: 0.1965633,
+    FleetMember.WIESEL: 0.1997806,
 }
 # AeroSandbox's c_MAC of the main wing (gh-1240); it was the kernel's projected 0.13277219 / 0.10504547.
 C_MAC = {member: member.asb_reference[2] for member in FleetMember}
@@ -138,6 +146,30 @@ async def test_bryan_declares_the_missing_fuselage_in_every_world_and_converges(
         fuselage = [w for w in quantity.warnings if w.code == "fuselage_not_modelled"]
         assert len(fuselage) == len(WORLDS)
         assert "avl_mesh_not_converged" not in {w.code for w in quantity.warnings}
+
+
+@pytest.mark.asyncio
+async def test_chekker_declares_the_avl_mesh_as_not_converged_and_wiesel_converges() -> None:
+    """CHEKKER's AVL neutral point moves by 0.55 % MAC under the refined mesh, above the 0.5 %
+    tolerance: a declared defect (ADR 0020), the value is still returned. WIESEL's agrees."""
+    chekker = await run(FleetMember.CHEKKER)
+    for quantity in chekker.quantities:
+        (not_converged,) = [w for w in quantity.warnings if w.code == "avl_mesh_not_converged"]
+        assert not_converged.world == "neutral-point=avl"
+        assert 0.005 < float(not_converged.detail["delta_mac"]) < 0.006  # pyright: ignore[reportArgumentType]
+    for quantity in (await run(FleetMember.WIESEL)).quantities:
+        assert "avl_mesh_not_converged" not in {w.code for w in quantity.warnings}
+
+
+@pytest.mark.asyncio
+async def test_the_substituted_fuselage_is_declared_on_the_neutral_point() -> None:
+    """The equivalent fuselage section (#1307) is declared on the result, once per substituted
+    section, next to the missing fuselage of the three neutral-point worlds."""
+    for member, sections in ((FleetMember.CHEKKER, 37), (FleetMember.WIESEL, 46)):
+        neutral = (await run(member)).quantities[0]
+        found = [w for w in neutral.warnings if w.code == "fuselage_section_equivalent"]
+        assert len(found) == sections, member
+        assert {w.origin for w in found} == {"airplane"}
 
 
 @pytest.mark.asyncio
@@ -265,26 +297,16 @@ async def test_cg_for_target_margin_is_the_neutral_point_less_the_target_per_wor
         x = {"x_np": x_np, "sm_target": margin.interval.worlds[world], "c_mac": C_MAC[member]}
         back = await cg_for_target_margin(x, context_with(StubAtmosphere({})))
         assert abs(back["x_cg_sm"] - CG[member]) < 1e-9, (member, world)
-    if member is FleetMember.RV7:  # its CG is the design CG of the AVL world
+    if member in DESIGN_CG_MEMBERS:  # its CG is the design CG of the AVL world
         assert abs(target_cg.interval.worlds["neutral-point=avl"] - CG[member]) < 1e-9
 
 
-@pytest.mark.parametrize(
-    ("member", "code", "cause"),
-    [
-        (FleetMember.CHEKKER, "upstream_failed", "minimum-drag-speed"),
-        (FleetMember.WIESEL, "upstream_failed", "minimum-drag-speed"),
-        (FleetMember.BELEMNITOS, "unsupported_layout", None),
-    ],
-)
 @pytest.mark.asyncio
-async def test_the_aircraft_without_a_neutral_point_have_the_recorded_error(
-    member: FleetMember, code: str, cause: str | None
-) -> None:
-    """CHEKKER and WIESEL: the C_L of the neutral point comes from the minimum-drag speed, which
-    AeroSandbox cannot compute for their fuselages (README, #1307). BELEMNITOS: a V-tail is not a
-    horizontal tail, the layout is declared unsupported (V-tail neutral points: #1208). The design
-    CG, which is the neutral point less the target margin, waits for the point."""
+async def test_the_v_tail_aircraft_has_no_neutral_point_and_no_design_cg() -> None:
+    """BELEMNITOS: a V-tail is not a horizontal tail, the layout is declared unsupported (V-tail
+    neutral points: #1208). The design CG, which is the neutral point less the target margin,
+    waits for the point."""
+    member = FleetMember.BELEMNITOS
     aircraft = AircraftInput.model_validate(
         {
             "airplane": reference_document(member),
@@ -300,13 +322,8 @@ async def test_the_aircraft_without_a_neutral_point_have_the_recorded_error(
     ).quantities
     assert neutral.status is QuantityStatus.ERROR
     assert neutral.error is not None
-    assert neutral.error.code == code
-    if cause is None:
-        assert neutral.error.detail["surface_types"] == ["main_wing", "v_tail"]
-    else:
-        assert neutral.error.detail["causes"] == [
-            {"quantity": cause, "code": "unsupported_configuration"}
-        ]
+    assert neutral.error.code == "unsupported_layout"
+    assert neutral.error.detail["surface_types"] == ["main_wing", "v_tail"]
     assert design.status is QuantityStatus.ERROR
     assert design.error is not None
     assert design.error.code == "upstream_failed"

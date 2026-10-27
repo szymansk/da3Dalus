@@ -26,6 +26,7 @@ from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.geometry import Wing
 from aero_kernel.rules import Rules
 from aero_kernel.schema import AircraftInput, ComputeRequest, KernelWarning
+from aero_kernel.superellipse import equivalent_exponent
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
@@ -537,6 +538,38 @@ def _deflection_warnings(wings: Mapping[str, Wing]) -> list[KernelWarning]:
     return warnings
 
 
+def _fuselage_section_warnings(fuselages: Mapping[str, geometry.Fuselage]) -> list[KernelWarning]:
+    """Declare every section with two shape exponents: the conversion maps it to an equivalent one.
+
+    AeroSandbox has one exponent per section, so the conversion substitutes the symmetric section
+    of equal cross-section area (:func:`equivalent_exponent`, gh-1307, ADR 0020). A section whose
+    exponent is not positive is an error elsewhere, not a substitution.
+    """
+    warnings: list[KernelWarning] = []
+    for key, fuselage in fuselages.items():
+        for index, x_sec in enumerate(fuselage.x_secs):
+            n_lower = x_sec.n_lower
+            if n_lower is None or n_lower == x_sec.n or min(x_sec.n, n_lower) <= 0:
+                continue
+            section = f"{_key_path('airplane.fuselages', key)}.x_secs[{index}]"
+            equivalent = equivalent_exponent(x_sec.n, n_lower)
+            message = (
+                f"The fuselage section {section} has the exponent {x_sec.n} above and {n_lower} "
+                f"below; AeroSandbox takes one exponent per section, so the symmetric section of "
+                f"the same width, height and centre with the exponent {equivalent} and the same "
+                "cross-section area is used. The perimeter, and with it the skin-friction area, "
+                "is only approximately kept."
+            )
+            detail: dict[str, JsonValue] = {
+                "section": section,
+                "n": x_sec.n,
+                "n_lower": n_lower,
+                "n_equivalent": equivalent,
+            }
+            warnings.append(_warning("fuselage_section_equivalent", "airplane", message, detail))
+    return warnings
+
+
 def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Validation:
     """Report every physically inadmissible value of an aircraft input, and the input's caveats.
 
@@ -566,7 +599,11 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
     errors += _fuselage_findings(airplane.fuselages or {}, rules)
     for slug in sorted(aircraft.values):
         errors += _non_finite(aircraft.values[slug], _values_path(slug))
-    warnings = _mass_warnings(aircraft) + _deflection_warnings(airplane.wings or {})
+    warnings = (
+        _mass_warnings(aircraft)
+        + _deflection_warnings(airplane.wings or {})
+        + _fuselage_section_warnings(airplane.fuselages or {})
+    )
     logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))
 

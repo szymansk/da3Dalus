@@ -17,9 +17,7 @@ from aero_kernel.solvers.opti import StallRequest
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import (
-    FUSELAGE_REJECTED,
     FleetMember,
-    assert_rejected_for_the_fuselage,
     flap_values,
     reference_document,
 )
@@ -46,6 +44,11 @@ JAGUAR_CL_MIN = -0.7831582
 # speeds equal V_S where the airplane has no flap (BELEMNITOS).
 BELEMNITOS_GOLDEN = (4.4882110, 1.1141652, 9.5701434, -0.4784755)
 RV7_GOLDEN = (6.6001580, 1.2246480, 15.1183671, -0.8329524)
+# (V_S m/s, C_L,max, alpha_S deg, C_L,min) of CHEKKER and WIESEL, whose fuselage sections with two
+# shape exponents are the equivalent symmetric ones (#1307). WIESEL has no inverted stall value
+# (the sweep finds no trough, like BRYAN's, see its test).
+CHEKKER_GOLDEN = (6.5538734, 1.2037652, 8.9155783, -0.5459634)
+WIESEL_GOLDEN = (8.1057323, 1.0843195, 11.8867507)
 
 
 def sea_level_air() -> AirState:
@@ -291,10 +294,46 @@ async def test_rv7_speeds_from_the_configured_stall_speeds() -> None:
     assert close(found["takeoff-speed"], 1.1 * RV7_TAKEOFF[0], 1e-6)
 
 
-@pytest.mark.parametrize("member", list(FUSELAGE_REJECTED))
-async def test_the_fuselage_aerosandbox_cannot_take_is_the_recorded_result(
-    member: FleetMember,
-) -> None:
-    """CHEKKER's and WIESEL's fuselages carry a section with n_lower != n (README): the kernel
-    declares it instead of computing, for every stall quantity."""
-    assert_rejected_for_the_fuselage(member, (await stall_result(member)).quantities)
+async def test_chekker_regression_goldens() -> None:
+    """Fuselage sections with two shape exponents are replaced by the equivalent symmetric ones
+    (#1307): the declared substitution, then the same values as any other aircraft. No flap."""
+    result = await stall_result(FleetMember.CHEKKER)
+    assert_goldens_are_pinned_to_their_tools(result)
+    quantities = {q.slug: q for q in result.quantities}
+    assert all(q.status is QuantityStatus.OK for q in quantities.values()), quantities
+    for slug, golden in zip(
+        (
+            "stall-speed",
+            "max-lift-coefficient",
+            "angle-of-attack-stall",
+            "inverted-max-lift-coefficient",
+        ),
+        CHEKKER_GOLDEN,
+        strict=True,
+    ):
+        assert close(quantities[slug].value, golden, 1e-5), slug
+    for slug in ("stall-speed-takeoff", "stall-speed-landing"):
+        assert quantities[slug].value == quantities["stall-speed"].value
+    for quantity in quantities.values():
+        assert "fuselage_section_equivalent" in {w.code for w in quantity.warnings}
+
+
+async def test_wiesel_regression_goldens_and_no_inverted_trough() -> None:
+    """Like BRYAN, WIESEL's inverted sweep has no trough: no value, declared (ADR 0020)."""
+    result = await stall_result(FleetMember.WIESEL)
+    assert_goldens_are_pinned_to_their_tools(result)
+    quantities = {q.slug: q for q in result.quantities}
+    for slug, golden in zip(
+        ("stall-speed", "max-lift-coefficient", "angle-of-attack-stall"),
+        WIESEL_GOLDEN,
+        strict=True,
+    ):
+        assert close(quantities[slug].value, golden, 1e-5), slug
+    for slug in ("stall-speed-takeoff", "stall-speed-landing"):
+        assert quantities[slug].value == quantities["stall-speed"].value
+    inverted = quantities["inverted-max-lift-coefficient"]
+    assert inverted.status is QuantityStatus.ERROR
+    assert inverted.value is None
+    assert inverted.error is not None
+    assert inverted.error.code == "not_converged"
+    assert "no trough" in inverted.error.message
