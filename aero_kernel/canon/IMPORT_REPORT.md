@@ -124,7 +124,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | max-sustained-turn-rate | draft | 13 of 13 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | mean-geometric-chord | draft | 2 of 2 |  |
 | min-sustained-turn-radius | draft | 13 of 13 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
-| minimum-drag-speed-closed-form | draft | 1 of 4 | induced-drag-factor (not approved; aspect-ratio: not approved via induced-drag-factor; parabolic-polar-fit: not approved via induced-drag-factor); wing-loading (not approved); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
+| minimum-drag-speed-closed-form | draft | 2 of 4 | induced-drag-factor (not approved; aspect-ratio: not approved via induced-drag-factor; parabolic-polar-fit: not approved via induced-drag-factor); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
 | minimum-drag-speed-from-polar | approved | 6 of 6 |  |
 | minimum-sink-speed-from-polar | approved | 6 of 6 |  |
 | motor-propeller-equilibrium | draft | 10 of 10 |  |
@@ -146,11 +146,11 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | static-margin-probe | approved | 6 of 6 |  |
 | static-thrust-to-weight | draft | 11 of 11 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | thrust-at-airspeed-from-coefficient | draft | 2 of 4 | propeller-speed (motor-propeller-equilibrium: not approved); thrust-coefficient (propeller-table-lookup: not approved; advance-ratio-from-speed: not approved via propeller-table-lookup; motor-propeller-equilibrium: not approved via propeller-table-lookup, advance-ratio-from-speed) |
-| turn-sideslip | draft | 6 of 7 | wing-loading (not approved) |
+| turn-sideslip | draft | 7 of 7 |  |
 | vertical-tail-arm | approved | 2 of 2 |  |
 | vertical-tail-volume | approved | 4 of 4 |  |
 | weight-from-mass | approved | 2 of 2 |  |
-| wing-loading | draft | 3 of 3 |  |
+| wing-loading | approved | 3 of 3 |  |
 
 ### Unmapped inputs
 
