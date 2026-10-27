@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: horizontal-tail-volume
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 inputs: {airplane: airplane, s_ref: wing-reference-area, c_mac: mean-aerodynamic-chord, l_h_cg: horizontal-tail-arm}
 outputs: {v_h: horizontal-tail-volume}
 applications:
@@ -71,11 +71,17 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-27): V_H = S_H · l_H,CG / (S_ref · c_MAC) (Drela Design Rules Eq. 3, band Eq. 4
+> in the evaluation; Sadraey §6.4), with the reference chord c_MAC rather than Drela's S/b (decision 2026-10-27,
+> #1273; difference declared: ≤ a few per cent for straight-tapered wings), the arm from the design CG (approved
+> [[horizontal-tail-arm]]), S_ref and c_MAC from the approved [[airplane-geometry]], and S_H as AeroSandbox's
+> `Wing.area(type="planform", include_centerline_distance=True)` of the one horizontal_tail surface — the gross
+> planform through the fuselage, the same convention as the reference wing (#1262). One value per neutral-point
+> world (A11). V-tail share S·cos²ν with #1208. No kernel implementation yet.

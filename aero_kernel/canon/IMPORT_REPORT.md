@@ -107,7 +107,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | endurance-and-range | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
 | endurance-and-range-optimum | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
 | horizontal-tail-arm | approved | 2 of 2 |  |
-| horizontal-tail-volume | draft | 4 of 4 |  |
+| horizontal-tail-volume | approved | 4 of 4 |  |
 | induced-drag-factor | draft | 0 of 2 | aspect-ratio (not approved); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
 | lateral-static-stability-app | approved | 6 of 6 |  |
 | lateral-static-stability-md | approved | 6 of 6 |  |
