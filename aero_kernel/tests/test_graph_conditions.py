@@ -55,12 +55,13 @@ FACT_NAMES = (
     "has_aileron",
     "has_elevator",
     "has_flap",
+    "has_no_aileron",
     "has_rudder",
     "has_separate_flap_and_aileron",
     "has_vertical_tail",
 )
 ALL = WhenFacts(**dict.fromkeys(FACT_NAMES, True))
-NONE = WhenFacts(**dict.fromkeys(FACT_NAMES, False))
+NONE = WhenFacts(**{**dict.fromkeys(FACT_NAMES, False), "has_no_aileron": True})
 
 
 def test_an_aircraft_without_wings_has_no_facts() -> None:
@@ -86,6 +87,30 @@ def test_an_aircraft_without_wings_has_no_facts() -> None:
 def test_has_aileron_goes_by_the_role_of_the_device(role: str, expected: bool) -> None:
     held = facts({"w": wing(sec(0, 0, 0.2, role), sec(0, 0.5, 0.2))})
     assert held.has_aileron is expected
+
+
+@pytest.mark.parametrize(
+    ("role", "expected"),
+    [
+        ("aileron", False),
+        ("flaperon", False),
+        ("elevon", False),
+        ("flap", True),
+        ("elevator", True),
+        ("rudder", True),
+        ("stabilator", True),
+        (None, True),
+    ],
+)
+def test_has_no_aileron_is_the_complement_of_has_aileron(role: str | None, expected: bool) -> None:
+    held = facts({"w": wing(sec(0, 0, 0.2, role), sec(0, 0.5, 0.2))})
+    assert held.has_no_aileron is expected
+    assert held.has_no_aileron is not held.has_aileron
+
+
+def test_an_aircraft_without_wings_has_no_aileron() -> None:
+    assert facts(None).has_no_aileron is True
+    assert facts({}).has_no_aileron is True
 
 
 def test_a_control_surface_name_is_not_a_role() -> None:

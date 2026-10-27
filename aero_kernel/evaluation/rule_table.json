@@ -51,8 +51,7 @@
       "id": "horizontal-tail-volume",
       "title": "Horizontal tail volume",
       "quantity": {
-        "slug": "horizontal-tail-volume",
-        "planned": "#1273"
+        "slug": "horizontal-tail-volume"
       },
       "unit": "1",
       "band": {
@@ -212,8 +211,7 @@
       "id": "turn-sideslip",
       "title": "Sideslip in the steady turn (aircraft without ailerons)",
       "quantity": {
-        "slug": "turn-sideslip",
-        "planned": "#1275"
+        "slug": "turn-sideslip"
       },
       "unit": "deg",
       "band": {

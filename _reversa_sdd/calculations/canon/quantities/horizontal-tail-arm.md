@@ -20,3 +20,5 @@ Distance along x from the design CG ([[centre-of-gravity-design]] = x_NP − SM_
 **Unit.** `m`
 
 **Produced by.** [[horizontal-tail-arm]]
+
+**Used by.** [[horizontal-tail-volume]]

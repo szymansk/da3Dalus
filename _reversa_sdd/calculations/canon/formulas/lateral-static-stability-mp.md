@@ -5,7 +5,7 @@ kind: procedure
 tool: AVL
 shape: law
 status: approved
-output: dihedral-effect-mp, weathercock-stability-mp, spiral-criterion-mp, spiral-doubling-time-mp
+output: dihedral-effect-mp, weathercock-stability-mp, spiral-criterion-mp, spiral-doubling-time-mp, roll-due-to-yaw-rate-mp
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -24,6 +24,7 @@ inputs:
   v: minimum-sink-speed
 outputs:
   c_l_beta: dihedral-effect-mp
+  c_l_r: roll-due-to-yaw-rate-mp
   c_n_beta: weathercock-stability-mp
   e_spiral: spiral-criterion-mp
   t2_spiral: spiral-doubling-time-mp
@@ -41,7 +42,7 @@ lambda_s    = -(g / V) * E_spiral / (C_l_beta * C_n_p - C_n_beta * C_l_p)   # sp
 T_2,spiral  = ln 2 / lambda_s    if lambda_s > 0   (time to double; stable spiral: no doubling, report T_half)
 ```
 
-**Produces** [[dihedral-effect-mp]] · [[weathercock-stability-mp]] · [[spiral-criterion-mp]] · [[spiral-doubling-time-mp]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[centre-of-gravity-design]] · [[minimum-sink-speed]]
+**Produces** [[dihedral-effect-mp]] · [[roll-due-to-yaw-rate-mp]] · [[weathercock-stability-mp]] · [[spiral-criterion-mp]] · [[spiral-doubling-time-mp]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[centre-of-gravity-design]] · [[minimum-sink-speed]]
 
 **Kind: a procedure — derivatives from one solver evaluation.** The dihedral effect `C_lβ`
 (roll stability; negative rights the aircraft), the weathercock stability `C_nβ` (positive turns
@@ -59,6 +60,11 @@ unstable (Drela, desrules). The bands belong to the evaluation (A10).
 condition: a glider thermalling flies near minimum sink, where `C_L` is about `√3` times that at `V_md`
 (parabolic polar), so `C_lβ` and `C_lr` are larger and the spiral criterion differs. This is the speed at
 which a spiral tightening in the turn matters; the evaluation decides by control layout which value governs.
+
+**Added output (maintainer decision 2026-10-27, #1275).** The roll derivative with yaw rate
+[[roll-due-to-yaw-rate-mp]] (`C_lr`), which the procedure already evaluates for the spiral criterion, is now also
+an output: [[turn-sideslip]] needs `κ = −C_lr/C_lβ` from the same AVL run (one producer, ADR 0022). Output added by
+maintainer decision 2026-10-27, #1275; the entry's approval is unchanged.
 
 **Values, not verdicts (A10).** The RC bands — dihedral 2–7° by wing position and control,
 Lennon's spiral-stability margin by class — belong to the evaluation.

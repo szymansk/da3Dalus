@@ -7,7 +7,7 @@ role: output
 tags:
   - canon/quantity
   - discipline/lateral
-  - point/minimum-sink
+  - stage/stability-structure
   - role/output
 type: scalar
 ---
@@ -21,3 +21,5 @@ Rolling-moment derivative with sideslip; negative rights the aircraft from a ban
 **Produced by.** [[lateral-static-stability-mp]]
 
 **Authority.** AVL for every layout, not validated (K27, 2026-10-05); evaluated at the circling condition V_mp (#1309).
+
+**Used by.** [[turn-sideslip]]

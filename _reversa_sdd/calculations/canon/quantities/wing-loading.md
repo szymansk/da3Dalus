@@ -21,4 +21,4 @@ Weight per reference area; produced independently in three places (flight envelo
 
 **Produced by.** [[wing-loading]]
 
-**Used by.** [[minimum-drag-speed-closed-form]]
+**Used by.** [[minimum-drag-speed-closed-form]] · [[turn-sideslip]]
