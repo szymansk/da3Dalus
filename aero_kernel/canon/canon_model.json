@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b2f20a1134526e7e717e4c3cce9cedd8cef097d9dae543a1273c5096ea31bf85",
+  "content_hash": "sha256:73fe0f94ce424201be8e6a92f76ceb30fbd471108c106d02e8f14a7e169d3814",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1388,6 +1388,45 @@
           "postconditions": [],
           "preconditions": [],
           "tool": "GEO",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "horizontal-tail-volume": {
+          "applications": [
+            {
+              "bind": {
+                "airplane": "calc:airplane",
+                "c_mac": "calc:mean-aerodynamic-chord",
+                "l_h_cg": "calc:horizontal-tail-arm",
+                "s_ref": "calc:wing-reference-area"
+              },
+              "given": null,
+              "id": "with_horizontal_tail",
+              "produce": {
+                "v_h": "calc:horizontal-tail-volume"
+              },
+              "when": "has_horizontal_tail"
+            }
+          ],
+          "cost": "instant",
+          "direction": "analysis",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "airplane": "calc:airplane",
+            "c_mac": "calc:mean-aerodynamic-chord",
+            "l_h_cg": "calc:horizontal-tail-arm",
+            "s_ref": "calc:wing-reference-area"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "v_h": "calc:horizontal-tail-volume"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
           "uncertainty": null,
           "variables": [],
           "worlds": []
@@ -4683,6 +4722,23 @@
           "type": "scalar",
           "uncertainty": null,
           "unit": "m"
+        },
+        "horizontal-tail-volume": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "longitudinal",
+          "group": null,
+          "module": null,
+          "point": "none",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "V_H",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
         },
         "induced-drag-factor": {
           "at_most": null,

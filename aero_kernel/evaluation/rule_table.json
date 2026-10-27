@@ -51,8 +51,7 @@
       "id": "horizontal-tail-volume",
       "title": "Horizontal tail volume",
       "quantity": {
-        "slug": "horizontal-tail-volume",
-        "planned": "#1273"
+        "slug": "horizontal-tail-volume"
       },
       "unit": "1",
       "band": {
