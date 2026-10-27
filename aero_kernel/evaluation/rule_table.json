@@ -211,8 +211,7 @@
       "id": "turn-sideslip",
       "title": "Sideslip in the steady turn (aircraft without ailerons)",
       "quantity": {
-        "slug": "turn-sideslip",
-        "planned": "#1275"
+        "slug": "turn-sideslip"
       },
       "unit": "deg",
       "band": {

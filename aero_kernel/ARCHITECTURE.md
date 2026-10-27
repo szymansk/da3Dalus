@@ -482,7 +482,8 @@ quantity.
     surface (role `aileron` or `elevon`) — flaperons never count toward it (maintainer, 2026-10-17, D10). Without ailerons the roll quantities are `not_applicable`, code `condition_not_met`.
     **Evaluation** (`graph.facts_from_geometry`), from `trailing_edge_device.role` only (never
     `control_surface`, never a name); a device is one `(wing key, x_sec index)`:
-    - `has_aileron`: some device has role `aileron`, `flaperon` or `elevon`.
+    - `has_aileron`: some device has role `aileron`, `flaperon` or `elevon`; `has_no_aileron` is its
+      complement (the vocabulary has no negation; user: `turn-sideslip`, #1275).
     - `has_separate_flap_and_aileron`: some device has role `flap` and some device has role `aileron` or
       `elevon`. Flaperons are ignored for it; a mixed set (flaps, ailerons and flaperons) needs no special
       rule (KISS, D10).

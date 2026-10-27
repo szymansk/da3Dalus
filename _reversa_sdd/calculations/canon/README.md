@@ -542,6 +542,7 @@ nicht als unbenötigter Code" (maintainer, 2026-10-17).
 | term | holds when |
 |---|---|
 | `has_aileron` | the geometry has at least one control surface that acts as an aileron: trailing-edge devices with `role` `aileron`, `flaperon` or `elevon`. Without it the roll quantities are `not_applicable` (`roll-rate`, `roll-rate-cruise-target`, `aileron-deflection-required`) |
+| `has_no_aileron` | the complement of `has_aileron`: no trailing-edge device with `role` `aileron`, `flaperon` or `elevon`. The vocabulary has no negation (maintainer, 2026-10-27, #1275: "bei `when` bleiben und die Anzahl an Mechanismen klein halten"), so the complement is one term (`turn-sideslip`) |
 | `has_horizontal_tail` | a horizontal_tail or v_tail surface (surface_type, #1187); a V-tail counts as horizontal tail (ontology term, no using entry yet) |
 | `has_separate_flap_and_aileron` | a pure flap (`role` `flap`) and an aileron-acting surface (`role` `aileron` or `elevon`); flaperons do not count — "Man hat entweder Flaperons oder Ailerons und Flaps" (maintainer, 2026-10-17, D10) (`butterfly-approach`) |
 | `has_vertical_tail` | the aircraft has a fin or a V-tail behind the main wing; winglets or a centre fin on a tailless wing do not count (`spiral-parameter`, `vertical-tail-volume`). Evaluated from surface_type (vertical_tail or v_tail), #1187 |

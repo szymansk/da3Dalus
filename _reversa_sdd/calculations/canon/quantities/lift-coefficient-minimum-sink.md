@@ -20,4 +20,4 @@ The lift coefficient at the optimum of [[minimum-sink-speed-from-polar]].
 
 **Produced by.** [[minimum-sink-speed-from-polar]]
 
-**Used by.** [[linear-lift-curve-inverse]]
+**Used by.** [[linear-lift-curve-inverse]] · [[turn-sideslip]]

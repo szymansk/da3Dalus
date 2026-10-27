@@ -47,6 +47,7 @@ def facts(**overrides: bool) -> WhenFacts:
         "has_aileron": False,
         "has_elevator": False,
         "has_flap": False,
+        "has_no_aileron": True,
         "has_rudder": False,
         "has_separate_flap_and_aileron": False,
         "has_vertical_tail": False,

@@ -298,4 +298,4 @@ def test_every_formula_but_the_built_ones_is_not_implemented_at_build_time() -> 
     }
     implemented = IMPLEMENTED
     assert set(build.report.not_implemented) == declared - implemented
-    assert len(build.report.not_implemented) == 63 - len(IMPLEMENTED)
+    assert len(build.report.not_implemented) == 64 - len(IMPLEMENTED)
