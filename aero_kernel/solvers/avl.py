@@ -45,6 +45,7 @@ from aero_kernel.solvers.avl_writer import (
     airfoil_file_name,
     avl_commands,
     avl_geometry,
+    avl_lateral_commands,
     avl_roll_commands,
     body_file_name,
     control_order,
@@ -773,13 +774,15 @@ class AvlAdapter(SolverAdapter):
     ) -> AvlLateral:
         """Find the lateral-directional stability-axis derivatives at a lift coefficient (canon ``lateral-static-stability-*``).
 
-        One run of AVL on the declared mesh, the fuselages as bodies, the moment and rotation
+        One run of AVL on the declared mesh, the flaps of the configuration held at their deflection
+        (the symmetric ``flap`` control of the steady roll, linear in the deflection), the fuselages as bodies, the moment and rotation
         reference at ``x_cg`` (y and z are the airplane's own reference point). AVL prints the
         derivatives in its default stability axes. The bodies are round and axisymmetric in AVL, so
         every fuselage is replaced by the round body of the same cross-section area; that is declared.
 
         Args:
-            airplane: The validated geometry, devices at rest, with one main wing.
+            airplane: The validated geometry with one main wing; flaps as configured, any other
+                device at rest.
             cl: The lift coefficient of the operating point.
             x_cg: x of the moment reference in m (geometry frame, aft positive).
 
@@ -793,14 +796,26 @@ class AvlAdapter(SolverAdapter):
                 ``internal``).
         """
         self.require_available()
-        refuse_deflected_devices(airplane, "AVL", flaps_supported=False)
+        refuse_deflected_devices(airplane, "AVL", flaps_supported=True)
+        flaps = flap_segments(airplane)
+        flap_deg = _common_flap_deflection(flaps)
         reference = main_wing_properties(airplane)
         numbers: dict[Airfoil, int] = {}
 
         def number(airfoil: Airfoil) -> int:
             return numbers.setdefault(airfoil, len(numbers))
 
-        surfaces = mesh_surfaces(airplane, N_SPAN, number, join_tolerance_m=self.join_tolerance_m())
+        surfaces = mesh_surfaces(
+            airplane,
+            N_SPAN,
+            number,
+            drive_flaps=bool(flaps),
+            join_tolerance_m=self.join_tolerance_m(),
+        )
+        if flaps:
+            # a held flap splits the wing at its hinge, as for the steady roll (Drela's rule 3)
+            main, *others = surfaces
+            surfaces = (*split_at_hinge(main, SPLIT_N_CHORD), *others)
         bodies = mesh_bodies(airplane)
         contours = await self._contours(tuple(numbers))
         xyz_ref = (x_cg, airplane.xyz_ref[1], airplane.xyz_ref[2])
@@ -808,7 +823,7 @@ class AvlAdapter(SolverAdapter):
             surfaces,
             contours,
             (N_CHORD, N_SPAN),
-            avl_commands(cl, CORE_RATIO),
+            avl_lateral_commands(cl, CORE_RATIO, order=control_order(surfaces), flap_deg=flap_deg),
             reference,
             xyz_ref,
             bodies,
@@ -821,6 +836,14 @@ class AvlAdapter(SolverAdapter):
         if abs(output.cl - cl) > config().avl_cl_tolerance.value:
             msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
             raise RuntimeError(msg)
+        if flap_deg:
+            flap_echo = parse_flap_echo(stdout)
+            if (
+                flap_echo is None
+                or abs(flap_echo - flap_deg) > config().avl_control_echo_tolerance.value
+            ):
+                msg = f"the vortex lattice echoed the flap at {flap_echo}, not the commanded {flap_deg}"
+                raise RuntimeError(msg)
         return AvlLateral(
             c_l_beta=output.c_l_beta,
             c_n_beta=output.c_n_beta,
@@ -828,5 +851,5 @@ class AvlAdapter(SolverAdapter):
             c_n_p=output.c_n_p,
             c_l_r=output.c_l_r,
             c_n_r=output.c_n_r,
-            warnings=tuple(_body_warnings(bodies)),
+            warnings=(*_flap_warnings(flaps), *_body_warnings(bodies)),
         )

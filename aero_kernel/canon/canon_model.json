@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:77d009ea17dcb842fcb4e306749b40e595eef0bc544e989b0c7200f6b4a921e6",
+  "content_hash": "sha256:e6779a21938ffddbc9334a143274548414f41c0a0fefbc0c968f3ce1562d41ea",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1470,7 +1470,7 @@
           "applications": [
             {
               "bind": {
-                "airplane": "calc:airplane",
+                "airplane": "calc:airplane-landing",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "rho": "calc:air-density",
@@ -1478,7 +1478,7 @@
                 "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
-              "id": "default",
+              "id": "approach",
               "produce": {
                 "c_l_beta": "calc:dihedral-effect-app",
                 "c_n_beta": "calc:weathercock-stability-app",

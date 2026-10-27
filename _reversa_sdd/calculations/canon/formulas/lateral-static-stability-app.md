@@ -27,6 +27,9 @@ outputs:
   c_n_beta: weathercock-stability-app
   e_spiral: spiral-criterion-app
   t2_spiral: spiral-doubling-time-app
+applications:
+  - id: approach
+    bind: {airplane: airplane-landing}
 ---
 
 # Static lateral-directional stability on approach
@@ -41,7 +44,7 @@ lambda_s    = -(g / V) * E_spiral / (C_l_beta * C_n_p - C_n_beta * C_l_p)   # sp
 T_2,spiral  = ln 2 / lambda_s    if lambda_s > 0   (time to double; stable spiral: no doubling, report T_half)
 ```
 
-**Produces** [[dihedral-effect-app]] · [[weathercock-stability-app]] · [[spiral-criterion-app]] · [[spiral-doubling-time-app]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[centre-of-gravity-design]] · [[approach-speed]]
+**Produces** [[dihedral-effect-app]] · [[weathercock-stability-app]] · [[spiral-criterion-app]] · [[spiral-doubling-time-app]]  ·  **from** [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[centre-of-gravity-design]] · [[approach-speed]]
 
 **Kind: a procedure — derivatives from one solver evaluation.** The dihedral effect `C_lβ`
 (roll stability; negative rights the aircraft), the weathercock stability `C_nβ` (positive turns
@@ -53,6 +56,8 @@ book). Dutch roll and roll time constant need inertias and stay out (dynamics la
 The time to double is what Sadraey limits (§12.3.3, Tab. 12.15, class I: ≥ 12–20 s level 1, ≥ 8 s
 level 2, ≥ 4 s level 3); the sign alone is not a requirement — most aircraft are mildly spirally
 unstable (Drela, desrules). The bands belong to the evaluation (A10).
+
+**The approach point binds the landing configuration (maintainer decision 2026-10-27, #1277: "Gerne auch Seitenstabilität bei approach").** `V_app = k · V_S,LDG` comes from the landing configuration ([[approach-speed]]), so the derivatives at that speed are those of the same airplane: `airplane-landing`, the flaps at `flap-deflection-landing` ([[airplane-configuration]]), as for the approach roll of [[roll-rate]] (#1212) — one state, one computation. Without flaps `airplane-landing` is the airplane itself. The AVL run holds the flaps with the symmetric `flap` control of the roll (linear in the deflection, `avl_flap_linearised`, no separation); the moment reference stays the design CG of the clean airplane.
 
 **Two points.** Evaluated at `V_md` and on approach, because `C_lβ` and `C_lr` grow with `C_L`
 and `C_nβ` can fall at high angle of attack.
@@ -82,7 +87,7 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/lateral_static_stability_app.py` | EXACT | 🟢 | the derivatives come from one AVL run (`aero_kernel/solvers/avl.py`, `lateral_derivatives`) at `C_L = m g / (½ ρ V² S_ref)` with the kernel's `S_ref`, the moment and rotation reference at the design CG (y, z from the airplane), the fuselages as BODY. AVL's body is round and axisymmetric on a straight axis, so each fuselage is the round body of the same section area (the super-ellipse area, upper and lower half with their own exponents) on the axis through the area-weighted section centres (`aero_kernel/solvers/avl_body.py`); declared as `avl_body_equivalent_round`. `E = C_lβ·C_nr − C_nβ·C_lr`, `λ_s = −(g/V)·E/(C_lβ·C_np − C_nβ·C_lp)` from AVL's derivatives (both per `p'b/2V`, `r'b/2V`), `T_2 = ln 2/λ_s` for `λ_s > 0`; for `λ_s < 0` the halving time `−ln 2/|λ_s|`, negative, declared as `spiral_halving_time_reported`; no finite time (`λ_s = 0`, zero denominator) is an error. Decided by the lead (#1277): `E` keeps the unit 1/rad² (rate derivatives in the per-rad convention, as for κ in #1275) and a stable spiral keeps the negative-signed halving time with its declaration. No refined-mesh check of the lateral derivatives. Per neutral-point world, because the moment reference is the design CG. Binds the clean `airplane` with the approach speed `V_app` of the landing configuration (flapped), as the entry is written; #1212 binds the approach roll to `airplane-landing`, this entry stays on `airplane` until the maintainer decides |
+| `aero_kernel/formulas/lateral_static_stability_app.py` | EXACT | 🟢 | the derivatives come from one AVL run (`aero_kernel/solvers/avl.py`, `lateral_derivatives`) at `C_L = m g / (½ ρ V² S_ref)` with the kernel's `S_ref`, the moment and rotation reference at the design CG (y, z from the airplane), the fuselages as BODY. AVL's body is round and axisymmetric on a straight axis, so each fuselage is the round body of the same section area (the super-ellipse area, upper and lower half with their own exponents) on the axis through the area-weighted section centres (`aero_kernel/solvers/avl_body.py`); declared as `avl_body_equivalent_round`. `E = C_lβ·C_nr − C_nβ·C_lr`, `λ_s = −(g/V)·E/(C_lβ·C_np − C_nβ·C_lp)` from AVL's derivatives (both per `p'b/2V`, `r'b/2V`), `T_2 = ln 2/λ_s` for `λ_s > 0`; for `λ_s < 0` the halving time `−ln 2/|λ_s|`, negative, declared as `spiral_halving_time_reported`; no finite time (`λ_s = 0`, zero denominator) is an error. Decided by the lead (#1277): `E` keeps the unit 1/rad² (rate derivatives in the per-rad convention, as for κ in #1275) and a stable spiral keeps the negative-signed halving time with its declaration. No refined-mesh check of the lateral derivatives. Per neutral-point world, because the moment reference is the design CG. Binds `airplane-landing` (maintainer decision 2026-10-27, #1277): the AVL run holds the configuration's flaps with the symmetric `flap` control (`avl_flap_linearised`), as the steady roll does; a flapless airplane is unchanged |
 
 ## Approval
 

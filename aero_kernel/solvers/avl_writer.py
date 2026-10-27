@@ -28,6 +28,7 @@ __all__ = [
     "airfoil_file_name",
     "avl_commands",
     "avl_geometry",
+    "avl_lateral_commands",
     "avl_roll_commands",
     "body_file_name",
     "control_order",
@@ -245,6 +246,27 @@ def avl_geometry(
 def avl_commands(cl: float, core_ratio: float) -> str:
     """The OPER dialogue: vortex core ratio, ``C_L`` constraint, run, stability derivatives."""
     return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nx\nst\n\n\nquit\n"
+
+
+def avl_lateral_commands(
+    cl: float, core_ratio: float, *, order: Sequence[str] = (), flap_deg: float = 0.0
+) -> str:
+    """The OPER dialogue of the lateral derivatives: ``C_L`` constraint, held flap, run, derivatives.
+
+    The only control a lateral run holds is the symmetric flap of the configuration, at its
+    deflection; a file without controls gives the plain dialogue of :func:`avl_commands`.
+
+    Args:
+        cl: The lift coefficient.
+        core_ratio: The vortex core ratio.
+        order: The control names in AVL's numbering (:func:`control_order`), flap only.
+        flap_deg: The flap deflection in degrees.
+
+    Returns:
+        The command text.
+    """
+    held = "".join(f"d{index} d{index} {flap_deg!r}\n" for index, _ in enumerate(order, start=1))
+    return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\n{held}x\nst\n\n\nquit\n"
 
 
 def control_order(surfaces: Sequence[MeshSurface]) -> tuple[str, ...]:

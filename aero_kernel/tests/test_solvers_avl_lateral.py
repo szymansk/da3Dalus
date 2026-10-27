@@ -13,6 +13,7 @@ from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers.avl import AvlAdapter, AvlLateral, Contour
 from aero_kernel.tests.np_builders import CONVENTIONAL, airplane_with
+from aero_kernel.tests.test_solvers_avl_flap import FLAP, device, wing
 
 SCRIPT = """#!{python}
 import json, pathlib, re, sys
@@ -21,11 +22,19 @@ config = json.loads((here / "fake.json").read_text())
 geometry = pathlib.Path(sys.argv[1]).read_text()
 commands = sys.stdin.read()
 cl = float(re.search(r"a c (\\S+)", commands).group(1))
+order = []
+for name in re.findall(r"^CONTROL\\n(\\S+) ", geometry, re.MULTILINE):
+    if name not in order:
+        order.append(name)
+first = commands.split("\\nx\\n")[0]
+values = {{order[int(i) - 1]: float(v) for i, v in re.findall(r"^d(\\d+) d\\1 (\\S+)$", first, re.MULTILINE)}}
 (here / "seen.json").write_text(json.dumps({{"commands": commands, "geometry": geometry}}))
 if config.get("silent"):
     print(" nothing useful")
     sys.exit(0)
 print("  CLtot = %10.5f" % (cl + config.get("cl_offset", 0.0)))
+for name in ([] if config.get("no_echo") else order):
+    print("   %-15s = %12.5f" % (name, values[name] + config.get("echo_offset", 0.0)))
 print(" x' mom.  Cl'|    Cla =  -0.000000    Clb = %10.6f" % -0.05)
 print(" z' mom.  Cn'|    Cna =  -0.000000    Cnb = %10.6f" % 0.07)
 print(" x' mom.  Cl'|    Clp = %10.6f    Clq =  -0.000000    Clr = %10.6f" % (-0.55, 0.11))
@@ -134,3 +143,32 @@ async def test_a_deflected_device_is_refused() -> None:
         with pytest.raises(FormulaError) as raised:
             await adapter.lateral_derivatives(deflected, 0.5, 0.1)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+
+
+def flapped() -> AirplaneGeometry:
+    """A flap on the second panel, deflected to the landing angle of the fleet."""
+    return wing({1: device("flap", 0.8, 0.8, FLAP)})
+
+
+@pytest.mark.asyncio
+async def test_a_deflected_flap_is_held_by_the_flap_control_and_declared(fake: Path) -> None:
+    found = await lateral(flapped())
+    seen = json.loads((fake / "seen.json").read_text())
+    assert f"a c 0.6\nd1 d1 {FLAP}\nx\nst\n" in seen["commands"]
+    assert "CONTROL" in seen["geometry"].splitlines()
+    assert [w.code for w in found.warnings] == ["avl_flap_linearised"]
+    assert (found.c_l_beta, found.c_n_beta) == (-0.05, 0.07)
+
+
+@pytest.mark.asyncio
+async def test_a_flap_echoed_at_another_angle_is_a_defect_of_ours(fake: Path) -> None:
+    (fake / "fake.json").write_text(json.dumps({"echo_offset": 0.5}))
+    with pytest.raises(RuntimeError, match="echoed the flap"):
+        await lateral(flapped())
+
+
+@pytest.mark.asyncio
+async def test_a_flap_without_an_echo_is_a_defect_of_ours(fake: Path) -> None:
+    (fake / "fake.json").write_text(json.dumps({"no_echo": True}))
+    with pytest.raises(RuntimeError, match="echoed the flap at None"):
+        await lateral(flapped())

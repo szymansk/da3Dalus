@@ -7,11 +7,19 @@ import pytest
 from aero_kernel.context import Context, Value
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.lateral_static_stability_md import lateral_static_stability_md
+from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import KernelWarning, QuantityStatus, WarningSeverity
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.avl import AvlLateral
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
-from aero_kernel.tests.chain_builders import C_MAC, SM_TARGET, WORLD_X_NP, document, run_chain
+from aero_kernel.tests.chain_builders import (
+    C_MAC,
+    SM_TARGET,
+    WORLD_X_NP,
+    document,
+    fin,
+    run_chain,
+)
 from aero_kernel.tests.formula_builders import (
     STUB_SPEED_OF_SOUND,
     STUB_VISCOSITY,
@@ -240,3 +248,40 @@ async def test_an_adapter_failure_is_the_quantitys_error() -> None:
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.error is not None
     assert quantity.error.code == "avl_array_limit"
+
+
+def flapped_document() -> AirplaneGeometry:
+    """The fixture airplane with a flap on its first main-wing panel."""
+    dumped = document(fin()).model_dump(mode="json", exclude_none=True)
+    dumped["wings"]["main"]["x_secs"][0]["trailing_edge_device"] = {
+        "name": "flap",
+        "role": "flap",
+        "rel_chord_root": 0.8,
+        "rel_chord_tip": 0.8,
+    }
+    return AirplaneGeometry.model_validate(dumped)
+
+
+async def test_the_approach_point_is_evaluated_on_the_landing_configuration() -> None:
+    """Maintainer decision 2026-10-27 (#1277): flaps at the landing deflection at V_app, the others clean."""
+    run = await run_chain(
+        "dihedral-effect-app",
+        "dihedral-effect-md",
+        airplane=flapped_document(),
+        extra={"flap-deflection-landing": 30.0},
+    )
+    deflections: set[float | None] = set()
+    for call in run.avl.lateral_calls:
+        device = (call[0].wings or {})["main"].x_secs[0].trailing_edge_device
+        assert device is not None
+        deflections.add(device.deflection_deg)
+    assert deflections == {0.0, 30.0}
+    app = run.quantity("dihedral-effect-app")
+    assert app.status is QuantityStatus.OK, app
+
+
+async def test_the_approach_point_of_a_flapped_airplane_needs_the_landing_deflection() -> None:
+    run = await run_chain("dihedral-effect-app", airplane=flapped_document())
+    error = run.quantity("dihedral-effect-app").error
+    assert error is not None
+    assert error.detail["causes"] == [{"quantity": "airplane-landing", "code": "missing_input"}]

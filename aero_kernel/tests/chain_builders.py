@@ -40,6 +40,7 @@ async def run_chain(
     reference: MainWingProperties | None = None,
     opti: StubOpti | None = None,
     avl: StubAvl | None = None,
+    extra: dict[str, float] | None = None,
 ) -> ChainRun:
     """Evaluate quantities of the chain on the shipped canon with stub adapters (three NP worlds)."""
     geometry = StubGeometry(reference=reference)
@@ -47,7 +48,7 @@ async def run_chain(
     solvers = solvers_with(
         atmosphere=StubAtmosphere({0.0: RHO}), opti=stub_opti, avl=stub_avl, geometry=geometry
     )
-    values: dict[str, float] = {"aircraft-mass": MASS, "altitude": 0.0}
+    values: dict[str, float] = {"aircraft-mass": MASS, "altitude": 0.0, **(extra or {})}
     if target is not None:
         values["static-margin-target"] = target
     aircraft = AircraftInput.model_validate(

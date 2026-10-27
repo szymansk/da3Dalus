@@ -14,7 +14,7 @@ import pytest
 from aero_kernel import compute
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
 from aero_kernel.tests.engine_builders import request
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import FleetMember, flap_values, reference_document
 
 pytestmark = [pytest.mark.aero]
 
@@ -110,6 +110,14 @@ GOLDEN = {
         "spiral-criterion-mp": (0.005651143291999998, 0.005747741324000001, 0.005838151786000001),
         "spiral-doubling-time-mp": (-6.3565948508987455, -6.2057826369791815, -6.0691432369182),
         "roll-due-to-yaw-rate-mp": (0.187581, 0.186972, 0.186401),
+        "dihedral-effect-app": (-0.11211, -0.112147, -0.112181),
+        "weathercock-stability-app": (0.104331, 0.103376, 0.102481),
+        "spiral-criterion-app": (
+            0.0031651667940000017,
+            0.0032547406920000015,
+            0.003338640119000001,
+        ),
+        "spiral-doubling-time-app": (-8.06557909709055, -7.776385503427931, -7.51954205227241),
     },
     FleetMember.CHEKKER: {
         "vertical-tail-volume": (0.042546551629209804, 0.04191818550080524, 0.04137168394275927),
@@ -165,11 +173,11 @@ GOLDEN = {
 UPSTREAM = {
     FleetMember.BELEMNITOS: {"neutral-point": "unsupported_layout"},
 }
-# The approach speed of RV-7 needs the landing flap deflection, which the fleet run does not give.
+# The approach point of RV-7 binds the landing configuration, which needs the landing flap deflection.
 RV7_NEEDS_LANDING_DEFLECTION = tuple(s for s in SLUGS if s.endswith("-app"))
 
 
-async def run(member: FleetMember) -> ComputeResult:
+async def run(member: FleetMember, *, flaps: bool = True) -> ComputeResult:
     aircraft = AircraftInput.model_validate(
         {
             "airplane": reference_document(member),
@@ -177,6 +185,7 @@ async def run(member: FleetMember) -> ComputeResult:
                 "aircraft-mass": member.mass_kg,
                 "altitude": 0.0,
                 "static-margin-target": SM_TARGET,
+                **(flap_values(member) if flaps else {}),
             },
         }
     )
@@ -244,7 +253,7 @@ async def test_the_aircraft_the_kernel_cannot_compute_name_their_cause(member: F
 
 @pytest.mark.asyncio
 async def test_the_rv7_approach_point_needs_the_landing_deflection() -> None:
-    by_slug = {q.slug: q for q in (await run(FleetMember.RV7)).quantities}
+    by_slug = {q.slug: q for q in (await run(FleetMember.RV7, flaps=False)).quantities}
     for slug in RV7_NEEDS_LANDING_DEFLECTION:
         error = by_slug[slug].error
         assert error is not None
