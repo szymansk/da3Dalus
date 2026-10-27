@@ -4,7 +4,7 @@ entry: formula
 kind: law
 tool: APP
 shape: law
-status: draft
+status: approved
 output: rudder-roll-authority-md, rudder-roll-authority-mp
 source_status: SOURCED
 dimensional_check: BALANCES
@@ -14,7 +14,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
-  - status/draft
+  - status/approved
 inputs:
   v_v: vertical-tail-volume
   b_spiral_md: spiral-parameter-md
@@ -71,11 +71,15 @@ None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
-- [ ] **Dimensions** — the check balances
-- [ ] **Implementations** — all agree, or each deviation is declared and justified
-- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
-- [ ] **Inputs approved** — no formula is approvable before its inputs are
+- [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [x] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
+- [x] **Dimensions** — the check balances
+- [x] **Implementations** — all agree, or each deviation is declared and justified
+- [x] **Preconditions** — every binding condition holds, or the violation is ticketed
+- [x] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-10-27): Drela's rudder roll authority V̄_V·B (Design Rules Eq. 10, band 0.10…0.20 in
+> the evaluation) as a canon quantity — the canon computes, the evaluation judges (A10) — at both V_md and V_mp from
+> the approved [[vertical-tail-volume]] and [[spiral-parameter]]; in the evaluation V_mp governs (circling, as for the
+> spiral of a rudder-only aircraft). Applies when `has_no_aileron`; one value per neutral-point world (A11).
+> Inherits the strip-theory Γ_eq limitation. No kernel implementation yet.
