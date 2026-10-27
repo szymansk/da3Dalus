@@ -163,12 +163,14 @@ async def test_a_deflected_flap_is_held_by_the_flap_control_and_declared(fake: P
 @pytest.mark.asyncio
 async def test_a_flap_echoed_at_another_angle_is_a_defect_of_ours(fake: Path) -> None:
     (fake / "fake.json").write_text(json.dumps({"echo_offset": 0.5}))
+    airplane = flapped()
     with pytest.raises(RuntimeError, match="echoed the flap"):
-        await lateral(flapped())
+        await lateral(airplane)
 
 
 @pytest.mark.asyncio
 async def test_a_flap_without_an_echo_is_a_defect_of_ours(fake: Path) -> None:
     (fake / "fake.json").write_text(json.dumps({"no_echo": True}))
+    airplane = flapped()
     with pytest.raises(RuntimeError, match="echoed the flap at None"):
-        await lateral(flapped())
+        await lateral(airplane)
