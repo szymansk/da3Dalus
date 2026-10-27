@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b2f20a1134526e7e717e4c3cce9cedd8cef097d9dae543a1273c5096ea31bf85",
+  "content_hash": "sha256:321ccf39d13b62d38a4d6310e62f3227dbec4ba5c7805358ca27ddf31566c83e",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1540,6 +1540,7 @@
               "id": "default",
               "produce": {
                 "c_l_beta": "calc:dihedral-effect-mp",
+                "c_l_r": "calc:roll-due-to-yaw-rate-mp",
                 "c_n_beta": "calc:weathercock-stability-mp",
                 "e_spiral": "calc:spiral-criterion-mp",
                 "t2_spiral": "calc:spiral-doubling-time-mp"
@@ -1563,6 +1564,7 @@
           "optional": [],
           "outputs": {
             "c_l_beta": "calc:dihedral-effect-mp",
+            "c_l_r": "calc:roll-due-to-yaw-rate-mp",
             "c_n_beta": "calc:weathercock-stability-mp",
             "e_spiral": "calc:spiral-criterion-mp",
             "t2_spiral": "calc:spiral-doubling-time-mp"
@@ -3373,6 +3375,60 @@
           "variables": [],
           "worlds": []
         },
+        "turn-sideslip": {
+          "applications": [
+            {
+              "bind": {
+                "b_ref": "calc:wing-span",
+                "c_l_beta": "calc:dihedral-effect-mp",
+                "c_l_mp": "calc:lift-coefficient-minimum-sink",
+                "c_l_r": "calc:roll-due-to-yaw-rate-mp",
+                "g": "calc:gravity",
+                "rho": "calc:air-density",
+                "w_s": "calc:wing-loading"
+              },
+              "given": null,
+              "id": "without_aileron",
+              "produce": {
+                "beta_turn": "calc:turn-sideslip",
+                "kappa": "calc:turn-sideslip-gain"
+              },
+              "when": "has_no_aileron"
+            }
+          ],
+          "cost": "instant",
+          "direction": "analysis",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "b_ref": "calc:wing-span",
+            "c_l_beta": "calc:dihedral-effect-mp",
+            "c_l_mp": "calc:lift-coefficient-minimum-sink",
+            "c_l_r": "calc:roll-due-to-yaw-rate-mp",
+            "g": "calc:gravity",
+            "rho": "calc:air-density",
+            "w_s": "calc:wing-loading"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "beta_turn": "calc:turn-sideslip",
+            "kappa": "calc:turn-sideslip-gain"
+          },
+          "postconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "dihedral_effect_stabilising",
+              "on_violation": "error",
+              "parameter": "c_l_beta"
+            }
+          ],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
         "vertical-tail-arm": {
           "applications": [
             {
@@ -4408,10 +4464,10 @@
           "discipline": "lateral",
           "group": null,
           "module": null,
-          "point": "minimum-sink",
+          "point": null,
           "positive": null,
           "role": "output",
-          "stage": null,
+          "stage": "stability-structure",
           "symbol": "C_l_beta,mp",
           "type": "scalar",
           "uncertainty": null,
@@ -5534,6 +5590,23 @@
           "uncertainty": null,
           "unit": "m"
         },
+        "roll-due-to-yaw-rate-mp": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": null,
+          "positive": null,
+          "role": "output",
+          "stage": "stability-structure",
+          "symbol": "C_l_r,mp",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
         "roll-rate-approach": {
           "at_most": null,
           "checks": null,
@@ -6191,6 +6264,40 @@
           "role": "target",
           "stage": null,
           "symbol": "k_S,TD",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
+        "turn-sideslip": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "beta_turn",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "turn-sideslip-gain": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "lateral",
+          "group": null,
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "output",
+          "stage": null,
+          "symbol": "kappa",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1"

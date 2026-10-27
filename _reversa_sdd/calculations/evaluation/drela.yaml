@@ -158,7 +158,7 @@ rules:
 
   - id: turn-sideslip
     title: Sideslip in the steady turn (aircraft without ailerons)
-    quantity: {slug: turn-sideslip, planned: "#1275"}
+    quantity: {slug: turn-sideslip}
     unit: deg
     band: {max: 15.0}
     source: "Drela rule (11), Eq. 11"

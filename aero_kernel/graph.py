@@ -759,6 +759,8 @@ class WhenFacts(BaseModel):
         has_elevator: A device acts as elevator, elevon or ruddervator; a stabilator (an all-moving
             tail) has no hinge and counts for none of the hinge-moment terms.
         has_flap: A device acts as flap or flaperon.
+        has_no_aileron: No device acts as aileron, flaperon or elevon (the complement of
+            ``has_aileron``; the ``when`` vocabulary has no negation).
         has_rudder: A device acts as rudder or ruddervator.
         has_separate_flap_and_aileron: A flap and a distinct aileron or elevon exist; a flaperon
             counts as neither (D10).
@@ -770,6 +772,7 @@ class WhenFacts(BaseModel):
     has_aileron: bool
     has_elevator: bool
     has_flap: bool
+    has_no_aileron: bool
     has_rudder: bool
     has_separate_flap_and_aileron: bool
     has_vertical_tail: bool
@@ -794,6 +797,7 @@ class WhenFacts(BaseModel):
             "has_aileron": self.has_aileron,
             "has_elevator": self.has_elevator,
             "has_flap": self.has_flap,
+            "has_no_aileron": self.has_no_aileron,
             "has_rudder": self.has_rudder,
             "has_separate_flap_and_aileron": self.has_separate_flap_and_aileron,
             "has_vertical_tail": self.has_vertical_tail,
@@ -875,10 +879,12 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
         for index, x_sec in enumerate(wing.x_secs)
         if x_sec.trailing_edge_device is not None
     ]
+    has_aileron = any(role in AILERON_ROLES for _, role in devices)
     return WhenFacts(
-        has_aileron=any(role in AILERON_ROLES for _, role in devices),
+        has_aileron=has_aileron,
         has_elevator=any(role in _ELEVATOR_ROLES for _, role in devices),
         has_flap=any(role in _FLAP_ROLES for _, role in devices),
+        has_no_aileron=not has_aileron,
         has_rudder=any(role in _RUDDER_ROLES for _, role in devices),
         has_separate_flap_and_aileron=any(
             flap_role in _BUTTERFLY_FLAP_ROLES

@@ -149,7 +149,6 @@ def test_every_not_yet_computable_rule_names_its_ticket() -> None:
     assert planned == {
         "horizontal-tail-volume": "#1273",
         "rudder-roll-authority": "#1274",
-        "turn-sideslip": "#1275",
     }
 
 
