@@ -1,12 +1,23 @@
-"""Tail volumes: arm times area over the wing's area times its span, from quarter-chord to quarter-chord."""
+"""Tail volumes: arm times area over the wing's area times its span or MAC, the arms from the design CG."""
 
-from _example import S_FIN, S_TAIL, X_AC_FIN, X_AC_TAIL, b_ref, s_ref, x_ac_wing
+from _example import (
+    S_FIN,
+    S_TAIL,
+    X_AC_FIN,
+    X_AC_TAIL,
+    b_ref,
+    c_mac,
+    canon_default,
+    np_textbook,
+    s_ref,
+    x_ac_wing,
+)
 from _svg import Svg
 
 CAPTION = (
-    "Tail arms l_H,25 and l_V,25 run from the wing's quarter-chord MAC to the tail's; V_H and V_V "
-    "are arm times tail area over wing area times chord or span. Hand example. Arms from the design "
-    "CG (l_H,CG, l_V,CG, Drela's definition) follow with #1272."
+    "Tail arms l_H,CG and l_V,CG run from the design CG (x_NP - SM_target c_MAC) to the tail's "
+    "quarter-chord MAC, as Drela measures them (#1272); the tail volume coefficients V̄_H and V̄_V are "
+    "arm times tail area over wing area times c_MAC or span. Hand example, textbook neutral point."
 )
 
 SCALE = 330.0
@@ -16,8 +27,9 @@ OX, OY = 80.0, 180.0
 def build() -> str:
     """The figure as SVG text."""
     svg = Svg(900, 420, "Tail arms and tail volumes", CAPTION)
-    l_h = X_AC_TAIL - x_ac_wing()
-    l_v = X_AC_FIN - x_ac_wing()
+    x_cg = np_textbook() - canon_default("static-margin-target") * c_mac()
+    l_h = X_AC_TAIL - x_cg
+    l_v = X_AC_FIN - x_cg
     v_v = S_FIN * l_v / (s_ref() * b_ref())
 
     def px(x: float, y: float) -> tuple[float, float]:
@@ -48,14 +60,16 @@ def build() -> str:
         "fg-wing",
     )
     svg.rect(*px(X_AC_FIN - 0.05, -0.012), 0.1 * SCALE, 0.024 * SCALE, "fg-gap")
-    wx, wy = px(x_ac_wing(), 0)
+    ax, wy = px(x_ac_wing(), 0)
+    wx, _ = px(x_cg, 0)
     hx, hy = px(X_AC_TAIL, 0)
     fx, _ = px(X_AC_FIN, 0)
-    svg.circle(wx, wy, 4, "fg-accf")
+    svg.circle(ax, wy, 4, "fg-accf")
+    svg.circle(wx, wy, 5, "fg-badf")
     svg.circle(hx, hy, 4, "fg-accf")
     svg.circle(fx, wy, 4, "fg-badf")
-    svg.dim(wx, 380, hx, 380, f"l_H,25 = {l_h:.3f} m", shift=-8)
-    svg.dim(wx, 412, fx, 412, f"l_V,25 = {l_v:.3f} m", "fg-bad", "fg-badf", "fg-badt", -8)
+    svg.dim(wx, 380, hx, 380, f"l_H,CG = {l_h:.3f} m", shift=-8)
+    svg.dim(wx, 412, fx, 412, f"l_V,CG = {l_v:.3f} m", "fg-bad", "fg-badf", "fg-badt", -8)
     for x in (wx, hx):
         svg.line(x, wy, x, 380, "fg-thin fg-dash")
     svg.line(fx, wy, fx, 412, "fg-thin fg-dash")
@@ -63,15 +77,14 @@ def build() -> str:
     svg.text(hx, wy - tail_half * SCALE - 8, "H-tail", "fg-m", "middle")
     svg.text(fx + 24, wy + 26, "fin (top view: a line)", "fg-m")
     left = 560
-    svg.text(left, 80, "V_V = S_V l_V,25 / (S_ref b_ref)", "fg-h")
+    svg.text(left, 80, "V̄_V = S_V l_V,CG / (S_ref b_ref)", "fg-h")
     svg.text(
         left, 100, f"= {S_FIN} x {l_v:.3f} / ({s_ref():.3f} x {b_ref():.2f}) = {v_v:.4f}", "fg-t"
     )
-    svg.text(left, 126, "V_H = S_H l_H,25 / (S_ref c_MAC)", "fg-h")
-    svg.text(left, 146, f"S_H = {S_TAIL} m², l_H,25 = {l_h:.3f} m", "fg-t")
+    svg.text(left, 126, "V̄_H = S_H l_H,CG / (S_ref c_MAC)", "fg-h")
+    svg.text(left, 146, f"S_H = {S_TAIL} m², l_H,CG = {l_h:.3f} m", "fg-t")
     svg.circle(left + 5, 200, 4, "fg-accf")
     svg.text(left + 16, 204, "quarter-chord MAC of the wing and of the H-tail", "fg-m")
-    svg.circle(left + 5, 220, 4, "fg-badf")
-    svg.text(left + 16, 224, "quarter-chord MAC of the fin", "fg-m")
-    svg.text(left, 262, "Not Drela's arm yet: his l is measured from the CG.", "fg-badt")
+    svg.circle(left + 5, 220, 5, "fg-badf")
+    svg.text(left + 16, 224, "design CG = x_NP - SM_target c_MAC; fin quarter-chord MAC", "fg-m")
     return svg.render()
