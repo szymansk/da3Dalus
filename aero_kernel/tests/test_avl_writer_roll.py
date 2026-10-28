@@ -1,7 +1,6 @@
 """The AVL file and commands of the steady roll, and the reading of its output (ch. 8.8)."""
 
 import math
-from pathlib import Path
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry
@@ -13,9 +12,9 @@ from aero_kernel.solvers.avl_writer import (
     parse_roll_output,
 )
 from aero_kernel.tests.mesh_helpers import mesh_surfaces
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import REFERENCE_DIR, FleetMember, reference_document
 
-SNAPSHOTS = Path(__file__).resolve().parent / "reference" / "snapshots"
+SNAPSHOTS = REFERENCE_DIR / "snapshots"
 
 
 def written(member: FleetMember, *, roll: bool) -> str:

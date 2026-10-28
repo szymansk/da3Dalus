@@ -46,7 +46,7 @@ from dataclasses import dataclass
 import numpy as np
 from avl_binary import avl_path
 
-REFERENCE_DIR = pathlib.Path(__file__).resolve().parents[3] / "aero_kernel" / "tests" / "reference"
+REFERENCE_DIR = pathlib.Path(__file__).resolve().parents[3] / "aero_kernel" / "reference"
 FLEET = {"bryan": "bryan/bryan.airplane.json", "jaguar": "jaguar/flugzeug.json"}
 ROLL_ROLES = ("aileron", "flaperon", "elevon")
 CORE_RATIO = 0.25

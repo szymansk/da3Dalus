@@ -36,6 +36,7 @@ vi.mock("lucide-react", () => {
     GitBranch: icon,
     Bot: icon,
     Camera: icon,
+    FlaskConical: icon,
   };
 });
 
@@ -45,12 +46,15 @@ vi.mock("@/components/workbench/GuardedLink", () => ({
     href,
     children,
     className,
+    ...rest
   }: {
     href: string;
     children: React.ReactNode;
     className?: string;
+    "aria-label"?: string;
+    title?: string;
   }) => (
-    <a href={href} className={className}>
+    <a href={href} className={className} {...rest}>
       {children}
     </a>
   ),
@@ -136,6 +140,13 @@ describe("Header — versioning (gh-907)", () => {
     mockUseAeroplaneContext.mockReturnValue(defaultCtx());
     mockUseAeroplanes.mockReturnValue(defaultAeroplanes());
     mockSnapshot.mockResolvedValue({ id: 99, is_immutable: true });
+  });
+
+  it("offers the Expert View through its own menu entry (gh-1282)", () => {
+    render(<Header />);
+    const entry = screen.getByRole("link", { name: "Expert View" });
+    expect(entry).toHaveAttribute("href", "/expert");
+    expect(entry).toHaveAttribute("title", expect.stringContaining("experts only"));
   });
 
   // -------------------------------------------------------------------------

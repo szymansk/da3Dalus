@@ -15,6 +15,10 @@ text only. What the model does not carry stays in the Markdown entries: the pros
 The page also marks the implementation status in `aero_kernel` (an `@formula("<slug>")` in
 `aero_kernel/formulas/`) and the MVP (the upstream closure of `MVP_RESULTS`).
 
+The page is written twice, byte for byte: to the specification (the published artifact) and to the
+frontend's static assets, where the app's Expert View serves it in a connected mode (gh-1282); the
+check covers both.
+
 Run:   poetry run python scripts/build_canon_navigator.py
 Check: poetry run python scripts/build_canon_navigator.py --check   (CI: fails if stale)
 """
@@ -183,6 +187,8 @@ OPEN_TICKETS: dict[str, str] = {}
 
 CANON_DIR = REPO / "_reversa_sdd/calculations/canon"
 OUT_PATH = CANON_DIR / "navigator.html"
+#: The same page, served by the frontend's Expert View (gh-1282); one build writes and checks both.
+FRONTEND_PATH = REPO / "frontend/public/canon-navigator.html"
 MODEL_PATH = REPO / "aero_kernel/canon/canon_model.json"
 KERNEL_FORMULAS = REPO / "aero_kernel/formulas"
 RULES_PATH = REPO / "_reversa_sdd/calculations/evaluation/drela.yaml"
@@ -741,20 +747,30 @@ def build() -> tuple[str, dict]:
     return html, data
 
 
+def _shown(path: pathlib.Path) -> str:
+    """The path relative to the repository when it lies in it, else as given."""
+    return str(path.relative_to(REPO)) if path.is_relative_to(REPO) else str(path)
+
+
 def main(argv: list) -> None:
     html, data = build()
     for note in plausibility(data):
         print(f"plausibility: {note}", file=sys.stderr)
     if "--check" in argv:
-        current = OUT_PATH.read_text(encoding="ascii") if OUT_PATH.exists() else ""
-        if current != html:
+        stale = [
+            path
+            for path in (OUT_PATH, FRONTEND_PATH)
+            if not path.exists() or path.read_text(encoding="ascii") != html
+        ]
+        if stale:
             raise SystemExit(
-                f"{OUT_PATH.relative_to(REPO)} is stale: run "
+                f"{' and '.join(_shown(path) for path in stale)} {'is' if len(stale) == 1 else 'are'} stale: run "
                 "`poetry run python scripts/build_canon_navigator.py` and commit the result"
             )
         print("navigator is current")
         return
-    OUT_PATH.write_text(html, encoding="ascii")
+    for path in (OUT_PATH, FRONTEND_PATH):
+        path.write_text(html, encoding="ascii")
     done = sorted(f for f, v in data["F"].items() if v["impl"])
     print(
         f"{len(data['Q'])} quantities, {len(data['F'])} formulas, "
@@ -762,7 +778,7 @@ def main(argv: list) -> None:
     )
     print(f"{len(data['inputs'])} inputs, {len(data['outputs'])} final results")
     print(f"aero_kernel: {len(done)} formulas implemented; MVP quantities {len(data['mvp'])}")
-    print(f"-> {OUT_PATH.relative_to(REPO)}  ({len(html) / 1024:.0f} KB)")
+    print(f"-> {_shown(OUT_PATH)}, {_shown(FRONTEND_PATH)}  ({len(html) / 1024:.0f} KB)")
 
 
 if __name__ == "__main__":

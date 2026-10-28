@@ -1,7 +1,7 @@
 <title>Canon Navigator</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script>window.MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]},svg:{fontCache:'global'},startup:{typeset:false}};</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" integrity="sha512-si8sZ9hrLKf+1QHOzVXtT6F9GH5yK4VeeZ4pm0LOBFriwiXFL6Pu6+VMArzgh1sDJb5gKyktGtN0rMT16k1/cQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 :root{
   --bad:#C0392B;
@@ -166,6 +166,48 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 #figzoom p{font-size:13px;color:var(--ink-2);margin:10px 2px 0}
 .empty{color:var(--ink-3);font-size:13px;font-family:"STIX Two Text",Georgia,serif;
   font-style:italic;margin-top:40px}
+
+/* connected mode (gh-1282): states, panel, log; all hidden unless the page is opened with ?connected=1 */
+[hidden]{display:none !important}
+.cbadge circle{stroke:var(--bg);stroke-width:1.5}
+.cbadge text{fill:#fff;font:700 9px "IBM Plex Sans",sans-serif;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.cbadge[data-state=ok] circle{fill:var(--good)}
+.cbadge[data-state=warning] circle{fill:var(--mvp)}
+.cbadge[data-state=error] circle{fill:var(--bad)}
+.cbadge[data-state=computing] circle{fill:var(--sel);animation:cpulse 1s ease-in-out infinite}
+.cbadge[data-state=na] circle,.cbadge[data-state=skipped] circle{fill:var(--ink-3)}
+.node.st-error rect{stroke:var(--bad);stroke-width:2.5px}
+.node.st-warning rect{stroke:var(--mvp);stroke-width:2.5px}
+@keyframes cpulse{50%{opacity:.35}}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.kv{font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:500;margin:2px 0}
+table.worlds{border-collapse:collapse;font-family:"IBM Plex Mono",monospace;font-size:11.5px;margin-top:4px}
+table.worlds td{padding:1px 10px 1px 0;color:var(--ink-2)}
+.ovrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.ovrow label{font-size:12px;color:var(--ink-2);flex-basis:100%}
+.ovrow input{width:110px;padding:5px 7px;border:1px solid var(--line-2);border-radius:5px;background:var(--bg);color:var(--ink);font:inherit;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.ovrow button,.issue .seg button{padding:4px 9px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink);border-radius:5px;font:inherit;font-size:12px;cursor:pointer}
+.ovrow button:disabled{opacity:.45;cursor:not-allowed}
+.issue a{color:var(--sel)}
+#logpanel{--logh:170px;position:absolute;left:0;right:0;bottom:0;height:var(--logh);display:flex;flex-direction:column;background:var(--panel);border-top:1px solid var(--line-2);z-index:5}
+#logpanel.shut{height:auto}
+#logpanel.shut #loglines{display:none}
+#loghead{display:flex;align-items:center;gap:10px;padding:4px 10px;cursor:ns-resize;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-2);touch-action:none}
+#loghead b{color:var(--ink);font-weight:600}
+#loghead select,#loghead button{font:inherit;font-size:12px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink);border-radius:4px;padding:1px 6px;cursor:pointer}
+#logCount{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:11px}
+#loglines{flex:1;overflow-y:auto;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.45;padding:2px 0}
+.ll{display:flex;gap:10px;padding:0 10px;white-space:pre-wrap}
+.ll[data-q]{cursor:pointer}
+.ll[data-q]:hover{background:var(--sel-bg)}
+.ll .lt{color:var(--ink-3);flex:none}
+.ll .lv{flex:none;width:6.5em;font-weight:600}
+.ll .lq{flex:none;width:15em;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis}
+.ll .lm{flex:1;min-width:0;overflow-wrap:anywhere}
+.lv-DEBUG .lv{color:var(--ink-3)}.lv-INFO .lv{color:var(--unc)}.lv-WARNING .lv{color:var(--mvp)}.lv-ERROR .lv,.lv-CRITICAL .lv{color:var(--bad)}
+#confirmbox{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:60}
+#confirmbox .box{background:var(--panel);border-radius:8px;padding:18px;width:min(460px,92vw);max-height:80vh;overflow:auto}
+#confirmbox h2{font-family:"STIX Two Text",Georgia,serif;font-size:20px;margin:0 0 6px}
 @media (max-width:900px){
   .wrap{grid-template-columns:1fr;grid-template-rows:auto 62vh auto;height:auto}
   aside{border-right:none;border-bottom:1px solid var(--line)}
@@ -176,6 +218,23 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 <aside>
   <h1>Canon Navigator</h1>
   <p class="sub" id="counts"></p>
+
+  <div class="grp" id="conn" hidden>
+    <div class="kst" id="connLabel">Canon/kernel view (development), experts only</div>
+    <p class="stat" id="connAircraft"></p>
+    <div class="seg" style="margin-top:8px">
+      <button id="computeAll" title="Compute every quantity the kernel implements">Compute all</button>
+      <button id="clearAll" title="Forget the computed results of this page">Clear results</button>
+    </div>
+    <p class="stat" id="connStat"></p>
+    <div class="leg" style="margin-top:8px">
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="11" cy="7" r="5" fill="var(--good)"/></svg>computed</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="11" cy="7" r="5" fill="var(--mvp)"/></svg>computed with warnings (or a yellow verdict)</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="11" cy="7" r="5" fill="var(--bad)"/></svg>failed (or a red verdict)</span>
+      <span><svg width="22" height="14" aria-hidden="true"><circle cx="11" cy="7" r="5" fill="var(--sel)"/></svg>computing</span>
+      <span>no mark: not computed &#183; click a quantity to compute it and what it rests on</span>
+    </div>
+  </div>
 
   <div class="grp">
     <div class="lab">Implementation in aero_kernel</div>
@@ -250,11 +309,19 @@ main{position:relative;overflow:hidden;background:var(--bg)}
     <button id="zout" title="Zoom out" aria-label="Zoom out">&#8722;</button>
     <button id="zfit" title="Fit" aria-label="Fit">&#10530;</button>
   </div>
+  <div id="logpanel" hidden>
+    <div id="loghead"><b>Kernel log</b>
+      <label>from <select id="logLevel" aria-label="Lowest level shown"><option>DEBUG</option><option>INFO</option><option>WARNING</option><option>ERROR</option></select></label>
+      <button id="logClear">Clear</button><button id="logToggle" aria-expanded="true">Collapse</button>
+      <span id="logCount"></span></div>
+    <div id="loglines" role="log" aria-label="Kernel log"></div>
+  </div>
   <div class="hint">Drag to pan &#183; wheel to zoom &#183; click a quantity or a module</div>
 </main>
 
 <div class="info" id="info"></div>
 <div id="figzoom" role="dialog" aria-label="Figure"></div>
+<div id="confirmbox" role="dialog" aria-modal="true" aria-label="Confirm a long run" hidden></div>
 </div>
 
 <script>window.__DATA__=__CANON_DATA__;</script>
@@ -651,7 +718,7 @@ const toolOf=q=>[...new Set((prodBy[q]||[]).map(f=>F[f].tool||'APP'))];
 const nodeEls={};
 for(const q in Q){
   const {x,y}=P[q];
-  const g=el('g',{class:'node',transform:`translate(${x},${y})`,tabindex:'0',role:'button'});
+  const g=el('g',{class:'node',transform:`translate(${x},${y})`,tabindex:'0',role:'button','data-node':q});
   const cls = TARGETS.has(q)?'tgt' : INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
   const fill = cls==='tgt'?'var(--tgt-bg)' : cls==='inp'?'var(--inp-bg)' : cls==='out'?'var(--out-bg)' : cls==='hub'?'var(--hub-bg)':'var(--panel)';
   const ra={width:NW,height:NH,rx:5,fill,stroke:`var(--${cls})`};
@@ -730,7 +797,7 @@ for(const id in RULEBYID){
   if(n.q){ const p2=P[n.q], x1=p2.x+NW, y1=p2.y+NH/2, x2=p1.x, y2=p1.y+NH/2, dx=Math.max(30,Math.abs(x2-x1)/2);
     const e=el('path',{class:'edge xedge srcedge',d:`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`});
     cam.appendChild(e); edgeEls.push({e,a:n.q,b:id}); }
-  const g=el('g',{class:'node srcnode',transform:`translate(${p1.x},${p1.y})`,tabindex:'0',role:'button'});
+  const g=el('g',{class:'node srcnode',transform:`translate(${p1.x},${p1.y})`,tabindex:'0',role:'button','data-node':id});
   g.appendChild(el('rect',{width:RULEW,height:NH,rx:5,fill:'var(--panel)',stroke:planned?'var(--ink-3)':'var(--sel)','stroke-dasharray':planned?'4 3':'none'}));
   const t=el('text',{x:RULEW/2,y:NH/2,class:'srclab'}); t.textContent=n.label.length>36?n.label.slice(0,35)+'\u2026':n.label; g.appendChild(t);
   const tt=el('title',{}); tt.textContent=n.label+(planned?' \u2014 quantity planned '+n.quantity.planned:''); g.appendChild(tt);
@@ -1031,4 +1098,257 @@ fitWhenSized(30);
 addEventListener('load',()=>fitWhenSized(5));
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitWhenSized(3));
 
+</script>
+<script>
+// Connected mode (gh-1282, ADR 0030): ?connected=1&api=<base>&aircraft=<fleet id>. A click on a quantity
+// computes it with the kernel through the backend; without the parameter this block does nothing and the
+// page is exactly the published artifact. One graph implementation: the nodes above are decorated here.
+(function(){
+const QP=new URLSearchParams(location.search);
+if(QP.get('connected')!=='1') return;
+const API=(QP.get('api')||'').replace(/\/+$/,''), AIRCRAFT=QP.get('aircraft')||'';
+const RANK={DEBUG:10,INFO:20,WARNING:30,ERROR:40,CRITICAL:50};
+const GLYPH={ok:'✓',warning:'!',error:'×',computing:'…',na:'–',skipped:'○'};
+const STATE_TEXT={ok:'computed',warning:'computed with warnings',error:'failed',computing:'computing',na:'not applicable',skipped:'waiting for confirmation (long run)'};
+const S={res:{},verd:{},cause:{},inflight:new Set(),values:{},defaultsUsed:{},fleet:null,logs:[],minLevel:'DEBUG'};
+const $=id=>document.getElementById(id);
+const attr=s=>esc(s).replace(/"/g,'&quot;');
+const fmt=v=>Number.isFinite(v)?String(+v.toPrecision(6)):String(v);
+const unitOf=q=>Q[q]&&Q[q].unit&&Q[q].unit!=='1'?Q[q].unit:'';
+const requestable=q=>!!Q[q]&&STATUS[q]==='done';
+const givenValue=q=>!!Q[q]&&(INPUTS.has(q)||TARGETS.has(q))&&Q[q].type==='scalar';
+let cur=null;
+
+async function unwrap(r){
+  let j=null; try{ j=await r.json(); }catch(e){ j=null; }
+  if(!r.ok) throw new Error((j&&j.error&&j.error.message)||('HTTP '+r.status));
+  return j;
+}
+const getJson=path=>fetch(API+path).then(unwrap);
+const postJson=(path,body)=>fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(unwrap);
+
+// ---- node states: not computed (no mark) / computing / ok / warning / error (+ not applicable, skipped)
+function stateOf(id){
+  if(S.inflight.has(id)) return 'computing';
+  if(RULEBYID[id]){ const v=S.verd[id.slice(5)];
+    if(!v) return '';
+    if(v.severity==='bad') return 'error';
+    if(v.severity==='caution') return 'warning';
+    return v.status==='inside'?'ok':''; }
+  const r=S.res[id];
+  if(r){ if(r.status==='error') return 'error';
+    if(r.status==='ok') return (r.warnings||[]).length?'warning':'ok';
+    return r.status==='skipped'?'skipped':'na'; }
+  return S.cause[id]?'error':'';
+}
+function paintState(id){
+  const g=nodeEls[id]; if(!g) return;
+  const s=stateOf(id);
+  for(const k in GLYPH) g.classList.toggle('st-'+k,s===k);
+  let b=g.querySelector('.cbadge');
+  if(!s){ if(b) b.remove(); return; }
+  if(!b){ const w=+g.querySelector('rect').getAttribute('width');
+    b=el('g',{class:'cbadge',transform:`translate(${w/2},0)`});
+    b.appendChild(el('circle',{r:6})); b.appendChild(el('text',{})); g.appendChild(b); }
+  b.setAttribute('data-state',s); b.querySelector('text').textContent=GLYPH[s];
+}
+const paintAll=()=>{ for(const id in nodeEls) paintState(id); refreshStats(); refreshPanel(); };
+
+// ---- computing
+function downstreamOf(q){ const seen=new Set(), st=[q];
+  while(st.length){ const v=st.pop(); for(const [w] of succ[v]) if(Q[w]&&!seen.has(w)){ seen.add(w); st.push(w); } }
+  return seen; }
+function absorb(j,slugs,ms){
+  addLog({level:'INFO',logger:'expert-view',message:`compute ${slugs.length===1?slugs[0]:slugs.length+' quantities'}: ${(ms/1000).toFixed(1)} s`});
+  j.logs.forEach(addLog);
+  for(const u of j.provenance.defaults_used||[]) S.defaultsUsed[u.slug]=u;
+  if(j.input_errors.length) for(const s of slugs) S.res[s]={slug:s,status:'error',error:j.input_errors[0]};
+  for(const r of j.quantities){ S.res[r.slug]=r; delete S.cause[r.slug]; }
+  for(const v of j.verdicts) S.verd[v.rule_id]=v;
+  for(const r of j.quantities) if(r.error&&r.error.detail&&r.error.detail.causes)
+    for(const c of r.error.detail.causes) if(!S.res[c.quantity]) S.cause[c.quantity]=c.code;
+  if(j.needs_confirmation.length) askLongRun(j.needs_confirmation);
+}
+async function compute(slugs,includeLong){
+  slugs=[...new Set(slugs)].filter(requestable);
+  if(!slugs.length) return;
+  slugs.forEach(s=>{ S.inflight.add(s); delete S.res[s]; });
+  paintAll();
+  const t0=performance.now();
+  try{
+    absorb(await postJson('/canon/compute',{aircraft:{fleet:AIRCRAFT},quantities:slugs,values:S.values,include_long_runs:!!includeLong}),slugs,performance.now()-t0);
+  }catch(e){
+    for(const s of slugs) S.res[s]={slug:s,status:'error',error:{code:'request_failed',category:'internal',message:String(e.message||e),hint:'Check that the backend is running and reachable.',detail:{}}};
+    addLog({level:'ERROR',logger:'expert-view',message:'compute failed: '+(e.message||e)});
+  }finally{
+    slugs.forEach(s=>S.inflight.delete(s));
+    paintAll();
+  }
+}
+const computeAll=()=>compute(Object.keys(Q).filter(requestable),false);
+function invalidate(q){
+  const ds=downstreamOf(q), again=[...ds].filter(s=>S.res[s]&&S.res[s].status!=='skipped');
+  for(const s of ds){ delete S.res[s]; delete S.cause[s]; }
+  for(const id in S.verd){ const r=RULEBYID['rule:'+id]; if(r&&ds.has(r.q)) delete S.verd[id]; }
+  return again;
+}
+function setOverride(q,value){
+  if(value===null) delete S.values[q]; else S.values[q]=value;
+  const again=invalidate(q);
+  paintAll();
+  if(again.length) compute(again);
+}
+
+// ---- long runs: the kernel skips quantities that take minutes until the caller confirms
+function askLongRun(slugs){
+  const box=$('confirmbox');
+  box.innerHTML=`<div class="box"><h2>Long run</h2><p class="desc">These quantities run an external solver or an envelope sweep and can take minutes:</p>
+    <p class="mono">${slugs.map(esc).join('\n')}</p>
+    <div class="seg"><button id="runLong">Run (may take minutes)</button><button id="skipLong">Cancel</button></div></div>`;
+  box.hidden=false;
+  $('runLong').addEventListener('click',()=>{ box.hidden=true; compute(slugs,true); });
+  $('skipLong').addEventListener('click',()=>{ box.hidden=true; });
+}
+
+// ---- log panel: the kernel log records of each request, newest last
+const clock=()=>new Date().toISOString().slice(11,23);
+function addLog(rec){ S.logs.push({time:rec.time?rec.time.slice(11,23):clock(),...rec}); if(S.logs.length>2000) S.logs.shift(); renderLog(); }
+function logTarget(rec){
+  if(rec.quantity&&Q[rec.quantity]) return rec.quantity;
+  const f=rec.formula&&F[rec.formula]; return f&&f.out&&f.out.length&&Q[f.out[0]]?f.out[0]:'';
+}
+function renderLog(){
+  const box=$('loglines'), stick=box.scrollTop+box.clientHeight>=box.scrollHeight-8;
+  const rows=S.logs.filter(r=>(RANK[r.level]||0)>=RANK[S.minLevel]);
+  box.innerHTML=rows.map(r=>{ const t=logTarget(r);
+    return `<div class="ll lv-${attr(r.level)}"${t?` data-q="${attr(t)}" title="Select ${attr(t)}"`:''}><span class="lt">${esc(r.time)}</span><span class="lv">${esc(r.level)}</span><span class="lq">${esc(r.formula||r.quantity||r.logger.replace(/^aero_kernel\.?/,'')||'kernel')}</span><span class="lm">${esc(r.message)}</span></div>`; }).join('');
+  box.querySelectorAll('[data-q]').forEach(d=>d.addEventListener('click',()=>pick(d.dataset.q)));
+  if(stick) box.scrollTop=box.scrollHeight;
+  $('logCount').textContent=`${rows.length} of ${S.logs.length}`;
+}
+
+// ---- the panel of a selected quantity or rule
+function warningHtml(q,w){ const col=w.severity==='defect'?'var(--bad)':'var(--mvp)';
+  return `<div class="issue" style="border-color:${col}"><b style="color:${col}">${esc(w.severity)} · ${esc(w.code)}</b>`+
+    (w.origin&&w.origin!==q&&Q[w.origin]?` <a href="#" data-goto="${attr(w.origin)}">at ${esc(sym(w.origin))}</a>`:'')+
+    `<br>${esc(w.message)}${w.world?`<br><span class="sub">world ${esc(w.world)}</span>`:''}</div>`; }
+function causeTargets(e){
+  const out=[], causes=(e.detail&&e.detail.causes)||[];
+  for(const c of causes) if(Q[c.quantity]) out.push([c.quantity,sym(c.quantity)+' ('+c.code+')']);
+  const m=/^values\.(.+)$/.exec(e.input_path||'');
+  if(m&&Q[m[1]]) out.push([m[1],sym(m[1])+' (input)']);
+  else if((e.input_path||'').startsWith('airplane')&&Q.airplane) out.push(['airplane','airplane geometry (input)']);
+  return out;
+}
+function errorHtml(e){
+  let h=`<div class="issue" style="border-color:var(--bad)"><b style="color:var(--bad)">${esc(e.code)}</b> <span class="sub">(${esc(e.category)}${e.retryable?', retryable':''}${e.escalate?', escalate':''})</span><br>${esc(e.message)}<br><span class="sub">${esc(e.hint||'')}</span>`;
+  if(e.formula) h+=`<br><span class="sub">at formula ${esc(e.formula)}${e.application?' · application '+esc(e.application):''}${e.world?' · world '+esc(e.world):''}</span>`;
+  if(e.input_path) h+=`<br><span class="sub">input path ${esc(e.input_path)}</span>`;
+  const to=causeTargets(e);
+  if(to.length) h+=`<div class="seg" style="margin-top:8px">`+to.map(([s,l])=>`<button data-goto="${attr(s)}">Go to cause: ${esc(l)}</button>`).join('')+`</div>`;
+  return h+`</div>`;
+}
+function valueHtml(r){
+  const u=r.unit&&r.unit!=='1'?' '+esc(r.unit):'';
+  let h=r.interval
+    ? `<div class="kv">${fmt(r.interval.min)}…${fmt(r.interval.max)}${u}</div><table class="worlds">`+
+      Object.entries(r.interval.worlds).map(([w,v])=>`<tr><td>${esc(w)}</td><td>${fmt(v)}${u}</td></tr>`).join('')+`</table>`
+    : `<div class="kv">${fmt(r.value)}${u}</div>`;
+  return h+`<p class="sub" style="margin:4px 0 0">${esc(r.tool||'')} · application ${esc(r.application||'')}${r.from_cache?' · from cache':''}</p>`;
+}
+function verdictHtml(v){
+  const col=v.severity==='bad'?'var(--bad)':v.severity==='caution'?'var(--mvp)':'var(--good)';
+  return `<div class="issue" style="border-color:${col}"><b style="color:${col}">${esc(v.rule_id)}</b> <span class="sub">${esc(v.status.replace('_',' '))}${v.severity?' · '+(v.severity==='bad'?'red':'yellow'):''}</span><br>${esc(v.text)}</div>`;
+}
+function fleetValue(q){
+  if(!S.fleet) return undefined;
+  return q==='aircraft-mass'?S.fleet.mass_kg:S.fleet.flap_deflections[q];
+}
+function inputHtml(q){
+  const u=unitOf(q), ov=S.values[q], fv=fleetValue(q), df=DEFS[q], taken=S.defaultsUsed[q];
+  const used=ov!==undefined?[ov,'your override']:fv!==undefined?[fv,'fleet value']:df?[df.value,'default · '+df.basis]:null;
+  let h=used?`<div class="kv">${fmt(used[0])}${u?' '+esc(u):''}</div><p class="sub" style="margin:4px 0 0">${esc(used[1])}${taken&&ov===undefined&&fv===undefined?' · taken in the last computation':''}</p>`
+    :`<p class="sub" style="margin:0">Read from the aircraft geometry or not set; the kernel reports what is missing when a result needs it.</p>`;
+  if(givenValue(q)) h+=`<div class="ovrow"><label for="ovIn">Override${u?' ('+esc(u)+')':''}</label><input type="number" step="any" id="ovIn" value="${ov!==undefined?attr(ov):''}" placeholder="${used?attr(fmt(used[0])):''}">
+    <button id="ovSet">Apply</button><button id="ovReset"${ov===undefined?' disabled':''}>Reset</button></div>
+    <p class="sub" style="margin:4px 0 0">Applying recomputes the dependent quantities you have computed.</p>`;
+  return h;
+}
+function quantityPanel(q){
+  const head=`<div class="lab">Kernel value · development view</div>`;
+  if(INPUTS.has(q)||TARGETS.has(q)) return head+inputHtml(q);
+  if(!requestable(q)) return head+`<p class="sub" style="margin:0">Not in the kernel yet (${esc(STATUS[q]||'open')}); nothing to compute.</p>`;
+  const s=stateOf(q), r=S.res[q];
+  let h=head+`<p class="kst" style="border-color:var(--${s==='error'?'bad':s==='warning'?'mvp':s==='ok'?'good':'line-2'})">${s?esc(STATE_TEXT[s]):'not computed'}</p>`;
+  if(r&&r.status==='ok') h+=valueHtml(r);
+  if(r&&r.status!=='ok'&&r.reason) h+=`<p class="sub">${esc(r.reason.message)}</p>`;
+  if(r&&r.error) h+=errorHtml(r.error);
+  else if(!r&&S.cause[q]) h+=`<div class="issue" style="border-color:var(--bad)"><b style="color:var(--bad)">${esc(S.cause[q])}</b><br>This quantity caused a failure downstream. Compute it for the error at its formula.</div>`;
+  if(r&&r.warnings&&r.warnings.length) h+=`<div class="lab" style="margin-top:10px">Warnings · ${r.warnings.length}</div>`+r.warnings.map(w=>warningHtml(q,w)).join('');
+  const vs=Object.values(S.verd).filter(v=>v.quantity===q&&['inside','below','above','partly'].includes(v.status));
+  if(vs.length) h+=`<div class="lab" style="margin-top:10px">Drela · evaluation</div>`+vs.map(verdictHtml).join('');
+  return h+`<div class="seg" style="margin-top:10px"><button id="recompute"${s==='computing'?' disabled':''}>${r?'Recompute':'Compute'}</button></div>`;
+}
+function rulePanel(id){
+  const v=S.verd[id.slice(5)], r=RULEBYID[id];
+  let h=`<div class="lab">Verdict · development view</div>`;
+  if(v&&['inside','below','above','partly'].includes(v.status)) return h+verdictHtml(v);
+  if(v) return h+`<p class="sub" style="margin:0">${esc(v.explanation)}</p>`;
+  return h+`<p class="sub" style="margin:0">${r.q&&requestable(r.q)?'Not judged yet: compute '+esc(sym(r.q))+'.':'Not judged: the quantity is not in the kernel yet.'}</p>`;
+}
+function wire(box){
+  box.querySelectorAll('[data-goto]').forEach(a=>a.addEventListener('click',ev=>{ ev.preventDefault(); pick(a.dataset.goto); }));
+  const rc=box.querySelector('#recompute'); if(rc) rc.addEventListener('click',()=>compute([cur.id]));
+  const set=box.querySelector('#ovSet');
+  if(set) set.addEventListener('click',()=>{ const x=box.querySelector('#ovIn').value.trim(), n=Number(x);
+    if(x!==''&&Number.isFinite(n)) setOverride(cur.id,n); });
+  const rs=box.querySelector('#ovReset'); if(rs) rs.addEventListener('click',()=>setOverride(cur.id,null));
+}
+function refreshPanel(){
+  const old=$('kres'); if(!old||!cur) return;
+  if(old.dataset.for!==cur.id) return;
+  const focused=document.activeElement&&document.activeElement.id==='ovIn';
+  if(focused) return;
+  old.innerHTML=cur.rule?rulePanel(cur.id):quantityPanel(cur.id); wire(old);
+}
+function augment(id,rule){
+  cur={id,rule};
+  const h=info.querySelector('h2'); if(!h) return;
+  const box=document.createElement('div'); box.id='kres'; box.className='blk'; box.dataset.for=id;
+  box.innerHTML=rule?rulePanel(id):quantityPanel(id);
+  h.insertAdjacentElement('afterend',box); wire(box);
+}
+const baseSelect=window.select, baseSelectRule=window.selectRule;
+window.select=function(q){
+  baseSelect(q); augment(q,false);
+  if(requestable(q)&&!S.res[q]&&!S.inflight.has(q)) compute([q]);
+};
+window.selectRule=function(r){ baseSelectRule(r); augment(r.id,true); };
+
+// ---- sidebar
+function refreshStats(){
+  const c={ok:0,warning:0,error:0,skipped:0};
+  for(const q in S.res){ const s=stateOf(q); if(s in c) c[s]++; }
+  $('connStat').innerHTML=`<b>${Object.keys(S.res).length}</b> computed · ${c.ok} ok · ${c.warning} with warnings · ${c.error} failed · ${c.skipped} waiting`;
+}
+$('conn').hidden=false; $('logpanel').hidden=false;
+$('computeAll').addEventListener('click',computeAll);
+$('clearAll').addEventListener('click',()=>{ for(const k of ['res','verd','cause','defaultsUsed']) S[k]={}; paintAll(); });
+$('logLevel').addEventListener('change',ev=>{ S.minLevel=ev.target.value; renderLog(); });
+$('logClear').addEventListener('click',()=>{ S.logs=[]; renderLog(); });
+$('logToggle').addEventListener('click',()=>{ const p=$('logpanel'); p.classList.toggle('shut'); $('logToggle').setAttribute('aria-expanded',String(!p.classList.contains('shut'))); });
+{ const head=$('loghead'); let drag=null;
+  head.addEventListener('pointerdown',ev=>{ if(ev.target.closest('button,select')) return; drag={y:ev.clientY,h:$('logpanel').getBoundingClientRect().height}; head.setPointerCapture(ev.pointerId); });
+  head.addEventListener('pointermove',ev=>{ if(drag) $('logpanel').style.setProperty('--logh',Math.max(60,Math.min(innerHeight*0.8,drag.h+drag.y-ev.clientY))+'px'); });
+  head.addEventListener('pointerup',()=>{ drag=null; }); }
+$('connAircraft').textContent='Loading the aircraft…';
+getJson('/canon/fleet').then(fleet=>{
+  S.fleet=fleet.find(a=>a.id===AIRCRAFT);
+  $('connAircraft').innerHTML=S.fleet?`Aircraft <b>${esc(S.fleet.name)}</b> · mass ${fmt(S.fleet.mass_kg)} kg${Object.keys(S.fleet.flap_deflections).length?' · flaps':''}`
+    :`<span style="color:var(--bad)">Unknown aircraft “${esc(AIRCRAFT)}”</span>`;
+  $('computeAll').disabled=!S.fleet; refreshPanel();
+}).catch(e=>{ $('connAircraft').innerHTML=`<span style="color:var(--bad)">Backend not reachable: ${esc(e.message)}</span>`; $('computeAll').disabled=true; });
+refreshStats(); renderLog();
+if(typeof sel==='string'&&Q[sel]) augment(sel,false);
+})();
 </script>

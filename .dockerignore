@@ -14,3 +14,4 @@ azure-pipelines.yml
 exports
 docker/Dockerfile*
 external/**
+aero_kernel/tests/
