@@ -820,6 +820,7 @@ def count_documents(value: object) -> dict[str, Doc]:
 
     def doc(detail: Doc) -> Doc:
         wing = minimal_wing()
+        wing["surface_type"] = "main_wing"  # required by the schema since #1187
         wing["x_secs"][0] |= detail
         return airplane_with_wing(wing)
 
