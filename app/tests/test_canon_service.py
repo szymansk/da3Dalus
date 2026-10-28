@@ -115,15 +115,17 @@ async def test_the_response_carries_the_results_and_the_provenance(kernel: StubK
 
 @pytest.mark.asyncio
 async def test_an_unknown_aircraft_is_not_found(kernel: StubKernel) -> None:
+    request = request_of("stall-speed", fleet="nonexistent")
     with pytest.raises(NotFoundError):
-        await canon_service.compute_canon(request_of("stall-speed", fleet="nonexistent"))
+        await canon_service.compute_canon(request)
     assert kernel.calls == []
 
 
 @pytest.mark.asyncio
 async def test_a_quantity_requested_twice_is_a_validation_error(kernel: StubKernel) -> None:
+    request = request_of("stall-speed", "stall-speed")
     with pytest.raises(ValidationError):
-        await canon_service.compute_canon(request_of("stall-speed", "stall-speed"))
+        await canon_service.compute_canon(request)
 
 
 @pytest.mark.asyncio

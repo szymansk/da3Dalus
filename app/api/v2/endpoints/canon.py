@@ -16,7 +16,6 @@ router = APIRouter()
 
 @router.get(
     "/canon/fleet",
-    response_model=list[CanonFleetEntry],
     operation_id="list_canon_fleet",
     summary="List the reference aircraft of the canon/kernel view",
 )
@@ -27,7 +26,6 @@ def list_canon_fleet() -> list[CanonFleetEntry]:
 
 @router.post(
     "/canon/compute",
-    response_model=CanonComputeResponse,
     operation_id="compute_canon_quantities",
     summary="Compute canon quantities of a reference aircraft with the kernel",
     description=(

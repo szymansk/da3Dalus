@@ -43,7 +43,7 @@ export function openNavigator(query: string, route: Route) {
     pretendToBeVisual: true,
     beforeParse(window) {
       window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
+        const url = input instanceof Request ? input.url : input.toString();
         calls.push({
           url,
           init,
@@ -54,7 +54,7 @@ export function openNavigator(query: string, route: Route) {
         return {
           ok: status < 400,
           status,
-          json: async () => reply.body,
+          json: () => Promise.resolve(reply.body),
         } as Response;
       }) as typeof window.fetch;
     },

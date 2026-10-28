@@ -27,7 +27,7 @@ export function ExpertView() {
           Canon/kernel view (development), experts only
         </span>
         <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-          Aircraft
+          <span>Aircraft</span>
           <select
             aria-label="Aircraft"
             value={aircraftId ?? ""}
