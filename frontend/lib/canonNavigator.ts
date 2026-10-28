@@ -11,12 +11,18 @@ export const CANON_NAVIGATOR_PATH = "/canon-navigator.html";
  * The address of the connected navigator for one aircraft.
  * @param apiBase The backend's base address, as the app's fetcher uses it.
  * @param aircraftId A fleet identifier from GET /canon/fleet.
+ * @param basePath The app's base path (a preview stage serves it under one); a public file is not
+ *   prefixed by Next.js when it is the `src` of an iframe.
  */
-export function canonNavigatorUrl(apiBase: string, aircraftId: string): string {
+export function canonNavigatorUrl(
+  apiBase: string,
+  aircraftId: string,
+  basePath: string = process.env.NEXT_PUBLIC_BASE_PATH ?? "",
+): string {
   const query = new URLSearchParams({
     connected: "1",
     api: apiBase,
     aircraft: aircraftId,
   });
-  return `${CANON_NAVIGATOR_PATH}?${query.toString()}`;
+  return `${basePath}${CANON_NAVIGATOR_PATH}?${query.toString()}`;
 }
