@@ -321,6 +321,7 @@ def _seed_wing_with_ted(client: TestClient, name: str, *, db) -> str:
             }
         ],
         "nose_pnt": [0, 0, 0],
+        "surface_type": "main_wing",
     }
     resp = client.post(f"/aeroplanes/{aeroplane_id}/wings/w/from-wingconfig", json=wc)
     assert resp.status_code == 201, resp.text

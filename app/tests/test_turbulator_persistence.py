@@ -67,6 +67,7 @@ def _wing_dict_with_turbulator(
 ) -> dict:
     """Return a WingModel.from_dict-compatible dict with one segment carrying a turbulator."""
     return {
+        "surface_type": "main_wing",
         "symmetric": True,
         "x_secs": [
             {
@@ -97,6 +98,7 @@ def _wing_dict_with_turbulator(
 def _wing_dict_without_turbulator() -> dict:
     """Return a WingModel.from_dict-compatible dict with NO turbulator (backward compat)."""
     return {
+        "surface_type": "main_wing",
         "symmetric": True,
         "x_secs": [
             {
@@ -138,7 +140,9 @@ class TestWingXSecTurbulatorModel:
         db_session.add(aeroplane)
         db_session.flush()
 
-        wing = WingModel(name="main", symmetric=True, aeroplane_id=aeroplane.id)
+        wing = WingModel(
+            name="main", surface_type="main_wing", symmetric=True, aeroplane_id=aeroplane.id
+        )
         db_session.add(wing)
         db_session.flush()
 
@@ -188,7 +192,9 @@ class TestWingXSecTurbulatorModel:
         db_session.add(aeroplane)
         db_session.flush()
 
-        wing = WingModel(name="cascade_wing", symmetric=True, aeroplane_id=aeroplane.id)
+        wing = WingModel(
+            name="cascade_wing", surface_type="main_wing", symmetric=True, aeroplane_id=aeroplane.id
+        )
         db_session.add(wing)
         db_session.flush()
 
@@ -343,7 +349,7 @@ class TestConverterRoundTrip:
         assert wc.segments[0].turbulator.form == "dots"
 
         # to DB model
-        wing_model = wing_config_to_wing_model(wc, "dots_wing", scale=0.001)
+        wing_model = wing_config_to_wing_model(wc, "dots_wing", "main_wing", scale=0.001)
         db_session.add(wing_model)
         db_session.commit()
 

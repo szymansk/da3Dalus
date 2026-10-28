@@ -521,7 +521,10 @@ async def get_aeroplane_wings_tool(aeroplane_id: UUID4) -> Any:
 
 @mcp_tool(
     name="create_aeroplane_wing",
-    description="Create a new wing for an aeroplane using geometry-only ASB-minimum data.",
+    description=(
+        "Create a new wing for an aeroplane using geometry-only ASB-minimum data. "
+        "surface_type (the wing's role) is required; there is exactly one main_wing."
+    ),
 )
 async def create_aeroplane_wing_tool(
     aeroplane_id: UUID4,
@@ -547,6 +550,28 @@ async def update_aeroplane_wing_tool(
 ) -> Any:
     return await _call_endpoint(
         aeroplane_wings.update_aeroplane_wing,
+        aeroplane_id=aeroplane_id,
+        wing_name=wing_name,
+        request=request,
+    )
+
+
+@mcp_tool(
+    name="set_aeroplane_wing_surface_type",
+    description=(
+        "Set or confirm the role (surface_type) of one wing: main_wing, horizontal_tail, "
+        "vertical_tail, v_tail, canard, tandem_wing or winglet. Exactly one wing per aeroplane "
+        "is the main_wing; to move the role pass former_main_becomes. Sending the current value "
+        "confirms a role that was only proposed."
+    ),
+)
+async def set_aeroplane_wing_surface_type_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    request: schemas.WingSurfaceTypeUpdateSchema,
+) -> Any:
+    return await _call_endpoint(
+        aeroplane_wings.set_aeroplane_wing_surface_type,
         aeroplane_id=aeroplane_id,
         wing_name=wing_name,
         request=request,

@@ -133,11 +133,17 @@ def _stub_import_vsp3_with_wing(monkeypatch, *, span_m: float, root_chord: float
     symmetric wing spanning ±``span_m`` (physical span = 2 * span_m).
     """
     from app.converters import openvsp_importer
-    from app.schemas.aeroplaneschema import AeroplaneSchema, AsbWingSchema, WingXSecSchema
+    from app.schemas.aeroplaneschema import (
+        AeroplaneSchema,
+        AsbWingSchema,
+        SurfaceType,
+        WingXSecSchema,
+    )
 
     def _fake_import(path, **_kw):  # noqa: ARG001 — path/kwargs are read for fixture only
         wing = AsbWingSchema(
             name="Main",
+            surface_type=SurfaceType.MAIN_WING,
             symmetric=True,
             x_secs=[
                 WingXSecSchema(
@@ -383,6 +389,7 @@ def _stub_import_vsp3_with_fuselage_and_weights(monkeypatch):
     from app.schemas.aeroplaneschema import (
         AeroplaneSchema,
         AsbWingSchema,
+        SurfaceType,
         FuselageSchema,
         FuselageXSecSuperEllipseSchema,
         WingXSecSchema,
@@ -392,6 +399,7 @@ def _stub_import_vsp3_with_fuselage_and_weights(monkeypatch):
     def _fake_import(path, **_kw):  # noqa: ARG001 — fixture-only path
         wing = AsbWingSchema(
             name="Main",
+            surface_type=SurfaceType.MAIN_WING,
             symmetric=True,
             x_secs=[
                 WingXSecSchema(
@@ -485,6 +493,31 @@ class TestImportEndpointPersistence:
         assert mid["a"] == pytest.approx(0.4)
         assert mid["b"] == pytest.approx(0.3)
         assert mid["xyz"] == [pytest.approx(1.0), pytest.approx(0.0), pytest.approx(0.0)]
+
+    def test_wing_roles_persisted_as_inferred_main_wing(self, client, monkeypatch):
+        """gh-1187: a VSP file carries no roles; the single wing is persisted as an
+        inferred main_wing and the import reports the proposal as a warning."""
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        uuid = r.json()["aeroplane_uuid"]
+
+        rs = client.get(f"/aeroplanes/{uuid}/wings/Main")
+        assert rs.status_code == 200, rs.text
+        wing = rs.json()
+        assert wing["surface_type"] == "main_wing"
+        assert wing["surface_type_inferred"] is True
+
+        rl = client.get(f"/aeroplanes/{uuid}/wings")
+        assert rl.status_code == 200, rl.text
+        assert rl.json() == ["Main"]
 
     def test_weight_items_persisted_after_import(self, client, monkeypatch):
         from app.services import openvsp_import_service

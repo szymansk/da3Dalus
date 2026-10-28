@@ -621,10 +621,11 @@ class TestBuildContextFromAeroplane:
     class _MockWing:
         """Minimal mock for WingModel."""
 
-        def __init__(self, name, xsecs, symmetric=True):
+        def __init__(self, name, xsecs, symmetric=True, surface_type="main_wing"):
             self.name = name
             self.x_secs = xsecs
             self.symmetric = symmetric
+            self.surface_type = surface_type
 
     class _MockScenario:
         def __init__(self, is_default, aircraft_class):
@@ -673,6 +674,7 @@ class TestBuildContextFromAeroplane:
                         Xsec([0.0, 0.0, 0.0], 0.12),
                         Xsec([0.0, 0.2, 0.0], 0.09),
                     ],
+                    surface_type="canard",
                 )
             )
         elif with_htail:
@@ -684,6 +686,7 @@ class TestBuildContextFromAeroplane:
                         Xsec([0.57, 0.17, 0.0], 0.08),
                     ],
                     symmetric=True,
+                    surface_type="horizontal_tail",
                 )
             )
 
@@ -696,6 +699,7 @@ class TestBuildContextFromAeroplane:
                         Xsec([0.59, 0.0, 0.20], 0.07),
                     ],
                     symmetric=False,
+                    surface_type="vertical_tail",
                 )
             )
 
@@ -773,18 +777,19 @@ class TestBuildContextFromAeroplane:
         # s_h_m2 must be > 0 for the htail with chords 0.10, 0.08 and dy≈0.17
         assert ctx["s_h_m2"] > 0
 
-    def test_fallback_when_no_named_main_wing(self):
-        """When no wing matches 'main' or 'wing', largest non-tail wing is used."""
+    def test_main_wing_selected_by_role_not_name(self):
+        """The main wing is the wing with role main_wing, whatever its name."""
         Xsec = self._MockXsec
         Wing = self._MockWing
 
-        # Only an unlabelled wing named 'fuselage_pod' plus htail+vtail
+        # A main wing named 'fuselage_pod' plus htail+vtail
         fuselage_pod = Wing(
             "fuselage_pod",
             [
                 Xsec([0.0, 0.0, 0.0], 0.5),
                 Xsec([0.0, 1.5, 0.0], 0.3),
             ],
+            surface_type="main_wing",
         )
         htail = Wing(
             "horizontal_tail",
@@ -793,6 +798,7 @@ class TestBuildContextFromAeroplane:
                 Xsec([0.62, 0.17, 0.0], 0.08),
             ],
             symmetric=True,
+            surface_type="horizontal_tail",
         )
         vtail = Wing(
             "vertical_tail",
@@ -801,6 +807,7 @@ class TestBuildContextFromAeroplane:
                 Xsec([0.64, 0.0, 0.20], 0.07),
             ],
             symmetric=False,
+            surface_type="vertical_tail",
         )
 
         aircraft = self._MockAircraft(
@@ -810,7 +817,39 @@ class TestBuildContextFromAeroplane:
         )
         ctx = build_tail_sizing_context_from_aeroplane(aircraft)
         assert ctx is not None
-        assert ctx["x_wing_ac_m"] is not None  # fallback selected fuselage_pod
+        assert ctx["x_wing_ac_m"] is not None  # role-selected fuselage_pod
+
+    def test_stabilizer_named_wing_does_not_make_tailless_when_role_is_htail(self):
+        """Roles come from surface_type: a tail named 'Stabilizer' is still a tail."""
+        Xsec = self._MockXsec
+        aircraft = self._make_aircraft(with_htail=False)
+        aircraft.wings.append(
+            self._MockWing(
+                "Stabilizer",
+                [Xsec([0.55, 0.0, 0.0], 0.10), Xsec([0.57, 0.17, 0.0], 0.08)],
+                surface_type="horizontal_tail",
+            )
+        )
+        ctx = build_tail_sizing_context_from_aeroplane(aircraft)
+        assert ctx is not None
+        assert ctx["is_tailless"] is False
+        assert ctx["s_h_m2"] > 0
+
+    def test_v_tail_role_sets_is_v_tail_and_not_tailless(self):
+        """A v_tail wing sets is_v_tail; it is neither tailless nor decomposed."""
+        Xsec = self._MockXsec
+        aircraft = self._make_aircraft(with_htail=False, with_vtail=False)
+        aircraft.wings.append(
+            self._MockWing(
+                "Butterfly",
+                [Xsec([0.55, 0.0, 0.0], 0.10), Xsec([0.57, 0.17, 0.1], 0.08)],
+                surface_type="v_tail",
+            )
+        )
+        ctx = build_tail_sizing_context_from_aeroplane(aircraft)
+        assert ctx is not None
+        assert ctx["is_v_tail"] is True
+        assert ctx["is_tailless"] is False
 
     def test_full_pipeline_from_context(self):
         """Context dict from build_tail_sizing_context_from_aeroplane feeds compute_tail_volumes."""
@@ -878,7 +917,7 @@ class TestEndpointErrors:
             aeroplane = make_aeroplane(db)
 
             # Add main wing
-            main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id)
+            main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id, surface_type="main_wing")
             db.add(main_wing)
             db.flush()
             _add_xsec(
@@ -901,7 +940,7 @@ class TestEndpointErrors:
             )
 
             # Add horizontal tail
-            htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id)
+            htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id, surface_type="horizontal_tail")
             db.add(htail)
             db.flush()
             _add_xsec(

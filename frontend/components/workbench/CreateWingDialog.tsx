@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 import { useDialog } from "@/hooks/useDialog";
+import { SurfaceTypeSelect } from "./WingSurfaceType";
+import { extractErrorDetail, type SurfaceType } from "@/lib/surfaceType";
 
 type DesignModel = "wc" | "asb";
 
@@ -12,6 +14,8 @@ interface CreateWingDialogProps {
   onClose: () => void;
   aeroplaneId: string | null;
   onCreated?: (wingName: string, designModel: DesignModel) => void;
+  /** Name of the aeroplane's current main wing, if any (a second main wing is rejected). */
+  mainWingName?: string | null;
 }
 
 /** Default WingConfig payload for segment-based (WC) wing creation */
@@ -52,11 +56,14 @@ export function CreateWingDialog({
   onClose,
   aeroplaneId,
   onCreated,
+  mainWingName = null,
 }: Readonly<CreateWingDialogProps>) {
   const [name, setName] = useState("");
   const [designModel, setDesignModel] = useState<DesignModel>("wc");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [surfaceType, setSurfaceType] = useState<SurfaceType>("horizontal_tail");
+  const hasMainWing = !!mainWingName;
   const inputRef = useRef<HTMLInputElement>(null);
   const { dialogRef, handleClose } = useDialog(open, onClose);
 
@@ -65,12 +72,19 @@ export function CreateWingDialog({
     if (open) {
       setName("");
       setDesignModel("wc");
+      setSurfaceType(hasMainWing ? "horizontal_tail" : "main_wing");
       setError(null);
       setCreating(false);
       // Small delay to let the dialog render
       setTimeout(() => inputRef.current?.focus(), 50);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // The wing list may load after the dialog opened: never leave a blocked choice selected.
+  useEffect(() => {
+    if (hasMainWing && surfaceType === "main_wing") setSurfaceType("horizontal_tail");
+  }, [hasMainWing, surfaceType]);
 
   async function handleCreate() {
     const trimmed = name.trim();
@@ -94,12 +108,12 @@ export function CreateWingDialog({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(DEFAULT_WINGCONFIG),
+            body: JSON.stringify({ ...DEFAULT_WINGCONFIG, surface_type: surfaceType }),
           },
         );
         if (!res.ok) {
           const body = await res.text();
-          throw new Error(`Failed to create wing: ${res.status} ${body}`);
+          throw new Error(`Failed to create wing: ${extractErrorDetail(body, res.status)}`);
         }
       } else {
         // Create via ASB PUT endpoint (existing behavior)
@@ -108,12 +122,12 @@ export function CreateWingDialog({
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: trimmed, ...DEFAULT_ASB_WING }),
+            body: JSON.stringify({ name: trimmed, ...DEFAULT_ASB_WING, surface_type: surfaceType }),
           },
         );
         if (!res.ok) {
           const body = await res.text();
-          throw new Error(`Failed to create wing: ${res.status} ${body}`);
+          throw new Error(`Failed to create wing: ${extractErrorDetail(body, res.status)}`);
         }
       }
 
@@ -172,6 +186,22 @@ export function CreateWingDialog({
             placeholder="e.g. main_wing"
             className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
           />
+        </div>
+
+        {/* Wing role (GH-1187) */}
+        <div className="mb-4">
+          <SurfaceTypeSelect
+            id="wing-surface-type"
+            label="Wing role"
+            value={surfaceType}
+            onChange={setSurfaceType}
+            disabledOptions={hasMainWing ? ["main_wing"] : []}
+          />
+          {hasMainWing && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Main wing is unavailable: &quot;{mainWingName}&quot; is already the main wing. Change roles on the existing wing first.
+            </p>
+          )}
         </div>
 
         {/* Design model selection */}

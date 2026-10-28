@@ -32,7 +32,7 @@ class TestFindPitchControlName:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -73,7 +73,7 @@ class TestFindPitchControlName:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="wing", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="wing", aeroplane_id=aeroplane.id, symmetric=True, surface_type="main_wing")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -123,7 +123,7 @@ class TestFindPitchControlName:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="wing", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="wing", aeroplane_id=aeroplane.id, symmetric=True, surface_type="main_wing")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -185,7 +185,7 @@ class TestRetrimDirtyOps:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -254,7 +254,7 @@ class TestRetrimDirtyOps:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -334,7 +334,7 @@ class TestRetrimDirtyOps:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -415,7 +415,7 @@ class TestRetrimDirtyOps:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -496,7 +496,7 @@ class TestRetrimDirtyOps:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -570,7 +570,7 @@ class TestRetrimDirtyOps:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -691,7 +691,7 @@ class TestOpModelToSchemaRadDegConversion:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -781,7 +781,7 @@ class TestRetrimIntegration:
             WingXSecTrailingEdgeDeviceModel,
         )
 
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
@@ -880,7 +880,7 @@ class TestRetrimDistinguishesCorruptRowsFromSolverFailures:
         )
 
         aeroplane = make_aeroplane(db, name=f"corrupt-row-{id(db)}")
-        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="horizontal_tail")
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(

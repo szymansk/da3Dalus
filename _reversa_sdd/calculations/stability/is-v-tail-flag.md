@@ -23,17 +23,17 @@ tags:
 
 ⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
-**Value.** `False`
+**Value.** `True` when some wing has `surface_type == v_tail`, else `False` (gh-1187).
 
 **Formula — as the code writes it.**
 
 ```
-is_v_tail = False  # V-tail decomposition is out-of-scope (gh-491)
+is_v_tail = bool(wings_of_type(wings, SurfaceType.V_TAIL))  # decomposition stays out of scope (gh-491)
 ```
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/tail_sizing_service.py:417` — `build_tail_sizing_context_from_aeroplane`
+**Produced by.** `app/services/tail_sizing_service.py:393` — `build_tail_sizing_context_from_aeroplane`
 
 🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
@@ -48,16 +48,12 @@ is_v_tail = False  # V-tail decomposition is out-of-scope (gh-491)
 > No citable source was found. **This is recorded, not filled in.** The value is
 > in the code without an attributable origin.
 
-**⚠️ Divergence from the source.** Not a quantity — a hardcoded False. For the record, the sources do define the decomposition it stands in for: Sadraey §6.7 covers V-tail ('other tail geometries') and §6.2.2 the pitch/yaw split; the code's own module header at elevator_authority_service.py:33 names the cos²γ relation. Because the flag is always False, the is_v_tail guard at tail_sizing_service.py:160 is unreachable and a real V-tail is sized either as tailless or as a conventional tail — with the wrong formula in both cases.
-
-🟡 *Reported by the extraction pass, not independently verified.*
-
-**⚠️ Anomaly.** Hardcoded False, so the is_v_tail guard at line 160 is unreachable from this producer — a real V-tail is classified as either tailless (no 'horizontal' in the name) or as a conventional tail, and is sized with the wrong formula either way.
-
-🟡 *Reported by the extraction pass, not independently verified. Do not cite as a
-defect until confirmed against the code.*
-
-**Cited in the code itself.** `# V-tail decomposition is out-of-scope (gh-491)`
+**Updated by gh-1187.** The flag is read from the explicit `surface_type` instead of being a
+hard-coded `False`, so the `is_v_tail` guard in `compute_tail_volumes`
+(`tail_sizing_service.py`) and the SM-apply guard are reachable: a V-tail is reported
+`not_applicable` instead of being sized with the conventional-tail or tailless formula. The
+decomposition of a V-tail into a horizontal and a vertical tail (Sadraey §6.7, cos²γ) is
+still not implemented (gh-491).
 
 ---
 *Cluster [[_index-stability|stability]] · generated from the 2026-08-18 extraction.*

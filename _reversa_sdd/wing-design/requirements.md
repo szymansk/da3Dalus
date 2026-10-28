@@ -8,7 +8,9 @@
 ## Overview
 
 `wing-design` owns every lifting surface — main wing, horizontal tail, vertical
-tail, canard and winglet are all `wings` rows; there is no `surface_role` column.
+tail, V-tail, canard, tandem wing and winglet are all `wings` rows, told apart by the
+explicit, required `wings.surface_type` column (BR-W26, gh-1187); a wing's name and
+size never decide its role.
 It covers stations (ribs), spars, trailing-edge devices, servos and turbulators;
 the `WingConfiguration` topology bridge into the CAD world; the structural
 spar-sizing and buildable-layout pipeline; the control-surface role→axis
@@ -84,6 +86,30 @@ decision (BR-W18).
   dihedral          = airfoil.dihedral_as_rotation_in_degrees
   ```
 
+- **BR-W26 — Every wing has an explicit role; exactly one is the main wing (gh-1187).** 🟢
+  `wings.surface_type` is non-null and takes one of `main_wing`, `horizontal_tail`,
+  `vertical_tail` (single or twin fin, tip and centre fins that carry a rudder or give
+  directional stability), `v_tail` (counts as vertical **and** horizontal tail), `canard`,
+  `tandem_wing` (second lifting wing; S_ref stays the main wing's) and `winglet` (only when
+  modelled as a separate wing). The type follows the function, not the position
+  (`SurfaceType`, `aeroplaneschema.py`). It is **required on create** and readable and
+  writable on the wing endpoints and on `GET /aeroplanes/{id}`; it is not the TED `role`
+  (ADR 0008 — two vocabularies). An aeroplane with wings has **exactly one** `main_wing`:
+  a second one, retyping the only one away, or deleting it while other wings remain is
+  rejected with 422 `ValidationDomainError`; a swap is one step via
+  `PATCH …/wings/{name}/surface-type` with `former_main_becomes`
+  (`surface_type_service.py:49-163`). Biplanes are out of scope. Clone and branch copy
+  the column and the flag (ADR 0006, `aeroplane_clone_service.py`).
+- **BR-W27 — A role that was only proposed is declared until the user confirms it
+  (ADR 0020).** 🟢 Pre-existing rows received their `surface_type` from a one-time Alembic
+  data migration (`d90a2284bf83`, gh-1187: name hints, then the largest unhinted wing is
+  the main wing, then geometry) and the OpenVSP importer proposes roles from geometry
+  (`propose_import_surface_types`); both store `surface_type_inferred = true`. The flag
+  is exposed on `AsbWingReadSchema`, surfaces as a `SURFACE_TYPE_INFERRED`
+  `DesignWarning` (`severity: warning`) in `AssumptionsSummary.design_warnings`, and is
+  cleared only by an explicit `PATCH …/surface-type` (sending the current value confirms
+  it; saving geometry does not). Analysis keeps running meanwhile. No runtime code infers
+  a role (ADR 0021) — the heuristic lives only in the migration and the importer.
 - **BR-8 — A wing knows how it was authored.** 🟢 `wings.design_model` is `'wc'`
   when created from a `WingConfiguration` (CAD-capable) and `'asb'` when created
   from bare ASB geometry; `NULL` for legacy rows

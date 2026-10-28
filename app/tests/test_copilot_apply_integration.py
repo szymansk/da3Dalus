@@ -94,7 +94,7 @@ def _create_plane_with_wc_wing(db) -> AeroplaneModel:
     if _WC_PAYLOAD is None:
         pytest.skip("WingConfig fixture not found — skip wing geometry test")
 
-    wc_schema = WingConfigurationSchema.model_validate(_WC_PAYLOAD)
+    wc_schema = WingConfigurationSchema.model_validate({**_WC_PAYLOAD, "surface_type": "main_wing"})
     put_wing_as_wingconfig(db, str(plane.uuid), "main_wing", wc_schema, scale=0.001)
     db.commit()
     db.refresh(plane)
@@ -1798,7 +1798,9 @@ class TestRemoveXsecGuards:
                 "symmetric": True,
             }
             plane = _create_plane_with_branch(db)
-            wc_schema = WingConfigurationSchema.model_validate(one_seg_payload)
+            wc_schema = WingConfigurationSchema.model_validate(
+                {**one_seg_payload, "surface_type": "main_wing"}
+            )
             put_wing_as_wingconfig(db, str(plane.uuid), "test_wing_1seg", wc_schema, scale=0.001)
             db.commit()
             db.refresh(plane)
@@ -2641,7 +2643,9 @@ class TestDefensiveDeadCodeGuards:
                 "symmetric": True,
             }
             plane = _create_plane_with_branch(db)
-            wc_schema = WingConfigurationSchema.model_validate(one_seg_payload)
+            wc_schema = WingConfigurationSchema.model_validate(
+                {**one_seg_payload, "surface_type": "main_wing"}
+            )
             put_wing_as_wingconfig(db, str(plane.uuid), "single_seg_wing", wc_schema, scale=0.001)
             db.commit()
             db.refresh(plane)

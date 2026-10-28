@@ -324,12 +324,14 @@ class TestCachedContextIntegration:
             aeroplane_id = aeroplane.id
 
         fake_wing = SimpleNamespace(
+            name="main_wing",
             area=lambda: ac["s_ref_m2"],
             mean_aerodynamic_chord=lambda: math.sqrt(ac["s_ref_m2"] / ac["ar"]),
             span=lambda: math.sqrt(ac["s_ref_m2"] * ac["ar"]),
         )
         fake_airplane = SimpleNamespace(
             wings=[fake_wing],
+            main_wing_name="main_wing",
             xyz_ref=[0.08, 0.0, 0.0],
             s_ref=ac["s_ref_m2"],
             c_ref=math.sqrt(ac["s_ref_m2"] / ac["ar"]),
@@ -515,6 +517,7 @@ class TestCachedContextIntegration:
             aeroplane_id = aeroplane.id
 
         fake_wing = SimpleNamespace(
+            name="main_wing",
             area=lambda: ac["s_ref_m2"],
             mean_aerodynamic_chord=lambda: math.sqrt(ac["s_ref_m2"] / ac["ar"]),
             span=lambda: math.sqrt(ac["s_ref_m2"] * ac["ar"]),
@@ -524,6 +527,7 @@ class TestCachedContextIntegration:
         # reaching _fit_parabolic_polar.
         fake_airplane = SimpleNamespace(
             wings=[fake_wing],
+            main_wing_name="main_wing",
             xyz_ref=[0.08, 0.0, 0.0],
             s_ref=ac["s_ref_m2"],
             c_ref=math.sqrt(ac["s_ref_m2"] / ac["ar"]),

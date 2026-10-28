@@ -32,7 +32,7 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
         mock_db.query.return_value.filter.return_value.first.return_value = plane
 
         request_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
-            name=str(self.test_wing_name), x_secs=[]
+            name=str(self.test_wing_name), surface_type="main_wing", x_secs=[]
         )
 
         with patch("app.models.aeroplanemodel.WingModel.from_dict", autospec=True) as from_dict:
@@ -94,7 +94,7 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
                     request=schemas.AsbWingGeometryWriteSchema.model_construct(
-                        name=str(self.test_wing_name), x_secs=[]
+                        name=str(self.test_wing_name), surface_type="main_wing", x_secs=[]
                     ),
                     db=mock_db,
                 )

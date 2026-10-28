@@ -33,8 +33,12 @@ MODELS: dict[str, type[BaseModel]] = {
     "FuselageXSecSuperEllipse": geometry.FuselageXSecSuperEllipse,
 }
 
-# Model fields the JSON Schema does not have yet: kernel-side until #1187 extends the format.
-KERNEL_ONLY_FIELDS = {("Wing", "surface_type")}
+# Model fields the JSON Schema does not have: none since #1187 put surface_type into the format.
+KERNEL_ONLY_FIELDS: set[tuple[str, str]] = set()
+
+# Fields the format requires although the model types them optional: the kernel reports the
+# absence as a structured finding (``missing_surface_type``, validate.py) instead of failing to parse.
+REQUIRED_BY_FORMAT_ONLY = {("Wing", "surface_type")}
 
 # Millimetre fields: the model default is the schema default in metres.
 MILLIMETRE_KEYS = {"height_mm"}
@@ -90,6 +94,8 @@ def test_published_json_schema_shows_the_format_default_under_the_format_key() -
 # Where the model deliberately accepts more than the schema: the inline airfoil (ch. 8.11).
 EXTRA_BRANCHES: dict[tuple[str, str], frozenset[Any]] = {
     ("WingXSec", "airfoil"): frozenset({("ref", "InlineAirfoil")}),
+    # Parsable without a role so validate.py can report ``missing_surface_type``; the format requires it.
+    ("Wing", "surface_type"): frozenset({"null"}),
 }
 
 Signature = frozenset[Any]
@@ -181,6 +187,7 @@ def test_fields_required_set_and_additional_properties_match(name: str) -> None:
     required = {
         format_key(n, f) for n, f in model.model_fields.items() if f.is_required()
     } - kernel_only
+    required |= {key for owner, key in REQUIRED_BY_FORMAT_ONLY if owner == name}
     assert keys == set(definition["properties"])
     assert required == set(definition.get("required", []))
     assert definition["additionalProperties"] is False
@@ -368,7 +375,8 @@ def full_document() -> dict[str, Any]:
     }  # fmt: skip
     tip = {"xyz_le": [0, 1, 0], "chord": 0.1, "twist": 0, "airfoil": "naca0012"}
     wing = {
-        "name": "W", "symmetric": True, "design_model": "wc", "x_secs": [rib, tip],
+        "name": "W", "surface_type": "main_wing", "symmetric": True, "design_model": "wc",
+        "x_secs": [rib, tip],
         "units": {"geometry_length": "m", "detail_length": "m", "angle": "deg"},
     }  # fmt: skip
     station = {"xyz": [0, 0, 0], "a": 0.1, "b": 0.1, "n": 2, "n_lower": 4}

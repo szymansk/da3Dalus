@@ -1,7 +1,6 @@
 """Fast mocked tests for assumption_compute_service turbulator helpers — gh-935.
 
 Covers the lines NOT exercised by test_assumption_compute_service.py:
-  - _wing_orm_planform_area (lines 2171-2202)
   - _extract_main_wing_turbulator_xtr (lines 2205-2241)
   - apply_turbulator_delta_to_cd0 guard branches (lines 2133-2168):
       recompute injection branch (turbulator enabled path calling compute_delta_cd0)
@@ -19,126 +18,6 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
-# Tests: _wing_orm_planform_area
-# ---------------------------------------------------------------------------
-
-
-class TestWingOrmPlanformArea:
-    """_wing_orm_planform_area(wing) — trapezoidal half-span area from ORM xsecs."""
-
-    def _make_wing(self, xsecs):
-        return SimpleNamespace(x_secs=xsecs)
-
-    def test_no_xsecs_returns_zero(self):
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        wing = self._make_wing([])
-        assert _wing_orm_planform_area(wing) == pytest.approx(0.0, abs=1e-9)
-
-    def test_one_xsec_returns_zero(self):
-        """Fewer than two xsecs → degenerate wing → 0.0."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        xsec = SimpleNamespace(xyz_le=[0.0, 0.0, 0.0], chord=200.0)
-        wing = self._make_wing([xsec])
-        assert _wing_orm_planform_area(wing) == pytest.approx(0.0, abs=1e-9)
-
-    def test_two_xsecs_rectangular_wing(self):
-        """Two xsecs with chord=200mm spanning 500mm → area = 200*500 = 100_000 mm²."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        root = SimpleNamespace(xyz_le=[0.0, 0.0, 0.0], chord=200.0)
-        tip = SimpleNamespace(xyz_le=[0.0, 500.0, 0.0], chord=200.0)
-        wing = self._make_wing([root, tip])
-        area = _wing_orm_planform_area(wing)
-        assert area == pytest.approx(100_000.0, rel=1e-6)
-
-    def test_two_xsecs_tapered_wing(self):
-        """Tapered wing: chord_root=200, chord_tip=100, span=500 → area = (200+100)/2*500."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        root = SimpleNamespace(xyz_le=[0.0, 0.0, 0.0], chord=200.0)
-        tip = SimpleNamespace(xyz_le=[0.0, 500.0, 0.0], chord=100.0)
-        wing = self._make_wing([root, tip])
-        area = _wing_orm_planform_area(wing)
-        expected = 0.5 * (200.0 + 100.0) * 500.0  # trapezoidal integration
-        assert area == pytest.approx(expected, rel=1e-6)
-
-    def test_xsecs_sorted_by_y(self):
-        """xsecs unsorted by y should produce the same result as sorted."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        tip = SimpleNamespace(xyz_le=[0.0, 500.0, 0.0], chord=100.0)
-        root = SimpleNamespace(xyz_le=[0.0, 0.0, 0.0], chord=200.0)
-        # tip listed before root — function should sort internally
-        wing = self._make_wing([tip, root])
-        area = _wing_orm_planform_area(wing)
-        expected = 0.5 * (200.0 + 100.0) * 500.0
-        assert area == pytest.approx(expected, rel=1e-6)
-
-    def test_xsec_with_none_xyz_le_is_skipped(self):
-        """xsec with xyz_le=None should be skipped gracefully."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        good = SimpleNamespace(xyz_le=[0.0, 0.0, 0.0], chord=200.0)
-        bad_xy = SimpleNamespace(xyz_le=None, chord=200.0)
-        tip = SimpleNamespace(xyz_le=[0.0, 500.0, 0.0], chord=100.0)
-        wing = self._make_wing([good, bad_xy, tip])
-        # bad_xy skipped → only good + tip → trapezoidal
-        area = _wing_orm_planform_area(wing)
-        expected = 0.5 * (200.0 + 100.0) * 500.0
-        assert area == pytest.approx(expected, rel=1e-6)
-
-    def test_xsec_with_none_chord_is_skipped(self):
-        """xsec with chord=None should be skipped gracefully."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        root = SimpleNamespace(xyz_le=[0.0, 0.0, 0.0], chord=200.0)
-        no_chord = SimpleNamespace(xyz_le=[0.0, 250.0, 0.0], chord=None)
-        tip = SimpleNamespace(xyz_le=[0.0, 500.0, 0.0], chord=100.0)
-        wing = self._make_wing([root, no_chord, tip])
-        area = _wing_orm_planform_area(wing)
-        expected = 0.5 * (200.0 + 100.0) * 500.0
-        assert area == pytest.approx(expected, rel=1e-6)
-
-    def test_no_x_secs_attribute_returns_zero(self):
-        """Wing without x_secs attribute → graceful 0.0."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        wing = SimpleNamespace()  # no x_secs attr
-        assert _wing_orm_planform_area(wing) == pytest.approx(0.0, abs=1e-9)
-
-    def test_all_valid_xsecs_filtered_out_returns_zero(self):
-        """When xyz_le/chord filtering leaves fewer than 2 valid pts → 0.0."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        # Both xsecs have None chord → filtered out → len(pts) < 2 → return 0
-        root = SimpleNamespace(xyz_le=[0.0, 0.0, 0.0], chord=None)
-        tip = SimpleNamespace(xyz_le=[0.0, 500.0, 0.0], chord=None)
-        wing = self._make_wing([root, tip])
-        assert _wing_orm_planform_area(wing) == pytest.approx(0.0, abs=1e-9)
-
-    def test_xyz_le_type_error_xsec_is_skipped(self):
-        """An xyz_le that raises TypeError on indexing is skipped gracefully."""
-        from app.services.assumption_compute_service import _wing_orm_planform_area
-
-        class BadIndexable:
-            def __getitem__(self, idx):
-                raise TypeError("bad xyz_le type")
-
-            def __len__(self):
-                return 1
-
-        # root with bad xyz_le; tip is valid — only one valid point → return 0
-        root = SimpleNamespace(xyz_le=BadIndexable(), chord=200.0)
-        tip = SimpleNamespace(xyz_le=[0.0, 500.0, 0.0], chord=100.0)
-        wing = self._make_wing([root, tip])
-        # root skipped (TypeError) → only tip in pts → len(pts)=1 < 2 → 0.0
-        area = _wing_orm_planform_area(wing)
-        assert area == pytest.approx(0.0, abs=1e-9)
-
-
-# ---------------------------------------------------------------------------
 # Tests: _extract_main_wing_turbulator_xtr
 # ---------------------------------------------------------------------------
 
@@ -151,7 +30,7 @@ class TestExtractMainWingTurbulatorXtr:
 
     def _make_wing_with_turbulator(
         self, chord=200.0, span=500.0, enabled=True, pos_root=0.4, pos_tip=0.6,
-        with_turbulator=True,
+        with_turbulator=True, surface_type="main_wing",
     ):
         """Build a minimal ORM-like wing stub."""
         turb = None
@@ -171,7 +50,7 @@ class TestExtractMainWingTurbulatorXtr:
             chord=chord * 0.6,
             turbulator=None,
         )
-        return SimpleNamespace(x_secs=[xsec, xsec_tip])
+        return SimpleNamespace(x_secs=[xsec, xsec_tip], surface_type=surface_type)
 
     def test_no_wings_returns_none(self):
         from app.services.assumption_compute_service import _extract_main_wing_turbulator_xtr
@@ -212,23 +91,32 @@ class TestExtractMainWingTurbulatorXtr:
         assert xtr_root == pytest.approx(0.35, abs=1e-9)
         assert xtr_tip == pytest.approx(0.55, abs=1e-9)
 
-    def test_selects_largest_wing_by_planform_area(self):
-        """Main wing is chosen by largest planform area (not xsec count)."""
+    def test_selects_wing_by_surface_type_not_by_area_or_order(self):
+        """Main wing is the wing with role main_wing, even if a tail is larger and listed first."""
         from app.services.assumption_compute_service import _extract_main_wing_turbulator_xtr
 
-        # Large main wing with turbulator at 0.4/0.6
-        main_wing = self._make_wing_with_turbulator(
-            chord=300.0, span=800.0, enabled=True, pos_root=0.4, pos_tip=0.6
-        )
-        # Small tail wing also with a turbulator at different values
+        # Huge tail wing listed FIRST, with its own turbulator at different values
         tail_wing = self._make_wing_with_turbulator(
-            chord=80.0, span=200.0, enabled=True, pos_root=0.7, pos_tip=0.8
+            chord=900.0,
+            span=2000.0,
+            enabled=True,
+            pos_root=0.7,
+            pos_tip=0.8,
+            surface_type="horizontal_tail",
         )
-        aircraft = self._make_aircraft([main_wing, tail_wing])
+        # Small wing carrying the main_wing role
+        main_wing = self._make_wing_with_turbulator(
+            chord=80.0,
+            span=200.0,
+            enabled=True,
+            pos_root=0.4,
+            pos_tip=0.6,
+            surface_type="main_wing",
+        )
+        aircraft = self._make_aircraft([tail_wing, main_wing])
         xtr_root, xtr_tip, enabled = _extract_main_wing_turbulator_xtr(aircraft)
 
         assert enabled is True
-        # Should pick xtr from MAIN wing (larger area)
         assert xtr_root == pytest.approx(0.4, abs=1e-9)
         assert xtr_tip == pytest.approx(0.6, abs=1e-9)
 
@@ -239,7 +127,7 @@ class TestExtractMainWingTurbulatorXtr:
         turb = SimpleNamespace(enabled=True, position_root=None, position_tip=None)
         xsec = SimpleNamespace(xyz_le=[0.0, 0.0, 0.0], chord=200.0, turbulator=turb)
         xsec_tip = SimpleNamespace(xyz_le=[0.0, 500.0, 0.0], chord=100.0, turbulator=None)
-        wing = SimpleNamespace(x_secs=[xsec, xsec_tip])
+        wing = SimpleNamespace(x_secs=[xsec, xsec_tip], surface_type="main_wing")
         aircraft = self._make_aircraft([wing])
         xtr_root, xtr_tip, enabled = _extract_main_wing_turbulator_xtr(aircraft)
         # positions are None → not returned

@@ -9,6 +9,7 @@
  "wings": {
   "Tragflaeche": {
    "name": "Tragflaeche",
+   "surface_type": "main_wing",
    "symmetric": true,
    "design_model": "asb",
    "x_secs": [
@@ -671,6 +672,7 @@
   },
   "Hoehenleitwerk": {
    "name": "Hoehenleitwerk",
+   "surface_type": "horizontal_tail",
    "symmetric": true,
    "design_model": "asb",
    "x_secs": [
@@ -1010,6 +1012,7 @@
   },
   "Seitenleitwerk": {
    "name": "Seitenleitwerk",
+   "surface_type": "vertical_tail",
    "symmetric": false,
    "design_model": "asb",
    "x_secs": [

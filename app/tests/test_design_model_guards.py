@@ -28,6 +28,7 @@ MINIMAL_WINGCONFIG = {
         }
     ],
     "nose_pnt": [0, 0, 0],
+    "surface_type": "main_wing",
 }
 
 
@@ -64,6 +65,7 @@ def _create_wc_wing(client: TestClient, aeroplane_id: str, wing_name: str = "w")
 def _create_asb_wing(client: TestClient, aeroplane_id: str, wing_name: str = "w") -> None:
     asb_wing = {
         "name": wing_name,
+        "surface_type": "main_wing",
         "x_secs": [
             {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0012"},
             {"xyz_le": [0.01, 0.5, 0], "chord": 0.12, "twist": 0, "airfoil": "naca0012"},
@@ -82,6 +84,7 @@ class TestWcWingGuards:
         _create_wc_wing(client, aid)
         asb_wing = {
             "name": "w",
+            "surface_type": "main_wing",
             "x_secs": [
                 {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0012"},
                 {"xyz_le": [0.01, 0.5, 0], "chord": 0.12, "twist": 0, "airfoil": "naca0012"},
@@ -155,6 +158,7 @@ class TestAsbWingGuards:
         _create_asb_wing(client, aid)
         asb_wing = {
             "name": "w",
+            "surface_type": "main_wing",
             "x_secs": [
                 {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0012"},
                 {"xyz_le": [0.01, 0.5, 0], "chord": 0.12, "twist": 0, "airfoil": "naca0012"},
@@ -198,6 +202,7 @@ class TestCreationGuards:
         aid = _create_aeroplane(client, "create_guard_asb")
         asb_wing = {
             "name": "new_wing",
+            "surface_type": "main_wing",
             "x_secs": [
                 {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0012"},
                 {"xyz_le": [0.01, 0.5, 0], "chord": 0.12, "twist": 0, "airfoil": "naca0012"},

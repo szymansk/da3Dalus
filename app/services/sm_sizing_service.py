@@ -43,6 +43,8 @@ from typing import Any, Literal, cast
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from app.schemas.aeroplaneschema import SurfaceType
+from app.services.surface_type_service import find_main_wing, wings_of_type
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +207,11 @@ def _is_apply_not_applicable(ctx: dict) -> tuple[bool, str]:
         return True, (
             "Tailless/flying-wing — SM apply operations (wing_shift/htail_scale) "
             "not applicable (no horizontal tail). Adjust CG location instead."
+        )
+    if ctx.get("is_v_tail"):
+        return True, (
+            "V-tail — SM apply operations (wing_shift/htail_scale) are not supported "
+            "(the V-tail is not decomposed into a horizontal tail)."
         )
     return _is_not_applicable(ctx)
 
@@ -816,42 +823,15 @@ def _find_aeroplane(db: Session, aeroplane_uuid: str):
 
 
 def _find_main_wing(aircraft):
-    """Find the main wing (largest area, not horizontal/vertical/canard)."""
-    wings = aircraft.wings if hasattr(aircraft, "wings") else []
-    candidates = []
-    for w in wings:
-        wname = (w.name or "").lower()
-        if "horizontal" not in wname and "vertical" not in wname and "canard" not in wname:
-            candidates.append(w)
-    if not candidates:
-        return None
-
-    # Pick by approximate area (sum of chord segments × span)
-    def _approx_area(wing) -> float:
-        xsecs = wing.x_secs if hasattr(wing, "x_secs") else []
-        total = 0.0
-        for i in range(len(xsecs) - 1):
-            c0 = float(xsecs[i].chord or 0.0)
-            c1 = float(xsecs[i + 1].chord or 0.0)
-            le0 = xsecs[i].xyz_le or [0.0, 0.0, 0.0]
-            le1 = xsecs[i + 1].xyz_le or [0.0, 0.0, 0.0]
-            dy = abs(float(le1[1]) - float(le0[1]))
-            dz = abs(float(le1[2]) - float(le0[2]))
-            span_seg = (dy**2 + dz**2) ** 0.5
-            total += 0.5 * (c0 + c1) * span_seg
-        return total
-
-    return max(candidates, key=_approx_area)
+    """Find the main wing: the wing with ``surface_type == main_wing`` (gh-1187)."""
+    return find_main_wing(aircraft.wings if hasattr(aircraft, "wings") else [])
 
 
 def _find_htail(aircraft):
-    """Find the horizontal tail wing model."""
+    """Find the horizontal tail wing model (``surface_type == horizontal_tail``)."""
     wings = aircraft.wings if hasattr(aircraft, "wings") else []
-    for w in wings:
-        wname = (w.name or "").lower()
-        if "horizontal" in wname or "htail" in wname:
-            return w
-    return None
+    htails = wings_of_type(wings, SurfaceType.HORIZONTAL_TAIL)
+    return htails[0] if htails else None
 
 
 def apply_wing_shift(

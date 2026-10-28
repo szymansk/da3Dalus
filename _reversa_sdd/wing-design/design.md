@@ -88,7 +88,7 @@ Full column lists: `data-dictionary.md` §Module: wing-design. 🟢
 ### F1 — Create a wing from ASB geometry (`PUT /{wing_name}`) 🟢
 
 1. Resolve the aeroplane by UUID (404 if absent).
-2. Validate `AsbWingSchema`: `x_secs` `min_length=2`, and
+2. Validate `AsbWingGeometryWriteSchema`: `surface_type` is **required** (gh-1187; a second `main_wing` on the aeroplane → **422**, `surface_type_service.check_surface_type_change`); `x_secs` `min_length=2`, and
    `validate_last_xsec_has_no_segment_details` rejects any segment field on the
    terminal station (`aeroplaneschema.py:666-680`).
 3. Duplicate wing name → `ValidationError` → **422**

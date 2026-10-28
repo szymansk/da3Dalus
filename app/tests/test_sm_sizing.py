@@ -493,7 +493,7 @@ class TestApplyEndpoint:
         db_session.flush()
 
         # Main wing with two xsecs
-        main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id)
+        main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id, surface_type="main_wing")
         db_session.add(main_wing)
         db_session.flush()
         xs0 = WingXSecModel(
@@ -515,7 +515,7 @@ class TestApplyEndpoint:
         db_session.add_all([xs0, xs1])
 
         # Horizontal tail
-        htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id)
+        htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id, surface_type="horizontal_tail")
         db_session.add(htail)
         db_session.flush()
         hxs0 = WingXSecModel(
@@ -747,6 +747,7 @@ class TestApplyWingShiftService:
 
         wing_mock = MagicMock()
         wing_mock.name = "main_wing"
+        wing_mock.surface_type = "main_wing"
         wing_mock.x_secs = [xsec0, xsec1]
 
         plane_mock = MagicMock()
@@ -830,6 +831,7 @@ class TestApplyHtailScaleService:
 
         htail_mock = MagicMock()
         htail_mock.name = "horizontal_tail"
+        htail_mock.surface_type = "horizontal_tail"
         htail_mock.x_secs = [hxsec0, hxsec1]
 
         plane_mock = MagicMock()
@@ -986,7 +988,7 @@ class TestHtailScaleNegativeDelta:
             )
             db.add(ap)
             db.flush()
-            htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=ap.id)
+            htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=ap.id, surface_type="horizontal_tail")
             db.add(htail)
             db.flush()
             hxs = WingXSecModel(
@@ -1019,6 +1021,7 @@ class TestHtailScaleNegativeDelta:
         hxsec.chord = 0.12
         htail_mock = MagicMock()
         htail_mock.name = "horizontal_tail"
+        htail_mock.surface_type = "horizontal_tail"
         htail_mock.x_secs = [hxsec]
 
         plane_mock = MagicMock()
@@ -1116,12 +1119,14 @@ class TestConvergenceGuardService:
         xsec0.xyz_le = [0.0, 0.0, 0.0]
         wing_mock = MagicMock()
         wing_mock.name = "main_wing"
+        wing_mock.surface_type = "main_wing"
         wing_mock.x_secs = [xsec0]
 
         hxsec0 = MagicMock()
         hxsec0.chord = 0.12
         htail_mock = MagicMock()
         htail_mock.name = "horizontal_tail"
+        htail_mock.surface_type = "horizontal_tail"
         htail_mock.x_secs = [hxsec0]
 
         plane_mock = MagicMock()
@@ -1288,7 +1293,7 @@ class TestConvergenceGuardEndpoint:
         db_session.add(aeroplane)
         db_session.flush()
 
-        main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id)
+        main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id, surface_type="main_wing")
         db_session.add(main_wing)
         db_session.flush()
         xs0 = WingXSecModel(
@@ -1309,7 +1314,7 @@ class TestConvergenceGuardEndpoint:
         )
         db_session.add_all([xs0, xs1])
 
-        htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id)
+        htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id, surface_type="horizontal_tail")
         db_session.add(htail)
         db_session.flush()
         hxs0 = WingXSecModel(
@@ -1595,7 +1600,7 @@ class TestFwdCgIntegration:
         db_session.add(ap)
         db_session.flush()
 
-        mw = WingModel(name="main_wing", symmetric=True, aeroplane_id=ap.id)
+        mw = WingModel(name="main_wing", symmetric=True, aeroplane_id=ap.id, surface_type="main_wing")
         db_session.add(mw)
         db_session.flush()
         xs0 = WingXSecModel(
@@ -1616,7 +1621,7 @@ class TestFwdCgIntegration:
         )
         db_session.add_all([xs0, xs1])
 
-        ht = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=ap.id)
+        ht = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=ap.id, surface_type="horizontal_tail")
         db_session.add(ht)
         db_session.flush()
         hxs0 = WingXSecModel(

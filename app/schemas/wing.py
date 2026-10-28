@@ -1,6 +1,7 @@
 from typing import List, Optional, Literal
 from pydantic import AliasChoices, BaseModel, NonNegativeFloat, PositiveFloat, Field
 
+from app.schemas.aeroplaneschema import SurfaceType
 from app.schemas.Servo import Servo
 
 # --- Shared literal constant (S1192) ---
@@ -241,6 +242,13 @@ class Wing(BaseModel):
     symmetric: bool = Field(
         default=True,
         description="Whether the wing is mirrored along the aircraft's symmetry plane",
+    )
+    surface_type: Optional[SurfaceType] = Field(
+        default=None,
+        description=(
+            "The wing's function (gh-1187). Required when a wing is created from this payload; "
+            "a replacing PUT that omits it keeps the existing wing's role."
+        ),
     )
 
     model_config = {

@@ -28,6 +28,7 @@ from app.api.utils import analyse_aerodynamics
 from app.converters.model_schema_converters import (
     aeroplane_model_to_aeroplane_schema_async,
     aeroplane_schema_to_asb_airplane_async,
+    main_asb_wing,
 )
 from app.core.events import AssumptionChanged, event_bus
 from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel, WeightItemModel
@@ -51,6 +52,7 @@ from app.services.design_assumptions_service import (
     update_calculated_value,
 )
 from app.services.mass_cg_service import aggregate_weight_items
+from app.services.surface_type_service import find_main_wing
 from app.services.stability_service import _scalar
 
 logger = logging.getLogger(__name__)
@@ -141,7 +143,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                 pass
 
             if _asb_op_turb is not None:
-                _main_wing_asb = max(asb_airplane.wings, key=lambda w: float(w.area()))
+                _main_wing_asb = main_asb_wing(asb_airplane)
                 _wing_name_turb = getattr(_main_wing_asb, "name", None) or "main_wing"
                 # MAJOR 1 fix: detect symmetry so ΔCD0 aggregation applies the
                 # factor-of-2 when the turbulator covers both half-spans.
@@ -1040,16 +1042,12 @@ def _load_flight_profile_speeds(db: Session, aircraft: AeroplaneModel) -> tuple[
 
 
 def _select_main_wing(asb_airplane):
-    """Pick the main wing — the wing with the largest planform area.
+    """Return the main wing — the wing marked ``surface_type == main_wing`` (gh-1187).
 
-    A typical configuration has main wing + horizontal tail + vertical
-    tail. ASB's `reference.Cref` defaults to the FIRST wing in the list,
-    which may not be the main wing for the user's geometry. Picking by
-    planform area is robust across user-defined wing orderings.
+    ASB's ``reference.Cref`` defaults to the FIRST wing in the list, which may not be
+    the main wing; the schema converter records the real one on the airplane.
     """
-    if not asb_airplane.wings:
-        return None
-    return max(asb_airplane.wings, key=lambda w: float(w.area()))
+    return main_asb_wing(asb_airplane)
 
 
 def _stability_run_at_cruise(asb_airplane, v_cruise: float) -> tuple[float, float, float, float]:
@@ -1849,7 +1847,7 @@ def _compute_landing_field_length(
 
 
 def _main_wing_aspect_ratio(asb_airplane) -> float | None:
-    """Aspect ratio AR = b² / S of the main wing (largest planform)."""
+    """Aspect ratio AR = b² / S of the main wing."""
     main = _select_main_wing(asb_airplane)
     if main is None:
         return None
@@ -2168,60 +2166,17 @@ def apply_turbulator_delta_to_cd0(
     return adjusted
 
 
-def _wing_orm_planform_area(wing) -> float:
-    """Compute a half-span planform area from ORM WingModel xsecs.
-
-    Uses trapezoidal integration over sorted xsec y-positions (mm) and chord
-    values (mm). The units cancel in the ratio comparison, so the absolute
-    value does not matter — only the relative ordering between wings.
-
-    Returns 0.0 when there are fewer than two xsecs (degenerate wing).
-    """
-    xsecs = getattr(wing, "x_secs", None) or []
-    if len(xsecs) < 2:
-        return 0.0
-    # xyz_le is stored as [x, y, z] in mm (WingConfig units)
-    pts = []
-    for xs in xsecs:
-        xyz_le = getattr(xs, "xyz_le", None)
-        chord = getattr(xs, "chord", None)
-        if xyz_le is None or chord is None:
-            continue
-        try:
-            y = float(xyz_le[1]) if hasattr(xyz_le, "__getitem__") else 0.0
-            pts.append((y, float(chord)))
-        except (TypeError, IndexError):
-            continue
-    if len(pts) < 2:
-        return 0.0
-    pts.sort(key=lambda p: p[0])
-    area = 0.0
-    for i in range(len(pts) - 1):
-        dy = abs(pts[i + 1][0] - pts[i][0])
-        area += 0.5 * (pts[i][1] + pts[i + 1][1]) * dy
-    return area
-
-
 def _extract_main_wing_turbulator_xtr(
     aircraft: AeroplaneModel,
 ) -> tuple[float | None, float | None, bool]:
     """Return (xtr_root, xtr_tip, enabled) for the main wing's turbulator.
 
-    MINOR 3 fix (gh-935): selects the main wing by the largest half-span
-    planform area (trapezoidal integral over ORM xsec y/chord values in mm).
-    This is consistent with _select_main_wing which uses ASB Wing.area().
-    The previous implementation used xsec COUNT which does not correlate
-    with actual wing size.
+    The main wing is the wing marked ``surface_type == main_wing`` (gh-1187), the same
+    one ``_select_main_wing`` returns.
 
     Returns (None, None, False) when no enabled turbulator exists.
     """
-    best_wing = None
-    best_area = -1.0
-    for wing in getattr(aircraft, "wings", []) or []:
-        area = _wing_orm_planform_area(wing)
-        if area > best_area:
-            best_area = area
-            best_wing = wing
+    best_wing = find_main_wing(getattr(aircraft, "wings", []) or [])
 
     if best_wing is None:
         return None, None, False

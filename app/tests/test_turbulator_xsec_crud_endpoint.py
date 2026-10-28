@@ -33,7 +33,9 @@ def _make_two_xsec_wing(session, aeroplane_id: int, *, with_turbulator: bool = F
         WingXSecTurbulatorModel,
     )
 
-    wing = WingModel(name="test_wing", symmetric=True, aeroplane_id=aeroplane_id)
+    wing = WingModel(
+        name="test_wing", surface_type="main_wing", symmetric=True, aeroplane_id=aeroplane_id
+    )
     session.add(wing)
     session.flush()
 
@@ -97,9 +99,7 @@ class TestGetTurbulator:
             plane = make_aeroplane(db)
             wing = _make_two_xsec_wing(db, plane.id, with_turbulator=False)
 
-        resp = client.get(
-            f"/aeroplanes/{plane.uuid}/wings/{wing.name}/cross_sections/0/turbulator"
-        )
+        resp = client.get(f"/aeroplanes/{plane.uuid}/wings/{wing.name}/cross_sections/0/turbulator")
         assert resp.status_code == 404
 
     def test_get_returns_200_when_present(self, client_and_db):
@@ -111,9 +111,7 @@ class TestGetTurbulator:
             plane = make_aeroplane(db)
             wing = _make_two_xsec_wing(db, plane.id, with_turbulator=True)
 
-        resp = client.get(
-            f"/aeroplanes/{plane.uuid}/wings/{wing.name}/cross_sections/0/turbulator"
-        )
+        resp = client.get(f"/aeroplanes/{plane.uuid}/wings/{wing.name}/cross_sections/0/turbulator")
         assert resp.status_code == 200
         body = resp.json()
         assert body["form"] == "zigzag"
@@ -125,9 +123,7 @@ class TestGetTurbulator:
     def test_get_returns_404_for_unknown_aeroplane(self, client_and_db):
         """GET with unknown UUID returns 404."""
         client, _ = client_and_db
-        resp = client.get(
-            f"/aeroplanes/{uuid.uuid4()}/wings/test_wing/cross_sections/0/turbulator"
-        )
+        resp = client.get(f"/aeroplanes/{uuid.uuid4()}/wings/test_wing/cross_sections/0/turbulator")
         assert resp.status_code == 404
 
     def test_get_terminal_xsec_returns_422(self, client_and_db):
@@ -140,9 +136,7 @@ class TestGetTurbulator:
             wing = _make_two_xsec_wing(db, plane.id, with_turbulator=False)
 
         # index 1 is terminal — raises ValidationError → 422
-        resp = client.get(
-            f"/aeroplanes/{plane.uuid}/wings/{wing.name}/cross_sections/1/turbulator"
-        )
+        resp = client.get(f"/aeroplanes/{plane.uuid}/wings/{wing.name}/cross_sections/1/turbulator")
         assert resp.status_code == 422
 
 
@@ -374,8 +368,6 @@ class TestDeleteTurbulator:
             lambda db, aid, wname: calls.append((str(aid), wname)),
         )
 
-        client.delete(
-            f"/aeroplanes/{plane.uuid}/wings/{wing.name}/cross_sections/0/turbulator"
-        )
+        client.delete(f"/aeroplanes/{plane.uuid}/wings/{wing.name}/cross_sections/0/turbulator")
         assert len(calls) == 1
         assert calls[0][1] == wing.name

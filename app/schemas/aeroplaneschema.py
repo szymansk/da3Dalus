@@ -39,6 +39,21 @@ class ControlSurfaceRole(str, Enum):
     OTHER = "other"
 
 
+class SurfaceType(str, Enum):
+    """The function of a lifting surface (gh-1187; follows the function, not the position).
+
+    Not to be confused with ``ControlSurfaceRole`` (the role of a trailing-edge device).
+    """
+
+    MAIN_WING = "main_wing"
+    HORIZONTAL_TAIL = "horizontal_tail"
+    VERTICAL_TAIL = "vertical_tail"
+    V_TAIL = "v_tail"
+    CANARD = "canard"
+    TANDEM_WING = "tandem_wing"
+    WINGLET = "winglet"
+
+
 # gh-772: roles that combine a symmetric and an antisymmetric axis on ONE physical
 # surface — they get a SECOND AVL CONTROL line (a secondary mix gain).
 DUAL_ROLE_VALUES = {"elevon", "flaperon", "ruddervator"}
@@ -642,8 +657,20 @@ class WingXSecGeometryWriteSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+_DESC_SURFACE_TYPE = (
+    "The wing's function (gh-1187): main_wing (exactly one per aeroplane; supplies S_ref, "
+    "b_ref, c_MAC), horizontal_tail, vertical_tail (single or twin fin, tip or centre fins), "
+    "v_tail (counts as vertical AND horizontal tail), canard, tandem_wing (second lifting wing; "
+    "S_ref stays the main wing's) or winglet (only when modelled as a separate wing). "
+    "It follows the function, not the position."
+)
+
+
 class AsbWingSchema(BaseModel):
     name: str = Field(..., description="Wing name", examples=["Main Wing", "Horizontal Stabilizer"])
+    surface_type: SurfaceType = Field(
+        ..., description=_DESC_SURFACE_TYPE, examples=["main_wing", "horizontal_tail"]
+    )
     symmetric: bool = Field(
         True,
         description="Is the wing symmetric?",
@@ -682,7 +709,30 @@ class AsbWingSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class WingSurfaceTypeUpdateSchema(BaseModel):
+    """Set or confirm the role of one wing (gh-1187)."""
+
+    surface_type: SurfaceType = Field(..., description=_DESC_SURFACE_TYPE)
+    former_main_becomes: Optional[SurfaceType] = Field(
+        None,
+        description=(
+            "Only when surface_type is main_wing and another wing is the main wing: the role "
+            "that wing takes over, so the two swap in one step. A single main wing is "
+            "required at every moment."
+        ),
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class AsbWingReadSchema(AsbWingSchema):
+    surface_type_inferred: bool = Field(
+        False,
+        description=(
+            "True while the surface_type was only PROPOSED by the one-time data migration "
+            "(gh-1187) and the user has not confirmed or corrected it yet."
+        ),
+    )
     x_secs: list[WingXSecReadSchema] = Field(
         ...,
         description="List of cross-sections of the wing",
@@ -694,6 +744,9 @@ class AsbWingReadSchema(AsbWingSchema):
 
 class AsbWingGeometryWriteSchema(BaseModel):
     name: str = Field(..., description="Wing name", examples=["Main Wing", "Horizontal Stabilizer"])
+    surface_type: SurfaceType = Field(
+        ..., description=_DESC_SURFACE_TYPE, examples=["main_wing", "horizontal_tail"]
+    )
     symmetric: bool = Field(
         True,
         description="Is the wing symmetric?",

@@ -17,6 +17,7 @@ from app.schemas.aeroplaneschema import (
     AsbWingSchema,
     FuselageSchema,
     FuselageXSecSuperEllipseSchema,
+    SurfaceType,
     WingXSecSchema,
 )
 from app.schemas.weight_item import WeightItemWrite
@@ -49,6 +50,7 @@ def _xsec(xyz, chord, twist=0.0):
 def _make_wing(span_m: float, root_chord: float = 0.5, tip_chord: float = 0.2) -> AsbWingSchema:
     return AsbWingSchema(
         name="Main",
+        surface_type=SurfaceType.MAIN_WING,
         symmetric=True,
         x_secs=[
             _xsec([0.0, 0.0, 0.0], root_chord),

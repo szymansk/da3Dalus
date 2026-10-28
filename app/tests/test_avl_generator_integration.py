@@ -21,6 +21,7 @@ def _make_plane_schema():
             {
                 "Main Wing": AsbWingSchema(
                     name="Main Wing",
+                    surface_type="main_wing",
                     symmetric=True,
                     x_secs=[
                         WingXSecSchema(
@@ -245,6 +246,7 @@ class TestBuildGeometryEdgeCases:
                 {
                     "Plain Wing": AsbWingSchema(
                         name="Plain Wing",
+                        surface_type="main_wing",
                         symmetric=False,
                         x_secs=[
                             WingXSecSchema(

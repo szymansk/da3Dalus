@@ -60,7 +60,7 @@ class TestStabilityEventsWing:
     def test_wing_insert_marks_dirty(self, db_session):
         a = _make_aeroplane(db_session)
         _seed_stability_result(db_session, a.id)
-        wing = WingModel(name="new_wing", aeroplane_id=a.id, symmetric=True)
+        wing = WingModel(name="new_wing", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
         row = db_session.query(StabilityResultModel).first()
@@ -68,7 +68,7 @@ class TestStabilityEventsWing:
 
     def test_wing_update_marks_dirty(self, db_session):
         a = _make_aeroplane(db_session)
-        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True)
+        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
         _seed_stability_result(db_session, a.id)
@@ -79,7 +79,7 @@ class TestStabilityEventsWing:
 
     def test_wing_delete_marks_dirty(self, db_session):
         a = _make_aeroplane(db_session)
-        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True)
+        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
         _seed_stability_result(db_session, a.id)
@@ -105,7 +105,7 @@ class TestStabilityEventsFuselage:
 class TestStabilityEventsNoOp:
     def test_no_crash_when_no_stability_results(self, db_session):
         a = _make_aeroplane(db_session)
-        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True)
+        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
         count = db_session.query(StabilityResultModel).count()

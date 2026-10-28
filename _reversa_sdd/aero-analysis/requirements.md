@@ -120,10 +120,16 @@ NeuralFoil suitability scoring (→ `airfoil-catalog`), mass and CG aggregation
 
 ### The single-source aero context (gh-924)
 
-- **BR-AA5 — The main wing is `argmax(wing.area())`, never `wings[0]`.** 🟢
-  `s_ref` / `c_ref` / `b_ref` are **overridden** from the largest wing, because
-  AeroSandbox defaults to `wings[0]`, which may be a tail — the gh-788/F1 bug
-  class that produced ~8× wrong coefficients for tail-first imports.
+- **BR-AA5 — The main wing is the wing with `surface_type == main_wing`, never
+  `wings[0]` and never the largest area (gh-1187; ADR 0022).** 🟢
+  `s_ref` / `c_ref` / `b_ref` are **overridden** from that wing, because AeroSandbox
+  defaults to `wings[0]`, which may be a tail — the gh-788/F1 bug class that produced
+  ~8× wrong coefficients for tail-first imports. The converter records the name on the
+  airplane (`main_wing_name`) and every other "main wing" pick (`_select_main_wing`,
+  the turbulator optimiser) reads it through `main_asb_wing`
+  (`model_schema_converters.py:774-800`); an aeroplane with wings but not exactly one
+  `main_wing` raises `ValidationDomainError` (422). The earlier `argmax(area)` rule
+  and `_find_reference_wing` are deleted.
 - **BR-AA6 — CD0 is the parasite drag, not the total drag.** 🟢
   `_parasite_cd0` (`assumption_compute_service.py:1098-1112`):
 
@@ -383,7 +389,7 @@ NeuralFoil suitability scoring (→ `airfoil-catalog`), mass and CG aggregation
 | Performance | The Oswald factor is derived from data already collected by the fine sweep — zero extra solver calls | `_e_oswald_from_sweep` (gh-636) | 🟢 |
 | Performance | Panel budget is bounded: 40 spanwise panels per half, chordwise 8 | `vlm_strip_forces.py:59-60, 171` | 🟢 |
 | Performance | AVL strip-force calls carry explicit timeouts (60 s airplane / 30 s wing) | `analysis_service.py:1881, 1962` | 🟢 |
-| Correctness | Reference geometry is taken from the **largest** wing, not `wings[0]` | `recompute_assumptions` step 1 (gh-788) | 🟢 |
+| Correctness | Reference geometry is taken from the wing marked `surface_type == main_wing`, not `wings[0]` and not the largest | `aeroplane_schema_to_asb_airplane_async` (gh-788, gh-1187) | 🟢 |
 | Correctness | Unknown deflection names raise instead of being dropped | `validate_deflections_against_airplane` (BR-20) | 🟢 |
 | Correctness | A stored OP is loaded constrained to its aircraft PK | `operating_point_resolver.py:138-213` | 🟢 |
 | Correctness | `alpha`/`beta` magnitudes > 180 are rejected as a rad/deg mix-up | `OperatingPointSchema` field validator (gh-577/gh-587) | 🟢 |

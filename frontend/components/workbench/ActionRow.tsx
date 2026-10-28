@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Download } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
-import { useWings } from "@/hooks/useWings";
+import { useWings, useAllWingData } from "@/hooks/useWings";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { CreateWingDialog } from "./CreateWingDialog";
 
@@ -19,7 +19,8 @@ function handleDownloadSTEP() {
 
 export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Readonly<ActionRowProps>) {
   const ctx = useAeroplaneContext();
-  const { mutate: mutateWings } = useWings(aeroplaneId);
+  const { wingNames, mutate: mutateWings } = useWings(aeroplaneId);
+  const { wings } = useAllWingData(aeroplaneId, wingNames);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [createWingOpen, setCreateWingOpen] = useState(false);
 
@@ -51,6 +52,7 @@ export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Reado
         open={createWingOpen}
         onClose={() => setCreateWingOpen(false)}
         aeroplaneId={aeroplaneId}
+        mainWingName={wings.find((w) => w.surface_type === "main_wing")?.name ?? null}
         onCreated={async (wingName, designModel) => {
           await mutateWings();
           ctx.selectWing(wingName);

@@ -37,6 +37,7 @@ def _make_wingconfig(root_chord: float = 150.0) -> dict:
             }
         ],
         "nose_pnt": [0, 0, 0],
+        "surface_type": "main_wing",
         "symmetric": True,
     }
 

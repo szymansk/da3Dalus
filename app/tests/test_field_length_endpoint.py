@@ -242,7 +242,7 @@ class TestFieldLengthEndpoint:
             plane_flap = _make_plane_with_context(db, t_static_N=1900.0)
 
             # Add a main wing with a flap TED
-            wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=plane_flap.id)
+            wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=plane_flap.id, surface_type="main_wing")
             db.add(wing)
             db.flush()
 

@@ -38,7 +38,7 @@ def _plane_with_wing(db):
         db,
         str(plane.uuid),
         "main_wing",
-        WingConfigurationSchema.model_validate(_WC),
+        WingConfigurationSchema.model_validate({**_WC, "surface_type": "main_wing"}),
         scale=0.001,
     )
     db.commit()
