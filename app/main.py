@@ -9,6 +9,7 @@ from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redi
 from fastapi.responses import JSONResponse
 
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
+from app.api.v2.endpoints import canon
 from app.api.v2.endpoints import components
 from app.api.v2.endpoints import component_types
 from app.api.v2.endpoints import versioning as versioning_v2
@@ -205,6 +206,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router, prefix="", tags=["health"])
     app.include_router(endurance.router, prefix="", tags=["endurance"])
+    app.include_router(canon.router, prefix="", tags=["canon"])
     # Versioning router BEFORE the aeroplane base router so the static route
     # /aeroplanes/compare is matched ahead of /aeroplanes/{aeroplane_id} (gh-914).
     app.include_router(versioning_v2.router, prefix="", tags=["versioning"])

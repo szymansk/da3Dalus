@@ -4,10 +4,13 @@ from aero_kernel.evaluation.evaluator import (
     RuleStatus,
     RuleVerdict,
     evaluate_rules,
+    judge_result,
     quantities_to_request,
 )
-from aero_kernel.evaluation.rules import Severity
+from aero_kernel.evaluation.rules import Severity, shipped_rule_table
+from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.graph import WhenFacts
+from aero_kernel.reference_fleet import FleetMember, reference_document
 from aero_kernel.schema import ComputeResult
 from aero_kernel.tests.evaluation_builders import (
     facts,
@@ -242,3 +245,12 @@ def test_a_vertical_tail_volume_above_the_band_is_a_caution_below_it_is_bad() ->
     assert high["vertical-tail-volume"].status is RuleStatus.ABOVE
     assert high["vertical-tail-volume"].severity is Severity.CAUTION
     assert low["vertical-tail-volume"].severity is Severity.BAD
+
+
+def test_judge_result_applies_the_shipped_table_to_a_fleet_geometry() -> None:
+    airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN))
+    result = result_of(ok("horizontal-tail-volume", 0.5))
+    verdicts = judge_result(result, airplane)
+    assert [v.rule_id for v in verdicts] == [r.id for r in shipped_rule_table().rules]
+    judged = {v.rule_id: v for v in verdicts}
+    assert judged["horizontal-tail-volume"].value == 0.5

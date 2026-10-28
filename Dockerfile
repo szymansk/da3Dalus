@@ -118,6 +118,7 @@ RUN micromamba run -n py311 python docker_smoke_test.py \
 # Now copy the rest of the application
 COPY app/ ./app/
 COPY cad_designer/ ./cad_designer/
+COPY aero_kernel/ ./aero_kernel/
 COPY components/ ./components/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./

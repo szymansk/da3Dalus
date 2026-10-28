@@ -10,9 +10,17 @@ import logging
 from collections.abc import Sequence
 from enum import StrEnum
 
-from aero_kernel.evaluation.rules import Band, Position, Rule, RuleTable, Severity
-from aero_kernel.graph import PENDING_WHEN_TERMS, WhenFacts
+from aero_kernel.evaluation.rules import (
+    Band,
+    Position,
+    Rule,
+    RuleTable,
+    Severity,
+    shipped_rule_table,
+)
+from aero_kernel.graph import PENDING_WHEN_TERMS, WhenFacts, facts_from_geometry
 from aero_kernel.schema import (
+    AirplaneGeometry,
     ComputeResult,
     Interval,
     QuantityResult,
@@ -29,6 +37,7 @@ __all__ = [
     "RuleStatus",
     "RuleVerdict",
     "evaluate_rules",
+    "judge_result",
     "quantities_to_request",
     "summarize_verdicts",
 ]
@@ -117,6 +126,27 @@ def evaluate_rules(
         if verdict.severity is not None:
             _log_verdict(verdict, call_id)
     return verdicts
+
+
+def judge_result(
+    result: ComputeResult, airplane: AirplaneGeometry, *, call_id: str | None = None
+) -> tuple[RuleVerdict, ...]:
+    """Judge a kernel result against the shipped rule table, for the aircraft it was computed for.
+
+    The caller needs neither the ``when`` facts nor the table: both follow from the geometry and
+    the build.
+
+    Args:
+        result: The kernel result; it need not contain every rule's quantity.
+        airplane: The geometry the result was computed for.
+        call_id: The kernel call the result came from, carried into the log records.
+
+    Returns:
+        One verdict per rule of the shipped table, in table order.
+    """
+    return evaluate_rules(
+        shipped_rule_table(), result, facts_from_geometry(airplane), call_id=call_id
+    )
 
 
 def _named(rule: Rule, explanation: str) -> str:

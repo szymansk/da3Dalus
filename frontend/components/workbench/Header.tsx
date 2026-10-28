@@ -11,6 +11,7 @@ import {
   ArrowLeftRight,
   GitBranch,
   Bot,
+  FlaskConical,
 } from "lucide-react";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
@@ -160,6 +161,14 @@ export function Header({ onOpenHistory }: HeaderProps) {
           >
             <Save size={16} />
           </button>
+          <GuardedLink
+            href="/expert"
+            aria-label="Expert View"
+            title="Expert View: canon/kernel view (development), experts only"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card-muted hover:bg-sidebar-accent"
+          >
+            <FlaskConical size={16} />
+          </GuardedLink>
           <button className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card-muted hover:bg-sidebar-accent">
             <Settings size={16} />
           </button>

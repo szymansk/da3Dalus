@@ -8,6 +8,7 @@ from aero_kernel.evaluation.evaluator import (
     RuleStatus,
     RuleVerdict,
     evaluate_rules,
+    judge_result,
     quantities_to_request,
     summarize_verdicts,
 )
@@ -35,6 +36,7 @@ __all__ = [
     "Severity",
     "check_rule_table",
     "evaluate_rules",
+    "judge_result",
     "quantities_to_request",
     "shipped_rule_table",
     "summarize_verdicts",
