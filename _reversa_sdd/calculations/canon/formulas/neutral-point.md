@@ -101,21 +101,22 @@ path in the fast tier and against AeroSandbox in the aero tier). The aspect rati
 panel pair laid flat, `AR_h = (total developed span)^2 / S_true` with both halves and the extension summed.
 The **AVL world** takes the real geometry (the panels at their `y` and `z`, mirrored); nothing is projected there.
 
-*Source — what is printed and what is derived.* The equivalence of a V-tail to a horizontal and a vertical tail with
-the areas `S cos^2(nu)` and `S sin^2(nu)` is the *simplified vee-tail theory* of Purser and Campbell, NACA Report 823
-(1945) (🟡 citation as given by the experts and recorded by the maintainer on 2026-10-27; **the report is not in
-the expert vaults searched (aerodynamics-expert, aircraft-design-scholz, rc-aircraft-designer), so no equation or
-figure number is quoted here and none was checked against the print**). Drela, *Design Rules* (the rule behind Eq. 3
-for V-tails) uses the same shares. What is **derived**, not printed: a panel at the angle `nu` meets the flow with the
-angle of attack `alpha cos(nu)` normal to the panel, and the lift is the vertical component of the panel's normal
-force, so `L = a_panel S alpha cos(nu) cos(nu) = a_panel S cos^2(nu) alpha`; the lift slope `a_panel` of the panel is
-that of its own aspect ratio. The side force is the same argument with `sin^2(nu)`. The barycentre then uses
-`a_h S_h,eff` in place of `a_h S_h`. The factors `cos^2(nu)` / `sin^2(nu)` are exact in linear theory: one `cos` from
-the projection of the incidence, one from the projection of the force; the cross terms cancel for a mirror-symmetric
-pair. The assumption is one lift slope for pitch and for sideslip; in reality the antisymmetric slope is below the
-symmetric one (the interference NACA 823 measured), so the fin share is the optimistic one. The ruddervator
-**control** power carries a single `cos(nu)` / `sin(nu)`, not the square (nothing computes it today; relevant for a
-future control-power entry). The share check `S_h,eff + S_v,eff = S_true` holds for every `nu` (tested).
+*Source — derived and approved.* 🟢 The V-tail rule is **derived in `derivations/vtail_equivalence.pdf`** (source
+`derivations/vtail_equivalence.tex`; approved by the maintainer 2026-10-28, #1208): `cos^2(nu)` / `sin^2(nu)` are
+exact in linear theory, and one lift slope of the developed pair is assumed (in reality `a_anti < a_sym`, the
+interference NACA 823 measured). The equivalence itself is the *simplified vee-tail theory* of Purser and Campbell,
+NACA Report 823 (1945), which Drela's *Design Rules* uses; that report is **not in the expert vaults searched**
+(aerodynamics-expert, aircraft-design-scholz, rc-aircraft-designer), so no printed equation or figure number is
+quoted and none was checked against the print. In short: a panel at the angle `nu` meets the flow with the angle of
+attack `alpha cos(nu)` normal to it, and the lift is the vertical component of the normal force, so
+`L = a_panel S alpha cos(nu) cos(nu) = a_panel S cos^2(nu) alpha`; the lift slope `a_panel` is that of the panel's own
+(developed) aspect ratio. The side force is the same argument with `sin^2(nu)`. The barycentre then uses
+`a_h S_h,eff` in place of `a_h S_h`. The factors are exact in linear theory: one `cos` from the projection of the
+incidence, one from the projection of the force; the cross terms cancel for a mirror-symmetric pair. The assumption
+is one lift slope for pitch and for sideslip; in reality the antisymmetric slope is below the symmetric one, so the
+fin share is the optimistic one. The ruddervator **control** power carries a single `cos(nu)` / `sin(nu)`, not the
+square (nothing computes it today; relevant for a future control-power entry). The share check
+`S_h,eff + S_v,eff = S_true` holds for every `nu` (tested).
 
 **Refused configurations.** The three worlds cover **one main wing with one pitch surface**, a horizontal tail or a
 V-tail (any fins and winglets). Tailless, canard and tandem layouts, and a layout with more than one pitch surface

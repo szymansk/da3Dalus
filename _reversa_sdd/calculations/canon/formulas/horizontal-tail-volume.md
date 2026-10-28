@@ -53,8 +53,9 @@ true area of the panel from AeroSandbox (`Wing.area(type="planform", include_cen
 panel), the root carried to the centreline at its angle by an extension panel (maintainer decision 2026-10-28; `nu -> 0` is the horizontal tail exactly) and `nu_i` the panel angle to the horizontal from the section positions (`cos^2(nu_i) = dy_i^2/(dy_i^2 + dz_i^2)`,
 the geometry sections, because AeroSandbox has no panel-angle accessor). It is the same `S_h,eff` the
 [[neutral-point]] uses, and the complement of the fin share of [[vertical-tail-volume]]. The arm is to the
-V-tail's own quarter-chord MAC ([[horizontal-tail-arm]]). Source: see [[neutral-point]] (Purser and Campbell, NACA Report
-823, 🟡; the print was not available).
+V-tail's own quarter-chord MAC ([[horizontal-tail-arm]]). Source: derived in `derivations/vtail_equivalence.pdf` (approved by the maintainer 2026-10-28, #1208): `cos^2(nu)` /
+`sin^2(nu)` exact in linear theory, one lift slope of the developed pair assumed (in reality `a_anti < a_sym`, the
+interference NACA 823 measured); see [[neutral-point]] 🟢.
 
 **Produces** [[horizontal-tail-volume]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[mean-aerodynamic-chord]] · [[horizontal-tail-arm]]
 
