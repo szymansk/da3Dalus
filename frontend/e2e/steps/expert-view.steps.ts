@@ -132,8 +132,8 @@ Given("the Expert View is open with a stubbed kernel backend", async ({ page }) 
 
 Given(
   "the kernel fails {string} because {string} failed",
-  async ({ page }, quantity: string, cause: string) => {
-    void page; // the failure is read by the stub at request time
+  async (_fixtures, quantity: string, cause: string) => {
+    // the failure is read by the stub at request time
     failure = { quantity, cause };
   },
 );
