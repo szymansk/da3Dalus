@@ -747,6 +747,7 @@ class TestApplyWingShiftService:
 
         wing_mock = MagicMock()
         wing_mock.name = "main_wing"
+        wing_mock.surface_type = "main_wing"
         wing_mock.x_secs = [xsec0, xsec1]
 
         plane_mock = MagicMock()
@@ -830,6 +831,7 @@ class TestApplyHtailScaleService:
 
         htail_mock = MagicMock()
         htail_mock.name = "horizontal_tail"
+        htail_mock.surface_type = "horizontal_tail"
         htail_mock.x_secs = [hxsec0, hxsec1]
 
         plane_mock = MagicMock()
@@ -1019,6 +1021,7 @@ class TestHtailScaleNegativeDelta:
         hxsec.chord = 0.12
         htail_mock = MagicMock()
         htail_mock.name = "horizontal_tail"
+        htail_mock.surface_type = "horizontal_tail"
         htail_mock.x_secs = [hxsec]
 
         plane_mock = MagicMock()
@@ -1116,12 +1119,14 @@ class TestConvergenceGuardService:
         xsec0.xyz_le = [0.0, 0.0, 0.0]
         wing_mock = MagicMock()
         wing_mock.name = "main_wing"
+        wing_mock.surface_type = "main_wing"
         wing_mock.x_secs = [xsec0]
 
         hxsec0 = MagicMock()
         hxsec0.chord = 0.12
         htail_mock = MagicMock()
         htail_mock.name = "horizontal_tail"
+        htail_mock.surface_type = "horizontal_tail"
         htail_mock.x_secs = [hxsec0]
 
         plane_mock = MagicMock()

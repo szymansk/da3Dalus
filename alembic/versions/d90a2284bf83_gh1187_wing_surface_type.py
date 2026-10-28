@@ -149,9 +149,7 @@ def upgrade() -> None:
     op.add_column("wings", sa.Column("surface_type", sa.String(), nullable=True))
     op.add_column(
         "wings",
-        sa.Column(
-            "surface_type_inferred", sa.Boolean(), nullable=False, server_default=sa.false()
-        ),
+        sa.Column("surface_type_inferred", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
     bind = op.get_bind()
     for wings in _load_wings_by_aeroplane(bind).values():
