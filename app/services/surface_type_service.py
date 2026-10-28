@@ -158,7 +158,7 @@ def set_wing_surface_type(
         wing.surface_type_inferred = False
         db.flush()
     except SQLAlchemyError as exc:
-        logger.error("Database error when setting surface_type: %s", exc)
+        logger.exception("Database error when setting surface_type: %s", exc)
         raise InternalError(message=f"Database error: {exc}")
 
 

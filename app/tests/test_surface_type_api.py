@@ -34,7 +34,7 @@ def _geometry(surface_type: str | None, chord: float = 0.2, span: float = 0.5) -
     return body
 
 
-@pytest.fixture()
+@pytest.fixture
 def plane(client_and_db):
     client, session_factory = client_and_db
     with session_factory() as db:

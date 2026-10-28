@@ -155,7 +155,7 @@ def _run_alembic(db_url: str, command: str) -> None:
         raise RuntimeError(f"alembic {command!r} failed:\n{result.stdout}\n{result.stderr}")
 
 
-@pytest.fixture()
+@pytest.fixture
 def tmp_db():
     fd, path = tempfile.mkstemp(suffix=".db", prefix="gh1187_test_")
     os.close(fd)
