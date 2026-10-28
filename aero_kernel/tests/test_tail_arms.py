@@ -107,9 +107,9 @@ async def test_the_vertical_arm_is_the_fin_quarter_chord_less_the_design_cg_per_
 
 @pytest.mark.asyncio
 async def test_a_v_tail_is_the_vertical_surface_of_the_arm() -> None:
-    """The arm is to the V-tail's own quarter-chord MAC (ASB's); what a V-tail counts as is #1208.
+    """The arm is to the V-tail's own quarter-chord MAC (ASB's); the tail volume projects it (#1208).
 
-    The neutral point refuses a V-tail layout (#1208), so the formula is called with the CG given.
+    The formula is called with the CG given, so no neutral point is needed.
     """
     airplane = document(fin("v_tail", "vee"), tail=False)
     arm = await vertical_tail_arm(

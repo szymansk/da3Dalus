@@ -46,7 +46,7 @@ async def test_s_ref_and_b_ref_are_the_reference_values_of_the_main_wing_not_rec
 
 
 async def test_a_v_tail_counts_its_fin_share_sin_squared_of_the_panel_angle() -> None:
-    """A mirrored V-tail panel from (y, z) = (0.05, 0) to (0.25, 0.2): 45 deg, sin^2 = 1/2."""
+    """A mirrored V-tail panel from (y, z) = (0.05, 0) to (0.25, 0.2), root carried to the centreline: 45 deg, sin^2 = 1/2."""
     sections = [
         {"xyz_le": [0.62, 0.05, 0.0], "chord": 0.12, "twist": 0.0, "airfoil": "naca0012"},
         {"xyz_le": [0.66, 0.25, 0.2], "chord": 0.06, "twist": 0.0, "airfoil": "naca0012"},
@@ -59,7 +59,8 @@ async def test_a_v_tail_counts_its_fin_share_sin_squared_of_the_panel_angle() ->
         {"airplane": airplane, "s_ref": S_REF, "b_ref": B_REF, "l_v_cg": arm}, context
     )
     panel = (0.12 + 0.06) / 2.0 * (0.2**2 + 0.2**2) ** 0.5
-    assert close(found["v_v"], 2.0 * panel * 0.5 * arm / (S_REF * B_REF), 1e-12)
+    extension = 0.12 * (0.05**2 + 0.05**2) ** 0.5  # the root carried to the centreline at 45 deg
+    assert close(found["v_v"], 2.0 * (panel + extension) * 0.5 * arm / (S_REF * B_REF), 1e-12)
 
 
 async def test_without_a_vertical_tail_the_volume_does_not_apply() -> None:

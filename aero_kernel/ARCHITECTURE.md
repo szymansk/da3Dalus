@@ -244,7 +244,7 @@ nothing failed. The category enum holds only the eight rows above.
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
 - **Refused layouts and tool limits** (`unsupported_configuration`): `unsupported_layout` — the neutral point
-  is defined for one `main_wing` with one `horizontal_tail` (any `vertical_tail` and `winglet`), decided from
+  is defined for one `main_wing` with one `horizontal_tail` or `v_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
   declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
   `roll_device_on_unmirrored_surface` — a device acting as aileron sits on a wing that is not mirrored (no
@@ -516,10 +516,15 @@ quantity.
       types and the facts derived from them — are defined complete whether or not a canon entry uses them
       yet; ADR 0021 applies to mechanisms, not to the domain vocabulary.
     - **Layout check of `neutral-point`** (#1203): decided from `surface_type`, never from the planform, in every
-      world, before AVL is started. Supported: exactly one `main_wing` and one `horizontal_tail`, plus any
-      `vertical_tail` and `winglet`. Tailless, canard, tandem and V-tail layouts are
-      `unsupported_configuration` / `unsupported_layout` (open: #1206 tailless, #1207 canard and tandem, #1208
-      V-tail). A tail-shaped surface typed `main_wing` is the main wing: the type decides.
+      world, before AVL is started. Supported: exactly one `main_wing` and exactly one `horizontal_tail` or `v_tail`,
+      plus any `vertical_tail` and `winglet`. Tailless, canard and tandem layouts, and more than one pitch
+      surface, are `unsupported_configuration` / `unsupported_layout` (open: #1206 tailless, #1207 canard and
+      tandem). A tail-shaped surface typed `main_wing` is the main wing: the type decides.
+    - **V-tail as the horizontal tail** (maintainer decision 2026-10-27, #1208): in the textbook and Pappas
+      worlds the GEO adapter returns a `v_tail` surface with the effective area `S_h,eff = sum S_i cos^2(nu_i)`
+      (per panel, `nu_i` from the section positions, `S_i` ASB's true panel area, the root carried to the centreline by an extension panel at the root angle, 2026-10-28), the aspect ratio of the true
+      panels (`(sum b_i)^2 / sum S_i`) and ASB's MAC and aerodynamic centre; `horizontal-tail-volume` uses the
+      same area and `vertical-tail-volume` the complement `sum S_i sin^2(nu_i)`. AVL takes the real geometry.
   - `given`: a list of input quantities (`role: input` or `target`, without an entry in `defaults.yaml`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).

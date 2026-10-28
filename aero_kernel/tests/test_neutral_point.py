@@ -191,7 +191,8 @@ async def test_a_missing_centre_of_gravity_is_a_missing_input() -> None:
         (("main_wing",), ["main_wing"]),  # tailless
         (("main_wing", "canard"), ["canard", "main_wing"]),
         (("main_wing", "tandem_wing"), ["main_wing", "tandem_wing"]),
-        (("main_wing", "v_tail"), ["main_wing", "v_tail"]),
+        (("main_wing", "v_tail", "canard"), ["canard", "main_wing", "v_tail"]),
+        (("main_wing", "v_tail", "v_tail"), ["main_wing", "v_tail", "v_tail"]),
         (("main_wing", "horizontal_tail", "canard"), ["canard", "horizontal_tail", "main_wing"]),
         (("main_wing", "horizontal_tail", "v_tail"), ["horizontal_tail", "main_wing", "v_tail"]),
         (
@@ -200,7 +201,7 @@ async def test_a_missing_centre_of_gravity_is_a_missing_input() -> None:
         ),
     ],
 )
-async def test_a_layout_outside_one_main_wing_and_one_horizontal_tail_is_refused(
+async def test_a_layout_outside_one_main_wing_and_one_pitch_surface_is_refused(
     layout: tuple[str, ...], found: list[str]
 ) -> None:
     result, avl = await run("neutral-point", airplane=airplane_with(*layout))

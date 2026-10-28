@@ -64,13 +64,13 @@ async def test_without_a_horizontal_tail_the_volume_does_not_apply() -> None:
 
 @pytest.mark.parametrize(
     ("surface_types", "tail"),
-    [(("horizontal_tail",), True), (("v_tail",), False)],
-    ids=["two-horizontal-tails", "v-tail-only"],
+    [(("horizontal_tail",), True), (("v_tail",), True)],
+    ids=["two-horizontal-tails", "v-tail-and-horizontal-tail"],
 )
 async def test_the_volume_needs_exactly_one_horizontal_surface(
     surface_types: tuple[str, ...], tail: bool
 ) -> None:
-    """A V-tail is not the horizontal surface of this entry: its share comes with the V-tail NP (#1208)."""
+    """A V-tail is the horizontal surface (#1208); a second pitch surface beside it or beside a tail is refused."""
     extra = [
         {**fin(kind, f"extra-{index}"), "symmetric": True}
         for index, kind in enumerate(surface_types)

@@ -20,33 +20,36 @@ __all__ = ["neutral_point"]
 # Pappas, "If It Flies", Model Aviation 10/2009: the downwash factor 1 - 3.24 / AR_w (after von Mises,
 # Prager, Kuerti).
 PAPPAS_DOWNWASH = 3.24
-# The surface types allowed beside the one main wing and the one horizontal tail (any number).
+# The surface types allowed beside the one main wing and the one pitch surface (any number).
 _BESIDE = frozenset({"vertical_tail", "winglet"})
+# The pitch surfaces: a V-tail counts as the horizontal tail (maintainer 2026-10-27, #1208).
+_PITCH = ("horizontal_tail", "v_tail")
 
 
 def _layout(airplane: AirplaneGeometry) -> tuple[str, str]:
-    """The keys of the main wing and the horizontal tail of a supported layout, from ``surface_type`` only.
+    """The keys of the main wing and the pitch surface of a supported layout, from ``surface_type`` only.
 
     Raises:
         FormulaError: ``unsupported_configuration`` (``unsupported_layout``) unless there is exactly
-            one ``main_wing`` and one ``horizontal_tail`` (any ``vertical_tail`` and ``winglet``).
+            one ``main_wing`` and exactly one ``horizontal_tail`` or ``v_tail`` (any ``vertical_tail``
+            and ``winglet``).
     """
     wings = list((airplane.wings or {}).items())
     types = Counter(wing.surface_type for _, wing in wings)
-    others = set(types) - {"main_wing", "horizontal_tail"} - _BESIDE
-    if types["main_wing"] != 1 or types["horizontal_tail"] != 1 or others:
+    others = set(types) - {"main_wing", *_PITCH} - _BESIDE
+    if types["main_wing"] != 1 or sum(types[kind] for kind in _PITCH) != 1 or others:
         found = sorted(str(wing.surface_type) for _, wing in wings)
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,
             "unsupported_layout",
-            "the neutral point is defined here for one main wing with one horizontal tail; "
+            "the neutral point is defined here for one main wing with one horizontal tail or V-tail; "
             f"this airplane has the surfaces {', '.join(found)}",
-            "a tailless wing, a canard, a tandem wing and a V-tail are not covered yet",
+            "a tailless wing, a canard and a tandem wing are not covered yet",
             detail={"surface_types": list(found)},
             parameter="airplane",
         )
     main = next(key for key, wing in wings if wing.surface_type == "main_wing")
-    tail = next(key for key, wing in wings if wing.surface_type == "horizontal_tail")
+    tail = next(key for key, wing in wings if wing.surface_type in _PITCH)
     return main, tail
 
 
@@ -77,7 +80,9 @@ async def neutral_point(x: Inputs, ctx: Context) -> dict[str, float]:
       kernel's ``S_ref``. It adds no regime warning: those come with ``V_md`` and are inherited.
 
     The textbook and Pappas worlds take the area, aspect ratio, MAC and MAC leading edge of the main wing
-    and of the tail from the GEO adapter, i.e. AeroSandbox (#1253).
+    and of the tail from the GEO adapter, i.e. AeroSandbox (#1253). A V-tail is the horizontal tail with
+    the effective area ``S_h,eff = sum S_i cos^2(nu_i)`` and the aspect ratio of its true panels
+    (maintainer 2026-10-27, #1208); the AVL world models its geometry as it is.
 
     The layout is checked first, in every world, from ``surface_type`` only; AVL is never started
     for a refused layout. Every world declares ``fuselage_not_modelled``.

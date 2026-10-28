@@ -246,6 +246,13 @@ def test_the_fleet_main_wing_and_tail_surfaces_match_asb_directly(member: FleetM
     airplane = AirplaneGeometry.model_validate(document)
     for key in (member.main_wing_name, member.tail_name):
         found = surface_properties(airplane, key)
+        if document["wings"][key]["surface_type"] == "v_tail":
+            # A V-tail is the horizontal tail with S_h,eff and the true panel AR (#1208): the MAC and its
+            # leading edge are ASB's of the whole surface, the area is below the gross planform.
+            area, _span, _ar, mac, x_le = asb_surface(document["wings"][key])
+            assert agree((found.c_mac, found.x_le_mac), (mac, x_le))
+            assert 0.0 < found.area < area
+            continue
         assert agree(
             (found.area, found.span, found.aspect_ratio, found.c_mac, found.x_le_mac),
             asb_surface(document["wings"][key]),
