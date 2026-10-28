@@ -42,6 +42,7 @@ def _wing_with_dihedral(terminal_tip_dihedral: float) -> Wing:
 
     return Wing(
         nose_pnt=[0, 0, 0],
+        surface_type="main_wing",
         symmetric=True,
         segments=[
             Segment(root_airfoil=_af(0), tip_airfoil=_af(5, incidence=1), length=300, sweep=0),

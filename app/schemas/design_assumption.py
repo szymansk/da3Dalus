@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.design_warning import DesignWarning
+
 
 VALID_PARAMETERS = Literal[
     "mass",
@@ -171,4 +173,11 @@ class AssumptionsSummary(BaseModel):
     assumptions: list[AssumptionRead] = Field(default_factory=list)
     warnings_count: int = Field(
         0, description="Count of assumptions with divergence_level >= warning"
+    )
+    design_warnings: list[DesignWarning] = Field(
+        default_factory=list,
+        description=(
+            "Declared substitutions the computed numbers depend on (ADR 0020), e.g. a wing "
+            "role that was only proposed by the data migration and is not yet confirmed."
+        ),
     )

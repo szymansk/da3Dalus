@@ -76,7 +76,7 @@ class TestWingChangeMarksOpsDirty:
         a = _make_aeroplane(db_session)
         op = _make_op(db_session, a.id, status="TRIMMED")
 
-        wing = WingModel(name="new_wing", aeroplane_id=a.id, symmetric=True)
+        wing = WingModel(name="new_wing", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
 
@@ -85,7 +85,7 @@ class TestWingChangeMarksOpsDirty:
 
     def test_wing_update_marks_ops_dirty(self, db_session):
         a = _make_aeroplane(db_session)
-        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True)
+        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
 
@@ -99,7 +99,7 @@ class TestWingChangeMarksOpsDirty:
 
     def test_wing_delete_marks_ops_dirty(self, db_session):
         a = _make_aeroplane(db_session)
-        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True)
+        wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
 
@@ -115,7 +115,7 @@ class TestWingChangeMarksOpsDirty:
         a = _make_aeroplane(db_session)
         op_computing = _make_op(db_session, a.id, status="COMPUTING")
 
-        wing = WingModel(name="new_wing", aeroplane_id=a.id, symmetric=True)
+        wing = WingModel(name="new_wing", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
 
@@ -152,7 +152,7 @@ class TestGeometryEventsPublished:
             a = _make_aeroplane(db_session)
             _make_op(db_session, a.id, status="TRIMMED")
 
-            wing = WingModel(name="new_wing", aeroplane_id=a.id, symmetric=True)
+            wing = WingModel(name="new_wing", aeroplane_id=a.id, symmetric=True, surface_type="main_wing")
             db_session.add(wing)
             db_session.commit()
 
@@ -172,7 +172,7 @@ class TestOnlyTargetAeroplaneAffected:
         op1 = _make_op(db_session, a1.id, status="TRIMMED")
         op2 = _make_op(db_session, a2.id, status="TRIMMED")
 
-        wing = WingModel(name="new_wing", aeroplane_id=a1.id, symmetric=True)
+        wing = WingModel(name="new_wing", aeroplane_id=a1.id, symmetric=True, surface_type="main_wing")
         db_session.add(wing)
         db_session.commit()
 

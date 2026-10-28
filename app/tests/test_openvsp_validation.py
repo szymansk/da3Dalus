@@ -27,6 +27,7 @@ from app.schemas.aeroplaneschema import (
     AsbWingSchema,
     FuselageSchema,
     FuselageXSecSuperEllipseSchema,
+    SurfaceType,
     WingXSecSchema,
 )
 
@@ -41,6 +42,7 @@ def _trapezoid_wing(
 ) -> AsbWingSchema:
     return AsbWingSchema(
         name=name,
+        surface_type=SurfaceType.MAIN_WING,
         symmetric=symmetric,
         x_secs=[
             WingXSecSchema(

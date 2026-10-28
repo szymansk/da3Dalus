@@ -9,6 +9,7 @@
  "wings": {
   "Tragflaeche": {
    "name": "Tragflaeche",
+   "surface_type": "main_wing",
    "symmetric": true,
    "design_model": "wc",
    "x_secs": [

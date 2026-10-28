@@ -63,7 +63,9 @@ def _make_plane_with_wing(
     The first N-1 xsecs get a detail row; the last (terminal) does not.
     """
     plane = make_aeroplane(db, name=f"test-{uuid.uuid4().hex[:8]}")
-    wing = WingModel(name=wing_name, symmetric=True, aeroplane_id=plane.id)
+    wing = WingModel(
+        name=wing_name, surface_type="main_wing", symmetric=True, aeroplane_id=plane.id
+    )
     for i in range(xsec_count):
         xsec = WingXSecModel(
             sort_index=i,
@@ -153,7 +155,9 @@ class TestListWingNames:
 
     def test_returns_wing_names(self, db):
         plane, _ = _make_plane_with_wing(db, wing_name="alpha")
-        wing2 = WingModel(name="beta", symmetric=False, aeroplane_id=plane.id)
+        wing2 = WingModel(
+            name="beta", surface_type="horizontal_tail", symmetric=False, aeroplane_id=plane.id
+        )
         db.add(wing2)
         db.commit()
         result = wing_service.list_wing_names(db, plane.uuid)
@@ -172,6 +176,7 @@ class TestCreateWing:
         plane = make_aeroplane(db)
         write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
             name="new_wing",
+            surface_type="main_wing",
             x_secs=[],
         )
         wing_service.create_wing(db, plane.uuid, "new_wing", write_schema)
@@ -190,7 +195,9 @@ class TestCreateWing:
             wing_service.create_wing(db, plane.uuid, "dup", write_schema)
 
     def test_raises_not_found_for_bad_plane(self, db):
-        write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(name="w", x_secs=[])
+        write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
+            name="w", surface_type="main_wing", x_secs=[]
+        )
         with pytest.raises(NotFoundError):
             wing_service.create_wing(db, uuid.uuid4(), "w", write_schema)
 
@@ -203,6 +210,7 @@ class TestUpdateWing:
         plane, wing = _make_plane_with_wing(db, wing_name="upd")
         write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
             name="upd",
+            surface_type="main_wing",
             x_secs=[],
         )
         wing_service.update_wing(db, plane.uuid, "upd", write_schema)
@@ -212,7 +220,9 @@ class TestUpdateWing:
 
     def test_raises_not_found_for_missing_wing(self, db):
         plane = make_aeroplane(db)
-        write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(name="nope", x_secs=[])
+        write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
+            name="nope", surface_type="main_wing", x_secs=[]
+        )
         with pytest.raises(NotFoundError):
             wing_service.update_wing(db, plane.uuid, "nope", write_schema)
 
@@ -1085,6 +1095,7 @@ class TestWingConfigRoundtrip:
         aid = resp.json()["id"]
 
         wc = {
+            "surface_type": "main_wing",
             "segments": [
                 {
                     "root_airfoil": {"airfoil": airfoil_path, "chord": 150.0, "incidence": 0},
@@ -1111,6 +1122,7 @@ class TestWingConfigRoundtrip:
         aid = resp.json()["id"]
 
         wc = {
+            "surface_type": "main_wing",
             "segments": [
                 {
                     "root_airfoil": {"airfoil": airfoil_path, "chord": 150.0, "incidence": 0},
@@ -1146,6 +1158,7 @@ class TestWingConfigRoundtrip:
         aid = resp.json()["id"]
 
         wc = {
+            "surface_type": "main_wing",
             "segments": [
                 {
                     "root_airfoil": {"airfoil": airfoil_path, "chord": 150.0, "incidence": 0},
@@ -1166,6 +1179,7 @@ class TestWingConfigRoundtrip:
         aid = resp.json()["id"]
 
         wc = {
+            "surface_type": "main_wing",
             "segments": [
                 {
                     "root_airfoil": {"airfoil": airfoil_path, "chord": 150.0, "incidence": 0},
@@ -1190,6 +1204,7 @@ class TestWingConfigRoundtrip:
         aid = resp.json()["id"]
 
         wc = {
+            "surface_type": "main_wing",
             "segments": [
                 {
                     "root_airfoil": {"airfoil": airfoil_path, "chord": 150.0, "incidence": 0},
@@ -1312,7 +1327,13 @@ class TestWingEndpointUnitsConsistency:
     def _make_plane_with_spares_mm(self, db):
         """Create a wing where the spare fields are stored in mm (as they come from WingConfig)."""
         plane = make_aeroplane(db, name=f"units-test-{uuid.uuid4().hex[:8]}")
-        wing = WingModel(name="main", symmetric=True, design_model="wc", aeroplane_id=plane.id)
+        wing = WingModel(
+            name="main",
+            surface_type="main_wing",
+            symmetric=True,
+            design_model="wc",
+            aeroplane_id=plane.id,
+        )
 
         # Two x-secs: first has a spare, second is terminal
         xsec0 = WingXSecModel(
@@ -1415,7 +1436,13 @@ class TestSpareDbStorageUnitsMm:
     def test_recompute_stores_origin_vector_in_mm(self, db):
         """After _recompute_spare_vectors, DB spare_origin/spare_vector must be in mm."""
         plane = make_aeroplane(db, name=f"db-units-{uuid.uuid4().hex[:8]}")
-        wing = WingModel(name="main", symmetric=True, design_model="wc", aeroplane_id=plane.id)
+        wing = WingModel(
+            name="main",
+            surface_type="main_wing",
+            symmetric=True,
+            design_model="wc",
+            aeroplane_id=plane.id,
+        )
 
         xsec0 = WingXSecModel(
             sort_index=0,
@@ -1471,7 +1498,13 @@ class TestSpareDbStorageUnitsMm:
     def test_spare_round_trip_api_meters_db_mm_api_meters(self, db):
         """Round-trip: create via API (m) → DB stores mm → read via API returns same m."""
         plane = make_aeroplane(db, name=f"roundtrip-{uuid.uuid4().hex[:8]}")
-        wing = WingModel(name="main", symmetric=True, design_model="wc", aeroplane_id=plane.id)
+        wing = WingModel(
+            name="main",
+            surface_type="main_wing",
+            symmetric=True,
+            design_model="wc",
+            aeroplane_id=plane.id,
+        )
 
         xsec0 = WingXSecModel(
             sort_index=0,

@@ -29,7 +29,7 @@ AIRFOIL_ALT = "naca2412"
 def _roundtrip(wing_data: Wing):
     """WingConfig schema → WingConfiguration → ASB schema → WingConfiguration."""
     wc = create_wing_configuration(wing_data)
-    asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
+    asb_schema = wing_config_to_asb_wing_schema(wc, "test", "main_wing", scale=0.001)
     wc2 = asb_wing_schema_to_wing_config(asb_schema, scale=1000.0)
     return wc, wc2
 
@@ -506,7 +506,7 @@ class TestTedPropagation:
         )
 
         wc = create_wing_configuration(wing_data)
-        asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
+        asb_schema = wing_config_to_asb_wing_schema(wc, "test", "main_wing", scale=0.001)
 
         for i, x_sec in enumerate(asb_schema.x_secs):
             if i == 1:
@@ -543,7 +543,7 @@ class TestTedPropagation:
         )
 
         wc = create_wing_configuration(wing_data)
-        asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
+        asb_schema = wing_config_to_asb_wing_schema(wc, "test", "main_wing", scale=0.001)
 
         # x_sec[1] = segment 1 (has TED) → must have cs
         assert asb_schema.x_secs[1].control_surface is not None
@@ -720,7 +720,7 @@ class TestTedPropagation:
 
         wc = create_wing_configuration(wing_data)
         for cycle in range(5):
-            asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
+            asb_schema = wing_config_to_asb_wing_schema(wc, "test", "main_wing", scale=0.001)
             ted_count = sum(1 for x in asb_schema.x_secs if x.trailing_edge_device is not None)
             assert ted_count == 1, (
                 f"Cycle {cycle}: expected 1 TED, found {ted_count} — "
@@ -753,7 +753,7 @@ class TestRoundtripDrift:
         snapshots = []
 
         for _ in range(n):
-            asb_schema = to_asb(wc, "test", scale=0.001)
+            asb_schema = to_asb(wc, "test", "main_wing", scale=0.001)
             wc = from_asb(asb_schema, scale=1000.0)
             snapshot = []
             for seg in wc.segments:

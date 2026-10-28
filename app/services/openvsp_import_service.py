@@ -856,6 +856,7 @@ def _persist_aeroplane(
             try:
                 write = AsbWingGeometryWriteSchema(
                     name=wing_name,
+                    surface_type=wing.surface_type,
                     symmetric=wing.symmetric,
                     x_secs=[
                         {
@@ -870,7 +871,9 @@ def _persist_aeroplane(
                         for xs in wing.x_secs
                     ],
                 )
-                wing_service.create_wing(db, aeroplane.uuid, wing_name, write)
+                wing_service.create_wing(
+                    db, aeroplane.uuid, wing_name, write, surface_type_inferred=True
+                )
             except Exception as exc:  # noqa: BLE001 — convert to warning
                 _record_persist_failure(
                     result, component_type="WING", component_name=wing_name, exc=exc

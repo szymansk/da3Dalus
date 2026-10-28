@@ -20,6 +20,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from app.schemas.aeroplaneschema import SurfaceType
+from app.services.surface_type_service import find_main_wing, wings_of_type
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -357,7 +360,7 @@ def build_tail_sizing_context_from_aeroplane(aircraft) -> dict | None:
 
     Reads:
       - assumption_computation_context (mac_m, s_ref_m2, b_ref_m, x_np_m — all metres)
-      - wing geometry (area_m2, leading-edge x_m, MAC_m) by wing name convention
+      - wing geometry (area_m2, leading-edge x_m, MAC_m) per wing role (``surface_type``)
       - aircraft_class from the is_default loading scenario
 
     Returns None when the aircraft lacks wings or the context is not yet
@@ -377,44 +380,19 @@ def build_tail_sizing_context_from_aeroplane(aircraft) -> dict | None:
         return None
 
     # ------------------------------------------------------------------
-    # Identify wing roles by name convention
-    # Convention: name contains "horizontal" → htail; "vertical" → vtail
-    # Canard: name contains "canard"
-    # Flying-wing / tailless: no wing with "horizontal" in name and wing
-    #   count == 1 (only main wing).
+    # Wing roles come from the explicit ``surface_type`` (gh-1187) — never
+    # from names. A V-tail counts as horizontal AND vertical tail, but its
+    # decomposition into the two sizing formulas is out of scope (gh-491):
+    # it sets ``is_v_tail`` and no ``htail``/``vtail`` geometry.
     # ------------------------------------------------------------------
     wings = aircraft.wings if hasattr(aircraft, "wings") else []
-    main_wing = None
-    htail = None
-    vtail = None
-    is_canard = False
-
-    for w in wings:
-        wname = (w.name or "").lower()
-        if "canard" in wname:
-            is_canard = True
-        elif "horizontal" in wname or "htail" in wname:
-            htail = w
-        elif "vertical" in wname or "vtail" in wname:
-            vtail = w
-        elif "main" in wname or "wing" in wname:
-            if main_wing is None or _wing_area_approx(w) > _wing_area_approx(main_wing):
-                main_wing = w
-
-    # Fallback: if no main_wing found explicitly, pick largest non-tail wing
-    if main_wing is None and wings:
-        candidates = [
-            w
-            for w in wings
-            if "horizontal" not in (w.name or "").lower()
-            and "vertical" not in (w.name or "").lower()
-            and "canard" not in (w.name or "").lower()
-        ]
-        if candidates:
-            main_wing = max(candidates, key=_wing_area_approx)
-
-    is_tailless = htail is None and not is_canard
-    is_v_tail = False  # V-tail decomposition is out-of-scope (gh-491)
+    main_wing = find_main_wing(wings)
+    htail = _largest_wing(wings_of_type(wings, SurfaceType.HORIZONTAL_TAIL))
+    vtail = _largest_wing(wings_of_type(wings, SurfaceType.VERTICAL_TAIL))
+    is_canard = bool(wings_of_type(wings, SurfaceType.CANARD))
+    is_v_tail = bool(wings_of_type(wings, SurfaceType.V_TAIL))
+    is_tandem = bool(wings_of_type(wings, SurfaceType.TANDEM_WING))
+    is_tailless = htail is None and not is_v_tail and not is_canard
 
     # Wing AC: first x_sec leading-edge X + 25% MAC
     x_wing_ac_m = None
@@ -470,7 +448,13 @@ def build_tail_sizing_context_from_aeroplane(aircraft) -> dict | None:
         "is_canard": is_canard,
         "is_tailless": is_tailless,
         "is_v_tail": is_v_tail,
+        "is_tandem": is_tandem,
     }
+
+
+def _largest_wing(wings: list):
+    """Return the largest of several wings of the same role (twin fins), or None."""
+    return max(wings, key=_wing_area_approx) if wings else None
 
 
 def _wing_area_approx(wing) -> float:

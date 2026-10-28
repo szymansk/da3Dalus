@@ -14,6 +14,7 @@ from app.models.computation_config import (
     AircraftComputationConfigModel,
     COMPUTATION_CONFIG_DEFAULTS,
 )
+from app.services.surface_type_service import surface_type_warnings
 from app.schemas.design_assumption import (
     DESIGN_CHOICE_PARAMS,
     PARAMETER_DEFAULTS,
@@ -143,7 +144,11 @@ def list_assumptions(db: Session, aeroplane_uuid) -> AssumptionsSummary:
         )
         assumptions = [_assumption_to_read(r) for r in rows]
         warnings_count = sum(1 for a in assumptions if a.divergence_level in ("warning", "alert"))
-        return AssumptionsSummary(assumptions=assumptions, warnings_count=warnings_count)
+        return AssumptionsSummary(
+            assumptions=assumptions,
+            warnings_count=warnings_count,
+            design_warnings=surface_type_warnings(aeroplane.wings or []),
+        )
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:

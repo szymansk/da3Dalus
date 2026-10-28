@@ -193,7 +193,7 @@ flowchart TB
 
     subgraph Geom["Geometry supply"]
         direction LR
-        G1["aeroplane_schema_to_asb_airplane<br/>«Component: converters»<br/>main wing = largest planform, gh-788.<br/>Overrides s_ref, c_ref, b_ref."]
+        G1["aeroplane_schema_to_asb_airplane<br/>«Component: converters»<br/>main wing = surface_type main_wing (gh-788, gh-1187).<br/>Overrides s_ref, c_ref, b_ref."]
         G2["build_avl_geometry_file<br/>«Component: avl_geometry_service»<br/>repr of the dataclass tree IS the .avl file.<br/>Panel spacing heuristics, CDCL injection."]
         G3["control_surface_mixing<br/>«Component»<br/>role to control-axis decomposition, gh-772.<br/>Single source shared by AVL, ASB and enrichment."]
         G4["NeuralFoil<br/>«External: neuralfoil 0.3.2»<br/>2-D surrogate. 3-point CDCL polar,<br/>low-Re airfoil backfill, turbulator xtr sweep."]

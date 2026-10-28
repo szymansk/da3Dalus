@@ -372,7 +372,7 @@ def build_wing_section_data(
     Parameters
     ----------
     asb_airplane:
-        The AeroSandbox airplane model.  The main wing (largest planform area)
+        The AeroSandbox airplane model.  The main wing (``surface_type``)
         is used to resolve airfoil names from xsecs.
     section_entries:
         List of section-aoa entries from ``compute_section_aoa`` — objects with
@@ -393,10 +393,12 @@ def build_wing_section_data(
     if not section_entries:
         return []
 
+    from app.converters.model_schema_converters import main_asb_wing
+
     nu = 1.5e-5  # kinematic viscosity [m²/s]
 
-    # Pick main wing (largest planform area) for xsec/airfoil lookup.
-    main_wing = max(asb_airplane.wings, key=lambda w: float(w.area()))
+    # Main wing (surface_type == main_wing, gh-1187) for xsec/airfoil lookup.
+    main_wing = main_asb_wing(asb_airplane)
     xsecs = main_wing.xsecs
     xsec_y = np.array([float(np.atleast_1d(xs.xyz_le)[1]) for xs in xsecs])
     xsec_airfoils: list[str] = []

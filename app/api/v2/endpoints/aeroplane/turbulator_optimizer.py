@@ -69,7 +69,10 @@ def _call_optimizer(
     """
     import aerosandbox as asb
 
-    from app.converters.model_schema_converters import aeroplane_schema_to_asb_airplane_async
+    from app.converters.model_schema_converters import (
+        aeroplane_schema_to_asb_airplane_async,
+        main_asb_wing,
+    )
     from app.services.analysis_service import get_aeroplane_schema_or_raise
     from app.services.design_assumptions_service import get_effective_assumption
     from app.services.section_aoa_service import compute_section_aoa
@@ -95,8 +98,8 @@ def _call_optimizer(
             message="Cannot optimize turbulator: aircraft has no wings."
         )
 
-    # --- Pick main wing (largest planform area) ------------------------------
-    main_wing = max(asb_airplane.wings, key=lambda w: float(w.area()))
+    # --- Pick main wing (surface_type == main_wing, gh-1187) -----------------
+    main_wing = main_asb_wing(asb_airplane)
     wing_name = getattr(main_wing, "name", None) or "main_wing"
     s_ref = float(main_wing.area())
     wing_symmetric = getattr(main_wing, "symmetric", False)

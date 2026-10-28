@@ -37,6 +37,7 @@ def _make_wingconfig() -> dict:
             }
         ],
         "nose_pnt": [0, 0, 0],
+        "surface_type": "main_wing",
         "symmetric": True,
     }
 
@@ -108,6 +109,7 @@ class TestWingAutoSync:
             f"/aeroplanes/{aero_id}/wings/main_wing",
             json={
                 "name": "main_wing",
+                "surface_type": "main_wing",
                 "symmetric": True,
                 "x_secs": [
                     {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0015"},
@@ -119,6 +121,7 @@ class TestWingAutoSync:
             f"/aeroplanes/{aero_id}/wings/main_wing",
             json={
                 "name": "main_wing",
+                "surface_type": "main_wing",
                 "symmetric": True,
                 "x_secs": [
                     {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0015"},

@@ -17,9 +17,12 @@ from app.services.avl_geometry_service import _build_controls_for_wing, build_av
 _AF = "./components/airfoils/mh32.dat"
 
 
-def _wing_with_ted(ted: schemas.TrailingEdgeDeviceDetailSchema) -> schemas.AsbWingSchema:
+def _wing_with_ted(
+    ted: schemas.TrailingEdgeDeviceDetailSchema, surface_type: str = "main_wing"
+) -> schemas.AsbWingSchema:
     return schemas.AsbWingSchema(
         name="surf",
+        surface_type=surface_type,
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -135,6 +138,6 @@ class TestUniquenessAssertionWired:
         ted_b = schemas.TrailingEdgeDeviceDetailSchema(role="elevon", rel_chord_root=0.75)
         wings = OrderedDict()
         wings["a b"] = _wing_with_ted(ted_a)
-        wings["a_b"] = _wing_with_ted(ted_b)
+        wings["a_b"] = _wing_with_ted(ted_b, surface_type="horizontal_tail")
         with pytest.raises(ValueError, match="collapse"):
             build_avl_geometry_file(_plane(wings))

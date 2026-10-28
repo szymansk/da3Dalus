@@ -33,7 +33,7 @@ from types import ModuleType
 
 from app.converters import openvsp_airfoil, openvsp_importer
 from app.converters.openvsp_importer import AeroplaneSchema, ImportContext
-from app.schemas.aeroplaneschema import AsbWingSchema, WingXSecSchema
+from app.schemas.aeroplaneschema import AsbWingSchema, SurfaceType, WingXSecSchema
 
 
 # ---------------------------------------------------------------------------
@@ -1045,6 +1045,9 @@ def _handle_wing(
 
     wing = AsbWingSchema(
         name=name,
+        # Provisional: a VSP WING geom carries no role. ``_assign_surface_types`` (a post-pass)
+        # proposes the real one once every wing of the model is known.
+        surface_type=SurfaceType.MAIN_WING,
         symmetric=symmetric,
         x_secs=x_secs,
     )
@@ -1060,6 +1063,59 @@ def _handle_wing(
 
 
 # ---------------------------------------------------------------------------
+# Wing roles (gh-1187)
+# ---------------------------------------------------------------------------
+
+
+def propose_import_surface_types(wings: dict[str, AsbWingSchema]) -> dict[str, SurfaceType]:
+    """Propose a role per imported wing from geometry alone (no names).
+
+    A VSP WING geom carries no role, so an import cannot know it. The proposal is stored
+    as *inferred* and declared (ADR 0020) until the user confirms it: the largest planform
+    is the main wing; another wing that is not mirrored is a vertical tail; a mirrored one
+    ahead of the main wing is a canard, otherwise a horizontal tail.
+    """
+    from app.converters.openvsp_validation import compute_wing_metrics
+
+    if not wings:
+        return {}
+    main_name = max(wings, key=lambda n: compute_wing_metrics(wings[n]).area_m2)
+    main_root_x = wings[main_name].x_secs[0].xyz_le[0]
+    proposal: dict[str, SurfaceType] = {}
+    for name, wing in wings.items():
+        if name == main_name:
+            proposal[name] = SurfaceType.MAIN_WING
+        elif not wing.symmetric:
+            proposal[name] = SurfaceType.VERTICAL_TAIL
+        elif wing.x_secs[0].xyz_le[0] < main_root_x:
+            proposal[name] = SurfaceType.CANARD
+        else:
+            proposal[name] = SurfaceType.HORIZONTAL_TAIL
+    return proposal
+
+
+def _assign_surface_types(
+    aeroplane: AeroplaneSchema,
+    ctx: ImportContext,
+    vsp: ModuleType,
+) -> None:
+    """Post-pass: replace the provisional role of every imported wing by a proposal."""
+    wings = aeroplane.wings or {}
+    for name, surface_type in propose_import_surface_types(wings).items():
+        wings[name].surface_type = surface_type
+    if wings:
+        ctx.add_warning(
+            component_type="WING",
+            component_name=", ".join(wings),
+            reason=(
+                "A VSP file carries no wing roles; the surface_type of every wing was proposed "
+                "from geometry. Confirm or correct it in the wing editor."
+            ),
+            severity="warning",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
 
@@ -1067,3 +1123,4 @@ def _handle_wing(
 def register() -> None:
     """Register the WING handler with the importer skeleton."""
     openvsp_importer.register_handler("WING", _handle_wing)
+    openvsp_importer.register_post_pass(_assign_surface_types)

@@ -364,7 +364,7 @@ class Wing(_Frozen):
         symmetric: Whether the surface is mirrored about the XZ plane (only one half is stored).
         surface_type: The function of the surface (ARCHITECTURE ch. 8.5, D9); required, never
             inferred. Optional in the type because ``validate.py`` reports its absence
-            (``missing_surface_type``); kernel-side until the format carries it (#1187).
+            (``missing_surface_type``); the geometry format (version 2, #1187) requires it.
         design_model: Which editor owns the wing; geometry-neutral.
         x_secs: Ribs from root to tip.
         units: Declared units; the constants when absent.

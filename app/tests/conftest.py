@@ -227,12 +227,14 @@ def make_wing(
     aeroplane_id: int,
     name: str = "main_wing",
     symmetric: bool = True,
+    surface_type: str = "main_wing",
 ) -> WingModel:
     """Create and commit a minimal WingModel tied to an existing aeroplane."""
     wing = WingModel(
         name=name,
         symmetric=symmetric,
         aeroplane_id=aeroplane_id,
+        surface_type=surface_type,
     )
     session.add(wing)
     session.commit()
@@ -354,7 +356,7 @@ def seed_integration_aeroplane(session: Session) -> AeroplaneModel:
     session.flush()
 
     # --- main wing ---
-    main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id)
+    main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id, surface_type="main_wing")
     session.add(main_wing)
     session.flush()
     _add_xsec(
@@ -388,7 +390,7 @@ def seed_integration_aeroplane(session: Session) -> AeroplaneModel:
     )
 
     # --- horizontal tail ---
-    htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id)
+    htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id, surface_type="horizontal_tail")
     session.add(htail)
     session.flush()
     _add_xsec(
@@ -422,7 +424,7 @@ def seed_integration_aeroplane(session: Session) -> AeroplaneModel:
     )
 
     # --- vertical tail ---
-    vtail = WingModel(name="vertical_tail", symmetric=False, aeroplane_id=aeroplane.id)
+    vtail = WingModel(name="vertical_tail", symmetric=False, aeroplane_id=aeroplane.id, surface_type="vertical_tail")
     session.add(vtail)
     session.flush()
     _add_xsec(
@@ -531,7 +533,7 @@ def _smoke_main_wing(
     sec1_ted: dict | None = None,
 ) -> WingModel:
     """3-section symmetric main wing (sd7037). sec2 never has a TED."""
-    wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane_id)
+    wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane_id, surface_type="main_wing")
     session.add(wing)
     session.flush()
 
@@ -574,7 +576,7 @@ def _smoke_htail(
     ted_kwargs: dict | None = None,
 ) -> WingModel:
     """Symmetric horizontal tail (naca0010). TED on root section if provided."""
-    htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane_id)
+    htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane_id, surface_type="horizontal_tail")
     session.add(htail)
     session.flush()
 
@@ -606,7 +608,7 @@ def _smoke_vtail(
     ted_kwargs: dict | None = None,
 ) -> WingModel:
     """Non-symmetric vertical tail (naca0010). TED on root section if provided."""
-    vtail = WingModel(name="vertical_tail", symmetric=False, aeroplane_id=aeroplane_id)
+    vtail = WingModel(name="vertical_tail", symmetric=False, aeroplane_id=aeroplane_id, surface_type="vertical_tail")
     session.add(vtail)
     session.flush()
 
@@ -654,7 +656,7 @@ def seed_smoke_vtail_ruddervator(session: Session) -> AeroplaneModel:
     _smoke_main_wing(session, aeroplane.id, sec1_ted=_AILERON)
 
     # V-tail: symmetric wing with dihedral simulated via z at tip
-    vtail = WingModel(name="v_tail", symmetric=True, aeroplane_id=aeroplane.id)
+    vtail = WingModel(name="v_tail", symmetric=True, aeroplane_id=aeroplane.id, surface_type="v_tail")
     session.add(vtail)
     session.flush()
 

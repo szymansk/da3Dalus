@@ -82,6 +82,7 @@ for wname, w in geo["wings"].items():
             f"/aeroplanes/{pid}/wings/{wname}",
             json={
                 "name": wname,
+                "surface_type": w["surface_type"],
                 "symmetric": w["symmetric"],
                 "x_secs": [
                     {

@@ -102,10 +102,11 @@ def _make_fake_asb_airplane(airfoil_name="naca0012"):
         airfoil=SimpleNamespace(name=airfoil_name),
     )
     wing = SimpleNamespace(
+        name="main_wing",
         area=lambda: 0.30,
         xsecs=[xsec_root, xsec_tip],
     )
-    return SimpleNamespace(wings=[wing])
+    return SimpleNamespace(wings=[wing], main_wing_name="main_wing")
 
 
 def _make_wsd_list(n=2):
@@ -199,12 +200,31 @@ class TestBuildWingSectionData:
             xyz_le=np.array([0.0, 0.0, 0.0]),
             airfoil=SimpleNamespace(name="naca4412"),
         )
-        wing = SimpleNamespace(area=lambda: 0.30, xsecs=[xsec])
-        fake_plane = SimpleNamespace(wings=[wing])
+        wing = SimpleNamespace(name="main_wing", area=lambda: 0.30, xsecs=[xsec])
+        fake_plane = SimpleNamespace(wings=[wing], main_wing_name="main_wing")
 
         entries = [_make_section_entry(y_m=0.1, chord_m=0.2, cl=0.6)]
         result = build_wing_section_data(fake_plane, entries, velocity=15.0, s_ref=0.30)
         assert result[0].airfoil_name == "naca4412"
+
+    def test_main_wing_chosen_by_name_not_by_area(self):
+        """The airfoil comes from the wing named by main_wing_name, not the largest wing."""
+        from app.services.turbulator_optimizer_service import build_wing_section_data
+
+        def _xsecs(airfoil):
+            return [
+                SimpleNamespace(
+                    xyz_le=np.array([0.0, y, 0.0]), airfoil=SimpleNamespace(name=airfoil)
+                )
+                for y in (0.0, 0.5)
+            ]
+
+        big_tail = SimpleNamespace(name="big_tail", area=lambda: 9.0, xsecs=_xsecs("naca4412"))
+        main = SimpleNamespace(name="main_wing", area=lambda: 0.30, xsecs=_xsecs("naca2412"))
+        fake_plane = SimpleNamespace(wings=[big_tail, main], main_wing_name="main_wing")
+        entries = [_make_section_entry(y_m=0.1, chord_m=0.2, cl=0.6)]
+        result = build_wing_section_data(fake_plane, entries, velocity=15.0, s_ref=0.30)
+        assert result[0].airfoil_name == "naca2412"
 
     def test_xsec_without_airfoil_attr_falls_back_to_naca0012(self):
         """If the airfoil attribute is missing/None, falls back to naca0012."""
@@ -218,8 +238,8 @@ class TestBuildWingSectionData:
             xyz_le=np.array([0.0, 0.5, 0.0]),
             airfoil=None,
         )
-        wing = SimpleNamespace(area=lambda: 0.30, xsecs=[xsec_root, xsec_tip])
-        fake_plane = SimpleNamespace(wings=[wing])
+        wing = SimpleNamespace(name="main_wing", area=lambda: 0.30, xsecs=[xsec_root, xsec_tip])
+        fake_plane = SimpleNamespace(wings=[wing], main_wing_name="main_wing")
         entries = [_make_section_entry(y_m=0.1, chord_m=0.2, cl=0.6)]
         result = build_wing_section_data(fake_plane, entries, velocity=15.0, s_ref=0.30)
         assert result[0].airfoil_name == "naca0012"

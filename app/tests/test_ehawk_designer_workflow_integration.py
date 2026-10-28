@@ -327,6 +327,7 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
     asb_wing = wing_config_to_asb_wing_schema(
         wing_config=expected_wing_config,
         wing_name=wing_name,
+        surface_type="main_wing",
         scale=0.001,
     )
 
@@ -347,6 +348,7 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
     # ------------------------------------------------------------------ #
     wing_geometry_payload = {
         "name": wing_name,
+        "surface_type": "main_wing",
         "symmetric": asb_wing.symmetric,
         "x_secs": [
             {

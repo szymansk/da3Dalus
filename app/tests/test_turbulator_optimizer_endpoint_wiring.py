@@ -259,7 +259,9 @@ class TestCallOptimizerWiring:
             name="main_wing",
             symmetric=True,
         )
-        return SimpleNamespace(wings=[wing], xyz_ref=[0.08, 0.0, 0.0])
+        return SimpleNamespace(
+            wings=[wing], xyz_ref=[0.08, 0.0, 0.0], main_wing_name="main_wing"
+        )
 
     def test_optimizer_wiring_returns_result(self, client_and_db, monkeypatch):
         """_call_optimizer wired end-to-end with all collaborators mocked."""

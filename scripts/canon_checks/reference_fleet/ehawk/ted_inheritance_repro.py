@@ -13,9 +13,7 @@ wc = WingConfigurationSchema(
 )
 cfg = create_wing_configuration(wc)
 schema = (
-    wing_config_to_asb_wing_schema(cfg, wing_name="main", scale=0.001)
-    if "wing_name" in wing_config_to_asb_wing_schema.__code__.co_varnames
-    else wing_config_to_asb_wing_schema(cfg)
+    wing_config_to_asb_wing_schema(cfg, wing_name="main", surface_type="main_wing", scale=0.001)
 )
 for i, x in enumerate(schema.x_secs):
     cs = x.control_surface

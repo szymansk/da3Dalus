@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import schemas
-from app.core.exceptions import NotFoundError, ValidationError, InternalError
+from app.core.exceptions import NotFoundError, ValidationDomainError, ValidationError, InternalError
 from app.models.aeroplanemodel import (
     AeroplaneModel,
     WingModel,
@@ -26,7 +26,9 @@ from app.models.aeroplanemodel import (
 )
 from app.schemas.Servo import Servo as ServoSchema
 from app.schemas.wing import Wing as WingConfigurationSchema
+from app.schemas.aeroplaneschema import SurfaceType
 from app.services.create_wing_configuration import create_wing_configuration
+from app.services import surface_type_service
 from app.converters.model_schema_converters import (
     wing_config_to_wing_model,
     wing_model_to_wing_config,
@@ -269,10 +271,17 @@ def list_wing_names(db: Session, aeroplane_uuid) -> List[str]:
 
 
 def create_wing(
-    db: Session, aeroplane_uuid, wing_name: str, wing_data: schemas.AsbWingGeometryWriteSchema
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    wing_data: schemas.AsbWingGeometryWriteSchema,
+    surface_type_inferred: bool = False,
 ) -> None:
     """
     Create a new wing for an aeroplane.
+
+    ``surface_type_inferred`` is for importers whose source carries no wing role: the role
+    they propose stays declared until the user confirms it.
 
     Raises:
         NotFoundError: If the aeroplane does not exist.
@@ -288,7 +297,9 @@ def create_wing(
                 details={"wing_name": wing_name},
             )
 
+        surface_type_service.check_surface_type_change(plane, wing_name, wing_data.surface_type)
         wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+        wing.surface_type_inferred = surface_type_inferred
         wing.design_model = "asb"
         plane.wings.append(wing)
         db.add(wing)
@@ -332,10 +343,19 @@ def create_wing_from_wing_configuration(
                 details={"wing_name": wing_name},
             )
 
+        if wing_config_data.surface_type is None:
+            raise ValidationDomainError(
+                message="surface_type is required to create a wing.",
+                details={"wing_name": wing_name},
+            )
+        surface_type_service.check_surface_type_change(
+            plane, wing_name, wing_config_data.surface_type
+        )
         wing_configuration = create_wing_configuration(wing_config_data)
         wing_model = wing_config_to_wing_model(
             wing_config=wing_configuration,
             wing_name=wing_name,
+            surface_type=wing_config_data.surface_type,
             scale=scale,
         )
         wing_model.design_model = "wc"
@@ -430,6 +450,28 @@ def _wing_config_to_dict(wc) -> dict:
     }
 
 
+def _resolve_put_surface_type(
+    plane: AeroplaneModel,
+    wing_name: str,
+    existing: WingModel | None,
+    requested: SurfaceType | None,
+) -> tuple[SurfaceType, bool]:
+    """Role and inferred flag for a WingConfiguration PUT (an upsert).
+
+    A PUT without ``surface_type`` keeps the existing wing's role and flag; a PUT that
+    creates the wing must name the role.
+    """
+    if requested is None:
+        if existing is None:
+            raise ValidationDomainError(
+                message="surface_type is required to create a wing.",
+                details={"wing_name": wing_name},
+            )
+        return SurfaceType(existing.surface_type), bool(existing.surface_type_inferred)
+    inferred = surface_type_service.resolve_wing_write(plane, wing_name, requested)
+    return requested, inferred
+
+
 def put_wing_as_wingconfig(
     db: Session,
     aeroplane_uuid,
@@ -444,8 +486,11 @@ def put_wing_as_wingconfig(
     """
     try:
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
-        # Remove existing wing if present
         existing = next((w for w in plane.wings if w.name == wing_name), None)
+        surface_type, inferred = _resolve_put_surface_type(
+            plane, wing_name, existing, wing_config_data.surface_type
+        )
+        # Remove existing wing if present
         if existing:
             db.delete(existing)
             db.flush()
@@ -454,7 +499,9 @@ def put_wing_as_wingconfig(
         wing_model = wing_config_to_wing_model(
             wing_config=wing_configuration,
             wing_name=wing_name,
+            surface_type=surface_type,
             scale=scale,
+            surface_type_inferred=inferred,
         )
         wing_model.design_model = "wc"
         plane.wings.append(wing_model)
@@ -491,7 +538,9 @@ def update_wing(
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         wing = get_wing_or_raise(plane, wing_name)
 
+        inferred = surface_type_service.resolve_wing_write(plane, wing_name, wing_data.surface_type)
         new_wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+        new_wing.surface_type_inferred = inferred
         new_wing.design_model = "asb"
         plane.wings.remove(wing)
         plane.wings.append(new_wing)
@@ -502,6 +551,27 @@ def update_wing(
     except SQLAlchemyError as e:
         logger.error(f"Database error when updating wing: {e}")
         raise InternalError(message=f"Database error: {e}")
+
+
+def set_wing_surface_type(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    surface_type: SurfaceType,
+    former_main_becomes: SurfaceType | None = None,
+) -> None:
+    """Set (or confirm) a wing's role (gh-1187); the value is then no longer a proposal.
+
+    Raises:
+        NotFoundError: If the aeroplane or wing does not exist.
+        ValidationDomainError: If the change leaves two main wings or none.
+        InternalError: If a database error occurs.
+    """
+    plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+    surface_type_service.set_wing_surface_type(
+        db, plane, wing_name, surface_type, former_main_becomes
+    )
+    plane.updated_at = datetime.now()
 
 
 def get_wing(db: Session, aeroplane_uuid, wing_name: str) -> schemas.AsbWingReadSchema:
@@ -544,6 +614,7 @@ def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:
     try:
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         wing = get_wing_or_raise(plane, wing_name)
+        surface_type_service.check_wing_deletion(plane, wing_name)
         db.delete(wing)
         plane.updated_at = datetime.now()
 
@@ -552,7 +623,7 @@ def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:
 
         delete_synced_nodes(db, str(aeroplane_uuid), f"wing:{wing_name}")
         delete_synced_nodes(db, str(aeroplane_uuid), f"servo:{wing_name}:")
-    except NotFoundError:
+    except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
         logger.error(f"Database error when deleting wing: {e}")

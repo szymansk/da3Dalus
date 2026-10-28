@@ -61,9 +61,13 @@ def test_recompute_publishes_assumption_changed_on_cg_change(client_and_db):
             return_value=SimpleNamespace(
                 wings=[
                     SimpleNamespace(
-                        area=lambda: 0.30, mean_aerodynamic_chord=lambda: 0.20, span=lambda: 1.5
+                        name="main_wing",
+                        area=lambda: 0.30,
+                        mean_aerodynamic_chord=lambda: 0.20,
+                        span=lambda: 1.5,
                     )
                 ],
+                main_wing_name="main_wing",
                 xyz_ref=[0.08, 0.0, 0.0],
                 s_ref=0.30,
                 c_ref=0.20,
@@ -136,9 +140,13 @@ def test_recompute_does_not_publish_when_cg_unchanged(client_and_db):
             return_value=SimpleNamespace(
                 wings=[
                     SimpleNamespace(
-                        area=lambda: 0.30, mean_aerodynamic_chord=lambda: 0.20, span=lambda: 1.5
+                        name="main_wing",
+                        area=lambda: 0.30,
+                        mean_aerodynamic_chord=lambda: 0.20,
+                        span=lambda: 1.5,
                     )
                 ],
+                main_wing_name="main_wing",
                 xyz_ref=[0.08, 0.0, 0.0],
                 s_ref=0.30,
                 c_ref=0.20,

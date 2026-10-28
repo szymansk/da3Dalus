@@ -6,7 +6,7 @@
 
 ## Context
 
-A wing is the central lifting-surface object in da3Dalus — main wing, tailplane, fin, canard and winglet are all rows in the same `wings` table, distinguished only by name and station geometry. Designing a wing means describing its stations (ribs) with an airfoil at each, and — for a buildable aircraft — layering on the segment-scoped structure (control surfaces, turbulators) that a real build needs. This flow covers wing creation in both the AeroSandbox-native metre world and the CAD-capable `WingConfiguration` millimetre world, station CRUD under the terminal-station rule, gh-772 control-surface mixing, turbulator setup, and the two non-human entry points into the same surface — the AI copilot and an MCP-agent client — each of which reaches a materially different, and materially smaller, subset of the underlying REST contract. Spar CRUD and the spar-plan solver are a separate flow — see `size-and-place-spars.md`.
+A wing is the central lifting-surface object in da3Dalus — main wing, tailplane, fin, V-tail, canard, tandem wing and winglet are all rows in the same `wings` table, distinguished by the explicit, required `surface_type` role (gh-1187; exactly one `main_wing` per aeroplane) and their station geometry — never by name. Designing a wing means describing its stations (ribs) with an airfoil at each, and — for a buildable aircraft — layering on the segment-scoped structure (control surfaces, turbulators) that a real build needs. This flow covers wing creation in both the AeroSandbox-native metre world and the CAD-capable `WingConfiguration` millimetre world, station CRUD under the terminal-station rule, gh-772 control-surface mixing, turbulator setup, and the two non-human entry points into the same surface — the AI copilot and an MCP-agent client — each of which reaches a materially different, and materially smaller, subset of the underlying REST contract. Spar CRUD and the spar-plan solver are a separate flow — see `size-and-place-spars.md`.
 
 ## US-WING-01 — Create a wing from raw ASB geometry
 
@@ -16,7 +16,8 @@ A wing is the central lifting-surface object in da3Dalus — main wing, tailplan
 
 | Method | Path | Purpose |
 |---|---|---|
-| PUT | `/aeroplanes/{aeroplane_id}/wings/{wing_name}` | create the wing from an `AsbWingSchema` payload |
+| PUT | `/aeroplanes/{aeroplane_id}/wings/{wing_name}` | create the wing from an `AsbWingSchema` payload (`surface_type` required) |
+| PATCH | `/aeroplanes/{aeroplane_id}/wings/{wing_name}/surface-type` | set or confirm the wing's role (gh-1187) |
 | GET | `/aeroplanes/{aeroplane_id}/wings/{wing_name}` | read it back (`AsbWingReadSchema`) |
 | GET | `/aeroplanes/{aeroplane_id}/wings` | list wing names on the aeroplane |
 

@@ -74,7 +74,7 @@ def _get_design_snapshot(db: Session, aeroplane_id: int) -> dict:
         return {"error": str(exc)}
 
 
-def _get_wing_geometry(db: Session, aeroplane_id: int, wing: str = "main_wing") -> dict:
+def _get_wing_geometry(db: Session, aeroplane_id: int, wing: str | None = None) -> dict:
     """Hybrid geometry read for one wing (gh-958).
 
     Returns BOTH (a) the editable RELATIVE per-segment fields the geometry
@@ -100,6 +100,13 @@ def _get_wing_geometry(db: Session, aeroplane_id: int, wing: str = "main_wing") 
         if node is None:
             return {"error": f"Aeroplane {aeroplane_id} not found"}
 
+        if wing is None:
+            from app.services.surface_type_service import find_main_wing
+
+            main = find_main_wing(node.wings or [])
+            if main is None:
+                return {"error": "The aeroplane has no main wing; pass the wing name."}
+            wing = main.name
         wing_model = next((w for w in (node.wings or []) if w.name == wing), None)
         if wing_model is None:
             available = [w.name for w in (node.wings or [])]
@@ -162,6 +169,8 @@ def _get_wing_geometry(db: Session, aeroplane_id: int, wing: str = "main_wing") 
         tip = per_station[-1]["xyz_le_mm"] if per_station else [0.0, 0.0, 0.0]
         return {
             "wing": wing,
+            "surface_type": wing_model.surface_type,
+            "surface_type_inferred": bool(wing_model.surface_type_inferred),
             "units": "mm / degrees (WingConfig units)",
             "n_segments": len(segs),
             "editable": editable,
@@ -578,7 +587,10 @@ _SCHEMA_GET_WING_GEOMETRY = {
             "accumulated_dihedral_deg, te_x_mm = LE_x + chord, plus wing-level "
             "projected span). Use 'derived' to reason about absolute shape (where "
             "the LE/TE sit, how cant accumulates); edit only via the relative "
-            "fields. Units: mm / degrees. Call this before editing wing geometry."
+            "fields. Also returns the wing's surface_type (main_wing, horizontal_tail, "
+            "vertical_tail, v_tail, canard, tandem_wing, winglet) and whether it is still "
+            "an unconfirmed proposal (surface_type_inferred). "
+            "Units: mm / degrees. Call this before editing wing geometry."
         ),
         "parameters": {
             "type": "object",
@@ -586,8 +598,8 @@ _SCHEMA_GET_WING_GEOMETRY = {
                 "wing": {
                     "type": "string",
                     "description": (
-                        "Wing name (from get_design_snapshot.wing_names, e.g. "
-                        "'main_wing'). Defaults to 'main_wing'."
+                        "Wing name (from get_design_snapshot.wing_names). "
+                        "Defaults to the wing whose surface_type is main_wing."
                     ),
                 }
             },

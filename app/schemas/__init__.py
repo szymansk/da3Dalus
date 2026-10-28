@@ -5,6 +5,8 @@ from app.schemas.aeroplaneschema import ControlSurfacePatchSchema
 from app.schemas.aeroplaneschema import ControlSurfaceCadDetailsSchema
 from app.schemas.aeroplaneschema import ControlSurfaceCadDetailsPatchSchema
 from app.schemas.aeroplaneschema import AsbWingSchema
+from app.schemas.aeroplaneschema import SurfaceType
+from app.schemas.aeroplaneschema import WingSurfaceTypeUpdateSchema
 from app.schemas.aeroplaneschema import AsbWingReadSchema
 from app.schemas.aeroplaneschema import AsbWingGeometryWriteSchema
 from app.schemas.aeroplaneschema import WingXSecSchema

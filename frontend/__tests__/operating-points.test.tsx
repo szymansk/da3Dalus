@@ -942,6 +942,8 @@ describe("extractControlSurfaces", () => {
       {
         name: "main_wing",
         symmetric: true,
+        surface_type: "main_wing" as const,
+        surface_type_inferred: false,
         x_secs: [
           {
             xyz_le: [0, 0, 0],
@@ -969,6 +971,8 @@ describe("extractControlSurfaces", () => {
       {
         name: "main_wing",
         symmetric: true,
+        surface_type: "main_wing" as const,
+        surface_type_inferred: false,
         x_secs: [
           {
             xyz_le: [0, 0, 0],
@@ -996,6 +1000,8 @@ describe("extractControlSurfaces", () => {
       {
         name: "main_wing",
         symmetric: true,
+        surface_type: "main_wing" as const,
+        surface_type_inferred: false,
         x_secs: [
           {
             xyz_le: [0, 0, 0],
@@ -1015,6 +1021,8 @@ describe("extractControlSurfaces", () => {
       {
         name: "main_wing",
         symmetric: true,
+        surface_type: "main_wing" as const,
+        surface_type_inferred: false,
         x_secs: [
           {
             xyz_le: [0, 0, 0],

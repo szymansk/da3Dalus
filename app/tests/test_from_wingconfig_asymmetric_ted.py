@@ -36,6 +36,7 @@ def _post_wingconfig_with_asymmetric_ted(client: TestClient, aeroplane_id: str, 
     """POST a 1-segment wing with an aileron whose ``symmetric=False``."""
     wing_config = {
         "nose_pnt": [0, 0, 0],
+        "surface_type": "main_wing",
         "symmetric": True,
         "segments": [
             {
@@ -133,6 +134,7 @@ class TestFromWingConfigAsymmetricTed:
         aid = _create_aeroplane(client, "gh-523-tip-with-ted")
         wing_config = {
             "nose_pnt": [0, 0, 0],
+            "surface_type": "main_wing",
             "symmetric": True,
             "segments": [
                 {
@@ -169,6 +171,7 @@ class TestFromWingConfigAsymmetricTed:
         aid = _create_aeroplane(client, "gh-523-c172-split")
         wing_config = {
             "nose_pnt": [0, 0, 0],
+            "surface_type": "main_wing",
             "symmetric": True,
             "segments": [
                 # inner segment: flap (symmetric)
@@ -253,6 +256,7 @@ class TestFromWingConfigAsymmetricTed:
         aid = _create_aeroplane(client, "gh-523-flap-control")
         wing_config = {
             "nose_pnt": [0, 0, 0],
+            "surface_type": "main_wing",
             "symmetric": True,
             "segments": [
                 {

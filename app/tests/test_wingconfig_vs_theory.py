@@ -182,7 +182,7 @@ def _build_and_compare(
     """
     wing_data = Wing(nose_pnt=[0, 0, 0], symmetric=True, segments=segments_schemas)
     wc = create_wing_configuration(wing_data)
-    asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=scale)
+    asb_schema = wing_config_to_asb_wing_schema(wc, "test", "main_wing", scale=scale)
 
     expected = compute_expected_xsecs(segments_params)
 

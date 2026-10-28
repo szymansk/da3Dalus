@@ -250,7 +250,7 @@ class TestAvlGeometryDirtyFlag:
         db.add(geom)
         db.flush()
 
-        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
+        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id, surface_type="main_wing")
         db.add(wing)
         db.flush()
 
@@ -262,7 +262,7 @@ class TestAvlGeometryDirtyFlag:
         db.add(aeroplane)
         db.flush()
 
-        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
+        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id, surface_type="main_wing")
         db.add(wing)
         db.flush()
 
@@ -286,7 +286,7 @@ class TestAvlGeometryDirtyFlag:
         db.add(aeroplane)
         db.flush()
 
-        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
+        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id, surface_type="main_wing")
         db.add(wing)
         db.flush()
 
@@ -311,7 +311,7 @@ class TestAvlGeometryDirtyFlag:
         db.add(aeroplane)
         db.flush()
 
-        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
+        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id, surface_type="main_wing")
         db.add(wing)
         db.flush()  # Should not raise
 

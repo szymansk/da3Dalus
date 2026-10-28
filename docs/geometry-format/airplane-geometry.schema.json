@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://da3dalus.dev/schemas/airplane-geometry.schema.json",
   "title": "Airplane geometry document",
+  "x-format-version": 2,
   "description": "Complete geometric description of an aeroplane — every wing surface and every fuselage — as returned by the v2 REST API and accepted on write. Mirrors app/schemas/aeroplaneschema.py. Lengths are metres and angles are degrees UNLESS a field name or description says otherwise; see AIRPLANE-GEOMETRY.md §2 for the unit table, which has genuine exceptions. This schema is deliberately STRICTER than the runtime: it forbids unknown properties so that typos in hand-written or agent-written documents fail loudly, while the FastAPI layer silently ignores them.",
   "type": "object",
   "required": ["name"],
@@ -54,13 +55,18 @@
     "Wing": {
       "type": "object",
       "description": "One lifting surface, defined by an ordered chain of cross-sections (ribs). N cross-sections define N-1 segments.",
-      "required": ["name", "x_secs"],
+      "required": ["name", "surface_type", "x_secs"],
       "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
           "description": "Wing name.",
           "examples": ["Main Wing", "Horizontal Stabilizer"]
+        },
+        "surface_type": {
+          "enum": ["main_wing", "horizontal_tail", "vertical_tail", "v_tail", "canard", "tandem_wing", "winglet"],
+          "description": "The function of the surface, never inferred from the name (format version 2). Exactly one wing of an aeroplane is 'main_wing'; it supplies S_ref, b_ref and c_MAC. 'horizontal_tail': horizontal stabiliser. 'vertical_tail': fin, single or twin, including tip fins and centre fins that carry a rudder or give directional stability. 'v_tail': counts as vertical AND horizontal tail. 'canard': pitch or lift surface ahead of the main wing. 'tandem_wing': second lifting wing (S_ref stays the main wing's). 'winglet': only when modelled as a separate wing. The type follows the function, not the position. Not to be confused with the trailing-edge device 'role'.",
+          "examples": ["main_wing", "horizontal_tail"]
         },
         "symmetric": {
           "type": "boolean",

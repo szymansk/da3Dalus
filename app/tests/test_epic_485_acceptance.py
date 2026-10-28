@@ -282,7 +282,7 @@ def _add_wing(
     symmetric: bool,
     xsecs: list[dict],
 ) -> WingModel:
-    wing = WingModel(name=name, symmetric=symmetric, aeroplane_id=aeroplane_id)
+    wing = WingModel(name=name, symmetric=symmetric, aeroplane_id=aeroplane_id, surface_type=name)
     session.add(wing)
     session.flush()
     for i, xs in enumerate(xsecs):
