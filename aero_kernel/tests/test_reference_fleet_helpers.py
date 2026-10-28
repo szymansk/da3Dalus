@@ -67,4 +67,6 @@ def test_the_aircraft_input_overlays_the_callers_values_on_the_fleet_values() ->
         "flap-deflection-takeoff": 15.0,
         "flap-deflection-landing": 30.0,
     }
-    assert set(aircraft.airplane.wings) >= {FleetMember.RV7.main_wing_name}
+    wings = aircraft.airplane.wings
+    assert wings is not None
+    assert FleetMember.RV7.main_wing_name in wings
