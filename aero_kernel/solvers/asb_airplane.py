@@ -53,6 +53,15 @@ FIN_INCLUDE_CENTRELINE = False
 TAIL_AREA_TYPE = "planform"
 TAIL_INCLUDE_CENTRELINE = True
 
+# The flags of the panels of a V-tail (canon ``neutral-point``, ``horizontal-tail-volume``, maintainer
+# 2026-10-27, #1208): each panel is measured as a wing of its own two ribs, on the true lofted surface
+# (``planform``) and the true y-z length (``yz``). The gap between the root and the centreline is not
+# left to ASB's flag (a straight extrusion would be flat): an extension panel at the root angle carries
+# the root to the centreline (:func:`_root_extension`, maintainer 2026-10-28), so the flag stays False.
+V_TAIL_AREA_TYPE = "planform"
+V_TAIL_SPAN_TYPE = "yz"
+V_TAIL_INCLUDE_CENTRELINE = False
+
 __all__ = [
     "AC_FRACTION",
     "fin_area",
@@ -342,6 +351,43 @@ def _reference(wing: Any) -> MainWingProperties:  # noqa: ANN401  # untyped aero
     return MainWingProperties(s_ref=surface.area, b_ref=surface.span, c_mac=surface.c_mac)
 
 
+def _v_tail_surface(asb: Any, wing: Any) -> SurfaceProperties:  # noqa: ANN401  # untyped aerosandbox boundary
+    """The V-tail as the horizontal tail of the neutral point (maintainer 2026-10-27, #1208).
+
+    ``area`` is the effective area ``S_h,eff = sum S_i cos^2(nu_i)``; ``span`` and ``aspect_ratio``
+    are the true ones of the panels, ``(sum b_i)^2 / (sum S_i)`` from the true y-z lengths and the
+    true planform areas, never the projected ones, so the lift slope is that of the panel. The MAC
+    and the aerodynamic centre are ASB's of the whole surface, the same route as a horizontal tail.
+
+    Raises:
+        FormulaError: ``unsupported_configuration`` if the V-tail has no horizontal share, no true
+            area or no MAC (a vertical V-tail, a surface with no planform).
+    """
+    panels = _v_tail_panels(asb, wing)
+    true_area = sum(area for area, _span, _cos2 in panels)
+    span = sum(span for _area, span, _cos2 in panels)
+    effective = sum(area * cos2 for area, _span, cos2 in panels)
+    c_mac = float(wing.mean_aerodynamic_chord())
+    centre_x = float(wing.aerodynamic_center()[0])
+    if not all(math.isfinite(v) and v > 0.0 for v in (effective, true_area, span, c_mac)):
+        raise FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "unsupported_configuration",
+            f"the V-tail {wing.name!r} has no horizontal planform: effective area {effective}, "
+            f"true area {true_area}, true span {span}, mean aerodynamic chord {c_mac}",
+            "a V-tail needs sections at different y and a non-zero chord",
+            detail={"wing": str(wing.name)},
+            parameter="airplane",
+        )
+    return SurfaceProperties(
+        area=effective,
+        span=span,
+        aspect_ratio=span**2 / true_area,
+        c_mac=c_mac,
+        x_le_mac=centre_x - AC_FRACTION * c_mac,
+    )
+
+
 def surface_properties(airplane: AirplaneGeometry, key: str) -> SurfaceProperties:
     """Return AeroSandbox's planform values of the wing stored under ``key``.
 
@@ -358,7 +404,11 @@ def surface_properties(airplane: AirplaneGeometry, key: str) -> SurfacePropertie
     Raises:
         FormulaError: As :func:`_wing` and :func:`_surface`.
     """
-    wing = _wing(load_aerosandbox(), key, (airplane.wings or {})[key], 0.0)
+    asb = load_aerosandbox()
+    document = (airplane.wings or {})[key]
+    wing = _wing(asb, key, document, 0.0)
+    if document.surface_type == "v_tail":
+        return _v_tail_surface(asb, wing)
     return _surface(wing, float(wing.aerodynamic_center()[0]))
 
 
@@ -398,22 +448,80 @@ def _fin_planform(wing: Any) -> float:  # noqa: ANN401  # untyped aerosandbox bo
     return float(wing.area(type=FIN_AREA_TYPE, include_centerline_distance=FIN_INCLUDE_CENTRELINE))
 
 
-def _v_tail_fin_share(asb: Any, wing: Any) -> float:  # noqa: ANN401  # untyped aerosandbox boundary
-    """The fin share of a V-tail: ``sum S_i sin^2(nu_i)`` over its panels (McCombs, Model Aviation 7/1996).
+def _panel_measures(panel: Any) -> tuple[float, float]:  # noqa: ANN401  # untyped aerosandbox boundary
+    """True planform area and true y-z span of one V-tail panel, both flags passed explicitly."""
+    area = float(
+        panel.area(type=V_TAIL_AREA_TYPE, include_centerline_distance=V_TAIL_INCLUDE_CENTRELINE)
+    )
+    span = float(
+        panel.span(type=V_TAIL_SPAN_TYPE, include_centerline_distance=V_TAIL_INCLUDE_CENTRELINE)
+    )
+    return area, span
 
-    Each panel is a wing of its own two ribs, so the area is ASB's planform area of that panel;
-    ``sin^2(nu)`` is ``dz^2 / (dy^2 + dz^2)`` of the panel's leading-edge line (``nu`` is the panel
-    angle to the horizontal). A panel with no extent in y and z has no area and no share.
+
+def _root_extension(asb: Any, wing: Any) -> tuple[float, float, float] | None:  # noqa: ANN401  # untyped aerosandbox boundary
+    """The panel that carries the root of a mirrored V-tail to the centreline, at the root panel's angle.
+
+    ``(area, span, cos^2 nu)`` of a panel from the centreline to the root section with the root chord
+    and the angle ``nu`` of the first panel (maintainer 2026-10-28, #1208): the V-tail is carried
+    through the fuselage like a horizontal tail and the reference wing (#1262), and for ``nu = 0``
+    this is ASB's ``include_centerline_distance=True`` strip. ``None`` for an unmirrored V-tail, a root
+    on the centreline, or a root panel that rises without running in y (it never reaches the centreline).
     """
-    total = 0.0
+    root, neighbour = wing.xsecs[0], wing.xsecs[1]
+    root_y = float(root.xyz_le[1])
+    run = float(neighbour.xyz_le[1]) - root_y
+    if not wing.symmetric or root_y <= 0.0 or abs(run) <= 0.0:
+        return None
+    rise = float(neighbour.xyz_le[2]) - float(root.xyz_le[2])
+    inner = asb.WingXSec(
+        xyz_le=[
+            float(root.xyz_le[0]),
+            0.0,
+            float(root.xyz_le[2]) - root_y * rise / run,
+        ],
+        chord=root.chord,
+        twist=root.twist,
+        airfoil=root.airfoil,
+    )
+    panel = asb.Wing(name=wing.name, symmetric=wing.symmetric, xsecs=[inner, root])
+    area, span = _panel_measures(panel)
+    return area, span, run**2 / (run**2 + rise**2)
+
+
+def _v_tail_panels(asb: Any, wing: Any) -> list[tuple[float, float, float]]:  # noqa: ANN401  # untyped aerosandbox boundary
+    """The panels of a V-tail as ``(area, span, cos^2 nu)``, ``nu`` the panel angle to the horizontal.
+
+    Each panel is a wing of its own two ribs, so its area and span are ASB's of that panel;
+    ``cos^2(nu)`` is ``dy^2 / (dy^2 + dz^2)`` of the panel's leading-edge line (ASB has no panel
+    angle accessor, so the angle comes from the rib positions ``xyz_le``). A panel with no extent in
+    y and z has no area and is left out. The first entry is the root extension to the centreline
+    (:func:`_root_extension`) when there is one.
+    """
+    panels: list[tuple[float, float, float]] = []
+    extension = _root_extension(asb, wing)
+    if extension is not None:
+        panels.append(extension)
     for lower, upper in pairwise(wing.xsecs):
         rise = float(upper.xyz_le[2] - lower.xyz_le[2])
         run = float(upper.xyz_le[1] - lower.xyz_le[1])
-        if run**2 + rise**2 <= 0.0:
+        extent = run**2 + rise**2
+        if extent <= 0.0:
             continue
         panel = asb.Wing(name=wing.name, symmetric=wing.symmetric, xsecs=[lower, upper])
-        total += _fin_planform(panel) * rise**2 / (run**2 + rise**2)
-    return total
+        area, span = _panel_measures(panel)
+        panels.append((area, span, run**2 / extent))
+    return panels
+
+
+def _v_tail_fin_share(asb: Any, wing: Any) -> float:  # noqa: ANN401  # untyped aerosandbox boundary
+    """The fin share of a V-tail: ``sum S_i sin^2(nu_i)`` over its panels (McCombs, Model Aviation 7/1996)."""
+    return sum(area * (1.0 - cos2) for area, _span, cos2 in _v_tail_panels(asb, wing))
+
+
+def _v_tail_horizontal_share(asb: Any, wing: Any) -> float:  # noqa: ANN401  # untyped aerosandbox boundary
+    """The horizontal share of a V-tail: ``S_h,eff = sum S_i cos^2(nu_i)`` over its panels (#1208)."""
+    return sum(area * cos2 for area, _span, cos2 in _v_tail_panels(asb, wing))
 
 
 def fin_area(airplane: AirplaneGeometry, key: str) -> float:
@@ -466,10 +574,13 @@ def horizontal_tail_area(airplane: AirplaneGeometry, key: str) -> float:
     AeroSandbox's ``Wing.area(type="planform", include_centerline_distance=True)`` of the surface
     converted like in :func:`to_asb_airplane`: the gross planform through the fuselage, the same
     convention as the reference wing (maintainer 2026-10-25, #1262). Both flags are passed explicitly.
+    For a ``v_tail`` the effective horizontal area ``S_h,eff = sum S_i cos^2(nu_i)`` over its panels,
+    each panel on its own, with the root carried to the centreline at its angle (maintainer
+    2026-10-27 and 2026-10-28, #1208).
 
     Args:
         airplane: The validated geometry document.
-        key: The key of the one ``horizontal_tail`` wing in ``airplane.wings``.
+        key: The key of the one ``horizontal_tail`` or ``v_tail`` wing in ``airplane.wings``.
 
     Returns:
         The area in m^2.
@@ -478,8 +589,14 @@ def horizontal_tail_area(airplane: AirplaneGeometry, key: str) -> float:
         FormulaError: As :func:`_wing`; ``unsupported_configuration`` if the area is not a positive
             finite number (a surface with no planform).
     """
-    wing = _wing(load_aerosandbox(), key, (airplane.wings or {})[key], 0.0)
-    area = _tail_planform(wing)
+    asb = load_aerosandbox()
+    document = (airplane.wings or {})[key]
+    wing = _wing(asb, key, document, 0.0)
+    area = (
+        _v_tail_horizontal_share(asb, wing)
+        if document.surface_type == "v_tail"
+        else _tail_planform(wing)
+    )
     if not (math.isfinite(area) and area > 0.0):
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,

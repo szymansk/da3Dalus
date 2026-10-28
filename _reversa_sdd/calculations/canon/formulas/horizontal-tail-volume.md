@@ -28,6 +28,7 @@ applications:
 
 ```
 S_H := Wing.area(type="planform", include_centerline_distance=True)   # ASB, the one horizontal_tail surface
+S_H := sum_i S_i*cos^2(nu_i)                                          # the one v_tail surface (#1208), per panel
 V̄_H = S_H * l_H_CG / (S_ref * c_MAC)
 ```
 
@@ -35,7 +36,7 @@ V̄_H = S_H * l_H_CG / (S_ref * c_MAC)
 (AeroSandbox's definition, measured on the main wing). This entry does not read the wing area or chord from the
 airplane itself: one producer per number a user sees (ADR 0022). Only the tail area `S_H` is read from the airplane,
 as AeroSandbox's `Wing.area(type="planform", include_centerline_distance=True)` of the one surface typed
-`horizontal_tail`, both flags passed explicitly (no library defaults): the gross planform through the fuselage,
+`horizontal_tail` (a `v_tail`: see below), both flags passed explicitly (no library defaults): the gross planform through the fuselage,
 the same convention as the reference wing (maintainer 2026-10-25, #1262). The arm `l_H,CG` is
 [[horizontal-tail-arm]], from the design CG as Drela defines it (#1272); it is an interval over the neutral-point
 worlds, so `V̄_H` is one value per world (A11).
@@ -46,8 +47,15 @@ the MAC is "very nearly equal to the simple-average chord" for most wings. The d
 for a straight-tapered wing `c_MAC/(S/b) = (4/3)(1+λ+λ²)/(1+λ)²` — 1.000 for a rectangular wing, about 1.04 at
 λ = 0.5 — so `V̄_H` here is up to a few per cent below Drela's value, and his band is read against it as is.
 
-**V-tail.** A V-tail has no horizontal tail, so this application does not apply to it. Its horizontal share
-`S·cos²ν` (ν = panel angle to the horizontal) comes with the V-tail neutral point, #1208.
+**V-tail (maintainer decision 2026-10-27, #1208).** A V-tail counts as the horizontal tail (`has_horizontal_tail`
+includes `v_tail`): `S_H` is its effective area `S_h,eff = sum_i S_i cos^2(nu_i)` over the panels `i`, with `S_i` the
+true area of the panel from AeroSandbox (`Wing.area(type="planform", include_centerline_distance=False)` of the
+panel), the root carried to the centreline at its angle by an extension panel (maintainer decision 2026-10-28; `nu -> 0` is the horizontal tail exactly) and `nu_i` the panel angle to the horizontal from the section positions (`cos^2(nu_i) = dy_i^2/(dy_i^2 + dz_i^2)`,
+the geometry sections, because AeroSandbox has no panel-angle accessor). It is the same `S_h,eff` the
+[[neutral-point]] uses, and the complement of the fin share of [[vertical-tail-volume]]. The arm is to the
+V-tail's own quarter-chord MAC ([[horizontal-tail-arm]]). Source: derived in `derivations/vtail_equivalence.pdf` (approved by the maintainer 2026-10-28, #1208): `cos^2(nu)` /
+`sin^2(nu)` exact in linear theory, one lift slope of the developed pair assumed (in reality `a_anti < a_sym`, the
+interference NACA 823 measured); see [[neutral-point]] 🟢.
 
 **Produces** [[horizontal-tail-volume]]  ·  **from** [[airplane]] · [[wing-reference-area]] · [[mean-aerodynamic-chord]] · [[horizontal-tail-arm]]
 
@@ -69,7 +77,7 @@ Inherits the neutral point's limits through the arm (fuselage not modelled → C
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/horizontal_tail_volume.py` | EXACT | 🟢 | `S_H` is ASB's `Wing.area(type="planform", include_centerline_distance=True)` of the one `horizontal_tail` surface, from the GEO adapter (`aero_kernel/solvers/geometry.py`, `horizontal_tail_area` → `asb_airplane.horizontal_tail_area`), both flags passed in code; `S_ref`, `c_MAC` and the arm are the canon quantities, none recomputed; one value per neutral-point world. The surface is chosen by `surface_type == horizontal_tail` only (`tail_key`, as the arm): a V-tail is `unsupported_layout` until its share and neutral point exist (#1208), so the application `has_horizontal_tail` (which counts a V-tail, `aero_kernel/graph.py`) fails upstream for it, not silently. The reference chord is `c_MAC`, not Drela's `S/b` (declared above, maintainer 2026-10-27) |
+| `aero_kernel/formulas/horizontal_tail_volume.py` | EXACT | 🟢 | `S_H` is ASB's `Wing.area(type="planform", include_centerline_distance=True)` of the one `horizontal_tail` surface, from the GEO adapter (`aero_kernel/solvers/geometry.py`, `horizontal_tail_area` → `asb_airplane.horizontal_tail_area`), both flags passed in code; `S_ref`, `c_MAC` and the arm are the canon quantities, none recomputed; one value per neutral-point world. The surface is chosen by `surface_type == horizontal_tail` only (`tail_key`, as the arm): a `v_tail` is the one surface too (`has_horizontal_tail` counts it, `aero_kernel/graph.py`) and `S_H` is then `S_h,eff = sum S_i cos^2(nu_i)` over its panels (`asb_airplane._v_tail_horizontal_share`, #1208); a horizontal tail beside a V-tail, or two of either, is `unsupported_layout`. The reference chord is `c_MAC`, not Drela's `S/b` (declared above, maintainer 2026-10-27) |
 
 ## Approval
 
@@ -86,4 +94,4 @@ Inherits the neutral point's limits through the arm (fuselage not modelled → C
 > [[horizontal-tail-arm]]), S_ref and c_MAC from the approved [[airplane-geometry]], and S_H as AeroSandbox's
 > `Wing.area(type="planform", include_centerline_distance=True)` of the one horizontal_tail surface — the gross
 > planform through the fuselage, the same convention as the reference wing (#1262). One value per neutral-point
-> world (A11). V-tail share S·cos²ν with #1208. No kernel implementation yet.
+> world (A11). V-tail: S_H = Σ S_i·cos²ν_i per panel (maintainer decision 2026-10-27, #1208).
