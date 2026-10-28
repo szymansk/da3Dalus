@@ -66,9 +66,10 @@ GOLDEN_NP = {
     FleetMember.RV7: (0.2561507, 0.2581105, 0.259946),
     FleetMember.CHEKKER: (0.1906369, 0.1960934, 0.200839),
     FleetMember.WIESEL: (0.1919482, 0.2003031, 0.196669),
-    # V-tail (#1208): S_h,eff = sum S_i cos^2(nu_i), the lift slope from the true panel aspect ratio;
+    # V-tail (#1208): S_h,eff = sum S_i cos^2(nu_i) with the root carried to the centreline, the lift slope from the
+    # developed panel aspect ratio;
     # recorded from the kernel (regression). The AVL mesh is declared not converged (1.27 % MAC).
-    FleetMember.BELEMNITOS: (0.06937788817809153, 0.08221511823920193, 0.07517),
+    FleetMember.BELEMNITOS: (0.07140062263587507, 0.08524524177346318, 0.07517),
 }
 # Since #1262 the area includes the centreline gap: textbook/Pappas BRYAN 0.1398961691/0.1402057906 ->
 # 0.1398843329/0.1401811762 m, JAGUAR 0.1181103705/0.1239713559 -> 0.1180376743/0.1238461117 m.
@@ -79,7 +80,7 @@ GOLDEN_TEXTBOOK_ETA_09 = {
     FleetMember.RV7: 0.2627406,
     FleetMember.CHEKKER: 0.1965633,
     FleetMember.WIESEL: 0.1997806,
-    FleetMember.BELEMNITOS: 0.07811630937612803,
+    FleetMember.BELEMNITOS: 0.08083035102212023,
 }
 # AeroSandbox's c_MAC of the main wing (gh-1240); it was the kernel's projected 0.13277219 / 0.10504547.
 C_MAC = {member: member.asb_reference[2] for member in FleetMember}

@@ -39,6 +39,9 @@ class FakeWingXSec:
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
         self.xyz_le = kwargs.get("xyz_le")
+        self.chord = kwargs.get("chord")
+        self.twist = kwargs.get("twist")
+        self.airfoil = kwargs.get("airfoil")
 
 
 class FakeControlSurface:
@@ -202,15 +205,19 @@ def stand_in_mac_and_centre(wing: Wing) -> tuple[float, float]:
     return mac_sum / total, moment / total
 
 
-def stand_in_v_tail_surface(wing: Wing) -> SurfaceProperties:
-    """A V-tail as the horizontal tail without AeroSandbox: ``S_h,eff = sum S_i cos^2(nu_i)``, true panel AR.
-
-    Per panel the true area ``(c1 + c2) / 2`` times the panel length in the y-z plane and the true
-    length itself; the MAC and its centre are :func:`stand_in_mac_and_centre`. A stand-in for the fast
-    tier (the real values are ASB's, compared in the aero tier).
-    """
+def _v_tail_halves(wing: Wing) -> tuple[float, float, float]:
+    """``(S_h,eff, S_true, b_true)`` of one half of a V-tail, the root carried to the centreline (#1208)."""
     chain = oriented_chain(wing, 1 if wing.symmetric else 2)
     effective = true_area = span = 0.0
+    root, neighbour = chain[0], chain[1]
+    if wing.symmetric and root.y > 0.0 and abs(neighbour.y - root.y) > 0.0:
+        # the root carried to the centreline at the root panel's angle, with the root chord
+        slope = (neighbour.z - root.z) / (neighbour.y - root.y)
+        length = math.hypot(root.y, slope * root.y)
+        extension = root.chord * length
+        true_area += extension
+        span += length
+        effective += extension * root.y**2 / (root.y**2 + (slope * root.y) ** 2)
     for a, b in pairwise(chain):
         run, rise = b.y - a.y, b.z - a.z
         length = math.hypot(run, rise)
@@ -218,6 +225,19 @@ def stand_in_v_tail_surface(wing: Wing) -> SurfaceProperties:
         true_area += panel
         span += length
         effective += panel * run**2 / (run**2 + rise**2)
+    return effective, true_area, span
+
+
+def stand_in_v_tail_surface(wing: Wing) -> SurfaceProperties:
+    """A V-tail as the horizontal tail without AeroSandbox: ``S_h,eff = sum S_i cos^2(nu_i)``, true panel AR.
+
+    Per panel the true area ``(c1 + c2) / 2`` times the panel length in the y-z plane and the true
+    length itself, with the root carried to the centreline at the root panel's angle; the aspect ratio
+    is the developed one, (both halves' developed span)^2 / (both halves' true area). The MAC and its
+    centre are :func:`stand_in_mac_and_centre`. A stand-in for the fast tier (the real values are ASB's,
+    compared in the aero tier).
+    """
+    effective, true_area, span = _v_tail_halves(wing)
     mirrored = 2.0 if wing.symmetric else 1.0
     c_mac, centre = stand_in_mac_and_centre(wing)
     return SurfaceProperties(
@@ -233,18 +253,19 @@ def stand_in_fin_area(wing: Wing) -> float:
     """The fin area of a surface without AeroSandbox: true area of the lofted panels, a V-tail's fin share.
 
     Per panel ``(c1 + c2) / 2`` times the panel's length in the y-z plane; a mirrored surface counts
-    both halves; a ``v_tail`` weights each panel by ``sin^2`` of its angle to the horizontal. A stand-in
-    for the fast tier (the real value is ASB's ``Wing.area(type="planform",
-    include_centerline_distance=False)``, compared in the aero tier).
+    both halves; a ``v_tail`` is the sum of its panels' areas times ``sin^2`` of the panel angle to the
+    horizontal, with the root carried to the centreline. A stand-in for the fast tier (the real value is
+    ASB's ``Wing.area(type="planform", include_centerline_distance=False)``, compared in the aero tier).
     """
-    axis = 1 if wing.symmetric else 2
-    chain = oriented_chain(wing, axis)
-    total = 0.0
-    for a, b in pairwise(chain):
-        run, rise = b.y - a.y, b.z - a.z
-        panel = (a.chord + b.chord) / 2.0 * math.hypot(run, rise)
-        total += panel * (rise**2 / (run**2 + rise**2) if wing.surface_type == "v_tail" else 1.0)
-    return total * (2.0 if wing.symmetric else 1.0)
+    mirrored = 2.0 if wing.symmetric else 1.0
+    if wing.surface_type == "v_tail":
+        effective, true_area, _span = _v_tail_halves(wing)
+        return mirrored * (true_area - effective)
+    chain = oriented_chain(wing, 1 if wing.symmetric else 2)
+    total = sum(
+        (a.chord + b.chord) / 2.0 * math.hypot(b.y - a.y, b.z - a.z) for a, b in pairwise(chain)
+    )
+    return total * mirrored
 
 
 def stand_in_horizontal_tail_area(wing: Wing) -> float:

@@ -50,7 +50,7 @@ for a straight-tapered wing `c_MAC/(S/b) = (4/3)(1+λ+λ²)/(1+λ)²` — 1.000 
 **V-tail (maintainer decision 2026-10-27, #1208).** A V-tail counts as the horizontal tail (`has_horizontal_tail`
 includes `v_tail`): `S_H` is its effective area `S_h,eff = sum_i S_i cos^2(nu_i)` over the panels `i`, with `S_i` the
 true area of the panel from AeroSandbox (`Wing.area(type="planform", include_centerline_distance=False)` of the
-panel) and `nu_i` the panel angle to the horizontal from the section positions (`cos^2(nu_i) = dy_i^2/(dy_i^2 + dz_i^2)`,
+panel), the root carried to the centreline at its angle by an extension panel (maintainer decision 2026-10-28; `nu -> 0` is the horizontal tail exactly) and `nu_i` the panel angle to the horizontal from the section positions (`cos^2(nu_i) = dy_i^2/(dy_i^2 + dz_i^2)`,
 the geometry sections, because AeroSandbox has no panel-angle accessor). It is the same `S_h,eff` the
 [[neutral-point]] uses, and the complement of the fin share of [[vertical-tail-volume]]. The arm is to the
 V-tail's own quarter-chord MAC ([[horizontal-tail-arm]]). Source: see [[neutral-point]] (Purser and Campbell, NACA Report

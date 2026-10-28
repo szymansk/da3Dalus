@@ -298,15 +298,15 @@ def test_the_fin_area_flags_are_passed_explicitly() -> None:
 
 
 def test_a_v_tail_counts_the_fin_share_sin_squared_of_the_panel_angle() -> None:
-    """One panel at 45 degrees to the horizontal: sin^2 = 1/2 of the (fake) planform area 1.0."""
+    """One panel at 45 degrees and the root extension at the same angle: sin^2 = 1/2 of the two (fake) areas 1.0."""
     found = fin_area(v_tail_document([(0.05, 0.0), (0.25, 0.2)]), "VTail")
-    assert near(found, 0.5)
+    assert near(found, 0.5 + 0.5)
 
 
 def test_a_two_panel_v_tail_weights_each_panel_by_its_own_angle() -> None:
-    """Panel 1 at 45 degrees (sin^2 = 1/2), panel 2 vertical (sin^2 = 1): 0.5 + 1.0 of the fake area 1.0."""
+    """Extension and panel 1 at 45 degrees (sin^2 = 1/2 each), panel 2 vertical (sin^2 = 1)."""
     found = fin_area(v_tail_document([(0.05, 0.0), (0.25, 0.2), (0.25, 0.4)]), "VTail")
-    assert near(found, 1.5)
+    assert near(found, 0.5 + 0.5 + 1.0)
 
 
 def test_a_flat_v_tail_panel_has_no_fin_share_and_a_flat_v_tail_no_area() -> None:
@@ -318,7 +318,7 @@ def test_a_flat_v_tail_panel_has_no_fin_share_and_a_flat_v_tail_no_area() -> Non
 
 def test_a_panel_without_extent_is_skipped_and_the_others_count() -> None:
     found = fin_area(v_tail_document([(0.05, 0.0), (0.25, 0.2), (0.25, 0.2)]), "VTail")
-    assert near(found, 0.5)
+    assert near(found, 0.5 + 0.5)
 
 
 def test_a_fin_without_a_planform_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -354,21 +354,21 @@ def test_a_horizontal_tail_without_a_planform_is_unsupported(
 # A V-tail counts as the horizontal tail with S_h,eff = sum S_i cos^2(nu_i) and the true panel
 # aspect ratio (maintainer 2026-10-27, #1208). The fake wing gives every panel the area 1.0 and the span 2.0.
 def test_a_v_tail_counts_the_horizontal_share_cos_squared_of_the_panel_angle() -> None:
-    """One panel at 45 degrees to the horizontal: cos^2 = 1/2 of the (fake) planform area 1.0."""
+    """One panel at 45 degrees and the root extension at the same angle: cos^2 = 1/2 of the two areas 1.0."""
     found = horizontal_tail_area(v_tail_document([(0.05, 0.0), (0.25, 0.2)]), "VTail")
-    assert near(found, 0.5)
+    assert near(found, 0.5 + 0.5)
 
 
 def test_a_two_panel_v_tail_weights_the_horizontal_share_per_panel() -> None:
-    """Panel 1 at 45 degrees (cos^2 = 1/2), panel 2 vertical (cos^2 = 0)."""
+    """Extension and panel 1 at 45 degrees (cos^2 = 1/2 each), panel 2 vertical (cos^2 = 0)."""
     found = horizontal_tail_area(v_tail_document([(0.05, 0.0), (0.25, 0.2), (0.25, 0.4)]), "VTail")
-    assert near(found, 0.5)
+    assert near(found, 0.5 + 0.5)
 
 
 def test_the_two_shares_of_a_v_tail_add_up_to_its_planform_area() -> None:
     document = v_tail_document([(0.05, 0.0), (0.25, 0.2), (0.35, 0.3)])
     total = horizontal_tail_area(document, "VTail") + fin_area(document, "VTail")
-    assert near(total, 2.0)  # two panels of the fake area 1.0
+    assert near(total, 3.0)  # the extension and two panels of the fake area 1.0
 
 
 def test_a_vertical_v_tail_has_no_horizontal_area() -> None:
@@ -379,19 +379,19 @@ def test_a_vertical_v_tail_has_no_horizontal_area() -> None:
 
 
 def test_the_v_tail_surface_has_the_effective_area_and_the_true_panel_aspect_ratio() -> None:
-    """S_h,eff = 0.5; AR = (true yz span)^2 / (true planform area) = 2.0^2 / 1.0, not projected."""
+    """S_h,eff = 1.0 (extension and panel); AR = (developed yz span)^2 / (true area) = 4.0^2 / 2.0, not projected."""
     found = surface_properties(v_tail_document([(0.05, 0.0), (0.25, 0.2)]), "VTail")
-    assert near(found.area, 0.5)
-    assert near(found.span, 2.0)
-    assert near(found.aspect_ratio, 4.0)
+    assert near(found.area, 1.0)
+    assert near(found.span, 4.0)
+    assert near(found.aspect_ratio, 8.0)
     assert near(found.c_mac, 0.5)
     assert near(found.x_le_mac, 0.1 - 0.25 * 0.5)
 
 
 def test_the_aspect_ratio_of_a_two_panel_v_tail_uses_the_summed_true_span_and_area() -> None:
     found = surface_properties(v_tail_document([(0.05, 0.0), (0.25, 0.2), (0.25, 0.4)]), "VTail")
-    assert near(found.area, 0.5)
-    assert near(found.aspect_ratio, 4.0**2 / 2.0)
+    assert near(found.area, 1.0)
+    assert near(found.aspect_ratio, 6.0**2 / 3.0)
 
 
 def test_a_v_tail_panel_measure_passes_every_flag_explicitly() -> None:
@@ -403,9 +403,9 @@ def test_a_v_tail_panel_measure_passes_every_flag_explicitly() -> None:
     ]
 
 
-def test_a_flat_v_tail_surface_counts_all_its_area_as_horizontal() -> None:
+def test_a_flat_v_tail_surface_counts_all_its_area_with_the_root_extension_as_horizontal() -> None:
     found = surface_properties(v_tail_document([(0.05, 0.0), (0.25, 0.0)]), "VTail")
-    assert near(found.area, 1.0)
+    assert near(found.area, 2.0)
 
 
 def test_a_vertical_v_tail_has_no_horizontal_surface_properties() -> None:

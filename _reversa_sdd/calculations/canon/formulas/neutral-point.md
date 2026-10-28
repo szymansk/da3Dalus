@@ -91,9 +91,14 @@ counts as the horizontal tail. Per panel `i` (a segment between two neighbouring
 (`Wing.area(type="planform", include_centerline_distance=False)`), the y-z span (`Wing.span(type="yz",
 include_centerline_distance=False)`), the MAC and the aerodynamic centre, every flag passed in code. ASB has no
 panel-angle accessor, so `nu_i` comes from the geometry sections (`xyz_le` of the two sections of the panel);
-`cos^2(nu_i) = dy_i^2 / (dy_i^2 + dz_i^2)`. Each panel is measured as a wing of its own two sections without the
-gap between the root and the centreline: the gap is no surface of a V-tail, unlike the fuselage-carried root of a
-horizontal tail (so a V-tail with `nu = 0` gives the horizontal tail's `S_h` only when its root is on `y = 0`).
+`cos^2(nu_i) = dy_i^2 / (dy_i^2 + dz_i^2)`. Each panel is measured as a wing of its own two sections, and the **root is carried to the centreline at its
+angle** (maintainer decision 2026-10-28, #1208, option (a)): for a mirrored V-tail whose root section is off `y = 0`
+an extension panel from the centreline to the root, with the root chord and the angle `nu` of the first panel,
+counts like every other panel, in `S_h,eff`, in the fin share and in the true-panel aspect ratio. This is the
+convention of the horizontal tail and of the reference wing (#1262, a surface carried through the fuselage), so
+`nu -> 0` reproduces the horizontal tail exactly (area, span, aspect ratio; tested against the horizontal-tail
+path in the fast tier and against AeroSandbox in the aero tier). The aspect ratio is the **developed** one of the
+panel pair laid flat, `AR_h = (total developed span)^2 / S_true` with both halves and the extension summed.
 The **AVL world** takes the real geometry (the panels at their `y` and `z`, mirrored); nothing is projected there.
 
 *Source — what is printed and what is derived.* The equivalence of a V-tail to a horizontal and a vertical tail with
@@ -105,7 +110,12 @@ for V-tails) uses the same shares. What is **derived**, not printed: a panel at 
 angle of attack `alpha cos(nu)` normal to the panel, and the lift is the vertical component of the panel's normal
 force, so `L = a_panel S alpha cos(nu) cos(nu) = a_panel S cos^2(nu) alpha`; the lift slope `a_panel` of the panel is
 that of its own aspect ratio. The side force is the same argument with `sin^2(nu)`. The barycentre then uses
-`a_h S_h,eff` in place of `a_h S_h`.
+`a_h S_h,eff` in place of `a_h S_h`. The factors `cos^2(nu)` / `sin^2(nu)` are exact in linear theory: one `cos` from
+the projection of the incidence, one from the projection of the force; the cross terms cancel for a mirror-symmetric
+pair. The assumption is one lift slope for pitch and for sideslip; in reality the antisymmetric slope is below the
+symmetric one (the interference NACA 823 measured), so the fin share is the optimistic one. The ruddervator
+**control** power carries a single `cos(nu)` / `sin(nu)`, not the square (nothing computes it today; relevant for a
+future control-power entry). The share check `S_h,eff + S_v,eff = S_true` holds for every `nu` (tested).
 
 **Refused configurations.** The three worlds cover **one main wing with one pitch surface**, a horizontal tail or a
 V-tail (any fins and winglets). Tailless, canard and tandem layouts, and a layout with more than one pitch surface
@@ -156,7 +166,7 @@ uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.
 > **Approved** (maintainer, 2026-10-25): the neutral point as an interval over the textbook (Sadraey Eq. 6.67,
 > η_h a sourced starting value 0.65, Lennon), Pappas and AVL worlds, the surfaces' geometry from AeroSandbox
 > (#1253, #1262); fuselage not modelled (#1205, DATCOM ≈ 1–2 % MAC); the interval is a lower bound of the
-> uncertainty, not validated (A11 rule 5); conventional tails, and the V-tail added by the maintainer decision of
-> 2026-10-27 (#1208: S_h,eff = Σ S_i cos²ν_i, true panel aspect ratio, AVL real geometry); tailless/canard/tandem
+> uncertainty, not validated (A11 rule 5); conventional tails, and the V-tail added by the maintainer decisions of
+> 2026-10-27 and 2026-10-28 (#1208: S_h,eff = Σ S_i cos²ν_i with the root carried to the centreline, developed panel aspect ratio, AVL real geometry); tailless/canard/tandem
 > post-MVP. "Mit nur 4–8 mm Abweichung ist das Intervall nicht so riesig. Am Ende wird er ja erflogen, und so
 > hat man schon einen guten Startwert."

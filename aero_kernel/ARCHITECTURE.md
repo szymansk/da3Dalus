@@ -522,7 +522,7 @@ quantity.
       tandem). A tail-shaped surface typed `main_wing` is the main wing: the type decides.
     - **V-tail as the horizontal tail** (maintainer decision 2026-10-27, #1208): in the textbook and Pappas
       worlds the GEO adapter returns a `v_tail` surface with the effective area `S_h,eff = sum S_i cos^2(nu_i)`
-      (per panel, `nu_i` from the section positions, `S_i` ASB's true panel area), the aspect ratio of the true
+      (per panel, `nu_i` from the section positions, `S_i` ASB's true panel area, the root carried to the centreline by an extension panel at the root angle, 2026-10-28), the aspect ratio of the true
       panels (`(sum b_i)^2 / sum S_i`) and ASB's MAC and aerodynamic centre; `horizontal-tail-volume` uses the
       same area and `vertical-tail-volume` the complement `sum S_i sin^2(nu_i)`. AVL takes the real geometry.
   - `given`: a list of input quantities (`role: input` or `target`, without an entry in `defaults.yaml`). The application exists

@@ -55,8 +55,9 @@ TAIL_INCLUDE_CENTRELINE = True
 
 # The flags of the panels of a V-tail (canon ``neutral-point``, ``horizontal-tail-volume``, maintainer
 # 2026-10-27, #1208): each panel is measured as a wing of its own two ribs, on the true lofted surface
-# (``planform``) and the true y-z length (``yz``); the gap between the root and the centreline is no
-# surface of a V-tail, so it is not counted (the same flag as its fin share).
+# (``planform``) and the true y-z length (``yz``). The gap between the root and the centreline is not
+# left to ASB's flag (a straight extrusion would be flat): an extension panel at the root angle carries
+# the root to the centreline (:func:`_root_extension`, maintainer 2026-10-28), so the flag stays False.
 V_TAIL_AREA_TYPE = "planform"
 V_TAIL_SPAN_TYPE = "yz"
 V_TAIL_INCLUDE_CENTRELINE = False
@@ -458,15 +459,49 @@ def _panel_measures(panel: Any) -> tuple[float, float]:  # noqa: ANN401  # untyp
     return area, span
 
 
+def _root_extension(asb: Any, wing: Any) -> tuple[float, float, float] | None:  # noqa: ANN401  # untyped aerosandbox boundary
+    """The panel that carries the root of a mirrored V-tail to the centreline, at the root panel's angle.
+
+    ``(area, span, cos^2 nu)`` of a panel from the centreline to the root section with the root chord
+    and the angle ``nu`` of the first panel (maintainer 2026-10-28, #1208): the V-tail is carried
+    through the fuselage like a horizontal tail and the reference wing (#1262), and for ``nu = 0``
+    this is ASB's ``include_centerline_distance=True`` strip. ``None`` for an unmirrored V-tail, a root
+    on the centreline, or a root panel that rises without running in y (it never reaches the centreline).
+    """
+    root, neighbour = wing.xsecs[0], wing.xsecs[1]
+    root_y = float(root.xyz_le[1])
+    run = float(neighbour.xyz_le[1]) - root_y
+    if not wing.symmetric or root_y <= 0.0 or abs(run) <= 0.0:
+        return None
+    rise = float(neighbour.xyz_le[2]) - float(root.xyz_le[2])
+    inner = asb.WingXSec(
+        xyz_le=[
+            float(root.xyz_le[0]),
+            0.0,
+            float(root.xyz_le[2]) - root_y * rise / run,
+        ],
+        chord=root.chord,
+        twist=root.twist,
+        airfoil=root.airfoil,
+    )
+    panel = asb.Wing(name=wing.name, symmetric=wing.symmetric, xsecs=[inner, root])
+    area, span = _panel_measures(panel)
+    return area, span, run**2 / (run**2 + rise**2)
+
+
 def _v_tail_panels(asb: Any, wing: Any) -> list[tuple[float, float, float]]:  # noqa: ANN401  # untyped aerosandbox boundary
     """The panels of a V-tail as ``(area, span, cos^2 nu)``, ``nu`` the panel angle to the horizontal.
 
     Each panel is a wing of its own two ribs, so its area and span are ASB's of that panel;
     ``cos^2(nu)`` is ``dy^2 / (dy^2 + dz^2)`` of the panel's leading-edge line (ASB has no panel
     angle accessor, so the angle comes from the rib positions ``xyz_le``). A panel with no extent in
-    y and z has no area and is left out.
+    y and z has no area and is left out. The first entry is the root extension to the centreline
+    (:func:`_root_extension`) when there is one.
     """
     panels: list[tuple[float, float, float]] = []
+    extension = _root_extension(asb, wing)
+    if extension is not None:
+        panels.append(extension)
     for lower, upper in pairwise(wing.xsecs):
         rise = float(upper.xyz_le[2] - lower.xyz_le[2])
         run = float(upper.xyz_le[1] - lower.xyz_le[1])
@@ -540,7 +575,8 @@ def horizontal_tail_area(airplane: AirplaneGeometry, key: str) -> float:
     converted like in :func:`to_asb_airplane`: the gross planform through the fuselage, the same
     convention as the reference wing (maintainer 2026-10-25, #1262). Both flags are passed explicitly.
     For a ``v_tail`` the effective horizontal area ``S_h,eff = sum S_i cos^2(nu_i)`` over its panels,
-    each panel on its own and without the centreline gap (maintainer 2026-10-27, #1208).
+    each panel on its own, with the root carried to the centreline at its angle (maintainer
+    2026-10-27 and 2026-10-28, #1208).
 
     Args:
         airplane: The validated geometry document.

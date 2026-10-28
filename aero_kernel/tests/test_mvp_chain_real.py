@@ -21,6 +21,13 @@ from aero_kernel.tests.asb_fakes import (
 )
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.test_v_tail_neutral_point import (
+    CHORD,
+    RISES,
+    ROOT_Y,
+    developed_half_length,
+    v_tail_airplane,
+)
 
 pytestmark = [pytest.mark.aero]
 
@@ -132,3 +139,29 @@ async def test_the_moment_slope_moves_with_the_reference_by_the_arm_in_chords() 
     margin_far = -second.cm_alpha / second.cl_alpha
     assert abs((margin_near - margin_far) - 0.01 / c_mac) < 5e-3
     assert math.isfinite(margin_near)
+
+
+@pytest.mark.parametrize("rise", RISES[1:])  # a flat V-tail has no fin share to add
+def test_the_v_tail_shares_add_up_to_the_true_area_in_asb(rise: float) -> None:
+    """Trace test against real ASB: S_h,eff + S_v,eff = S_tot over both halves and the root extension."""
+    airplane = v_tail_airplane(rise, ROOT_Y)
+    total = horizontal_tail_area(airplane, "vee") + fin_area(airplane, "vee")
+    assert close(total, 2.0 * CHORD * developed_half_length(rise), 1e-9)
+
+
+def test_a_flat_v_tail_is_the_horizontal_tail_in_asb_with_the_root_carried_to_the_centreline() -> (
+    None
+):
+    """nu -> 0: area, span, aspect ratio, MAC and its leading edge equal those of the horizontal tail."""
+    flat = v_tail_airplane(0.0, ROOT_Y)
+    plain = v_tail_airplane(0.0, ROOT_Y, "horizontal_tail")
+    assert close(horizontal_tail_area(flat, "vee"), horizontal_tail_area(plain, "vee"), 1e-9)
+    a, b = surface_properties(flat, "vee"), surface_properties(plain, "vee")
+    for got, want in (
+        (a.area, b.area),
+        (a.span, b.span),
+        (a.aspect_ratio, b.aspect_ratio),
+        (a.c_mac, b.c_mac),
+        (a.x_le_mac, b.x_le_mac),
+    ):
+        assert close(got, want, 1e-9)
