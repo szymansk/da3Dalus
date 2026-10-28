@@ -217,7 +217,7 @@ Derived from the coupling above plus the project's own Iron Laws.
 |---|---|
 | **Any SQLAlchemy model** | add an Alembic migration chained onto the real head (`d8015f98814c`) with a **uuid4-hex** revision id — implementer agents invent predictable ids that collide and produce "Cycle is detected"; register the table in `CLONED_TABLES` **or** `EXCLUDED_TABLES` with a reason; if the aeroplane reference is a plain `String`, register it *by hand* (CS-7) |
 | **A key in `assumption_computation_context`** | grep all nine consumers (CS-2). A missing key does not raise — it falls back to an RC-typical default with a log warning |
-| **A converter or the main-wing rule** | re-run the aero regression: `s_ref`/`c_ref`/`b_ref` must still come from the **largest-planform** wing, not `wings[0]` (gh-788 / F1) |
+| **A converter or the main-wing rule** | re-run the aero regression: `s_ref`/`c_ref`/`b_ref` must still come from the wing marked **`surface_type == main_wing`**, not `wings[0]` and not the largest (gh-788 / F1, gh-1187) |
 | **A Creator class name or its `__init__` signature** | every stored `construction_plans.tree_json` referencing the old `$TYPE` becomes undecodable, and the Creator Catalog (built by `inspect.signature` + docstring parsing) changes shape for the frontend gallery |
 | **A control-surface role, axis or name** | update **all five** CS-5 consumers together; `assert_unique_control_names` must still pass (AVL silently collapses duplicate CONTROL names into one DOF) |
 | **A v2 endpoint signature** | check `app/mcp_server.py` — FastMCP derives the tool input schema from the handler signature, with no compile-time link |

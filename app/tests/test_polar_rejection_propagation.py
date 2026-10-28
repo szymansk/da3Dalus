@@ -56,6 +56,7 @@ _EXPECTED_REJECTION_DICT = {
 def _make_fake_airplane() -> SimpleNamespace:
     """Minimal stub for asb_airplane — no flap → fallback to clean polar for all configs."""
     fake_wing = SimpleNamespace(
+        name="main_wing",
         area=lambda: 0.30,
         mean_aerodynamic_chord=lambda: 0.20,
         span=lambda: 1.5,
@@ -63,6 +64,7 @@ def _make_fake_airplane() -> SimpleNamespace:
     )
     plane = SimpleNamespace(
         wings=[fake_wing],
+        main_wing_name="main_wing",
         xyz_ref=[0.08, 0.0, 0.0],
         s_ref=0.30,
         c_ref=0.20,

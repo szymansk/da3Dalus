@@ -38,7 +38,7 @@ def _build_aeroplane_with_elevator(db, name: str = "trim-validate"):
     )
 
     aeroplane = make_aeroplane(db, name=name)
-    wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+    wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True, surface_type="main_wing")
     db.add(wing)
     db.flush()
     for i, x in enumerate([0.0, 0.5]):

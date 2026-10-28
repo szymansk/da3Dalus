@@ -355,6 +355,40 @@ async def update_aeroplane_wing(
     return OperationStatusResponse(status="ok", operation="update_aeroplane_wing")
 
 
+@router.patch(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/surface-type",
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["wings"],
+    operation_id="set_aeroplane_wing_surface_type",
+)
+async def set_aeroplane_wing_surface_type(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    request: Annotated[
+        schemas.WingSurfaceTypeUpdateSchema,
+        Body(
+            ...,
+            description=(
+                "The wing's role. Sending the current value confirms a role that was only "
+                "proposed by the migration."
+            ),
+        ),
+    ],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Set or confirm a wing's role (exactly one main wing per aeroplane)."""
+    _call_service(
+        wing_service.set_wing_surface_type,
+        db,
+        aeroplane_id,
+        wing_name,
+        request.surface_type,
+        request.former_main_becomes,
+    )
+    return OperationStatusResponse(status="ok", operation="set_aeroplane_wing_surface_type")
+
+
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}",
     tags=["wings"],

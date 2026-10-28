@@ -12,6 +12,9 @@ import { useFuselages } from "@/hooks/useFuselages";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { CreateWingDialog } from "./CreateWingDialog";
 import { sectionExponentLabel } from "@/lib/fuselageSection";
+import { surfaceTypeLabel, type SurfaceType } from "@/lib/surfaceType";
+import { useSurfaceTypeActions } from "@/hooks/useSurfaceType";
+import { ProposedBadge, WingSurfaceTypePanel } from "./WingSurfaceType";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -25,6 +28,10 @@ interface TreeNode {
   mono?: boolean;
   muted?: boolean;
   chip?: string;
+  // gh-1187: wing role label; roleProposed marks an unconfirmed (inferred) role.
+  roleLabel?: string;
+  roleProposed?: boolean;
+  onConfirmRole?: () => void;
   detail?: string;
   onClick?: () => void;
   onDelete?: () => void;
@@ -551,6 +558,8 @@ function buildCallbacks(opts: BuildCallbacksOptions): BuildNodeCallbacks {
 // ── Build complete tree data ────────────────────────────────────
 
 interface BuildTreeDataParams {
+  allWings?: ReadonlyArray<{ name: string; surface_type?: SurfaceType; surface_type_inferred?: boolean }>;
+  onConfirmRole?: (wingName: string, current: SurfaceType) => void;
   wingNames: string[];
   fuselageNames: string[];
   aeroplaneName?: string;
@@ -577,6 +586,20 @@ interface BuildTreeDataParams {
   handleDeleteFuselage: (fusName: string) => void;
   handleDeleteFuselageXsec: (fusName: string, index: number) => void;
   setAddMenuOpen: (v: boolean | ((prev: boolean) => boolean)) => void;
+}
+
+// gh-1187: show the wing role on the wing root node; unconfirmed (inferred) roles are marked.
+function annotateWingRole(
+  node: TreeNode | undefined,
+  roleWing: { surface_type?: SurfaceType; surface_type_inferred?: boolean } | undefined,
+  wingName: string,
+  onConfirmRole?: (wingName: string, current: SurfaceType) => void,
+): void {
+  const st = roleWing?.surface_type;
+  if (!node || !st) return;
+  node.roleLabel = surfaceTypeLabel(st);
+  node.roleProposed = roleWing?.surface_type_inferred === true;
+  if (node.roleProposed && onConfirmRole) node.onConfirmRole = () => onConfirmRole(wingName, st);
 }
 
 function buildTreeData(params: BuildTreeDataParams): TreeNode[] {
@@ -614,6 +637,8 @@ function buildTreeData(params: BuildTreeDataParams): TreeNode[] {
     const nodes = params.treeMode === "wingconfig"
       ? buildSegmentNodes(ctx, params.wingConfig?.nose_pnt ?? null)
       : buildXsecNodes(ctx);
+
+    annotateWingRole(nodes[0], params.allWings?.find((w) => w.name === wn), wn, params.onConfirmRole);
 
     // Attach preview toggle to the wing root node
     if (nodes.length > 0 && params.onTogglePreview) {
@@ -892,6 +917,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
   // elevator/elevon/stabilator satisfies the trim/stability requirement, so
   // the warning must check across all wings rather than just the selected one.
   const { wings: allWings } = useAllWingData(aeroplaneId, wingNames);
+  const { setSurfaceType } = useSurfaceTypeActions(aeroplaneId);
   const hasPitchSurface = useMemo(() => {
     if (allWings.length === 0) return true;
     return allWings.some((w) =>
@@ -906,6 +932,8 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
 
   // Build tree data
   const treeData = buildTreeData({
+    allWings,
+    onConfirmRole: (wn, st) => { setSurfaceType(wn, { surface_type: st }).catch((err: unknown) => { globalThis.alert(err instanceof Error ? err.message : String(err)); }); },
     aeroplaneId,
     wingNames,
     fuselageNames,
@@ -984,6 +1012,11 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
         )}
       </div>
 
+      {/* gh-1187: wing role editor for the selected wing */}
+      {wing && selectedWing && wing.name === selectedWing && (
+        <WingSurfaceTypePanel aeroplaneId={aeroplaneId} wing={wing} allWings={allWings} />
+      )}
+
       {/* Pitch control surface warning */}
       {!hasPitchSurface && wing && (
         <div
@@ -1035,6 +1068,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
         open={createWingOpen}
         onClose={() => setCreateWingOpen(false)}
         aeroplaneId={aeroplaneId}
+        mainWingName={allWings.find((w) => w.surface_type === "main_wing")?.name ?? null}
         onCreated={async (wingName, designModel) => {
           onWingSaved?.();
           await mutateWing();
@@ -1115,6 +1149,23 @@ function TreeRow({ node, onToggle }: Readonly<{ node: TreeNode; onToggle: () => 
         <span className="rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-primary">
           {node.chip}
         </span>
+      )}
+
+      {node.roleLabel && (
+        <span className="rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+          {node.roleLabel}
+        </span>
+      )}
+
+      {node.roleProposed && <ProposedBadge />}
+
+      {node.onConfirmRole && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onConfirmRole?.(); }}
+          className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[10px] text-amber-400 hover:bg-amber-500/10"
+        >
+          Confirm
+        </button>
       )}
 
       {node.detail && (

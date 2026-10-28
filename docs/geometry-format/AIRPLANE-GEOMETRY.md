@@ -6,6 +6,10 @@ Konstruktion zu lesen sind.*
 Begleitdatei: [`airplane-geometry.schema.json`](./airplane-geometry.schema.json) —
 JSON Schema (Draft 2020-12), maschinell prüfbar.
 
+**Formatversion 2** (`x-format-version` im Schema, gh-1187): jede Fläche trägt eine
+ausdrückliche, **verpflichtende** Rolle `surface_type` (§4.0). Dokumente der Version 1
+(ohne `surface_type`) werden vom Schema abgelehnt; die App schreibt das Feld bei jedem Export.
+
 ---
 
 ## 0. Was hier steht und was nicht
@@ -85,7 +89,7 @@ eigene Beschreibung nennt ausdrücklich nur die Holmfelder.
 name            string
 total_mass_kg   number | null
 xyz_ref         [x, y, z]                Momentenbezugspunkt, m
-wings           { "<Name>": Wing }       jede auftrieberzeugende Fläche
+wings           { "<Name>": Wing }       jede auftrieberzeugende Fläche, mit Rolle (surface_type)
 fuselages       { "<Name>": Fuselage }   jeder Körper
 ```
 
@@ -97,6 +101,36 @@ der Rumpf, sondern jeder Drehkörper — Gondel, Radverkleidung, Haube.
 ---
 
 ## 4. Flächen
+
+### 4.0 Die Rolle einer Fläche (`surface_type`)
+
+Jede Fläche trägt ihre **Funktion** im Feld `surface_type`. Sie wird **nie** aus dem Namen
+oder aus der Größe abgeleitet — Namen sind Nutzerdaten. Die Rolle folgt der Funktion, nicht
+der Lage.
+
+| Wert | Bedeutung |
+|---|---|
+| `main_wing` | genau eine je Flugzeug; liefert $S_\mathrm{ref}$, $b_\mathrm{ref}$, $c_\mathrm{MAC}$ |
+| `horizontal_tail` | Höhenleitwerk |
+| `vertical_tail` | Seitenleitwerk, einfach oder doppelt; auch Randscheiben und Mittelflossen, die ein Seitenruder tragen oder die Richtungsstabilität liefern |
+| `v_tail` | zählt als Höhen- **und** Seitenleitwerk |
+| `canard` | Nick- oder Auftriebsfläche vor dem Hauptflügel |
+| `tandem_wing` | zweiter tragender Flügel; $S_\mathrm{ref}$ bleibt der des Hauptflügels |
+| `winglet` | nur, wenn es als eigene Fläche modelliert ist |
+
+**Regel „ein Hauptflügel“:** Ein Flugzeug mit Flächen hat **genau eine** Fläche mit
+`surface_type = main_wing`. Doppeldecker liegen außerhalb des Formats (Version 2): ein zweiter
+`main_wing` wird abgelehnt (HTTP 422). Wer einen zweiten tragenden Flügel braucht, nimmt
+`tandem_wing`.
+
+`surface_type` ist **nicht** die `role` einer Rudervorrichtung (`aileron`, `elevator`, …,
+§6). Das sind zwei getrennte Vokabulare: die eine benennt eine Fläche, die andere ein Ruder
+auf ihr.
+
+Die App führt ein zusätzliches, **nicht zum Format gehörendes** Feld
+`surface_type_inferred` an der gespeicherten Fläche: Es ist wahr, solange die Rolle nur von
+der einmaligen Datenmigration (oder dem OpenVSP-Import) **vorgeschlagen** und noch nicht
+bestätigt wurde. Es wird als Warnung ausgewiesen und im Flugzeugdokument (`GET /aeroplanes/{id}`) nicht enthalten.
 
 ### 4.1 Rippen und Segmente
 

@@ -27,6 +27,7 @@ def _wing(*teds) -> schemas.AsbWingSchema:
     chords = [0.20, 0.16, 0.12]
     return schemas.AsbWingSchema(
         name="surf",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             _xsec(0.25 * i, c, teds[i] if i < len(teds) else None) for i, c in enumerate(chords)

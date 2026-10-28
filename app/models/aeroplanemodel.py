@@ -281,6 +281,11 @@ class WingModel(Base):
     name = Column(String, nullable=False)
     symmetric = Column(Boolean, default=True)
     design_model = Column(String, nullable=True, default=None)
+    # gh-1187: the wing's function (a ``SurfaceType`` value). Required, never inferred at
+    # runtime; ``surface_type_inferred`` marks a value only PROPOSED by the one-time data
+    # migration, declared as a DesignWarning until the user confirms or corrects it.
+    surface_type = Column(String, nullable=False)
+    surface_type_inferred = Column(Boolean, nullable=False, default=False, server_default="0")
 
     # One-to-many to WingXSec, ordered by sort_index
     x_secs = relationship(
@@ -477,6 +482,10 @@ class WingModel(Base):
         xsec_dicts = payload.pop("x_secs", [])
         payload.pop("name", None)
         payload.pop("units", None)
+        if payload.get("surface_type") is not None:
+            payload["surface_type"] = getattr(
+                payload["surface_type"], "value", payload["surface_type"]
+            )
         wing = cls(name=name, **payload)
 
         for index, raw_xsec in enumerate(xsec_dicts):

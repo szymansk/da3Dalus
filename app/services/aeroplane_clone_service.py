@@ -230,6 +230,8 @@ def clone_aeroplane_subgraph(
             name=wing.name,
             symmetric=wing.symmetric,
             design_model=wing.design_model,
+            surface_type=wing.surface_type,
+            surface_type_inferred=wing.surface_type_inferred,
         )
         db.add(new_wing)
         db.flush()

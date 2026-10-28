@@ -44,6 +44,7 @@ def _make_wingconfig(tip_dihedral: float) -> dict:
             }
         ],
         "nose_pnt": [0, 0, 0],
+        "surface_type": "main_wing",
     }
 
 
@@ -101,6 +102,7 @@ class TestNegativeDihedral:
                 },
             ],
             "nose_pnt": [0, 0, 0],
+            "surface_type": "main_wing",
         }
         resp = client.post(f"/aeroplanes/{aid}/wings/w/from-wingconfig", json=wc)
         assert resp.status_code == 201

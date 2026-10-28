@@ -2,6 +2,9 @@
 
 import useSWR from "swr";
 import { fetcher, API_BASE } from "@/lib/fetcher";
+import type { SurfaceType } from "@/lib/surfaceType";
+
+export type { SurfaceType };
 
 export interface Turbulator {
   form: "zigzag" | "dots" | "thread";
@@ -29,6 +32,10 @@ export interface Wing {
   name: string;
   symmetric: boolean;
   design_model?: "wc" | "asb" | null;
+  /** Explicit wing role (GH-1187). */
+  surface_type: SurfaceType;
+  /** True while the role is only a proposal (migration/importer) and unconfirmed. */
+  surface_type_inferred: boolean;
   x_secs: XSec[];
 }
 

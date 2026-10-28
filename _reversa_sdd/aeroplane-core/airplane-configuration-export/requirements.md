@@ -55,9 +55,12 @@ the component tree (→ [`component-tree`](../component-tree/requirements.md)).
   pure projection of stored state. 🟡 INFERRED from the absence of any `db.add()`
   / `db.flush()` in the call path.
 - **BR-CE6 — `wings` is an `OrderedDict` whose first entry is not the main
-  wing.** 🟡 Insertion order is preserved, but the main wing is derived as the
-  largest planform area (gh-788 / gh-1092). Consumers must not assume
-  `wings[0]`, and this use case makes no claim about ordering semantics.
+  wing.** 🟢 Insertion order is preserved, but the main wing is the wing with
+  `surface_type == main_wing` (exactly one; gh-1187, wing-design BR-W26), never
+  `wings[0]` and never the largest area. Every wing in the payload carries its
+  `surface_type` (geometry format version 2). An aeroplane with wings but not exactly one
+  `main_wing` is rejected with the same 422 `ValidationDomainError` as the empty export
+  (`aeroplane_schema_to_airplane_configuration_async`).
 - **BR-CE7 — Domain errors map to the module envelope.** 🟢 `NotFoundError` →
   404 `not_found`; `ValidationError` → 422 `validation_error`; unexpected →
   500, via `_raise_http_from_domain` (`base.py:52-67`).

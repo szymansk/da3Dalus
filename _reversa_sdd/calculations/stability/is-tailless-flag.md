@@ -26,12 +26,13 @@ tags:
 **Formula — as the code writes it.**
 
 ```
-is_tailless = htail is None and not is_canard
+is_tailless = htail is None and not is_v_tail and not is_canard
+# htail / is_v_tail / is_canard are read from the wings' surface_type (gh-1187)
 ```
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/tail_sizing_service.py:416` — `build_tail_sizing_context_from_aeroplane`
+**Produced by.** `app/services/tail_sizing_service.py:395` — `build_tail_sizing_context_from_aeroplane`
 
 🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
@@ -51,17 +52,11 @@ is_tailless = htail is None and not is_canard
 Tailless ⇔ no horizontal surface aft of the wing contributing to the neutral point (Lennon Ch. 23)
 ```
 
-**⚠️ Divergence from the source.** The source's criterion is geometric/aerodynamic. The code's is lexical: substring match on the wing NAME ('horizontal'/'htail'), so a correctly modelled tail named e.g. 'Stabilizer' makes the aircraft tailless and routes it to the Lennon Ch. 23 SM 5–10 % path instead of tail-volume sizing. The in-code comment describes a wing-count rule the code does not implement.
-
-🟡 *Reported by the extraction pass, not independently verified.*
-
-**⚠️ Anomaly.** Detection is by substring on the wing NAME ('horizontal'/'htail'), so a correctly modelled tail named e.g. 'Stabilizer' makes the aircraft tailless. The comment describes a wing-count rule that the code does not implement.
-
-🟡 *Reported by the extraction pass, not independently verified. Do not cite as a
-defect until confirmed against the code.*
-
-**Cited in the code itself.** `# Flying-wing / tailless: no wing with "horizontal" in name and wing
-#   count == 1 (only main wing).`
+**Updated by gh-1187.** The flag no longer matches wing NAMES. `htail` is the wing with
+`surface_type == horizontal_tail`, `is_v_tail` is any `v_tail` wing and `is_canard` any
+`canard` wing, so a correctly modelled tail named 'Stabilizer' is a tail, and a V-tail or a
+canard is not misread as tailless. The earlier name-substring detection (and its stale
+wing-count comment) is deleted (ADR 0021).
 
 ---
 *Cluster [[_index-stability|stability]] · generated from the 2026-08-18 extraction.*

@@ -17,7 +17,9 @@ from app.converters.spare_origin_preservation import (
 from app.models import AeroplaneModel, WingModel
 from app.models.aeroplanemodel import FuselageModel
 from app.schemas import AeroplaneSchema
+from app.schemas.aeroplaneschema import SurfaceType
 from app.schemas.Servo import Servo as ServoSchema
+from app.services.surface_type_service import assert_one_main_wing
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import (
     AirplaneConfiguration,
 )
@@ -769,34 +771,44 @@ def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration, scale: fl
             _resolve_single_spare(wing_config, segment_index, spare_index, spare)
 
 
-def _find_reference_wing(wings: list) -> object | None:
-    """Return the wing with the largest planform area (the main/reference wing).
+def main_asb_wing(asb_airplane) -> object | None:
+    """Return the main wing of an ASB airplane built by this module (gh-1187).
 
-    AeroSandbox's ``asb.Airplane`` constructor uses ``wings[0]`` to set
-    ``s_ref``, ``b_ref``, and ``c_ref`` when those are not passed explicitly.
-    For tail-first imports (e.g. OpenVSP orders HTP, VTP, Wing) that makes the
-    tail the reference — inflating every coefficient by the wing/tail area ratio
-    (~8× for the Spitfire).  Choosing the largest-area wing is import-order
-    independent and robust for any conventional or canard layout (gh-788).
-
-    Args:
-        wings: List of ``asb.Wing`` objects (may be empty).
+    The main wing is the one the schema marks ``surface_type == main_wing``
+    (``aeroplane_schema_to_asb_airplane_async`` records its name on the airplane). It is
+    never ``wings[0]`` (AeroSandbox's default, the cause of the tail-first F1 defect gh-788)
+    and never the largest wing (BR-AA5 before gh-1187): one producer of "which wing is main".
 
     Returns:
-        The wing with the largest ``area()``, or ``None`` if the list is empty.
+        The main ``asb.Wing``, or ``None`` for an airplane without wings.
+
+    Raises:
+        ValueError: The airplane has wings but did not come from the schema converter.
     """
+    wings = list(asb_airplane.wings or [])
     if not wings:
         return None
-    return max(wings, key=lambda w: w.area())
+    name = getattr(asb_airplane, "main_wing_name", None)
+    main = next((w for w in wings if w.name == name), None)
+    if main is None:
+        raise ValueError(
+            "The ASB airplane carries no main wing; build it with "
+            "aeroplane_schema_to_asb_airplane_async so surface_type decides."
+        )
+    return main
 
 
 def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
     """
     Convert an AeroplaneSchema to an Aerosandbox Airplane object.
 
-    s_ref, b_ref and c_ref are derived from the **largest-planform wing** so
-    that the reference geometry is independent of import order.  AeroSandbox
-    defaults to wings[0] which is wrong for tail-first imports (gh-788).
+    s_ref, b_ref and c_ref are derived from the wing marked
+    ``surface_type == main_wing`` so that the reference geometry is independent of
+    import order and of wing size.  AeroSandbox defaults to wings[0] which is wrong
+    for tail-first imports (gh-788).
+
+    Raises:
+        ValidationDomainError: The aeroplane has wings but not exactly one main wing.
 
     Args:
         plane_schema (AeroplaneSchema): The schema to convert.
@@ -806,6 +818,7 @@ def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "as
     """
     from aerosandbox import Airplane, Wing
 
+    assert_one_main_wing(w.surface_type for w in (plane_schema.wings or {}).values())
     asb_wings = (
         [
             Wing(
@@ -821,9 +834,17 @@ def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "as
         else None
     )
 
-    # gh-788: choose the reference geometry from the largest-area wing so the
-    # result is independent of import order (e.g. OpenVSP tail-first exports).
-    ref_wing = _find_reference_wing(asb_wings or [])
+    # gh-788 / gh-1187: the reference geometry comes from the wing marked main_wing,
+    # independent of import order (e.g. OpenVSP tail-first exports) and of size.
+    main_name = next(
+        (
+            name
+            for name, wing in (plane_schema.wings or {}).items()
+            if SurfaceType(wing.surface_type) == SurfaceType.MAIN_WING
+        ),
+        None,
+    )
+    ref_wing = next((w for w in (asb_wings or []) if w.name == main_name), None)
     ref_kwargs: dict = {}
     if ref_wing is not None:
         ref_kwargs["s_ref"] = float(ref_wing.area())
@@ -837,6 +858,7 @@ def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "as
         xyz_ref=plane_schema.xyz_ref,
         **ref_kwargs,
     )
+    asb_airplane.main_wing_name = main_name
 
     return asb_airplane
 
@@ -849,6 +871,7 @@ def aeroplane_schema_to_airplane_configuration_async(
             "AeroplaneSchema.total_mass_kg must be set to build AirplaneConfiguration."
         )
 
+    assert_one_main_wing(w.surface_type for w in (plane_schema.wings or {}).values())
     wing_configs: List[WingConfiguration] = []
     for wing_key, wing in (plane_schema.wings or {}).items():
         xsecs = _asb_wing_xsecs_from_schema(wing, wing_key=wing_key)
@@ -911,6 +934,7 @@ def wing_model_to_asb_wing_schema(wing: WingModel) -> schemas.AsbWingSchema:
     return schemas.AsbWingSchema.model_validate(
         {
             "name": wing.name,
+            "surface_type": wing.surface_type,
             "symmetric": wing.symmetric,
             "x_secs": xsec_dicts,
         }
@@ -1030,9 +1054,13 @@ def _station_dihedral(wing_config: WingConfiguration, index: int) -> Optional[fl
 def wing_config_to_asb_wing_schema(
     wing_config: WingConfiguration,
     wing_name: str,
+    surface_type: SurfaceType | str,
     scale: float = 1.0,
 ) -> schemas.AsbWingSchema:
-    """Convert a WingConfiguration to the v2 ASB wing schema."""
+    """Convert a WingConfiguration to the v2 ASB wing schema.
+
+    ``surface_type`` is the wing's role (gh-1187); a WingConfiguration does not carry it.
+    """
     ted_original_tip_values = _normalize_wing_config_ted_for_asb(wing_config)
     try:
         asb_wing = wing_config.asb_wing(scale=scale)
@@ -1090,6 +1118,7 @@ def wing_config_to_asb_wing_schema(
 
     return schemas.AsbWingSchema(
         name=wing_name,
+        surface_type=SurfaceType(surface_type),
         symmetric=bool(asb_wing.symmetric),
         x_secs=x_secs,
     )
@@ -1098,7 +1127,9 @@ def wing_config_to_asb_wing_schema(
 def wing_config_to_wing_model(
     wing_config: WingConfiguration,
     wing_name: str,
+    surface_type: SurfaceType | str,
     scale: float = 1.0,
+    surface_type_inferred: bool = False,
 ) -> WingModel:
     """
     Convert a WingConfiguration to the persisted WingModel representation.
@@ -1106,11 +1137,16 @@ def wing_config_to_wing_model(
     Args:
         wing_config: Source wing configuration.
         wing_name: Name to assign to the resulting wing model.
+        surface_type: The wing's role (gh-1187); a WingConfiguration does not carry it.
         scale: Scaling used when creating the internal ASB wing (e.g. 0.001 for mm->m).
+        surface_type_inferred: Keep a role that is still only a migration proposal.
     """
     asb_wing_schema = wing_config_to_asb_wing_schema(
         wing_config=wing_config,
         wing_name=wing_name,
+        surface_type=surface_type,
         scale=scale,
     )
-    return WingModel.from_dict(name=wing_name, data=asb_wing_schema.model_dump())
+    wing_model = WingModel.from_dict(name=wing_name, data=asb_wing_schema.model_dump())
+    wing_model.surface_type_inferred = surface_type_inferred
+    return wing_model

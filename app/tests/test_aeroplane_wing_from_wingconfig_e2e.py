@@ -54,6 +54,7 @@ def test_create_wing_from_wingconfig_endpoint_persists_full_details(client_and_d
 
     with FIXTURE_PATH.open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
+    payload["surface_type"] = "main_wing"
 
     with SessionLocal() as db:
         db.add(AeroplaneModel(name="e2e-plane", uuid=aeroplane_uuid))

@@ -88,12 +88,14 @@ def _stub_import_vsp3(monkeypatch):
     from app.schemas.aeroplaneschema import (
         AeroplaneSchema,
         AsbWingSchema,
+        SurfaceType,
         WingXSecSchema,
     )
 
     def _fake_import(path, **_kw):  # noqa: ARG001
         wing = AsbWingSchema(
             name="Main",
+            surface_type=SurfaceType.MAIN_WING,
             symmetric=True,
             x_secs=[
                 WingXSecSchema(xyz_le=[0, 0, 0], chord=0.5, twist=0, airfoil="naca0015"),

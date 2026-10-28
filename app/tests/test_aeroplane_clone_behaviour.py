@@ -111,7 +111,14 @@ def _build_source(db: Session) -> AeroplaneModel:
     db.flush()
 
     # Wing + xsec + detail + spare + TED + servo
-    wing = WingModel(aeroplane_id=src.id, name="main_wing", symmetric=True, design_model="flat")
+    wing = WingModel(
+        aeroplane_id=src.id,
+        name="main_wing",
+        surface_type="horizontal_tail",
+        surface_type_inferred=True,
+        symmetric=True,
+        design_model="flat",
+    )
     db.add(wing)
     db.flush()
 
@@ -402,6 +409,18 @@ class TestCloneAeroplaneSubgraph:
         src_wing_ids = {w.id for w in src_wings}
         clone_wing_ids = {w.id for w in clone_wings}
         assert src_wing_ids.isdisjoint(clone_wing_ids), "Clone wings must have new PKs"
+
+    def test_wings_keep_surface_type_and_inferred_flag(self, db_session):
+        """ADR 0006: versioning copies rows, so the wing role and its inferred flag survive."""
+        src = _build_source(db_session)
+        clone = clone_aeroplane_subgraph(
+            db_session, src, immutable=False, branch_id=None, predecessor_id=None, root_id=None
+        )
+        db_session.flush()
+
+        clone_wing = db_session.query(WingModel).filter(WingModel.aeroplane_id == clone.id).one()
+        assert clone_wing.surface_type == "horizontal_tail"
+        assert clone_wing.surface_type_inferred is True
 
     def test_xsecs_spares_ted_servos_are_independent(self, db_session):
         src = _build_source(db_session)

@@ -98,7 +98,9 @@ def _create_test_fuselage_schema() -> schemas.FuselageSchema:
 def test_wing_config_to_asb_wing_schema():
     wing_config = _create_test_wing_config()
 
-    result = wing_config_to_asb_wing_schema(wing_config=wing_config, wing_name="main-wing")
+    result = wing_config_to_asb_wing_schema(
+        wing_config=wing_config, wing_name="main-wing", surface_type="main_wing"
+    )
 
     assert result.name == "main-wing"
     assert result.symmetric is True
@@ -125,7 +127,9 @@ def test_wing_config_to_asb_wing_schema():
 def test_wing_config_to_wing_model_and_back_preserves_details():
     wing_config = _create_test_wing_config()
 
-    wing_model = wing_config_to_wing_model(wing_config=wing_config, wing_name="main-wing")
+    wing_model = wing_config_to_wing_model(
+        wing_config=wing_config, wing_name="main-wing", surface_type="main_wing"
+    )
     reconstructed = wing_model_to_wing_config(wing_model)
 
     assert reconstructed.symmetric is True
@@ -166,6 +170,7 @@ def test_wing_model_to_wing_config_scales_geometry_for_cad():
     """
     wing_schema = schemas.AsbWingSchema(
         name="main-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -194,6 +199,7 @@ def test_wing_model_to_wing_config_scales_geometry_for_cad():
 def test_wing_model_to_wing_config_resolves_sparse_vectors_for_standard_and_follow():
     wing_schema = schemas.AsbWingSchema(
         name="main-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -253,6 +259,7 @@ def test_spare_origin_recomputed_when_scaled_gh352():
     """
     wing_schema = schemas.AsbWingSchema(
         name="test-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -297,6 +304,7 @@ def test_spare_origin_roundtrip_consistency_gh362():
     """
     wing_schema = schemas.AsbWingSchema(
         name="test-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -353,6 +361,7 @@ def test_spare_origin_at_scale_1_matches_geometry_gh362():
     """
     wing_schema = schemas.AsbWingSchema(
         name="test-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -395,6 +404,7 @@ def test_follow_mode_spare_roundtrip_consistency_gh362():
     """Regression for gh-362: follow-mode spares must be stable across repeated conversions."""
     wing_schema = schemas.AsbWingSchema(
         name="test-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -459,6 +469,7 @@ def test_stale_spare_vector_discarded_on_recomputation_gh362():
     """Regression for gh-362: pre-populated spare_vector from DB must be discarded."""
     wing_schema = schemas.AsbWingSchema(
         name="test-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -502,6 +513,7 @@ def test_stale_spare_vector_discarded_on_recomputation_gh362():
 def test_ted_projection_to_asb_uses_rel_chord_root():
     wing = schemas.AsbWingSchema(
         name="main-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -546,6 +558,7 @@ def test_ted_projection_to_asb_uses_rel_chord_root():
 def test_control_surface_only_input_is_persisted_as_ted():
     wing_schema = schemas.AsbWingSchema(
         name="main-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -585,6 +598,7 @@ def test_asb_wing_schema_rejects_segment_details_on_last_xsec():
     with pytest.raises(ValidationError):
         schemas.AsbWingSchema(
             name="invalid-wing",
+            surface_type="main_wing",
             symmetric=True,
             x_secs=[
                 schemas.WingXSecSchema(
@@ -608,6 +622,7 @@ def test_asb_wing_schema_rejects_segment_details_on_last_xsec():
 def test_aeroplane_schema_to_airplane_configuration_requires_mass():
     wing = schemas.AsbWingSchema(
         name="main-wing",
+        surface_type="main_wing",
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
@@ -632,7 +647,9 @@ def test_aeroplane_schema_to_airplane_configuration_requires_mass():
 
 def test_aeroplane_schema_to_airplane_configuration_preserves_wing_details():
     wing_config = _create_test_wing_config()
-    wing_schema = wing_config_to_asb_wing_schema(wing_config=wing_config, wing_name="main-wing")
+    wing_schema = wing_config_to_asb_wing_schema(
+        wing_config=wing_config, wing_name="main-wing", surface_type="main_wing"
+    )
     fuselage_schema = _create_test_fuselage_schema()
     plane = schemas.AeroplaneSchema(
         name="test-plane",

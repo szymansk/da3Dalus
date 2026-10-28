@@ -46,6 +46,7 @@ def _make_fake_airplane(with_flap: bool = False):
     flap_cs = SimpleNamespace(name="[flap]Flap", deflection=0.0)
     xsec = SimpleNamespace(control_surfaces=[flap_cs] if with_flap else [])
     fake_wing = SimpleNamespace(
+        name="main_wing",
         area=lambda: 0.30,
         mean_aerodynamic_chord=lambda: 0.20,
         span=lambda: 1.5,
@@ -53,6 +54,7 @@ def _make_fake_airplane(with_flap: bool = False):
     )
     plane = SimpleNamespace(
         wings=[fake_wing],
+        main_wing_name="main_wing",
         xyz_ref=[0.08, 0.0, 0.0],
         s_ref=0.30,
         c_ref=0.20,
@@ -213,11 +215,13 @@ def test_recompute_aborts_cleanly_on_asb_exception(client_and_db):
                 return_value=SimpleNamespace(
                     wings=[
                         SimpleNamespace(
+                            name="main_wing",
                             area=lambda: 0.30,
                             mean_aerodynamic_chord=lambda: 0.20,
                             span=lambda: 1.5,
                         )
                     ],
+                    main_wing_name="main_wing",
                     xyz_ref=[0.0, 0.0, 0.0],
                     s_ref=0.30,
                     c_ref=0.20,
@@ -1221,6 +1225,7 @@ class TestTurbulatorCd0FitDecoupling:
             )
             fake_plane_turb = _SN(
                 wings=[fake_wing_turb],
+                main_wing_name="main_wing",
                 xyz_ref=[0.08, 0.0, 0.0],
                 s_ref=0.30,
                 c_ref=0.20,
