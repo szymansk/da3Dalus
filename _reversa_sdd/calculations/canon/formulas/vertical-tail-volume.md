@@ -36,7 +36,7 @@ definition, measured on the main wing; maintainer 2026-10-25). This entry does n
 from the airplane itself: one producer per number a user sees (ADR 0022). Only the fin area `S_V` is read from the airplane, as AeroSandbox's `Wing.area(type="planform", include_centerline_distance=False)` of the one surface typed `vertical_tail` or `v_tail`, both flags passed explicitly (maintainer 2026-10-26, no library defaults): `planform` is the true area of the mean camber surface, unprojected, which is right for a vertical surface (the `xy` projection of a fin is nearly zero); a fin has no centreline gap to count;
 the arm `l_V,CG` is [[vertical-tail-arm]].
 
-`S_V` is the fin area, for a V-tail its fin share `S_Vtail·sin²ν` (ν = panel angle to the horizontal);
+`S_V` is the fin area, for a V-tail its fin share `sum_i S_i sin²ν_i` over the panels `i` (ν_i = angle of panel `i` to the horizontal, per panel, never one angle for the whole surface; `S_i` ASB's true planform area of the panel, `ν_i` from the geometry sections because ASB has no panel-angle accessor); it is the complement of the horizontal share `sum_i S_i cos²ν_i` used by [[horizontal-tail-volume]] and the [[neutral-point]] (maintainer decision 2026-10-27, #1208);
 `l_V,CG` runs from the computed design CG ([[centre-of-gravity-design]]) to the fin's quarter-chord MAC, exactly
 Drela's definition (maintainer 2026-10-25, #1272, superseding the reading of the CG as 25 % MAC). The arm is an interval
 over the neutral-point worlds, so `V̄_V` is one value per world (A11); the former `l_V,25` is removed, no formula needs it (ADR 0021).
@@ -81,4 +81,4 @@ Drela's V-tail rule (BAENDER §3b).
 > [[airplane-geometry]], and S_V as AeroSandbox's `Wing.area(type="planform", include_centerline_distance=False)`
 > of the one vertical_tail/v_tail surface, flags explicit (added at approval); V-tail fin share S·sin²ν
 > (McCombs 1996). One value per neutral-point world (A11). Bands belong to the evaluation (A10). Formula approved;
-> no kernel implementation yet (#1274); a V-tail gets a value with #1208.
+> kernel implementation #1274; the V-tail fin share is per panel (#1208).

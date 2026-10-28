@@ -65,6 +65,9 @@ class GeometryAdapter(SolverAdapter):
     async def surface_reference(self, airplane: AirplaneGeometry, key: str) -> SurfaceProperties:
         """Return AeroSandbox's planform values of one wing, for the neutral point's surface terms.
 
+        For a ``v_tail`` the values of the V-tail as the horizontal tail (maintainer 2026-10-27,
+        #1208): the effective area ``sum S_i cos^2(nu_i)`` and the aspect ratio of the true panels.
+
         Args:
             airplane: The validated geometry document.
             key: The key of the wing in ``airplane.wings``.
@@ -123,11 +126,12 @@ class GeometryAdapter(SolverAdapter):
 
         Args:
             airplane: The validated geometry document.
-            key: The key of the one ``horizontal_tail`` wing in ``airplane.wings``.
+            key: The key of the one ``horizontal_tail`` or ``v_tail`` wing in ``airplane.wings``.
 
         Returns:
             ``Wing.area(type="planform", include_centerline_distance=True)`` in m^2: the gross
-            planform through the fuselage, the convention of the reference wing.
+            planform through the fuselage, the convention of the reference wing; a V-tail's
+            effective area, the panel areas times ``cos^2`` of the panel angle.
 
         Raises:
             FormulaError: ``tool_unavailable`` if AeroSandbox is missing;

@@ -149,12 +149,27 @@ def stand_in_main_wing_properties(airplane: AirplaneGeometry) -> MainWingPropert
 
 
 def stand_in_surface_of(airplane: AirplaneGeometry, key: str) -> SurfaceProperties:
-    """The stand-in planform values of the wing under ``key`` (see :mod:`planform_stand_in`)."""
-    return stand_in_surface_properties((airplane.wings or {})[key])
+    """The stand-in planform values of the wing under ``key`` (see :mod:`planform_stand_in`).
+
+    A ``v_tail`` is the horizontal tail of the neutral point with its effective area and its true
+    panel aspect ratio (:func:`stand_in_v_tail_surface`).
+    """
+    wing = (airplane.wings or {})[key]
+    if wing.surface_type == "v_tail":
+        return stand_in_v_tail_surface(wing)
+    return stand_in_surface_properties(wing)
 
 
 def stand_in_quarter_chord_x(wing: Wing) -> float:
     """x of the quarter-chord MAC of a wing without AeroSandbox, by ASB's own formula.
+
+    See :func:`stand_in_mac_and_centre`.
+    """
+    return stand_in_mac_and_centre(wing)[1]
+
+
+def stand_in_mac_and_centre(wing: Wing) -> tuple[float, float]:
+    """``(c_MAC, x_AC)`` of a wing without AeroSandbox, by ASB's own formula.
 
     Per panel (ASB, ``Wing.aerodynamic_center``): taper ratio ``l``, ``c_MAC = 2/3 c1 (1 + l + l^2) /
     (1 + l)``, MAC leading edge at ``x1 + (x2 - x1) (1 + 2 l) / (3 + 3 l)``, centre at a quarter of the
@@ -175,7 +190,7 @@ def stand_in_quarter_chord_x(wing: Wing) -> float:
             for s in wing.x_secs
         ]
     )
-    total = moment = 0.0
+    total = moment = mac_sum = 0.0
     for a, b in pairwise(chain):
         taper = b.chord / a.chord
         mac = (2.0 / 3.0) * a.chord * (1.0 + taper + taper**2) / (1.0 + taper)
@@ -183,7 +198,35 @@ def stand_in_quarter_chord_x(wing: Wing) -> float:
         area = (a.chord + b.chord) / 2.0 * math.hypot(b.y - a.y, b.z - a.z)
         total += area
         moment += area * (mac_le + 0.25 * mac)
-    return moment / total
+        mac_sum += area * mac
+    return mac_sum / total, moment / total
+
+
+def stand_in_v_tail_surface(wing: Wing) -> SurfaceProperties:
+    """A V-tail as the horizontal tail without AeroSandbox: ``S_h,eff = sum S_i cos^2(nu_i)``, true panel AR.
+
+    Per panel the true area ``(c1 + c2) / 2`` times the panel length in the y-z plane and the true
+    length itself; the MAC and its centre are :func:`stand_in_mac_and_centre`. A stand-in for the fast
+    tier (the real values are ASB's, compared in the aero tier).
+    """
+    chain = oriented_chain(wing, 1 if wing.symmetric else 2)
+    effective = true_area = span = 0.0
+    for a, b in pairwise(chain):
+        run, rise = b.y - a.y, b.z - a.z
+        length = math.hypot(run, rise)
+        panel = (a.chord + b.chord) / 2.0 * length
+        true_area += panel
+        span += length
+        effective += panel * run**2 / (run**2 + rise**2)
+    mirrored = 2.0 if wing.symmetric else 1.0
+    c_mac, centre = stand_in_mac_and_centre(wing)
+    return SurfaceProperties(
+        area=mirrored * effective,
+        span=mirrored * span,
+        aspect_ratio=mirrored * span**2 / true_area,
+        c_mac=c_mac,
+        x_le_mac=centre - 0.25 * c_mac,
+    )
 
 
 def stand_in_fin_area(wing: Wing) -> float:
@@ -207,7 +250,11 @@ def stand_in_fin_area(wing: Wing) -> float:
 def stand_in_horizontal_tail_area(wing: Wing) -> float:
     """The gross planform area of a horizontal tail without AeroSandbox, from the stand-in planform.
 
+    For a ``v_tail`` the effective area ``S_h,eff = sum S_i cos^2(nu_i)``.
+
     A stand-in for the fast tier (the real value is ASB's ``Wing.area(type="planform",
     include_centerline_distance=True)``, compared in the aero tier).
     """
+    if wing.surface_type == "v_tail":
+        return stand_in_v_tail_surface(wing).area
     return stand_in_surface_properties(wing).area

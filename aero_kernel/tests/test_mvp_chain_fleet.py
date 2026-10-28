@@ -3,13 +3,12 @@
 Aero tier. The goldens are **regression, not validation** (aero_kernel/CLAUDE.md): they pin what this
 build computes, written by running the kernel at SM_target = 0.10 and the fleet masses of the README.
 Per quantity the three values are the neutral-point worlds textbook / Pappas / AVL. The aircraft the
-kernel cannot compute record the error it gives: BELEMNITOS' V-tail has no neutral point (#1208), and
-RV-7's flaps need a landing deflection for the approach speed of ``lateral-static-stability-app``.
-CHEKKER and WIESEL compute since #1307 (asymmetric fuselage sections).
+kernel cannot compute record the error it gives: RV-7's flaps need a landing deflection for the
+approach speed of ``lateral-static-stability-app``. CHEKKER and WIESEL compute since #1307
+(asymmetric fuselage sections), BELEMNITOS since #1208 (V-tail neutral point).
 """
 
 import math
-from typing import Any
 
 import pytest
 from aero_kernel import compute
@@ -161,6 +160,34 @@ GOLDEN = {
         ),
         "turn-sideslip-gain": (1.4428480263687788, 1.429404590172054, 1.4177205791362455),
     },
+    # V-tail (#1208): S_h,eff = sum S_i cos^2(nu_i) and the fin share sum S_i sin^2(nu_i); the aircraft
+    # has ailerons, so the turn sideslip and the rudder roll authority do not apply. The AVL mesh is
+    # declared not converged (1.27 % MAC).
+    FleetMember.BELEMNITOS: {
+        "horizontal-tail-volume": (0.4280203534410503, 0.41882563132546513, 0.42387172804356815),
+        "vertical-tail-volume": (0.02366728563714833, 0.023158865621804994, 0.023437888363176725),
+        "spiral-parameter-md": (0.8906232378958386, 0.8714908926316483, 0.8819907928389206),
+        "spiral-parameter-mp": (0.7413920951227241, 0.7254655293915834, 0.7342060862084487),
+        "pitching-moment-slope": (-1.7714102651447219, -1.1520033212493608, -1.4919360900131886),
+        "static-margin-probe": (0.26092502308867943, 0.16968767716306948, 0.21975906225299052),
+        "dihedral-effect-md": (-0.092926, -0.093042, -0.092978),
+        "weathercock-stability-md": (0.016954, 0.015178, 0.016153),
+        "spiral-criterion-md": (-0.001753249676, -0.0014337916539999998, -0.0016091690009999997),
+        "spiral-doubling-time-md": (3.3018393886890895, 3.7579768524380097, 3.48513108517896),
+        "dihedral-effect-app": (-0.086627, -0.086708, -0.086663),
+        "weathercock-stability-app": (0.016073, 0.014299, 0.015273),
+        "spiral-criterion-app": (-0.001449266779, -0.001171951258, -0.0013241805559999998),
+        "spiral-doubling-time-app": (3.8616595273122627, 4.40700007787303, 4.079368584756887),
+        "dihedral-effect-mp": (-0.101351, -0.101515, -0.101425),
+        "roll-due-to-yaw-rate-mp": (0.237647, 0.23596, 0.236887),
+        "weathercock-stability-mp": (0.01853, 0.016754, 0.017729),
+        "spiral-criterion-mp": (
+            -0.0022560725710000008,
+            -0.0018798299650000004,
+            -0.0020863768980000003,
+        ),
+        "spiral-doubling-time-mp": (2.745486361704793, 3.0988850051259096, 2.8891075063763747),
+    },
     FleetMember.WIESEL: {
         "vertical-tail-volume": (0.03972881444148937, 0.03888724528575182, 0.039253299538574225),
         "spiral-parameter-md": (4.028012641050421, 3.9426878901036906, 3.9798012844600827),
@@ -192,10 +219,6 @@ GOLDEN = {
     },
 }
 
-# Quantity -> the cause the kernel names, for the aircraft it cannot compute.
-UPSTREAM = {
-    FleetMember.BELEMNITOS: {"neutral-point": "unsupported_layout"},
-}
 # The turn sideslip applies only without ailerons: CHEKKER is the one aileron-free member of the fleet.
 TURN_SIDESLIP = ("turn-sideslip", "turn-sideslip-gain")
 # The rudder roll authority has the same applicability (`has_no_aileron`).
@@ -263,24 +286,6 @@ async def test_the_unstable_spirals_of_bryan_and_jaguar_have_a_positive_doubling
         assert by_slug["spiral-doubling-time-md"].interval.min > 0.0  # type: ignore[union-attr]
 
 
-@pytest.mark.parametrize("member", list(UPSTREAM))
-@pytest.mark.asyncio
-async def test_the_aircraft_the_kernel_cannot_compute_name_their_cause(member: FleetMember) -> None:
-    causes = UPSTREAM[member]
-    for quantity in (await run(member)).quantities:
-        if quantity.slug in WITHOUT_AILERON_ONLY:
-            continue  # a layout with ailerons has no turn sideslip to fail
-        assert quantity.status is QuantityStatus.ERROR, quantity.slug
-        assert quantity.error is not None
-        assert quantity.error.code == "upstream_failed", quantity.slug
-        listed: Any = quantity.error.detail["causes"]
-        named: dict[str, str] = {c["quantity"]: c["code"] for c in listed}
-        assert set(named) & set(causes), (quantity.slug, named)
-        for cause, code in causes.items():
-            if cause in named:
-                assert named[cause] == code
-
-
 @pytest.mark.asyncio
 async def test_the_rv7_approach_point_needs_the_landing_deflection() -> None:
     by_slug = {q.slug: q for q in (await run(FleetMember.RV7, flaps=False)).quantities}
@@ -303,14 +308,20 @@ async def test_with_ailerons_the_turn_sideslip_and_rudder_roll_authority_are_not
 
 
 @pytest.mark.asyncio
-async def test_the_belemnitos_v_tail_has_no_horizontal_tail_volume_without_a_neutral_point() -> (
-    None
-):
-    """A V-tail counts as a horizontal tail, so the entry applies and fails on its upstream (#1208)."""
-    by_slug = {q.slug: q for q in (await run(FleetMember.BELEMNITOS)).quantities}
-    error = by_slug["horizontal-tail-volume"].error
-    assert error is not None
-    assert error.code == "upstream_failed"
+async def test_the_belemnitos_v_tail_volumes_are_the_shares_of_its_two_roles() -> None:
+    """V_H uses S_h,eff = sum S_i cos^2(nu_i) and V_V the fin share sum S_i sin^2(nu_i) of the one
+    surface; both Drela bands hold, and the unstable spiral is judged (B < 5), not hidden (#1208)."""
+    airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.BELEMNITOS))
+    result = await run(FleetMember.BELEMNITOS)
+    verdicts = {
+        v.rule_id: v
+        for v in evaluate_rules(shipped_rule_table(), result, facts_from_geometry(airplane))
+    }
+    assert verdicts["horizontal-tail-volume"].status is RuleStatus.INSIDE
+    assert verdicts["vertical-tail-volume"].status is RuleStatus.INSIDE
+    assert verdicts["spiral-stability"].status is RuleStatus.BELOW
+    assert verdicts["spiral-stability-circling-aileron"].status is RuleStatus.BELOW
+    assert verdicts["spiral-stability-circling-rudder-only"].status is RuleStatus.NOT_APPLICABLE
 
 
 @pytest.mark.parametrize("member", list(GOLDEN))

@@ -11,10 +11,14 @@ import pytest
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.asb_airplane import fin_area, horizontal_tail_area
+from aero_kernel.solvers.asb_airplane import fin_area, horizontal_tail_area, surface_properties
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
-from aero_kernel.tests.asb_fakes import stand_in_fin_area, stand_in_horizontal_tail_area
+from aero_kernel.tests.asb_fakes import (
+    stand_in_fin_area,
+    stand_in_horizontal_tail_area,
+    stand_in_v_tail_surface,
+)
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
@@ -59,6 +63,33 @@ def test_the_v_tail_share_is_the_planform_area_times_sin_squared_of_the_panel_an
     share = fin_area(airplane, key)
     assert share > 0.0
     assert close(share, stand_in_fin_area(wing), 5e-3)
+
+
+def test_the_v_tail_horizontal_share_is_the_planform_area_times_cos_squared_of_the_panel_angle() -> (
+    None
+):
+    airplane = plane(FleetMember.BELEMNITOS)
+    key = tail_key(airplane, "v_tail")
+    wing = (airplane.wings or {})[key]
+    effective = horizontal_tail_area(airplane, key)
+    assert effective > 0.0
+    assert close(effective, stand_in_horizontal_tail_area(wing), 5e-3)
+    # the two shares are the panels' true area between them
+    assert close(
+        effective + fin_area(airplane, key),
+        stand_in_v_tail_surface(wing).area + stand_in_fin_area(wing),
+        5e-3,
+    )
+
+
+def test_the_v_tail_surface_has_the_stand_ins_true_panel_aspect_ratio() -> None:
+    airplane = plane(FleetMember.BELEMNITOS)
+    key = tail_key(airplane, "v_tail")
+    real = surface_properties(airplane, key)
+    stand_in = stand_in_v_tail_surface((airplane.wings or {})[key])
+    assert close(real.area, stand_in.area, 5e-3)
+    assert close(real.aspect_ratio, stand_in.aspect_ratio, 5e-3)
+    assert close(real.c_mac, stand_in.c_mac, 5e-3)
 
 
 @pytest.mark.asyncio

@@ -130,7 +130,7 @@ neutral-point-layout:
   applies_to: {formula: neutral-point}
   kind: input
   on_violation: error
-  criterion: "The neutral point is defined for one main wing with one horizontal tail (any fins and winglets); a tailless wing, a canard, a tandem wing and a V-tail are refused (#1206, #1207, #1208)."
+  criterion: "The neutral point is defined for one main wing with one pitch surface, a horizontal tail or a V-tail (any fins and winglets); a tailless wing, a canard, a tandem wing and a layout with more than one pitch surface are refused (#1206, #1207)."
   codes: [unsupported_layout]
 
 flap-deflection-with-flaps:

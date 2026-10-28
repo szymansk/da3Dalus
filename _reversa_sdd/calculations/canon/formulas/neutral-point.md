@@ -32,6 +32,7 @@ worlds: [textbook, pappas, avl]
 **Canonical form**
 
 ```
+tail:            the horizontal tail (S_h, AR_h), or the V-tail as S_h,eff = sum_i S_i*cos^2(nu_i), AR_h = b_true^2/S_true  (#1208)
 world textbook:  x_NP = (S_w*x_ac,w + K*S_h*x_ac,h) / (S_w + K*S_h),  K = eta*(1 - 4/(AR_w+2)) * [AR_h/(AR_h+2)]/[AR_w/(AR_w+2)],  eta = eta_h
 world Pappas:    the same barycentre with K = (1 - 3.24/AR_w) * [1/(1+2/AR_h)]/[1/(1+2/AR_w)]
 world AVL:       solve for alpha at V_md:  L = m*g;   x_NP := AVL(airplane, alpha).Xnp   (CLAF by ASB's thickness rule)
@@ -71,12 +72,45 @@ carried through the whole downstream chain (A11 rule 4). One entry, one producer
 **Mach 0.** All three worlds are evaluated incompressible, Mach 0: the RC/UAV regime has M ≤ 0.3
 (ADR 0028), and the regime warnings inherited from [[minimum-drag-speed]] cover the Mach band.
 
-**Refused configurations.** The three worlds cover **one main wing with one horizontal tail** (any fins
-and winglets). Tailless, canard, tandem and V-tail layouts are `unsupported_configuration`, decided from
-`surface_type` (#1187), never from the planform. Each is open in its own ticket: #1206 (tailless),
-#1207 (canard, tandem), #1208 (V-tail). The textbook world's former V-tail rule — horizontal projection
-`A cos^2(nu)` (Drela) — is not a canon statement any more; it is an open point of #1208 (what is
-projected, and per segment).
+**V-tail (maintainer decision 2026-10-27, #1208, option (a)).** In the textbook and Pappas worlds a V-tail
+counts as the horizontal tail. Per panel `i` (a segment between two neighbouring sections of the V-tail),
+`nu_i` is the panel's angle to the horizontal, `tan(nu_i) = dz_i/dy_i` of its leading-edge line:
+
+- **effective area** `S_h,eff = sum_i S_i cos^2(nu_i)`, with `S_i` the true area of the panel (not its
+  projection); this replaces `S_h` in the barycentre. The same `cos^2` share is the area of
+  [[horizontal-tail-volume]], and the fin share `sum_i S_i sin^2(nu_i)` of [[vertical-tail-volume]] is its
+  complement: the two shares add up to the true area `S_true = sum_i S_i`;
+- **lift slope `a_h`** from the true panel aspect ratio `AR_h = b_true^2 / S_true` with `b_true` the summed y-z
+  lengths of the panels (`Wing.span(type="yz")` of each panel) and `S_true` the summed true areas: the slope of the
+  panel is a property of the panel, not of its projection. The old projection (`S cos(nu)`, `AR cos(nu)`) has no
+  source and is dropped;
+- **aerodynamic centre** of the tail: the V-tail's quarter-chord MAC from AeroSandbox `Wing.aerodynamic_center()`,
+  the same route as a horizontal tail (one producer, ADR 0022); `c_MAC` is `Wing.mean_aerodynamic_chord()`.
+
+*Where the values come from.* AeroSandbox gives the panel's true planform area
+(`Wing.area(type="planform", include_centerline_distance=False)`), the y-z span (`Wing.span(type="yz",
+include_centerline_distance=False)`), the MAC and the aerodynamic centre, every flag passed in code. ASB has no
+panel-angle accessor, so `nu_i` comes from the geometry sections (`xyz_le` of the two sections of the panel);
+`cos^2(nu_i) = dy_i^2 / (dy_i^2 + dz_i^2)`. Each panel is measured as a wing of its own two sections without the
+gap between the root and the centreline: the gap is no surface of a V-tail, unlike the fuselage-carried root of a
+horizontal tail (so a V-tail with `nu = 0` gives the horizontal tail's `S_h` only when its root is on `y = 0`).
+The **AVL world** takes the real geometry (the panels at their `y` and `z`, mirrored); nothing is projected there.
+
+*Source — what is printed and what is derived.* The equivalence of a V-tail to a horizontal and a vertical tail with
+the areas `S cos^2(nu)` and `S sin^2(nu)` is the *simplified vee-tail theory* of Purser and Campbell, NACA Report 823
+(1945) (🟡 citation as given by the experts and recorded by the maintainer on 2026-10-27; **the report is not in
+the expert vaults searched (aerodynamics-expert, aircraft-design-scholz, rc-aircraft-designer), so no equation or
+figure number is quoted here and none was checked against the print**). Drela, *Design Rules* (the rule behind Eq. 3
+for V-tails) uses the same shares. What is **derived**, not printed: a panel at the angle `nu` meets the flow with the
+angle of attack `alpha cos(nu)` normal to the panel, and the lift is the vertical component of the panel's normal
+force, so `L = a_panel S alpha cos(nu) cos(nu) = a_panel S cos^2(nu) alpha`; the lift slope `a_panel` of the panel is
+that of its own aspect ratio. The side force is the same argument with `sin^2(nu)`. The barycentre then uses
+`a_h S_h,eff` in place of `a_h S_h`.
+
+**Refused configurations.** The three worlds cover **one main wing with one pitch surface**, a horizontal tail or a
+V-tail (any fins and winglets). Tailless, canard and tandem layouts, and a layout with more than one pitch surface
+(a horizontal tail and a V-tail, two V-tails), are `unsupported_configuration`, decided from `surface_type` (#1187),
+never from the planform. Each is open in its own ticket: #1206 (tailless), #1207 (canard, tandem).
 
 **Not used:** AeroBuildup (no wing–tail downwash, about 10 % MAC aft — GH #1154); the flat rules with a
 fixed tail weight (rcplanedesigner K = 0.5 and −5 % MAC, Harding, Krauss), because they ignore aspect
@@ -105,7 +139,7 @@ uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/neutral_point.py` | EXACT | 🟢 | textbook (with the input `eta_h`) and Pappas barycentres as written, with the surfaces measured by the GEO adapter (AeroSandbox, `aero_kernel/solvers/geometry.py`); the AVL world calls the AVL adapter at C_L = m·g/(q·S_ref); every world declares `fuselage_not_modelled`; the interval over the worlds is formed by the engine (A11) |
+| `aero_kernel/formulas/neutral_point.py` | EXACT | 🟢 | textbook (with the input `eta_h`) and Pappas barycentres as written, with the surfaces measured by the GEO adapter (AeroSandbox, `aero_kernel/solvers/geometry.py`); a `v_tail` surface comes back from the adapter as `S_h,eff`, the true panel aspect ratio and ASB's MAC and aerodynamic centre (`asb_airplane._v_tail_surface`, #1208); the AVL world calls the AVL adapter at C_L = m·g/(q·S_ref); every world declares `fuselage_not_modelled`; the interval over the worlds is formed by the engine (A11) |
 
 ## Approval
 
@@ -122,6 +156,7 @@ uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.
 > **Approved** (maintainer, 2026-10-25): the neutral point as an interval over the textbook (Sadraey Eq. 6.67,
 > η_h a sourced starting value 0.65, Lennon), Pappas and AVL worlds, the surfaces' geometry from AeroSandbox
 > (#1253, #1262); fuselage not modelled (#1205, DATCOM ≈ 1–2 % MAC); the interval is a lower bound of the
-> uncertainty, not validated (A11 rule 5); conventional tails only — V-tail with #1208, tailless/canard/tandem
+> uncertainty, not validated (A11 rule 5); conventional tails, and the V-tail added by the maintainer decision of
+> 2026-10-27 (#1208: S_h,eff = Σ S_i cos²ν_i, true panel aspect ratio, AVL real geometry); tailless/canard/tandem
 > post-MVP. "Mit nur 4–8 mm Abweichung ist das Intervall nicht so riesig. Am Ende wird er ja erflogen, und so
 > hat man schon einen guten Startwert."
