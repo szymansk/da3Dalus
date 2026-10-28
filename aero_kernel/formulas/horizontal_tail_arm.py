@@ -13,6 +13,7 @@ async def horizontal_tail_arm(x: Inputs, ctx: Context) -> dict[str, float]:
 
     Under worlds it runs once per assignment of ``neutral-point``, because the design CG is one
     (A11): the arm is an interval, never a number combined across worlds. A length, no verdict (A10).
+    A V-tail's arm is to its own quarter-chord MAC, ASB's ``Wing.aerodynamic_center`` (#1208).
 
     Args:
         x: ``airplane`` the geometry and ``x_cg`` the design CG in m (``centre-of-gravity-design``).
@@ -22,6 +23,8 @@ async def horizontal_tail_arm(x: Inputs, ctx: Context) -> dict[str, float]:
         ``l_h_cg`` in m, from the design CG to the quarter-chord MAC of the horizontal tail.
 
     Raises:
-        FormulaError: ``unsupported_layout`` unless there is exactly one ``horizontal_tail``.
+        FormulaError: ``unsupported_layout`` unless there is exactly one ``horizontal_tail`` or ``v_tail``.
     """
-    return {"l_h_cg": await tail_arm_from_cg(x, ctx, ("horizontal_tail",), "horizontal tail")}
+    return {
+        "l_h_cg": await tail_arm_from_cg(x, ctx, ("horizontal_tail", "v_tail"), "horizontal tail")
+    }

@@ -47,7 +47,7 @@ use this arm; that is the measured direction ([[centre-of-gravity-measured]]) an
 **Geometry (ADR 0022, one producer).** `x_h,25` is `Wing.aerodynamic_center(chord_fraction=0.25)[0]` of the
 surface, ASB's own value (the same quarter-chord MAC the neutral point uses for the tail), obtained from the GEO
 adapter; the kernel integrates no planform of its own. No area or span enters, so a vertical surface needs no
-planform. Refused as `unsupported_layout`, decided from `surface_type`: no horizontal tail, or more than one. A canard or a V-tail is no horizontal tail here (#1207, #1208).
+planform. The surface is the one wing of `surface_type` `horizontal_tail` or `v_tail` (a V-tail counts as the horizontal tail, maintainer decision 2026-10-27, #1208; its arm is to its own quarter-chord MAC); none or several are refused as `unsupported_layout`, decided from `surface_type`. A canard is no horizontal tail here (#1207).
 
 **Values, not verdicts (A10).** The arm is a length in m. Bands for the quantities built on it belong to the
 evaluation.
@@ -80,4 +80,4 @@ a CG placed at the aft end of the interval gives a shorter arm than a fuselage-c
 > approved [[cg-for-target-margin]] (SM_target 0.10), once per neutral-point world (A11). Drela measures the
 > arms from the CG (Design Rules Eqs 3, 7–10; decision 2026-10-25, #1259). Inherits the neutral point's limits
 > (fuselage not modelled → CG aft-biased, arm slightly short; BRYAN spread ≈ 4 mm, JAGUAR ≈ 8 mm). One
-> horizontal tail only; canard and V-tail with #1207/#1208. Kernel EXACT (🟢), goldens BRYAN/JAGUAR (#1305).
+> horizontal tail or V-tail (maintainer decision 2026-10-27, #1208); canard with #1207. Kernel EXACT (🟢), goldens BRYAN/JAGUAR (#1305), BELEMNITOS (#1208).

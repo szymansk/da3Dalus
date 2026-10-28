@@ -365,3 +365,26 @@ def test_a_surface_offset_equally_in_y_and_z_is_meshed_along_y() -> None:
     )
     fin = next(s for s in mesh_surfaces(plane, NSPAN, lambda _a: 0) if s.name == "Fin")
     assert same([s.y for s in fin.sections], [0.1 * k / 2 for k in range(3)])
+
+
+def test_a_v_tail_is_meshed_as_it_is_with_its_height_and_its_mirror() -> None:
+    """AVL takes the real geometry of a V-tail (#1208): the stations lie on the panel line from the
+    root (y, z) to the tip (y, z), the chords follow, and the surface is mirrored (YDUPLICATE)."""
+    plane = AirplaneGeometry.model_validate(
+        {
+            "name": "t",
+            "wings": {
+                "Main": wing("Main", "main_wing", [(0.0, 0.0, 0.0, 0.2), (0.0, 0.6, 0.0, 0.1)]),
+                "Vee": wing("Vee", "v_tail", [(0.5, 0.05, 0.0, 0.1), (0.52, 0.25, 0.15, 0.05)]),
+            },
+        }
+    )
+    vee = next(s for s in mesh_surfaces(plane, NSPAN, lambda _a: 0) if s.name == "Vee")
+    assert vee.symmetric is True
+    first, last = vee.sections[0], vee.sections[-1]
+    assert (first.y, first.z) == (0.05, 0.0)
+    assert (last.y, last.z) == (0.25, 0.15)
+    for section in vee.sections:  # every station on the panel line
+        share = (section.y - 0.05) / 0.2
+        assert math.isclose(section.z, 0.15 * share, abs_tol=1e-9)
+        assert math.isclose(section.chord, 0.1 - 0.05 * share, abs_tol=1e-9)

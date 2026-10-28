@@ -14,6 +14,8 @@ async def horizontal_tail_volume(x: Inputs, ctx: Context) -> dict[str, float]:
 
     ``S_H`` is AeroSandbox's gross planform area of the one surface typed ``horizontal_tail``
     (``Wing.area(type="planform", include_centerline_distance=True)``), asked of the GEO adapter.
+    For the one surface typed ``v_tail`` it is the effective area ``S_h,eff = sum S_i cos^2(nu_i)``
+    over its panels (maintainer 2026-10-27, #1208).
     ``S_ref`` and ``c_MAC`` are those of ``airplane-geometry`` and the arm is
     ``horizontal-tail-arm``: none is recomputed here (ADR 0022). Drela writes the average chord
     ``S/b``; the canon uses ``c_MAC`` (maintainer 2026-10-27, #1273), declared in the entry. Under
@@ -28,10 +30,10 @@ async def horizontal_tail_volume(x: Inputs, ctx: Context) -> dict[str, float]:
         ``v_h`` (dimensionless).
 
     Raises:
-        FormulaError: ``unsupported_layout`` unless there is exactly one ``horizontal_tail``; from
+        FormulaError: ``unsupported_layout`` unless there is exactly one ``horizontal_tail`` or ``v_tail``; from
             the adapter, unchanged.
     """
     airplane = airplane_of(x)
-    key = tail_key(airplane, ("horizontal_tail",), "horizontal tail")
+    key = tail_key(airplane, ("horizontal_tail", "v_tail"), "horizontal tail")
     area = await ctx.solvers.geometry.horizontal_tail_area(airplane, key)
     return {"v_h": area * number(x, "l_h_cg") / (number(x, "s_ref") * number(x, "c_mac"))}

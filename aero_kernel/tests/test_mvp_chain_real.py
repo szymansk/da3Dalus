@@ -11,12 +11,23 @@ import pytest
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.asb_airplane import fin_area, horizontal_tail_area
+from aero_kernel.solvers.asb_airplane import fin_area, horizontal_tail_area, surface_properties
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
-from aero_kernel.tests.asb_fakes import stand_in_fin_area, stand_in_horizontal_tail_area
+from aero_kernel.tests.asb_fakes import (
+    stand_in_fin_area,
+    stand_in_horizontal_tail_area,
+    stand_in_v_tail_surface,
+)
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.test_v_tail_neutral_point import (
+    CHORD,
+    RISES,
+    ROOT_Y,
+    developed_half_length,
+    v_tail_airplane,
+)
 
 pytestmark = [pytest.mark.aero]
 
@@ -61,6 +72,33 @@ def test_the_v_tail_share_is_the_planform_area_times_sin_squared_of_the_panel_an
     assert close(share, stand_in_fin_area(wing), 5e-3)
 
 
+def test_the_v_tail_horizontal_share_is_the_planform_area_times_cos_squared_of_the_panel_angle() -> (
+    None
+):
+    airplane = plane(FleetMember.BELEMNITOS)
+    key = tail_key(airplane, "v_tail")
+    wing = (airplane.wings or {})[key]
+    effective = horizontal_tail_area(airplane, key)
+    assert effective > 0.0
+    assert close(effective, stand_in_horizontal_tail_area(wing), 5e-3)
+    # the two shares are the panels' true area between them
+    assert close(
+        effective + fin_area(airplane, key),
+        stand_in_v_tail_surface(wing).area + stand_in_fin_area(wing),
+        5e-3,
+    )
+
+
+def test_the_v_tail_surface_has_the_stand_ins_true_panel_aspect_ratio() -> None:
+    airplane = plane(FleetMember.BELEMNITOS)
+    key = tail_key(airplane, "v_tail")
+    real = surface_properties(airplane, key)
+    stand_in = stand_in_v_tail_surface((airplane.wings or {})[key])
+    assert close(real.area, stand_in.area, 5e-3)
+    assert close(real.aspect_ratio, stand_in.aspect_ratio, 5e-3)
+    assert close(real.c_mac, stand_in.c_mac, 5e-3)
+
+
 @pytest.mark.asyncio
 async def test_the_lateral_derivatives_of_bryan_have_their_physical_signs() -> None:
     airplane = plane(FleetMember.BRYAN)
@@ -101,3 +139,29 @@ async def test_the_moment_slope_moves_with_the_reference_by_the_arm_in_chords() 
     margin_far = -second.cm_alpha / second.cl_alpha
     assert abs((margin_near - margin_far) - 0.01 / c_mac) < 5e-3
     assert math.isfinite(margin_near)
+
+
+@pytest.mark.parametrize("rise", RISES[1:])  # a flat V-tail has no fin share to add
+def test_the_v_tail_shares_add_up_to_the_true_area_in_asb(rise: float) -> None:
+    """Trace test against real ASB: S_h,eff + S_v,eff = S_tot over both halves and the root extension."""
+    airplane = v_tail_airplane(rise, ROOT_Y)
+    total = horizontal_tail_area(airplane, "vee") + fin_area(airplane, "vee")
+    assert close(total, 2.0 * CHORD * developed_half_length(rise), 1e-9)
+
+
+def test_a_flat_v_tail_is_the_horizontal_tail_in_asb_with_the_root_carried_to_the_centreline() -> (
+    None
+):
+    """nu -> 0: area, span, aspect ratio, MAC and its leading edge equal those of the horizontal tail."""
+    flat = v_tail_airplane(0.0, ROOT_Y)
+    plain = v_tail_airplane(0.0, ROOT_Y, "horizontal_tail")
+    assert close(horizontal_tail_area(flat, "vee"), horizontal_tail_area(plain, "vee"), 1e-9)
+    a, b = surface_properties(flat, "vee"), surface_properties(plain, "vee")
+    for got, want in (
+        (a.area, b.area),
+        (a.span, b.span),
+        (a.aspect_ratio, b.aspect_ratio),
+        (a.c_mac, b.c_mac),
+        (a.x_le_mac, b.x_le_mac),
+    ):
+        assert close(got, want, 1e-9)
