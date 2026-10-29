@@ -65,8 +65,9 @@ def test_the_total_is_before_plus_own() -> None:
 
 
 def test_a_total_that_is_not_before_plus_own_is_rejected() -> None:
+    one, three = exact(1.0), exact(3.0)
     with pytest.raises(ValidationError, match="total_s must be before_s plus own_s"):
-        Timing(own_s=exact(1.0), before_s=exact(1.0), total_s=exact(3.0))
+        Timing(own_s=one, before_s=one, total_s=three)
 
 
 def test_of_builds_the_total() -> None:

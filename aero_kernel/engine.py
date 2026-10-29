@@ -6,7 +6,6 @@ holds no state between calls. Every outcome of a node is a value (a result, a st
 """
 
 import asyncio
-import dataclasses
 import logging
 import math
 import secrets
@@ -120,6 +119,19 @@ class _NodeRun:
     warnings: tuple[KernelWarning, ...] = ()
     computed: bool = False
     elapsed_s: float | None = None
+
+    def timed(self, elapsed_s: float) -> "_NodeRun":
+        """The same run with its measured seconds."""
+        return _NodeRun(
+            outcome=self.outcome,
+            anchor=self.anchor,
+            reason_for=self.reason_for,
+            error_for=self.error_for,
+            outputs=self.outputs,
+            warnings=self.warnings,
+            computed=self.computed,
+            elapsed_s=elapsed_s,
+        )
 
 
 def _unit_of(build: Build, slug: str) -> str | None:
@@ -304,7 +316,7 @@ class _Call:
         logger.debug(
             "node finished: %s in %.1f ms", run.outcome.status.value, elapsed * 1000, extra=extra
         )
-        return dataclasses.replace(run, elapsed_s=elapsed)
+        return run.timed(elapsed)
 
     @staticmethod
     def _failed(
