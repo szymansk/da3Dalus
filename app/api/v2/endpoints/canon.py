@@ -32,8 +32,10 @@ def list_canon_fleet() -> list[CanonFleetEntry]:
         "Computes the requested quantities and their subtrees with the aero kernel and judges "
         "them against Drela's design rules. Quantities that take minutes are skipped unless "
         "`include_long_runs` is set; they are then listed in `needs_confirmation`. The kernel's "
-        "log records of the request are returned in `logs`. Canon/kernel view (development), "
-        "experts only (ADR 0030)."
+        "log records of the request are returned in `logs`. Each computation step whose inputs "
+        "did not change since an earlier request is served from the kernel's cache "
+        "(`from_cache`, with the run time measured when it was computed); `fresh` recomputes "
+        "everything. Canon/kernel view (development), experts only (ADR 0030)."
     ),
 )
 async def compute_canon_quantities(request: CanonComputeRequest) -> CanonComputeResponse:

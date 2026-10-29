@@ -52,6 +52,7 @@ def node_key(solvers: Solvers, world: str, **inputs: float) -> str:
         build_digest="sha256:aa",
         tool_versions=solvers.tool_versions_of(tool),
         solver_settings=solvers.settings_of(tool),
+        rule_overrides={},
     )
 
 

@@ -19,6 +19,7 @@ def _key(**overrides: Any) -> str:
         "build_digest": "sha256:aa",
         "tool_versions": {"aerosandbox": "4.2.8"},
         "solver_settings": {"avl_nspan": 24},
+        "rule_overrides": {},
     }
     args.update(overrides)
     return cache_key(**args)
@@ -52,6 +53,7 @@ def test_negative_zero_equals_zero_in_the_key() -> None:
         {"tool_versions": {"aerosandbox": "4.2.9"}},
         {"solver_settings": {"avl_nspan": 25}},
         {"solver_settings": {}},
+        {"rule_overrides": {"one-main-wing.required_main_wings": 2.0}},
     ],
 )
 def test_every_component_changes_the_key(override: dict[str, JsonValue]) -> None:
@@ -68,7 +70,11 @@ def test_non_finite_input_raises() -> None:
 
 
 def test_the_key_document_has_exactly_these_fields() -> None:
-    """Pins the document: everything the kernel uses is in its input, so no provider hashes."""
+    """Pins the document: everything the kernel uses is in its input, so no provider hashes.
+
+    The caller's rule overrides are the one datum a node reads beside its bound inputs
+    (maintainer 2026-10-29, #1332, option A).
+    """
     assert _key() == sha256_of(
         {
             "application": {"formula": "flight:stall-speed", "application": "default"},
@@ -77,6 +83,7 @@ def test_the_key_document_has_exactly_these_fields() -> None:
             "build_digest": "sha256:aa",
             "tool_versions": {"aerosandbox": "4.2.8"},
             "solver_settings": {"avl_nspan": 24},
+            "rule_overrides": {},
         }
     )
 

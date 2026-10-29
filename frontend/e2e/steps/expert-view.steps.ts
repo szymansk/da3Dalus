@@ -38,6 +38,9 @@ let failure: Failure | null = null;
 /** The compute requests the stub answered in this scenario; reset by the Background step. */
 let computeRequests = 0;
 
+/** The `fresh` flag of each compute request of this scenario (gh-1332); reset by the Background step. */
+let freshFlags: boolean[] = [];
+
 const TIMING = {
   own_s: { lower: 0.0123, upper: 0.0123 },
   before_s: { lower: 0.5, upper: 1.5 },
@@ -106,7 +109,8 @@ async function stubBackend(page: Page) {
       return route.fulfill({ status: 200, headers: CORS, json: FLEET });
     }
     computeRequests += 1;
-    const body = request.postDataJSON() as { quantities: string[] };
+    const body = request.postDataJSON() as { quantities: string[]; fresh?: boolean };
+    freshFlags.push(body.fresh === true);
     return route.fulfill({
       status: 200,
       headers: CORS,
@@ -137,6 +141,7 @@ const navigator = (page: Page) =>
 Given("the Expert View is open with a stubbed kernel backend", async ({ page }) => {
   failure = null;
   computeRequests = 0;
+  freshFlags = [];
   await stubBackend(page);
   await page.goto("/expert");
   await expect(navigator(page).locator("#connAircraft")).toContainText("BRYAN");
@@ -199,4 +204,14 @@ Then("the kernel log lists a record of the request", async ({ page }) => {
 
 Then("the navigator panel is about {string}", async ({ page }, slug: string) => {
   await expect(navigator(page).locator("#kres")).toHaveAttribute("data-for", slug);
+});
+
+Then("the last computation was allowed to use the cache", async () => {
+  await expect.poll(() => freshFlags.length).toBeGreaterThan(0);
+  expect(freshFlags.at(-1)).toBe(false);
+});
+
+Then("the last computation bypassed the cache", async () => {
+  await expect.poll(() => freshFlags.length).toBe(2);
+  expect(freshFlags.at(-1)).toBe(true);
 });

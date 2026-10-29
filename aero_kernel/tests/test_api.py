@@ -192,9 +192,12 @@ async def test_compute_hands_the_identical_objects_to_the_engine(
     seen: list[tuple[object, object, object]] = []
     original = api_module.evaluate
 
-    async def spy(build: Build, aircraft_: object, request_: object, *, solvers: Solvers) -> object:
+    async def spy(
+        build: Build, aircraft_: object, request_: object, *, solvers: Solvers, cache: object
+    ) -> object:
         seen.append((build, aircraft_, request_))
         assert isinstance(solvers.atmosphere, AtmosphereAdapter)
+        assert cache is None  # the stateless compute keeps no cache (ch. 8.4)
         return await original(build, aircraft_, request_, solvers=solvers)  # type: ignore[arg-type]  # pass-through spy
 
     monkeypatch.setattr(api_module, "evaluate", spy)

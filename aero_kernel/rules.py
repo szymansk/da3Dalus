@@ -8,13 +8,54 @@ a proposal the maintainer has not decided; the kernel refuses to read it.
 """
 
 import math
-from collections.abc import Mapping
+from collections.abc import Generator, Iterable, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import DEFAULT_NAMESPACE, ErrorCategory, KernelError
 from aero_kernel.schema import RuleUsed
 
-__all__ = ["Rules", "rule_override_errors"]
+__all__ = ["Rules", "node_rule_reads", "rule_override_errors", "unrecorded_rule_reads"]
+
+# The thresholds the running node read, by (rule, parameter); ``None`` outside a node (validation).
+# A context variable: every node runs in its own task, and ``asyncio.to_thread`` copies the context,
+# so a read is credited to the node whose task made it, also when adapters share one ``Rules``
+# (ARCHITECTURE ch. 8.4, maintainer 2026-10-29, #1332).
+_NODE_READS: ContextVar[dict[tuple[str, str], RuleUsed] | None] = ContextVar(
+    "node_rule_reads", default=None
+)
+# Whether reads are kept out of the call's and the node's record: set while the cache key is built.
+_UNRECORDED: ContextVar[bool] = ContextVar("unrecorded_rule_reads", default=False)
+
+
+@contextmanager
+def node_rule_reads() -> Generator[dict[tuple[str, str], RuleUsed]]:
+    """Collect the thresholds read in this context (one node's run) while the block runs.
+
+    Yields:
+        The thresholds read so far, by ``(rule, parameter)``; filled as the node reads.
+    """
+    reads: dict[tuple[str, str], RuleUsed] = {}
+    token = _NODE_READS.set(reads)
+    try:
+        yield reads
+    finally:
+        _NODE_READS.reset(token)
+
+
+@contextmanager
+def unrecorded_rule_reads() -> Generator[None]:
+    """Read thresholds without recording them, e.g. the solver settings that go into a cache key.
+
+    A key is built before the node runs; whether its thresholds are declared is decided by the run
+    (or, on a cache hit, by the stored entry), not by the lookup.
+    """
+    token = _UNRECORDED.set(True)
+    try:
+        yield
+    finally:
+        _UNRECORDED.reset(token)
 
 
 class Rules:
@@ -62,15 +103,35 @@ class Rules:
         key = f"{rule}.{parameter}"
         overridden = key in self._overrides
         value = self._overrides[key] if overridden else entry.value
-        self._used[rule, parameter] = RuleUsed(
-            rule=rule,
-            parameter=parameter,
-            value=value,
-            unit=entry.unit,
-            basis=entry.basis,
-            overridden=overridden,
-        )
+        if not _UNRECORDED.get():
+            used = RuleUsed(
+                rule=rule,
+                parameter=parameter,
+                value=value,
+                unit=entry.unit,
+                basis=entry.basis,
+                overridden=overridden,
+            )
+            self._used[rule, parameter] = used
+            reads = _NODE_READS.get()
+            if reads is not None:
+                reads[rule, parameter] = used
         return value
+
+    def replay(self, used: Iterable[RuleUsed]) -> None:
+        """Record thresholds a node read when it was computed, for a node served from the cache.
+
+        The cache key holds the call's overrides, so a stored threshold is the one this call would
+        have read (ch. 8.4).
+
+        Args:
+            used: The thresholds the stored node read.
+        """
+        reads = _NODE_READS.get()
+        for entry in used:
+            self._used[entry.rule, entry.parameter] = entry
+            if reads is not None:
+                reads[entry.rule, entry.parameter] = entry
 
     def used(self) -> tuple[RuleUsed, ...]:
         """The thresholds handed out so far, sorted by rule and parameter."""

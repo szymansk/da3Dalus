@@ -1159,7 +1159,7 @@ const paintAll=()=>{ for(const id in nodeEls) paintState(id); refreshStats(); re
 function downstreamOf(q){ const seen=new Set(), st=[q];
   while(st.length){ const v=st.pop(); for(const [w] of succ[v]) if(Q[w]&&!seen.has(w)){ seen.add(w); st.push(w); } }
   return seen; }
-function absorb(j,slugs,ms){
+function absorb(j,slugs,ms,fresh){
   addLog({level:'INFO',logger:'expert-view',message:`compute ${slugs.length===1?slugs[0]:slugs.length+' quantities'}: ${(ms/1000).toFixed(1)} s`});
   j.logs.forEach(addLog);
   for(const u of j.provenance.defaults_used||[]) S.defaultsUsed[u.slug]=u;
@@ -1168,16 +1168,18 @@ function absorb(j,slugs,ms){
   for(const v of j.verdicts) S.verd[v.rule_id]=v;
   for(const r of j.quantities) if(r.error&&r.error.detail&&r.error.detail.causes)
     for(const c of r.error.detail.causes) if(!S.res[c.quantity]) S.cause[c.quantity]=c.code;
-  if(j.needs_confirmation.length) askLongRun(j.needs_confirmation);
+  if(j.needs_confirmation.length) askLongRun(j.needs_confirmation,fresh);
 }
-async function compute(slugs,includeLong){
+// fresh: Recompute bypasses the kernel's cache; Compute and Compute all are served from it where the
+// inputs did not change (gh-1332).
+async function compute(slugs,includeLong,fresh){
   slugs=[...new Set(slugs)].filter(requestable);
   if(!slugs.length) return;
   slugs.forEach(s=>{ S.inflight.add(s); delete S.res[s]; });
   paintAll();
   const t0=performance.now();
   try{
-    absorb(await postJson('/canon/compute',{aircraft:{fleet:AIRCRAFT},quantities:slugs,values:S.values,include_long_runs:!!includeLong}),slugs,performance.now()-t0);
+    absorb(await postJson('/canon/compute',{aircraft:{fleet:AIRCRAFT},quantities:slugs,values:S.values,include_long_runs:!!includeLong,fresh:!!fresh}),slugs,performance.now()-t0,fresh);
   }catch(e){
     for(const s of slugs) S.res[s]={slug:s,status:'error',error:{code:'request_failed',category:'internal',message:String(e.message||e),hint:'Check that the backend is running and reachable.',detail:{}}};
     addLog({level:'ERROR',logger:'expert-view',message:'compute failed: '+(e.message||e)});
@@ -1200,13 +1202,13 @@ function setOverride(q,value){
 }
 
 // ---- long runs: the kernel skips quantities that take minutes until the caller confirms
-function askLongRun(slugs){
+function askLongRun(slugs,fresh){
   const box=$('confirmbox');
   box.innerHTML=`<div class="box"><h2>Long run</h2><p class="desc">These quantities run an external solver or an envelope sweep and can take minutes:</p>
     <p class="mono">${slugs.map(esc).join('\n')}</p>
     <div class="seg"><button id="runLong">Run (may take minutes)</button><button id="skipLong">Cancel</button></div></div>`;
   box.hidden=false;
-  $('runLong').addEventListener('click',()=>{ box.hidden=true; compute(slugs,true); });
+  $('runLong').addEventListener('click',()=>{ box.hidden=true; compute(slugs,true,fresh); });
   $('skipLong').addEventListener('click',()=>{ box.hidden=true; });
 }
 
@@ -1299,7 +1301,7 @@ function quantityPanel(q){
   if(r&&r.warnings&&r.warnings.length) h+=`<div class="lab" style="margin-top:10px">Warnings \u00b7 ${r.warnings.length}</div>`+r.warnings.map(w=>warningHtml(q,w)).join('');
   const vs=Object.values(S.verd).filter(v=>v.quantity===q&&['inside','below','above','partly'].includes(v.status));
   if(vs.length) h+=`<div class="lab" style="margin-top:10px">Drela \u00b7 evaluation</div>`+vs.map(verdictHtml).join('');
-  return h+`<div class="seg" style="margin-top:10px"><button id="recompute"${s==='computing'?' disabled':''}>${r?'Recompute':'Compute'}</button></div>`;
+  return h+`<div class="seg" style="margin-top:10px"><button id="recompute" data-fresh="${r?1:0}"${s==='computing'?' disabled':''}>${r?'Recompute':'Compute'}</button></div>`;
 }
 function rulePanel(id){
   const v=S.verd[id.slice(5)], r=RULEBYID[id];
@@ -1310,7 +1312,7 @@ function rulePanel(id){
 }
 function wire(box){
   box.querySelectorAll('[data-goto]').forEach(a=>a.addEventListener('click',ev=>{ ev.preventDefault(); pick(a.dataset.goto); }));
-  const rc=box.querySelector('#recompute'); if(rc) rc.addEventListener('click',()=>compute([cur.id]));
+  const rc=box.querySelector('#recompute'); if(rc) rc.addEventListener('click',()=>compute([cur.id],false,rc.dataset.fresh==='1'));
   const set=box.querySelector('#ovSet');
   if(set) set.addEventListener('click',()=>{ const x=box.querySelector('#ovIn').value.trim(), n=Number(x);
     if(x!==''&&Number.isFinite(n)) setOverride(cur.id,n); });

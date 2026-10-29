@@ -24,8 +24,8 @@ def _warning() -> KernelWarning:
     )
 
 
-def test_entry_has_exactly_outputs_warnings_and_the_measured_time() -> None:
-    assert set(Entry.model_fields) == {"outputs", "warnings", "own_s"}
+def test_entry_has_exactly_outputs_warnings_thresholds_and_the_measured_time() -> None:
+    assert set(Entry.model_fields) == {"outputs", "warnings", "rules_used", "own_s"}
 
 
 def test_the_measured_time_survives_the_round_trip() -> None:

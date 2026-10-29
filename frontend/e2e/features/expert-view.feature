@@ -1,4 +1,4 @@
-Feature: Expert View (gh-1282, gh-1330, ADR 0030)
+Feature: Expert View (gh-1282, gh-1330, gh-1332, ADR 0030)
 
   Background:
     Given the Expert View is open with a stubbed kernel backend
@@ -23,3 +23,11 @@ Feature: Expert View (gh-1282, gh-1330, ADR 0030)
     Then the "stall-speed" node is marked as failed
     When I choose "Go to cause" in the navigator panel
     Then the navigator panel is about "air-density"
+
+  Scenario: Compute uses the kernel cache, Recompute bypasses it
+    When I click the "stall-speed" node in the navigator
+    And I choose "Compute" in the navigator panel
+    Then the "stall-speed" node is marked as computed
+    And the last computation was allowed to use the cache
+    When I choose "Recompute" in the navigator panel
+    Then the last computation bypassed the cache

@@ -46,6 +46,14 @@ class CanonComputeRequest(BaseModel):
     include_long_runs: bool = Field(
         default=False, description="Whether quantities that take minutes (AVL, mass envelope) run."
     )
+    fresh: bool = Field(
+        default=False,
+        description=(
+            "Recompute every quantity and its subtree, bypassing the kernel's cache. By default a "
+            "computation step whose inputs did not change is served from the cache and marked "
+            "`from_cache`, with the run time measured when it was computed."
+        ),
+    )
 
 
 class CanonLogRecord(BaseModel):
