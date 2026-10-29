@@ -1,5 +1,6 @@
 """Method worlds in the engine (ARCHITECTURE ch. 8.13, A11, ADR 0027), on a fixture canon model."""
 
+import asyncio
 from collections.abc import Mapping
 from typing import Any
 
@@ -64,6 +65,8 @@ class Probe:
         self.warn: set[str] = set()
         self.outside: set[str] = set()
         self.pre_calls: list[object] = []
+        # seconds each world of `unc` sleeps before it returns
+        self.delay: dict[str, float] = {}
 
     def registry(self) -> Registry:
         registry = Registry()
@@ -76,6 +79,8 @@ class Probe:
             world = ctx.world
             assert world is not None
             self.calls.append(("unc", world))
+            if world in self.delay:
+                await asyncio.sleep(self.delay[world])
             if world in self.warn:
                 ctx.warn("precondition_unchecked", f"warned in {world}")
             if world in self.outside:
@@ -379,3 +384,22 @@ async def test_an_ordinary_warning_in_a_world_does_not_exclude_it() -> None:
     quantity_ = only(await run(probe, "np-q"))
     assert quantity_.interval is not None
     assert len(quantity_.interval.worlds) == 3
+
+
+async def test_the_own_time_of_a_node_with_worlds_spans_its_longest_run_and_the_sum() -> None:
+    probe = Probe()
+    probe.delay = {"alpha": 0.01, "beta": 0.02, "gamma": 0.03}
+    timing = only(await run(probe, "np-q")).timing
+    assert timing is not None
+    assert timing.own_s.lower >= 0.03  # the longest world run
+    assert timing.own_s.upper >= 0.06  # all three runs
+    assert timing.own_s.upper - timing.own_s.lower >= 0.03  # the sum counts the shorter runs too
+
+
+async def test_a_quantity_downstream_of_worlds_counts_every_world_run_before_it() -> None:
+    probe = Probe()
+    probe.delay = {"alpha": 0.01, "beta": 0.02, "gamma": 0.03}
+    timing = only(await run(probe, "down-q")).timing
+    assert timing is not None
+    assert timing.before_s.lower >= 0.03
+    assert timing.before_s.upper >= 0.06

@@ -35,6 +35,15 @@ interface Failure {
 /** The failure a scenario asks for; reset by the Background step of each scenario. */
 let failure: Failure | null = null;
 
+/** The compute requests the stub answered in this scenario; reset by the Background step. */
+let computeRequests = 0;
+
+const TIMING = {
+  own_s: { lower: 0.0123, upper: 0.0123 },
+  before_s: { lower: 0.5, upper: 1.5 },
+  total_s: { lower: 0.5123, upper: 1.5123 },
+};
+
 function answer(slug: string) {
   const quantity = (over: Record<string, unknown>) => ({
     slug,
@@ -45,6 +54,7 @@ function answer(slug: string) {
     application: "default",
     warnings: [],
     from_cache: false,
+    timing: TIMING,
     ...over,
   });
   let result = quantity({});
@@ -95,6 +105,7 @@ async function stubBackend(page: Page) {
     if (request.url().endsWith("/canon/fleet")) {
       return route.fulfill({ status: 200, headers: CORS, json: FLEET });
     }
+    computeRequests += 1;
     const body = request.postDataJSON() as { quantities: string[] };
     return route.fulfill({
       status: 200,
@@ -125,6 +136,7 @@ const navigator = (page: Page) =>
 
 Given("the Expert View is open with a stubbed kernel backend", async ({ page }) => {
   failure = null;
+  computeRequests = 0;
   await stubBackend(page);
   await page.goto("/expert");
   await expect(navigator(page).locator("#connAircraft")).toContainText("BRYAN");
@@ -132,7 +144,7 @@ Given("the Expert View is open with a stubbed kernel backend", async ({ page }) 
 
 Given(
   "the kernel fails {string} because {string} failed",
-  async (_fixtures, quantity: string, cause: string) => {
+  async ({}, quantity: string, cause: string) => {
     // the failure is read by the stub at request time
     failure = { quantity, cause };
   },
@@ -143,7 +155,12 @@ When("I click the {string} node in the navigator", async ({ page }, slug: string
 });
 
 When("I choose {string} in the navigator panel", async ({ page }, label: string) => {
-  await navigator(page).getByRole("button", { name: new RegExp(label) }).first().click();
+  // scoped to the panel: the sidebar's "Compute all" must not match "Compute"
+  await navigator(page)
+    .locator("#kres")
+    .getByRole("button", { name: new RegExp(`^${label}`) })
+    .first()
+    .click();
 });
 
 Then(
@@ -163,6 +180,17 @@ Then("the {string} node is marked as failed", async ({ page }, slug: string) => 
 
 Then("the navigator panel shows the value {string}", async ({ page }, text: string) => {
   await expect(navigator(page).locator("#kres")).toContainText(text);
+});
+
+Then("the navigator panel shows the run time {string}", async ({ page }, text: string) => {
+  await expect(navigator(page).locator("#kres table.timing")).toContainText(text);
+});
+
+Then("no computation was requested", async ({ page }) => {
+  // the panel has rendered; give a request that should not exist the chance to show up
+  await expect(navigator(page).locator("#kres #recompute")).toHaveText("Compute");
+  await page.waitForTimeout(300);
+  expect(computeRequests).toBe(0);
 });
 
 Then("the kernel log lists a record of the request", async ({ page }) => {

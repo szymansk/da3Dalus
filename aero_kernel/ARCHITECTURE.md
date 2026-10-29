@@ -135,8 +135,8 @@ aero_kernel/
   engine.py         walks the graph; takes an optional MemoryCache (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
   geometry.py       AirplaneGeometry and its sub-models (format mirror, mm → m at parse, ch. 8.11)
-  schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Polar, KernelWarning,
-                    Provenance (Pydantic, extra="forbid"); re-exports AirplaneGeometry and KernelError
+  schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Timing, TimeBounds, Polar,
+                    KernelWarning, Provenance (Pydantic, extra="forbid"); re-exports AirplaneGeometry and KernelError
   canon/            canon_model.json         the interpreted canon (versioned, committed)
                     canon_model.schema.json  JSON Schema of the canon model
                     IMPORT_REPORT.md         report of the last import (content hash, findings, the formula table)
@@ -149,6 +149,7 @@ aero_kernel/
   formulas/         one file per canon formula (file name = slug, with underscores)
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py
   cache.py          MemoryCache (LRU), Entry, cache_key, build_digest
+  timing.py         run-time arithmetic of a quantity and the chain before it (ch. 8.3); pure
   validate.py       physical admissibility of the input and `values` against the canon (ch. 8.11)
   canonical.py      canonical JSON and the SHA-256 helper, shared by the canon model hash and the cache keys
   errors.py         error catalogue (ch. 8.1): `ErrorCategory`, `KernelError`, the closed code table
@@ -349,6 +350,26 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `validated`: `false` — no value is validated against flight data (canon A11: "not validated")
 - `warnings[]` and `error`
 - `from_cache`: whether the value was served from the cache (ch. 8.4)
+- `timing` (gh-1330): the measured run time of the quantity and of the chain before it, in seconds — a
+  measured property of the result, not a mechanism (ADR 0019). Three `TimeBounds {lower, upper}`
+  (finite, `≥ 0`, `lower ≤ upper`):
+  - `own_s`: the node that produces the quantity. A node run once has equal bounds. A node with method
+    worlds runs once per world assignment (ch. 8.13); its runs lie in one layer and run concurrently, so
+    `lower` is the longest single run and `upper` the sum of its runs.
+  - `before_s`: the upstream nodes only — every distinct ancestor of the producing node in the subtree.
+    The engine runs the nodes of a layer concurrently (ch. 8.10), so the chain has two readings:
+    `upper` = the **sum** of the ancestors' own upper bounds, each counted once even when two branches
+    share it — the cost of the chain; `lower` = the **longest path** through the ancestors by their own
+    lower bounds, ending at a direct predecessor — the earliest the quantity could start under unlimited
+    concurrency. A quantity whose producer reads nothing has `0` for both.
+  - `total_s` = `before_s` + `own_s`, bound by bound (validated).
+
+  Present for `ok` and `error` (an error reports the time spent until it failed); `None` for
+  `not_applicable` and `skipped` (the formula did not run, the model rejects a timing there), for a
+  quantity the graph rejected before anything ran, and for one whose subtree still had an open run when the
+  time budget expired (ch. 8.10) — a timeout never crashes the timing, it has none. A value served from the
+  cache reports the own time **measured when it was computed** (the cache `Entry` keeps it as `own_s`),
+  marked by `from_cache`, never the near-zero time of the lookup.
 
 No internal paths or mechanisms in any field (ADR 0019).
 
@@ -449,6 +470,9 @@ no pluggable store and no disk cache: correctness never depended on them (keys a
 caller needs them before the register epic. All of it is restorable from `2dc55f19`. `MemoryCache.get`
 and `put` are plain synchronous methods (no awaits, no I/O); the in-flight deduplication lives in
 `CachedKernel`, with `asyncio` futures keyed by the cache key.
+- **An entry keeps its measured run time** (`Entry.own_s`, seconds, gh-1330): a hit reports the time
+  measured when the value was computed (ch. 8.3 `timing`), with `from_cache`. `None` means the writer
+  measured none; the entry is valid either way.
 - **Entries are lossless; keys are canonical.** The canonicalisation above (`-0.0` → `0.0`, sorted keys)
   builds **keys** only. A stored value round-trips exactly, `-0.0` included, so a hit is bit-identical to a
   recomputation (Q7). The cache knows only JSON values; converting structured outputs (polar, airplane,

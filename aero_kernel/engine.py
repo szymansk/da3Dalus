@@ -6,6 +6,7 @@ holds no state between calls. Every outcome of a node is a value (a result, a st
 """
 
 import asyncio
+import dataclasses
 import logging
 import math
 import secrets
@@ -58,8 +59,11 @@ from aero_kernel.schema import (
     Reason,
     ReasonCode,
     RuleUsed,
+    TimeBounds,
+    Timing,
     dedupe_warnings,
 )
+from aero_kernel.timing import chain_timing, run_bounds
 from aero_kernel.validate import validate_aircraft, validate_request, validate_values
 from pydantic import JsonValue
 
@@ -104,6 +108,8 @@ class _NodeRun:
         warnings: The warnings the node's formula reported.
         computed: Whether the failure was raised by the formula while computing (row 8 of the
             status order, whatever its code), not decided by the engine before the call.
+        elapsed_s: The measured seconds of the run; ``None`` for a run still open when the time
+            budget expired.
     """
 
     outcome: NodeOutcome
@@ -113,6 +119,7 @@ class _NodeRun:
     outputs: Mapping[str, object] | None = None
     warnings: tuple[KernelWarning, ...] = ()
     computed: bool = False
+    elapsed_s: float | None = None
 
 
 def _unit_of(build: Build, slug: str) -> str | None:
@@ -293,13 +300,11 @@ class _Call:
                 ),
                 logged,
             )
+        elapsed = time.perf_counter() - started
         logger.debug(
-            "node finished: %s in %.1f ms",
-            run.outcome.status.value,
-            (time.perf_counter() - started) * 1000,
-            extra=extra,
+            "node finished: %s in %.1f ms", run.outcome.status.value, elapsed * 1000, extra=extra
         )
-        return run
+        return dataclasses.replace(run, elapsed_s=elapsed)
 
     @staticmethod
     def _failed(
@@ -768,12 +773,40 @@ class _Call:
     # --- results ---------------------------------------------------------------------------
 
     def result_of(self, resolved: Resolved) -> QuantityResult:
-        """The result of one requested quantity.
+        """The result of one requested quantity, with its timing if its formula ran (ch. 8.3).
 
         A quantity without uncertain formulas has one result. One with worlds (A11) has one result
         per assignment, merged: all ``ok`` gives an interval over the assignments; otherwise the
         quantity is an error or has no value, never a narrower interval (ch. 8.13).
         """
+        result = self._merged_result(resolved)
+        if result.status not in (QuantityStatus.OK, QuantityStatus.ERROR):
+            return result
+        timing = self._timing(resolved)
+        return result if timing is None else result.model_copy(update={"timing": timing})
+
+    def _own_time(self, node_id: NodeId) -> TimeBounds | None:
+        """The own time of a node over its runs, or ``None`` if a run did not finish."""
+        durations = [self.runs[(node_id, key)].elapsed_s for key, _ in self.slots[node_id]]
+        measured = [d for d in durations if d is not None]
+        return run_bounds(measured) if len(measured) == len(durations) else None
+
+    def _timing(self, resolved: Resolved) -> Timing | None:
+        """The timing of a requested quantity, or ``None`` if a node of its subtree did not finish."""
+        own: dict[NodeId, TimeBounds] = {}
+        for node_id in self.subtree.nodes_for(resolved.slug):
+            bounds = self._own_time(node_id)
+            if bounds is None:
+                return None
+            own[node_id] = bounds
+        predecessors = {
+            node_id: tuple(edge.predecessor for edge in self.subtree.edges[node_id])
+            for node_id in own
+        }
+        return chain_timing(resolved.producer, own, predecessors)
+
+    def _merged_result(self, resolved: Resolved) -> QuantityResult:
+        """The result of one requested quantity over its world assignments, without timing."""
         assignments = self.subtree.world_assignments(resolved.requested)
         if len(assignments) == 1 and not assignments[0]:
             return self._result_under(resolved, {})
@@ -855,6 +888,7 @@ def _labelled(run: _NodeRun, key: str | None) -> _NodeRun:
         reason_for=run.reason_for,
         outputs=run.outputs,
         computed=run.computed,
+        elapsed_s=run.elapsed_s,
         outcome=run.outcome.model_copy(
             update={"error": None if outcome_error is None else with_world(outcome_error)}
         ),

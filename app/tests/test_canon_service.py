@@ -16,6 +16,8 @@ from aero_kernel.schema import (
     QuantityStatus,
     Reason,
     ReasonCode,
+    TimeBounds,
+    Timing,
 )
 
 from app.core.exceptions import NotFoundError, ValidationError
@@ -111,6 +113,19 @@ async def test_the_response_carries_the_results_and_the_provenance(kernel: StubK
     assert response.quantities[0].value == pytest.approx(7.5)
     assert response.provenance.build_digest == "test"
     assert response.input_errors == []
+
+
+@pytest.mark.asyncio
+async def test_the_measured_run_time_of_each_quantity_is_passed_through(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    timing = Timing.of(
+        own=TimeBounds(lower=0.5, upper=1.5), before=TimeBounds(lower=2.0, upper=3.0)
+    )
+    timed = ok("stall-speed", 7.5).model_copy(update={"timing": timing})
+    monkeypatch.setattr(canon_service, "compute", StubKernel(timed))
+    response = await canon_service.compute_canon(request_of("stall-speed"))
+    assert response.quantities[0].timing == timing
 
 
 @pytest.mark.asyncio

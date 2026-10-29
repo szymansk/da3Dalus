@@ -5,6 +5,7 @@ unknown fields. :class:`KernelError` is re-exported from :mod:`aero_kernel.error
 """
 
 import json
+import math
 from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Annotated, Literal, Self
@@ -36,6 +37,8 @@ __all__ = [
     "Reason",
     "ReasonCode",
     "RuleUsed",
+    "TimeBounds",
+    "Timing",
     "WarningSeverity",
     "dedupe_warnings",
 ]
@@ -277,6 +280,85 @@ class Reason(BaseModel):
     message: str = Field(min_length=1)
 
 
+# A measured run time in seconds: finite and never negative.
+Seconds = Annotated[float, Field(strict=True, allow_inf_nan=False, ge=0)]
+
+
+class TimeBounds(BaseModel):
+    """A run time known between two bounds, in seconds (ch. 8.3).
+
+    Attributes:
+        lower: The lower bound.
+        upper: The upper bound; equal to ``lower`` when the time is known exactly.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    lower: Seconds
+    upper: Seconds
+
+    @model_validator(mode="after")
+    def _check_order(self) -> Self:
+        """Require the lower bound not to exceed the upper one."""
+        if self.lower > self.upper:
+            msg = "the lower bound must not exceed the upper bound"
+            raise ValueError(msg)
+        return self
+
+
+# Relative tolerance of the sum check in ``Timing``: the bounds are sums of floats.
+_SUM_TOLERANCE = 1e-9
+
+
+class Timing(BaseModel):
+    """The measured run time of a quantity and of the chain before it, in seconds (ch. 8.3).
+
+    The engine runs the independent nodes of a layer concurrently, so the time of the chain before
+    a quantity is known only between two bounds:
+
+    - ``upper`` is the **sum** of the own upper bounds of all distinct upstream nodes, each counted
+      once even when two branches share it: the cost of the chain.
+    - ``lower`` is the **longest path** through the upstream nodes by their own lower bounds: the
+      earliest the quantity could start with unlimited concurrency.
+
+    A node with several method worlds runs once per world assignment (ch. 8.13); its own upper bound
+    is the sum of its runs, its own lower bound the longest single run. A node run once has equal
+    bounds. A value served from the cache reports the time measured when it was computed.
+
+    Attributes:
+        own_s: The run time of the node that produces the quantity.
+        before_s: The run time of the upstream nodes only (all ancestors of the producing node).
+        total_s: ``before_s`` plus ``own_s``, bound by bound.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    own_s: TimeBounds
+    before_s: TimeBounds
+    total_s: TimeBounds
+
+    @classmethod
+    def of(cls, *, own: TimeBounds, before: TimeBounds) -> Self:
+        """The timing of a node with its own bounds and those of the chain before it."""
+        return cls(
+            own_s=own,
+            before_s=before,
+            total_s=TimeBounds(lower=before.lower + own.lower, upper=before.upper + own.upper),
+        )
+
+    @model_validator(mode="after")
+    def _check_total(self) -> Self:
+        """Require the total to be the time before plus the own time, bound by bound."""
+        pairs = (
+            (self.total_s.lower, self.before_s.lower + self.own_s.lower),
+            (self.total_s.upper, self.before_s.upper + self.own_s.upper),
+        )
+        if not all(math.isclose(a, b, rel_tol=_SUM_TOLERANCE) for a, b in pairs):
+            msg = "total_s must be before_s plus own_s, bound by bound"
+            raise ValueError(msg)
+        return self
+
+
 class QuantityResult(BaseModel):
     """The result for one requested quantity (ch. 8.3).
 
@@ -294,6 +376,10 @@ class QuantityResult(BaseModel):
         warnings: Caveats of this quantity and its subtree.
         error: Why there is no value, for status ``error``.
         from_cache: Whether the value was served from the cache.
+        timing: The measured run time of the quantity and of the chain before it, for a quantity
+            whose producing node ran in every world assignment, ``ok`` or ``error``. ``None`` for
+            ``not_applicable`` and ``skipped`` (the formula did not run), for a quantity the graph
+            rejected before anything ran, and for one still open when the time budget expired.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -310,6 +396,18 @@ class QuantityResult(BaseModel):
     warnings: tuple[KernelWarning, ...] = ()
     error: KernelError | None = None
     from_cache: bool = False
+    timing: Timing | None = None
+
+    @model_validator(mode="after")
+    def _check_timing(self) -> Self:
+        """Only a quantity whose formula ran carries a timing."""
+        if self.timing is not None and self.status in (
+            QuantityStatus.NOT_APPLICABLE,
+            QuantityStatus.SKIPPED,
+        ):
+            msg = f"status {self.status.value} must not carry a timing: the formula did not run"
+            raise ValueError(msg)
+        return self
 
     @model_validator(mode="after")
     def _check_status(self) -> Self:
