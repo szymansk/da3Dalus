@@ -624,6 +624,8 @@ def test_all_pins_the_public_names() -> None:
             "Reason",
             "ReasonCode",
             "RuleUsed",
+            "TimeBounds",
+            "Timing",
             "WARNING_CATALOGUE",
             "WarningSeverity",
             "dedupe_warnings",

@@ -72,6 +72,14 @@ function computeCalls(nav: ReturnType<typeof openNavigator>) {
   return nav.calls.filter((c) => c.url.endsWith("/canon/compute"));
 }
 
+/** Select a node, then choose Compute in its panel: selecting alone never computes (gh-1330). */
+async function selectAndCompute(nav: ReturnType<typeof openNavigator>, id: string) {
+  nav.click(nav.node(id));
+  await settle();
+  nav.click(nav.document.getElementById("recompute")!);
+  await settle();
+}
+
 describe("the navigator without ?connected=1", () => {
   it("behaves as the published artifact: nothing connected shows, nothing is fetched", async () => {
     const nav = openNavigator("", answerOk);
@@ -108,10 +116,17 @@ describe("the connected navigator", () => {
     expect(down.document.getElementById("connAircraft")!.textContent).toContain("not reachable: down");
   });
 
-  it("computes a quantity on click and shows its value", async () => {
+  it("selects a quantity without a request and computes it on Compute", async () => {
     const nav = openNavigator(QUERY, answerOk);
     await settle();
     nav.click(nav.node("stall-speed"));
+    await settle();
+    expect(computeCalls(nav)).toHaveLength(0);
+    expect(badgeState(nav, "stall-speed")).toBeNull();
+    expect(nav.document.getElementById("kres")!.textContent).toContain("not computed");
+    const button = nav.document.getElementById("recompute")!;
+    expect(button.textContent).toBe("Compute");
+    nav.click(button);
     expect(badgeState(nav, "stall-speed")).toBe("computing");
     await settle();
     const [call] = computeCalls(nav);
@@ -130,13 +145,89 @@ describe("the connected navigator", () => {
   it("does not compute the same quantity twice but recomputes on request", async () => {
     const nav = openNavigator(QUERY, answerOk);
     await settle();
-    nav.click(nav.node("stall-speed"));
-    await settle();
+    await selectAndCompute(nav, "stall-speed");
     nav.click(nav.node("stall-speed"));
     await settle();
     expect(computeCalls(nav)).toHaveLength(1);
     nav.click(nav.document.getElementById("recompute")!);
     await settle();
+    expect(computeCalls(nav)).toHaveLength(2);
+  });
+
+  describe("the run time", () => {
+    const timing = {
+      own_s: { lower: 0.0123, upper: 0.0123 },
+      before_s: { lower: 0.5, upper: 1.5 },
+      total_s: { lower: 0.5123, upper: 1.5123 },
+    };
+
+    function timingRows(nav: ReturnType<typeof openNavigator>) {
+      const rows = nav.document.querySelectorAll("#kres table.timing tr");
+      return Array.from(rows, (row) => Array.from(row.children, (cell) => cell.textContent));
+    }
+
+    it("shows own, before and total, with bounds where they differ", async () => {
+      const nav = openNavigator(QUERY, backend(() => response({ quantities: [quantity("stall-speed", { timing })] })));
+      await settle();
+      await selectAndCompute(nav, "stall-speed");
+      expect(timingRows(nav)).toEqual([
+        ["own", "12.3 ms"],
+        ["before", "500 ms – 1.5 s"],
+        ["total", "512 ms – 1.51 s"],
+      ]);
+      expect(nav.document.getElementById("kres")!.textContent).not.toContain("measured when computed");
+    });
+
+    it("marks the times of a value from the cache", async () => {
+      const nav = openNavigator(
+        QUERY,
+        backend(() => response({ quantities: [quantity("stall-speed", { timing, from_cache: true })] })),
+      );
+      await settle();
+      await selectAndCompute(nav, "stall-speed");
+      expect(timingRows(nav)[0]).toEqual(["own", "12.3 ms"]);
+      expect(nav.document.getElementById("kres")!.textContent).toContain(
+        "from cache: measured when it was computed",
+      );
+    });
+
+    it("shows nothing for a result without a timing", async () => {
+      const nav = openNavigator(QUERY, answerOk);
+      await settle();
+      await selectAndCompute(nav, "stall-speed");
+      expect(timingRows(nav)).toEqual([]);
+    });
+
+    it("shows the time spent until a quantity failed", async () => {
+      const failed = quantity("stall-speed", {
+        status: "error",
+        value: null,
+        timing,
+        error: { code: "x", category: "internal", message: "m", hint: "h", detail: {} },
+      });
+      const nav = openNavigator(QUERY, backend(() => response({ quantities: [failed] })));
+      await settle();
+      await selectAndCompute(nav, "stall-speed");
+      expect(timingRows(nav)[2]).toEqual(["total", "512 ms – 1.51 s"]);
+    });
+  });
+
+  it("shows an invalidated quantity as stale until it is computed again", async () => {
+    const nav = openNavigator(QUERY, answerOk);
+    await settle();
+    await selectAndCompute(nav, "stall-speed");
+    nav.click(nav.node("aircraft-mass"));
+    await settle();
+    (nav.document.getElementById("ovIn") as HTMLInputElement).value = "0.3";
+    nav.click(nav.document.getElementById("ovSet")!);
+    await settle();
+    nav.click(nav.node("stall-speed"));
+    await settle();
+    expect(nav.document.getElementById("kres")!.textContent).toContain("stale: an input changed");
+    nav.click(nav.document.getElementById("recompute")!);
+    await settle();
+    expect(nav.document.getElementById("kres")!.textContent).not.toContain("stale");
+    nav.click(nav.document.getElementById("clearAll")!);
     expect(computeCalls(nav)).toHaveLength(2);
   });
 
@@ -156,8 +247,7 @@ describe("the connected navigator", () => {
       ),
     );
     await settle();
-    nav.click(nav.node("neutral-point"));
-    await settle();
+    await selectAndCompute(nav, "neutral-point");
     const panel = nav.document.getElementById("kres")!.textContent!;
     expect(panel).toContain("0.08…0.1 m");
     expect(panel).toContain("neutral-point=avl");
@@ -176,8 +266,7 @@ describe("the connected navigator", () => {
       backend(() => response({ quantities: [quantity("minimum-drag-speed", { warnings: [warning] })] })),
     );
     await settle();
-    nav.click(nav.node("minimum-drag-speed"));
-    await settle();
+    await selectAndCompute(nav, "minimum-drag-speed");
     expect(badgeState(nav, "minimum-drag-speed")).toBe("warning");
     const panel = nav.document.getElementById("kres")!.textContent!;
     expect(panel).toContain("defect · reynolds_outside_band");
@@ -223,8 +312,7 @@ describe("the connected navigator", () => {
         }),
       );
       await settle();
-      nav.click(nav.node("stall-speed"));
-      await settle();
+      await selectAndCompute(nav, "stall-speed");
       expect(badgeState(nav, "stall-speed")).toBe("error");
       expect(badgeState(nav, "air-density")).toBe("error");
       const goto = nav.document.querySelector<HTMLButtonElement>('#kres button[data-goto="air-density"]')!;
@@ -232,6 +320,9 @@ describe("the connected navigator", () => {
       nav.click(goto);
       await settle();
       expect(nav.document.getElementById("kres")!.dataset.for).toBe("air-density");
+      expect(computeCalls(nav)).toHaveLength(1); // going to the cause does not compute it
+      nav.click(nav.document.getElementById("recompute")!);
+      await settle();
       expect(computeCalls(nav).at(-1)!.body!.quantities).toEqual(["air-density"]);
       const panel = nav.document.getElementById("kres")!.textContent!;
       expect(panel).toContain("missing_input");
@@ -248,8 +339,7 @@ describe("the connected navigator", () => {
         url.endsWith("/canon/fleet") ? { body: FLEET } : { status: 500, body: { error: { message: "boom" } } },
       );
       await settle();
-      nav.click(nav.node("stall-speed"));
-      await settle();
+      await selectAndCompute(nav, "stall-speed");
       expect(badgeState(nav, "stall-speed")).toBe("error");
       expect(nav.document.getElementById("kres")!.textContent).toContain("boom");
       expect(nav.document.getElementById("loglines")!.textContent).toContain("compute failed: boom");
@@ -267,8 +357,7 @@ describe("the connected navigator", () => {
         ),
       );
       await settle();
-      nav.click(nav.node("stall-speed"));
-      await settle();
+      await selectAndCompute(nav, "stall-speed");
       expect(badgeState(nav, "stall-speed")).toBe("error");
       expect(nav.document.getElementById("kres")!.textContent).toContain("mass must be positive");
     });
@@ -287,8 +376,7 @@ describe("the connected navigator", () => {
       ),
     );
     await settle();
-    nav.click(nav.node("neutral-point"));
-    await settle();
+    await selectAndCompute(nav, "neutral-point");
     expect(badgeState(nav, "neutral-point")).toBe("skipped");
     const box = nav.document.getElementById("confirmbox")!;
     expect(box.hidden).toBe(false);
@@ -311,8 +399,7 @@ describe("the connected navigator", () => {
       ),
     );
     await settle();
-    nav.click(nav.node("neutral-point"));
-    await settle();
+    await selectAndCompute(nav, "neutral-point");
     nav.click(nav.document.getElementById("skipLong")!);
     expect(nav.document.getElementById("confirmbox")!.hidden).toBe(true);
     expect(computeCalls(nav)).toHaveLength(1);
@@ -335,11 +422,10 @@ describe("the connected navigator", () => {
   });
 
   describe("an input", () => {
-    it("shows the fleet value and recomputes the dependent quantities with an override", async () => {
+    it("shows the fleet value and invalidates the dependent quantities with an override", async () => {
       const nav = openNavigator(QUERY, answerOk);
       await settle();
-      nav.click(nav.node("stall-speed"));
-      await settle();
+      await selectAndCompute(nav, "stall-speed");
       nav.click(nav.node("aircraft-mass"));
       await settle();
       let panel = nav.document.getElementById("kres")!.textContent!;
@@ -350,13 +436,20 @@ describe("the connected navigator", () => {
       field.value = "0.2";
       nav.click(nav.document.getElementById("ovSet")!);
       await settle();
+      expect(computeCalls(nav)).toHaveLength(1); // invalidated, not recomputed
+      expect(badgeState(nav, "stall-speed")).toBeNull();
+      panel = nav.document.getElementById("kres")!.textContent!;
+      expect(panel).toContain("your override");
+      await selectAndCompute(nav, "stall-speed");
       const resent = computeCalls(nav).at(-1)!;
       expect(resent.body!.values).toEqual({ "aircraft-mass": 0.2 });
       expect(resent.body!.quantities).toContain("stall-speed");
-      panel = nav.document.getElementById("kres")!.textContent!;
-      expect(panel).toContain("your override");
+      nav.click(nav.node("aircraft-mass"));
+      await settle();
       nav.click(nav.document.getElementById("ovReset")!);
       await settle();
+      expect(computeCalls(nav)).toHaveLength(2);
+      await selectAndCompute(nav, "stall-speed");
       expect(computeCalls(nav).at(-1)!.body!.values).toEqual({});
     });
 
@@ -416,8 +509,7 @@ describe("the connected navigator", () => {
           ),
         );
         await settle();
-        nav.click(nav.node("horizontal-tail-volume"));
-        await settle();
+        await selectAndCompute(nav, "horizontal-tail-volume");
         expect(badgeState(nav, "rule:horizontal-tail-volume")).toBe(state);
         expect(nav.document.getElementById("kres")!.textContent).toContain("lies below the band");
         nav.click(nav.node("rule:horizontal-tail-volume"));
@@ -440,8 +532,7 @@ describe("the connected navigator", () => {
       nav.click(nav.node("rule:horizontal-tail-volume"));
       await settle();
       expect(nav.document.getElementById("kres")!.textContent).toContain("Not judged yet");
-      nav.click(nav.node("horizontal-tail-volume"));
-      await settle();
+      await selectAndCompute(nav, "horizontal-tail-volume");
       expect(badgeState(nav, "rule:horizontal-tail-volume")).toBe("ok");
     });
   });
@@ -455,8 +546,7 @@ describe("the connected navigator", () => {
     it("lists the kernel records of the request and filters by level", async () => {
       const nav = openNavigator(QUERY, backend(() => response({ quantities: [quantity("stall-speed")], logs })));
       await settle();
-      nav.click(nav.node("stall-speed"));
-      await settle();
+      await selectAndCompute(nav, "stall-speed");
       const lines = nav.document.getElementById("loglines")!;
       expect(lines.textContent).toContain("08:00:00.123");
       expect(lines.textContent).toContain("node started");
@@ -473,10 +563,13 @@ describe("the connected navigator", () => {
     it("selects the node of a line on click", async () => {
       const nav = openNavigator(QUERY, backend(() => response({ quantities: [quantity("stall-speed")], logs })));
       await settle();
-      nav.click(nav.node("stall-speed"));
-      await settle();
+      await selectAndCompute(nav, "stall-speed");
       const line = nav.document.querySelector<HTMLElement>('#loglines [data-q="air-density"]')!;
       nav.click(line);
+      await settle();
+      expect(nav.document.getElementById("kres")!.dataset.for).toBe("air-density");
+      expect(computeCalls(nav)).toHaveLength(1);
+      nav.click(nav.document.getElementById("recompute")!);
       await settle();
       expect(computeCalls(nav).at(-1)!.body!.quantities).toEqual(["air-density"]);
     });

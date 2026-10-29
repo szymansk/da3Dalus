@@ -24,8 +24,25 @@ def _warning() -> KernelWarning:
     )
 
 
-def test_entry_has_exactly_outputs_and_warnings() -> None:
-    assert set(Entry.model_fields) == {"outputs", "warnings"}
+def test_entry_has_exactly_outputs_warnings_and_the_measured_time() -> None:
+    assert set(Entry.model_fields) == {"outputs", "warnings", "own_s"}
+
+
+def test_the_measured_time_survives_the_round_trip() -> None:
+    entry = Entry(outputs={"v": 1.0}, warnings=(), own_s=12.5)
+    back = Entry.from_json(entry.to_json())
+    assert back.own_s is not None
+    assert math.isclose(back.own_s, 12.5)
+
+
+def test_an_entry_without_a_measured_time_says_so() -> None:
+    assert Entry(outputs={"v": 1.0}, warnings=()).own_s is None
+
+
+@pytest.mark.parametrize("bad", [-1.0, math.nan, math.inf])
+def test_a_negative_or_non_finite_time_is_rejected(bad: float) -> None:
+    with pytest.raises(ValidationError):
+        Entry(outputs={"v": 1.0}, warnings=(), own_s=bad)
 
 
 def test_extra_fields_are_rejected() -> None:

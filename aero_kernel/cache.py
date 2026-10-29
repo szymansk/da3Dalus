@@ -14,7 +14,7 @@ from typing import Self
 
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import check_finite_json
-from aero_kernel.schema import KernelWarning
+from aero_kernel.schema import KernelWarning, Seconds
 from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
 __all__ = [
@@ -108,7 +108,7 @@ def cache_key(
 
 
 class Entry(BaseModel):
-    """What the cache stores for one node: its outputs and its own warnings (ch. 8.4).
+    """What the cache stores for one node: its outputs, its own warnings and its run time (ch. 8.4).
 
     There is no status or error field: errors, ``skipped`` and ``not_applicable`` are never stored.
     The JSON form keeps every float exactly (``-0.0`` included), so a hit is bit-identical to the
@@ -117,12 +117,16 @@ class Entry(BaseModel):
     Attributes:
         outputs: Output parameter name to JSON value, for every output of the application.
         warnings: The node's warnings, pre- and postcondition warnings included, as received.
+        own_s: The seconds the run took when it was computed. A hit reports this measured time
+            (with ``from_cache``), never the near-zero time of the lookup (ch. 8.3). ``None`` means
+            the writer measured no time; the entry is still valid.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     outputs: dict[str, JsonValue]
     warnings: tuple[KernelWarning, ...]
+    own_s: Seconds | None = None
 
     @model_validator(mode="after")
     def _check_finite(self) -> Self:

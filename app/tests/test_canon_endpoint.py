@@ -10,6 +10,8 @@ from aero_kernel.schema import (
     Provenance,
     QuantityResult,
     QuantityStatus,
+    TimeBounds,
+    Timing,
 )
 
 from fastapi.testclient import TestClient
@@ -35,6 +37,9 @@ async def stub_kernel(aircraft: AircraftInput, request: ComputeRequest) -> Compu
         value=7.5,
         tool="APP",
         application="a",
+        timing=Timing.of(
+            own=TimeBounds(lower=0.25, upper=0.75), before=TimeBounds(lower=1.0, upper=1.5)
+        ),
     )
     return ComputeResult(quantities=(quantity,), provenance=Provenance(build_digest="test"))
 
@@ -70,6 +75,10 @@ def test_a_quantity_is_computed(client_and_db, monkeypatch):
     assert body["quantities"][0]["slug"] == "stall-speed"
     assert body["quantities"][0]["value"] == pytest.approx(7.5)
     assert body["needs_confirmation"] == []
+    timing = body["quantities"][0]["timing"]
+    assert timing["own_s"] == {"lower": pytest.approx(0.25), "upper": pytest.approx(0.75)}
+    assert timing["before_s"] == {"lower": pytest.approx(1.0), "upper": pytest.approx(1.5)}
+    assert timing["total_s"] == {"lower": pytest.approx(1.25), "upper": pytest.approx(2.25)}
 
 
 @pytest.mark.integration

@@ -1101,8 +1101,9 @@ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitWhenSi
 </script>
 <script>
 // Connected mode (gh-1282, ADR 0030): ?connected=1&api=<base>&aircraft=<fleet id>. A click on a quantity
-// computes it with the kernel through the backend; without the parameter this block does nothing and the
-// page is exactly the published artifact. One graph implementation: the nodes above are decorated here.
+// selects it; Compute (or Compute all) computes it with the kernel through the backend (gh-1330). Without
+// the parameter this block does nothing and the page is exactly the published artifact. One graph
+// implementation: the nodes above are decorated here.
 (function(){
 const QP=new URLSearchParams(location.search);
 if(QP.get('connected')!=='1') return;
@@ -1110,7 +1111,7 @@ const API=(QP.get('api')||'').replace(/\/+$/,''), AIRCRAFT=QP.get('aircraft')||'
 const RANK={DEBUG:10,INFO:20,WARNING:30,ERROR:40,CRITICAL:50};
 const GLYPH={ok:'\u2713',warning:'!',error:'\u00d7',computing:'\u2026',na:'\u2013',skipped:'\u25cb'};
 const STATE_TEXT={ok:'computed',warning:'computed with warnings',error:'failed',computing:'computing',na:'not applicable',skipped:'waiting for confirmation (long run)'};
-const S={res:{},verd:{},cause:{},inflight:new Set(),values:{},defaultsUsed:{},fleet:null,logs:[],minLevel:'DEBUG'};
+const S={res:{},verd:{},cause:{},inflight:new Set(),stale:new Set(),values:{},defaultsUsed:{},fleet:null,logs:[],minLevel:'DEBUG'};
 const $=id=>document.getElementById(id);
 const attr=s=>esc(s).replace(/"/g,'&quot;');
 const fmt=v=>Number.isFinite(v)?String(+v.toPrecision(6)):String(v);
@@ -1163,7 +1164,7 @@ function absorb(j,slugs,ms){
   j.logs.forEach(addLog);
   for(const u of j.provenance.defaults_used||[]) S.defaultsUsed[u.slug]=u;
   if(j.input_errors.length) for(const s of slugs) S.res[s]={slug:s,status:'error',error:j.input_errors[0]};
-  for(const r of j.quantities){ S.res[r.slug]=r; delete S.cause[r.slug]; }
+  for(const r of j.quantities){ S.res[r.slug]=r; delete S.cause[r.slug]; S.stale.delete(r.slug); }
   for(const v of j.verdicts) S.verd[v.rule_id]=v;
   for(const r of j.quantities) if(r.error&&r.error.detail&&r.error.detail.causes)
     for(const c of r.error.detail.causes) if(!S.res[c.quantity]) S.cause[c.quantity]=c.code;
@@ -1186,17 +1187,16 @@ async function compute(slugs,includeLong){
   }
 }
 const computeAll=()=>compute(Object.keys(Q).filter(requestable),false);
+// An override invalidates the dependants already computed; they are computed again only on request.
 function invalidate(q){
-  const ds=downstreamOf(q), again=[...ds].filter(s=>S.res[s]&&S.res[s].status!=='skipped');
-  for(const s of ds){ delete S.res[s]; delete S.cause[s]; }
+  const ds=downstreamOf(q);
+  for(const s of ds){ if(S.res[s]) S.stale.add(s); delete S.res[s]; delete S.cause[s]; }
   for(const id in S.verd){ const r=RULEBYID['rule:'+id]; if(r&&ds.has(r.q)) delete S.verd[id]; }
-  return again;
 }
 function setOverride(q,value){
   if(value===null) delete S.values[q]; else S.values[q]=value;
-  const again=invalidate(q);
+  invalidate(q);
   paintAll();
-  if(again.length) compute(again);
 }
 
 // ---- long runs: the kernel skips quantities that take minutes until the caller confirms
@@ -1256,6 +1256,16 @@ function valueHtml(r){
     : `<div class="kv">${fmt(r.value)}${u}</div>`;
   return h+`<p class="sub" style="margin:4px 0 0">${esc(r.tool||'')} \u00b7 application ${esc(r.application||'')}${r.from_cache?' \u00b7 from cache':''}</p>`;
 }
+// ---- run times (ch. 8.3): own, before (upstream only) and total, each as lower and upper bound
+const seconds=t=>t<1?`${+(t*1000).toPrecision(3)} ms`:`${+t.toPrecision(3)} s`;
+function boundsText(b){ const lo=seconds(b.lower), hi=seconds(b.upper); return lo===hi?lo:`${lo} \u2013 ${hi}`; }
+function timingHtml(r){
+  const t=r.timing; if(!t) return '';
+  const rows=[['own',t.own_s],['before',t.before_s],['total',t.total_s]];
+  return `<div class="lab" style="margin-top:10px">Run time</div><table class="worlds timing">`+
+    rows.map(([k,b])=>`<tr><td>${k}</td><td>${esc(boundsText(b))}</td></tr>`).join('')+`</table>`+
+    (r.from_cache?`<p class="sub" style="margin:4px 0 0">from cache: measured when it was computed</p>`:'');
+}
 function verdictHtml(v){
   const col=v.severity==='bad'?'var(--bad)':v.severity==='caution'?'var(--mvp)':'var(--good)';
   return `<div class="issue" style="border-color:${col}"><b style="color:${col}">${esc(v.rule_id)}</b> <span class="sub">${esc(v.status.replace('_',' '))}${v.severity?' \u00b7 '+(v.severity==='bad'?'red':'yellow'):''}</span><br>${esc(v.text)}</div>`;
@@ -1271,18 +1281,20 @@ function inputHtml(q){
     :`<p class="sub" style="margin:0">Read from the aircraft geometry or not set; the kernel reports what is missing when a result needs it.</p>`;
   if(givenValue(q)) h+=`<div class="ovrow"><label for="ovIn">Override${u?' ('+esc(u)+')':''}</label><input type="number" step="any" id="ovIn" value="${ov!==undefined?attr(ov):''}" placeholder="${used?attr(fmt(used[0])):''}">
     <button id="ovSet">Apply</button><button id="ovReset"${ov===undefined?' disabled':''}>Reset</button></div>
-    <p class="sub" style="margin:4px 0 0">Applying recomputes the dependent quantities you have computed.</p>`;
+    <p class="sub" style="margin:4px 0 0">Applying marks the dependent quantities you have computed as stale; compute them again on request.</p>`;
   return h;
 }
+const notComputedText=q=>S.stale.has(q)?'not computed \u00b7 stale: an input changed':'not computed';
 function quantityPanel(q){
   const head=`<div class="lab">Kernel value \u00b7 development view</div>`;
   if(INPUTS.has(q)||TARGETS.has(q)) return head+inputHtml(q);
   if(!requestable(q)) return head+`<p class="sub" style="margin:0">Not in the kernel yet (${esc(STATUS[q]||'open')}); nothing to compute.</p>`;
   const s=stateOf(q), r=S.res[q];
-  let h=head+`<p class="kst" style="border-color:var(--${s==='error'?'bad':s==='warning'?'mvp':s==='ok'?'good':'line-2'})">${s?esc(STATE_TEXT[s]):'not computed'}</p>`;
+  let h=head+`<p class="kst" style="border-color:var(--${s==='error'?'bad':s==='warning'?'mvp':s==='ok'?'good':'line-2'})">${s?esc(STATE_TEXT[s]):notComputedText(q)}</p>`;
   if(r&&r.status==='ok') h+=valueHtml(r);
   if(r&&r.status!=='ok'&&r.reason) h+=`<p class="sub">${esc(r.reason.message)}</p>`;
   if(r&&r.error) h+=errorHtml(r.error);
+  if(r) h+=timingHtml(r);
   else if(!r&&S.cause[q]) h+=`<div class="issue" style="border-color:var(--bad)"><b style="color:var(--bad)">${esc(S.cause[q])}</b><br>This quantity caused a failure downstream. Compute it for the error at its formula.</div>`;
   if(r&&r.warnings&&r.warnings.length) h+=`<div class="lab" style="margin-top:10px">Warnings \u00b7 ${r.warnings.length}</div>`+r.warnings.map(w=>warningHtml(q,w)).join('');
   const vs=Object.values(S.verd).filter(v=>v.quantity===q&&['inside','below','above','partly'].includes(v.status));
@@ -1319,10 +1331,7 @@ function augment(id,rule){
   h.insertAdjacentElement('afterend',box); wire(box);
 }
 const baseSelect=window.select, baseSelectRule=window.selectRule;
-window.select=function(q){
-  baseSelect(q); augment(q,false);
-  if(requestable(q)&&!S.res[q]&&!S.inflight.has(q)) compute([q]);
-};
+window.select=function(q){ baseSelect(q); augment(q,false); };
 window.selectRule=function(r){ baseSelectRule(r); augment(r.id,true); };
 
 // ---- sidebar
@@ -1333,7 +1342,7 @@ function refreshStats(){
 }
 $('conn').hidden=false; $('logpanel').hidden=false;
 $('computeAll').addEventListener('click',computeAll);
-$('clearAll').addEventListener('click',()=>{ for(const k of ['res','verd','cause','defaultsUsed']) S[k]={}; paintAll(); });
+$('clearAll').addEventListener('click',()=>{ for(const k of ['res','verd','cause','defaultsUsed']) S[k]={}; S.stale.clear(); paintAll(); });
 $('logLevel').addEventListener('change',ev=>{ S.minLevel=ev.target.value; renderLog(); });
 $('logClear').addEventListener('click',()=>{ S.logs=[]; renderLog(); });
 $('logToggle').addEventListener('click',()=>{ const p=$('logpanel'); p.classList.toggle('shut'); $('logToggle').setAttribute('aria-expanded',String(!p.classList.contains('shut'))); });
