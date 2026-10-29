@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from aero_kernel.build import Build
+from aero_kernel.cache import Entry, Lease, NodeCache, cache_key
 from aero_kernel.canon.model import Check, ConstBinding, Default, Formula
 from aero_kernel.context import Context, Inputs, Solvers, Value
 from aero_kernel.devices import devices_at_rest
@@ -42,8 +43,8 @@ from aero_kernel.graph import (
     facts_from_geometry,
     unmet_condition,
 )
-from aero_kernel.registry import CheckResult
-from aero_kernel.rules import rule_override_errors
+from aero_kernel.registry import CheckResult, Implementation
+from aero_kernel.rules import node_rule_reads, rule_override_errors, unrecorded_rule_reads
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -108,7 +109,8 @@ class _NodeRun:
         computed: Whether the failure was raised by the formula while computing (row 8 of the
             status order, whatever its code), not decided by the engine before the call.
         elapsed_s: The measured seconds of the run; ``None`` for a run still open when the time
-            budget expired.
+            budget expired. A run served from the cache carries the seconds stored with it.
+        from_cache: Whether the run was served from the cache (ch. 8.4).
     """
 
     outcome: NodeOutcome
@@ -119,8 +121,9 @@ class _NodeRun:
     warnings: tuple[KernelWarning, ...] = ()
     computed: bool = False
     elapsed_s: float | None = None
+    from_cache: bool = False
 
-    def timed(self, elapsed_s: float) -> "_NodeRun":
+    def timed(self, elapsed_s: float | None) -> "_NodeRun":
         """The same run with its measured seconds."""
         return _NodeRun(
             outcome=self.outcome,
@@ -131,7 +134,38 @@ class _NodeRun:
             warnings=self.warnings,
             computed=self.computed,
             elapsed_s=elapsed_s,
+            from_cache=self.from_cache,
         )
+
+
+@dataclass(frozen=True)
+class _Clock:
+    """When a node's run started and the thresholds it has read so far (ch. 8.4).
+
+    Attributes:
+        started: ``time.perf_counter()`` at the start of the node's run.
+        reads: The thresholds the node read, by ``(rule, parameter)``, filled while it runs.
+    """
+
+    started: float
+    reads: Mapping[tuple[str, str], RuleUsed]
+
+
+@dataclass(frozen=True)
+class _FormulaCall:
+    """What a node's formula is called with once the status order let it run.
+
+    Attributes:
+        implementation: The registered implementation.
+        inputs: ``x``, the bound parameters.
+        world: The method world of the run, for a formula with worlds.
+        default_warnings: The warnings of the target defaults the node took.
+    """
+
+    implementation: Implementation
+    inputs: Inputs
+    world: str | None
+    default_warnings: tuple[KernelWarning, ...]
 
 
 def _unit_of(build: Build, slug: str) -> str | None:
@@ -142,6 +176,52 @@ def _unit_of(build: Build, slug: str) -> str | None:
 
 # The quantity types a value of v1 can carry between nodes (``Value``).
 _CARRIED_TYPES = frozenset({"scalar", "airplane", "polar"})
+
+# The output types the cache stores (ch. 8.4): they round-trip through JSON bit for bit. Not the
+# airplane: a parsed geometry holds metres in the format's millimetre fields and by design does not
+# parse again (``geometry.py``), so it cannot come back from JSON unchanged; a node that produces
+# one (``airplane-configuration``, a cheap device setting) is not cached. Nor the types v1 does
+# not carry (curve, ...): the engine discards those values. Declared, not silent (ADR 0020).
+_CACHED_TYPES = frozenset({"scalar", "polar"})
+
+
+def _key_numbers(value: JsonValue) -> JsonValue:
+    """A JSON value with every NaN or infinity spelled out, for a cache key only.
+
+    Validation rejects non-finite numbers in what the kernel reads, but not in the geometry's
+    unread fields (``validate.UNREAD_FIELDS``); the key must not fail on them, nor equate them
+    with ``null``.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return {"non_finite": repr(value)}
+    if isinstance(value, dict):
+        return {name: _key_numbers(item) for name, item in value.items()}
+    if isinstance(value, list):
+        return [_key_numbers(item) for item in value]
+    return value
+
+
+def _key_value(value: Value | None) -> JsonValue:
+    """The JSON form of a direct input value in the cache key (ch. 8.4)."""
+    if isinstance(value, AirplaneGeometry | Polar):
+        return _key_numbers(value.model_dump(mode="json"))
+    return value
+
+
+def _stored_value(value: object) -> JsonValue:
+    """The JSON form of a cached output, by its type (ch. 8.4); lossless, ``-0.0`` kept."""
+    if isinstance(value, Polar):
+        return value.model_dump(mode="json")
+    assert isinstance(value, float)  # _check_outputs passed and the type is a cached one
+    return value
+
+
+def _restored_value(kind: str, value: JsonValue) -> Value:
+    """A cached output back as the value of its type: a fresh object (ch. 8.4)."""
+    if kind == "polar":
+        return Polar.model_validate(value)
+    assert isinstance(value, float)  # stored by _stored_value for a scalar
+    return value
 
 
 def _in_scope(entry: Check, node: Node) -> bool:
@@ -175,8 +255,11 @@ class _Call:
         call_id: str,
         input_warnings: Sequence[KernelWarning],
         solvers: Solvers,
+        cache: NodeCache | None = None,
     ) -> None:
         self.build = build
+        # the node cache of a CachedKernel; None for the stateless compute (ch. 8.4)
+        self.cache = cache
         self.aircraft = aircraft
         # The supplied geometry as the leaf value: every device at 0 deg (ch. 8.11), where the
         # geometry_deflection_ignored warning is raised.
@@ -290,7 +373,9 @@ class _Call:
         started = time.perf_counter()
         logger.debug("node started", extra=extra)
         try:
-            run = await self._evaluate_node(node, key, assignment)
+            # every threshold this node reads is credited to it (ch. 8.4, #1332)
+            with node_rule_reads() as reads:
+                run = await self._evaluate_node(node, key, assignment, _Clock(started, reads))
         except Exception as exc:  # a node never raises out of the call (ch. 8.1)
             anchor = self._anchor(node)
             formula = display_slug(node.id.formula)
@@ -314,9 +399,14 @@ class _Call:
             )
         elapsed = time.perf_counter() - started
         logger.debug(
-            "node finished: %s in %.1f ms", run.outcome.status.value, elapsed * 1000, extra=extra
+            "node finished: %s in %.1f ms%s",
+            run.outcome.status.value,
+            elapsed * 1000,
+            " (from cache)" if run.from_cache else "",
+            extra=extra,
         )
-        return run.timed(elapsed)
+        # a stored run keeps the time it was stored with; a hit, the time measured when computed
+        return run if run.from_cache or run.elapsed_s is not None else run.timed(elapsed)
 
     @staticmethod
     def _failed(
@@ -342,7 +432,7 @@ class _Call:
         return _NodeRun(outcome=NodeOutcome(status=status), anchor=anchor, reason_for=reason_for)
 
     async def _evaluate_node(
-        self, node: Node, key: str | None, assignment: Mapping[str, str]
+        self, node: Node, key: str | None, assignment: Mapping[str, str], clock: "_Clock"
     ) -> _NodeRun:
         """The status order of ch. 8.13, row by row; the first row that applies decides.
 
@@ -415,10 +505,130 @@ class _Call:
         if inherited is not None:
             return inherited
 
-        origin = display_slug(node.produces[0].quantity)
         world = assignment.get(node.id.formula_slug) if node.worlds else None
-        warner = Context(origin=origin, solvers=self.solvers, world=world)
+        # taken on a hit too: the defaults are part of the provenance and logged (ch. 8.11)
         default_warnings = self._take_defaults(defaults)
+        call = _FormulaCall(implementation, inputs, world, tuple(default_warnings))
+        lease = await self._claim(node, key, world, inputs)
+        if lease is None:
+            return await self._compute(node, formula, call)
+        return await self._through_cache(node, formula, call, lease, clock)
+
+    # --- the node cache (ch. 8.4) ------------------------------------------------------------
+
+    def _cacheable(self, node: Node) -> bool:
+        """Whether every output of the node is of a type the cache stores (``_CACHED_TYPES``)."""
+        for produce in node.produces:
+            quantity = self.build.model.quantity(produce.quantity)
+            assert quantity is not None  # a produced quantity is one of the model
+            if quantity.type not in _CACHED_TYPES:
+                logger.debug(
+                    "not cached: %s produces a value of type %s, which does not round-trip through the cache",
+                    display_slug(node.id.formula),
+                    quantity.type,
+                    extra={"call_id": self.call_id},
+                )
+                return False
+        return True
+
+    async def _claim(
+        self, node: Node, key: str | None, world: str | None, inputs: Inputs
+    ) -> Lease | None:
+        """Claim the node's cache key, or ``None`` without a cache or for a node it does not store.
+
+        The key (ch. 8.4): the application and the world assignment, the direct input values, the
+        build digest, the versions and settings of the tool of the node's world and the call's
+        rule overrides (maintainer 2026-10-29, #1332, option A). The settings are read without
+        declaring their thresholds: the run or the stored entry declares them.
+        """
+        if self.cache is None or not self._cacheable(node):
+            return None
+        tool = self.build.model.tool_of(node.id.formula, world)
+        with unrecorded_rule_reads():
+            settings = self.solvers.settings_of(tool)
+        node_key = cache_key(
+            formula=node.id.formula,
+            application=node.id.application,
+            world=key,
+            inputs={name: _key_value(value) for name, value in inputs.items()},
+            build_digest=self.build.digest,
+            tool_versions=self.solvers.tool_versions_of(tool),
+            solver_settings=settings,
+            rule_overrides=self.aircraft.rule_overrides,
+        )
+        return await self.cache.claim(node_key)
+
+    async def _through_cache(
+        self, node: Node, formula: Formula, call: "_FormulaCall", lease: Lease, clock: "_Clock"
+    ) -> _NodeRun:
+        """Serve the node from its stored entry, or run it and release what is to be stored.
+
+        Only an ``ok`` run is stored, with the time measured up to now; an error, a non-``ok``
+        status, a timeout and a cancellation release nothing (ch. 8.4).
+        """
+        if lease.entry is not None:
+            return self._hit(node, call.world, lease.entry)
+        stored: Entry | None = None
+        try:
+            run = await self._compute(node, formula, call)
+            if run.outcome.status is QuantityStatus.OK:
+                stored = self._entry_of(node, run, clock)
+                return run.timed(stored.own_s)
+            return run
+        finally:
+            lease.release(stored)
+
+    def _entry_of(self, node: Node, run: _NodeRun, clock: "_Clock") -> Entry:
+        """The entry of an ``ok`` run: its exposed outputs, warnings, thresholds read and time.
+
+        An output the canon does not expose (``produce: null``) is not stored: no quantity carries
+        it, so nothing can read it.
+        """
+        assert run.outputs is not None  # an ok run has its outputs
+        return Entry(
+            outputs={p.parameter: _stored_value(run.outputs[p.parameter]) for p in node.produces},
+            warnings=run.warnings,
+            rules_used=tuple(clock.reads[name] for name in sorted(clock.reads)),
+            own_s=time.perf_counter() - clock.started,
+        )
+
+    def _hit(self, node: Node, world: str | None, entry: Entry) -> _NodeRun:
+        """The run of a node served from the cache: the stored outputs, warnings and thresholds.
+
+        The provenance lists what the value was computed with: the tool's versions and settings
+        (equal, they are in the key) and the thresholds the node read.
+        """
+        tool = self.build.model.tool_of(node.id.formula, world)
+        self.tool_versions.update(self.solvers.tool_versions_of(tool))
+        with unrecorded_rule_reads():
+            self.solver_settings.update(self.solvers.settings_of(tool))
+        self.solvers.rules.replay(entry.rules_used)
+        outputs: dict[str, object] = {}
+        for produce in node.produces:
+            quantity = self.build.model.quantity(produce.quantity)
+            assert quantity is not None  # a produced quantity is one of the model
+            outputs[produce.parameter] = _restored_value(
+                quantity.type, entry.outputs[produce.parameter]
+            )
+        return _NodeRun(
+            outcome=NodeOutcome(status=QuantityStatus.OK),
+            anchor=self._anchor(node),
+            outputs=outputs,
+            warnings=entry.warnings,
+            elapsed_s=entry.own_s,
+            from_cache=True,
+        )
+
+    # --- computing a node --------------------------------------------------------------------
+
+    async def _compute(self, node: Node, formula: Formula, call: "_FormulaCall") -> _NodeRun:
+        """Run the preconditions, the formula and the postconditions of a node (ch. 8.5, 8.12)."""
+        anchor = self._anchor(node)
+        formula_slug = display_slug(node.id.formula)
+        application = node.id.application
+        inputs, world = call.inputs, call.world
+        origin = display_slug(node.produces[0].quantity)
+        warner = Context(origin=origin, solvers=self.solvers, world=world)
         pre_warnings, refused = self._run_checks("pre", node, formula, inputs, None, origin)
         if refused is not None:
             return self._failed(
@@ -430,7 +640,7 @@ class _Call:
         self.tool_versions.update(self.solvers.tool_versions_of(tool))
         self.solver_settings.update(self.solvers.settings_of(tool))
         try:
-            returned = await implementation.func(inputs, warner)
+            returned = await call.implementation.func(inputs, warner)
         except ToolRunTimeoutError as exc:
             return self._failed(
                 anchor,
@@ -456,7 +666,7 @@ class _Call:
             outcome=NodeOutcome(status=QuantityStatus.OK),
             anchor=anchor,
             outputs=returned,
-            warnings=(*default_warnings, *pre_warnings, *warner.warnings, *post_warnings),
+            warnings=(*call.default_warnings, *pre_warnings, *warner.warnings, *post_warnings),
         )
 
     def _run_checks(
@@ -794,8 +1004,17 @@ class _Call:
         result = self._merged_result(resolved)
         if result.status not in (QuantityStatus.OK, QuantityStatus.ERROR):
             return result
+        update: dict[str, object] = {}
         timing = self._timing(resolved)
-        return result if timing is None else result.model_copy(update={"timing": timing})
+        if timing is not None:
+            update["timing"] = timing
+        if result.status is QuantityStatus.OK and self._served_from_cache(resolved.producer):
+            update["from_cache"] = True
+        return result.model_copy(update=update) if update else result
+
+    def _served_from_cache(self, node_id: NodeId) -> bool:
+        """Whether every run of the node, one per world assignment, was a cache hit (ch. 8.4)."""
+        return all(self.runs[(node_id, key)].from_cache for key, _ in self.slots[node_id])
 
     def _own_time(self, node_id: NodeId) -> TimeBounds | None:
         """The own time of a node over its runs, or ``None`` if a run did not finish."""
@@ -901,6 +1120,7 @@ def _labelled(run: _NodeRun, key: str | None) -> _NodeRun:
         outputs=run.outputs,
         computed=run.computed,
         elapsed_s=run.elapsed_s,
+        from_cache=run.from_cache,
         outcome=run.outcome.model_copy(
             update={"error": None if outcome_error is None else with_world(outcome_error)}
         ),
@@ -1094,7 +1314,12 @@ def log_call(
 
 
 async def evaluate(
-    build: Build, aircraft: AircraftInput, request: ComputeRequest, *, solvers: Solvers
+    build: Build,
+    aircraft: AircraftInput,
+    request: ComputeRequest,
+    *,
+    solvers: Solvers,
+    cache: NodeCache | None = None,
 ) -> ComputeResult:
     """Compute a request on a build (ch. 6); the internal seam under ``compute``.
 
@@ -1103,6 +1328,8 @@ async def evaluate(
         aircraft: The geometry and the input and target values, in canon units.
         request: The quantities to compute.
         solvers: The solver adapters of the call; the caller owns their runtime.
+        cache: The node cache of a ``CachedKernel``; ``None`` (the stateless ``compute``) reads
+            and writes no cache and every quantity has ``from_cache`` false (ch. 8.4).
 
     Returns:
         ``input_errors`` and nothing computed if the input is inadmissible, else one result per
@@ -1127,7 +1354,7 @@ async def evaluate(
         log_call(call_id, request, result, started)
         return result
     subtree = build.graph.subtree(request.quantities)
-    call = _Call(build, aircraft, request, subtree, call_id, validation.warnings, solvers)
+    call = _Call(build, aircraft, request, subtree, call_id, validation.warnings, solvers, cache)
     try:
         async with asyncio.timeout(request.time_budget_s):
             await call.run()

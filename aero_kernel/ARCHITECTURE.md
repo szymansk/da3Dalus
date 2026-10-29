@@ -49,20 +49,20 @@ REST endpoint, no HTTP and no server process. It offers **two interfaces** with 
 result types:
 
 ```python
-from aero_kernel import compute, CachedKernel, MemoryCache, AircraftInput, ComputeRequest
+from aero_kernel import compute, CachedKernel
+from aero_kernel.schema import AircraftInput, ComputeRequest
 
 # 1. stateless: a pure function, no cache, no state between calls
 result = await compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
 
-# 2. cached: a facade object that holds a cache and puts it in front of the same computation
-kernel = CachedKernel(cache=MemoryCache(max_entries=10_000))
-async with kernel:
-    result = await kernel.compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
+# 2. cached: a facade object that holds a node cache and puts it in front of the same computation
+kernel = CachedKernel(max_entries=4096)
+result = await kernel.compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
 ```
 
 Both interfaces return the same values for the same input (Q7). Which one a caller uses is its choice: tests,
-golden values and the robustness run use the stateless function; the app will use one long-lived
-`CachedKernel`.
+golden values and the robustness run use the stateless function; the app uses one long-lived
+`CachedKernel` (`app/services/canon_service.py`, the Expert View, #1332).
 
 The input and output types are Pydantic models, so they also have a JSON form and a JSON Schema. That is
 for data exchange (golden files, agents, a later REST or MCP layer), not a network interface. Exposing the
@@ -129,10 +129,10 @@ built before that step (ADR 0021). Appendix A's last column predates this order.
 
 ```
 aero_kernel/
-  api.py            async compute(aircraft, request) — the stateless interface
+  api.py            async compute(aircraft, request) — the stateless interface; CachedKernel — the cached
+                    facade (owns its DedupedCache: the LRU cache and the in-flight deduplication)
   build.py          the internal Build (shipped model + digest + checked registry), loaded once on first use
-  cached.py         CachedKernel — the cached facade (owns cache, in-flight deduplication, resources)
-  engine.py         walks the graph; takes an optional MemoryCache (none = stateless)
+  engine.py         walks the graph; takes an optional node cache (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
   geometry.py       AirplaneGeometry and its sub-models (format mirror, mm → m at parse, ch. 8.11)
   schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Timing, TimeBounds, Polar,
@@ -148,7 +148,7 @@ aero_kernel/
   registry.py       @formula(slug), @precondition(slug, id), @postcondition(slug, id) — implementations ↔ canon model (ch. 8.12)
   formulas/         one file per canon formula (file name = slug, with underscores)
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py
-  cache.py          MemoryCache (LRU), Entry, cache_key, build_digest
+  cache.py          MemoryCache (LRU), DedupedCache (in-flight deduplication), Entry, cache_key, build_digest
   timing.py         run-time arithmetic of a quantity and the chain before it (ch. 8.3); pure
   validate.py       physical admissibility of the input and `values` against the canon (ch. 8.11)
   canonical.py      canonical JSON and the SHA-256 helper, shared by the canon model hash and the cache keys
@@ -185,7 +185,8 @@ await compute(aircraft, request)
      cost class minutes and include_long_runs off → skipped (long_run_not_included)
      a predecessor failed/skipped/not applicable  → status by precedence (ch. 8.13)
      required input value missing                → error invalid_input, code missing_input
-     [CachedKernel only] key from the direct input values → hit → reuse, from_cache = true
+     [CachedKernel only] key from the direct input values (and the call's rule overrides) → hit → reuse,
+       from_cache = true
      else check preconditions, then await the implementation inside the time budget (ch. 8.10)
        success → outputs + warnings (regime warnings come from the solver adapters, ch. 8.2)
        FormulaError / other exception → KernelError (other exceptions → internal)
@@ -406,22 +407,56 @@ No internal paths or mechanisms in any field (ADR 0019).
   module constants, so a change of one is a code change and the build digest already expires every entry;
   they are in the key as a guard, and as the record of what the result was computed with. Per-world expiry
   happens only when a tool or its binary changes version: a new AVL binary expires the AVL world and leaves
-  the AeroBuildup world cached. Every datum a node reads —
-  components and propeller tables included — is part of its direct input values, so nothing else enters
-  the key (ch. 8.11, D14). There are no request-level solver settings in v1 (no accuracy knob, S10:
+  the AeroBuildup world cached.
+- the call's whole **`rule_overrides`** map (maintainer 2026-10-29, #1332, option A). Formulas and adapters
+  read rule thresholds through `ctx.solvers.rules` (`flap-model-validity`, `avl-roll-rate-validity`,
+  `hinge-line-continuity`, `static-margin-probe-agreement`; ch. 8.11 "Validation rules"); they are not bound
+  parameters. The canon values are in `canon_model.json`, so the build digest covers them; the caller's
+  overrides are here. The whole map, not only the thresholds a node reads (those are known only after it
+  ran): an override expires more nodes than it changes, never a stale value.
+
+Every datum a node reads — components and propeller tables included — is part of its direct input values,
+with one exception: the rule thresholds, which the overrides map in the key covers. Nothing else enters
+the key (ch. 8.11, D14). There are no request-level solver settings in v1 (no accuracy knob, S10:
   A3 asks for one declared level per quantity, not per request, and the NeuralFoil size names are an
   implementation detail, ADR 0019); one that is added later goes into `ComputeRequest`, the key and the
   provenance together.
 
 **Canonicalisation:** sorted keys; floats as their exact shortest round-trip representation (`repr`),
-`-0.0` as `0.0`; NaN and infinity cannot occur because validation rejects them. Numbers are **not**
-rounded: rounding would let two different inputs share a key.
+`-0.0` as `0.0`. Numbers are **not** rounded: rounding would let two different inputs share a key. A
+polar or an airplane input enters the key as its JSON dump (`model_dump(mode="json")`). Validation rejects
+NaN and infinity in everything the kernel reads, but not in the geometry's unread fields
+(`validate.UNREAD_FIELDS`, e.g. spar details); there the key spells a non-finite number out as
+`{"non_finite": "nan"}`, so it neither fails nor equals `null`.
 
-**What is stored:** the node's outputs (all output parameters of the application in that world) and its
-own warnings, **including its pre- and postcondition warnings**. A hit returns them unchanged; both depend
+**What is stored:** the node's outputs (all output parameters of the application in that world that the
+canon exposes as a quantity) and its own warnings, **including its pre- and postcondition warnings** and
+the `default_target_used` warnings of the defaults it took. A hit returns them unchanged; both depend
 only on the direct input values (which are part of the key) and on the outputs computed from them, so they
-need not run again. Errors, `skipped` and `not_applicable` are never stored; a `timeout` or `not_converged` is
-recomputed next time.
+need not run again. Also stored: the **rule thresholds the node read** (`Entry.rules_used`), so a hit declares
+them again in `provenance.rules_used` (maintainer 2026-10-29, #1332, option A). A read is credited to its node
+through a context variable set around each node's run (`rules.node_rule_reads`): every node runs in its own
+task and `asyncio.to_thread` copies the context, so this holds although the adapters share one `Rules`. The
+settings read for the key are read without recording (`rules.unrecorded_rule_reads`); the run or the entry
+declares them. Errors, `skipped` and `not_applicable` are never stored; a `timeout`, a `not_converged` or a
+cancelled run is recomputed next time. Only an `ok` run is written, with the own time measured up to the
+write; the miss reports that same time, so a later hit reports what the miss did.
+
+**What is not stored, and why** (declared, ADR 0020; `engine._CACHED_TYPES`, a `DEBUG` line per node, tested):
+- an output the canon does not expose (`produce: null`, e.g. the polar of the `stall-speed` takeoff and
+  landing applications): no quantity carries it, so nothing can read it; the node is cached without it.
+- a node with an **airplane** output (`airplane-configuration`): a parsed geometry holds metres in the
+  format's millimetre fields and by design does not parse again (`geometry.py`), so it cannot come back from
+  JSON unchanged. The node is cheap (a device setting) and runs again; the nodes that read its configured
+  airplane are cached, keyed by its dump.
+- a node with an output of a type v1 does not carry (curve, curve pair, per control surface): the engine
+  discards such values (ch. 8.3). Cached types: scalar and polar.
+
+**On a hit**, the engine still takes the node's defaults (logged, in `defaults_used`), records the tool
+versions and settings of the node's world in the provenance (they are equal: they are in the key) and
+replays the stored thresholds. `from_cache` is set on a requested quantity only if **every** world run of
+its own producing node was a hit; a quantity computed from a cached upstream node is not `from_cache`.
+`timing` uses the stored own times of the hit nodes for the chain bounds (ch. 8.3).
 
 **No object is shared between calls.** `frozen=True` stops attribute assignment, not in-place mutation of
 a `dict` field (`Interval.worlds`, `detail`) or of an array inside a structured value; that is a Pydantic
@@ -448,10 +483,20 @@ need not be hashable.
   still ours, never passed in by the caller.
 - **`compute(aircraft, request)`, stateless.** A pure function. It keeps nothing between calls: no
   cache and no deduplication. Two calls with the same input compute twice.
-- **`CachedKernel`, stateful facade.** An object that owns a `MemoryCache` and
-  the in-flight deduplication.
+- **`CachedKernel`, stateful facade** (built, #1332; `api.py`, exported beside `compute`). An object that
+  owns one `DedupedCache` — a `MemoryCache(max_entries)` and the in-flight deduplication.
   - Its `compute()` has the same signature and the same result type.
-  - It delegates to the same engine and passes in its cache.
+  - It delegates to the same engine and passes in its cache (`evaluate(..., cache=)`); the engine claims a
+    node's key after rows 1-7 of the status order and the binding of the inputs, before the preconditions
+    run, and releases it with the entry to store, or with nothing, when the run is over.
+  - **In-flight deduplication:** a claim of a key whose run is in flight waits for it
+    (`asyncio.shield`, so a cancelled waiter never cancels the run). If the run is stored, each waiter gets
+    the stored entry (a fresh object, `from_cache` true). If it is not (error, non-`ok`, timeout, cancellation),
+    the failure is **not shared**: each waiter recomputes the node itself, concurrently, and stores what it
+    computes. A failure is never cached, and sharing it would hand one call's error wording to another.
+  - One facade serves **one event loop** at a time: its futures belong to the loop that created them. A
+    claim from a second loop while a run of the same key is in flight raises `RuntimeError` (a caller
+    defect). The app therefore runs its facade on one dedicated kernel loop (`canon_service._KernelLoop`).
 - **Why node level.** Caching happens **per graph node**, not per whole request. That way, a change to one
   input expires only its subtree (A1). The facade therefore injects the cache into the engine instead of
   wrapping the whole call. Seen from outside it is still a facade: a separate object, put in front of the
@@ -461,8 +506,10 @@ need not be hashable.
 deduplication. There is no `refresh`: every reason to recompute (tool versions, build digest) is already in
 the key, and errors are never stored. A forced recomputation is the stateless `compute()`.
 
-Cache settings (the size) are passed when the facade is created, never read from the environment.
-Each `QuantityResult` reports `from_cache`, which is always `false` from the stateless interface.
+Cache settings (the size) are passed when the facade is created, never read from the environment. The app's
+size is `canon_service.KERNEL_CACHE_ENTRIES = 4096`: about 1 KB per scalar node and about 14 KB per node that
+also returns its stall polar (161 angles of attack × 4 coefficients), so at most about 56 MB, a few MB in
+practice. Each `QuantityResult` reports `from_cache`, which is always `false` from the stateless interface.
 
 **One in-memory cache, no scopes, no persistence** (maintainer, 2026-10-17: S2 = b, D13). `MemoryCache` is
 one LRU over all entries (`max_entries`). There are no cache scopes, no per-scope limits, no `drop_scope`,
@@ -1043,7 +1090,8 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     returning, so it stays free of state (Q20). Spawning costs about a second; callers that compute often
     use `CachedKernel`.
   - **`CachedKernel`** owns one pool and one limit for its lifetime. They are created lazily and closed by
-    `async with` or `aclose()`.
+    `async with` or `aclose()`. *Not built:* #1332 built the facade's cache only; its `compute()` creates
+    and releases a `SolverRuntime` per call, as the stateless `compute()` does.
   - **Submissions are gated** by a second semaphore equal to the pool's resolved worker count, so every
     submitted item has a free worker and nothing waits in the pool's own call queue.
   - **Closing.** Once `aclose()` has begun, the runtime refuses work: a call not yet running in a worker
@@ -1074,9 +1122,9 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   input error (`non_finite_number` / `non_positive_value`, `input_path` `request.time_budget_s`). Quantities still open when it expires, and
   those waiting for them, get `error.category = timeout`; quantities already finished are returned, also when their
   layer did not complete. The running tasks are cancelled; pool jobs finish and are discarded.
-- **Cache under concurrency (`CachedKernel` only).** The cache is used from the event loop only, so it needs no lock. **In-flight
-  deduplication** (mode `use`): when two concurrent requests need the same key, the second awaits the first
-  one's future instead of computing it again.
+- **Cache under concurrency (`CachedKernel` only).** The cache is used from one event loop only, so it needs no lock. **In-flight
+  deduplication**: when two concurrent requests need the same key, the second awaits the first one's future
+  instead of computing it again; a run that is not stored is recomputed by each waiter (ch. 8.4).
 - **No hidden loop.** The kernel never calls `asyncio.run`, never creates or closes the caller's loop and
   keeps no loop-bound global state. It works inside FastAPI, in pytest-asyncio and in plain
   `asyncio.run(compute(...))` from scripts.

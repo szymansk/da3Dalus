@@ -293,6 +293,7 @@ async def test_the_cache_key_is_per_assignment() -> None:
             build_digest="sha256:aa",
             tool_versions={},
             solver_settings={},
+            rule_overrides={},
         )
         for key in keys
     }

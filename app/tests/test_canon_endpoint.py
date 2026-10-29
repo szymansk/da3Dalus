@@ -44,6 +44,17 @@ async def stub_kernel(aircraft: AircraftInput, request: ComputeRequest) -> Compu
     return ComputeResult(quantities=(quantity,), provenance=Provenance(build_digest="test"))
 
 
+class Facade:
+    """Replaces the shared ``CachedKernel`` with the stub."""
+
+    compute = staticmethod(stub_kernel)
+
+
+def use_kernel(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Answer the cached path (the default) with the stub."""
+    monkeypatch.setattr(canon_service, "KERNEL", Facade())
+
+
 @pytest.mark.integration
 def test_the_fleet_is_listed(client_and_db):
     client, _ = client_and_db
@@ -56,7 +67,7 @@ def test_the_fleet_is_listed(client_and_db):
 
 @pytest.mark.integration
 def test_a_quantity_is_computed(client_and_db, monkeypatch):
-    monkeypatch.setattr(canon_service, "compute", stub_kernel)
+    use_kernel(monkeypatch)
     client, _ = client_and_db
     response = client.post(
         "/canon/compute",
@@ -83,7 +94,7 @@ def test_a_quantity_is_computed(client_and_db, monkeypatch):
 
 @pytest.mark.integration
 def test_an_unknown_aircraft_answers_with_the_error_envelope(enveloped_client, monkeypatch):
-    monkeypatch.setattr(canon_service, "compute", stub_kernel)
+    use_kernel(monkeypatch)
     client = enveloped_client
     response = client.post(
         "/canon/compute",
@@ -112,3 +123,23 @@ def test_a_quantity_requested_twice_answers_with_the_error_envelope(enveloped_cl
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+@pytest.mark.integration
+def test_a_fresh_request_recomputes_without_the_cache(client_and_db, monkeypatch):
+    monkeypatch.setattr(canon_service, "compute", stub_kernel)
+    monkeypatch.setattr(canon_service, "KERNEL", None)  # the facade must not be touched
+    client, _ = client_and_db
+    response = client.post(
+        "/canon/compute",
+        json={"aircraft": {"fleet": "bryan"}, "quantities": ["stall-speed"], "fresh": True},
+    )
+    assert response.status_code == 200
+    assert response.json()["quantities"][0]["from_cache"] is False
+
+
+def test_the_compute_request_documents_the_fresh_flag(enveloped_client):
+    schema = enveloped_client.get("/openapi.json").json()["components"]["schemas"]
+    fresh = schema["CanonComputeRequest"]["properties"]["fresh"]
+    assert fresh["default"] is False
+    assert "cache" in fresh["description"]

@@ -137,6 +137,7 @@ describe("the connected navigator", () => {
       quantities: ["stall-speed"],
       values: {},
       include_long_runs: false,
+      fresh: false,
     });
     expect(badgeState(nav, "stall-speed")).toBe("ok");
     expect(nav.document.getElementById("kres")!.textContent).toContain("7.5 m/s");
@@ -152,6 +153,26 @@ describe("the connected navigator", () => {
     nav.click(nav.document.getElementById("recompute")!);
     await settle();
     expect(computeCalls(nav)).toHaveLength(2);
+  });
+
+  it("serves Compute from the kernel cache and makes Recompute bypass it (gh-1332)", async () => {
+    const nav = openNavigator(QUERY, answerOk);
+    await settle();
+    await selectAndCompute(nav, "stall-speed");
+    const button = nav.document.getElementById("recompute")!;
+    expect(button.textContent).toBe("Recompute");
+    nav.click(button);
+    await settle();
+    expect(computeCalls(nav).map((c) => c.body!.fresh)).toEqual([false, true]);
+  });
+
+  it("serves Compute all from the kernel cache", async () => {
+    const nav = openNavigator(QUERY, answerOk);
+    await settle();
+    nav.click(nav.document.getElementById("computeAll")!);
+    await settle();
+    const [call] = computeCalls(nav);
+    expect(call.body!.fresh).toBe(false);
   });
 
   describe("the run time", () => {
@@ -385,6 +406,7 @@ describe("the connected navigator", () => {
     await settle();
     expect(box.hidden).toBe(true);
     expect(computeCalls(nav).at(-1)!.body!.include_long_runs).toBe(true);
+    expect(computeCalls(nav).at(-1)!.body!.fresh).toBe(false); // the confirmation keeps Compute's mode
     expect(badgeState(nav, "neutral-point")).toBe("ok");
   });
 
