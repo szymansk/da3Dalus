@@ -73,5 +73,6 @@ async def test_a_lease_is_released_once() -> None:
 def test_a_claim_from_a_second_event_loop_while_a_run_is_in_flight_is_refused() -> None:
     cache = DedupedCache(MemoryCache(max_entries=4))
     asyncio.run(cache.claim(KEY))  # claimed on a first loop and never released
+    second_claim = cache.claim(KEY)
     with pytest.raises(RuntimeError, match="one event loop"):
-        asyncio.run(cache.claim(KEY))
+        asyncio.run(second_claim)

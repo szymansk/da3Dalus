@@ -320,8 +320,9 @@ async def test_a_failure_on_the_kernel_loop_reaches_the_caller() -> None:
     async def broken() -> ComputeResult:
         raise LookupError("kernel defect")
 
+    running = canon_service._KERNEL_LOOP.run(broken())
     with pytest.raises(LookupError, match="kernel defect"):
-        await canon_service._KERNEL_LOOP.run(broken())
+        await running
 
 
 @pytest.mark.asyncio
