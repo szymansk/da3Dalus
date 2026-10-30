@@ -55,11 +55,16 @@ IMPLEMENTED = {
     "calc:lateral-static-stability-mp",
     "calc:turn-sideslip",
     "calc:rudder-roll-authority",
+    "calc:lift-coefficient-required",
+    "calc:stall-wing-loading-limit",
 }
 
 
 def inputs_from_model(
-    model: CanonModel, formula_slug: str, by_quantity: Mapping[str, Value]
+    model: CanonModel,
+    formula_slug: str,
+    by_quantity: Mapping[str, Value],
+    application: str = "default",
 ) -> dict[str, Value]:
     """Build the ``x`` of a formula from the model (Q11): the value of each bound quantity under
     the formula's parameter name.
@@ -70,16 +75,17 @@ def inputs_from_model(
         model: The canon model.
         formula_slug: Slug of the formula.
         by_quantity: Value per canon quantity slug (bare spelling).
+        application: Id of the application whose bindings are read.
 
     Returns:
-        Value per parameter name of the formula's default application.
+        Value per parameter name of the formula's application.
 
     Raises:
         AssertionError: If a bound quantity has no value or a value names no bound quantity.
     """
     formula = model.formula(formula_slug)
     assert formula is not None, formula_slug
-    bound = formula.application("default").bind
+    bound = formula.application(application).bind
     given = {display_slug(slug): value for slug, value in by_quantity.items()}
     wanted: dict[str, str] = {}
     for parameter, quantity in bound.items():
