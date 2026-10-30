@@ -62,10 +62,11 @@ Identical. Sadraey adds two usage rules: (a) rho is the SEA-LEVEL value (1.225 k
 
 **Validity in the RC/UAV regime (ADR 0028).** Valid at RC scale, and it is the right constraint to use for RC (Scholz's Loftin landing-field-length alternative, s_LFL with k_L = 0.107 kg/m^3, is a statistical fit to 1980s jet transports and must NOT be used at 0.5-15 kg). Caveat under ADR 0023: Sadraey's C_L,max source tables 4.10/4.11 have no RC row. The nearest bands are Home-built 1.2-1.8 and Microlight 1.8-2.4. The app's 1.4 default sits inside the home-built band, which is a defensible provenance, but it is a manned-aircraft band, not an RC measurement.
 
-## Implementations (1)
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/stall_wing_loading_limit.py` | EXACT | 🟢 |  |
 | [[ws_stall_constraint]] | EQUIVALENT | 🟢 |  |
 
 ## Approval
