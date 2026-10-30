@@ -52,10 +52,11 @@ Sources write the n = 1 case and introduce n separately; the combined n*m*g/(q*S
 
 **Validity in the RC/UAV regime (ADR 0028).** Exact. Only caution is interpretive: the C_L this returns is a DEMAND, and the app must compare it against C_L,max at the correct Reynolds number before reporting the point as flyable - Lennon Ch. 21 is explicit that exceeding C_L,max here is precisely the accelerated stall.
 
-## Implementations (1)
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/lift_coefficient_required.py` | EXACT | 🟢 |  |
 | [[gravity_g]] | EXACT | 🟢 |  |
 
 ## Approval
