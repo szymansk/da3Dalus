@@ -56,6 +56,12 @@ def die() -> WorkerOutcome[int]:
     os._exit(1)
 
 
+def die_after(seconds: float) -> WorkerOutcome[int]:
+    """Kill the worker process after ``seconds``, when its caller may have left."""
+    time.sleep(seconds)
+    os._exit(1)
+
+
 def raise_formula() -> WorkerOutcome[int]:
     """Raise ``FormulaError`` the forbidden way: it does not survive pickling."""
     raise FormulaError(

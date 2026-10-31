@@ -430,6 +430,10 @@ class SolverRuntime:
         handed to it.
         """
         if not job.cancelled() and isinstance(job.exception(), BrokenProcessPool):
+            # Logged here, not in the caller: a caller that was cancelled no longer awaits it.
+            logger.warning(
+                "a process-pool worker died (slot %d); its slot is discarded", slot.index
+            )
             self._discard_worker(slot)
         slot.busy = False
         gate.release()
@@ -488,14 +492,10 @@ class SolverRuntime:
             waiting = asyncio.wrap_future(job)
             # Registered before the caller awaits, so the slot is free before the caller resumes.
             waiting.add_done_callback(functools.partial(self._job_ended, slot, gate))
-            try:
-                result = cast(
-                    "object",  # widened on purpose: the contract check below is a runtime guard
-                    await asyncio.shield(waiting),
-                )
-            except BrokenProcessPool:
-                logger.warning("a process-pool worker died while running %s", fn)
-                raise
+            result = cast(
+                "object",  # widened on purpose: the contract check below is a runtime guard
+                await asyncio.shield(waiting),
+            )
         if isinstance(result, WorkerFailure):
             _log_diagnostics(fn, result.diagnostics)
             raise result.to_formula_error()

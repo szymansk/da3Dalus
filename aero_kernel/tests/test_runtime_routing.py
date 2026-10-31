@@ -110,6 +110,38 @@ async def test_a_dead_worker_discards_only_its_own_slot(caplog: pytest.LogCaptur
         assert await pid(runtime, "B") not in {a, b}  # a fresh worker for the dead one
 
 
+def died_warnings(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    return [r for r in caplog.records if r.levelno == logging.WARNING and "died" in r.getMessage()]
+
+
+async def test_a_worker_that_dies_after_its_caller_left_is_logged_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A cancelled caller no longer awaits the job; the dead worker is still logged (ch. 8.10)."""
+    async with SolverRuntime(max_workers=1, max_models_per_worker=1) as runtime:
+        with caplog.at_level(logging.WARNING, logger="aero_kernel.runtime"):
+            running = asyncio.create_task(runtime.run_cpu(workers.die_after, 0.5))
+            await asyncio.sleep(0.2)
+            running.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await running
+            async with asyncio.timeout(BOUND_S):
+                assert await runtime.run_cpu(workers.square, 3) == 9  # waits for the dead slot
+        assert len(died_warnings(caplog)) == 1
+
+
+async def test_a_worker_that_dies_while_its_caller_waits_is_logged_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async with SolverRuntime(max_workers=1, max_models_per_worker=1) as runtime:
+        with (
+            caplog.at_level(logging.WARNING, logger="aero_kernel.runtime"),
+            pytest.raises(Exception, match="terminated abruptly"),
+        ):
+            await runtime.run_cpu(workers.die)
+        assert len(died_warnings(caplog)) == 1
+
+
 async def test_the_worker_installs_a_bounded_model_cache_and_the_parent_none() -> None:
     async with SolverRuntime(max_workers=1, max_models_per_worker=2) as runtime:
         held: list[tuple[int, bool, tuple[str, ...]]] = []
