@@ -100,11 +100,12 @@ async def test_a_cancelled_call_keeps_its_worker_from_new_jobs_until_it_ends() -
 async def test_a_dead_worker_discards_only_its_own_slot(caplog: pytest.LogCaptureFixture) -> None:
     async with SolverRuntime(max_workers=2, max_models_per_worker=1) as runtime:
         a, b = await pid(runtime, "A"), await pid(runtime, "B")
+        job = KeyedJob(model_key="B")
         with (
             caplog.at_level(logging.WARNING, logger="aero_kernel.runtime"),
             pytest.raises(Exception, match="terminated abruptly"),
         ):
-            await runtime.run_cpu(workers.die_keyed, KeyedJob(model_key="B"))
+            await runtime.run_cpu(workers.die_keyed, job)
         assert any(r.levelno == logging.WARNING for r in caplog.records)
         assert await pid(runtime, "A") == a  # the other worker and its functions stay
         assert await pid(runtime, "B") not in {a, b}  # a fresh worker for the dead one

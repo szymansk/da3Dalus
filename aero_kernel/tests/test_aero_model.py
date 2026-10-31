@@ -45,8 +45,9 @@ def no_cache(monkeypatch: pytest.MonkeyPatch) -> None:
 
 class TestKey:
     def test_the_same_airplane_has_the_same_key(self) -> None:
-        assert key_of() == key_of()
-        assert key_of().startswith("sha256:")
+        first, second = key_of(), key_of()
+        assert first == second
+        assert first.startswith("sha256:")
 
     @pytest.mark.parametrize(
         "change",

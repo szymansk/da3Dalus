@@ -146,8 +146,8 @@ def pid_of(job: KeyedJob) -> WorkerOutcome[int]:
     return WorkerOutcome(value=os.getpid(), diagnostics=WorkerDiagnostics(duration_s=job.seconds))
 
 
-def die_keyed(job: KeyedJob) -> WorkerOutcome[int]:
-    """Kill the worker that runs ``job`` without cleanup."""
+def die_keyed(_job: KeyedJob) -> WorkerOutcome[int]:
+    """Kill the worker without cleanup; the job is read only by the runtime, to route it."""
     os._exit(1)
 
 

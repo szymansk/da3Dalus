@@ -90,8 +90,9 @@ async def test_a_closed_facade_refuses_work(runtimes: list[RecordingRuntime]) ->
     await kernel.compute(aircraft(), REQUEST)
     await kernel.aclose()
     await kernel.aclose()  # idempotent
+    plane = aircraft()
     with pytest.raises(RuntimeError, match="closed"):
-        await kernel.compute(aircraft(), REQUEST)
+        await kernel.compute(plane, REQUEST)
     assert len(runtimes) == 1
 
 
