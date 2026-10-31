@@ -11,7 +11,7 @@ from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.base import regime_by_wing
 from aero_kernel.solvers.opti import OptiAdapter, StallRequest, StallSolution
-from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
+from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane, direct_aero_model
 
 pytestmark = pytest.mark.asyncio
 
@@ -244,6 +244,7 @@ def install_failing_solver(monkeypatch: pytest.MonkeyPatch, error: Exception) ->
     monkeypatch.setattr(opti_module, "sweep_polar", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake_asb)
+    monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
     return StallRequest(airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
 
 
@@ -325,6 +326,7 @@ def install_solution(monkeypatch: pytest.MonkeyPatch, v_s: float, alpha_s: float
     monkeypatch.setattr(opti_module, "sweep_polar", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake_asb)
+    monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
     return StallRequest(airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
 
 

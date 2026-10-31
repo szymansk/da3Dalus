@@ -10,7 +10,7 @@ from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 from aero_kernel.solvers.opti import OptiAdapter, StallRequest
-from aero_kernel.tests.solver_builders import airplane
+from aero_kernel.tests.solver_builders import airplane, direct_aero_model
 from aero_kernel.tests.test_solvers_opti_real import GRAVITY, MASS_KG, sea_level, trainer
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
@@ -46,6 +46,7 @@ def install_parabolic(monkeypatch: pytest.MonkeyPatch) -> None:
 
     fake = SimpleNamespace(Opti=real.Opti, OperatingPoint=operating_point, AeroBuildup=Parabolic)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake)
+    monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
     monkeypatch.setattr(opti_module, "sweep_polar", sweep)
 
     def convert(_airplane: object) -> SimpleNamespace:

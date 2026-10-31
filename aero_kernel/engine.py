@@ -18,6 +18,7 @@ from typing import Literal
 from aero_kernel.build import Build
 from aero_kernel.cache import Entry, Lease, NodeCache, cache_key
 from aero_kernel.canon.model import Check, ConstBinding, Default, Formula
+from aero_kernel.canonical import spell_non_finite
 from aero_kernel.context import Context, Inputs, Solvers, Value
 from aero_kernel.devices import devices_at_rest
 from aero_kernel.errors import (
@@ -185,26 +186,10 @@ _CARRIED_TYPES = frozenset({"scalar", "airplane", "polar"})
 _CACHED_TYPES = frozenset({"scalar", "polar"})
 
 
-def _key_numbers(value: JsonValue) -> JsonValue:
-    """A JSON value with every NaN or infinity spelled out, for a cache key only.
-
-    Validation rejects non-finite numbers in what the kernel reads, but not in the geometry's
-    unread fields (``validate.UNREAD_FIELDS``); the key must not fail on them, nor equate them
-    with ``null``.
-    """
-    if isinstance(value, float) and not math.isfinite(value):
-        return {"non_finite": repr(value)}
-    if isinstance(value, dict):
-        return {name: _key_numbers(item) for name, item in value.items()}
-    if isinstance(value, list):
-        return [_key_numbers(item) for item in value]
-    return value
-
-
 def _key_value(value: Value | None) -> JsonValue:
     """The JSON form of a direct input value in the cache key (ch. 8.4)."""
     if isinstance(value, AirplaneGeometry | Polar):
-        return _key_numbers(value.model_dump(mode="json"))
+        return spell_non_finite(value.model_dump(mode="json"))
     return value
 
 

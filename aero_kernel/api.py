@@ -7,8 +7,9 @@ same engine.
 import logging
 import secrets
 import time
+from typing import Self
 
-from aero_kernel.build import shipped_build
+from aero_kernel.build import Build, shipped_build
 from aero_kernel.cache import DedupedCache, MemoryCache, NodeCache, build_digest
 from aero_kernel.canon.load import CanonLoadError
 from aero_kernel.context import Solvers
@@ -23,6 +24,7 @@ from aero_kernel.schema import (
     QuantityResult,
     QuantityStatus,
 )
+from aero_kernel.solvers.aero_model import MAX_MODELS_PER_WORKER
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.geometry import GeometryAdapter
@@ -48,7 +50,7 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
         One result per requested slug in request order, or ``input_errors`` and nothing computed.
         If the shipped canon model cannot be loaded, every quantity is ``internal`` and escalates.
     """
-    return await _compute(aircraft, request, None)
+    return await _compute(aircraft, request, None, None)
 
 
 class CachedKernel:
@@ -61,20 +63,82 @@ class CachedKernel:
     reports the run time measured when it was computed. There is no ``refresh``: every reason to
     recompute is in the key, and a forced recomputation is the stateless :func:`compute`.
 
-    One facade serves one event loop at a time (the in-flight runs are ``asyncio`` futures).
+    It also owns one :class:`SolverRuntime` for its lifetime (ch. 8.10): the worker processes,
+    each with its cache of AeroBuildup model functions, and the concurrency limit. The runtime is
+    created on the first compute and closed by :meth:`aclose` or ``async with``; a closed facade
+    refuses work. Resources are not results: they never change a value.
+
+    One facade serves one event loop at a time (the in-flight runs are ``asyncio`` futures, and
+    the runtime's limits are bound to the loop of its first call).
     """
 
-    def __init__(self, *, max_entries: int) -> None:
-        """Create the facade with an empty cache.
+    def __init__(
+        self,
+        *,
+        max_entries: int,
+        max_models_per_worker: int = MAX_MODELS_PER_WORKER,
+        max_workers: int | None = None,
+        max_concurrency: int | None = None,
+    ) -> None:
+        """Create the facade with an empty cache; no worker starts yet.
+
+        All settings are passed here, never read from the environment.
 
         Args:
-            max_entries: Nodes kept; the least recently used one is evicted. Passed here, never
-                read from the environment.
+            max_entries: Nodes kept; the least recently used one is evicted.
+            max_models_per_worker: AeroBuildup model functions each worker process keeps (about
+                280 MB each, ``aero_model.MAX_MODELS_PER_WORKER``).
+            max_workers: Worker processes; default ``os.cpu_count()``.
+            max_concurrency: Concurrent solver calls; default ``os.cpu_count()``.
 
         Raises:
-            ValueError: If the limit is below 1.
+            ValueError: If a limit is below 1.
         """
         self._cache = DedupedCache(MemoryCache(max_entries=max_entries))
+        for name, value in (
+            ("max_models_per_worker", max_models_per_worker),
+            ("max_workers", max_workers),
+            ("max_concurrency", max_concurrency),
+        ):
+            if value is not None and value < 1:
+                msg = f"{name} must be >= 1, got {value}"
+                raise ValueError(msg)
+        self._max_models_per_worker = max_models_per_worker
+        self._max_workers = max_workers
+        self._max_concurrency = max_concurrency
+        self._runtime: SolverRuntime | None = None
+        self._closed = False
+
+    async def __aenter__(self) -> Self:
+        """Enter the ``async with`` block."""
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        """Close the facade when the block ends."""
+        await self.aclose()
+
+    async def aclose(self) -> None:
+        """Close the facade's runtime: wait for its running calls, then stop its workers; idempotent.
+
+        Afterwards the facade refuses work (``RuntimeError``); its cache is dropped with it.
+        """
+        self._closed = True
+        runtime, self._runtime = self._runtime, None
+        if runtime is not None:
+            await runtime.aclose()
+
+    def _runtime_for_call(self) -> SolverRuntime:
+        """The facade's runtime, created on the first compute; never after closing."""
+        if self._closed:
+            msg = "the cached kernel is closed"
+            raise RuntimeError(msg)
+        if self._runtime is None:
+            self._runtime = SolverRuntime(
+                max_workers=self._max_workers,
+                max_concurrency=self._max_concurrency,
+                max_models_per_worker=self._max_models_per_worker,
+            )
+        return self._runtime
 
     async def compute(self, aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
         """Compute the requested quantities of an aircraft, reading and writing the cache.
@@ -88,16 +152,23 @@ class CachedKernel:
             served from the cache.
 
         Raises:
-            RuntimeError: If the facade is called from a second event loop while a run it
-                deduplicates is in flight on the first.
+            RuntimeError: If the facade is closed, or called from a second event loop while a run
+                it deduplicates is in flight on the first.
         """
-        return await _compute(aircraft, request, self._cache)
+        return await _compute(aircraft, request, self._cache, self._runtime_for_call())
 
 
 async def _compute(
-    aircraft: AircraftInput, request: ComputeRequest, cache: NodeCache | None
+    aircraft: AircraftInput,
+    request: ComputeRequest,
+    cache: NodeCache | None,
+    runtime: SolverRuntime | None,
 ) -> ComputeResult:
-    """One call on the shipped build, with the facade's cache or none."""
+    """One call on the shipped build, with the facade's cache and runtime, or none of either.
+
+    Without a runtime the call owns one and releases it before returning (the stateless
+    ``compute``); the facade's runtime outlives the call.
+    """
     started = time.perf_counter()
     try:
         build = shipped_build()
@@ -122,20 +193,33 @@ async def _compute(
         )
         log_call(call_id, request, result, started, "the shipped canon model is not loaded")
         return result
-    # Resources are never global (ch. 8.10): this call owns its runtime and releases it before
-    # returning, also on cancellation. The rule parameters are the call's too.
+    if runtime is not None:
+        return await _evaluate(build, aircraft, request, cache, runtime)
+    # Resources are never global (ch. 8.10): the stateless call owns its runtime and releases it
+    # before returning, also on cancellation.
+    async with SolverRuntime() as own:
+        return await _evaluate(build, aircraft, request, cache, own)
+
+
+async def _evaluate(
+    build: Build,
+    aircraft: AircraftInput,
+    request: ComputeRequest,
+    cache: NodeCache | None,
+    runtime: SolverRuntime,
+) -> ComputeResult:
+    """Run the engine with adapters on ``runtime``; the rule parameters are the call's own."""
     rules = Rules(build.model)
-    async with SolverRuntime() as runtime:
-        return await evaluate(
-            build,
-            aircraft,
-            request,
-            solvers=Solvers(
-                atmosphere=AtmosphereAdapter(runtime),
-                opti=OptiAdapter(runtime),
-                avl=AvlAdapter(runtime, rules),
-                geometry=GeometryAdapter(runtime),
-                rules=rules,
-            ),
-            cache=cache,
-        )
+    return await evaluate(
+        build,
+        aircraft,
+        request,
+        solvers=Solvers(
+            atmosphere=AtmosphereAdapter(runtime),
+            opti=OptiAdapter(runtime),
+            avl=AvlAdapter(runtime, rules),
+            geometry=GeometryAdapter(runtime),
+            rules=rules,
+        ),
+        cache=cache,
+    )

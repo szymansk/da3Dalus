@@ -7,6 +7,8 @@ import time
 
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import WorkerDiagnostics, WorkerFailure, WorkerOutcome
+from aero_kernel.solvers.aero_model import AeroModel, installed_model_cache
+from pydantic import BaseModel, ConfigDict
 
 
 def square(x: int) -> WorkerOutcome[int]:
@@ -121,3 +123,37 @@ class Payload:
 def make_payload() -> WorkerOutcome[Payload]:
     """Return a fresh :class:`Payload`."""
     return WorkerOutcome(value=Payload(), diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+
+class KeyedJob(BaseModel):
+    """A worker request that names a model key, as the Opti requests do (``RoutedRequest``)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    model_key: str | None
+    seconds: float = 0.0
+
+
+def pid_of(job: KeyedJob) -> WorkerOutcome[int]:
+    """Sleep ``job.seconds``, then return the worker's process id."""
+    time.sleep(job.seconds)
+    return WorkerOutcome(value=os.getpid(), diagnostics=WorkerDiagnostics(duration_s=job.seconds))
+
+
+def die_keyed(job: KeyedJob) -> WorkerOutcome[int]:
+    """Kill the worker that runs ``job`` without cleanup."""
+    os._exit(1)
+
+
+def touch_model(job: KeyedJob) -> WorkerOutcome[tuple[int, bool, tuple[str, ...]]]:
+    """Put ``job.model_key`` through the worker's installed model cache with a stand-in model.
+
+    Returns the process id, whether the key was held, and the keys held afterwards (least
+    recently used first).
+    """
+    cache = installed_model_cache()
+    assert cache is not None
+    assert job.model_key is not None
+    _, held = cache.get(job.model_key, lambda: AeroModel(None))
+    value = (os.getpid(), held, cache.keys())
+    return WorkerOutcome(value=value, diagnostics=WorkerDiagnostics(duration_s=0.0))

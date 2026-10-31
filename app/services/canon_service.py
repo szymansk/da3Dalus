@@ -6,6 +6,8 @@ here is written back. Only the kernel's public API is used: ``compute``, ``Cache
 
 A compute goes through one process-wide :class:`CachedKernel` (gh-1332), so a node whose inputs did
 not change is served from the kernel's cache; ``fresh`` requests the stateless ``compute`` instead.
+The kernel keeps its solver worker processes for its lifetime (gh-1336); :func:`close_kernel`
+stops them on application shutdown.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ import concurrent.futures
 import contextvars
 import threading
 from collections.abc import Coroutine
-from typing import Any
+from typing import Any, TypeVar
 
 from aero_kernel import CachedKernel, compute
 from aero_kernel.evaluation import judge_result
@@ -41,7 +43,22 @@ from app.schemas.canon import CanonComputeRequest, CanonComputeResponse, CanonFl
 # and hold several hundred full Expert View computations.
 KERNEL_CACHE_ENTRIES = 4096
 
-KERNEL = CachedKernel(max_entries=KERNEL_CACHE_ENTRIES)
+# AeroBuildup model functions each kernel worker process keeps (gh-1336): about 280 MB RSS each
+# (BRYAN and CHEKKER, NeuralFoil xlarge), so the kernel's model memory is at most
+# os.cpu_count() workers x 2 x ~280 MB. Two hold the clean and the configured airplane of one aircraft.
+KERNEL_MODELS_PER_WORKER = 2
+
+
+def _new_kernel() -> CachedKernel:
+    """The process-wide kernel, with every setting passed explicitly."""
+    return CachedKernel(
+        max_entries=KERNEL_CACHE_ENTRIES, max_models_per_worker=KERNEL_MODELS_PER_WORKER
+    )
+
+
+KERNEL = _new_kernel()
+
+_T = TypeVar("_T")
 
 
 class _KernelLoop:
@@ -66,11 +83,16 @@ class _KernelLoop:
                 self._loop = loop
             return self._loop
 
-    async def run(self, coroutine: Coroutine[Any, Any, ComputeResult]) -> ComputeResult:
+    def started(self) -> bool:
+        """Whether the kernel loop has been started (by a first cached compute)."""
+        with self._lock:
+            return self._loop is not None
+
+    async def run(self, coroutine: Coroutine[Any, Any, _T]) -> _T:
         """Run a kernel coroutine on the kernel loop, in the caller's context, and await it."""
         loop = self._running()
         context = contextvars.copy_context()
-        done: concurrent.futures.Future[ComputeResult] = concurrent.futures.Future()
+        done: concurrent.futures.Future[_T] = concurrent.futures.Future()
 
         def start() -> None:
             task = loop.create_task(coroutine, context=context)
@@ -80,9 +102,7 @@ class _KernelLoop:
         return await asyncio.wrap_future(done)
 
 
-def _settle(
-    done: concurrent.futures.Future[ComputeResult], finished: asyncio.Task[ComputeResult]
-) -> None:
+def _settle(done: concurrent.futures.Future[_T], finished: asyncio.Task[_T]) -> None:
     """Pass the outcome of the kernel task on to the caller's future, unless the caller left."""
     if done.cancelled():
         return
@@ -95,6 +115,21 @@ def _settle(
 
 
 _KERNEL_LOOP = _KernelLoop()
+
+
+async def close_kernel() -> None:
+    """Close the process-wide kernel on application shutdown (gh-1336).
+
+    The kernel's runtime and its worker processes belong to the kernel loop, so it is closed
+    there; a kernel that never computed has nothing running and is closed directly. A fresh kernel
+    takes its place, so a process that runs the application again (the test suite) still has one.
+    """
+    global KERNEL
+    closing, KERNEL = KERNEL, _new_kernel()
+    if _KERNEL_LOOP.started():
+        await _KERNEL_LOOP.run(closing.aclose())
+    else:
+        await closing.aclose()
 
 
 def list_fleet() -> list[CanonFleetEntry]:

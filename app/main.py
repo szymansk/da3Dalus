@@ -195,6 +195,9 @@ def create_app() -> FastAPI:
                 from app.services import operating_point_generator_service as _opg
 
                 _opg.shutdown_opg_executor()
+                from app.services import canon_service as _canon_service
+
+                await _canon_service.close_kernel()
 
     app = FastAPI(
         title="da3dalus Model Context Protocol (v2)",

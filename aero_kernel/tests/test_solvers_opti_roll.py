@@ -22,7 +22,7 @@ from aero_kernel.solvers.opti import (
     RollSolution,
 )
 from aero_kernel.solvers.roll_math import control_effectiveness
-from aero_kernel.tests.solver_builders import AIR, InProcessRuntime
+from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, direct_aero_model
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
 from aero_kernel.tests.test_solvers_roll_devices import aileron, wing_geometry
 from aero_kernel.tests.test_solvers_roll_math import Degrees
@@ -298,6 +298,7 @@ def install(
     monkeypatch.setattr(opti_module, "sweep_polar", sweep_stub)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "load_aerosandbox", boundary.namespace)
+    monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
     return RollRequest(
         airplane=rolling_airplane(),
         mass_kg=MASS,

@@ -64,8 +64,11 @@ then the code. Epic: #1173.
   Never call `asyncio.run` inside the package; always re-raise `CancelledError`; clean up subprocesses and
   temp dirs on cancellation.
 - **Two interfaces, one engine (ARCHITECTURE §8.4).** `compute()` is stateless (the one exception is the memoised shipped `Build` in `build.py`, an immutable package artefact): no cache, no module-level
-  mutable state, no global pool. `CachedKernel` (`api.py`) is the stateful facade that owns the node cache
-  and the in-flight dedup (`DedupedCache`) and injects it into the same engine. Never add state to `compute()`;
+  mutable state, no global pool; it owns a `SolverRuntime` per call. `CachedKernel` (`api.py`) is the stateful facade that owns the node cache
+  and the in-flight dedup (`DedupedCache`), injects it into the same engine, and owns one `SolverRuntime`
+  for its lifetime (#1336, §8.10): the runtime is state of `CachedKernel`, never of `compute()`. The pool
+  workers' AeroBuildup model functions (`solvers/aero_model.py`) live only in worker processes, are a
+  mechanism and never a value; their key holds everything that changes the converted airplane. Never add state to `compute()`;
   never let the cache change a value. There is one in-memory cache, no scopes, no disk cache (ARCHITECTURE §8.4).
   Anything a node reads besides its bound inputs must be in its cache key: the only such datum today is the
   rule thresholds, covered by the call's `rule_overrides` in the key and replayed from `Entry.rules_used`.
