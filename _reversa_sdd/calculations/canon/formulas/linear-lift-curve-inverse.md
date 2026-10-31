@@ -15,14 +15,14 @@ tags:
   - shape/law
   - kind/law
   - status/draft
-inputs: {cl: null, cl_alpha: lift-curve-slope, alpha_0: zero-lift-angle}
+inputs: {cl: null, cl_alpha: null, alpha_0: null}
 outputs: {alpha: null}
 applications:
   - id: best_glide
-    bind: {cl: lift-coefficient-best-glide}
+    bind: {cl: lift-coefficient-best-glide, cl_alpha: lift-curve-slope-best-glide, alpha_0: zero-lift-angle-best-glide}
     produce: {alpha: angle-of-attack-best-glide-probe}
   - id: minimum_sink
-    bind: {cl: lift-coefficient-minimum-sink}
+    bind: {cl: lift-coefficient-minimum-sink, cl_alpha: lift-curve-slope-minimum-sink, alpha_0: zero-lift-angle-minimum-sink}
     produce: {alpha: angle-of-attack-minimum-sink-probe}
 preconditions:
   - {id: cl_within_linear_range, parameter: cl, on_violation: error}
@@ -36,7 +36,7 @@ preconditions:
 alpha = alpha_0 + C_L / C_Lalpha   (converted to degrees)
 ```
 
-**Produces** [[angle-of-attack-best-glide-probe]] · [[angle-of-attack-minimum-sink-probe]]  ·  **from** [[lift-coefficient-best-glide]] · [[lift-coefficient-minimum-sink]] · [[lift-curve-slope]] · [[zero-lift-angle]]
+**Produces** [[angle-of-attack-best-glide-probe]] · [[angle-of-attack-minimum-sink-probe]]  ·  **from** [[lift-coefficient-best-glide]] · [[lift-coefficient-minimum-sink]] · [[lift-curve-slope-best-glide]] · [[lift-curve-slope-minimum-sink]] · [[zero-lift-angle-best-glide]] · [[zero-lift-angle-minimum-sink]]
 
 **A Probe since 2026-10-14 (maintainer, D2; A7).** The angles of attack at best glide and minimum sink
 come from their optimisations ([[minimum-drag-speed-from-polar]], [[minimum-sink-speed-from-polar]]), where α
@@ -44,6 +44,16 @@ is a decision variable on the nonlinear polar at the right Reynolds number. This
 lift curve at the `C_L` of each optimum and must agree with the optimum α; in the linear range a mismatch
 measures the quality of the lift-curve fit. Its former stall application is deleted: it is wrong by
 construction (see the 🔴 block below), and its α duplicated the stall optimum α of [[stall-speed]].
+
+**Coefficients at the speed of each optimum (2026-10-31).** `C_Lα` and `α_0` come from
+[[zero-lift-angle-from-polar]]. `α_0` is the root of the computed `C_L(V, α)`, and `C_Lα` the slope at that
+root, at `V_md` for `best_glide` and at `V_mp` for `minimum_sink`. Both sides of the Probe therefore see the
+same Reynolds number. They no longer come from a least-squares fit over a fixed α window.
+
+> 🔴 **Open (maintainer):** the bound of `cl_within_linear_range` below. The precondition was defined by the
+> α window of the old fit (`[-2°, +6°]`, app). With the coefficients now read at the zero-lift root, that
+> window no longer exists, so the upper end of the linear range has no stated value. The entry is not
+> implementable until it does.
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 

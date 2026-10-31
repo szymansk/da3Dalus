@@ -1090,7 +1090,7 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     returning, so it stays free of state (Q20). Spawning costs about a second; callers that compute often
     use `CachedKernel`.
   - **`CachedKernel`** owns one pool and one limit for its lifetime. They are created lazily and closed by
-    `async with` or `aclose()`. *Not built:* #1332 built the facade's cache only; its `compute()` creates
+    `async with` or `aclose()`. *Not built (#1336):* #1332 built the facade's cache only; its `compute()` creates
     and releases a `SolverRuntime` per call, as the stateless `compute()` does.
   - **Submissions are gated** by a second semaphore equal to the pool's resolved worker count, so every
     submitted item has a free worker and nothing waits in the pool's own call queue.
