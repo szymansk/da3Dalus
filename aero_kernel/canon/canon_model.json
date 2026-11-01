@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:905c5afe73d7e4cda332f9945af023edf64a7fe5d98bd7a6653d81ed3922a361",
+  "content_hash": "sha256:df7795d42ddb39f74bfd34c52908601ff685a57fc34d2c0971e3f14fdba5e7f4",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1681,7 +1681,14 @@
             "e": "calc:lift-to-drag-ratio"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "drag_positive",
+              "on_violation": "error",
+              "parameter": "d"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
