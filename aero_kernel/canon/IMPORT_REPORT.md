@@ -90,7 +90,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | formula | stage 1 | inputs | missing |
 |---|---|---|---|
 | advance-ratio-from-speed | draft | 2 of 3 | propeller-speed (motor-propeller-equilibrium: not approved) |
-| aerobuildup-evaluation | draft | 6 of 6 |  |
+| aerobuildup-evaluation | approved | 6 of 6 |  |
 | aileron-deflection-required | approved | 8 of 9 | roll-rate-target-approach (no data source) |
 | air-density-isa | approved | 1 of 1 |  |
 | airplane-components | approved | 1 of 1 |  |
@@ -116,7 +116,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | lateral-static-stability-md | approved | 6 of 6 |  |
 | lateral-static-stability-mp | approved | 6 of 6 |  |
 | lift-coefficient-required | draft | 5 of 5 |  |
-| lift-to-drag-ratio | draft | 0 of 2 | drag-force (aerobuildup-evaluation: not approved); lift-force (aerobuildup-evaluation: not approved) |
+| lift-to-drag-ratio | draft | 2 of 2 |  |
 | linear-lift-curve-inverse | draft | 6 of 6 |  |
 | maneuvering-speed | approved | 5 of 5 |  |
 | mass-envelope | draft | 21 of 21 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: best-rate-of-climb: not approved; embedded: propeller-table-lookup: not approved via best-rate-of-climb; embedded: thrust-at-airspeed-from-coefficient: not approved via best-rate-of-climb; embedded: max-level-speed: not approved |
