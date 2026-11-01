@@ -18,6 +18,7 @@ from aero_kernel.tests.asb_fakes import (
     FAKE_AC_X,
     FAKE_CENTRELINE_AREA,
     FAKE_CENTRELINE_GAP,
+    FAKE_DEFAULT_REFERENCE,
     FAKE_REFERENCE,
     FakeAirfoil,
     FakeAirplane,
@@ -413,3 +414,12 @@ def test_a_vertical_v_tail_has_no_horizontal_surface_properties() -> None:
     with pytest.raises(FormulaError, match="no horizontal planform") as raised:
         surface_properties(vertical, "VTail")
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+
+
+def test_the_regime_sections_take_the_mac_from_aerosandbox() -> None:
+    """The one producer of the MAC (#1342): the fake wing reports 0.21 m for Main, 0.08 m for Fin."""
+    sections = asb_airplane.surface_sections(geometry())
+    by_wing = {key: s.c_mac_m for key, s in sections.items()}
+    for key, wing in (geometry().wings or {}).items():
+        assert sections[key].chords_m == tuple(x.chord for x in wing.x_secs)
+        assert by_wing[key] == FAKE_REFERENCE.get(wing.name, FAKE_DEFAULT_REFERENCE)[2]

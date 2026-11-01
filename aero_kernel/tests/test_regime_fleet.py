@@ -6,6 +6,7 @@ test from AeroSandbox, the one producer.
 """
 
 import math
+from collections.abc import Sequence
 
 import pytest
 from aero_kernel.reference_fleet import FleetMember, aircraft_input
@@ -45,6 +46,29 @@ def warnings_of(
         if "wing" in warning.detail:
             by_type[types[str(warning.detail["wing"])]].append(warning)
     return by_type
+
+
+def band_of(re_mac: float) -> str | None:
+    """The surface code ADR 0028 (amended) gives a Reynolds number at the MAC."""
+    if re_mac < 3e4:
+        return OUTSIDE
+    if re_mac < 7e4:
+        return "reynolds_bubble_sensitive"
+    return "reynolds_above_band" if re_mac > 1e6 else None
+
+
+def assert_regime_per_surface(warnings: Sequence[KernelWarning], main_wing: str) -> None:
+    """A fleet value's Reynolds warnings: present, each naming its surface, judged at the surface's
+    MAC (never the main wing outside the band from its tip strips), the device ones naming the device."""
+    reynolds = [w for w in warnings if w.code.startswith("reynolds_")]
+    assert reynolds, "the fleet flies at low Reynolds number somewhere"
+    for warning in reynolds:
+        assert "wing" in warning.detail, warning
+        if warning.code == "reynolds_outside_band_at_device":
+            assert "device" in warning.detail, warning
+            continue
+        assert warning.code == band_of(float(warning.detail["re_mac"])), warning  # pyright: ignore[reportArgumentType]
+    assert not [w for w in reynolds if w.code == OUTSIDE and w.detail["wing"] == main_wing]
 
 
 def surface_codes(warnings: list[KernelWarning]) -> list[str]:
