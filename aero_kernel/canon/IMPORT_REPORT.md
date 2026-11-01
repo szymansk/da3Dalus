@@ -117,7 +117,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | lateral-static-stability-mp | approved | 6 of 6 |  |
 | lift-coefficient-required | draft | 5 of 5 |  |
 | lift-to-drag-ratio | draft | 0 of 2 | drag-force (aerobuildup-evaluation: not approved); lift-force (aerobuildup-evaluation: not approved) |
-| linear-lift-curve-inverse | draft | 2 of 6 | lift-curve-slope-best-glide (zero-lift-angle-from-polar: not approved); lift-curve-slope-minimum-sink (zero-lift-angle-from-polar: not approved); zero-lift-angle-best-glide (zero-lift-angle-from-polar: not approved); zero-lift-angle-minimum-sink (zero-lift-angle-from-polar: not approved) |
+| linear-lift-curve-inverse | draft | 6 of 6 |  |
 | maneuvering-speed | approved | 5 of 5 |  |
 | mass-envelope | draft | 21 of 21 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: best-rate-of-climb: not approved; embedded: propeller-table-lookup: not approved via best-rate-of-climb; embedded: thrust-at-airspeed-from-coefficient: not approved via best-rate-of-climb; embedded: max-level-speed: not approved |
 | max-level-speed | draft | 12 of 12 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
@@ -154,7 +154,7 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | vertical-tail-volume | approved | 4 of 4 |  |
 | weight-from-mass | approved | 2 of 2 |  |
 | wing-loading | approved | 3 of 3 |  |
-| zero-lift-angle-from-polar | draft | 6 of 6 |  |
+| zero-lift-angle-from-polar | approved | 6 of 6 |  |
 
 ### Unmapped inputs
 

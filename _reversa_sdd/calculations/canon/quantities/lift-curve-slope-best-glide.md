@@ -16,7 +16,7 @@ type: scalar
 
 # Lift-curve slope at the minimum-drag speed · `C_Lalpha,md`
 
-The slope `∂C_L/∂α` of the computed lift curve at its zero-lift point, at the minimum-drag speed (AeroBuildup stability derivative `CLa`).
+The slope `∂C_L/∂α` of the computed lift curve at its zero-lift point, at the minimum-drag speed (exact, by automatic differentiation of the AeroBuildup model).
 
 **Unit.** `1/rad`
 

@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: single
-status: draft
+status: approved
 output: zero-lift-angle-best-glide, lift-curve-slope-best-glide, zero-lift-angle-minimum-sink, lift-curve-slope-minimum-sink
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/single
   - kind/optimization
-  - status/draft
+  - status/approved
 tex: \begin{aligned}\alpha_0 = \text{solve}_{\alpha}\; & C_L(V,\alpha) = 0, \qquad C_{L\alpha} = \left.\tfrac{\partial C_L}{\partial \alpha}\right|_{V,\,\alpha_0}\end{aligned}
 inputs: {airplane: airplane, v: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {alpha_0: null, cl_alpha: null}
@@ -33,15 +33,17 @@ applications:
 
 ```
 alpha_0  := root over alpha of  C_L(V, alpha) = 0       # AeroBuildup inside asb.Opti
-C_Lalpha := dC_L/dalpha at (V, alpha_0)                 # AeroBuildup stability derivative CLa
+C_Lalpha := dC_L/dalpha at (V, alpha_0)                 # exact, by automatic differentiation of the same model
 ```
 
 **Produces** [[zero-lift-angle-best-glide]] · [[lift-curve-slope-best-glide]] · [[zero-lift-angle-minimum-sink]] · [[lift-curve-slope-minimum-sink]]  ·  **from** [[airplane]] · [[minimum-drag-speed]] · [[minimum-sink-speed]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
 
 **Kind: an optimisation problem (a root of the lift curve).** α is the one decision variable, solved by
 IPOPT through `asb.Opti` with AeroBuildup inside the constraint `C_L(V, α) = 0`, at the speed of the
-application. The slope is then read from AeroBuildup's stability derivatives at the solved point
-(`run_with_stability_derivatives(alpha=True)`, key `CLa`, per radian, by finite difference). Approval asks, on top of
+application. The slope is then the exact derivative `dC_L/dα` of the same AeroBuildup model at the solved
+point, per radian, by automatic differentiation (CasADi) of the model function the solve used (#1336), never a
+finite difference: a finite difference needs a step, and AeroSandbox's step is a constant the canon does not
+own (maintainer 2026-11-01). Approval asks, on top of
 source and scale: **no bound active at the solution**, and **what is returned when the solver fails**:
 never a value.
 
@@ -55,8 +57,8 @@ computed lift curve is not linear there. Measured on BRYAN at 8 m/s, sea level:
 
 The root of `C_L` is a property of the aircraft at that speed. A sweep would give the same root, but it
 needs a range and a step the canon does not have. The solve needs neither: no constant beyond IPOPT's own.
-Measured cost: about 6 s per solve, of which 3.3 s build the symbolic AeroBuildup model. #1336
-reuses that model across solves.
+Measured cost: about 6 s per solve, of which 3.3 s build the symbolic AeroBuildup model. Since #1336 a
+worker reuses that model across solves of the same airplane, so a repeat solve costs about 1–2 s.
 
 **Why two applications, at `V_md` and `V_mp`.** The zero-lift angle moves with the Reynolds number:
 - BRYAN, sea level: −3.6° at 8 m/s, −4.3° at 12 m/s, −5.3° at 20 m/s.
@@ -92,6 +94,10 @@ the one nearest 0°: a second root on the negative-stall branch lies far from th
 **Convergence.** IPOPT's own criterion (`tol` = 1·10⁻⁸). On failure, or at an active bound: `not_converged`
 with the solver status. The slope is returned only together with a converged root.
 
+**The slope.** `C_Lα` is evaluated by automatic differentiation of the AeroBuildup model function with
+respect to α at `(V, α_0)`: the derivative of the very model whose root was solved, exact to rounding, with no
+step size and no second AeroBuildup run.
+
 **Dimensional check.** ⚪ procedural, not an algebraic law.
 
 **Source.** 🟢 SOURCED
@@ -123,4 +129,7 @@ None in aero_kernel yet.
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved** (maintainer, 2026-11-01), with the slope `C_Lα` by automatic differentiation of the model
+> function instead of AeroBuildup's finite-difference stability derivative (option a): no step size the canon
+> does not own, no second run, and the slope of the very model whose root was solved. This is the relation the
+> implementations are measured against.
