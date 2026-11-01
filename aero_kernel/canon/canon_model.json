@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:d54dded7de619fec62435ddd4a9dc37492882d2303b6b57a78adf66ab811e131",
+  "content_hash": "sha256:905c5afe73d7e4cda332f9945af023edf64a7fe5d98bd7a6653d81ed3922a361",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -1682,63 +1682,6 @@
           },
           "postconditions": [],
           "preconditions": [],
-          "tool": "APP",
-          "uncertainty": null,
-          "variables": [],
-          "worlds": []
-        },
-        "linear-lift-curve-inverse": {
-          "applications": [
-            {
-              "bind": {
-                "alpha_0": "calc:zero-lift-angle-best-glide",
-                "cl": "calc:lift-coefficient-best-glide",
-                "cl_alpha": "calc:lift-curve-slope-best-glide"
-              },
-              "given": null,
-              "id": "best_glide",
-              "produce": {
-                "alpha": "calc:angle-of-attack-best-glide-probe"
-              },
-              "when": null
-            },
-            {
-              "bind": {
-                "alpha_0": "calc:zero-lift-angle-minimum-sink",
-                "cl": "calc:lift-coefficient-minimum-sink",
-                "cl_alpha": "calc:lift-curve-slope-minimum-sink"
-              },
-              "given": null,
-              "id": "minimum_sink",
-              "produce": {
-                "alpha": "calc:angle-of-attack-minimum-sink-probe"
-              },
-              "when": null
-            }
-          ],
-          "cost": "instant",
-          "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
-          "inputs": {
-            "alpha_0": null,
-            "cl": null,
-            "cl_alpha": null
-          },
-          "kind": "law",
-          "optional": [],
-          "outputs": {
-            "alpha": null
-          },
-          "postconditions": [],
-          "preconditions": [
-            {
-              "applications": null,
-              "id": "cl_within_linear_range",
-              "on_violation": "error",
-              "parameter": "cl"
-            }
-          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
@@ -3950,23 +3893,6 @@
           "uncertainty": null,
           "unit": "deg"
         },
-        "angle-of-attack-best-glide-probe": {
-          "at_most": null,
-          "checks": "angle-of-attack-best-glide",
-          "consistency": null,
-          "data": null,
-          "discipline": "glide",
-          "group": null,
-          "module": null,
-          "point": "best-glide",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "alpha_bg,probe",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "deg"
-        },
         "angle-of-attack-minimum-sink": {
           "at_most": null,
           "checks": null,
@@ -3980,23 +3906,6 @@
           "role": "output",
           "stage": null,
           "symbol": "alpha_ms",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "deg"
-        },
-        "angle-of-attack-minimum-sink-probe": {
-          "at_most": null,
-          "checks": "angle-of-attack-minimum-sink",
-          "consistency": null,
-          "data": null,
-          "discipline": "glide",
-          "group": null,
-          "module": null,
-          "point": "minimum-sink",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "alpha_ms,probe",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
@@ -4955,7 +4864,7 @@
           "discipline": "glide",
           "group": null,
           "module": null,
-          "point": null,
+          "point": "best-glide",
           "positive": null,
           "role": "derived",
           "stage": "operating-points",

@@ -63,11 +63,15 @@ worker reuses that model across solves of the same airplane, so a repeat solve c
 **Why two applications, at `V_md` and `V_mp`.** The zero-lift angle moves with the Reynolds number:
 - BRYAN, sea level: −3.6° at 8 m/s, −4.3° at 12 m/s, −5.3° at 20 m/s.
 
-So the zero-lift angle has no single value. Its only reader is the Probe [[linear-lift-curve-inverse]],
-which inverts the lift curve at `C_L,md` and at `C_L,mp` and compares with the optimum α of
-[[minimum-drag-speed-from-polar]] and [[minimum-sink-speed-from-polar]]. Each application therefore
-binds the speed of the optimum it is compared with, so both sides of the Probe see the same Reynolds
-number. A Reynolds-dependent quantity carries its condition in its name (STAND §2).
+So the zero-lift angle has no single value. Each application binds the speed of one optimum,
+[[minimum-drag-speed-from-polar]] and [[minimum-sink-speed-from-polar]], so its α_0 and C_Lα hold at that
+optimum's Reynolds number. A Reynolds-dependent quantity carries its condition in its name (STAND §2).
+
+**Readers.** No canon formula reads these four quantities. They are characteristics of the lift curve
+that a designer requests, e.g. for the wing incidence. Their former reader, the Probe
+`linear-lift-curve-inverse`, was deleted (maintainer, 2026-11-01): once α_0 and C_Lα are exact at the
+zero-lift root, its mismatch against the optimum α measured only the curvature of the computed curve. No rule
+judged that number, and the Probe would have needed a bound of the linear range that has no source.
 
 **Configuration.** The clean airplane as given (`airplane`), all devices as the geometry states them.
 Mass and load factor do not enter: the root of `C_L` is independent of the weight.

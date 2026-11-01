@@ -22,4 +22,3 @@ The angle of attack at which the computed lift coefficient is zero, at the Reyno
 
 **Produced by.** [[zero-lift-angle-from-polar]]
 
-**Used by.** [[linear-lift-curve-inverse]]
