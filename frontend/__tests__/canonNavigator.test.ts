@@ -313,7 +313,7 @@ describe("the connected navigator", () => {
     expect(panel).toContain("notice · reynolds_bubble_sensitive");
   });
 
-  it("marks a value with an error-severity warning and shows the error", async () => {
+  it("marks a value with an error-severity warning as invalid, not as failed", async () => {
     const error = {
       severity: "error",
       code: "mach_beyond_validity",
@@ -327,9 +327,11 @@ describe("the connected navigator", () => {
     );
     await settle();
     await selectAndCompute(nav, "minimum-drag-speed");
-    expect(badgeState(nav, "minimum-drag-speed")).toBe("warning");
+    expect(badgeState(nav, "minimum-drag-speed")).toBe("invalid");
     const panel = nav.document.getElementById("kres")!.textContent!;
     expect(panel).toContain("error · mach_beyond_validity");
+    expect(panel).toContain("not physically meaningful");
+    expect(panel).not.toContain("failed");
   });
 
   describe("an error", () => {

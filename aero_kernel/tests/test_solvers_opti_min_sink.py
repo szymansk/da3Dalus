@@ -9,7 +9,7 @@ from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import MinSinkSolution, OptiAdapter, StallRequest
 from aero_kernel.solvers.regime import regime_by_surface
-from aero_kernel.tests.planform_stand_in import stand_in_surface_sections
+from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
 from aero_kernel.tests.test_solvers_opti_glide import (
     GRAVITY,
@@ -65,7 +65,11 @@ async def test_the_regime_warnings_are_those_of_the_optimum_speed(
     adapter = OptiAdapter(InProcessRuntime())
     result = await adapter.min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)
     expected = regime_by_surface(
-        stand_in_surface_sections(airplane()), 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
+        stand_in_surface_sections(airplane()),
+        6.0,
+        AIR.speed_of_sound,
+        AIR.kinematic_viscosity,
+        canon_bands(),
     )
     assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
     assert result.warnings == tuple(expected)

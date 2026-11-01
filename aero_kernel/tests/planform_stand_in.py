@@ -7,15 +7,18 @@ producer in the kernel: it lives in the tests, and the aero tier compares the re
 """
 
 import math
+from functools import cache
 from itertools import pairwise
 
+from aero_kernel.build import shipped_build
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry, Wing
 from aero_kernel.geometry_properties import SurfaceProperties
-from aero_kernel.solvers.regime import SurfaceSections
+from aero_kernel.rules import Rules
+from aero_kernel.solvers.regime import RegimeBands, SurfaceSections
 from aero_kernel.surface_chain import oriented_chain
 
-__all__ = ["stand_in_surface_properties", "stand_in_surface_sections"]
+__all__ = ["canon_bands", "stand_in_surface_properties", "stand_in_surface_sections"]
 
 # A point of the planform chain: y, chord, x of the leading edge (all in m).
 _Point = tuple[float, float, float]
@@ -136,3 +139,12 @@ def stand_in_surface_sections(airplane: AirplaneGeometry) -> dict[str, SurfaceSe
         key: SurfaceSections.of(wing, stand_in_mac(wing))
         for key, wing in (airplane.wings or {}).items()
     }
+
+
+@cache
+def canon_bands() -> RegimeBands:
+    """The regime bands of the shipped canon (rule ``reynolds-mach-regime``), without overrides.
+
+    Read on first use, never at import: importing a test helper must not load the shipped build.
+    """
+    return RegimeBands.of(Rules(shipped_build().model))

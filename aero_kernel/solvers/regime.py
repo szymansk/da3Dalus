@@ -11,18 +11,40 @@ from itertools import pairwise
 from typing import Self
 
 from aero_kernel.geometry import Wing
+from aero_kernel.rules import Rules
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.devices import segment_label
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-__all__ = ["SurfaceSections", "regime_by_surface"]
+__all__ = ["REGIME_RULE", "RegimeBands", "SurfaceSections", "regime_by_surface"]
 
-# The RC/UAV regime of ADR 0028, defined by flow physics.
-_RE_BAND_MIN = 3.0e4
-_RE_BUBBLE_MAX = 7.0e4
-_RE_BAND_MAX = 1.0e6
-_MACH_LIMIT = 0.3
-_MACH_VALIDITY = 0.6
+# The canon rule of the regime bands (``rules.yaml``, ADR 0028).
+REGIME_RULE = "reynolds-mach-regime"
+
+
+class RegimeBands(BaseModel):
+    """The RC/UAV regime of ADR 0028, defined by flow physics, as the canon rule states it.
+
+    Attributes:
+        re_band_min: Lower end of the core chord Reynolds band.
+        re_bubble_max: Upper end of the bubble-sensitive part of the band.
+        re_band_max: Upper end of the core band.
+        mach_limit: Highest Mach number treated as incompressible.
+        mach_validity: Highest Mach number at which a value is physically meaningful.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    re_band_min: float = Field(gt=0.0, allow_inf_nan=False)
+    re_bubble_max: float = Field(gt=0.0, allow_inf_nan=False)
+    re_band_max: float = Field(gt=0.0, allow_inf_nan=False)
+    mach_limit: float = Field(gt=0.0, allow_inf_nan=False)
+    mach_validity: float = Field(gt=0.0, allow_inf_nan=False)
+
+    @classmethod
+    def of(cls, rules: Rules) -> Self:
+        """Read the bands from the canon rule ``reynolds-mach-regime`` (with the caller's overrides)."""
+        return cls(**{name: rules.value(REGIME_RULE, name) for name in cls.model_fields})
 
 
 class SurfaceSections(BaseModel):
@@ -32,7 +54,7 @@ class SurfaceSections(BaseModel):
         chords_m: The chord of each section (station) in m, all > 0.
         spans_m: The span of each segment between two adjacent stations in m: the distance of the
             leading edges in the y-z plane, the plane AeroBuildup measures a section's span in (y for a
-            wing, z for a fin, both for a dihedral panel); at least one > 0.
+            wing, z for a fin, both for a dihedral panel); all > 0 (``duplicate_section``).
         c_mac_m: The mean aerodynamic chord of the surface in m (AeroSandbox's, the one producer:
             ``Wing.mean_aerodynamic_chord()``, which is the area-weighted chord ``int c^2 dy / int c dy``).
         devices: The label of the control device on each segment, ``None`` where there is none.
@@ -55,8 +77,8 @@ class SurfaceSections(BaseModel):
         if not all(math.isfinite(c) and c > 0.0 for c in self.chords_m):
             msg = "every chord must be finite and > 0"
             raise ValueError(msg)
-        if not all(math.isfinite(s) and s >= 0.0 for s in self.spans_m) or sum(self.spans_m) <= 0.0:
-            msg = "the spans must be finite, >= 0 and not all zero"
+        if not all(math.isfinite(s) and s > 0.0 for s in self.spans_m):
+            msg = "every span must be finite and > 0 (validation refuses a duplicate section)"
             raise ValueError(msg)
         return self
 
@@ -152,11 +174,6 @@ def _shares(sections: SurfaceSections, segments: Sequence[int], chord_limit: flo
     return _Shares(span=span, area=area, span_below=span_below, area_below=area_below)
 
 
-def _ratio(part: float, whole: float) -> float:
-    """``part / whole``; zero for an empty whole (a device on segments of zero span)."""
-    return part / whole if whole > 0.0 else 0.0
-
-
 def _lowest(chords: Sequence[float], stations: Sequence[int]) -> int:
     """The station of the smallest chord among ``stations`` (the first one on a tie)."""
     return min(stations, key=lambda i: chords[i])
@@ -169,6 +186,7 @@ class _Flow(BaseModel):
 
     v_ms: float
     nu: float
+    bands: RegimeBands
 
     def reynolds(self, chord: float) -> float:
         """The chord Reynolds number ``V c / nu``."""
@@ -182,8 +200,8 @@ class _Flow(BaseModel):
 def _surface_detail(name: str, sections: SurfaceSections, flow: _Flow) -> dict[str, JsonValue]:
     """What every Reynolds warning of a surface carries: where, and how much of it (#1342)."""
     everything = range(len(sections.spans_m))
-    band = _shares(sections, everything, flow.chord_at(_RE_BAND_MIN))
-    bubble = _shares(sections, everything, flow.chord_at(_RE_BUBBLE_MAX))
+    band = _shares(sections, everything, flow.chord_at(flow.bands.re_band_min))
+    bubble = _shares(sections, everything, flow.chord_at(flow.bands.re_bubble_max))
     station = _lowest(sections.chords_m, range(len(sections.chords_m)))
     return {
         "wing": name,
@@ -191,36 +209,36 @@ def _surface_detail(name: str, sections: SurfaceSections, flow: _Flow) -> dict[s
         "c_mac_m": sections.c_mac_m,
         "re_min": flow.reynolds(sections.chords_m[station]),
         "re_min_station": station,
-        "area_share_below_band": _ratio(band.area_below, band.area),
-        "area_share_below_bubble": _ratio(bubble.area_below, bubble.area),
-        "span_share_below_band": _ratio(band.span_below, band.span),
+        "area_share_below_band": band.area_below / band.area,
+        "area_share_below_bubble": bubble.area_below / bubble.area,
+        "span_share_below_band": band.span_below / band.span,
     }
 
 
 def _surface_warning(
-    name: str, detail: dict[str, JsonValue], re_mac: float
+    name: str, detail: dict[str, JsonValue], re_mac: float, bands: RegimeBands
 ) -> KernelWarning | None:
     """The one Reynolds warning of a surface, judged by the Reynolds number at its MAC."""
     where = (
         f"lowest {detail['re_min']:.0f} at x_secs[{detail['re_min_station']}], "
-        f"{detail['area_share_below_band']:.0%} of the area below {_RE_BAND_MIN:.0f}"
+        f"{detail['area_share_below_band']:.0%} of the area below {bands.re_band_min:.0f}"
     )
-    if re_mac < _RE_BAND_MIN:
+    if re_mac < bands.re_band_min:
         code, message = (
             "reynolds_outside_band",
-            f"below the core band {_RE_BAND_MIN:.0f}..{_RE_BAND_MAX:.0f} (ADR 0028): its section "
+            f"below the core band {bands.re_band_min:.0f}..{bands.re_band_max:.0f} (ADR 0028): its section "
             "polars (C_L,max, C_D) are less reliable",
         )
-    elif re_mac < _RE_BUBBLE_MAX:
+    elif re_mac < bands.re_bubble_max:
         code, message = (
             "reynolds_bubble_sensitive",
-            f"below {_RE_BUBBLE_MAX:.0f}: laminar separation bubbles dominate and the result is "
+            f"below {bands.re_bubble_max:.0f}: laminar separation bubbles dominate and the result is "
             "sensitive to transition",
         )
-    elif re_mac > _RE_BAND_MAX:
+    elif re_mac > bands.re_band_max:
         code, message = (
             "reynolds_above_band",
-            f"above the core band's {_RE_BAND_MAX:.0f}: the tools stay valid and the physics more benign",
+            f"above the core band's {bands.re_band_max:.0f}: the tools stay valid and the physics more benign",
         )
     else:
         return None
@@ -250,20 +268,20 @@ def _device_warnings(
     its stations, not by the surface's MAC.
     """
     warnings: list[KernelWarning] = []
-    limit = flow.chord_at(_RE_BAND_MIN)
+    limit = flow.chord_at(flow.bands.re_band_min)
     for device, segments in _device_segments(sections).items():
         stations = sorted(set(segments) | {k + 1 for k in segments})
         station = _lowest(sections.chords_m, stations)
         re_min = flow.reynolds(sections.chords_m[station])
-        if re_min >= _RE_BAND_MIN:
+        if re_min >= flow.bands.re_band_min:
             continue
         shares = _shares(sections, segments, limit)
-        span_share = _ratio(shares.span_below, shares.span)
+        span_share = shares.span_below / shares.span
         warnings.append(
             KernelWarning.of(
                 "reynolds_outside_band_at_device",
                 f"Wing {name!r}, device {device!r}: the Reynolds number falls to {re_min:.0f} at "
-                f"x_secs[{station}], below the core band's {_RE_BAND_MIN:.0f} (ADR 0028), on "
+                f"x_secs[{station}], below the core band's {flow.bands.re_band_min:.0f} (ADR 0028), on "
                 f"{span_share:.0%} of the device span; stall and control effectiveness of the "
                 "device are decided there.",
                 detail={
@@ -278,18 +296,18 @@ def _device_warnings(
     return warnings
 
 
-def _mach_warning(mach: float) -> KernelWarning | None:
+def _mach_warning(mach: float, bands: RegimeBands) -> KernelWarning | None:
     """The Mach warning of an evaluation; it depends on no chord, so it is raised once."""
-    if mach > _MACH_VALIDITY:
+    if mach > bands.mach_validity:
         return KernelWarning.of(
             "mach_beyond_validity",
-            f"Mach {mach:.2f} is beyond {_MACH_VALIDITY}: compressibility not modelled",
+            f"Mach {mach:.2f} is beyond {bands.mach_validity}: compressibility not modelled",
             detail={"mach": mach},
         )
-    if mach > _MACH_LIMIT:
+    if mach > bands.mach_limit:
         return KernelWarning.of(
             "mach_above_limit",
-            f"Mach {mach:.2f} is above {_MACH_LIMIT}: compressibility is neglected",
+            f"Mach {mach:.2f} is above {bands.mach_limit}: compressibility is neglected",
             detail={"mach": mach},
         )
     return None
@@ -300,6 +318,7 @@ def regime_by_surface(
     v_ms: float,
     speed_of_sound_ms: float,
     kinematic_viscosity_m2s: float,
+    bands: RegimeBands,
 ) -> list[KernelWarning]:
     """Check the Reynolds and Mach numbers of an evaluation against the RC/UAV regime (ADR 0028).
 
@@ -319,6 +338,7 @@ def regime_by_surface(
         v_ms: Evaluated airspeed in m/s (>= 0).
         speed_of_sound_ms: Speed of sound at the altitude in m/s (> 0).
         kinematic_viscosity_m2s: Kinematic viscosity at the altitude in m^2/s (> 0).
+        bands: The band edges of the canon rule ``reynolds-mach-regime`` (:meth:`RegimeBands.of`).
 
     Returns:
         The warnings, surfaces in the order given (each surface before its devices), Mach last.
@@ -327,12 +347,12 @@ def regime_by_surface(
         ValueError: If the speed, the speed of sound or the viscosity is not finite or not physical.
     """
     _check_flow(v_ms, speed_of_sound_ms, kinematic_viscosity_m2s)
-    flow = _Flow(v_ms=v_ms, nu=kinematic_viscosity_m2s)
+    flow = _Flow(v_ms=v_ms, nu=kinematic_viscosity_m2s, bands=bands)
     warnings: list[KernelWarning] = []
     for name, sections in surfaces.items():
         detail = _surface_detail(name, sections, flow)
-        surface = _surface_warning(name, detail, flow.reynolds(sections.c_mac_m))
+        surface = _surface_warning(name, detail, flow.reynolds(sections.c_mac_m), bands)
         warnings += [] if surface is None else [surface]
         warnings += _device_warnings(name, sections, flow, detail)
-    mach = _mach_warning(v_ms / speed_of_sound_ms)
+    mach = _mach_warning(v_ms / speed_of_sound_ms, bands)
     return [*warnings, *([] if mach is None else [mach])]

@@ -26,7 +26,8 @@ import numpy as np
 from aero_kernel.config import config
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
+from aero_kernel.rules import Rules
+from aero_kernel.runtime import SolverRuntime, WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.aero_model import aero_model, load_casadi, model_key
 from aero_kernel.solvers.aerobuildup import evaluate_forces, scalar, sweep_polar
@@ -41,7 +42,7 @@ from aero_kernel.solvers.devices import (
     roll_hinge_warnings,
     roll_segments,
 )
-from aero_kernel.solvers.regime import regime_by_surface
+from aero_kernel.solvers.regime import RegimeBands, regime_by_surface
 from aero_kernel.solvers.roll_math import (
     EFFECTIVENESS_EXPONENT,
     alpha_for_lift_coefficient,
@@ -182,9 +183,12 @@ class DeviceConfidence(BaseModel):
 
     @model_validator(mode="after")
     def _check_area(self) -> Self:
-        """Require an area to weight with."""
-        if sum(s.area_m2 for s in self.sections) <= 0.0:
-            msg = f"the device {self.device!r} of the wing {self.wing!r} has no area"
+        """Require an area to weight with and a span to share."""
+        if (
+            sum(s.area_m2 for s in self.sections) <= 0.0
+            or sum(s.span_m for s in self.sections) <= 0.0
+        ):
+            msg = f"the device {self.device!r} of the wing {self.wing!r} has no area or no span"
             raise ValueError(msg)
         return self
 
@@ -196,8 +200,7 @@ class DeviceConfidence(BaseModel):
     def span_share_below(self, floor: float) -> float:
         """The share of the device's span whose section confidence is below ``floor``."""
         span = sum(s.span_m for s in self.sections)
-        below = sum(s.span_m for s in self.sections if s.confidence < floor)
-        return below / span if span > 0.0 else 0.0
+        return sum(s.span_m for s in self.sections if s.confidence < floor) / span
 
     def lowest(self) -> SectionConfidence:
         """The section of the lowest confidence (the first one on a tie)."""
@@ -905,6 +908,26 @@ def _recording_airfoil(
     return Recording(name=base.name, coordinates=base.coordinates)
 
 
+def _is_flap_rib_gap(
+    inner: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    outer: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+) -> bool:
+    """Whether two cross-sections are the two copies of a rib where the flap state changes.
+
+    ``asb_airplane._xsecs`` writes such a rib twice, the second ``opt_flap_rib_gap`` further out in
+    y, with the same chord, x and z: the strip between them is a construction of the conversion, not
+    a section of the wing, and belongs to no device (#1348).
+    """
+    gap = config().opt_flap_rib_gap.value
+    a, b = [float(c) for c in inner.xyz_le], [float(c) for c in outer.xyz_le]
+    return (
+        math.isclose(float(inner.chord), float(outer.chord), rel_tol=0.0, abs_tol=0.0)
+        and math.isclose(a[0], b[0], rel_tol=0.0, abs_tol=0.0)
+        and math.isclose(a[2], b[2], rel_tol=0.0, abs_tol=0.0)
+        and math.isclose(b[1] - a[1], gap, rel_tol=1e-9, abs_tol=0.0)
+    )
+
+
 def _wing_sections(
     key: str,
     wing: Any,  # noqa: ANN401  # untyped aerosandbox boundary
@@ -914,7 +937,8 @@ def _wing_sections(
 
     AeroBuildup calls the two ends ``a``, ``b`` of a section in turn, and for a mirrored wing the
     same section again for the mirrored half (``aero_buildup.py:878-892``); the confidence of a
-    section is the chord blend of its two ends, its weight its planform area.
+    section is the chord blend of its two ends, its weight its planform area. The gap strip at a
+    flap boundary is skipped (:func:`_is_flap_rib_gap`).
 
     Raises:
         RuntimeError: If the calls do not come in AeroBuildup's pairs (a defect of ours).
@@ -932,6 +956,8 @@ def _wing_sections(
             msg = f"the recording pass saw cross-sections {a.xsec}, {b.xsec} out of order"
             raise RuntimeError(msg)
         inner, outer = wing.xsecs[a.xsec], wing.xsecs[b.xsec]
+        if _is_flap_rib_gap(inner, outer):
+            continue
         chord_a, chord_b = float(inner.chord), float(outer.chord)
         side = -1.0 if halves == 2 and k % 2 else 1.0
         middle = [(float(inner.xyz_le[i]) + float(outer.xyz_le[i])) / 2.0 for i in range(3)]
@@ -1286,17 +1312,6 @@ def _hinge_warnings(*groups: Sequence[RollSegment]) -> list[KernelWarning]:
     return roll_hinge_warnings(list(unique.values()))
 
 
-async def _regime_warnings(
-    airplane: AirplaneGeometry, v_ms: float, air: AirState
-) -> list[KernelWarning]:
-    """The regime warnings (ADR 0028) of every wing of the airplane at a speed, per surface and device.
-
-    The sections and AeroSandbox's MAC are read in a worker thread, off the event loop (ch. 8.10).
-    """
-    sections = await asyncio.to_thread(surface_sections, airplane)
-    return regime_by_surface(sections, v_ms, air.speed_of_sound, air.kinematic_viscosity)
-
-
 def _diagnostics(started: float, notes: tuple[str, ...] = ()) -> WorkerDiagnostics:
     """The diagnostics of a worker whose IPOPT run succeeded."""
     return WorkerDiagnostics(
@@ -1629,6 +1644,35 @@ class OptiAdapter(SolverAdapter):
         "neuralfoil": "neuralfoil",
     }
 
+    def __init__(self, runtime: SolverRuntime, rules: Rules | None = None) -> None:
+        """Create the adapter.
+
+        Args:
+            runtime: The runtime of the owning ``compute()`` call or ``CachedKernel``.
+            rules: The rule parameters of the call (the canon's, with the caller's overrides); the
+                regime bands are read from them. If omitted, those of the shipped canon.
+        """
+        super().__init__(runtime)
+        if rules is None:
+            from aero_kernel.build import (
+                shipped_build,  # build imports this module
+            )
+
+            rules = Rules(shipped_build().model)
+        self.rules = rules
+
+    async def _regime_warnings(
+        self, airplane: AirplaneGeometry, v_ms: float, air: AirState
+    ) -> list[KernelWarning]:
+        """The regime warnings (ADR 0028) of every wing at a speed, per surface and device.
+
+        The bands are the canon rule ``reynolds-mach-regime``'s; the sections and AeroSandbox's MAC
+        are read in a worker thread, off the event loop (ch. 8.10).
+        """
+        sections = await asyncio.to_thread(surface_sections, airplane)
+        bands = RegimeBands.of(self.rules)
+        return regime_by_surface(sections, v_ms, air.speed_of_sound, air.kinematic_viscosity, bands)
+
     def settings(self) -> dict[str, JsonValue]:
         """Every constant that shapes an optimisation result: model size, alpha sweep, bounds, limits.
 
@@ -1736,7 +1780,7 @@ class OptiAdapter(SolverAdapter):
         request, flaps = self._request(airplane, mass_kg, gravity, n_load, air)
         solution = await self.runtime.run_cpu(stall_worker, request)
         warnings = _flap_warnings(flaps, solution.diagnostics)
-        warnings += await _regime_warnings(airplane, solution.v_s, air)
+        warnings += await self._regime_warnings(airplane, solution.v_s, air)
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)
         return Stall(solution=solution, warnings=tuple(warnings))
 
@@ -1768,7 +1812,7 @@ class OptiAdapter(SolverAdapter):
         request, flaps = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(best_glide_worker, request)
         warnings = _flap_warnings(flaps)
-        warnings += await _regime_warnings(airplane, solution.v_md, air)
+        warnings += await self._regime_warnings(airplane, solution.v_md, air)
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
 
@@ -1840,7 +1884,7 @@ class OptiAdapter(SolverAdapter):
         request, flaps = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(min_sink_worker, request)
         warnings = _flap_warnings(flaps)
-        warnings += await _regime_warnings(airplane, solution.v_mp, air)
+        warnings += await self._regime_warnings(airplane, solution.v_mp, air)
         if solution.stall_limited:
             warnings.append(_stall_limited_warning(solution))
         logger.debug("minimum-sink speed %.4f m/s at %.2f deg", solution.v_mp, solution.alpha_mp)
@@ -1906,7 +1950,7 @@ class OptiAdapter(SolverAdapter):
         warnings = _hinge_warnings(driven, flaps)
         if solution.diagnostics is not None or flaps:
             warnings.append(_fit_range_warning(solution.diagnostics, flaps))
-        warnings += await _regime_warnings(airplane, v_ms, air)
+        warnings += await self._regime_warnings(airplane, v_ms, air)
         logger.debug("steady roll %.4f rad/s at %.2f deg", solution.p_rad_s, solution.alpha_deg)
         return SteadyRoll(
             p_rad_s=solution.p_rad_s,
@@ -1960,7 +2004,7 @@ class OptiAdapter(SolverAdapter):
             solution.alpha_deg,
         )
         return MomentSlope(
-            solution=solution, warnings=tuple(await _regime_warnings(airplane, v_ms, air))
+            solution=solution, warnings=tuple(await self._regime_warnings(airplane, v_ms, air))
         )
 
     def _point_flaps(self, airplane: AirplaneGeometry, v_ms: float) -> list[FlapSegment]:
@@ -2006,7 +2050,7 @@ class OptiAdapter(SolverAdapter):
             )
         request = EvaluationRequest(airplane=airplane, air=air, v_ms=v_ms, alpha_deg=alpha_deg)
         forces = await self.runtime.run_cpu(evaluation_worker, request)
-        warnings = [*_flap_warnings(flaps), *await _regime_warnings(airplane, v_ms, air)]
+        warnings = [*_flap_warnings(flaps), *await self._regime_warnings(airplane, v_ms, air)]
         logger.debug(
             "AeroBuildup at %.4f m/s, %.2f deg: L %.4f N, D %.4f N",
             v_ms,
@@ -2040,7 +2084,7 @@ class OptiAdapter(SolverAdapter):
             airplane=airplane, air=air, v_ms=v_ms, model_key=self._model_key(airplane, 0.0)
         )
         solution = await self.runtime.run_cpu(zero_lift_worker, request)
-        warnings = [*_flap_warnings(flaps), *await _regime_warnings(airplane, v_ms, air)]
+        warnings = [*_flap_warnings(flaps), *await self._regime_warnings(airplane, v_ms, air)]
         logger.debug(
             "zero-lift angle %.4f deg, lift slope %.4f per rad at %.4f m/s",
             solution.alpha_0_deg,

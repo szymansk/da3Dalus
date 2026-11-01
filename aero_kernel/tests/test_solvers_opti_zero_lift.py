@@ -15,7 +15,7 @@ from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.aero_model import model_key
 from aero_kernel.solvers.opti import OptiAdapter, ZeroLiftRequest, ZeroLiftSolution
 from aero_kernel.solvers.regime import regime_by_surface
-from aero_kernel.tests.planform_stand_in import stand_in_surface_sections
+from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
 
 pytestmark = pytest.mark.asyncio
@@ -61,7 +61,11 @@ async def test_the_regime_warnings_are_those_of_the_bound_speed(
     monkeypatch.setattr(opti_module, "zero_lift_worker", canned())
     result = await OptiAdapter(InProcessRuntime()).zero_lift(airplane(), AIR, 6.0)
     expected = regime_by_surface(
-        stand_in_surface_sections(airplane()), 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
+        stand_in_surface_sections(airplane()),
+        6.0,
+        AIR.speed_of_sound,
+        AIR.kinematic_viscosity,
+        canon_bands(),
     )
     assert result.warnings == tuple(expected)
 

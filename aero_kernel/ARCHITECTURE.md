@@ -787,7 +787,9 @@ caller's responsibility.
     bind them, and the kinematic viscosity is `mu / rho` of the bound values, never recomputed from the altitude).
     `surfaces` are `SurfaceSections` per wing key (`asb_airplane.surface_sections`: the stored chords, the y-z
     spans of the segments and their devices, and AeroSandbox's `mean_aerodynamic_chord()`, the one producer of
-    the MAC). Re is evaluated at every station and aggregated: per surface at the MAC (the area-weighted
+    the MAC). The band edges are the parameters of the canon rule `reynolds-mach-regime` (`rules.yaml`,
+    sourced from ADR 0028), read through the call's `Rules`, so they appear in `Provenance.rules_used` and
+    can be overridden. Re is evaluated at every station and aggregated: per surface at the MAC (the area-weighted
     Reynolds number) — `reynolds_outside_band` (`warning`, Re_MAC < 3·10⁴), `reynolds_bubble_sensitive`
     (`notice`, 3·10⁴ ≤ Re_MAC < 7·10⁴), `reynolds_above_band` (`notice`, Re_MAC > 10⁶) — and per control
     device: `reynolds_outside_band_at_device` (`warning`) when a station of the device's span lies below 3·10⁴.
@@ -948,7 +950,8 @@ caller's responsibility.
       below `min_confidence` 0.85, the app's `low_re_low_confidence_flag`, duplicated because the kernel
       imports nothing from `app/`, #1342; a section's confidence is the chord blend of its two ends and its
       weight its planform area, as AeroBuildup weights its forces, `aero_buildup.py:686-688, 812-837`, the
-      calls paired as AeroBuildup makes them, `a`, `b`, then the mirrored half; `detail`: wing, device, mean,
+      calls paired as AeroBuildup makes them, `a`, `b`, then the mirrored half; the gap strip the conversion
+      writes at a flap boundary, `opt_flap_rib_gap` wide, is no section of a device; `detail`: wing, device, mean,
       threshold, the share of the device span below it and the lowest section with its location) from
       `stall-speed` and the AeroBuildup world of `roll-rate`, and `flap_deflection_beyond_validity` (a flap
       above 30 deg; `detail`: limit and flaps) from `stall-speed` and both roll worlds. Both thresholds

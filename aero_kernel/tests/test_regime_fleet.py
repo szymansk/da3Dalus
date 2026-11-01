@@ -12,7 +12,7 @@ import pytest
 from aero_kernel.reference_fleet import FleetMember, aircraft_input
 from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.regime import SurfaceSections, regime_by_surface
-from aero_kernel.tests.planform_stand_in import stand_in_surface_sections
+from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
 
 RHO, MU, A, G = 1.225, 1.7894e-5, 340.294, 9.80665
 CL_STALL_ESTIMATE = 1.4
@@ -39,7 +39,7 @@ def warnings_of(
 ) -> dict[str, list[KernelWarning]]:
     """The Reynolds warnings per surface type of the member at its stall estimate."""
     airplane = aircraft_input(member).airplane
-    found = regime_by_surface(sections, stall_estimate(member), A, MU / RHO)
+    found = regime_by_surface(sections, stall_estimate(member), A, MU / RHO, canon_bands())
     types = {key: str(wing.surface_type) for key, wing in (airplane.wings or {}).items()}
     by_type: dict[str, list[KernelWarning]] = {t: [] for t in types.values()}
     for warning in found:

@@ -248,7 +248,7 @@ async def _evaluate(
         request,
         solvers=Solvers(
             atmosphere=AtmosphereAdapter(runtime),
-            opti=OptiAdapter(runtime),
+            opti=OptiAdapter(runtime, rules),
             avl=AvlAdapter(runtime, rules),
             geometry=GeometryAdapter(runtime),
             rules=rules,

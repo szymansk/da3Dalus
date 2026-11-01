@@ -151,3 +151,41 @@ def test_a_device_without_a_section_on_its_span_is_a_defect_of_ours() -> None:
     away = opti_module.DeviceSpan(wing="Main", device="flap", intervals=((0.5, 0.6),))
     with pytest.raises(RuntimeError, match="no section"):
         opti_module._device_confidence(plane, ["Main"], calls, [away])  # pyright: ignore[reportPrivateUsage, reportArgumentType]
+
+
+class _FlappedWing(_Wing):
+    """The converted wing with a flap boundary at y 0.1 m: ``_xsecs`` writes that rib twice, the second
+    copy ``opt_flap_rib_gap`` further out, so a strip of that width lies between them."""
+
+    def __init__(self) -> None:
+        from types import SimpleNamespace
+
+        from aero_kernel.config import config
+
+        gap = config().opt_flap_rib_gap.value
+        self.xsecs = [
+            SimpleNamespace(chord=c, xyz_le=[0.0, y, 0.0])
+            for c, y in ((0.3, 0.0), (0.1, 0.1), (0.1, 0.1 + gap), (0.1, 0.2))
+        ]
+
+    def area(self, **_: object) -> list[float]:
+        return [0.02, 1e-7, 0.01]
+
+    def span(self, **_: object) -> list[float]:
+        return [0.1, 1e-6, 0.1]
+
+
+def test_the_gap_strip_at_a_flap_boundary_is_no_section_of_a_device() -> None:
+    """#1348 review: the zero-width strip between the two copies of a flap-boundary rib is a
+    construction of the conversion, not a section of the wing."""
+    from aero_kernel.solvers.opti import _wing_sections  # pyright: ignore[reportPrivateUsage]
+
+    calls = _calls((0, 0.9), (1, 0.5), (1, 0.1), (2, 0.1), (2, 0.7), (3, 0.7))
+    found = _wing_sections("Main", _FlappedWing(), calls)  # pyright: ignore[reportArgumentType]
+    assert [round(s.confidence, 12) for s in found] == [0.8, 0.7]
+    assert [s.span_m for s in found] == [0.1, 0.1]
+
+
+def test_a_device_needs_a_span() -> None:
+    with pytest.raises(ValidationError):
+        flap(section(0.1, 0.0, 0.9))

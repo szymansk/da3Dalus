@@ -6,6 +6,7 @@ import pytest
 from aero_kernel.geometry import Wing
 from aero_kernel.schema import KernelWarning, WarningSeverity
 from aero_kernel.solvers.regime import SurfaceSections, regime_by_surface
+from aero_kernel.tests.planform_stand_in import canon_bands
 from pydantic import ValidationError
 
 SPEED_OF_SOUND = 340.0
@@ -49,7 +50,7 @@ def at(re_mac: float, *chords_re: float) -> SurfaceSections:
 def regime(
     sections: SurfaceSections, v: float = 20.0, a: float = SPEED_OF_SOUND
 ) -> list[KernelWarning]:
-    return regime_by_surface({"Main": sections}, v, a, NU)
+    return regime_by_surface({"Main": sections}, v, a, NU, canon_bands())
 
 
 def test_inside_the_band_gives_no_warning() -> None:
@@ -106,7 +107,11 @@ def test_the_shares_follow_the_linear_chord_of_a_section() -> None:
     1.2 m to 0.3 m over 1 m: chord below 0.45 m on the outer 1/6 of its span (area 1/6 (0.3 + 0.45)/2
     of 0.75), below 1.05 m on the outer 5/6 (area 5/6 (0.3 + 1.05)/2)."""
     (warning,) = regime_by_surface(
-        {"Main": surface((1.2, 0.3), spans=(1.0,), c_mac=0.5)}, 1.0, SPEED_OF_SOUND, NU
+        {"Main": surface((1.2, 0.3), spans=(1.0,), c_mac=0.5)},
+        1.0,
+        SPEED_OF_SOUND,
+        NU,
+        canon_bands(),
     )
     assert warning.code == BUBBLE  # MAC Re 33 333
     assert math.isclose(detail_number(warning, "span_share_below_band"), 1.0 / 6.0)
@@ -160,7 +165,9 @@ def test_the_device_and_the_surface_warn_independently() -> None:
 def test_one_warning_per_surface_and_per_device() -> None:
     """Two surfaces and two devices below the band; Mach is raised once (120 m/s, M 0.35)."""
     tail = surface((0.002, 0.002, 0.002), c_mac=0.002, devices=("left", "right"))
-    warnings = regime_by_surface({"Main": surface((0.05, 0.05)), "Tail": tail}, 120.0, 340.0, NU)
+    warnings = regime_by_surface(
+        {"Main": surface((0.05, 0.05)), "Tail": tail}, 120.0, 340.0, NU, canon_bands()
+    )
     assert [(w.code, w.detail.get("wing"), w.detail.get("device")) for w in warnings] == [
         (OUTSIDE, "Tail", None),
         (AT_DEVICE, "Tail", "left"),
@@ -182,13 +189,17 @@ def test_one_warning_per_surface_and_per_device() -> None:
 def test_mach_bands(mach: float, expected: list[str]) -> None:
     """Re kept inside the band by the viscosity: chord 1 m, Re 5e5."""
     v = mach * SPEED_OF_SOUND
-    found = regime_by_surface({"Main": surface((1.0, 1.0))}, v, SPEED_OF_SOUND, v / 5e5)
+    found = regime_by_surface(
+        {"Main": surface((1.0, 1.0))}, v, SPEED_OF_SOUND, v / 5e5, canon_bands()
+    )
     assert codes(found) == expected
 
 
 def test_beyond_mach_0_6_is_an_error() -> None:
     v = 0.7 * SPEED_OF_SOUND
-    (warning,) = regime_by_surface({"Main": surface((1.0, 1.0))}, v, SPEED_OF_SOUND, v / 5e5)
+    (warning,) = regime_by_surface(
+        {"Main": surface((1.0, 1.0))}, v, SPEED_OF_SOUND, v / 5e5, canon_bands()
+    )
     assert warning.severity is WarningSeverity.ERROR
     assert math.isclose(detail_number(warning, "mach"), 0.7)
 
@@ -196,8 +207,8 @@ def test_beyond_mach_0_6_is_an_error() -> None:
 def test_mach_uses_the_given_speed_of_sound() -> None:
     """100 m/s is Mach 0.29 at 340 m/s but Mach 0.33 at 300 m/s."""
     sections = {"Main": surface((1.0, 1.0))}
-    assert regime_by_surface(sections, 100.0, 340.0, 100.0 / 5e5) == []
-    (warning,) = regime_by_surface(sections, 100.0, 300.0, 100.0 / 5e5)
+    assert regime_by_surface(sections, 100.0, 340.0, 100.0 / 5e5, canon_bands()) == []
+    (warning,) = regime_by_surface(sections, 100.0, 300.0, 100.0 / 5e5, canon_bands())
     assert warning.code == "mach_above_limit"
 
 
@@ -228,7 +239,7 @@ def test_rejects_non_physical_flow(kwargs: dict[str, float]) -> None:
     }
     arguments.update(kwargs)
     with pytest.raises(ValueError, match="must be"):
-        regime_by_surface({"Main": surface((0.3, 0.3))}, **arguments)
+        regime_by_surface({"Main": surface((0.3, 0.3))}, bands=canon_bands(), **arguments)
 
 
 @pytest.mark.parametrize(
@@ -300,3 +311,26 @@ def test_an_unnamed_device_is_named_by_the_rib_it_starts_on() -> None:
         }
     )
     assert SurfaceSections.of(document, 0.1).devices == (None, "device 1")
+
+
+def test_the_bands_are_the_canon_rule_and_an_override_moves_them() -> None:
+    """ADR 0028's edges come from the rule reynolds-mach-regime, never from a literal in the code."""
+    from aero_kernel.build import shipped_build
+    from aero_kernel.rules import Rules
+    from aero_kernel.solvers.regime import REGIME_RULE, RegimeBands
+
+    assert (
+        RegimeBands(
+            re_band_min=3e4, re_bubble_max=7e4, re_band_max=1e6, mach_limit=0.3, mach_validity=0.6
+        )
+        == canon_bands()
+    )
+    rules = Rules(shipped_build().model, {f"{REGIME_RULE}.re_band_min": 2e4})
+    lowered = RegimeBands.of(rules)
+    assert lowered.re_band_min == 2e4
+    (used,) = [u for u in rules.used() if u.parameter == "re_band_min"]
+    assert used.overridden
+    # Re 25 000 at the MAC: below the canon's band, inside the lowered one (bubble-sensitive)
+    sections = {"Main": at(25_000.0, 2e5, 2e5)}
+    assert codes(regime_by_surface(sections, NU, SPEED_OF_SOUND, NU, canon_bands())) == [OUTSIDE]
+    assert codes(regime_by_surface(sections, NU, SPEED_OF_SOUND, NU, lowered)) == [BUBBLE]

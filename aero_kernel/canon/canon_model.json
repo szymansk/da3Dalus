@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:f4dda9ff02bdf1b3c3114f593ee5e98e3d11903fd1814dc5af0398a392689455",
+  "content_hash": "sha256:b66a8ac83528c796f60a7887c49a5f03c82b379688ca982ea780ca572a789330",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6981,6 +6981,65 @@
           "kind": "input",
           "on_violation": "error",
           "parameters": {}
+        },
+        "reynolds-mach-regime": {
+          "applies_to": {
+            "formula": "aerobuildup-evaluation",
+            "quantity": null
+          },
+          "codes": [
+            "reynolds_outside_band",
+            "reynolds_bubble_sensitive",
+            "reynolds_above_band",
+            "reynolds_outside_band_at_device",
+            "mach_above_limit",
+            "mach_beyond_validity"
+          ],
+          "criterion": "The RC/UAV regime of ADR 0028, checked by the AeroBuildup adapter on every evaluation (amended 2026-11-01, #1342). The chord Reynolds number is evaluated at every station and aggregated: per surface at its mean aerodynamic chord (below re_band_min reynolds_outside_band, below re_bubble_max reynolds_bubble_sensitive, above re_band_max reynolds_above_band), and per control device when a station of its span lies below re_band_min (reynolds_outside_band_at_device). The Mach number once: above mach_limit mach_above_limit, above mach_validity mach_beyond_validity. The value is always computed and returned with the declaration.",
+          "kind": "tool",
+          "on_violation": "warning",
+          "parameters": {
+            "mach_limit": {
+              "basis": "sourced",
+              "regime": "regime-independent (a statement about compressibility); the RC/UAV regime lies far below it",
+              "source": "ADR 0028: Anderson, Fundamentals of Aerodynamics 6e, 8.5: below Mach 0.3 the density changes by less than 5 %, the flow is incompressible",
+              "status": "adopted",
+              "unit": "1",
+              "value": 0.3
+            },
+            "mach_validity": {
+              "basis": "sourced",
+              "regime": "regime-independent (a statement about compressibility); the RC/UAV regime lies far below it",
+              "source": "ADR 0028: AVL documentation, Prandtl-Glauert 'expected valid' to about Mach 0.6; NeuralFoil's Laitone correction; above it a value is not physically meaningful (error, amended 2026-11-01, #1342)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 0.6
+            },
+            "re_band_max": {
+              "basis": "sourced",
+              "regime": "defines the RC/UAV regime (ADR 0028): the upper end of the core band",
+              "source": "ADR 0028: Lissaman 1983 p. 228, 'low Re' is 1e4 to 1e6; above it the tools stay valid (NeuralFoil trained to Re about 2.6e8, Sharpe 2024 7.2.5), a notice only",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1000000.0
+            },
+            "re_band_min": {
+              "basis": "sourced",
+              "regime": "defines the RC/UAV regime (ADR 0028): the lower end of the core chord Reynolds band",
+              "source": "ADR 0028 (maintainer 2026-10-14): Lissaman, Low-Reynolds-Number Airfoils, Ann. Rev. Fluid Mech. 15 (1983) p. 227-228: below about 3e4 separation can involve the whole trailing edge; the band edge itself is marked uncited practice in the ADR",
+              "status": "adopted",
+              "unit": "1",
+              "value": 30000.0
+            },
+            "re_bubble_max": {
+              "basis": "sourced",
+              "regime": "defines the RC/UAV regime (ADR 0028): the bubble-sensitive part of the core band",
+              "source": "ADR 0028: Lissaman 1983 p. 228, critical Re about 70 000 (a laminar bubble needs about Re 50 000 of run to reattach); Sharpe 2024 PhD thesis 7.2.4, NeuralFoil's analysis confidence drops near Re 80 000",
+              "status": "adopted",
+              "unit": "1",
+              "value": 70000.0
+            }
+          }
         },
         "roll-device-on-mirrored-surface": {
           "applies_to": {
