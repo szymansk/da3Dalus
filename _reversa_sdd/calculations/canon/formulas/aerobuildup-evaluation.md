@@ -5,7 +5,7 @@ kind: procedure
 tool: AB
 shape: law
 status: approved
-output: lift-force, drag-force, lift-curve-slope, zero-lift-angle
+output: lift-force, drag-force
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -16,7 +16,7 @@ tags:
   - kind/procedure
   - status/approved
 inputs: {airplane: airplane, v: flight-speed, alpha: angle-of-attack, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
-outputs: {l: lift-force, d: drag-force, cl_alpha: lift-curve-slope, alpha_0: zero-lift-angle}
+outputs: {l: lift-force, d: drag-force}
 ---
 
 # Aerodynamic evaluation of the airplane at an operating point
@@ -24,14 +24,12 @@ outputs: {l: lift-force, d: drag-force, cl_alpha: lift-curve-slope, alpha_0: zer
 **Canonical form**
 
 ```
-L, D, CLa, alpha_0 := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere(rho, mu, a)))
+L, D := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere(rho, mu, a)))
 ```
 
-**Produces** [[lift-force]] · [[drag-force]] · [[lift-curve-slope]] · [[zero-lift-angle]]  ·  **from** [[airplane]] · [[flight-speed]] · [[angle-of-attack]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
+**Produces** [[lift-force]] · [[drag-force]]  ·  **from** [[airplane]] · [[flight-speed]] · [[angle-of-attack]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
 
-**Kind: a procedure — the solver.** AeroBuildup returns lift and drag in newtons and, with
-`run_with_stability_derivatives()`, the lift-curve slope (key `CLa`, per radian, by finite
-difference). The zero-lift angle is read off the computed polar. Its internal induced-drag factor `e` is the empirical Nita & Scholz (2012) correlation times a full-scale viscous factor `k_e,D0 = 0.836` (`inviscid.py:25-46`); with NeuralFoil's section profile drag on top, lift-dependent profile drag is partly counted twice. **Declared caveat (ADR 0026, ADR 0023):** on BRYAN AeroBuildup `e = 0.805` against AVL's inviscid 0.875 — about 9 % more induced drag. The Oswald factor shown to users comes from [[parabolic-polar-fit]].
+**Kind: a procedure — the solver.** AeroBuildup returns lift and drag in newtons. Its internal induced-drag factor `e` is the empirical Nita & Scholz (2012) correlation times a full-scale viscous factor `k_e,D0 = 0.836` (`inviscid.py:25-46`); with NeuralFoil's section profile drag on top, lift-dependent profile drag is partly counted twice. **Declared caveat (ADR 0026, ADR 0028):** on BRYAN AeroBuildup `e = 0.805` against AVL's inviscid 0.875 — about 9 % more induced drag. The Oswald factor shown to users comes from [[parabolic-polar-fit]].
 The Reynolds number is formed inside, per section, from `V` and the local chord, `Re = ρ·V·c/μ`, and the
 Mach number as `V/a`, both from the bound atmosphere (#1201): the solver gets `ρ`, `μ` and `a` from
 [[air-density-isa]] and builds no atmosphere of its own from an altitude.
@@ -90,3 +88,15 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > tool limits this entry declares. "Wir wollen ja nicht asb neu implementieren sondern nutzen wo es sinnvoll
 > ist." Convergence and assumptions are AeroBuildup's own (a single evaluation, no iteration of ours). The
 > implementation checklist item holds vacuously: there is no aero_kernel formula for this entry yet.
+
+> **Reopened for approval (2026-10-31).** The lift-curve slope and the zero-lift angle are no longer outputs
+> of this entry. They moved to [[zero-lift-angle-from-polar]], where `α_0` is the root of `C_L(V, α)` and
+> `C_Lα` is read at that root, at the speed of each optimum. Read off this entry's single point, they
+> depended on the caller's α: BRYAN at 4°: `α_0` −7.2° against the root's −3.6° (maintainer, 2026-10-31:
+> "Ist der Nullauftriebswinkel nicht das Ergebnis eines einfachen Opti-Laufs?"). The entry is back to
+> `draft` because its outputs changed; the rest of the text is as approved on 2026-10-25.
+
+> **Approved again** (maintainer, 2026-11-01) with the outputs `L` and `D` only. The reference of the declared
+> caveat moved from ADR 0023 to ADR 0028, which supersedes it; nothing else changed. When #1317 binds the
+> analysis geometry (`analysis-airplane`) instead of `airplane`, the changed input brings this entry back for a
+> short confirmation.

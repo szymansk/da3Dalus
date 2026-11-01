@@ -8,6 +8,7 @@ tags:
   - canon/quantity
   - discipline/glide
   - stage/operating-points
+  - point/best-glide
   - role/derived
 type: scalar
 ---
@@ -20,4 +21,3 @@ The lift coefficient at the optimum of [[minimum-drag-speed-from-polar]].
 
 **Produced by.** [[minimum-drag-speed-from-polar]]
 
-**Used by.** [[linear-lift-curve-inverse]]

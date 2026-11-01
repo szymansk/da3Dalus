@@ -1753,7 +1753,7 @@ model (part of `IMPORT_REPORT.md`).
 | Formula | kind | tool | shape | in → out | applications | preconditions | worlds | cost class | v1 |
 |---|---|---|---|---|---|---|---|---|---|
 | `advance-ratio-from-speed` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
-| `aerobuildup-evaluation` | procedure | AB | law | 4 → 4 | 1 | – | – | seconds | core chain |
+| `aerobuildup-evaluation` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain |
 | `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `airplane-components` | procedure | KAT | law | 1 → 11 | 1 | – | – | instant | probe |
@@ -1776,7 +1776,6 @@ model (part of `IMPORT_REPORT.md`).
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
 | `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
-| `linear-lift-curve-inverse` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `maneuvering-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
 | `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
@@ -1809,6 +1808,7 @@ model (part of `IMPORT_REPORT.md`).
 | `vertical-tail-volume` | law | APP | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `weight-from-mass` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `wing-loading` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
+| `zero-lift-angle-from-polar` | optimization | OPT | single | 5 → 2 | 2 | – | – | seconds | later |
 
 *57 entries; core chain 27, probes 6, later 24. `airplane-configuration` added, `inverted-max-lift-coefficient` removed (its output is `stall-speed`'s `inverted` application).*
 

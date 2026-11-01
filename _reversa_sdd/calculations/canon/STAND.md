@@ -514,7 +514,7 @@ Maintainer; `check_canon.py` meldet es als *open*.
 - `stall-speed` (`rho`), `glide-distance-from-ratio` (beide), `inverted-max-lift-coefficient` (Benennung): der Eintrag sagt nicht, was bei Verletzung geschieht → `warning` gesetzt.
 - `inverted-max-lift-coefficient`: `alpha_range_past_inverted_stall` als `error` gelesen („the value is **not** reported as a minimum“) — der Eintrag nennt zugleich eine DesignWarning. **Entschieden (Koordinator, 14.10.2026):** `error` bleibt — der Kern gibt nie einen Platzhalterwert zurück (A6, ADR 0020); „not reported as a minimum“ heißt: kein Wert.
 - `inverted-max-lift-coefficient`: die Benennungs-Vorbedingung verletzt der Kanon selbst — die Größe `inverted-max-lift-coefficient` trägt keine Auswertebedingung im Namen.
-- `linear-lift-curve-inverse`: die gebrochene Annahme „C_L im Fit-Fenster“ (🔴-Block) steht nicht als Vorbedingung da — Kandidat, nicht gesetzt.
+- `linear-lift-curve-inverse`: die gebrochene Annahme „C_L im Fit-Fenster“ (🔴-Block) steht nicht als Vorbedingung da — Kandidat, nicht gesetzt. **Erledigt (Maintainer, 01.11.2026):** der Probe `linear-lift-curve-inverse` ist gelöscht, mit `angle-of-attack-best-glide-probe` / `-minimum-sink-probe`. Mit α₀ und C_Lα exakt an der Nullstelle (`zero-lift-angle-from-polar`) maß er nur noch die Krümmung der berechneten Kurve, keine Regel bewertete das, und die Grenze des linearen Bereichs hätte keine Quelle gehabt. Die Abweichung der App (α_stall über die Gerade bei C_L,max) bekommt kein eigenes Ticket: die App wird nach Fertigstellung des Kanons vollständig auf ihn umgestellt (Maintainer, 01.11.2026).
 
 **Eingänge, die die kanonische Form braucht, der Eintrag aber nicht nennt**
 

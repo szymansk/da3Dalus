@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:af4aaee1ccf5c5341bdd05d45ea30bdb8a10cf56506323f4ff4b774b6604c0e5",
+  "content_hash": "sha256:df7795d42ddb39f74bfd34c52908601ff685a57fc34d2c0971e3f14fdba5e7f4",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -262,8 +262,6 @@
               "given": null,
               "id": "default",
               "produce": {
-                "alpha_0": "calc:zero-lift-angle",
-                "cl_alpha": "calc:lift-curve-slope",
                 "d": "calc:drag-force",
                 "l": "calc:lift-force"
               },
@@ -285,8 +283,6 @@
           "kind": "procedure",
           "optional": [],
           "outputs": {
-            "alpha_0": "calc:zero-lift-angle",
-            "cl_alpha": "calc:lift-curve-slope",
             "d": "calc:drag-force",
             "l": "calc:lift-force"
           },
@@ -1685,62 +1681,12 @@
             "e": "calc:lift-to-drag-ratio"
           },
           "postconditions": [],
-          "preconditions": [],
-          "tool": "APP",
-          "uncertainty": null,
-          "variables": [],
-          "worlds": []
-        },
-        "linear-lift-curve-inverse": {
-          "applications": [
-            {
-              "bind": {
-                "alpha_0": "calc:zero-lift-angle",
-                "cl": "calc:lift-coefficient-best-glide",
-                "cl_alpha": "calc:lift-curve-slope"
-              },
-              "given": null,
-              "id": "best_glide",
-              "produce": {
-                "alpha": "calc:angle-of-attack-best-glide-probe"
-              },
-              "when": null
-            },
-            {
-              "bind": {
-                "alpha_0": "calc:zero-lift-angle",
-                "cl": "calc:lift-coefficient-minimum-sink",
-                "cl_alpha": "calc:lift-curve-slope"
-              },
-              "given": null,
-              "id": "minimum_sink",
-              "produce": {
-                "alpha": "calc:angle-of-attack-minimum-sink-probe"
-              },
-              "when": null
-            }
-          ],
-          "cost": "instant",
-          "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
-          "inputs": {
-            "alpha_0": "calc:zero-lift-angle",
-            "cl": null,
-            "cl_alpha": "calc:lift-curve-slope"
-          },
-          "kind": "law",
-          "optional": [],
-          "outputs": {
-            "alpha": null
-          },
-          "postconditions": [],
           "preconditions": [
             {
               "applications": null,
-              "id": "cl_within_linear_range",
+              "id": "drag_positive",
               "on_violation": "error",
-              "parameter": "cl"
+              "parameter": "d"
             }
           ],
           "tool": "APP",
@@ -3658,6 +3604,65 @@
           "uncertainty": null,
           "variables": [],
           "worlds": []
+        },
+        "zero-lift-angle-from-polar": {
+          "applications": [
+            {
+              "bind": {
+                "a": "calc:speed-of-sound",
+                "airplane": "calc:airplane",
+                "mu": "calc:dynamic-viscosity",
+                "rho": "calc:air-density",
+                "v": "calc:minimum-drag-speed"
+              },
+              "given": null,
+              "id": "best_glide",
+              "produce": {
+                "alpha_0": "calc:zero-lift-angle-best-glide",
+                "cl_alpha": "calc:lift-curve-slope-best-glide"
+              },
+              "when": null
+            },
+            {
+              "bind": {
+                "a": "calc:speed-of-sound",
+                "airplane": "calc:airplane",
+                "mu": "calc:dynamic-viscosity",
+                "rho": "calc:air-density",
+                "v": "calc:minimum-sink-speed"
+              },
+              "given": null,
+              "id": "minimum_sink",
+              "produce": {
+                "alpha_0": "calc:zero-lift-angle-minimum-sink",
+                "cl_alpha": "calc:lift-curve-slope-minimum-sink"
+              },
+              "when": null
+            }
+          ],
+          "cost": "seconds",
+          "direction": "analysis",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "a": "calc:speed-of-sound",
+            "airplane": "calc:airplane",
+            "mu": "calc:dynamic-viscosity",
+            "rho": "calc:air-density",
+            "v": null
+          },
+          "kind": "optimization",
+          "optional": [],
+          "outputs": {
+            "alpha_0": null,
+            "cl_alpha": null
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
         }
       },
       "quantities": {
@@ -3895,23 +3900,6 @@
           "uncertainty": null,
           "unit": "deg"
         },
-        "angle-of-attack-best-glide-probe": {
-          "at_most": null,
-          "checks": "angle-of-attack-best-glide",
-          "consistency": null,
-          "data": null,
-          "discipline": "glide",
-          "group": null,
-          "module": null,
-          "point": "best-glide",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "alpha_bg,probe",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "deg"
-        },
         "angle-of-attack-minimum-sink": {
           "at_most": null,
           "checks": null,
@@ -3925,23 +3913,6 @@
           "role": "output",
           "stage": null,
           "symbol": "alpha_ms",
-          "type": "scalar",
-          "uncertainty": null,
-          "unit": "deg"
-        },
-        "angle-of-attack-minimum-sink-probe": {
-          "at_most": null,
-          "checks": "angle-of-attack-minimum-sink",
-          "consistency": null,
-          "data": null,
-          "discipline": "glide",
-          "group": null,
-          "module": null,
-          "point": "minimum-sink",
-          "positive": null,
-          "role": "output",
-          "stage": null,
-          "symbol": "alpha_ms,probe",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
@@ -4900,7 +4871,7 @@
           "discipline": "glide",
           "group": null,
           "module": null,
-          "point": null,
+          "point": "best-glide",
           "positive": null,
           "role": "derived",
           "stage": "operating-points",
@@ -4926,7 +4897,7 @@
           "uncertainty": null,
           "unit": "1"
         },
-        "lift-curve-slope": {
+        "lift-curve-slope-best-glide": {
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4934,11 +4905,28 @@
           "discipline": "aerodynamics",
           "group": "aero-lift-curve",
           "module": null,
-          "point": null,
+          "point": "best-glide",
           "positive": null,
           "role": "derived",
           "stage": "aero-model",
-          "symbol": "C_Lalpha",
+          "symbol": "C_Lalpha,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1/rad"
+        },
+        "lift-curve-slope-minimum-sink": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "aerodynamics",
+          "group": "aero-lift-curve",
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "derived",
+          "stage": "aero-model",
+          "symbol": "C_Lalpha,mp",
           "type": "scalar",
           "uncertainty": null,
           "unit": "1/rad"
@@ -6607,7 +6595,7 @@
           "uncertainty": null,
           "unit": "m"
         },
-        "zero-lift-angle": {
+        "zero-lift-angle-best-glide": {
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6615,11 +6603,28 @@
           "discipline": "aerodynamics",
           "group": "aero-lift-curve",
           "module": null,
-          "point": null,
+          "point": "best-glide",
           "positive": null,
           "role": "derived",
           "stage": "aero-model",
-          "symbol": "alpha_0",
+          "symbol": "alpha_0,md",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "deg"
+        },
+        "zero-lift-angle-minimum-sink": {
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": "aerodynamics",
+          "group": "aero-lift-curve",
+          "module": null,
+          "point": "minimum-sink",
+          "positive": null,
+          "role": "derived",
+          "stage": "aero-model",
+          "symbol": "alpha_0,mp",
           "type": "scalar",
           "uncertainty": null,
           "unit": "deg"
