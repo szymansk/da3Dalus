@@ -799,15 +799,16 @@ caller's responsibility.
     second, hand-written ISA in the kernel. Its `requirements` include aerosandbox, so a missing ASB is
     `tool_unavailable`; fast-tier tests stub the adapter, the hand-computed COESA check runs against the
     real adapter in the `aero` tier.
-  - **#1175 adds the domain methods** (`opti.stall` with `stall-speed`; `aerobuildup.sweep` arrives with
-    `aerobuildup-evaluation`, the first formula that calls AeroBuildup itself; `avl.stability` …), each built
-    on the base, alongside the first formula that needs it. Until then AeroBuildup is reached only inside
-    the stall worker, through `solvers.aerobuildup.sweep_polar`, the one place that evaluates it.
+  - **#1175 adds the domain methods** (`opti.stall` with `stall-speed`; `avl.stability` …), each built
+    on the base, alongside the first formula that needs it. AeroBuildup (tool `AB`) is run by the OPT
+    adapter, which owns every AeroBuildup call (ADR 0022; `context._ADAPTER_CODE`): `aerobuildup-evaluation`
+    is `opti.evaluate` (#1334), one numeric run at the caller's `(V, α)` through
+    `solvers.aerobuildup.evaluate_forces`, next to `sweep_polar`, the alpha sweep of the published polars.
   - **The model function of the Opti problems** (#1336, `solvers/aero_model.py`). Building AeroBuildup
     symbolically costs more than solving through it (BRYAN, 8 m/s, sea level, NeuralFoil `xlarge`: 3.3 s to
     build, CHEKKER 3.9 s; the zero-lift angle through the built function 0.9–1.8 s, a stall-like
     minimum-speed problem 3.2 s, against about 6 s for build plus solve). So the IPOPT problems — `_solve`
-    (stall, best glide, minimum sink) and `steady_roll_worker` — call one CasADi `Function`
+    (stall, best glide, minimum sink), `steady_roll_worker` and `zero_lift_worker` (#1334) — call one CasADi `Function`
     `f(V, α, p, q, r, ρ, μ, a) → (L, D, C_L, C_D, C_m, C_l, C_n)` of the converted airplane
     (`aero_model.aero_model`), built once by `build_aero_model`: AeroBuildup run on an `OperatingPoint`
     whose speed, angle, body rates and atmosphere are `casadi.MX` symbols (the atmosphere a duck type
@@ -819,7 +820,13 @@ caller's responsibility.
     polars), the recording runs (`_confidence_run`), the start runs of the roll (`_roll_start`) and
     `moment_slope_worker` stay numeric AeroBuildup runs: they are no symbolic builds and their values must
     not move. The worker reports in its diagnostics whether the function was built (with the time) or
-    reused; the parent logs it at `DEBUG`.
+    reused; the parent logs it at `DEBUG`. `zero_lift_worker` (canon `zero-lift-angle-from-polar`) solves
+    `C_L(V, α) = 0` on α alone (start 0°, no bounds) and reads `C_Lα` as the CasADi Jacobian of the same
+    `C_L` expression at the root, per degree of the model's α converted to per radian: an automatic
+    derivative of the solved model, no finite-difference step. Its request carries the airplane's model key,
+    the same as best glide's and minimum sink's, so it is routed to the worker that holds the function.
+    Every IPOPT solve passes `max_iter` (`MAX_ITERATIONS`) and IPOPT's convergence tolerance
+    (`IPOPT_TOLERANCE` = 1·10⁻⁸, IPOPT's own default) explicitly; both are solver settings of OPT.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
     the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
     extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
@@ -1753,7 +1760,7 @@ model (part of `IMPORT_REPORT.md`).
 | Formula | kind | tool | shape | in → out | applications | preconditions | worlds | cost class | v1 |
 |---|---|---|---|---|---|---|---|---|---|
 | `advance-ratio-from-speed` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
-| `aerobuildup-evaluation` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain |
+| `aerobuildup-evaluation` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain · implemented (#1334) |
 | `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `airplane-components` | procedure | KAT | law | 1 → 11 | 1 | – | – | instant | probe |
@@ -1775,7 +1782,7 @@ model (part of `IMPORT_REPORT.md`).
 | `lateral-static-stability-app` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
-| `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
+| `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | core chain · implemented (#1334) |
 | `maneuvering-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
 | `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
@@ -1808,7 +1815,7 @@ model (part of `IMPORT_REPORT.md`).
 | `vertical-tail-volume` | law | APP | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `weight-from-mass` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `wing-loading` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
-| `zero-lift-angle-from-polar` | optimization | OPT | single | 5 → 2 | 2 | – | – | seconds | later |
+| `zero-lift-angle-from-polar` | optimization | OPT | single | 5 → 2 | 2 | – | – | seconds | later · implemented (#1334) |
 
 *57 entries; core chain 27, probes 6, later 24. `airplane-configuration` added, `inverted-max-lift-coefficient` removed (its output is `stall-speed`'s `inverted` application).*
 

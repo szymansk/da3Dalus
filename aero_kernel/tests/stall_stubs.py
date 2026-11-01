@@ -11,6 +11,8 @@ from aero_kernel.solvers.opti import (
     BestGlide,
     BestGlideSolution,
     DeflectionDiagnostics,
+    Evaluation,
+    Forces,
     MinSink,
     MinSinkSolution,
     MomentSlope,
@@ -19,6 +21,8 @@ from aero_kernel.solvers.opti import (
     Stall,
     StallSolution,
     SteadyRoll,
+    ZeroLift,
+    ZeroLiftSolution,
 )
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 
@@ -28,6 +32,12 @@ GLIDE_ALPHA = 5.7  # deg
 SINK_ALPHA = 9.0  # deg, the stub's angle of attack at the minimum sink
 UPRIGHT_PEAK = (15.75, 1.19)  # alpha_S in deg, C_L,max
 INVERTED_TROUGH = (-10.0, -0.70)
+LIFT_N, DRAG_N = 14.7, 0.98  # the forces of the stub's AeroBuildup evaluation
+
+
+def stub_zero_lift(v_ms: float) -> ZeroLiftSolution:
+    """The stub's root and slope, linear in V so that each application's speed is visible."""
+    return ZeroLiftSolution(alpha_0_deg=-0.25 * v_ms, cl_alpha_per_rad=5.0 + 0.01 * v_ms)
 
 
 def lift_curve(peak: tuple[float, float], upright: bool) -> Polar:
@@ -125,6 +135,9 @@ class StubOpti(OptiAdapter):
         self.probe_cm_alpha: float | None = None  # None: consistent with probe_x_np
         self.probe_failure: Exception | None = None
         self.probe_calls: list[tuple[AirplaneGeometry, float, float, AirState, float, float]] = []
+        self.forces = Forces(lift_n=LIFT_N, drag_n=DRAG_N)
+        self.evaluate_calls: list[tuple[AirplaneGeometry, AirState, float, float]] = []
+        self.zero_lift_calls: list[tuple[AirplaneGeometry, AirState, float]] = []
         self.delay_s = delay_s
         self.calls: list[tuple[AirplaneGeometry, float, float, float, AirState]] = []
         self.cancelled = False
@@ -238,3 +251,15 @@ class StubOpti(OptiAdapter):
             alpha_deg=4.0, cl=0.55, cl_alpha=self.probe_cl_alpha, cm_alpha=cm_alpha
         )
         return MomentSlope(solution=solution, warnings=())
+
+    async def evaluate(
+        self, airplane: AirplaneGeometry, air: AirState, v_ms: float, alpha_deg: float
+    ) -> Evaluation:
+        """Answer the AeroBuildup evaluation without a solver: ``forces``."""
+        self.evaluate_calls.append((airplane, air, v_ms, alpha_deg))
+        return Evaluation(forces=self.forces, warnings=())
+
+    async def zero_lift(self, airplane: AirplaneGeometry, air: AirState, v_ms: float) -> ZeroLift:
+        """Answer the zero-lift root without a solver: :func:`stub_zero_lift` at the speed."""
+        self.zero_lift_calls.append((airplane, air, v_ms))
+        return ZeroLift(solution=stub_zero_lift(v_ms), warnings=())

@@ -68,9 +68,11 @@ point. Verified against the installed AeroSandbox 4.2.9 source.
 
 **Validity in the RC/UAV regime (ADR 0028).** NeuralFoil supplies the section data; its training data cover Re_c of 1.9·10³ to 2.6·10⁸ (95 %; Sharpe 2024 §7.2.5), so the whole regime is inside the trained range. AeroBuildup calls NeuralFoil with its defaults — free transition, `n_crit = 9`, `xtr = 1` (`airfoil.py:651-653`, not overridden in `aero_buildup.py:795-803`) — so the polar is a smooth-surface polar: a turbulator or a rough printed surface is not represented, which matters below Re 7·10⁴. NeuralFoil's own analysis confidence drops sharply near Re_c ≈ 8·10⁴ at C_L ≈ 1.0, where a laminar separation bubble forms (Sharpe 2024 §7.2.4). AeroBuildup was cross-validated on an RC sailplane at Re_c = 1.55·10⁵, M = 0.044 (§5.4): lift and drag polars agree with nonlinear lifting line. Main-wing downwash on the tail is omitted for lift (§5.3), so tail lift is over-counted. The internal `e` uses a viscous factor averaged over full-scale classes (`inviscid.py:66-73`) and is not checked at RC Reynolds numbers [no source for its RC error]. Mach ≤ 0.3: compressibility is negligible.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/aerobuildup_evaluation.py` | EXACT | 🟢 | one numeric AeroBuildup run at `(V, α)` in the bound air state, by the OPT adapter (`OptiAdapter.evaluate`), which owns every AeroBuildup call (ADR 0022); `L` and `D` as AeroBuildup returns them; a deflected flap is evaluated and declared, any other deflected device refused |
 
 ## Approval
 

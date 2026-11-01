@@ -5,6 +5,7 @@ One module per canon formula, named after its slug.
 """
 
 from aero_kernel.formulas import (
+    aerobuildup_evaluation,
     air_density_isa,
     airplane_configuration,
     airplane_geometry,
@@ -17,6 +18,7 @@ from aero_kernel.formulas import (
     lateral_static_stability_md,
     lateral_static_stability_mp,
     lift_coefficient_required,
+    lift_to_drag_ratio,
     mean_geometric_chord,
     minimum_drag_speed_from_polar,
     minimum_sink_speed_from_polar,
@@ -35,10 +37,12 @@ from aero_kernel.formulas import (
     vertical_tail_volume,
     weight_from_mass,
     wing_loading,
+    zero_lift_angle_from_polar,
 )
 from aero_kernel.registry import DEFAULT_REGISTRY
 
 __all__ = [
+    "aerobuildup_evaluation",
     "air_density_isa",
     "airplane_configuration",
     "airplane_geometry",
@@ -51,6 +55,7 @@ __all__ = [
     "lateral_static_stability_md",
     "lateral_static_stability_mp",
     "lift_coefficient_required",
+    "lift_to_drag_ratio",
     "mean_geometric_chord",
     "minimum_drag_speed_from_polar",
     "minimum_sink_speed_from_polar",
@@ -69,6 +74,7 @@ __all__ = [
     "vertical_tail_volume",
     "weight_from_mass",
     "wing_loading",
+    "zero_lift_angle_from_polar",
 ]
 
 DEFAULT_REGISTRY.freeze()

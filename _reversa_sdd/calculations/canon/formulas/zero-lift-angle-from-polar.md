@@ -117,9 +117,11 @@ step size and no second AeroBuildup run.
 At `C_L` = 0 the wing is far from the bubble-sensitive high-lift region, so the root is the most robust
 point of the polar. Mach ≤ 0.3.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/zero_lift_angle_from_polar.py` | EXACT | 🟢 | both applications; IPOPT in `asb.Opti` on α alone (start 0°, no bounds, `C_L = 0` through the airplane's model function, routed by its model key), `max_iter` as the other Opti problems, `tol` 1·10⁻⁸ passed explicitly; `C_Lα` the CasADi Jacobian of that `C_L` expression at the root, per degree converted to per radian; failure or a non-finite root or slope is `not_converged`. BRYAN at 8 m/s, sea level: −3.624°, 5.284 /rad, 3 iterations, checked against a central finite difference of the model function (aero tier) |
 
 ## Approval
 

@@ -57,6 +57,9 @@ IMPLEMENTED = {
     "calc:rudder-roll-authority",
     "calc:lift-coefficient-required",
     "calc:stall-wing-loading-limit",
+    "calc:aerobuildup-evaluation",
+    "calc:lift-to-drag-ratio",
+    "calc:zero-lift-angle-from-polar",
 }
 
 
@@ -110,6 +113,7 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_v_min_ms": 1.0,
     "opt_v_max_mach": 0.6,
     "opt_max_iterations": 300,
+    "opt_ipopt_tolerance": 1e-8,
     "opt_active_bound_fraction": 1e-6,
     "opt_effectiveness_exponent": 2.751428551177291,
     "opt_probe_tolerance": 1e-6,

@@ -3,9 +3,11 @@
 The canon procedure for stall speed (``stall-speed``, K32 / O3) and best glide
 (``minimum-drag-speed-from-polar``): an alpha sweep brackets the first C_L extremum, IPOPT
 (``asb.Opti``) then minimises V (stall) or D (best glide) on the branch before it. The stall adds one
-more sweep at the resulting V_S, the published polar at the Reynolds number of the stall. There is
-no fixed point on V; the bracketing sweep is made once at a speed refined from a first estimate. An
-active bound at the optimum, a missing extremum or a failed solve is an error, never a value
+more sweep at the resulting V_S, the published polar at the Reynolds number of the stall. The
+zero-lift angle (``zero-lift-angle-from-polar``) is the root of C_L(V, alpha) at a given V, with its
+slope by automatic differentiation; a single AeroBuildup evaluation (``aerobuildup-evaluation``) is
+a numeric run. There is no fixed point on V; the bracketing sweep is made once at a speed refined
+from a first estimate. An active bound at the optimum, a missing extremum or a failed solve is an error, never a value
 (ADR 0020). Each problem is one pool job (a picklable worker). IPOPT sees AeroBuildup through the
 airplane's model function (``aero_model``), reused from the worker's cache under the request's
 ``model_key``; the sweeps and the other numeric runs evaluate AeroBuildup directly.
@@ -25,8 +27,8 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning, Polar
-from aero_kernel.solvers.aero_model import aero_model, model_key
-from aero_kernel.solvers.aerobuildup import sweep_polar
+from aero_kernel.solvers.aero_model import aero_model, load_casadi, model_key
+from aero_kernel.solvers.aerobuildup import evaluate_forces, scalar, sweep_polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
 from aero_kernel.solvers.base import SolverAdapter, regime_by_wing
@@ -54,6 +56,9 @@ __all__ = [
     "BestGlide",
     "BestGlideSolution",
     "DeflectionDiagnostics",
+    "Evaluation",
+    "EvaluationRequest",
+    "Forces",
     "MinSink",
     "MinSinkSolution",
     "MomentSlope",
@@ -67,12 +72,17 @@ __all__ = [
     "StallSolution",
     "SteadyRoll",
     "SweepRequest",
+    "ZeroLift",
+    "ZeroLiftRequest",
+    "ZeroLiftSolution",
     "best_glide_worker",
+    "evaluation_worker",
     "min_sink_worker",
     "moment_slope_worker",
     "stall_worker",
     "steady_roll_worker",
     "sweep_worker",
+    "zero_lift_worker",
 ]
 
 # The sweep range of the canon: "the default sweep starts at -15 deg" (stall-speed.md, inverted
@@ -90,8 +100,11 @@ BRACKET_CL = 1.0
 # ADR 0028); the lower bound is far below any RC stall. A bound active at the optimum is an error.
 V_MIN_MS = 1.0
 V_MAX_MACH = 0.6
-# IPOPT: iteration limit as in the survey scripts; the default convergence tolerance (1e-8).
+# IPOPT: iteration limit as in the survey scripts; the convergence tolerance is IPOPT's own default
+# (``tol`` = 1e-8, IPOPT options reference), passed explicitly so that no library default is hidden
+# (canon zero-lift-angle-from-polar, "Convergence").
 MAX_ITERATIONS = 300
+IPOPT_TOLERANCE = 1e-8
 # The NeuralFoil model AeroBuildup evaluates its sections with: "xlarge", the author's default, at the
 # knee of speed versus accuracy (Sharpe 2024, PhD thesis ch. 7, Table 7.1; maintainer decision
 # 2026-10-22). The airfoil scoring (#821) uses "xxxlarge" on purpose: it is precomputed, so its
@@ -462,7 +475,9 @@ def _ipopt(opti: Any, what: str, hint: str) -> Any:  # noqa: ANN401  # untyped a
         FormulaError: ``not_converged`` if IPOPT fails.
     """
     try:
-        return opti.solve(verbose=False, max_iter=MAX_ITERATIONS)
+        return opti.solve(
+            verbose=False, max_iter=MAX_ITERATIONS, options={"ipopt.tol": IPOPT_TOLERANCE}
+        )
     except RuntimeError as error:  # CasADi reports a failed IPOPT solve as a RuntimeError
         raise _not_converged(
             f"the {what} problem did not converge: {error}",
@@ -1148,11 +1163,6 @@ class MomentSlope(BaseModel):
     warnings: tuple[KernelWarning, ...]
 
 
-def _scalar(value: object) -> float:
-    """One number out of an AeroBuildup result, which may be a one-element array."""
-    return float(np.asarray(value, dtype=float).reshape(-1).item())
-
-
 def moment_slope_worker(request: MomentSlopeRequest) -> WorkerOutcome[MomentSlopeSolution]:
     """Find the angle of attack of ``L = m g`` at the speed and the stability derivatives there.
 
@@ -1202,9 +1212,9 @@ def moment_slope_worker(request: MomentSlopeRequest) -> WorkerOutcome[MomentSlop
     ).run_with_stability_derivatives(alpha=True, beta=False, p=False, q=False, r=False)
     solution = MomentSlopeSolution(
         alpha_deg=alpha,
-        cl=_scalar(found["CL"]),
-        cl_alpha=_scalar(found["CLa"]),
-        cm_alpha=_scalar(found["Cma"]),
+        cl=scalar(found["CL"]),
+        cl_alpha=scalar(found["CLa"]),
+        cm_alpha=scalar(found["Cma"]),
     )
     if not (math.isfinite(solution.cl_alpha) and solution.cl_alpha > 0.0):
         raise _not_converged(
@@ -1224,12 +1234,193 @@ def moment_slope_worker(request: MomentSlopeRequest) -> WorkerOutcome[MomentSlop
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
+class EvaluationRequest(BaseModel):
+    """What the worker needs for one AeroBuildup evaluation; plain data, picklable.
+
+    Attributes:
+        airplane: The geometry as evaluated (devices as configured).
+        air: The air state.
+        v_ms: True airspeed in m/s, > 0.
+        alpha_deg: Angle of attack in degrees, finite.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    air: AirState
+    v_ms: float
+    alpha_deg: float
+
+
+class Forces(BaseModel):
+    """Lift and drag at one operating point, as AeroBuildup returns them (canon ``aerobuildup-evaluation``).
+
+    No sign is imposed: a drag of zero or below is a defective solver result that the reader's
+    precondition (``lift-to-drag-ratio``: ``drag_positive``) refuses, never a value this model hides.
+
+    Attributes:
+        lift_n: Lift in N.
+        drag_n: Drag in N.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    lift_n: float
+    drag_n: float
+
+
+class Evaluation(BaseModel):
+    """The forces of one operating point and the caveats of that point.
+
+    Attributes:
+        forces: Lift and drag.
+        warnings: Flap and regime warnings (ADR 0020, ADR 0028), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    forces: Forces
+    warnings: tuple[KernelWarning, ...]
+
+
+def evaluation_worker(request: EvaluationRequest) -> WorkerOutcome[Forces]:
+    """Evaluate AeroBuildup at the request's operating point in the pool worker.
+
+    One numeric run (canon ``aerobuildup-evaluation``): no symbolic model function is built, a
+    single evaluation costs less than building one.
+
+    Args:
+        request: The airplane, air state, speed and angle of attack.
+
+    Returns:
+        Lift and drag, with the worker's diagnostics.
+    """
+    started = time.perf_counter()
+    lift, drag = evaluate_forces(
+        to_asb_airplane(request.airplane),
+        request.air,
+        request.v_ms,
+        request.alpha_deg,
+        NEURALFOIL_MODEL_SIZE,
+    )
+    diagnostics = WorkerDiagnostics(duration_s=time.perf_counter() - started)
+    return WorkerOutcome(value=Forces(lift_n=lift, drag_n=drag), diagnostics=diagnostics)
+
+
+class ZeroLiftRequest(BaseModel):
+    """What the worker needs for the zero-lift root at one speed; plain data, picklable.
+
+    Attributes:
+        airplane: The geometry as evaluated (devices as configured).
+        air: The air state.
+        v_ms: True airspeed in m/s, > 0.
+        model_key: The key of the airplane's model function (``aero_model.model_key``), computed
+            by the adapter; ``None`` builds the function for this call without caching it.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    air: AirState
+    v_ms: float
+    model_key: str | None = None
+
+
+class ZeroLiftSolution(BaseModel):
+    """The root of the lift curve and its slope there (canon ``zero-lift-angle-from-polar``).
+
+    Attributes:
+        alpha_0_deg: The zero-lift angle of attack in degrees.
+        cl_alpha_per_rad: ``dC_L/dalpha`` at the root in 1/rad.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    alpha_0_deg: float
+    cl_alpha_per_rad: float
+
+
+class ZeroLift(BaseModel):
+    """A zero-lift solution and the caveats of its speed.
+
+    Attributes:
+        solution: The root and the slope.
+        warnings: Flap and regime warnings (ADR 0020, ADR 0028), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    solution: ZeroLiftSolution
+    warnings: tuple[KernelWarning, ...]
+
+
+# The start of the zero-lift solve: 0 deg (canon zero-lift-angle-from-polar, "Method"); the root is the
+# one nearest it. A start only, not a bound: no angle range is imposed (ch. 8.11).
+ZERO_LIFT_START_DEG = 0.0
+ZERO_LIFT_HINT = (
+    "the lift curve may have no root in the attached-flow range at this speed; check the geometry "
+    "(incidence, twist, airfoils)"
+)
+
+
+def zero_lift_worker(request: ZeroLiftRequest) -> WorkerOutcome[ZeroLiftSolution]:
+    """Solve ``C_L(V, alpha) = 0`` for alpha and read ``dC_L/dalpha`` there, in the pool worker.
+
+    IPOPT (``asb.Opti``) on the one variable alpha, started at 0 deg with no bounds, subject to
+    ``C_L = 0`` through the airplane's model function (``aero_model``, reused under
+    ``request.model_key``). The slope is the automatic derivative (CasADi) of the very ``C_L``
+    expression the solve used, evaluated at the root: no step size, no second AeroBuildup run. The
+    model's alpha is in degrees, so the derivative per degree is converted to per radian.
+
+    Args:
+        request: The problem.
+
+    Returns:
+        The root in degrees and the slope in 1/rad, with the worker's diagnostics (IPOPT's iteration
+        count among them).
+
+    Raises:
+        FormulaError: ``not_converged`` if IPOPT fails (its status in the message) or the root or
+            the slope is not a finite number; never a value.
+    """
+    started = time.perf_counter()
+    asb, casadi = load_aerosandbox(), load_casadi()
+    model, note = aero_model(
+        request.model_key, to_asb_airplane(request.airplane), NEURALFOIL_MODEL_SIZE
+    )
+    opti = asb.Opti()
+    alpha = opti.variable(init_guess=ZERO_LIFT_START_DEG)
+    cl = model(request.v_ms, alpha, request.air)["CL"]
+    opti.subject_to(cl == 0.0)
+    solved = _ipopt(opti, "zero-lift", ZERO_LIFT_HINT)
+    alpha_0 = float(solved(alpha))
+    slope_per_deg = float(solved(casadi.jacobian(cl, alpha)))
+    if not (math.isfinite(alpha_0) and math.isfinite(slope_per_deg)):
+        raise _not_converged(
+            f"the zero-lift problem gives the root {alpha_0} deg and the slope {slope_per_deg} per deg",
+            "the root and the slope must be finite numbers",
+            alpha_0_deg=str(alpha_0),
+            cl_alpha_per_deg=str(slope_per_deg),
+        )
+    stats = solved.stats()
+    solution = ZeroLiftSolution(alpha_0_deg=alpha_0, cl_alpha_per_rad=math.degrees(slope_per_deg))
+    diagnostics = WorkerDiagnostics(
+        duration_s=time.perf_counter() - started,
+        solver_status=str(stats["return_status"]),
+        iterations=int(stats["iter_count"]),
+        notes=(f"residual C_L {float(solved(cl)):.3e} at the root", note),
+    )
+    return WorkerOutcome(value=solution, diagnostics=diagnostics)
+
+
 class OptiAdapter(SolverAdapter):
-    """The stall, best-glide and minimum-sink problems solved with IPOPT over AeroBuildup, in the process pool.
+    """The IPOPT problems over AeroBuildup and its numeric runs, in the process pool.
 
     ``stall`` minimises V, ``best_glide`` minimises D and ``min_sink`` minimises D V subject to the
     lift balance, all on the pre-stall branch bracketed by an alpha sweep (canon ``stall-speed``,
-    ``minimum-drag-speed-from-polar`` and ``minimum-sink-speed-from-polar``).
+    ``minimum-drag-speed-from-polar`` and ``minimum-sink-speed-from-polar``); ``zero_lift`` solves
+    ``C_L = 0`` (``zero-lift-angle-from-polar``); ``evaluate`` runs AeroBuildup at one operating point
+    (``aerobuildup-evaluation``, tool AB: this adapter owns every AeroBuildup call, ADR 0022).
 
     Attributes:
         tool: ``OPT``.
@@ -1259,6 +1450,7 @@ class OptiAdapter(SolverAdapter):
             "opt_v_min_ms": V_MIN_MS,
             "opt_v_max_mach": V_MAX_MACH,
             "opt_max_iterations": MAX_ITERATIONS,
+            "opt_ipopt_tolerance": IPOPT_TOLERANCE,
             "opt_active_bound_fraction": config().opt_active_bound_fraction.value,
             "opt_effectiveness_exponent": EFFECTIVENESS_EXPONENT,
             "opt_probe_tolerance": config().opt_probe_tolerance.value,
@@ -1572,3 +1764,89 @@ class OptiAdapter(SolverAdapter):
             solution.alpha_deg,
         )
         return MomentSlope(solution=solution, warnings=tuple(_regime_warnings(airplane, v_ms, air)))
+
+    def _point_flaps(self, airplane: AirplaneGeometry, v_ms: float) -> list[FlapSegment]:
+        """Check the tool, the devices and the speed of a problem at a given speed.
+
+        Returns:
+            The deflected flap segments of the configuration, whose caveats lead the warnings.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``unsupported_configuration`` for a deflected
+                control device other than a flap, or a flap on an unmirrored wing;
+                ``invalid_input`` for a speed that is not finite and above 0 (parameter ``v``).
+        """
+        self.require_available()
+        refuse_deflected_devices(airplane, "AeroBuildup", flaps_supported=True)
+        if not _admissible(v_ms, positive=True):
+            raise _invalid(f"V = {v_ms} is not admissible", "give a finite speed above 0", "v")
+        return flap_segments(airplane)
+
+    async def evaluate(
+        self, airplane: AirplaneGeometry, air: AirState, v_ms: float, alpha_deg: float
+    ) -> Evaluation:
+        """AeroBuildup's lift and drag at ``(V, alpha)`` in the given air (canon ``aerobuildup-evaluation``).
+
+        Args:
+            airplane: The geometry with its devices as they are to be evaluated.
+            air: The air state.
+            v_ms: True airspeed in m/s, > 0.
+            alpha_deg: Angle of attack in degrees, finite.
+
+        Returns:
+            The forces and the caveats of the point: flaps, and the regime at V.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``invalid_input`` for an inadmissible speed or
+                angle; ``unsupported_configuration`` for a deflected control device other than a
+                flap.
+        """
+        flaps = self._point_flaps(airplane, v_ms)
+        if not math.isfinite(alpha_deg):
+            raise _invalid(
+                f"alpha = {alpha_deg} is not admissible", "give a finite angle of attack", "alpha"
+            )
+        request = EvaluationRequest(airplane=airplane, air=air, v_ms=v_ms, alpha_deg=alpha_deg)
+        forces = await self.runtime.run_cpu(evaluation_worker, request)
+        warnings = [*_flap_warnings(flaps), *_regime_warnings(airplane, v_ms, air)]
+        logger.debug(
+            "AeroBuildup at %.4f m/s, %.2f deg: L %.4f N, D %.4f N",
+            v_ms,
+            alpha_deg,
+            forces.lift_n,
+            forces.drag_n,
+        )
+        return Evaluation(forces=forces, warnings=tuple(warnings))
+
+    async def zero_lift(self, airplane: AirplaneGeometry, air: AirState, v_ms: float) -> ZeroLift:
+        """The root of ``C_L(V, alpha)`` and ``dC_L/dalpha`` there (canon ``zero-lift-angle-from-polar``).
+
+        The job carries the airplane's model key, the same as best glide's and minimum sink's for
+        this airplane, so it is routed to the worker that holds the model function (ch. 8.10).
+
+        Args:
+            airplane: The geometry with its devices as the geometry states them.
+            air: The air state.
+            v_ms: True airspeed in m/s, > 0 (the speed of the application's optimum).
+
+        Returns:
+            The solution and the caveats of the speed: flaps, and the regime at V.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``invalid_input`` for an inadmissible speed;
+                ``unsupported_configuration`` for a deflected control device other than a flap;
+                ``not_converged`` as :func:`zero_lift_worker`.
+        """
+        flaps = self._point_flaps(airplane, v_ms)
+        request = ZeroLiftRequest(
+            airplane=airplane, air=air, v_ms=v_ms, model_key=self._model_key(airplane, 0.0)
+        )
+        solution = await self.runtime.run_cpu(zero_lift_worker, request)
+        warnings = [*_flap_warnings(flaps), *_regime_warnings(airplane, v_ms, air)]
+        logger.debug(
+            "zero-lift angle %.4f deg, lift slope %.4f per rad at %.4f m/s",
+            solution.alpha_0_deg,
+            solution.cl_alpha_per_rad,
+            v_ms,
+        )
+        return ZeroLift(solution=solution, warnings=tuple(warnings))
