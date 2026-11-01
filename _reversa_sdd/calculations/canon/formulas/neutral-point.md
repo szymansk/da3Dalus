@@ -132,7 +132,7 @@ worlds share blind spots, above all the fuselage (only rcplanedesigner's flat �
 15 %" are sourced; Raymer's formula is unchecked). A validation margin needs flown CGs of the reference
 fleet. **No fuselage in any world** (maintainer, 2026-10-23, #1203; decided 2026-10-24, #1205): the kernel
 models none, deliberately (KISS), and every result carries the declared warning `fuselage_not_modelled`
-(`practice`, a declared simplification, ADR 0020). A fuselage moves the neutral point forward, so the
+(`notice`, a declared simplification, ADR 0020). A fuselage moves the neutral point forward, so the
 interval is biased slightly aft. Sourced magnitude: USAF DATCOM 1978 §4.2.2.1 Method 1 (Multhopp,
 Eq. 4.2.2.1-a; Hoak et al., AFWAL-TR-83-3048, DTIC ADB072483, printed pp. 4.2.2.1-1 to -4) gives about
 1.5–2.1 % MAC forward for BRYAN and 0.7–1.0 % for JAGUAR, inside Sadraey's "about ±5 % c̄" (§6.2.1

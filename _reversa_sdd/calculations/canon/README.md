@@ -510,7 +510,7 @@ entry, an input of the embedder, or produced inside the closure (for example `pr
 
 **`optional`** — an absent optional parameter leads to one of three outcomes, and the entry states which
 one per route: (1) a **declared method limitation** — the formula takes the route that needs no value
-and a `practice` warning names the route (ADR 0020); (2) the **canon's own definition** — the absent
+and a `notice` names the route (ADR 0020); (2) the **canon's own definition** — the absent
 value means something stated, and there is no warning; (3) the value **is needed after all** — no
 value, `missing_input`.
 
@@ -687,7 +687,7 @@ as a mapping `<slug>: {value, unit, basis, source, regime}` (maintainer, 2026-10
 - `regime` — the ADR 0028 check of why the value holds for RC/UAV (chord Re 3·10⁴–1·10⁶, Mach ≤ 0.3,
   no wheel brakes), or `regime-independent`.
 
-A default is also allowed as the **fallback of a derived quantity read from a catalogue field** (`data: component:...`, e.g. `cell-voltage-nominal`, `motor-efficiency`; #1245, #1290): the producer applies it where the field is absent and declares it with a `practice` warning (ADR 0020).
+A default is also allowed as the **fallback of a derived quantity read from a catalogue field** (`data: component:...`, e.g. `cell-voltage-nominal`, `motor-efficiency`; #1245, #1290): the producer applies it where the field is absent and declares it with a `notice` (ADR 0020).
 
 Only a value the canon states with its source gets an entry. Taking a default is visible
 (INFO, `provenance.defaults_used`).

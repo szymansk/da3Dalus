@@ -1138,7 +1138,7 @@ function stateOf(id){
     return v.status==='inside'?'ok':''; }
   const r=S.res[id];
   if(r){ if(r.status==='error') return 'error';
-    if(r.status==='ok') return (r.warnings||[]).length?'warning':'ok';
+    if(r.status==='ok') return (r.warnings||[]).some(w=>w.severity!=='notice')?'warning':'ok';
     return r.status==='skipped'?'skipped':'na'; }
   return S.cause[id]?'error':'';
 }
@@ -1230,7 +1230,9 @@ function renderLog(){
 }
 
 // ---- the panel of a selected quantity or rule
-function warningHtml(q,w){ const col=w.severity==='defect'?'var(--bad)':'var(--mvp)';
+// ADR 0020's three severities: an error (not physically meaningful) red, a warning (confidence reduced)
+// orange, a notice (a declared substitution) blue; only warnings and errors mark the node.
+function warningHtml(q,w){ const col=w.severity==='error'?'var(--bad)':w.severity==='warning'?'var(--mvp)':'var(--unc)';
   return `<div class="issue" style="border-color:${col}"><b style="color:${col}">${esc(w.severity)} · ${esc(w.code)}</b>`+
     (w.origin&&w.origin!==q&&Q[w.origin]?` <a href="#" data-goto="${attr(w.origin)}">at ${esc(sym(w.origin))}</a>`:'')+
     `<br>${esc(w.message)}${w.world?`<br><span class="sub">world ${esc(w.world)}</span>`:''}</div>`; }

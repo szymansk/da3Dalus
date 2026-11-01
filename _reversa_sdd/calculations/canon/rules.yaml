@@ -31,6 +31,13 @@ positive-lengths:
   criterion: "Every chord, every fuselage semi-axis (zero allowed at an end section) and every fuselage shape exponent is greater than zero, and the leading-edge chain of a wing has a length greater than zero."
   codes: [non_positive_length]
 
+distinct-sections:
+  applies_to: {quantity: airplane}
+  kind: input
+  on_violation: error
+  criterion: "Two adjacent sections of a wing do not sit at one spanwise station (the same y and z of the leading edge): the section between them would have no span, which AeroSandbox's AeroBuildup turns into NaN (maintainer 2026-11-01, #1342). Near-duplicates are export hygiene of the digitisation plugin, not refused here."
+  codes: [duplicate_section]
+
 minimum-sections:
   applies_to: {quantity: airplane}
   kind: input
@@ -165,7 +172,7 @@ flap-model-validity:
   applies_to: {formula: stall-speed}
   kind: tool
   on_violation: warning
-  criterion: "A flap is the rotated contour behind its hinge, evaluated by NeuralFoil (a plain, single-element flap; maintainer 2026-10-26, #1212). The result of stall-speed (take-off and landing applications) and of roll-rate (approach) is declared outside the model's trusted range when NeuralFoil's analysis_confidence of a section at the solution is below min_confidence (flap_confidence_low), and when a flap deflection is above max_flap_deflection (flap_deflection_beyond_validity). The value is computed and returned with the declaration, never withheld."
+  criterion: "A flap is the rotated contour behind its hinge, evaluated by NeuralFoil (a plain, single-element flap; maintainer 2026-10-26, #1212). The result of stall-speed (take-off and landing applications) and of roll-rate (approach) is declared outside the model's trusted range when, for a deflected device (each deflected flap, and the driven aileron of a roll), the area-weighted mean of NeuralFoil's analysis_confidence over the sections the device spans at the solution is below min_confidence (flap_confidence_low, one per device, with the share of the device span below it and the lowest section; maintainer 2026-11-01, #1342), and when a flap deflection is above max_flap_deflection (flap_deflection_beyond_validity). The value is computed and returned with the declaration, never withheld."
   codes: [flap_confidence_low, flap_deflection_beyond_validity]
   parameters:
     min_confidence:
@@ -231,7 +238,7 @@ aerosandbox-fuselage-shape:
   applies_to: {quantity: airplane}
   kind: tool
   on_violation: error
-  criterion: "AeroSandbox has no mirrored body: a mirrored fuselage is refused rather than approximated. It has one shape exponent per fuselage section: a section with n_lower different from n is not refused but mapped to the equivalent symmetric section of the same width, height and centre and equal cross-section area, declared per section as the practice warning fuselage_section_equivalent (#1307, ADR 0020)."
+  criterion: "AeroSandbox has no mirrored body: a mirrored fuselage is refused rather than approximated. It has one shape exponent per fuselage section: a section with n_lower different from n is not refused but mapped to the equivalent symmetric section of the same width, height and centre and equal cross-section area, declared per section as the notice fuselage_section_equivalent (#1307, ADR 0020)."
   codes: [unsupported_configuration]
 
 isa-altitude-range:
@@ -245,7 +252,8 @@ static-margin-probe-agreement:
   applies_to: {formula: static-margin-probe}
   kind: probe
   on_violation: warning
-  criterion: "The static margin from the moment slope (the probe) agrees with the target static margin to within agreement_tolerance, in fractions of the mean aerodynamic chord; a larger deviation is reported, never averaged."
+  criterion: "The static margin from the moment slope (the probe) agrees with the target static margin to within agreement_tolerance, in fractions of the mean aerodynamic chord; a larger deviation is reported (static_margin_probe_disagrees, warning), a probe of the other sign than the target whatever the deviation (static_margin_probe_sign_disagrees, error; maintainer 2026-11-01, #1342), never averaged."
+  codes: [static_margin_probe_disagrees, static_margin_probe_sign_disagrees]
   parameters:
     agreement_tolerance:
       value: 0.05
