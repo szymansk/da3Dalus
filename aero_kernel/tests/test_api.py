@@ -342,8 +342,10 @@ async def test_compute_closes_the_runtime_it_created(monkeypatch: pytest.MonkeyP
     original = api_module.SolverRuntime
 
     class Spy(original):  # type: ignore[valid-type,misc]  # records the instance it creates
-        def __init__(self) -> None:
-            super().__init__()
+        def __init__(
+            self, *, max_workers: int | None = None, max_concurrency: int | None = None
+        ) -> None:
+            super().__init__(max_workers=max_workers, max_concurrency=max_concurrency)
             created.append(self)
 
     monkeypatch.setattr(api_module, "SolverRuntime", Spy)
@@ -360,8 +362,10 @@ async def test_compute_closes_the_runtime_when_the_call_fails(
     original = api_module.SolverRuntime
 
     class Spy(original):  # type: ignore[valid-type,misc]  # records the instance it creates
-        def __init__(self) -> None:
-            super().__init__()
+        def __init__(
+            self, *, max_workers: int | None = None, max_concurrency: int | None = None
+        ) -> None:
+            super().__init__(max_workers=max_workers, max_concurrency=max_concurrency)
             created.append(self)
 
     async def boom(*args: object, **kwargs: object) -> object:

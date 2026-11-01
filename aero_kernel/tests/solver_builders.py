@@ -59,3 +59,27 @@ def airplane(
             "x_secs": tail_sections,
         }
     return AirplaneGeometry.model_validate({"name": "t", "wings": wings})
+
+
+def direct_aero_model(_key: str | None, airplane: Any, model_size: str) -> tuple[Any, str]:
+    """Test seam for ``opti.aero_model``: evaluate the faked AeroSandbox at every call.
+
+    The fast tier has no CasADi, so a test that fakes ``opti.load_aerosandbox`` cannot build a
+    model function. This stand-in evaluates the faked ``AeroBuildup`` at the arguments the
+    problem passes (Opti variables or numbers), so the fake sees the same operating points as
+    the real function's inputs.
+    """
+    from aero_kernel.solvers import opti as opti_module
+    from aero_kernel.solvers.air import FixedAtmosphere
+
+    asb = opti_module.load_aerosandbox()
+
+    def model(
+        v: Any, alpha: Any, air: AirState, *, p: Any = 0.0, q: Any = 0.0, r: Any = 0.0
+    ) -> Any:
+        point = asb.OperatingPoint(
+            atmosphere=FixedAtmosphere(air), velocity=v, alpha=alpha, p=p, q=q, r=r
+        )
+        return asb.AeroBuildup(airplane, point, model_size=model_size).run()
+
+    return model, "aero model evaluated directly (test seam)"

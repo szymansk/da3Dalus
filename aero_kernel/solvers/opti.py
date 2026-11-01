@@ -6,7 +6,9 @@ The canon procedure for stall speed (``stall-speed``, K32 / O3) and best glide
 more sweep at the resulting V_S, the published polar at the Reynolds number of the stall. There is
 no fixed point on V; the bracketing sweep is made once at a speed refined from a first estimate. An
 active bound at the optimum, a missing extremum or a failed solve is an error, never a value
-(ADR 0020). Each problem is one pool job (a picklable worker).
+(ADR 0020). Each problem is one pool job (a picklable worker). IPOPT sees AeroBuildup through the
+airplane's model function (``aero_model``), reused from the worker's cache under the request's
+``model_key``; the sweeps and the other numeric runs evaluate AeroBuildup directly.
 """
 
 import logging
@@ -23,6 +25,7 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning, Polar
+from aero_kernel.solvers.aero_model import aero_model, model_key
 from aero_kernel.solvers.aerobuildup import sweep_polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
@@ -106,6 +109,8 @@ class StallRequest(BaseModel):
         gravity: Gravity in m/s^2, > 0.
         n_load: Load factor; the lift balance is ``L = n m g`` (negative: inverted flight).
         air: The air state.
+        model_key: The key of the airplane's model function (``aero_model.model_key``), computed
+            by the adapter; ``None`` builds the function for this call without caching it.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -115,6 +120,7 @@ class StallRequest(BaseModel):
     gravity: float
     n_load: float
     air: AirState
+    model_key: str | None = None
 
 
 class DeflectionDiagnostics(BaseModel):
@@ -267,6 +273,8 @@ class RollRequest(BaseModel):
         air: The air state.
         v_ms: True airspeed in m/s, > 0.
         delta_deg: The aileron command in degrees (positive = right roll, ch. 8.8).
+        model_key: The key of the rolled airplane's model function (``aero_model.model_key``),
+            computed by the adapter; ``None`` builds the function for this call without caching it.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -277,6 +285,7 @@ class RollRequest(BaseModel):
     air: AirState
     v_ms: float
     delta_deg: float
+    model_key: str | None = None
 
 
 class RollSolution(BaseModel):
@@ -379,6 +388,7 @@ class _Solved:
         value: Reads an expression of the problem at the optimum.
         at_upper_alpha: ``True`` if the optimum lies on the upper bound of alpha (only asked for by
             the minimum-sink problem, where that bound is the first C_L peak).
+        note: Whether the model function was built or reused, for the worker's diagnostics.
     """
 
     speed: float
@@ -386,6 +396,7 @@ class _Solved:
     aero: Any
     value: Callable[[Any], float]
     at_upper_alpha: bool = False
+    note: str = ""
 
 
 def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG) -> _Bracketed:
@@ -479,7 +490,7 @@ def _reject_active_bound(name: str, value: float, bounds: tuple[float, float], w
 
 def _solve(
     problem: _Bracketed,
-    air: AirState,
+    request: StallRequest,
     objective: Callable[[Any, Any], Any],
     init: tuple[float, float],
     what: str,
@@ -488,9 +499,12 @@ def _solve(
 ) -> _Solved:
     """Minimise ``objective(speed, aero)`` subject to ``L = lift`` on the bracketed window.
 
+    AeroBuildup enters through the airplane's model function (``aero_model``): reused from the
+    worker's cache under ``request.model_key``, or built for this call.
+
     Args:
         problem: The bracketed problem.
-        air: The air state.
+        request: The problem's request (its air state and model key).
         objective: The expression to minimise, from the speed variable and the AeroBuildup result.
         init: The initial speed in m/s and angle of attack in degrees.
         what: The name of the problem, for the error messages.
@@ -502,6 +516,7 @@ def _solve(
             bound of alpha excepted where ``upper_alpha_is_a_result``).
     """
     asb = load_aerosandbox()
+    model, note = aero_model(request.model_key, problem.airplane, NEURALFOIL_MODEL_SIZE)
     opti = asb.Opti()
     speed = opti.variable(
         init_guess=min(max(init[0], problem.v_low), problem.v_high),
@@ -509,11 +524,7 @@ def _solve(
         upper_bound=problem.v_high,
     )
     alpha = opti.variable(init_guess=init[1], lower_bound=problem.low, upper_bound=problem.high)
-    aero = asb.AeroBuildup(
-        problem.airplane,
-        asb.OperatingPoint(atmosphere=FixedAtmosphere(air), velocity=speed, alpha=alpha),
-        model_size=NEURALFOIL_MODEL_SIZE,
-    ).run()
+    aero = model(speed, alpha, request.air)
     opti.subject_to(aero["L"] == problem.lift)
     opti.minimize(objective(speed, aero))
     solved = _ipopt(opti, what, SPEED_HINT)
@@ -529,6 +540,7 @@ def _solve(
         aero=aero,
         value=lambda e: float(solved(e)),
         at_upper_alpha=at_upper,
+        note=note,
     )
 
 
@@ -556,7 +568,7 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     problem = _bracketed(request)
     optimum = _solve(
         problem,
-        request.air,
+        request,
         lambda speed, _aero: speed,
         (problem.v_bracket, problem.alpha_peak),
         "stall",
@@ -578,7 +590,10 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     )
     diagnostics = _diagnostics(
         started,
-        (f"bracketed at {problem.alpha_peak} deg with a sweep at {problem.v_bracket:.3f} m/s",),
+        (
+            f"bracketed at {problem.alpha_peak} deg with a sweep at {problem.v_bracket:.3f} m/s",
+            optimum.note,
+        ),
     )
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
@@ -636,7 +651,7 @@ def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]
     problem = _bracketed(request)
     optimum = _solve(
         problem,
-        request.air,
+        request,
         lambda _speed, aero: aero["D"],
         (GLIDE_SPEED_FACTOR * problem.v_bracket, GLIDE_ALPHA_FRACTION * problem.alpha_peak),
         "best-glide",
@@ -648,7 +663,7 @@ def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]
         alpha_md=optimum.alpha,
         cl_md=optimum.value(optimum.aero["CL"]),
     )
-    diagnostics = _diagnostics(started)
+    diagnostics = _diagnostics(started, (optimum.note,))
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
@@ -697,7 +712,7 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
     problem = _bracketed(request, peak_margin_deg=0.0)
     optimum = _solve(
         problem,
-        request.air,
+        request,
         lambda speed, aero: aero["D"] * speed,
         (SINK_SPEED_FACTOR * problem.v_bracket, SINK_ALPHA_FRACTION * problem.alpha_peak),
         "minimum-sink",
@@ -709,7 +724,7 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
         cl_mp=optimum.value(optimum.aero["CL"]),
         stall_limited=optimum.at_upper_alpha,
     )
-    diagnostics = _diagnostics(started)
+    diagnostics = _diagnostics(started, (optimum.note,))
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
 
@@ -972,17 +987,8 @@ def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
         upper_bound=p_limit,
     )
     p_body, r_body = body_rates(p_stability, alpha, asb.numpy)
-    aero = asb.AeroBuildup(
-        airplane,
-        asb.OperatingPoint(
-            atmosphere=FixedAtmosphere(request.air),
-            velocity=request.v_ms,
-            alpha=alpha,
-            p=p_body,
-            r=r_body,
-        ),
-        model_size=NEURALFOIL_MODEL_SIZE,
-    ).run()
+    model, note = aero_model(request.model_key, airplane, NEURALFOIL_MODEL_SIZE)
+    aero = model(request.v_ms, alpha, request.air, p=p_body, r=r_body)
     opti.subject_to(aero["L"] == request.mass_kg * request.gravity)
     opti.subject_to(stability_rolling_moment(aero["Cl"], aero["Cn"], alpha, asb.numpy) == 0)
     solved = _ipopt(opti, "steady-roll", ROLL_HINT)
@@ -996,7 +1002,7 @@ def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
     )
     solution = RollSolution(p_rad_s=p_opt, alpha_deg=alpha_opt, diagnostics=recorded)
     diagnostics = _diagnostics(
-        started, (f"alpha window {low}..{high} deg, |p| window {p_limit:.3f} rad/s",)
+        started, (f"alpha window {low}..{high} deg, |p| window {p_limit:.3f} rad/s", note)
     )
     return WorkerOutcome(value=solution, diagnostics=diagnostics)
 
@@ -1264,6 +1270,15 @@ class OptiAdapter(SolverAdapter):
             "opt_fuselage_area_tolerance": config().opt_fuselage_area_tolerance.value,
         }
 
+    def _model_key(self, airplane: AirplaneGeometry, roll_deg: float) -> str:
+        """The key of the model function a worker builds for ``airplane`` (``aero_model``)."""
+        return model_key(
+            airplane,
+            roll_deg=roll_deg,
+            model_size=NEURALFOIL_MODEL_SIZE,
+            tool_versions=self.tool_versions(),
+        )
+
     def _request(
         self,
         airplane: AirplaneGeometry,
@@ -1297,7 +1312,12 @@ class OptiAdapter(SolverAdapter):
             if not _admissible(value, positive=positive):
                 raise _invalid(f"{name} = {value} is not admissible", f"give a valid {name}", name)
         request = StallRequest(
-            airplane=airplane, mass_kg=mass_kg, gravity=gravity, n_load=n_load, air=air
+            airplane=airplane,
+            mass_kg=mass_kg,
+            gravity=gravity,
+            n_load=n_load,
+            air=air,
+            model_key=self._model_key(airplane, 0.0),
         )
         return request, flaps
 
@@ -1492,6 +1512,7 @@ class OptiAdapter(SolverAdapter):
             air=air,
             v_ms=v_ms,
             delta_deg=delta_a_deg,
+            model_key=self._model_key(airplane, delta_a_deg),
         )
         solution = await self.runtime.run_cpu(steady_roll_worker, request)
         warnings = _hinge_warnings(driven, flaps)

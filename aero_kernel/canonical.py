@@ -7,10 +7,11 @@ serialises, and hashes, alike.
 
 import hashlib
 import json
+import math
 
 from pydantic import JsonValue
 
-__all__ = ["canonical_json", "sha256_of"]
+__all__ = ["canonical_json", "sha256_of", "spell_non_finite"]
 
 
 def _without_negative_zero(value: JsonValue) -> JsonValue:
@@ -54,3 +55,25 @@ def sha256_of(value: JsonValue) -> str:
     """
     digest = hashlib.sha256(canonical_json(value)).hexdigest()
     return f"sha256:{digest}"
+
+
+def spell_non_finite(value: JsonValue) -> JsonValue:
+    """A JSON value with every NaN or infinity spelled out, for a key only (ch. 8.4).
+
+    Validation rejects non-finite numbers in what the kernel reads, but not in the geometry's
+    unread fields (``validate.UNREAD_FIELDS``); a key must not fail on them, nor equate them with
+    ``null``.
+
+    Args:
+        value: A JSON value, possibly with non-finite floats.
+
+    Returns:
+        The value with each non-finite float replaced by ``{"non_finite": repr(value)}``.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return {"non_finite": repr(value)}
+    if isinstance(value, dict):
+        return {name: spell_non_finite(item) for name, item in value.items()}
+    if isinstance(value, list):
+        return [spell_non_finite(item) for item in value]
+    return value

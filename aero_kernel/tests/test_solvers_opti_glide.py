@@ -16,7 +16,7 @@ from aero_kernel.solvers.opti import (
     StallRequest,
 )
 from aero_kernel.tests.formula_builders import OPT_SETTINGS
-from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
+from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane, direct_aero_model
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
 
 pytestmark = pytest.mark.asyncio
@@ -210,6 +210,7 @@ def install_optimum(
     monkeypatch.setattr(opti_module, "sweep_polar", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake)
+    monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
     request = StallRequest(airplane=airplane(), mass_kg=MASS, gravity=GRAVITY, n_load=1.0, air=AIR)
     return request
 
