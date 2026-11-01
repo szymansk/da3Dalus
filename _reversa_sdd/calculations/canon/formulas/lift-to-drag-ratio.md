@@ -55,10 +55,11 @@ value can only come from a defective solver result, and dividing by it would sil
 negative glide ratio. The violation is therefore an **error** at this formula, never a substituted value
 (ADR 0020). The bound is physical, not a tuned threshold.
 
-## Implementations (2)
+## Implementations (3)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/lift_to_drag_ratio.py` | EXACT | 🟢 | the precondition `drag_positive` is the registered check of the same module: a drag of zero or below (or not a number) is `precondition_violated` at this formula, never a value |
 | [[speed-polar-ld]] | EXACT | 🟢 |  |
 | [[ld-ratio-force]] | EQUIVALENT | 🟢 |  |
 

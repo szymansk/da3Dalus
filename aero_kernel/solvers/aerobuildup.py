@@ -1,7 +1,9 @@
-"""AeroBuildup over angle of attack, the one place that evaluates it (ARCHITECTURE ch. 8.8).
+"""The numeric AeroBuildup runs in a fixed air state (ARCHITECTURE ch. 8.8).
 
-Called from the stall worker, in a pool process. The adapter class (``aerobuildup.sweep``) arrives
-with ``aerobuildup-evaluation``, the first formula that calls AeroBuildup itself (ADR 0021).
+Called from the OPT adapter's workers, in a pool process: the alpha sweep (the published polars) and
+the evaluation of one operating point (canon ``aerobuildup-evaluation``). The OPT adapter owns every
+AeroBuildup call of the kernel (ADR 0022); the IPOPT problems see AeroBuildup through the model
+function of ``aero_model`` instead.
 """
 
 from collections.abc import Sequence
@@ -11,7 +13,7 @@ from aero_kernel.schema import FlowConditions, Polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 
-__all__ = ["sweep_polar"]
+__all__ = ["evaluate_forces", "scalar", "sweep_polar"]
 
 
 def sweep_polar(
@@ -59,3 +61,39 @@ def sweep_polar(
             speed_of_sound=air.speed_of_sound,
         ),
     )
+
+
+def scalar(value: object) -> float:
+    """One number out of an AeroBuildup result, which may be a one-element array."""
+    return float(np.asarray(value, dtype=float).reshape(-1).item())
+
+
+def evaluate_forces(
+    asb_airplane: object,
+    air: AirState,
+    velocity_ms: float,
+    alpha_deg: float,
+    model_size: str,
+) -> tuple[float, float]:
+    """Run AeroBuildup once at one operating point and read its lift and drag (canon ``aerobuildup-evaluation``).
+
+    AeroBuildup forms the Reynolds number per section from ``V``, the local chord and the given air,
+    and the Mach number as ``V / a``. Runs in a pool worker.
+
+    Args:
+        asb_airplane: The ``asb.Airplane`` (from ``to_asb_airplane``).
+        air: The air state.
+        velocity_ms: True airspeed in m/s.
+        alpha_deg: Angle of attack in degrees.
+        model_size: The NeuralFoil model size AeroBuildup evaluates its sections with.
+
+    Returns:
+        Lift and drag in N, as AeroBuildup returns them (``L``, ``D``).
+    """
+    asb = load_aerosandbox()
+    result = asb.AeroBuildup(
+        asb_airplane,
+        asb.OperatingPoint(atmosphere=FixedAtmosphere(air), velocity=velocity_ms, alpha=alpha_deg),
+        model_size=model_size,
+    ).run()
+    return scalar(result["L"]), scalar(result["D"])
