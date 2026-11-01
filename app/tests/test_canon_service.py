@@ -50,7 +50,9 @@ class StubKernel:
         self.quantities = quantities
         self.calls: list[tuple[AircraftInput, ComputeRequest]] = []
 
-    async def __call__(self, aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
+    async def __call__(
+        self, aircraft: AircraftInput, request: ComputeRequest, **_limits: int | None
+    ) -> ComputeResult:
         self.calls.append((aircraft, request))
         logging.getLogger("aero_kernel.engine").debug(
             "node started", extra={"formula": "stall-speed", "quantity": "stall-speed"}
@@ -338,3 +340,85 @@ async def test_a_caller_that_leaves_does_not_break_the_kernel_loop() -> None:
     await asyncio.gather(waiting, return_exceptions=True)
     await asyncio.sleep(0.1)  # the kernel task finishes after its caller left
     assert (await canon_service._KERNEL_LOOP.run(slow())).quantities == ()
+
+
+class ClosingKernel:
+    """Stands in for the shared kernel; records the thread its ``aclose`` ran on."""
+
+    def __init__(self) -> None:
+        self.closed_on: list[str] = []
+
+    async def aclose(self) -> None:
+        import threading
+
+        self.closed_on.append(threading.current_thread().name)
+
+
+@pytest.mark.asyncio
+async def test_closing_the_kernel_runs_its_aclose_on_the_kernel_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """gh-1336: the kernel's runtime belongs to the kernel loop, so it is closed there."""
+    old = ClosingKernel()
+    monkeypatch.setattr(canon_service, "KERNEL", old)
+
+    async def where() -> ComputeResult:
+        return ComputeResult(provenance=PROVENANCE)
+
+    await canon_service._KERNEL_LOOP.run(where())  # the loop has started
+    await canon_service.close_kernel()
+    assert old.closed_on == ["aero-kernel"]
+    assert isinstance(canon_service.KERNEL, CachedKernel)  # a fresh one takes its place
+    assert canon_service.KERNEL is not old
+
+
+@pytest.mark.asyncio
+async def test_closing_a_kernel_before_the_loop_started_closes_it_directly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = ClosingKernel()
+    monkeypatch.setattr(canon_service, "KERNEL", old)
+    monkeypatch.setattr(canon_service, "_KERNEL_LOOP", canon_service._KernelLoop())
+    await canon_service.close_kernel()
+    assert len(old.closed_on) == 1
+    assert not canon_service._KERNEL_LOOP.started()
+
+
+def test_the_app_shutdown_closes_the_shared_kernel(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    closed: list[bool] = []
+
+    async def close() -> None:
+        closed.append(True)
+
+    monkeypatch.setattr(canon_service, "close_kernel", close)
+    with TestClient(create_app()):
+        assert closed == []
+    assert closed == [True]
+
+
+def test_the_shared_kernel_keeps_two_model_functions_per_worker() -> None:
+    assert canon_service.KERNEL_MODELS_PER_WORKER == 2
+
+
+def test_the_app_runs_the_kernel_on_four_workers() -> None:
+    """Maintainer 2026-11-01: four workers, so the model functions stay near 2.2 GB."""
+    assert canon_service.KERNEL_WORKERS == 4
+    kernel = canon_service._new_kernel()  # pyright: ignore[reportPrivateUsage]  # the factory under test
+    assert kernel._max_workers == 4  # pyright: ignore[reportPrivateUsage]  # the setting under test
+    assert kernel._max_concurrency == 4  # pyright: ignore[reportPrivateUsage]  # the setting under test
+
+
+def test_a_fresh_compute_runs_on_four_workers(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    async def fake_compute(aircraft: object, request: object, **limits: object) -> str:
+        seen.update(limits)
+        return "result"
+
+    monkeypatch.setattr(canon_service, "compute", fake_compute)
+    assert canon_service._run_fresh(None, None) == "result"  # type: ignore[arg-type]  # pyright: ignore[reportPrivateUsage, reportArgumentType]  # stubbed compute
+    assert seen == {"max_workers": 4, "max_concurrency": 4}

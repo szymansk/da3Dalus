@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict
 
-__all__ = ["AirState", "FixedAtmosphere"]
+__all__ = ["GAMMA", "GAS_CONSTANT", "AirState", "FixedAtmosphere"]
 
 
 def _positive_finite(value: float) -> float:
@@ -42,8 +42,8 @@ class AirState(BaseModel):
 
 # Ideal-gas constants of air, as AeroSandbox uses them (aerosandbox.atmosphere): the temperature and
 # pressure a fixed state implies; AeroBuildup asks only for density, viscosity and speed of sound.
-_GAS_CONSTANT = 287.0500676  # J/(kg K)
-_GAMMA = 1.4
+GAS_CONSTANT = 287.0500676  # J/(kg K)
+GAMMA = 1.4
 
 
 class FixedAtmosphere:
@@ -76,12 +76,12 @@ class FixedAtmosphere:
 
     def ratio_of_specific_heats(self) -> float:
         """Ratio of specific heats of air."""
-        return _GAMMA
+        return GAMMA
 
     def temperature(self) -> float:
         """Temperature in K implied by the speed of sound."""
-        return self._air.speed_of_sound**2 / (_GAMMA * _GAS_CONSTANT)
+        return self._air.speed_of_sound**2 / (GAMMA * GAS_CONSTANT)
 
     def pressure(self) -> float:
         """Pressure in Pa implied by density and temperature."""
-        return self._air.density * _GAS_CONSTANT * self.temperature()
+        return self._air.density * GAS_CONSTANT * self.temperature()

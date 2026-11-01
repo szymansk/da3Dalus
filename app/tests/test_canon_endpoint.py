@@ -29,7 +29,9 @@ def enveloped_client() -> TestClient:
     return TestClient(application)
 
 
-async def stub_kernel(aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
+async def stub_kernel(
+    aircraft: AircraftInput, request: ComputeRequest, **_limits: int | None
+) -> ComputeResult:
     quantity = QuantityResult(
         slug=request.quantities[0],
         unit="m/s",

@@ -130,10 +130,11 @@ built before that step (ADR 0021). Appendix A's last column predates this order.
 ```
 aero_kernel/
   api.py            async compute(aircraft, request) — the stateless interface; CachedKernel — the cached
-                    facade (owns its DedupedCache: the LRU cache and the in-flight deduplication)
+                    facade (owns its DedupedCache: the LRU cache and the in-flight deduplication, and
+                    one SolverRuntime for its lifetime)
   build.py          the internal Build (shipped model + digest + checked registry), loaded once on first use
   engine.py         walks the graph; takes an optional node cache (none = stateless)
-  runtime.py        executor, concurrency limit, cancellation
+  runtime.py        executor: worker slots with model affinity, concurrency limit, cancellation
   geometry.py       AirplaneGeometry and its sub-models (format mirror, mm → m at parse, ch. 8.11)
   schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Timing, TimeBounds, Polar,
                     KernelWarning, Provenance (Pydantic, extra="forbid"); re-exports AirplaneGeometry and KernelError
@@ -147,7 +148,7 @@ aero_kernel/
   graph.py          subtree, order, world expansion, upstream_failed
   registry.py       @formula(slug), @precondition(slug, id), @postcondition(slug, id) — implementations ↔ canon model (ch. 8.12)
   formulas/         one file per canon formula (file name = slug, with underscores)
-  solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py
+  solvers/          aerobuildup.py · aero_model.py (model functions, worker cache) · avl.py · opti.py · atmosphere.py
   cache.py          MemoryCache (LRU), DedupedCache (in-flight deduplication), Entry, cache_key, build_digest
   timing.py         run-time arithmetic of a quantity and the chain before it (ch. 8.3); pure
   validate.py       physical admissibility of the input and `values` against the canon (ch. 8.11)
@@ -484,7 +485,10 @@ need not be hashable.
 - **`compute(aircraft, request)`, stateless.** A pure function. It keeps nothing between calls: no
   cache and no deduplication. Two calls with the same input compute twice.
 - **`CachedKernel`, stateful facade** (built, #1332; `api.py`, exported beside `compute`). An object that
-  owns one `DedupedCache` — a `MemoryCache(max_entries)` and the in-flight deduplication.
+  owns one `DedupedCache` — a `MemoryCache(max_entries)` and the in-flight deduplication — and, for its
+  lifetime, one `SolverRuntime` (built, #1336; `CachedKernel._runtime_for_call`, `api.py`): the worker
+  processes with their model-function caches and the concurrency limit (ch. 8.10), created on the first
+  compute and closed by `aclose()` / `async with`; a closed facade refuses work (`RuntimeError`).
   - Its `compute()` has the same signature and the same result type.
   - It delegates to the same engine and passes in its cache (`evaluate(..., cache=)`); the engine claims a
     node's key after rows 1-7 of the status order and the binding of the inputs, before the preconditions
@@ -506,7 +510,8 @@ need not be hashable.
 deduplication. There is no `refresh`: every reason to recompute (tool versions, build digest) is already in
 the key, and errors are never stored. A forced recomputation is the stateless `compute()`.
 
-Cache settings (the size) are passed when the facade is created, never read from the environment. The app's
+Cache settings (the size, and the runtime's `max_models_per_worker`, `max_workers`, `max_concurrency`) are
+passed when the facade is created, never read from the environment. The app's
 size is `canon_service.KERNEL_CACHE_ENTRIES = 4096`: about 1 KB per scalar node and about 14 KB per node that
 also returns its stall polar (161 angles of attack × 4 coefficients), so at most about 56 MB, a few MB in
 practice. Each `QuantityResult` reports `from_cache`, which is always `false` from the stateless interface.
@@ -517,6 +522,17 @@ no pluggable store and no disk cache: correctness never depended on them (keys a
 caller needs them before the register epic. All of it is restorable from `2dc55f19`. `MemoryCache.get`
 and `put` are plain synchronous methods (no awaits, no I/O); the in-flight deduplication lives in
 `CachedKernel`, with `asyncio` futures keyed by the cache key.
+- **The model functions are no second value cache** (#1336). Each pool worker keeps, in its own process,
+  a bounded LRU of AeroBuildup model functions (`solvers/aero_model.py`, ch. 8.8, 8.10). A function is a
+  mechanism, not a value: it holds no result, only the symbolic AeroBuildup of one converted airplane,
+  and a problem solved through a reused function gives bit for bit the numbers of one solved through a
+  function built for it (aero test `test_aero_model_real.py`, BRYAN and JAGUAR: stall, best glide,
+  minimum sink, roll). Its key (`aero_model.model_key`) is SHA-256 over the canonical JSON of what the
+  converted airplane and its model are made of: the geometry the worker converts (its flaps included,
+  non-finite unread fields spelled out as in the node key), the aileron command `to_asb_airplane` builds
+  in, the NeuralFoil model size and the AeroSandbox and NeuralFoil versions. The operating point and the
+  air are the function's inputs, not its key. The worker's code and canon are fixed for its life, so the
+  build digest is not in it. It is never persisted and never shipped between processes.
 - **An entry keeps its measured run time** (`Entry.own_s`, seconds, gh-1330): a hit reports the time
   measured when the value was computed (ch. 8.3 `timing`), with `from_cache`. `None` means the writer
   measured none; the entry is valid either way.
@@ -756,7 +772,8 @@ caller's responsibility.
   - **#1174 builds the base**: `SolverAdapter(runtime)` declaring its `tool` and `requirements` (distribution →
     module), with `available() -> bool` (capability check → `tool_unavailable`, Q10) and
     `tool_versions() -> {distribution: version}` (what `Provenance.tool_versions` and the cache key take;
-    it replaces a single `version()`); `runtime.SolverRuntime` owns the spawn-context pool
+    it replaces a single `version()`); `runtime.SolverRuntime` owns the spawn-context worker processes
+    (one single-process pool per worker slot, #1336, ch. 8.10)
     and the concurrency limit and offers `run_cpu(fn, *args)` and `run_process(files, commands, …)` (an
     async subprocess in its own process group and temp dir, killed and cleaned up on cancellation or
     timeout, Q17; the AVL adapter is its first user); and `regime(chords_m, v, speed_of_sound,
@@ -767,7 +784,8 @@ caller's responsibility.
     alone applies), `mach_above_limit` (practice,
     0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
-    `FormulaError`; a dead worker discards the pool and becomes `internal`. Tested with a stub solver.
+    `FormulaError`; a dead worker discards its own worker slot (the others and their model functions stay)
+    and becomes `internal`. Tested with a stub solver.
   - **`minimum_sink_stall_limited`** (`practice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **The Probe and the lateral chain (#1277).** `aerobuildup_no_downwash` (`practice`): the `static-margin-probe` value is AeroBuildup's, which omits the main-wing downwash on the tail and so is biased toward a larger margin (declared on every probe value). `static_margin_probe_disagrees` (`defect`): the probe differs from the static-margin target by more than `agreement_tolerance` of the rule `static-margin-probe-agreement`; the value stays, never averaged, and the deviation, the tolerance and the target are in `detail`. `avl_body_equivalent_round` (`practice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`practice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
@@ -785,6 +803,23 @@ caller's responsibility.
     `aerobuildup-evaluation`, the first formula that calls AeroBuildup itself; `avl.stability` …), each built
     on the base, alongside the first formula that needs it. Until then AeroBuildup is reached only inside
     the stall worker, through `solvers.aerobuildup.sweep_polar`, the one place that evaluates it.
+  - **The model function of the Opti problems** (#1336, `solvers/aero_model.py`). Building AeroBuildup
+    symbolically costs more than solving through it (BRYAN, 8 m/s, sea level, NeuralFoil `xlarge`: 3.3 s to
+    build, CHEKKER 3.9 s; the zero-lift angle through the built function 0.9–1.8 s, a stall-like
+    minimum-speed problem 3.2 s, against about 6 s for build plus solve). So the IPOPT problems — `_solve`
+    (stall, best glide, minimum sink) and `steady_roll_worker` — call one CasADi `Function`
+    `f(V, α, p, q, r, ρ, μ, a) → (L, D, C_L, C_D, C_m, C_l, C_n)` of the converted airplane
+    (`aero_model.aero_model`), built once by `build_aero_model`: AeroBuildup run on an `OperatingPoint`
+    whose speed, angle, body rates and atmosphere are `casadi.MX` symbols (the atmosphere a duck type
+    whose temperature and pressure are derived as in `FixedAtmosphere`). The function comes from the
+    worker's cache under the request's `model_key` (computed by the adapter, `OptiAdapter._model_key`),
+    or is built for the call where none is installed (a worker function run in-process). A failure to
+    build it is an error of the problem, as the inline build was; there is no fallback to another route
+    (ADR 0020), and the inline symbolic build is gone (ADR 0021). The sweeps (`sweep_polar`, the published
+    polars), the recording runs (`_confidence_run`), the start runs of the roll (`_roll_start`) and
+    `moment_slope_worker` stay numeric AeroBuildup runs: they are no symbolic builds and their values must
+    not move. The worker reports in its diagnostics whether the function was built (with the time) or
+    reused; the parent logs it at `DEBUG`.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
     the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
     extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
@@ -1071,7 +1106,8 @@ The kernel behaves like an asynchronous Python API: `compute()` is a coroutine, 
 caller's event loop, it can be cancelled, and it limits its own resource use.
 
 - **Non-blocking.** All heavy work runs off the event loop:
-  - CPU-bound solver work (AeroBuildup, NeuralFoil, IPOPT via `asb.Opti`) runs in a **process pool**. The
+  - CPU-bound solver work (AeroBuildup, NeuralFoil, IPOPT via `asb.Opti`) runs in **worker processes**
+    (`max_workers` slots, each a single-process `ProcessPoolExecutor`, #1336). The
     spawn context mirrors `app/services/cad_service.py`, because CasADi/IPOPT and numpy do not reliably
     release the GIL.
   - AVL runs as a plain `subprocess.Popen` (pipes, `start_new_session=True`); its `communicate()` runs in a
@@ -1082,22 +1118,47 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 - **Concurrency from the graph.** Independent nodes of the subtree and world assignments (A11) run
   concurrently (`asyncio.TaskGroup`). The dependency graph decides what may run in parallel, never the
   formula code.
-- **Bounded.** Execution resources are never global. The kernel always **owns** its process pool (maintainer
+- **Bounded.** Execution resources are never global. The kernel always **owns** its worker processes (maintainer
   D12, 2026-10-16: no injected executor; restorable from `a2825d72` if the app ever needs one):
-  - The **stateless `compute()`** takes one optional keyword argument, `max_concurrency=` (default
-    `os.cpu_count()`). The limit counts concurrent **solver calls** (pool tasks and AVL subprocesses); graph
-    nodes waiting on them cost nothing. It creates its pool on the first solver call and shuts it down before
-    returning, so it stays free of state (Q20). Spawning costs about a second; callers that compute often
-    use `CachedKernel`.
-  - **`CachedKernel`** owns one pool and one limit for its lifetime. They are created lazily and closed by
-    `async with` or `aclose()`. *Not built:* #1332 built the facade's cache only; its `compute()` creates
-    and releases a `SolverRuntime` per call, as the stateless `compute()` does.
-  - **Submissions are gated** by a second semaphore equal to the pool's resolved worker count, so every
-    submitted item has a free worker and nothing waits in the pool's own call queue.
+  - The **stateless `compute()`** takes two optional keyword arguments, `max_workers=` and
+    `max_concurrency=` (default `os.cpu_count()` each; `api.py`). The limit counts concurrent **solver calls** (pool tasks and AVL subprocesses); graph
+    nodes waiting on them cost nothing. It creates its workers on the first solver call and shuts them down
+    before returning, so it stays free of state (Q20); its model functions live only as long as the call.
+    Spawning costs about a second; callers that compute often use `CachedKernel`.
+  - **`CachedKernel`** owns one `SolverRuntime` — its workers, their model functions and one limit — for
+    its lifetime (#1336, `api.py`). It is created lazily on the first compute and closed by `async with`
+    or `aclose()`; the keywords `max_models_per_worker` (default `aero_model.MAX_MODELS_PER_WORKER` = 2),
+    `max_workers` and `max_concurrency` are passed at construction. The app runs both its cached and its
+    fresh compute on 4 workers and 4 concurrent solver calls (`canon_service.KERNEL_WORKERS`, maintainer
+    2026-11-01: the machine must stay responsive), so its model functions take at most about 2.2 GB. The app closes its process-wide
+    facade on shutdown, on the facade's own kernel loop (`canon_service.close_kernel`, called from the
+    FastAPI lifespan in `app/main.py`).
+  - **Worker slots and model affinity** (#1336, `runtime.SolverRuntime._choose`). A plain pool cannot send
+    a job to a chosen worker, so a repeat would land on any worker and every worker would build its own
+    copy of a model function. The runtime therefore has `max_workers` slots, each one process, created on
+    the slot's first job. A request that carries a `model_key` (`runtime.RoutedRequest`: the Opti
+    requests) is routed by a parent-side mirror of each worker's model LRU: an idle worker believed to hold
+    the key; else an idle running worker with room; else a new one; else the idle worker used least
+    recently (its oldest function makes room). A job without a key takes the idle running worker used
+    least recently, or a new one. Routing is a guess: a wrong one (a busy holder, a failed build) costs a
+    build, never a value and never a wait.
+  - **The worker's model cache** (`aero_model.ModelCache`) is process-local and bounded to
+    `max_models_per_worker` functions, least recently used out. The runtime installs it in the worker
+    process with the worker's first job (`runtime._run_in_slot`; the pool initializer stays
+    `silence_worker_logging`), so the parent process never holds a function or any state of that module.
+  - **Memory bound.** A built function holds about **280 MB RSS** (BRYAN and CHEKKER, NeuralFoil `xlarge`,
+    2026-10-31), and an IPOPT solve through it adds another 200–300 MB while it lives. The model memory of
+    a runtime is at most `max_workers × max_models_per_worker × ~280 MB`, plus the solves in flight: with
+    the app's settings (`canon_service.KERNEL_MODELS_PER_WORKER` = 2, `max_workers` = `os.cpu_count()`)
+    about 0.56 GB per worker. Serialising a function costs 433 MB and 1.4 s each way, so one is never
+    shipped between processes.
+  - **Submissions are gated** by a second semaphore equal to the number of worker slots; a permit is
+    returned only when the worker's job has really ended (also one whose caller was cancelled), so every
+    submitted job finds an idle worker and nothing waits in a pool's own call queue.
   - **Closing.** Once `aclose()` has begun, the runtime refuses work: a call not yet running in a worker
-    fails with `RuntimeError("… closed")`, never with a `CancelledError` nobody asked for, and no new pool is
+    fails with `RuntimeError("… closed")`, never with a `CancelledError` nobody asked for, and no new worker is
     ever created; no call starts after closing began. `aclose()` drains this runtime's running jobs off the
-    loop, then shuts the pool down in `asyncio.to_thread` (waiting for the workers, cancelling what is
+    loop, then shuts every worker down in `asyncio.to_thread` (waiting for the processes, cancelling what is
     pending): when it returns, no work of this runtime is running.
   - **Threads for AVL.** The runtime also owns one `ThreadPoolExecutor` (`max_workers = max_concurrency`)
     for the subprocesses' `communicate()`, created with the runtime and shut down in `aclose()`; the loop's
@@ -1114,8 +1175,13 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     but if a descendant escaped the process group, interpreter exit waits until it exits, because
     `concurrent.futures` joins its workers at exit (AVL forks nothing: rare, accepted). The pid-reuse race between exit and `killpg` is not closed
     (no `WNOWAIT`; KISS).
-  - Work already running in the process pool is allowed to finish but its result is discarded, because
-    pool workers cannot be interrupted safely.
+  - Work already running in a worker is allowed to finish but its result is discarded, because
+    pool workers cannot be interrupted safely. The cancelled caller's concurrency slot is free at once; the
+    worker takes no other job until it has finished, and then keeps its model functions (it is reused, not
+    replaced).
+  - **A dead worker** (`BrokenProcessPool`, logged at `WARNING`) discards only its own slot and the mirror
+    of its model cache, before the slot is free again; the other workers and their functions stay, and the
+    slot's next job starts a fresh process.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
 - **Time budget** (built with the solver path, #1201). `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
   the whole request, enforced with `asyncio.timeout` around the graph run. A budget that is not a finite number > 0 is an
