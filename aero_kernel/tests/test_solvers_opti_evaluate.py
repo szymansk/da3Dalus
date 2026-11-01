@@ -76,8 +76,9 @@ async def test_an_inadmissible_operating_point_is_invalid_input(
 ) -> None:
     """A negative angle of attack is admissible; only a non-finite one is not."""
     monkeypatch.setattr(opti_module, "evaluation_worker", canned())
+    adapter, plane = OptiAdapter(InProcessRuntime()), airplane()
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).evaluate(airplane(), AIR, v, alpha)
+        await adapter.evaluate(plane, AIR, v, alpha)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
     assert raised.value.parameter == parameter
 
@@ -90,10 +91,9 @@ async def test_a_negative_angle_of_attack_is_evaluated(monkeypatch: pytest.Monke
 
 async def test_a_deflected_aileron_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(opti_module, "evaluation_worker", canned())
+    adapter, plane = OptiAdapter(InProcessRuntime()), airplane(device=("aileron", 4.0))
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).evaluate(
-            airplane(device=("aileron", 4.0)), AIR, 10.0, 4.0
-        )
+        await adapter.evaluate(plane, AIR, 10.0, 4.0)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
@@ -109,8 +109,9 @@ async def test_a_deflected_flap_is_evaluated_and_declared(monkeypatch: pytest.Mo
 
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
+    adapter, plane = OptiAdapter(InProcessRuntime()), airplane()
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).evaluate(airplane(), AIR, 10.0, 4.0)
+        await adapter.evaluate(plane, AIR, 10.0, 4.0)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 

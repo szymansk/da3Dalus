@@ -1391,7 +1391,7 @@ def zero_lift_worker(request: ZeroLiftRequest) -> WorkerOutcome[ZeroLiftSolution
     opti = asb.Opti()
     alpha = opti.variable(init_guess=ZERO_LIFT_START_DEG)
     cl = model(request.v_ms, alpha, request.air)["CL"]
-    opti.subject_to(cl == 0.0)
+    opti.subject_to(cl == 0)
     solved = _ipopt(opti, "zero-lift", ZERO_LIFT_HINT)
     alpha_0 = float(solved(alpha))
     slope_per_deg = float(solved(casadi.jacobian(cl, alpha)))

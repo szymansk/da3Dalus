@@ -70,18 +70,18 @@ async def test_an_inadmissible_speed_is_invalid_input(
     monkeypatch: pytest.MonkeyPatch, v: float
 ) -> None:
     monkeypatch.setattr(opti_module, "zero_lift_worker", canned())
+    adapter, plane = OptiAdapter(InProcessRuntime()), airplane()
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).zero_lift(airplane(), AIR, v)
+        await adapter.zero_lift(plane, AIR, v)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
     assert raised.value.parameter == "v"
 
 
 async def test_a_deflected_aileron_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(opti_module, "zero_lift_worker", canned())
+    adapter, plane = OptiAdapter(InProcessRuntime()), airplane(device=("aileron", 4.0))
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).zero_lift(
-            airplane(device=("aileron", 4.0)), AIR, V_MS
-        )
+        await adapter.zero_lift(plane, AIR, V_MS)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
@@ -98,8 +98,9 @@ async def test_a_deflected_flap_is_evaluated_and_declared(monkeypatch: pytest.Mo
 
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
+    adapter, plane = OptiAdapter(InProcessRuntime()), airplane()
     with pytest.raises(FormulaError) as raised:
-        await OptiAdapter(InProcessRuntime()).zero_lift(airplane(), AIR, V_MS)
+        await adapter.zero_lift(plane, AIR, V_MS)
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 
