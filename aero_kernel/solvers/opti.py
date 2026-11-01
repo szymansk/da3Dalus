@@ -824,9 +824,16 @@ class _Seen:
     effective_alpha: float
 
 
-@dataclass(frozen=True)
-class DeviceSpan:
-    """The spanwise extent of one deflected device: ``|y|`` intervals of its segments, in m."""
+class DeviceSpan(BaseModel):
+    """The spanwise extent of one deflected device: ``|y|`` intervals of its segments, in m.
+
+    Attributes:
+        wing: The wing key.
+        device: The device's label.
+        intervals: The ``(low, high)`` interval of ``|y|`` of each of its segments, sorted.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     wing: str
     device: str
