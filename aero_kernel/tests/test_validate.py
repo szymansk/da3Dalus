@@ -161,12 +161,19 @@ class TestWingSections:
         assert _codes(errors) == ["non_positive_length"]
         assert errors[0].detail == {"value": 0.0}
 
-    @pytest.mark.parametrize("tip", [[0.5, 0.0, 0.0], [0.0, 0.5, 0.0]])
-    def test_a_chain_along_x_or_y_has_span(self, tip: list[float]) -> None:
-        """A swept-back root-to-tip changes only in x."""
+    def test_a_chain_along_y_has_span(self) -> None:
         document = _document()
-        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["xyz_le"] = tip
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["xyz_le"] = [0.0, 0.5, 0.0]
         assert _validate(document) == ()
+
+    def test_a_chain_along_x_only_has_length_but_two_sections_at_one_station(self) -> None:
+        """The chain has a length (no non_positive_length), but both sections sit at one spanwise
+        station: the section between them has no span and no area (#1342)."""
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["xyz_le"] = [0.5, 0.0, 0.0]
+        errors = _validate(document)
+        assert _codes(errors) == ["duplicate_section"]
+        assert _paths(errors) == ['airplane.wings["Main wing"].x_secs[1]']
 
     def test_a_chain_along_z_has_span_but_is_no_main_wing(self) -> None:
         """A vertical chain has a length (no non_positive_length); as a main wing it is refused by
@@ -175,10 +182,41 @@ class TestWingSections:
         document["airplane"]["wings"]["Main wing"]["x_secs"][1]["xyz_le"] = [0.0, 0.0, 0.5]
         assert _codes(_validate(document)) == ["main_wing_without_spanwise_extent"]
 
-    def test_a_zero_length_segment_is_no_finding(self) -> None:
+    def test_two_adjacent_sections_at_one_station_are_refused(self) -> None:
+        """An exact duplicate gives AeroBuildup a section of zero span: NaN (#1342)."""
         document = _document()
         wing = document["airplane"]["wings"]["Main wing"]
-        wing["x_secs"].insert(1, _xsec(0.0))
+        wing["x_secs"].insert(1, _xsec(0.0, chord=0.15))
+        errors = _validate(document)
+        assert _codes(errors) == ["duplicate_section"]
+        assert _paths(errors) == ['airplane.wings["Main wing"].x_secs[1]']
+        assert errors[0].category is ErrorCategory.INVALID_INPUT
+        assert "x_secs[0]" in errors[0].message
+
+    def test_a_fin_station_is_its_height(self) -> None:
+        """A fin spreads in z: two sections at one y but different z are two stations, two at
+        one y and one z are a duplicate, also when x differs."""
+        document = _document()
+        document["airplane"]["wings"]["Fin"] = {
+            "name": "Fin",
+            "surface_type": "vertical_tail",
+            "symmetric": False,
+            "x_secs": [
+                {"xyz_le": [0.5, 0.0, 0.0], "chord": 0.1, "twist": 0.0, "airfoil": NACA},
+                {"xyz_le": [0.55, 0.0, 0.1], "chord": 0.08, "twist": 0.0, "airfoil": NACA},
+            ],
+        }
+        assert _validate(document) == ()
+        document["airplane"]["wings"]["Fin"]["x_secs"].append(
+            {"xyz_le": [0.6, 0.0, 0.1], "chord": 0.05, "twist": 0.0, "airfoil": NACA}
+        )
+        errors = _validate(document)
+        assert _codes(errors) == ["duplicate_section"]
+        assert _paths(errors) == ['airplane.wings["Fin"].x_secs[2]']
+
+    def test_sections_apart_in_the_span_are_no_duplicate(self) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"].insert(1, _xsec(1e-6))
         assert _validate(document) == ()
 
     def test_span_is_the_summed_length_of_the_chain(self) -> None:
@@ -636,7 +674,7 @@ class TestConflictingMass:
         document["airplane"]["total_mass_kg"] = 2.0
         (warning,) = _result(document).warnings
         assert warning.code == "conflicting_mass"
-        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.severity is WarningSeverity.NOTICE
         assert warning.origin == "aircraft-mass"
         assert warning.detail == {"aircraft_mass_kg": 1.5, "geometry_total_mass_kg": 2.0}
         assert "1.5" in warning.message
@@ -681,7 +719,7 @@ class TestFuselageSectionEquivalent:
         section["n_lower"] = 6.0
         (warning,) = _result(document).warnings
         assert warning.code == "fuselage_section_equivalent"
-        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.severity is WarningSeverity.NOTICE
         assert warning.origin == "airplane"
         assert warning.detail == {
             "section": 'airplane.fuselages["Body"].x_secs[1]',
@@ -731,7 +769,7 @@ class TestGeometryDeflectionIgnored:
         x_sec["trailing_edge_device"] = {"deflection_deg": 12.5}
         (warning,) = _result(document).warnings
         assert warning.code == "geometry_deflection_ignored"
-        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.severity is WarningSeverity.NOTICE
         assert warning.origin == "airplane"
         assert warning.detail == {
             "device": 'airplane.wings["Main wing"].x_secs[0].trailing_edge_device',

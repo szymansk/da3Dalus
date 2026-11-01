@@ -6,6 +6,7 @@ The solver boundary is faked as in the stall tests; the real AeroBuildup and IPO
 
 import math
 from collections.abc import Callable
+from itertools import pairwise
 from types import SimpleNamespace
 from typing import Any, ClassVar
 
@@ -43,6 +44,7 @@ def diagnostics() -> DeflectionDiagnostics:
         min_confidence_wing="Main",
         max_effective_alpha_deg=14.2,
         max_effective_alpha_wing="Main",
+        devices=(),
     )
 
 
@@ -76,18 +78,19 @@ async def test_steady_roll_end_to_end_with_stub(monkeypatch: pytest.MonkeyPatch)
 async def test_steady_roll_reports_min_confidence_and_max_effective_alpha(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """M1: the values go into one declared practice warning; there is no threshold."""
+    """M1: the values go into one declared notice; there is no threshold."""
     monkeypatch.setattr(opti_module, "steady_roll_worker", canned(solution()))
     roll = await OptiAdapter(InProcessRuntime()).steady_roll(
         rolling_airplane(), MASS, GRAVITY, AIR, SPEED, 20.0
     )
     (warning,) = [w for w in roll.warnings if w.code == "control_surface_fit_range_unknown"]
-    assert warning.severity == "practice"
+    assert warning.severity == "notice"
     assert warning.detail == {
         "min_confidence": 0.61,
         "min_confidence_wing": "Main",
         "max_effective_alpha_deg": 14.2,
         "max_effective_alpha_wing": "Main",
+        "devices": [],
     }
     assert "tau" in warning.message or "τ" in warning.message
 
@@ -251,10 +254,7 @@ class Boundary:
                 if isinstance(op_point.alpha, float) and not isinstance(op_point.alpha, Variable):
                     boundary.numeric_runs += 1
                 for wing in getattr(airplane, "wings", []):
-                    for xsec in wing.xsecs:
-                        xsec.airfoil.get_aero_from_neuralfoil(
-                            alpha=5.0, Re=1e5, control_surfaces=xsec.control_surfaces
-                        )
+                    neuralfoil_calls(wing)
                 cl, cn = (
                     boundary.moments(op_point.alpha, op_point.p)
                     if isinstance(op_point.alpha, float)
@@ -274,10 +274,58 @@ class Boundary:
         )
 
 
-def plain_wing() -> SimpleNamespace:
-    """One wing with one plain section, so that the recording pass has something to record."""
-    xsec = SimpleNamespace(airfoil=FakeAirfoil(name="plain"), control_surfaces=[])
-    return SimpleNamespace(name="Main", xsecs=[xsec])
+class FakeWing:
+    """A converted wing: cross-sections, mirror flag and AeroSandbox's sectional area and span."""
+
+    def __init__(self, name: str, xsecs: list[SimpleNamespace], symmetric: bool = True) -> None:
+        self.name, self.xsecs, self.symmetric = name, xsecs, symmetric
+
+    def area(
+        self,
+        *,
+        type: str,  # noqa: A002  # AeroSandbox's keyword
+        include_centerline_distance: bool,
+        _sectional: bool,
+    ) -> list[float]:
+        """0.2 m x the mean chord per section, as the planform area of a 0.2 m wide section."""
+        assert (type, include_centerline_distance, _sectional) == ("planform", False, True)
+        return [0.2 * (a.chord + b.chord) / 2.0 for a, b in pairwise(self.xsecs)]
+
+    def span(
+        self,
+        *,
+        type: str,  # noqa: A002  # AeroSandbox's keyword
+        include_centerline_distance: bool,
+        _sectional: bool,
+    ) -> list[float]:
+        assert (type, include_centerline_distance, _sectional) == ("yz", False, True)
+        return [0.2] * (len(self.xsecs) - 1)
+
+
+def fake_xsec(name: str, y: float, surfaces: list[Any] | None = None) -> SimpleNamespace:
+    """A cross-section of chord 0.2 m at ``y`` whose airfoil answers with the confidence of ``name``."""
+    return SimpleNamespace(
+        airfoil=FakeAirfoil(name=name),
+        control_surfaces=surfaces or [],
+        chord=0.2,
+        xyz_le=[0.0, y, 0.0],
+    )
+
+
+def neuralfoil_calls(wing: Any) -> None:
+    """AeroBuildup's calls: both ends of each section with the inner end's control surfaces, and
+    the same again for the mirrored half (``aero_buildup.py:797-806, 878-892``)."""
+    for inner, outer in pairwise(wing.xsecs):
+        for _half in range(2 if wing.symmetric else 1):
+            for xsec in (inner, outer):
+                xsec.airfoil.get_aero_from_neuralfoil(
+                    alpha=5.0, Re=1e5, control_surfaces=inner.control_surfaces
+                )
+
+
+def plain_wing() -> FakeWing:
+    """The converted rolling wing: plain sections at y 0, 0.2 and 0.4 m."""
+    return FakeWing("Main", [fake_xsec("plain", y) for y in (0.0, 0.2, 0.4)])
 
 
 def install(
@@ -413,17 +461,18 @@ async def test_the_weight_cannot_be_carried_before_the_stall_is_not_converged(
 
 
 def wings_with_confidence() -> list[Any]:
-    """Two wings; the control surfaces of the first carry hinge 0.78 at -20 and +20 deg."""
-    FakeAirfoil.confidence_by_name = {"main-a": 0.9, "main-b": 0.6, "tail": 0.8}
-
-    def xsec(name: str, surfaces: list[Any]) -> SimpleNamespace:
-        return SimpleNamespace(airfoil=FakeAirfoil(name=name), control_surfaces=surfaces)
-
+    """Two wings; the control surfaces of Main's sections carry hinge 0.78 at -20 and +20 deg."""
+    FakeAirfoil.confidence_by_name = {"main-a": 0.9, "main-b": 0.6, "main-c": 0.8, "tail": 0.8}
     down = SimpleNamespace(hinge_point=0.78, deflection=20.0)
     up = SimpleNamespace(hinge_point=0.78, deflection=-20.0)
+    main = [
+        fake_xsec("main-a", 0.0, [down]),
+        fake_xsec("main-b", 0.2, [up]),
+        fake_xsec("main-c", 0.4),
+    ]
     return [
-        SimpleNamespace(name="Main", xsecs=[xsec("main-a", [down]), xsec("main-b", [up])]),
-        SimpleNamespace(name="Tail", xsecs=[xsec("tail", [])]),
+        FakeWing("Main", main),
+        FakeWing("Tail", [fake_xsec("tail", 0.0), fake_xsec("tail", 0.1)]),
     ]
 
 
@@ -455,6 +504,18 @@ async def test_the_worker_records_min_confidence_and_max_effective_alpha_over_al
     tau = control_effectiveness(0.78)
     assert math.isclose(recorded.max_effective_alpha_deg, 5.0 + tau * 20.0, rel_tol=1e-12)
     assert recorded.max_effective_alpha_wing == "Main"
+    # the aileron spans Main's second section (y 0.2 to 0.4 m): the chord blend of 0.6 and 0.8 on
+    # both halves, each at the section's leading-edge midpoint
+    (aileron,) = recorded.devices
+    assert aileron.wing == "Main"
+    assert math.isclose(aileron.mean_confidence(), 0.7, rel_tol=1e-12)
+    places = [s.at_m for s in aileron.sections]
+    expected = [(0.0, 0.3, 0.0), (0.0, -0.3, 0.0)]
+    assert all(
+        math.isclose(a, b, abs_tol=1e-12)
+        for got, want in zip(places, expected, strict=True)
+        for a, b in zip(got, want, strict=True)
+    )
     assert boundary.numeric_runs == 3  # two for the start of the roll rate, one recording pass
 
 

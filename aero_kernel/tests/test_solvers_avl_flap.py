@@ -280,7 +280,7 @@ async def test_a_flaperon_is_commanded_with_its_bias_and_the_aileron_on_top(fake
 async def test_the_flap_is_declared_as_linearised_with_its_deflection(fake: Path) -> None:
     found = await roll(flapped_with_aileron())
     (warning,) = found.warnings
-    assert (warning.code, warning.severity) == ("avl_flap_linearised", "practice")
+    assert (warning.code, warning.severity) == ("avl_flap_linearised", "notice")
     assert warning.detail == {"flaps": [{"wing": "Main", "device": "flap", "deflection_deg": FLAP}]}
 
 

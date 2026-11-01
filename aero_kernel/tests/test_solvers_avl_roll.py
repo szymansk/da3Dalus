@@ -121,13 +121,13 @@ async def test_roll_file_and_commands_reach_avl(fake: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_a_disagreement_above_one_percent_is_a_defect_warning_with_both_values(
+async def test_a_disagreement_above_one_percent_is_a_warning_with_both_values(
     fake: Path,
 ) -> None:
     configure(fake, {"12": 0.05, "24": 0.05 * 1.012})
     found = await roll()
     (warning,) = found.warnings
-    assert (warning.code, warning.severity) == ("avl_mesh_not_converged", WarningSeverity.DEFECT)
+    assert (warning.code, warning.severity) == ("avl_mesh_not_converged", WarningSeverity.WARNING)
     assert math.isclose(as_float(warning.detail["p_hat_declared"]), 0.05, rel_tol=1e-12)
     assert warning.detail["p_hat_refined"] == pytest.approx(0.0506, abs=1e-9)  # pyright: ignore[reportUnknownMemberType]
     assert math.isclose(found.p_hat, 0.05, rel_tol=1e-12)
@@ -140,18 +140,18 @@ async def test_roll_refinement_warning_and_unchecked(fake: Path) -> None:
     configure(fake, {"12": 0.05}, overflow=["24"])
     found = await roll()
     (warning,) = found.warnings
-    assert (warning.code, warning.severity) == ("avl_refinement_unchecked", WarningSeverity.DEFECT)
+    assert (warning.code, warning.severity) == ("avl_refinement_unchecked", WarningSeverity.WARNING)
     assert math.isclose(found.p_hat, 0.05, rel_tol=1e-12)
 
 
 @pytest.mark.asyncio
-async def test_roll_beyond_primer_range_is_defect_warning(fake: Path) -> None:
+async def test_roll_beyond_primer_range_is_a_warning(fake: Path) -> None:
     configure(fake, {"12": 0.276, "24": 0.276})
     found = await roll()
     (warning,) = found.warnings
     assert (warning.code, warning.severity) == (
         "avl_roll_rate_beyond_range",
-        WarningSeverity.DEFECT,
+        WarningSeverity.WARNING,
     )
     assert warning.detail == {"p_hat": 0.276, "limit": 0.10}
     assert math.isclose(found.p_hat, 0.276, rel_tol=1e-12)  # a value with a caveat, never clipped
@@ -372,7 +372,7 @@ async def test_a_refined_run_off_the_linear_branch_leaves_the_declared_value_unc
     found = await roll()
     assert math.isclose(found.p_hat, 0.276, rel_tol=1e-12)
     (warning,) = [w for w in found.warnings if w.code == "avl_refinement_unchecked"]
-    assert warning.severity is WarningSeverity.DEFECT
+    assert warning.severity is WarningSeverity.WARNING
     assert warning.detail["reason"] == "avl_roll_branch_inconsistent"
     assert "no consistent solution" in warning.message
 

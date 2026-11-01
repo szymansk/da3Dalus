@@ -94,13 +94,13 @@ async def test_avl_gets_the_declared_and_the_refined_mesh_and_the_requested_cl(f
 
 
 @pytest.mark.asyncio
-async def test_a_disagreement_above_the_tolerance_is_a_defect_warning_with_both_values(
+async def test_a_disagreement_above_the_tolerance_is_a_warning_with_both_values(
     fake: Path,
 ) -> None:
     configure(fake, {"10": 0.14, "20": 0.14 + 0.2 * 0.006})  # 0.6 % MAC of c_MAC = 0.2 m
     found = await neutral(fake)
     (warning,) = found.warnings
-    assert (warning.code, warning.severity) == ("avl_mesh_not_converged", WarningSeverity.DEFECT)
+    assert (warning.code, warning.severity) == ("avl_mesh_not_converged", WarningSeverity.WARNING)
     assert warning.detail["x_np_declared"] == 0.14
     assert warning.detail["delta_mac"] == pytest.approx(0.006, rel=1e-9)  # pyright: ignore[reportUnknownMemberType]
     assert found.x_np == 0.14
@@ -117,7 +117,7 @@ async def test_a_refined_mesh_that_overflows_is_an_unchecked_refinement(fake: Pa
     configure(fake, {"10": 0.14}, overflow=["20"])
     found = await neutral(fake)
     (warning,) = found.warnings
-    assert (warning.code, warning.severity) == ("avl_refinement_unchecked", WarningSeverity.DEFECT)
+    assert (warning.code, warning.severity) == ("avl_refinement_unchecked", WarningSeverity.WARNING)
     assert found.x_np == 0.14
 
 

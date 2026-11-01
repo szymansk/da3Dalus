@@ -163,7 +163,7 @@ async def test_bryan_declares_the_missing_fuselage_in_every_world_and_converges(
 @pytest.mark.asyncio
 async def test_chekker_declares_the_avl_mesh_as_not_converged_and_wiesel_converges() -> None:
     """CHEKKER's AVL neutral point moves by 0.55 % MAC under the refined mesh, above the 0.5 %
-    tolerance: a declared defect (ADR 0020), the value is still returned. WIESEL's agrees."""
+    tolerance: a declared warning (ADR 0020), the value is still returned. WIESEL's agrees."""
     chekker = await run(FleetMember.CHEKKER)
     for quantity in chekker.quantities:
         (not_converged,) = [w for w in quantity.warnings if w.code == "avl_mesh_not_converged"]
@@ -317,7 +317,7 @@ async def test_cg_for_target_margin_is_the_neutral_point_less_the_target_per_wor
 async def test_the_v_tail_aircraft_has_the_three_worlds_and_declares_its_unconverged_mesh() -> None:
     """BELEMNITOS (#1208): a V-tail is the horizontal tail of the textbook and Pappas worlds, and AVL
     takes its geometry as it is. The AVL mesh moves by 1.27 % MAC under the refined mesh, above the
-    0.5 % tolerance: a declared defect (ADR 0020), the value is still returned."""
+    0.5 % tolerance: a declared warning (ADR 0020), the value is still returned."""
     result = await run(FleetMember.BELEMNITOS)
     neutral = result.quantities[0]
     assert neutral.interval is not None

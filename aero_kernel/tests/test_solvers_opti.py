@@ -9,8 +9,9 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
-from aero_kernel.solvers.base import regime_by_wing
-from aero_kernel.solvers.opti import OptiAdapter, StallRequest, StallSolution
+from aero_kernel.solvers.opti import DeviceSpan, OptiAdapter, StallRequest, StallSolution
+from aero_kernel.solvers.regime import regime_by_surface
+from aero_kernel.tests.planform_stand_in import stand_in_surface_sections
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane, direct_aero_model
 
 pytestmark = pytest.mark.asyncio
@@ -55,10 +56,10 @@ async def test_the_stall_hands_the_worker_everything_it_needs(
 async def test_the_stall_carries_the_regime_warnings_of_its_stall_speed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Chords 0.2 and 0.1 m: at 8 m/s Re 9.1e4 and 4.6e4 (bubble-sensitive, in the band); at 2 m/s
-    the smaller chord gives Re 1.1e4, below 3e4 (ADR 0028)."""
+    """Chords 0.2 and 0.1 m, MAC 0.156 m: at 6 m/s Re 6.4e4 at the MAC (bubble-sensitive, in the
+    band); at 2 m/s Re 2.1e4, below 3e4 (ADR 0028; per surface, #1342)."""
     adapter = OptiAdapter(InProcessRuntime())
-    monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=8.0)))
+    monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=6.0)))
     fast = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
     assert [w.code for w in fast.warnings] == ["reynolds_bubble_sensitive"]
     assert fast.warnings[0].detail["wing"] == "Main"
@@ -148,7 +149,7 @@ async def test_a_deflected_flap_reaches_the_worker_and_is_declared(
     result = await OptiAdapter(InProcessRuntime()).stall(flapped, 1.5, 9.81, 1.0, AIR)
     assert seen[0].airplane == flapped
     (warning,) = [w for w in result.warnings if w.code == "control_surface_fit_range_unknown"]
-    assert warning.severity == "practice"
+    assert warning.severity == "notice"
     assert warning.detail == {
         "flaps": [{"wing": "Main", "device": "flap-1", "deflection_deg": 30.0}]
     }
@@ -401,8 +402,8 @@ async def test_the_stall_regime_warnings_are_those_of_the_stall_speed(
     adapter = OptiAdapter(InProcessRuntime())
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=6.0)))
     result = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
-    expected = regime_by_wing(
-        {"Main": [0.2, 0.1]}, 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
+    expected = regime_by_surface(
+        stand_in_surface_sections(airplane()), 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
     )
     assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
     assert result.warnings == tuple(expected)
@@ -421,6 +422,7 @@ async def test_a_stall_with_a_deflected_flap_records_the_confidence_at_the_optim
         min_confidence_wing="Main",
         max_effective_alpha_deg=15.75,
         max_effective_alpha_wing="Main",
+        devices=(),
     )
     calls: list[tuple[float, float]] = []
 
@@ -446,6 +448,7 @@ async def test_the_confidence_of_a_flapped_stall_reaches_the_declared_warning(
         min_confidence_wing="Main",
         max_effective_alpha_deg=15.0,
         max_effective_alpha_wing="Main",
+        devices=(),
     )
     flapped = solution().model_copy(update={"diagnostics": found})
     monkeypatch.setattr(opti_module, "stall_worker", canned(flapped))
@@ -468,14 +471,19 @@ async def test_the_flap_diagnostics_run_at_the_optimum_of_the_request(
         points.append(kwargs)
         return "point"
 
-    def confidence_run(_asb: object, plane: object, keys: list[str], point: object) -> str:
-        return f"{plane}:{keys}:{point}"
+    def confidence_run(
+        _asb: object, plane: object, keys: list[str], point: object, spans: list[DeviceSpan]
+    ) -> str:
+        found_spans = [(span.wing, span.intervals) for span in spans]
+        return f"{plane}:{keys}:{point}:{found_spans}"
 
     monkeypatch.setattr(
         opti_module, "load_aerosandbox", lambda: SimpleNamespace(OperatingPoint=operating_point)
     )
     monkeypatch.setattr(opti_module, "_confidence_run", confidence_run)
-    request = StallRequest(airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
+    flapped = airplane(device=("flap", 30.0), hinge=0.8)
+    request = StallRequest(airplane=flapped, mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
     found = opti_module._flap_diagnostics(request, "asb", 8.0, 15.0)  # pyright: ignore[reportPrivateUsage]
-    assert found == "asb:['Main']:point"
+    # the flap's span: the first panel, |y| 0 to 0.3 m
+    assert found == "asb:['Main']:point:[('Main', ((0.0, 0.3),))]"
     assert (points[0]["velocity"], points[0]["alpha"]) == (8.0, 15.0)

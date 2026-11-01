@@ -93,7 +93,7 @@
     },
     "Check": {
       "additionalProperties": false,
-      "description": "A pre- or postcondition of a formula (ch. 8.5).\n\nAttributes:\n    id: Name of the check, unique among the formula's checks of its kind.\n    parameter: The input (precondition) or output (postcondition) parameter it concerns.\n    on_violation: ``error`` withholds the value, ``warning`` returns it with a defect warning.\n    applications: Ids of the applications it belongs to; ``None`` = all of them.",
+      "description": "A pre- or postcondition of a formula (ch. 8.5).\n\nAttributes:\n    id: Name of the check, unique among the formula's checks of its kind.\n    parameter: The input (precondition) or output (postcondition) parameter it concerns.\n    on_violation: ``error`` withholds the value, ``warning`` returns it with a ``warning``.\n    applications: Ids of the applications it belongs to; ``None`` = all of them.",
       "properties": {
         "applications": {
           "anyOf": [

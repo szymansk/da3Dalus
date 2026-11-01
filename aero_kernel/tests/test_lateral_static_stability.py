@@ -142,7 +142,7 @@ async def test_a_stable_spiral_reports_the_halving_time_negative_and_declares_it
         assert close(time.interval.worlds[world], -math.log(2.0) / abs(root), 1e-12)
     halving = [w for w in time.warnings if w.code == "spiral_halving_time_reported"]
     assert halving
-    assert halving[0].severity is WarningSeverity.PRACTICE
+    assert halving[0].severity is WarningSeverity.NOTICE
     assert close(float(halving[0].detail["lambda_s"]), root, 1e-12)  # pyright: ignore[reportArgumentType]
 
 

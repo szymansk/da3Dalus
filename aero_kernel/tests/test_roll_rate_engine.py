@@ -21,7 +21,7 @@ from aero_kernel.solvers.opti import DeflectionDiagnostics
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.np_builders import StubAvl
-from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, StubOpti
+from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, StubOpti, flap_confidence
 from aero_kernel.tests.test_solvers_roll_devices import aileron, wing_geometry
 
 pytestmark = pytest.mark.asyncio
@@ -175,7 +175,7 @@ async def test_aerobuildup_failure_error_with_avl_in_worlds_ok() -> None:
 @pytest.mark.parametrize(
     ("delta", "expected"), [(20.0, False), (25.0, False), (30.0, True), (-30.0, True)]
 )
-async def test_deflection_beyond_25_is_practice_warning_in_both_worlds(
+async def test_deflection_beyond_25_is_a_notice_in_both_worlds(
     delta: float, expected: bool
 ) -> None:
     quantity = only(await run("roll-rate-approach", delta=delta))
@@ -185,7 +185,7 @@ async def test_deflection_beyond_25_is_practice_warning_in_both_worlds(
         return
     assert sorted(str(w.world) for w in beyond) == sorted(WORLDS)
     for warning in beyond:
-        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.severity is WarningSeverity.NOTICE
         assert warning.origin == "roll-rate-approach"
         assert warning.detail == {"deflection_deg": delta, "reference_deg": 25.0}
         assert "Sadraey" in warning.message
@@ -252,7 +252,7 @@ async def test_the_avl_world_beyond_the_limit_is_dropped_and_declared(p_hat: flo
         assert quantity.interval.min == quantity.interval.max
         (warning,) = [w for w in quantity.warnings if w.code == "world_outside_validity"]
         assert warning.world == AVL_WORLD
-        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.severity is WarningSeverity.NOTICE
         assert warning.detail["limit"] == 0.1
         assert warning.detail["p_hat"] == p_hat
         assert "AVL" in warning.message
@@ -352,12 +352,7 @@ async def test_a_flapless_approach_roll_is_unchanged() -> None:
 
 
 def confidence(value: float) -> DeflectionDiagnostics:
-    return DeflectionDiagnostics(
-        min_confidence=value,
-        min_confidence_wing="Main",
-        max_effective_alpha_deg=10.0,
-        max_effective_alpha_wing="Main",
-    )
+    return flap_confidence(value)
 
 
 async def test_a_low_confidence_roll_on_the_landing_flap_is_declared_in_the_aerobuildup_world() -> (
@@ -374,8 +369,16 @@ async def test_a_low_confidence_roll_on_the_landing_flap_is_declared_in_the_aero
         )
     )
     (low,) = [w for w in quantity.warnings if w.code == "flap_confidence_low"]
-    assert (low.severity, low.world) == (WarningSeverity.DEFECT, "roll-rate=aerobuildup")
-    assert low.detail == {"min_confidence": 0.393, "threshold": 0.85, "wing": "Main"}
+    assert (low.severity, low.world) == (WarningSeverity.WARNING, "roll-rate=aerobuildup")
+    assert low.detail == {
+        "wing": "Main",
+        "device": "flap",
+        "mean_confidence": 0.393,
+        "threshold": 0.85,
+        "span_share_below_threshold": 1.0,
+        "min_confidence": 0.393,
+        "min_confidence_at_m": [0.0, 0.3, 0.0],
+    }
     assert not [w for w in quantity.warnings if w.code == "flap_deflection_beyond_validity"]
 
 
@@ -397,7 +400,7 @@ async def test_a_deflection_above_the_limit_is_declared_in_both_worlds_and_not_a
     assert sorted(str(w.world) for w in beyond) == sorted(
         WORLDS
     )  # also on the landing stall speed, world-less
-    assert beyond[0].severity is WarningSeverity.DEFECT
+    assert beyond[0].severity is WarningSeverity.WARNING
     assert beyond[0].detail["limit_deg"] == 30.0
     at_limit = only(
         await run(

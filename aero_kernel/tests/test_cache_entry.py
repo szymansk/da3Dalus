@@ -15,7 +15,7 @@ def _bits(value: float) -> bytes:
 
 def _warning() -> KernelWarning:
     return KernelWarning(
-        severity=WarningSeverity.DEFECT,
+        severity=WarningSeverity.WARNING,
         code="precondition_violated",
         message="check failed",
         origin="stall-speed",

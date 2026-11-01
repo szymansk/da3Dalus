@@ -9,13 +9,14 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
-from aero_kernel.solvers.base import regime_by_wing
 from aero_kernel.solvers.opti import (
     BestGlideSolution,
     OptiAdapter,
     StallRequest,
 )
+from aero_kernel.solvers.regime import regime_by_surface
 from aero_kernel.tests.formula_builders import OPT_SETTINGS
+from aero_kernel.tests.planform_stand_in import stand_in_surface_sections
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane, direct_aero_model
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
 
@@ -81,8 +82,8 @@ async def test_the_regime_warnings_are_those_of_the_optimum_speed(
     monkeypatch.setattr(opti_module, "best_glide_worker", canned(glide(6.0)))
     adapter = OptiAdapter(InProcessRuntime())
     result = await adapter.best_glide(airplane(), MASS, GRAVITY, 1.0, AIR)
-    expected = regime_by_wing(
-        {"Main": [0.2, 0.1]}, 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
+    expected = regime_by_surface(
+        stand_in_surface_sections(airplane()), 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
     )
     assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
     assert result.warnings == tuple(expected)

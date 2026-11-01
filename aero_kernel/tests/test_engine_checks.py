@@ -153,7 +153,7 @@ async def test_a_violated_precondition_with_on_violation_warning_returns_the_val
     (only,) = result.quantities
     assert only.status is QuantityStatus.OK
     (warning,) = only.warnings
-    assert (warning.code, warning.severity) == ("precondition_violated", WarningSeverity.DEFECT)
+    assert (warning.code, warning.severity) == ("precondition_violated", WarningSeverity.WARNING)
     assert warning.detail == {"precondition": "pre_warn"}
     assert "m is odd" in warning.message
     assert probe.implementation_calls == 1
@@ -186,7 +186,7 @@ async def test_an_unchecked_precondition_warns_and_the_value_stays() -> None:
     (only,) = result.quantities
     assert only.status is QuantityStatus.OK
     (warning,) = only.warnings
-    assert (warning.code, warning.severity) == ("precondition_unchecked", WarningSeverity.PRACTICE)
+    assert (warning.code, warning.severity) == ("precondition_unchecked", WarningSeverity.NOTICE)
     assert warning.detail == {"precondition": "pre_warn"}
 
 
@@ -198,7 +198,7 @@ async def test_a_violated_postcondition_with_on_violation_warning_returns_the_va
     assert only.status is QuantityStatus.OK
     assert only.value == 1.0
     (warning,) = only.warnings
-    assert (warning.code, warning.severity) == ("postcondition_violated", WarningSeverity.DEFECT)
+    assert (warning.code, warning.severity) == ("postcondition_violated", WarningSeverity.WARNING)
     assert warning.detail == {"postcondition": "post_warn"}
 
 
@@ -226,7 +226,7 @@ async def test_an_unchecked_postcondition_warns_and_the_value_stays() -> None:
     (only,) = result.quantities
     assert only.status is QuantityStatus.OK
     (warning,) = only.warnings
-    assert (warning.code, warning.severity) == ("postcondition_unchecked", WarningSeverity.PRACTICE)
+    assert (warning.code, warning.severity) == ("postcondition_unchecked", WarningSeverity.NOTICE)
     assert warning.detail == {"postcondition": "post_err"}
 
 

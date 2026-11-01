@@ -157,7 +157,7 @@ async def test_a_half_step_sweep_that_agrees_within_one_step_is_silent() -> None
     assert context.warnings == ()
 
 
-async def test_a_half_step_sweep_that_disagrees_is_a_declared_defect_with_both_values() -> None:
+async def test_a_half_step_sweep_that_disagrees_is_a_declared_warning_with_both_values() -> None:
     stub = StubOpti()
     # the finer sweep puts the peak 0.4 deg further out, so its crossing is 0.4 deg further out
     stub.sweep_answer = lambda alphas: lift_curve_at((ALPHA_S + 0.4, CL_MAX), True, alphas)
@@ -165,7 +165,7 @@ async def test_a_half_step_sweep_that_disagrees_is_a_declared_defect_with_both_v
     result = await stall_break(break_x(), context)
     (warning,) = context.warnings
     assert warning.code == "stall_break_resolution"
-    assert warning.severity.value == "defect"
+    assert warning.severity.value == "warning"
     assert warning.origin == "alpha-break"
     assert close(float(str(warning.detail["alpha_break_published_deg"])), ALPHA_BREAK, 1e-12)
     assert close(float(str(warning.detail["alpha_break_half_step_deg"])), ALPHA_BREAK + 0.4, 1e-9)

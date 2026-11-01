@@ -139,7 +139,7 @@ def test_hinge_is_mean_of_root_and_tip_with_declared_warning() -> None:
     assert math.isclose(surface.kwargs["hinge_point"], 0.79, rel_tol=1e-12)
     (warning,) = roll_hinge_warnings(roll_segments(model))
     assert warning.code == "hinge_line_averaged"
-    assert warning.severity == "practice"
+    assert warning.severity == "notice"
     assert warning.detail == {
         "wing": "Main",
         "device": "Querruder",
