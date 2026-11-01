@@ -1120,15 +1120,17 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   formula code.
 - **Bounded.** Execution resources are never global. The kernel always **owns** its worker processes (maintainer
   D12, 2026-10-16: no injected executor; restorable from `a2825d72` if the app ever needs one):
-  - The **stateless `compute()`** takes one optional keyword argument, `max_concurrency=` (default
-    `os.cpu_count()`). The limit counts concurrent **solver calls** (pool tasks and AVL subprocesses); graph
+  - The **stateless `compute()`** takes two optional keyword arguments, `max_workers=` and
+    `max_concurrency=` (default `os.cpu_count()` each; `api.py`). The limit counts concurrent **solver calls** (pool tasks and AVL subprocesses); graph
     nodes waiting on them cost nothing. It creates its workers on the first solver call and shuts them down
     before returning, so it stays free of state (Q20); its model functions live only as long as the call.
     Spawning costs about a second; callers that compute often use `CachedKernel`.
   - **`CachedKernel`** owns one `SolverRuntime` — its workers, their model functions and one limit — for
     its lifetime (#1336, `api.py`). It is created lazily on the first compute and closed by `async with`
     or `aclose()`; the keywords `max_models_per_worker` (default `aero_model.MAX_MODELS_PER_WORKER` = 2),
-    `max_workers` and `max_concurrency` are passed at construction. The app closes its process-wide
+    `max_workers` and `max_concurrency` are passed at construction. The app runs both its cached and its
+    fresh compute on 4 workers and 4 concurrent solver calls (`canon_service.KERNEL_WORKERS`, maintainer
+    2026-11-01: the machine must stay responsive), so its model functions take at most about 2.2 GB. The app closes its process-wide
     facade on shutdown, on the facade's own kernel loop (`canon_service.close_kernel`, called from the
     FastAPI lifespan in `app/main.py`).
   - **Worker slots and model affinity** (#1336, `runtime.SolverRuntime._choose`). A plain pool cannot send

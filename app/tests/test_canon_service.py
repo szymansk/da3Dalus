@@ -50,7 +50,9 @@ class StubKernel:
         self.quantities = quantities
         self.calls: list[tuple[AircraftInput, ComputeRequest]] = []
 
-    async def __call__(self, aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
+    async def __call__(
+        self, aircraft: AircraftInput, request: ComputeRequest, **_limits: int | None
+    ) -> ComputeResult:
         self.calls.append((aircraft, request))
         logging.getLogger("aero_kernel.engine").debug(
             "node started", extra={"formula": "stall-speed", "quantity": "stall-speed"}
@@ -400,3 +402,23 @@ def test_the_app_shutdown_closes_the_shared_kernel(monkeypatch: pytest.MonkeyPat
 
 def test_the_shared_kernel_keeps_two_model_functions_per_worker() -> None:
     assert canon_service.KERNEL_MODELS_PER_WORKER == 2
+
+
+def test_the_app_runs_the_kernel_on_four_workers() -> None:
+    """Maintainer 2026-11-01: four workers, so the model functions stay near 2.2 GB."""
+    assert canon_service.KERNEL_WORKERS == 4
+    kernel = canon_service._new_kernel()  # pyright: ignore[reportPrivateUsage]  # the factory under test
+    assert kernel._max_workers == 4  # pyright: ignore[reportPrivateUsage]  # the setting under test
+    assert kernel._max_concurrency == 4  # pyright: ignore[reportPrivateUsage]  # the setting under test
+
+
+def test_a_fresh_compute_runs_on_four_workers(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    async def fake_compute(aircraft: object, request: object, **limits: object) -> str:
+        seen.update(limits)
+        return "result"
+
+    monkeypatch.setattr(canon_service, "compute", fake_compute)
+    assert canon_service._run_fresh(None, None) == "result"  # type: ignore[arg-type]  # pyright: ignore[reportPrivateUsage, reportArgumentType]  # stubbed compute
+    assert seen == {"max_workers": 4, "max_concurrency": 4}

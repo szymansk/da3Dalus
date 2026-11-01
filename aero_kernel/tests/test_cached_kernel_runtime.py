@@ -118,3 +118,22 @@ async def test_the_default_keeps_two_model_functions_per_worker(
 async def test_a_bound_below_one_is_refused_at_construction(keyword: str) -> None:
     with pytest.raises(ValueError, match=keyword):
         CachedKernel(max_entries=4, **{keyword: 0})
+
+
+async def test_the_stateless_compute_passes_its_limits_to_its_runtime(
+    runtimes: list[RecordingRuntime],
+) -> None:
+    await compute(aircraft(), REQUEST, max_workers=4, max_concurrency=3)
+    (runtime,) = runtimes
+    assert runtime.settings[:2] == (4, 3)
+    assert runtime.closed
+
+
+@pytest.mark.parametrize("limit", ["max_workers", "max_concurrency"])
+async def test_the_stateless_compute_refuses_a_limit_below_one(
+    runtimes: list[RecordingRuntime], limit: str
+) -> None:
+    plane, limits = aircraft(), {limit: 0}
+    with pytest.raises(ValueError, match=limit):
+        await compute(plane, REQUEST, **limits)
+    assert runtimes == []

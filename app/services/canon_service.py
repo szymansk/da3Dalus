@@ -45,14 +45,22 @@ KERNEL_CACHE_ENTRIES = 4096
 
 # AeroBuildup model functions each kernel worker process keeps (gh-1336): about 280 MB RSS each
 # (BRYAN and CHEKKER, NeuralFoil xlarge), so the kernel's model memory is at most
-# os.cpu_count() workers x 2 x ~280 MB. Two hold the clean and the configured airplane of one aircraft.
+# KERNEL_WORKERS x 2 x ~280 MB. Two hold the clean and the configured airplane of one aircraft.
 KERNEL_MODELS_PER_WORKER = 2
+
+# Kernel worker processes, and concurrent solver calls, for the cached and the fresh compute alike
+# (maintainer 2026-11-01: four, so the machine stays responsive): the model functions then take at
+# most 4 x 2 x ~280 MB, about 2.2 GB, plus the solves in flight.
+KERNEL_WORKERS = 4
 
 
 def _new_kernel() -> CachedKernel:
     """The process-wide kernel, with every setting passed explicitly."""
     return CachedKernel(
-        max_entries=KERNEL_CACHE_ENTRIES, max_models_per_worker=KERNEL_MODELS_PER_WORKER
+        max_entries=KERNEL_CACHE_ENTRIES,
+        max_models_per_worker=KERNEL_MODELS_PER_WORKER,
+        max_workers=KERNEL_WORKERS,
+        max_concurrency=KERNEL_WORKERS,
     )
 
 
@@ -160,7 +168,9 @@ def _kernel_request(request: CanonComputeRequest) -> ComputeRequest:
 
 def _run_fresh(aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
     """Run the stateless kernel to completion on its own event loop, in the worker thread."""
-    return asyncio.run(compute(aircraft, request))
+    return asyncio.run(
+        compute(aircraft, request, max_workers=KERNEL_WORKERS, max_concurrency=KERNEL_WORKERS)
+    )
 
 
 async def _run_kernel(

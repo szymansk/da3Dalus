@@ -35,22 +35,53 @@ logger = logging.getLogger(__name__)
 __all__ = ["CachedKernel", "compute"]
 
 
-async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
+async def compute(
+    aircraft: AircraftInput,
+    request: ComputeRequest,
+    *,
+    max_workers: int | None = None,
+    max_concurrency: int | None = None,
+) -> ComputeResult:
     """Compute the requested quantities of an aircraft.
 
     Stateless: nothing is kept between calls except the immutable shipped build; no cache and no
     deduplication, so two calls with the same input compute twice and ``from_cache`` is always
-    false. It never raises for a computational failure; everything is in the result.
+    false. It never raises for a computational failure; everything is in the result. The call
+    owns its solver runtime and releases it before returning (ch. 8.10).
 
     Args:
         aircraft: The geometry and the input and target values, in canon units.
         request: The canon quantity slugs to compute.
+        max_workers: Worker processes of the call's runtime; default ``os.cpu_count()``.
+        max_concurrency: Concurrent solver calls; default ``os.cpu_count()``.
 
     Returns:
         One result per requested slug in request order, or ``input_errors`` and nothing computed.
         If the shipped canon model cannot be loaded, every quantity is ``internal`` and escalates.
+
+    Raises:
+        ValueError: If a limit is below 1.
     """
-    return await _compute(aircraft, request, None, None)
+    _check_limits(max_workers=max_workers, max_concurrency=max_concurrency)
+    return await _compute(
+        aircraft,
+        request,
+        None,
+        None,
+        limits=(max_workers, max_concurrency),
+    )
+
+
+def _check_limits(**limits: int | None) -> None:
+    """Refuse a resource limit below 1, before anything starts.
+
+    Raises:
+        ValueError: Naming the first limit below 1.
+    """
+    for name, value in limits.items():
+        if value is not None and value < 1:
+            msg = f"{name} must be >= 1, got {value}"
+            raise ValueError(msg)
 
 
 class CachedKernel:
@@ -95,14 +126,11 @@ class CachedKernel:
             ValueError: If a limit is below 1.
         """
         self._cache = DedupedCache(MemoryCache(max_entries=max_entries))
-        for name, value in (
-            ("max_models_per_worker", max_models_per_worker),
-            ("max_workers", max_workers),
-            ("max_concurrency", max_concurrency),
-        ):
-            if value is not None and value < 1:
-                msg = f"{name} must be >= 1, got {value}"
-                raise ValueError(msg)
+        _check_limits(
+            max_models_per_worker=max_models_per_worker,
+            max_workers=max_workers,
+            max_concurrency=max_concurrency,
+        )
         self._max_models_per_worker = max_models_per_worker
         self._max_workers = max_workers
         self._max_concurrency = max_concurrency
@@ -163,11 +191,14 @@ async def _compute(
     request: ComputeRequest,
     cache: NodeCache | None,
     runtime: SolverRuntime | None,
+    *,
+    limits: tuple[int | None, int | None] = (None, None),
 ) -> ComputeResult:
     """One call on the shipped build, with the facade's cache and runtime, or none of either.
 
-    Without a runtime the call owns one and releases it before returning (the stateless
-    ``compute``); the facade's runtime outlives the call.
+    Without a runtime the call owns one with ``limits`` (``max_workers``, ``max_concurrency``)
+    and releases it before returning (the stateless ``compute``); the facade's runtime outlives
+    the call.
     """
     started = time.perf_counter()
     try:
@@ -197,7 +228,8 @@ async def _compute(
         return await _evaluate(build, aircraft, request, cache, runtime)
     # Resources are never global (ch. 8.10): the stateless call owns its runtime and releases it
     # before returning, also on cancellation.
-    async with SolverRuntime() as own:
+    max_workers, max_concurrency = limits
+    async with SolverRuntime(max_workers=max_workers, max_concurrency=max_concurrency) as own:
         return await _evaluate(build, aircraft, request, cache, own)
 
 
