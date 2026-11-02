@@ -238,8 +238,9 @@ def test_rejects_non_physical_flow(kwargs: dict[str, float]) -> None:
         "kinematic_viscosity_m2s": NU,
     }
     arguments.update(kwargs)
+    surfaces, bands = {"Main": surface((0.3, 0.3))}, canon_bands()
     with pytest.raises(ValueError, match="must be"):
-        regime_by_surface({"Main": surface((0.3, 0.3))}, bands=canon_bands(), **arguments)
+        regime_by_surface(surfaces, bands=bands, **arguments)
 
 
 @pytest.mark.parametrize(

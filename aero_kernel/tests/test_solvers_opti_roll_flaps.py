@@ -130,7 +130,8 @@ def test_the_confidence_run_reports_the_lowest_confidence_and_its_wing() -> None
     assert found.max_effective_alpha_deg == 7.0
     assert found.devices == ()
     tail = opti_module.DeviceSpan(wing="Tail", device="elevator", intervals=((0.0, 1.0),))
+    plane, settings = Airplane(), object()
     with pytest.raises(RuntimeError, match="NeuralFoil calls"):  # one call per cross-section
         opti_module._confidence_run(  # pyright: ignore[reportPrivateUsage]
-            asb, Airplane(), ["Main", "Tail"], object(), [tail]
+            asb, plane, ["Main", "Tail"], settings, [tail]
         )

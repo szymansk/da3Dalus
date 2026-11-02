@@ -109,7 +109,7 @@ class SurfaceSections(BaseModel):
 
 def _require_positive(name: str, value: float) -> None:
     """Raise ``ValueError`` unless ``value`` is greater than zero."""
-    if not value > 0.0:
+    if math.isnan(value) or value <= 0.0:
         msg = f"{name} must be > 0, got {value}"
         raise ValueError(msg)
 

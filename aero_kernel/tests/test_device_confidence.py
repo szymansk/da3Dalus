@@ -31,8 +31,9 @@ def test_the_span_share_below_a_floor_and_the_lowest_section() -> None:
 def test_a_device_needs_a_section_with_area() -> None:
     with pytest.raises(ValidationError):
         flap()
+    without_area = section(0.0, 0.0, 0.9)
     with pytest.raises(ValidationError):
-        flap(section(0.0, 0.0, 0.9))
+        flap(without_area)
 
 
 def test_the_span_of_a_device_is_its_segments_on_either_half() -> None:
@@ -136,9 +137,9 @@ def test_a_section_is_the_chord_blend_of_its_two_ends() -> None:
 def test_calls_out_of_order_are_a_defect_of_ours() -> None:
     from aero_kernel.solvers.opti import _wing_sections  # pyright: ignore[reportPrivateUsage]
 
-    calls = _calls((0, 0.9), (2, 0.5), (1, 0.7), (2, 0.7))
+    calls, wing = _calls((0, 0.9), (2, 0.5), (1, 0.7), (2, 0.7)), _Wing()
     with pytest.raises(RuntimeError, match="out of order"):
-        _wing_sections("Main", _Wing(), calls)  # pyright: ignore[reportArgumentType]
+        _wing_sections("Main", wing, calls)  # pyright: ignore[reportArgumentType]
 
 
 def test_a_device_without_a_section_on_its_span_is_a_defect_of_ours() -> None:
@@ -187,5 +188,6 @@ def test_the_gap_strip_at_a_flap_boundary_is_no_section_of_a_device() -> None:
 
 
 def test_a_device_needs_a_span() -> None:
+    without_span = section(0.1, 0.0, 0.9)
     with pytest.raises(ValidationError):
-        flap(section(0.1, 0.0, 0.9))
+        flap(without_span)
