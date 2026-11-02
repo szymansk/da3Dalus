@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b66a8ac83528c796f60a7887c49a5f03c82b379688ca982ea780ca572a789330",
+  "content_hash": "sha256:2070432f93a5c458b90f0919b55e87a34a44e28bc31bbe22bc4a4698ac5442f3",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -7090,7 +7090,7 @@
             "static_margin_probe_disagrees",
             "static_margin_probe_sign_disagrees"
           ],
-          "criterion": "The static margin from the moment slope (the probe) agrees with the target static margin to within agreement_tolerance, in fractions of the mean aerodynamic chord; a larger deviation is reported (static_margin_probe_disagrees, warning), a probe of the other sign than the target whatever the deviation (static_margin_probe_sign_disagrees, error; maintainer 2026-11-01, #1342), never averaged.",
+          "criterion": "The static margin from the moment slope (the probe) agrees with the target static margin to within agreement_tolerance, in fractions of the mean aerodynamic chord; the tolerance decides first: inside it nothing is reported, even where the signs differ; a larger deviation is reported, never averaged: as static_margin_probe_sign_disagrees (error) when probe and target differ in sign, else as static_margin_probe_disagrees (warning) (maintainer 2026-11-02, #1342).",
           "kind": "probe",
           "on_violation": "warning",
           "parameters": {

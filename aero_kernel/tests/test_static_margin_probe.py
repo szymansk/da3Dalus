@@ -124,9 +124,22 @@ async def test_a_probe_of_the_other_sign_is_an_error_and_the_value_stays() -> No
     assert close(float(disagreement.detail["sm_probe"]), SM_TARGET - 1.0, 1e-9)  # pyright: ignore[reportArgumentType]
 
 
-async def test_a_sign_change_inside_the_tolerance_is_still_an_error() -> None:
-    """Target 0.02, probe -0.01: 0.03 of the chord off, inside 0.05, but the stability flips."""
+async def test_a_sign_change_inside_the_tolerance_declares_nothing() -> None:
+    """Target 0.02, probe -0.01: 0.03 of the chord off, inside 0.05. The tolerance decides first
+    (maintainer 2026-11-02, #1342): no warning, although the signs differ."""
     _, context = await call_probe(0.12 - 0.01 * C_MAC, sm_target=0.02)
+    assert [w.code for w in context.warnings] == ["aerobuildup_no_downwash"]
+
+
+async def test_the_maintainers_example_inside_the_tolerance_declares_nothing() -> None:
+    """Target +0.02 against probe -0.0005 (maintainer 2026-11-02): nothing."""
+    _, context = await call_probe(0.12 - 0.0005 * C_MAC, sm_target=0.02)
+    assert [w.code for w in context.warnings] == ["aerobuildup_no_downwash"]
+
+
+async def test_a_sign_change_just_beyond_the_tolerance_is_an_error() -> None:
+    """Target 0.02, probe -0.04: 0.06 of the chord off, beyond 0.05, and the stability flips."""
+    _, context = await call_probe(0.12 - 0.04 * C_MAC, sm_target=0.02)
     assert [w.code for w in context.warnings] == [
         "aerobuildup_no_downwash",
         "static_margin_probe_sign_disagrees",

@@ -18,8 +18,11 @@ async def static_margin_probe(x: Inputs, ctx: Context) -> dict[str, float]:
     AeroBuildup runs at the minimum-drag speed and the angle of attack of ``L = m g``, with the moment
     reference at the design CG; ``SM_probe = -C_m,alpha / C_L,alpha`` (Sadraey Eq. 11.17, 11.18). The
     probe is compared with the target: a deviation beyond the rule's ``agreement_tolerance`` is
-    declared (a ``warning``), a probe and a target of different sign (one stable, one not) is an
-    ``error`` whatever the tolerance (#1342); never averaged, and the value stays. AeroBuildup has no wing-tail downwash and so biases
+    declared, never averaged, and the value stays. The tolerance decides first (maintainer
+    2026-11-02, #1342): inside it nothing is declared, even where the signs differ; beyond it a probe
+    and a target of different sign (one stable, one not) are an ``error``
+    (``static_margin_probe_sign_disagrees``), of the same sign a ``warning``
+    (``static_margin_probe_disagrees``). AeroBuildup has no wing-tail downwash and so biases
     the probe toward a larger margin; that is declared on every value. Under worlds it runs once per
     assignment of ``neutral-point``, because the design CG is one (A11).
 
@@ -60,6 +63,8 @@ async def static_margin_probe(x: Inputs, ctx: Context) -> dict[str, float]:
         "deviation": margin - target,
         "agreement_tolerance": tolerance,
     }
+    if abs(margin - target) <= tolerance:
+        return {"c_m_alpha": slopes.cm_alpha, "sm_probe": margin}
     if (margin > 0.0) != (target > 0.0):
         ctx.warn(
             "static_margin_probe_sign_disagrees",
@@ -68,7 +73,7 @@ async def static_margin_probe(x: Inputs, ctx: Context) -> dict[str, float]:
             "is not. Both are reported; they are not averaged.",
             detail,
         )
-    elif abs(margin - target) > tolerance:
+    else:
         ctx.warn(
             "static_margin_probe_disagrees",
             f"The static margin from the moment slope, {margin:.4f}, differs from the target "
