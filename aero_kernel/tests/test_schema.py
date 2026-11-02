@@ -21,9 +21,9 @@ from pydantic import JsonValue, ValidationError
 
 
 def make_warning(**overrides: object) -> KernelWarning:
-    """Build a valid practice warning, with fields overridden."""
+    """Build a valid notice, with fields overridden."""
     fields: dict[str, object] = {
-        "severity": "practice",
+        "severity": "notice",
         "code": "default_target_used",
         "message": "target taken from the canon default",
         "origin": "approach-speed-margin-target",
@@ -34,7 +34,7 @@ def make_warning(**overrides: object) -> KernelWarning:
 class TestKernelWarning:
     def test_accepts_valid_warning(self) -> None:
         warning = make_warning()
-        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.severity is WarningSeverity.NOTICE
         assert warning.origin == "approach-speed-margin-target"
         assert warning.world is None
         assert warning.detail == {}
@@ -55,13 +55,13 @@ class TestKernelWarning:
 
     def test_rejects_severity_contradicting_the_table(self) -> None:
         with pytest.raises(ValidationError, match="severity"):
-            make_warning(severity="defect")
+            make_warning(severity="warning")
 
     def test_of_derives_the_severity_from_the_catalogue(self) -> None:
         warning = KernelWarning.of(
             "precondition_violated", "x", origin="q", world="neutral-point=avl", detail={"a": 1}
         )
-        assert warning.severity is WarningSeverity.DEFECT
+        assert warning.severity is WarningSeverity.WARNING
         assert (warning.code, warning.message, warning.origin, warning.world, warning.detail) == (
             "precondition_violated",
             "x",
@@ -80,13 +80,13 @@ class TestKernelWarning:
 
     def test_a_matching_severity_is_accepted(self) -> None:
         warning = KernelWarning(
-            severity=WarningSeverity.DEFECT, code="precondition_violated", message="x"
+            severity=WarningSeverity.WARNING, code="precondition_violated", message="x"
         )
-        assert warning.severity is WarningSeverity.DEFECT
+        assert warning.severity is WarningSeverity.WARNING
 
     def test_severity_is_set_so_exclude_unset_keeps_it(self) -> None:
         warning = KernelWarning.of("mach_beyond_validity", "x")
-        assert warning.model_dump(exclude_unset=True)["severity"] == "defect"
+        assert warning.model_dump(exclude_unset=True)["severity"] == "error"
 
     def test_severity_survives_a_json_round_trip(self) -> None:
         warning = KernelWarning.of("mach_beyond_validity", "x")
@@ -97,38 +97,44 @@ class TestKernelWarning:
         assert "severity" in schema["required"]
         assert "anyOf" not in schema["properties"]["severity"]
 
+    def test_the_severities_are_the_three_levels_of_adr_0020(self) -> None:
+        assert [s.value for s in WarningSeverity] == ["notice", "warning", "error"]
+
     def test_catalogue_holds_the_initial_codes(self) -> None:
         assert WARNING_CATALOGUE == {
-            "conflicting_mass": WarningSeverity.PRACTICE,
-            "default_target_used": WarningSeverity.PRACTICE,
-            "deflection_without_flap": WarningSeverity.PRACTICE,
-            "geometry_deflection_ignored": WarningSeverity.PRACTICE,
-            "hinge_line_averaged": WarningSeverity.PRACTICE,
-            "aileron_deflection_beyond_reference": WarningSeverity.PRACTICE,
-            "control_surface_fit_range_unknown": WarningSeverity.PRACTICE,
-            "avl_flap_linearised": WarningSeverity.PRACTICE,
-            "flap_confidence_low": WarningSeverity.DEFECT,
-            "flap_deflection_beyond_validity": WarningSeverity.DEFECT,
-            "fuselage_not_modelled": WarningSeverity.PRACTICE,
-            "world_outside_validity": WarningSeverity.PRACTICE,
-            "avl_mesh_not_converged": WarningSeverity.DEFECT,
-            "avl_roll_rate_beyond_range": WarningSeverity.DEFECT,
-            "avl_refinement_unchecked": WarningSeverity.DEFECT,
-            "stall_break_resolution": WarningSeverity.DEFECT,
-            "precondition_unchecked": WarningSeverity.PRACTICE,
-            "precondition_violated": WarningSeverity.DEFECT,
-            "postcondition_unchecked": WarningSeverity.PRACTICE,
-            "postcondition_violated": WarningSeverity.DEFECT,
-            "reynolds_outside_band": WarningSeverity.DEFECT,
-            "reynolds_bubble_sensitive": WarningSeverity.PRACTICE,
-            "mach_above_limit": WarningSeverity.PRACTICE,
-            "mach_beyond_validity": WarningSeverity.DEFECT,
-            "minimum_sink_stall_limited": WarningSeverity.PRACTICE,
-            "aerobuildup_no_downwash": WarningSeverity.PRACTICE,
-            "static_margin_probe_disagrees": WarningSeverity.DEFECT,
-            "avl_body_equivalent_round": WarningSeverity.PRACTICE,
-            "spiral_halving_time_reported": WarningSeverity.PRACTICE,
-            "fuselage_section_equivalent": WarningSeverity.PRACTICE,
+            "conflicting_mass": WarningSeverity.NOTICE,
+            "default_target_used": WarningSeverity.NOTICE,
+            "deflection_without_flap": WarningSeverity.NOTICE,
+            "geometry_deflection_ignored": WarningSeverity.NOTICE,
+            "hinge_line_averaged": WarningSeverity.NOTICE,
+            "aileron_deflection_beyond_reference": WarningSeverity.NOTICE,
+            "control_surface_fit_range_unknown": WarningSeverity.NOTICE,
+            "avl_flap_linearised": WarningSeverity.NOTICE,
+            "flap_confidence_low": WarningSeverity.WARNING,
+            "flap_deflection_beyond_validity": WarningSeverity.WARNING,
+            "fuselage_not_modelled": WarningSeverity.NOTICE,
+            "world_outside_validity": WarningSeverity.NOTICE,
+            "avl_mesh_not_converged": WarningSeverity.WARNING,
+            "avl_roll_rate_beyond_range": WarningSeverity.WARNING,
+            "avl_refinement_unchecked": WarningSeverity.WARNING,
+            "stall_break_resolution": WarningSeverity.WARNING,
+            "precondition_unchecked": WarningSeverity.NOTICE,
+            "precondition_violated": WarningSeverity.WARNING,
+            "postcondition_unchecked": WarningSeverity.NOTICE,
+            "postcondition_violated": WarningSeverity.WARNING,
+            "reynolds_outside_band": WarningSeverity.WARNING,
+            "reynolds_bubble_sensitive": WarningSeverity.NOTICE,
+            "reynolds_above_band": WarningSeverity.NOTICE,
+            "reynolds_outside_band_at_device": WarningSeverity.WARNING,
+            "mach_above_limit": WarningSeverity.NOTICE,
+            "mach_beyond_validity": WarningSeverity.ERROR,
+            "minimum_sink_stall_limited": WarningSeverity.NOTICE,
+            "aerobuildup_no_downwash": WarningSeverity.NOTICE,
+            "static_margin_probe_disagrees": WarningSeverity.WARNING,
+            "static_margin_probe_sign_disagrees": WarningSeverity.ERROR,
+            "avl_body_equivalent_round": WarningSeverity.NOTICE,
+            "spiral_halving_time_reported": WarningSeverity.NOTICE,
+            "fuselage_section_equivalent": WarningSeverity.NOTICE,
         }
 
     def test_carries_world_and_json_detail(self) -> None:

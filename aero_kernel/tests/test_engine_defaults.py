@@ -241,7 +241,7 @@ async def test_a_target_default_warns_and_the_warning_is_inherited() -> None:
     margin, after, independent = result.quantities
     for quantity in (margin, after):
         (warning,) = quantity.warnings
-        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.severity is WarningSeverity.NOTICE
         assert warning.code == "default_target_used"
         assert warning.origin == "margin-target"
         assert warning.message == (
@@ -268,7 +268,7 @@ async def test_q28_conflicting_mass_is_on_mass_dependent_quantities_only() -> No
     for quantity in (weight, double, independent):
         (warning,) = quantity.warnings
         assert (warning.code, warning.origin) == ("conflicting_mass", "aircraft-mass")
-        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.severity is WarningSeverity.NOTICE
         assert warning.detail == {"aircraft_mass_kg": 2.0, "geometry_total_mass_kg": 3.0}
     assert gravity_only.warnings == ()
 

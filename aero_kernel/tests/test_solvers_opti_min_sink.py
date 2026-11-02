@@ -7,8 +7,9 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers import opti as opti_module
-from aero_kernel.solvers.base import regime_by_wing
 from aero_kernel.solvers.opti import MinSinkSolution, OptiAdapter, StallRequest
+from aero_kernel.solvers.regime import regime_by_surface
+from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
 from aero_kernel.tests.test_solvers_opti_glide import (
     GRAVITY,
@@ -63,8 +64,12 @@ async def test_the_regime_warnings_are_those_of_the_optimum_speed(
     monkeypatch.setattr(opti_module, "min_sink_worker", canned(sink(6.0)))
     adapter = OptiAdapter(InProcessRuntime())
     result = await adapter.min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)
-    expected = regime_by_wing(
-        {"Main": [0.2, 0.1]}, 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
+    expected = regime_by_surface(
+        stand_in_surface_sections(airplane()),
+        6.0,
+        AIR.speed_of_sound,
+        AIR.kinematic_viscosity,
+        canon_bands(),
     )
     assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
     assert result.warnings == tuple(expected)
@@ -193,14 +198,14 @@ async def test_a_stall_limited_optimum_still_refuses_a_speed_bound(
     assert raised.value.detail["variable"] == "V"
 
 
-async def test_the_adapter_declares_a_stall_limited_optimum_with_a_practice_warning(
+async def test_the_adapter_declares_a_stall_limited_optimum_with_a_notice(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     limited = MinSinkSolution(v_mp=18.0, alpha_mp=PEAK_ALPHA, cl_mp=1.2, stall_limited=True)
     monkeypatch.setattr(opti_module, "min_sink_worker", canned(limited))
     result = await OptiAdapter(InProcessRuntime()).min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)
     (warning,) = [w for w in result.warnings if w.code == "minimum_sink_stall_limited"]
-    assert warning.severity is WarningSeverity.PRACTICE
+    assert warning.severity is WarningSeverity.NOTICE
     assert warning.detail["alpha_boundary_deg"] == PEAK_ALPHA
     assert warning.detail["cl_boundary"] == 1.2
     assert "still falling" in warning.message

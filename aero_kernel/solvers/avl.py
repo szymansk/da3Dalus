@@ -2,7 +2,7 @@
 
 One run of AVL at a lift coefficient on the aligned mesh of :mod:`aero_kernel.solvers.avl_mesh`, and a
 second on a mesh refined by a fixed factor as the validity check: the adapter reports the declared
-mesh's value and declares the disagreement as a ``defect`` warning (tool validity belongs to the
+mesh's value and declares the disagreement as a ``warning`` (tool validity belongs to the
 adapter). It adds no regime warning of its own: those come with the minimum-drag speed and are
 inherited (#1203, M2). The steady roll drives the devices acting as aileron on the same mesh with
 their ends as stations, about the airplane's own reference point, with the flaps of the
@@ -242,7 +242,7 @@ def _unchecked_warning(what: str, n_chord: int, n_span: int, reason: str) -> Ker
 
 
 def _body_warnings(bodies: tuple[MeshBody, ...]) -> list[KernelWarning]:
-    """The declaration of the fuselages as round bodies on a straight axis (ADR 0020, ``practice``)."""
+    """The declaration of the fuselages as round bodies on a straight axis (ADR 0020, a ``notice``)."""
     if not bodies:
         return []
     return [

@@ -65,7 +65,7 @@ async def test_the_adapter_is_asked_at_v_md_with_the_design_cg_as_the_moment_ref
         assert close(speed, v_md, 1e-9)
 
 
-def probe_inputs(x_cg: float = 0.12) -> dict[str, Value | None]:
+def probe_inputs(x_cg: float = 0.12, sm_target: float = SM_TARGET) -> dict[str, Value | None]:
     return {
         "airplane": document(),
         "m": MASS,
@@ -75,16 +75,18 @@ def probe_inputs(x_cg: float = 0.12) -> dict[str, Value | None]:
         "a": STUB_SPEED_OF_SOUND,
         "v_md": 12.0,
         "x_cg": x_cg,
-        "sm_target": SM_TARGET,
+        "sm_target": sm_target,
     }
 
 
-async def call_probe(x_np: float, x_cg: float = 0.12) -> tuple[dict[str, float], Context]:
+async def call_probe(
+    x_np: float, x_cg: float = 0.12, sm_target: float = SM_TARGET
+) -> tuple[dict[str, float], Context]:
     """The formula about ``x_cg`` with a stub whose neutral point is ``x_np``; hand value (x_np - x_cg) / c_MAC."""
     opti = StubOpti()
     opti.probe_x_np = x_np
     context = context_with(StubAtmosphere({}), opti=opti)
-    return await static_margin_probe(probe_inputs(x_cg), context), context
+    return await static_margin_probe(probe_inputs(x_cg, sm_target), context), context
 
 
 async def test_a_probe_that_agrees_carries_only_the_declared_bias() -> None:
@@ -92,20 +94,56 @@ async def test_a_probe_that_agrees_carries_only_the_declared_bias() -> None:
     found, context = await call_probe(0.12 + SM_TARGET * C_MAC)
     assert close(found["sm_probe"], SM_TARGET, 1e-12)
     assert [w.code for w in context.warnings] == ["aerobuildup_no_downwash"]
-    assert context.warnings[0].severity is WarningSeverity.PRACTICE
+    assert context.warnings[0].severity is WarningSeverity.NOTICE
 
 
 async def test_a_probe_beyond_the_tolerance_is_declared_and_the_value_stays() -> None:
-    """x_NP 0.20 m ahead of the agreeing one: the probe reads 1.0 less margin, far beyond 0.05."""
-    found, context = await call_probe(0.12 + SM_TARGET * C_MAC - 0.2)
-    assert close(found["sm_probe"], SM_TARGET - 1.0, 1e-12)
+    """x_NP 0.20 m behind the agreeing one: the probe reads 1.0 more margin, far beyond 0.05, with
+    the sign of the target (both stable): a warning, the number usable."""
+    found, context = await call_probe(0.12 + SM_TARGET * C_MAC + 0.2)
+    assert close(found["sm_probe"], SM_TARGET + 1.0, 1e-12)
     codes = [w.code for w in context.warnings]
     assert codes == ["aerobuildup_no_downwash", "static_margin_probe_disagrees"]
     disagreement = context.warnings[1]
-    assert disagreement.severity is WarningSeverity.DEFECT
+    assert disagreement.severity is WarningSeverity.WARNING
     assert disagreement.detail["agreement_tolerance"] == 0.05
     assert disagreement.detail["sm_target"] == SM_TARGET
-    assert close(float(disagreement.detail["deviation"]), -1.0, 1e-9)  # pyright: ignore[reportArgumentType]
+    assert close(float(disagreement.detail["deviation"]), 1.0, 1e-9)  # pyright: ignore[reportArgumentType]
+
+
+async def test_a_probe_of_the_other_sign_is_an_error_and_the_value_stays() -> None:
+    """x_NP 0.20 m ahead of the agreeing one: the probe reads 1.0 less margin, an unstable airplane
+    against a stable target (#1342: probe and target disagree on the sign)."""
+    found, context = await call_probe(0.12 + SM_TARGET * C_MAC - 0.2)
+    assert close(found["sm_probe"], SM_TARGET - 1.0, 1e-12)
+    codes = [w.code for w in context.warnings]
+    assert codes == ["aerobuildup_no_downwash", "static_margin_probe_sign_disagrees"]
+    disagreement = context.warnings[1]
+    assert disagreement.severity is WarningSeverity.ERROR
+    assert disagreement.detail["sm_target"] == SM_TARGET
+    assert close(float(disagreement.detail["sm_probe"]), SM_TARGET - 1.0, 1e-9)  # pyright: ignore[reportArgumentType]
+
+
+async def test_a_sign_change_inside_the_tolerance_declares_nothing() -> None:
+    """Target 0.02, probe -0.01: 0.03 of the chord off, inside 0.05. The tolerance decides first
+    (maintainer 2026-11-02, #1342): no warning, although the signs differ."""
+    _, context = await call_probe(0.12 - 0.01 * C_MAC, sm_target=0.02)
+    assert [w.code for w in context.warnings] == ["aerobuildup_no_downwash"]
+
+
+async def test_the_maintainers_example_inside_the_tolerance_declares_nothing() -> None:
+    """Target +0.02 against probe -0.0005 (maintainer 2026-11-02): nothing."""
+    _, context = await call_probe(0.12 - 0.0005 * C_MAC, sm_target=0.02)
+    assert [w.code for w in context.warnings] == ["aerobuildup_no_downwash"]
+
+
+async def test_a_sign_change_just_beyond_the_tolerance_is_an_error() -> None:
+    """Target 0.02, probe -0.04: 0.06 of the chord off, beyond 0.05, and the stability flips."""
+    _, context = await call_probe(0.12 - 0.04 * C_MAC, sm_target=0.02)
+    assert [w.code for w in context.warnings] == [
+        "aerobuildup_no_downwash",
+        "static_margin_probe_sign_disagrees",
+    ]
 
 
 async def test_a_deviation_just_inside_the_tolerance_is_not_declared() -> None:

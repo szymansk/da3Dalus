@@ -572,6 +572,7 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "non_positive_thickness": ErrorCategory.INVALID_INPUT,
         "non_positive_exponent": ErrorCategory.INVALID_INPUT,
         "too_few_sections": ErrorCategory.INVALID_INPUT,
+        "duplicate_section": ErrorCategory.INVALID_INPUT,
         "invalid_airfoil_contour": ErrorCategory.INVALID_INPUT,
         "segment_on_last_section": ErrorCategory.INVALID_INPUT,
         "control_surface_without_device": ErrorCategory.INVALID_INPUT,

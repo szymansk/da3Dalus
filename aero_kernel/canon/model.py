@@ -343,7 +343,7 @@ class Check(BaseModel):
     Attributes:
         id: Name of the check, unique among the formula's checks of its kind.
         parameter: The input (precondition) or output (postcondition) parameter it concerns.
-        on_violation: ``error`` withholds the value, ``warning`` returns it with a defect warning.
+        on_violation: ``error`` withholds the value, ``warning`` returns it with a ``warning``.
         applications: Ids of the applications it belongs to; ``None`` = all of them.
     """
 

@@ -304,17 +304,9 @@ async def test_a_flapped_landing_reaches_the_solver_with_its_flap_and_never_as_t
 
 
 async def test_the_flapped_stall_declares_a_low_confidence_and_an_over_limit_deflection() -> None:
-    """Rule flap-model-validity: the value is returned with a declared defect; a confidence at the
+    """Rule flap-model-validity: the value is returned with a declared warning; a confidence at the
     take-off configuration above the floor and a deflection at the limit declare nothing."""
-    from aero_kernel.solvers.opti import DeflectionDiagnostics
-
-    def diagnostics(value: float) -> DeflectionDiagnostics:
-        return DeflectionDiagnostics(
-            min_confidence=value,
-            min_confidence_wing="Main",
-            max_effective_alpha_deg=10.0,
-            max_effective_alpha_wing="Main",
-        )
+    from aero_kernel.tests.stall_stubs import flap_confidence as diagnostics
 
     class Confident(StubOpti):
         async def stall(self, airplane, mass_kg, gravity, n_load, air):  # type: ignore[no-untyped-def,override]
@@ -332,7 +324,15 @@ async def test_the_flapped_stall_declares_a_low_confidence_and_an_over_limit_def
     found = by_slug(result)
     assert [w.code for w in found["stall-speed-takeoff"].warnings] == []
     (low,) = [w for w in found["stall-speed-landing"].warnings if w.code == "flap_confidence_low"]
-    assert low.detail == {"min_confidence": 0.407, "threshold": 0.85, "wing": "Main"}
+    assert low.detail == {
+        "wing": "Main",
+        "device": "flap",
+        "mean_confidence": 0.407,
+        "threshold": 0.85,
+        "span_share_below_threshold": 1.0,
+        "min_confidence": 0.407,
+        "min_confidence_at_m": [0.0, 0.3, 0.0],
+    }
     assert not [
         w
         for w in found["stall-speed-landing"].warnings

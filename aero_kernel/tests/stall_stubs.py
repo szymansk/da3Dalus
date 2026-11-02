@@ -11,6 +11,7 @@ from aero_kernel.solvers.opti import (
     BestGlide,
     BestGlideSolution,
     DeflectionDiagnostics,
+    DeviceConfidence,
     Evaluation,
     Forces,
     MinSink,
@@ -18,6 +19,7 @@ from aero_kernel.solvers.opti import (
     MomentSlope,
     MomentSlopeSolution,
     OptiAdapter,
+    SectionConfidence,
     Stall,
     StallSolution,
     SteadyRoll,
@@ -27,6 +29,20 @@ from aero_kernel.solvers.opti import (
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 
 STEP = 0.25
+
+
+def flap_confidence(value: float) -> DeflectionDiagnostics:
+    """The diagnostics of a deflected run whose one flap (on Main) has the confidence ``value``."""
+    section = SectionConfidence(area_m2=0.05, span_m=0.2, confidence=value, at_m=(0.0, 0.3, 0.0))
+    return DeflectionDiagnostics(
+        min_confidence=value,
+        min_confidence_wing="Main",
+        max_effective_alpha_deg=10.0,
+        max_effective_alpha_wing="Main",
+        devices=(DeviceConfidence(wing="Main", device="flap", sections=(section,)),),
+    )
+
+
 CD0, K = 0.03, 0.05  # the parabolic polar of the best-glide stub
 GLIDE_ALPHA = 5.7  # deg
 SINK_ALPHA = 9.0  # deg, the stub's angle of attack at the minimum sink

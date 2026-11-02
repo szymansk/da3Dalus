@@ -7,6 +7,7 @@ from aero_kernel.canon.load import load_canon_model
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.graph import PENDING_WHEN_TERMS
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties, stand_in_surface_of
+from aero_kernel.tests.planform_stand_in import stand_in_surface_sections
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,7 +28,7 @@ def flight_canon() -> CanonModel:
 def no_aerosandbox_for_the_reference_values(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Fast tier: the main wing's reference values come from a stand-in, never from AeroSandbox.
+    """Fast tier: the reference values and the MAC of the regime check come from stand-ins, never from AeroSandbox.
 
     The CI fast tier runs without the aero dependencies. The aero tier (marker ``aero``) measures
     with the real AeroSandbox.
@@ -44,6 +45,9 @@ def no_aerosandbox_for_the_reference_values(
         )
     monkeypatch.setattr(
         "aero_kernel.solvers.geometry.surface_properties", stand_in_surface_of, raising=True
+    )
+    monkeypatch.setattr(
+        "aero_kernel.solvers.opti.surface_sections", stand_in_surface_sections, raising=True
     )
 
 

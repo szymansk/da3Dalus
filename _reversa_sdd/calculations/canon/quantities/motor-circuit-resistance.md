@@ -19,7 +19,7 @@ data: component:brushless_motor.rm_ohm
 Resistance in the torque balance, taken as the manufacturer's **winding resistance** (`component:brushless_motor.rm_ohm`).
 The datasheet value is the winding only: ESC and cable resistance are not included, so the voltage loss is slightly
 under-estimated (maintainer, 2026-10-25, #1251: "wie es im Modellbau üblich ist; das ist an allen Ecken keine genaue Wissenschaft,
-es geht um eine grobe Aussage zum bestehenden Design."); route B declares this with a `practice` warning (ADR 0020). It is
+es geht um eine grobe Aussage zum bestehenden Design."); route B declares this with a `notice` (ADR 0020). It is
 the cold motor value, which runs optimistic, and must be labelled as such. `Q-PT-6` wording updated 2026-10-25 (formerly
 "circuit, not winding: motor + ESC + cable"). Sourced only where a manufacturer publishes it, **never synthesised** from
 `K_v` and `I_0` (`Q-PT-6`). Present for 0 of 41 catalogue motors today (#1149): the quantity maps to the field, but no motor

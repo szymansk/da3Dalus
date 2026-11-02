@@ -31,6 +31,13 @@ positive-lengths:
   criterion: "Every chord, every fuselage semi-axis (zero allowed at an end section) and every fuselage shape exponent is greater than zero, and the leading-edge chain of a wing has a length greater than zero."
   codes: [non_positive_length]
 
+distinct-sections:
+  applies_to: {quantity: airplane}
+  kind: input
+  on_violation: error
+  criterion: "Two adjacent sections of a wing do not sit at one spanwise station (the same y and z of the leading edge): the section between them would have no span, which AeroSandbox's AeroBuildup turns into NaN (maintainer 2026-11-01, #1342). Near-duplicates are export hygiene of the digitisation plugin, not refused here."
+  codes: [duplicate_section]
+
 minimum-sections:
   applies_to: {quantity: airplane}
   kind: input
@@ -165,7 +172,7 @@ flap-model-validity:
   applies_to: {formula: stall-speed}
   kind: tool
   on_violation: warning
-  criterion: "A flap is the rotated contour behind its hinge, evaluated by NeuralFoil (a plain, single-element flap; maintainer 2026-10-26, #1212). The result of stall-speed (take-off and landing applications) and of roll-rate (approach) is declared outside the model's trusted range when NeuralFoil's analysis_confidence of a section at the solution is below min_confidence (flap_confidence_low), and when a flap deflection is above max_flap_deflection (flap_deflection_beyond_validity). The value is computed and returned with the declaration, never withheld."
+  criterion: "A flap is the rotated contour behind its hinge, evaluated by NeuralFoil (a plain, single-element flap; maintainer 2026-10-26, #1212). The result of stall-speed (take-off and landing applications) and of roll-rate (approach) is declared outside the model's trusted range when, for a deflected device (each deflected flap, and the driven aileron of a roll), the area-weighted mean of NeuralFoil's analysis_confidence over the sections the device spans at the solution is below min_confidence (flap_confidence_low, one per device, with the share of the device span below it and the lowest section; maintainer 2026-11-01, #1342), and when a flap deflection is above max_flap_deflection (flap_deflection_beyond_validity). The value is computed and returned with the declaration, never withheld."
   codes: [flap_confidence_low, flap_deflection_beyond_validity]
   parameters:
     min_confidence:
@@ -231,7 +238,7 @@ aerosandbox-fuselage-shape:
   applies_to: {quantity: airplane}
   kind: tool
   on_violation: error
-  criterion: "AeroSandbox has no mirrored body: a mirrored fuselage is refused rather than approximated. It has one shape exponent per fuselage section: a section with n_lower different from n is not refused but mapped to the equivalent symmetric section of the same width, height and centre and equal cross-section area, declared per section as the practice warning fuselage_section_equivalent (#1307, ADR 0020)."
+  criterion: "AeroSandbox has no mirrored body: a mirrored fuselage is refused rather than approximated. It has one shape exponent per fuselage section: a section with n_lower different from n is not refused but mapped to the equivalent symmetric section of the same width, height and centre and equal cross-section area, declared per section as the notice fuselage_section_equivalent (#1307, ADR 0020)."
   codes: [unsupported_configuration]
 
 isa-altitude-range:
@@ -241,11 +248,55 @@ isa-altitude-range:
   criterion: "The altitude lies inside the range of AeroSandbox's International Standard Atmosphere (the range is the tool's own, read from it)."
   codes: [invalid_input]
 
+reynolds-mach-regime:
+  applies_to: {formula: aerobuildup-evaluation}
+  kind: tool
+  on_violation: warning
+  criterion: "The RC/UAV regime of ADR 0028, checked by the AeroBuildup adapter on every evaluation (amended 2026-11-01, #1342). The chord Reynolds number is evaluated at every station and aggregated: per surface at its mean aerodynamic chord (below re_band_min reynolds_outside_band, below re_bubble_max reynolds_bubble_sensitive, above re_band_max reynolds_above_band), and per control device when a station of its span lies below re_band_min (reynolds_outside_band_at_device). The Mach number once: above mach_limit mach_above_limit, above mach_validity mach_beyond_validity. The value is always computed and returned with the declaration."
+  codes: [reynolds_outside_band, reynolds_bubble_sensitive, reynolds_above_band, reynolds_outside_band_at_device, mach_above_limit, mach_beyond_validity]
+  parameters:
+    re_band_min:
+      value: 30000.0
+      unit: "1"
+      basis: sourced
+      status: adopted
+      source: "ADR 0028 (maintainer 2026-10-14): Lissaman, Low-Reynolds-Number Airfoils, Ann. Rev. Fluid Mech. 15 (1983) p. 227-228: below about 3e4 separation can involve the whole trailing edge; the band edge itself is marked uncited practice in the ADR"
+      regime: "defines the RC/UAV regime (ADR 0028): the lower end of the core chord Reynolds band"
+    re_bubble_max:
+      value: 70000.0
+      unit: "1"
+      basis: sourced
+      status: adopted
+      source: "ADR 0028: Lissaman 1983 p. 228, critical Re about 70 000 (a laminar bubble needs about Re 50 000 of run to reattach); Sharpe 2024 PhD thesis 7.2.4, NeuralFoil's analysis confidence drops near Re 80 000"
+      regime: "defines the RC/UAV regime (ADR 0028): the bubble-sensitive part of the core band"
+    re_band_max:
+      value: 1000000.0
+      unit: "1"
+      basis: sourced
+      status: adopted
+      source: "ADR 0028: Lissaman 1983 p. 228, 'low Re' is 1e4 to 1e6; above it the tools stay valid (NeuralFoil trained to Re about 2.6e8, Sharpe 2024 7.2.5), a notice only"
+      regime: "defines the RC/UAV regime (ADR 0028): the upper end of the core band"
+    mach_limit:
+      value: 0.3
+      unit: "1"
+      basis: sourced
+      status: adopted
+      source: "ADR 0028: Anderson, Fundamentals of Aerodynamics 6e, 8.5: below Mach 0.3 the density changes by less than 5 %, the flow is incompressible"
+      regime: "regime-independent (a statement about compressibility); the RC/UAV regime lies far below it"
+    mach_validity:
+      value: 0.6
+      unit: "1"
+      basis: sourced
+      status: adopted
+      source: "ADR 0028: AVL documentation, Prandtl-Glauert 'expected valid' to about Mach 0.6; NeuralFoil's Laitone correction; above it a value is not physically meaningful (error, amended 2026-11-01, #1342)"
+      regime: "regime-independent (a statement about compressibility); the RC/UAV regime lies far below it"
+
 static-margin-probe-agreement:
   applies_to: {formula: static-margin-probe}
   kind: probe
   on_violation: warning
-  criterion: "The static margin from the moment slope (the probe) agrees with the target static margin to within agreement_tolerance, in fractions of the mean aerodynamic chord; a larger deviation is reported, never averaged."
+  criterion: "The static margin from the moment slope (the probe) agrees with the target static margin to within agreement_tolerance, in fractions of the mean aerodynamic chord; the tolerance decides first: inside it nothing is reported, even where the signs differ; a larger deviation is reported, never averaged: as static_margin_probe_sign_disagrees (error) when probe and target differ in sign, else as static_margin_probe_disagrees (warning) (maintainer 2026-11-02, #1342)."
+  codes: [static_margin_probe_disagrees, static_margin_probe_sign_disagrees]
   parameters:
     agreement_tolerance:
       value: 0.05

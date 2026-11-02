@@ -174,10 +174,12 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .cbadge[data-state=ok] circle{fill:var(--good)}
 .cbadge[data-state=warning] circle{fill:var(--mvp)}
 .cbadge[data-state=error] circle{fill:var(--bad)}
+.cbadge[data-state=invalid] circle{fill:var(--bad)}
 .cbadge[data-state=computing] circle{fill:var(--sel);animation:cpulse 1s ease-in-out infinite}
 .cbadge[data-state=na] circle,.cbadge[data-state=skipped] circle{fill:var(--ink-3)}
 .node.st-error rect{stroke:var(--bad);stroke-width:2.5px}
 .node.st-warning rect{stroke:var(--mvp);stroke-width:2.5px}
+.node.st-invalid rect{stroke:var(--bad);stroke-width:2.5px;stroke-dasharray:5 3}
 @keyframes cpulse{50%{opacity:.35}}
 .seg button:disabled{opacity:.45;cursor:not-allowed}
 .kv{font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:500;margin:2px 0}
@@ -231,6 +233,7 @@ table.worlds td{padding:1px 10px 1px 0;color:var(--ink-2)}
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="11" cy="7" r="5" fill="var(--good)"/></svg>computed</span>
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="11" cy="7" r="5" fill="var(--mvp)"/></svg>computed with warnings (or a yellow verdict)</span>
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="11" cy="7" r="5" fill="var(--bad)"/></svg>failed (or a red verdict)</span>
+      <span><svg width="22" height="14" aria-hidden="true"><rect x="3" y="2" width="16" height="10" fill="none" stroke="var(--bad)" stroke-width="2" stroke-dasharray="4 2"/></svg>computed, not physically meaningful (an error-severity warning)</span>
       <span><svg width="22" height="14" aria-hidden="true"><circle cx="11" cy="7" r="5" fill="var(--sel)"/></svg>computing</span>
       <span>no mark: not computed &#183; click a quantity to compute it and what it rests on</span>
     </div>
@@ -1109,8 +1112,8 @@ const QP=new URLSearchParams(location.search);
 if(QP.get('connected')!=='1') return;
 const API=(QP.get('api')||'').replace(/\/+$/,''), AIRCRAFT=QP.get('aircraft')||'';
 const RANK={DEBUG:10,INFO:20,WARNING:30,ERROR:40,CRITICAL:50};
-const GLYPH={ok:'✓',warning:'!',error:'×',computing:'…',na:'–',skipped:'○'};
-const STATE_TEXT={ok:'computed',warning:'computed with warnings',error:'failed',computing:'computing',na:'not applicable',skipped:'waiting for confirmation (long run)'};
+const GLYPH={ok:'✓',warning:'!',invalid:'!',error:'×',computing:'…',na:'–',skipped:'○'};
+const STATE_TEXT={ok:'computed',warning:'computed with warnings',invalid:'computed, not physically meaningful (an error-severity warning)',error:'failed',computing:'computing',na:'not applicable',skipped:'waiting for confirmation (long run)'};
 const S={res:{},verd:{},cause:{},inflight:new Set(),stale:new Set(),values:{},defaultsUsed:{},fleet:null,logs:[],minLevel:'DEBUG'};
 const $=id=>document.getElementById(id);
 const attr=s=>esc(s).replace(/"/g,'&quot;');
@@ -1128,7 +1131,9 @@ async function unwrap(r){
 const getJson=path=>fetch(API+path).then(unwrap);
 const postJson=(path,body)=>fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(unwrap);
 
-// ---- node states: not computed (no mark) / computing / ok / warning / error (+ not applicable, skipped)
+// ---- node states: not computed (no mark) / computing / ok / warning / invalid / error (+ not applicable, skipped)
+// invalid: a value that carries an error-severity warning (ADR 0020: not physically meaningful); it
+// has a value, unlike error (status error: no value).
 function stateOf(id){
   if(S.inflight.has(id)) return 'computing';
   if(RULEBYID[id]){ const v=S.verd[id.slice(5)];
@@ -1138,7 +1143,9 @@ function stateOf(id){
     return v.status==='inside'?'ok':''; }
   const r=S.res[id];
   if(r){ if(r.status==='error') return 'error';
-    if(r.status==='ok') return (r.warnings||[]).length?'warning':'ok';
+    if(r.status==='ok'){ const ws=r.warnings||[];
+      if(ws.some(w=>w.severity==='error')) return 'invalid';
+      return ws.some(w=>w.severity==='warning')?'warning':'ok'; }
     return r.status==='skipped'?'skipped':'na'; }
   return S.cause[id]?'error':'';
 }
@@ -1230,7 +1237,9 @@ function renderLog(){
 }
 
 // ---- the panel of a selected quantity or rule
-function warningHtml(q,w){ const col=w.severity==='defect'?'var(--bad)':'var(--mvp)';
+// ADR 0020's three severities: an error (not physically meaningful) red, a warning (confidence reduced)
+// orange, a notice (a declared substitution) blue; only warnings and errors mark the node.
+function warningHtml(q,w){ const col=w.severity==='error'?'var(--bad)':w.severity==='warning'?'var(--mvp)':'var(--unc)';
   return `<div class="issue" style="border-color:${col}"><b style="color:${col}">${esc(w.severity)} · ${esc(w.code)}</b>`+
     (w.origin&&w.origin!==q&&Q[w.origin]?` <a href="#" data-goto="${attr(w.origin)}">at ${esc(sym(w.origin))}</a>`:'')+
     `<br>${esc(w.message)}${w.world?`<br><span class="sub">world ${esc(w.world)}</span>`:''}</div>`; }
@@ -1292,7 +1301,7 @@ function quantityPanel(q){
   if(INPUTS.has(q)||TARGETS.has(q)) return head+inputHtml(q);
   if(!requestable(q)) return head+`<p class="sub" style="margin:0">Not in the kernel yet (${esc(STATUS[q]||'open')}); nothing to compute.</p>`;
   const s=stateOf(q), r=S.res[q];
-  let h=head+`<p class="kst" style="border-color:var(--${s==='error'?'bad':s==='warning'?'mvp':s==='ok'?'good':'line-2'})">${s?esc(STATE_TEXT[s]):notComputedText(q)}</p>`;
+  let h=head+`<p class="kst" style="border-color:var(--${s==='error'||s==='invalid'?'bad':s==='warning'?'mvp':s==='ok'?'good':'line-2'})">${s?esc(STATE_TEXT[s]):notComputedText(q)}</p>`;
   if(r&&r.status==='ok') h+=valueHtml(r);
   if(r&&r.status!=='ok'&&r.reason) h+=`<p class="sub">${esc(r.reason.message)}</p>`;
   if(r&&r.error) h+=errorHtml(r.error);
@@ -1338,9 +1347,9 @@ window.selectRule=function(r){ baseSelectRule(r); augment(r.id,true); };
 
 // ---- sidebar
 function refreshStats(){
-  const c={ok:0,warning:0,error:0,skipped:0};
+  const c={ok:0,warning:0,invalid:0,error:0,skipped:0};
   for(const q in S.res){ const s=stateOf(q); if(s in c) c[s]++; }
-  $('connStat').innerHTML=`<b>${Object.keys(S.res).length}</b> computed · ${c.ok} ok · ${c.warning} with warnings · ${c.error} failed · ${c.skipped} waiting`;
+  $('connStat').innerHTML=`<b>${Object.keys(S.res).length}</b> computed · ${c.ok} ok · ${c.warning} with warnings · ${c.invalid} not meaningful · ${c.error} failed · ${c.skipped} waiting`;
 }
 $('conn').hidden=false; $('logpanel').hidden=false;
 $('computeAll').addEventListener('click',computeAll);

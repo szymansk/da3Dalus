@@ -276,7 +276,7 @@ describe("the connected navigator", () => {
 
   it("marks warnings and shows them in the panel", async () => {
     const warning = {
-      severity: "defect",
+      severity: "warning",
       code: "reynolds_outside_band",
       message: "The tip chords are below the band.",
       origin: "minimum-drag-speed",
@@ -290,8 +290,48 @@ describe("the connected navigator", () => {
     await selectAndCompute(nav, "minimum-drag-speed");
     expect(badgeState(nav, "minimum-drag-speed")).toBe("warning");
     const panel = nav.document.getElementById("kres")!.textContent!;
-    expect(panel).toContain("defect · reynolds_outside_band");
+    expect(panel).toContain("warning · reynolds_outside_band");
     expect(panel).toContain("The tip chords are below the band.");
+  });
+
+  it("lists a notice in the panel without marking the value (ADR 0020's three severities)", async () => {
+    const notice = {
+      severity: "notice",
+      code: "reynolds_bubble_sensitive",
+      message: "Bubble-sensitive at the MAC.",
+      origin: "minimum-drag-speed",
+      world: null,
+    };
+    const nav = openNavigator(
+      QUERY,
+      backend(() => response({ quantities: [quantity("minimum-drag-speed", { warnings: [notice] })] })),
+    );
+    await settle();
+    await selectAndCompute(nav, "minimum-drag-speed");
+    expect(badgeState(nav, "minimum-drag-speed")).toBe("ok");
+    const panel = nav.document.getElementById("kres")!.textContent!;
+    expect(panel).toContain("notice · reynolds_bubble_sensitive");
+  });
+
+  it("marks a value with an error-severity warning as invalid, not as failed", async () => {
+    const error = {
+      severity: "error",
+      code: "mach_beyond_validity",
+      message: "Mach 0.70 is beyond 0.6.",
+      origin: "minimum-drag-speed",
+      world: null,
+    };
+    const nav = openNavigator(
+      QUERY,
+      backend(() => response({ quantities: [quantity("minimum-drag-speed", { warnings: [error] })] })),
+    );
+    await settle();
+    await selectAndCompute(nav, "minimum-drag-speed");
+    expect(badgeState(nav, "minimum-drag-speed")).toBe("invalid");
+    const panel = nav.document.getElementById("kres")!.textContent!;
+    expect(panel).toContain("error · mach_beyond_validity");
+    expect(panel).toContain("not physically meaningful");
+    expect(panel).not.toContain("failed");
   });
 
   describe("an error", () => {

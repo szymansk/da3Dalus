@@ -358,6 +358,33 @@ def _span_findings(wing: Wing, path: str) -> list[KernelError]:
     ]
 
 
+def _duplicate_findings(wing: Wing, path: str) -> list[KernelError]:
+    """Report two adjacent sections at one spanwise station (canon rule ``distinct-sections``).
+
+    The station is the leading edge's position in the y-z plane, the plane AeroBuildup measures a
+    section's span in (y for a wing, z for a fin, both for a dihedral or V-tail panel): two adjacent
+    sections that coincide there give a section of zero span, which AeroBuildup turns into NaN
+    (#1342). A wing whose whole chain has no length is reported once, by :func:`_span_findings`.
+    """
+    points = [x_sec.xyz_le for x_sec in wing.x_secs]
+    if not all(math.isfinite(c) for point in points for c in point):
+        return []
+    if sum(math.dist(start, end) for start, end in pairwise(points)) <= 0.0:
+        return []
+    return [
+        _finding(
+            "duplicate_section",
+            f"{path}.x_secs[{index + 1}]",
+            f"The sections x_secs[{index}] and x_secs[{index + 1}] of the wing at {path} sit at one "
+            "spanwise station (the same y and z of the leading edge): the section between them "
+            "has no span.",
+            "Remove the duplicate section, or move it along the span.",
+        )
+        for index, (inner, outer) in enumerate(pairwise(points))
+        if math.dist(inner[1:], outer[1:]) <= 0.0
+    ]
+
+
 def _wing_findings(wings: Mapping[str, Wing], rules: Rules) -> list[KernelError]:
     """Check the wings: section count, span and each section."""
     findings: list[KernelError] = []
@@ -365,6 +392,7 @@ def _wing_findings(wings: Mapping[str, Wing], rules: Rules) -> list[KernelError]
         path = _key_path(WINGS_PATH, key)
         findings += _too_few_sections("Wing", key, len(wing.x_secs), path, rules)
         findings += _span_findings(wing, path)
+        findings += _duplicate_findings(wing, path)
         last = len(wing.x_secs) - 1
         for index, x_sec in enumerate(wing.x_secs):
             findings += _section_findings(
@@ -488,7 +516,7 @@ def _fuselage_findings(
 
 
 def _warning(code: str, origin: str, message: str, detail: dict[str, JsonValue]) -> KernelWarning:
-    """Build a practice warning from the catalogue (the severity follows from the code)."""
+    """Build a notice from the catalogue (the severity follows from the code)."""
     logger.debug("warning %s at %s", code, origin)
     return KernelWarning.of(code, message, origin=origin, detail=detail)
 

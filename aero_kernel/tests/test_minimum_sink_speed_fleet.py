@@ -14,6 +14,7 @@ from aero_kernel.tests.reference_fleet import (
     FleetMember,
     reference_document,
 )
+from aero_kernel.tests.test_regime_fleet import assert_regime_per_surface
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -36,13 +37,6 @@ GOLDEN = {
     FleetMember.RV7: (8.0806222, 7.2014265, 0.8170156, 10.2315110),
     FleetMember.CHEKKER: (7.4625361, 4.6061904, 0.9284639, 9.1449363),
     FleetMember.WIESEL: (9.8057437, 6.4005273, 0.7409360, 12.5389487),
-}
-OUTSIDE_RE_BAND = {
-    FleetMember.BRYAN,
-    FleetMember.JAGUAR,
-    FleetMember.BELEMNITOS,
-    FleetMember.CHEKKER,
-    FleetMember.WIESEL,
 }
 # Observed V_mp / V_md of these goldens: BRYAN 0.825, JAGUAR 0.784, BELEMNITOS 0.912, RV-7 0.790, CHEKKER 0.816, WIESEL 0.782. A parabolic polar gives
 # 3^(-1/4) = 0.760; the real polar at Re 1e5 is not parabolic (canon entry, "Observed"). The ratio is
@@ -68,10 +62,8 @@ async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> 
     for quantity, value in zip(result.quantities, GOLDEN[member], strict=True):
         assert close(quantity.value, value, 1e-5), quantity.slug
         assert quantity.tool == "OPT"
-    expected = {"reynolds_bubble_sensitive"}
-    if member in OUTSIDE_RE_BAND:
-        expected.add("reynolds_outside_band")  # ADR 0028: the tip chords are far below the band
-    assert {w.code for w in result.quantities[0].warnings} >= expected
+    # ADR 0028 amended (#1342): per surface at its MAC and per device, the surface named
+    assert_regime_per_surface(result.quantities[0].warnings, member.main_wing_name)
 
 
 @pytest.mark.parametrize("member", list(GOLDEN))

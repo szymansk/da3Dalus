@@ -115,7 +115,7 @@ async def test_one_run_at_the_lift_coefficient_with_the_moment_reference_at_the_
 async def test_a_fuselage_is_declared_as_a_round_body_of_equal_area(fake: Path) -> None:
     (warning,) = (await lateral(with_fuselage())).warnings
     assert warning.code == "avl_body_equivalent_round"
-    assert warning.severity is WarningSeverity.PRACTICE
+    assert warning.severity is WarningSeverity.NOTICE
     assert warning.detail["bodies"] == [{"fuselage": "Rumpf", "axis_offset_m": 0.0, "sections": 3}]
 
 

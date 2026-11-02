@@ -193,14 +193,14 @@ async def test_the_warnings_of_the_roll(member: FleetMember) -> None:
             "avl_roll_branch_inconsistent",
         ):
             assert refused not in found
-        # the AVL world carries AVL's primer range (|p'b/2V| > 0.10) as the adapter's defect
+        # the AVL world carries AVL's primer range (|p'b/2V| > 0.10) as the adapter's warning
         (beyond,) = [w for w in quantity.warnings if w.code == "avl_roll_rate_beyond_range"]
         assert beyond.world == AVL
-        assert beyond.severity is WarningSeverity.DEFECT
+        assert beyond.severity is WarningSeverity.WARNING
         assert beyond.detail == {"p_hat": GOLDEN_P_HAT[member][1], "limit": 0.1}
         # decision (b): the same range drops the AVL world from the interval, declared with its value
         dropped = excluded_avl(quantity)
-        assert dropped.severity is WarningSeverity.PRACTICE
+        assert dropped.severity is WarningSeverity.NOTICE
         assert dropped.detail["limit"] == 0.1
         # the averaged hinge line: one declaration per driven segment, AeroBuildup world only
         averaged = [w for w in quantity.warnings if w.code == "hinge_line_averaged"]

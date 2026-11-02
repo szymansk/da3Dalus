@@ -57,7 +57,7 @@ async def test_regression_goldens_with_the_xlarge_model(member: FleetMember) -> 
 @pytest.mark.parametrize("member", list(GOLDEN))
 async def test_the_resolution_check_finds_both_sweeps_in_agreement(member: FleetMember) -> None:
     """Halving the sweep step moves the break by less than one published step (0.25 deg): no
-    ``stall_break_resolution`` defect on either reference airplane."""
+    ``stall_break_resolution`` warning on either reference airplane."""
     result = await stall_break(member)
     codes = {w.code for q in result.quantities for w in q.warnings}
     assert "stall_break_resolution" not in codes

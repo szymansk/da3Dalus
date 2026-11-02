@@ -107,6 +107,7 @@ def test_the_confidence_run_reports_the_lowest_confidence_and_its_wing() -> None
     class Wing:
         def __init__(self, *names: str) -> None:
             self.xsecs = [Xsec(n) for n in names]
+            self.symmetric = True
 
     class Airplane:
         def __init__(self) -> None:
@@ -123,7 +124,14 @@ def test_the_confidence_run_reports_the_lowest_confidence_and_its_wing() -> None
 
     asb = type("Asb", (), {"Airfoil": Airfoil, "AeroBuildup": AeroBuildup})
     found = opti_module._confidence_run(  # pyright: ignore[reportPrivateUsage]
-        asb, Airplane(), ["Main", "Tail"], object()
+        asb, Airplane(), ["Main", "Tail"], object(), []
     )
     assert (found.min_confidence, found.min_confidence_wing) == (0.4, "Tail")
     assert found.max_effective_alpha_deg == 7.0
+    assert found.devices == ()
+    tail = opti_module.DeviceSpan(wing="Tail", device="elevator", intervals=((0.0, 1.0),))
+    plane, settings = Airplane(), object()
+    with pytest.raises(RuntimeError, match="NeuralFoil calls"):  # one call per cross-section
+        opti_module._confidence_run(  # pyright: ignore[reportPrivateUsage]
+            asb, plane, ["Main", "Tail"], settings, [tail]
+        )

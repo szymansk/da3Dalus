@@ -98,7 +98,7 @@ async def test_the_sink_solution_type_carries_the_three_outputs() -> None:
     assert set(MinSinkSolution.model_fields) == {"v_mp", "alpha_mp", "cl_mp", "stall_limited"}
 
 
-async def test_a_stall_limited_optimum_gives_the_value_and_a_practice_warning(
+async def test_a_stall_limited_optimum_gives_the_value_and_a_notice(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
@@ -122,4 +122,4 @@ async def test_a_stall_limited_optimum_gives_the_value_and_a_practice_warning(
     assert quantity.status is QuantityStatus.OK
     assert quantity.value == 12.5
     (warning,) = [w for w in quantity.warnings if w.code == "minimum_sink_stall_limited"]
-    assert warning.severity is WarningSeverity.PRACTICE
+    assert warning.severity is WarningSeverity.NOTICE

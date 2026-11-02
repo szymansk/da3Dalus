@@ -45,10 +45,16 @@ __all__ = [
 
 
 class WarningSeverity(StrEnum):
-    """Whether a warning is domain practice or a defect (ADR 0020, ch. 8.2)."""
+    """The three severities of ADR 0020 (ch. 8.2), fixed per warning code.
 
-    PRACTICE = "practice"
-    DEFECT = "defect"
+    ``notice``: a legitimate, declared substitution (domain practice). ``warning``: the number is
+    usable, its confidence reduced. ``error``: the number is not physically meaningful; do not build
+    on it. A value that cannot be computed at all is a ``KernelError``, never a warning.
+    """
+
+    NOTICE = "notice"
+    WARNING = "warning"
+    ERROR = "error"
 
 
 # Numbers in a result are strict (an int or float, never a bool or a string) and finite (ch. 8.3):
@@ -58,36 +64,39 @@ FiniteFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 # The closed warning table (ch. 8.2): code -> fixed severity. A new code is added here by the unit
 # that builds its source, never invented at the raise site.
 WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
-    "conflicting_mass": WarningSeverity.PRACTICE,
-    "default_target_used": WarningSeverity.PRACTICE,
-    "deflection_without_flap": WarningSeverity.PRACTICE,
-    "geometry_deflection_ignored": WarningSeverity.PRACTICE,
-    "hinge_line_averaged": WarningSeverity.PRACTICE,
-    "aileron_deflection_beyond_reference": WarningSeverity.PRACTICE,
-    "control_surface_fit_range_unknown": WarningSeverity.PRACTICE,
-    "avl_flap_linearised": WarningSeverity.PRACTICE,
-    "flap_confidence_low": WarningSeverity.DEFECT,
-    "flap_deflection_beyond_validity": WarningSeverity.DEFECT,
-    "fuselage_not_modelled": WarningSeverity.PRACTICE,
-    "world_outside_validity": WarningSeverity.PRACTICE,
-    "avl_mesh_not_converged": WarningSeverity.DEFECT,
-    "avl_roll_rate_beyond_range": WarningSeverity.DEFECT,
-    "avl_refinement_unchecked": WarningSeverity.DEFECT,
-    "stall_break_resolution": WarningSeverity.DEFECT,
-    "precondition_unchecked": WarningSeverity.PRACTICE,
-    "precondition_violated": WarningSeverity.DEFECT,
-    "postcondition_unchecked": WarningSeverity.PRACTICE,
-    "postcondition_violated": WarningSeverity.DEFECT,
-    "reynolds_outside_band": WarningSeverity.DEFECT,
-    "reynolds_bubble_sensitive": WarningSeverity.PRACTICE,
-    "mach_above_limit": WarningSeverity.PRACTICE,
-    "mach_beyond_validity": WarningSeverity.DEFECT,
-    "minimum_sink_stall_limited": WarningSeverity.PRACTICE,
-    "aerobuildup_no_downwash": WarningSeverity.PRACTICE,
-    "static_margin_probe_disagrees": WarningSeverity.DEFECT,
-    "avl_body_equivalent_round": WarningSeverity.PRACTICE,
-    "spiral_halving_time_reported": WarningSeverity.PRACTICE,
-    "fuselage_section_equivalent": WarningSeverity.PRACTICE,
+    "conflicting_mass": WarningSeverity.NOTICE,
+    "default_target_used": WarningSeverity.NOTICE,
+    "deflection_without_flap": WarningSeverity.NOTICE,
+    "geometry_deflection_ignored": WarningSeverity.NOTICE,
+    "hinge_line_averaged": WarningSeverity.NOTICE,
+    "aileron_deflection_beyond_reference": WarningSeverity.NOTICE,
+    "control_surface_fit_range_unknown": WarningSeverity.NOTICE,
+    "avl_flap_linearised": WarningSeverity.NOTICE,
+    "flap_confidence_low": WarningSeverity.WARNING,
+    "flap_deflection_beyond_validity": WarningSeverity.WARNING,
+    "fuselage_not_modelled": WarningSeverity.NOTICE,
+    "world_outside_validity": WarningSeverity.NOTICE,
+    "avl_mesh_not_converged": WarningSeverity.WARNING,
+    "avl_roll_rate_beyond_range": WarningSeverity.WARNING,
+    "avl_refinement_unchecked": WarningSeverity.WARNING,
+    "stall_break_resolution": WarningSeverity.WARNING,
+    "precondition_unchecked": WarningSeverity.NOTICE,
+    "precondition_violated": WarningSeverity.WARNING,
+    "postcondition_unchecked": WarningSeverity.NOTICE,
+    "postcondition_violated": WarningSeverity.WARNING,
+    "reynolds_outside_band": WarningSeverity.WARNING,
+    "reynolds_bubble_sensitive": WarningSeverity.NOTICE,
+    "reynolds_above_band": WarningSeverity.NOTICE,
+    "reynolds_outside_band_at_device": WarningSeverity.WARNING,
+    "mach_above_limit": WarningSeverity.NOTICE,
+    "mach_beyond_validity": WarningSeverity.ERROR,
+    "minimum_sink_stall_limited": WarningSeverity.NOTICE,
+    "aerobuildup_no_downwash": WarningSeverity.NOTICE,
+    "static_margin_probe_disagrees": WarningSeverity.WARNING,
+    "static_margin_probe_sign_disagrees": WarningSeverity.ERROR,
+    "avl_body_equivalent_round": WarningSeverity.NOTICE,
+    "spiral_halving_time_reported": WarningSeverity.NOTICE,
+    "fuselage_section_equivalent": WarningSeverity.NOTICE,
 }
 
 
@@ -98,8 +107,8 @@ class KernelWarning(BaseModel):
     ``quantity`` field.
 
     Attributes:
-        severity: ``practice`` (domain practice) or ``defect``; fixed by the code, so it must match
-            :data:`WARNING_CATALOGUE`. :meth:`of` takes it from there.
+        severity: ``notice``, ``warning`` or ``error`` (ADR 0020); fixed by the code, so it must
+            match :data:`WARNING_CATALOGUE`. :meth:`of` takes it from there.
         code: Machine-readable code from :data:`WARNING_CATALOGUE`.
         message: The caveat, in natural language.
         origin: Slug of the quantity where the warning arose; ``None`` until the engine sets it.

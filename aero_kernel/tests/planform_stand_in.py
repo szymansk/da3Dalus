@@ -6,14 +6,19 @@ consistent numbers only, so the GEO stub answers with this deterministic integra
 producer in the kernel: it lives in the tests, and the aero tier compares the real adapter with ASB.
 """
 
+import math
+from functools import cache
 from itertools import pairwise
 
+from aero_kernel.build import shipped_build
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.geometry import Wing
+from aero_kernel.geometry import AirplaneGeometry, Wing
 from aero_kernel.geometry_properties import SurfaceProperties
+from aero_kernel.rules import Rules
+from aero_kernel.solvers.regime import RegimeBands, SurfaceSections
 from aero_kernel.surface_chain import oriented_chain
 
-__all__ = ["stand_in_surface_properties"]
+__all__ = ["canon_bands", "stand_in_surface_properties", "stand_in_surface_sections"]
 
 # A point of the planform chain: y, chord, x of the leading edge (all in m).
 _Point = tuple[float, float, float]
@@ -111,3 +116,35 @@ def stand_in_surface_properties(wing: Wing) -> SurfaceProperties:
         c_mac=squares / area,
         x_le_mac=moment / area,
     )
+
+
+def stand_in_mac(wing: Wing) -> float:
+    """The mean aerodynamic chord ``int c^2 ds / int c ds`` over the segments' y-z spans.
+
+    The definition of ``Wing.mean_aerodynamic_chord()``, with the span of the leading edges instead of
+    the quarter chords: the fast tier's stand-in, compared with AeroSandbox in the aero tier.
+    """
+    squares = area = 0.0
+    for inner, outer in pairwise(wing.x_secs):
+        span = math.dist(inner.xyz_le[1:], outer.xyz_le[1:])
+        c1, c2 = inner.chord, outer.chord
+        squares += span * (c1 * c1 + c1 * c2 + c2 * c2) / 3.0
+        area += span * (c1 + c2) / 2.0
+    return squares / area
+
+
+def stand_in_surface_sections(airplane: AirplaneGeometry) -> dict[str, SurfaceSections]:
+    """The regime check's sections of every wing with the stand-in MAC, without AeroSandbox."""
+    return {
+        key: SurfaceSections.of(wing, stand_in_mac(wing))
+        for key, wing in (airplane.wings or {}).items()
+    }
+
+
+@cache
+def canon_bands() -> RegimeBands:
+    """The regime bands of the shipped canon (rule ``reynolds-mach-regime``), without overrides.
+
+    Read on first use, never at import: importing a test helper must not load the shipped build.
+    """
+    return RegimeBands.of(Rules(shipped_build().model))

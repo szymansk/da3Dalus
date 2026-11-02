@@ -13,10 +13,13 @@ RULE = "flap-model-validity"
 def warn_flap_validity(
     ctx: Context, airplane: AirplaneGeometry, found: DeflectionDiagnostics | None
 ) -> None:
-    """Declare a flapped result that lies outside the model's trusted range (``defect`` warnings).
+    """Declare a flapped result that lies outside the model's trusted range (``warning`` severity).
 
     The value is computed and returned; the declaration carries the value and the threshold. Without
-    a deflected flap nothing is read and nothing is declared.
+    a deflected flap nothing is read and nothing is declared. The confidence is judged per deflected
+    device (each deflected flap, and a driven aileron of the roll): the area-weighted mean of
+    NeuralFoil's ``analysis_confidence`` over the sections the device spans, against the rule's
+    ``min_confidence`` (#1342); one warning per device below it, with where and how much.
 
     Args:
         ctx: The formula context.
@@ -45,15 +48,26 @@ def warn_flap_validity(
     if found is None:
         return
     floor = rules.value(RULE, "min_confidence")
-    if found.min_confidence < floor:
+    for device in found.devices:
+        mean = device.mean_confidence()
+        if mean >= floor:
+            continue
+        lowest = device.lowest()
+        share = device.span_share_below(floor)
         ctx.warn(
             "flap_confidence_low",
-            f"NeuralFoil's analysis confidence of a section at the solution is "
-            f"{found.min_confidence:.3g}, below {floor:g}: the flapped contour lies outside what "
-            "the net was trained on. The value is computed; validate it with another method.",
+            f"NeuralFoil's analysis confidence over the span of the device {device.device!r} of "
+            f"the wing {device.wing!r} is {mean:.3g} (area-weighted), below {floor:g}: "
+            f"{share:.0%} of its span lies below, the lowest section {lowest.confidence:.3g}. The "
+            "deflected contour lies outside what the net was trained on. The value is computed; "
+            "validate it with another method.",
             {
-                "min_confidence": found.min_confidence,
+                "wing": device.wing,
+                "device": device.device,
+                "mean_confidence": mean,
                 "threshold": floor,
-                "wing": found.min_confidence_wing,
+                "span_share_below_threshold": share,
+                "min_confidence": lowest.confidence,
+                "min_confidence_at_m": list(lowest.at_m),
             },
         )

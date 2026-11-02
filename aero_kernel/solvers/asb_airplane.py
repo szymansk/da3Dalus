@@ -26,6 +26,7 @@ from aero_kernel.geometry import (
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.graph import AILERON_ROLES
 from aero_kernel.solvers.devices import flap_segments, roll_deflection, roll_segments
+from aero_kernel.solvers.regime import SurfaceSections
 from aero_kernel.superellipse import equivalent_exponent
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 
@@ -70,6 +71,7 @@ __all__ = [
     "main_wing_properties",
     "quarter_chord_mac_x",
     "surface_properties",
+    "surface_sections",
     "to_asb_airplane",
 ]
 
@@ -410,6 +412,26 @@ def surface_properties(airplane: AirplaneGeometry, key: str) -> SurfacePropertie
     if document.surface_type == "v_tail":
         return _v_tail_surface(asb, wing)
     return _surface(wing, float(wing.aerodynamic_center()[0]))
+
+
+def surface_sections(airplane: AirplaneGeometry) -> dict[str, SurfaceSections]:
+    """Return the sections of every wing for the regime check, with AeroSandbox's MAC (#1342).
+
+    The mean aerodynamic chord is ``Wing.mean_aerodynamic_chord()`` of the wing converted like in
+    :func:`to_asb_airplane` (the one producer of the MAC, gh-1253); chords, spans and devices are the
+    stored sections' (:meth:`SurfaceSections.of`).
+
+    Args:
+        airplane: The validated geometry document.
+
+    Returns:
+        The sections by wing key, in document order.
+    """
+    asb = load_aerosandbox()
+    return {
+        key: SurfaceSections.of(wing, float(_wing(asb, key, wing, 0.0).mean_aerodynamic_chord()))
+        for key, wing in (airplane.wings or {}).items()
+    }
 
 
 def quarter_chord_mac_x(airplane: AirplaneGeometry, key: str) -> float:

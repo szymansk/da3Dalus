@@ -32,7 +32,7 @@ async def minimum_sink_speed_from_polar(x: Inputs, ctx: Context) -> dict[str, fl
         FormulaError: From the adapter, unchanged (``tool_unavailable``, ``not_converged``; a bound
             of ``V`` or the lower bound of alpha active at the optimum is ``not_converged``).
 
-    Warnings: ``minimum_sink_stall_limited`` (``practice``) if the optimum is the stall boundary:
+    Warnings: ``minimum_sink_stall_limited`` (a ``notice``) if the optimum is the stall boundary:
         the sink power is still falling at the first C_L peak, and the value is returned there.
     """
     sink = await ctx.solvers.opti.min_sink(

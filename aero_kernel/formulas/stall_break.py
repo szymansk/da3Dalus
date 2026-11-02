@@ -15,7 +15,7 @@ interpolation between samples cannot be trusted below the sample spacing, so a f
 the break by more than one published step shows the published value is resolved by the grid and not by
 the polar. The number is not taken from a source (none exists for a computed polar); it is derived from
 the sweep's own step, and the half-step sweep is the finer reference. A difference above it is the
-declared defect warning ``stall_break_resolution`` with both values; the value of the published sweep
+declared warning ``stall_break_resolution`` with both values; the value of the published sweep
 stands, because it is the polar the other quantities (``polar-stall``) are published from.
 """
 

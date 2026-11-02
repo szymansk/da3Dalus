@@ -15,8 +15,9 @@ from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.solvers import aerobuildup as aerobuildup_module
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.aerobuildup import evaluate_forces
-from aero_kernel.solvers.base import regime_by_wing
 from aero_kernel.solvers.opti import EvaluationRequest, Forces, OptiAdapter
+from aero_kernel.solvers.regime import regime_by_surface
+from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
 
 pytestmark = pytest.mark.asyncio
@@ -55,8 +56,12 @@ async def test_the_regime_warnings_are_those_of_the_callers_speed(
 ) -> None:
     monkeypatch.setattr(opti_module, "evaluation_worker", canned())
     result = await OptiAdapter(InProcessRuntime()).evaluate(airplane(), AIR, 6.0, 2.0)
-    expected = regime_by_wing(
-        {"Main": [0.2, 0.1]}, 6.0, AIR.speed_of_sound, AIR.kinematic_viscosity
+    expected = regime_by_surface(
+        stand_in_surface_sections(airplane()),
+        6.0,
+        AIR.speed_of_sound,
+        AIR.kinematic_viscosity,
+        canon_bands(),
     )
     assert result.warnings == tuple(expected)
 

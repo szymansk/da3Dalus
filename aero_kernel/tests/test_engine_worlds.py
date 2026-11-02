@@ -327,7 +327,7 @@ async def test_the_exclusion_is_declared_with_the_world_and_the_excluded_value()
     quantity_ = only(await run(probe, "np-q"))
     (warning,) = [w for w in quantity_.warnings if w.code == "world_outside_validity"]
     assert (warning.world, warning.origin) == ("unc=gamma", "np-q")
-    assert warning.severity.value == "practice"
+    assert warning.severity.value == "notice"
     assert warning.detail == {"value": 30.0, "limit": 25.0}
 
 

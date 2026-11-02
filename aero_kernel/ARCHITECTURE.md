@@ -258,7 +258,7 @@ nothing failed. The category enum holds only the eight rows above.
   `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
   value per section; `detail`: wing key, y).
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
-  `warning` → a `defect` warning and the value is returned. `error` → `unsupported_configuration`, code
+  `warning` → a `warning` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
   id; for a postcondition **all outputs of that application** (in that world) are discarded, never
   returned (ADR 0020): they come from one evaluation, so a failed check on one invalidates the others.
@@ -266,7 +266,9 @@ nothing failed. The category enum holds only the eight rows above.
 ### 8.2 Warnings
 
 `KernelWarning` (not `Warning`, which would shadow the builtin), the `DesignWarning` shape of ADR 0020:
-`severity` (`practice` | `defect`), `code`, `message`, plus `origin` (the quantity where it arose; `None`
+`severity` (`notice` | `warning` | `error`, ADR 0020: `notice` a legitimate, declared substitution
+(domain practice); `warning` the number is usable, its confidence reduced; `error` the number is not
+physically meaningful, do not build on it), `code`, `message`, plus `origin` (the quantity where it arose; `None`
 until the engine sets it, since adapters know no canon names), `world` (the method world it arose in, or
 `None`) and `detail` (the values it carries, e.g. the default taken or NeuralFoil's confidence). There is
 no separate `quantity` field: the reporting quantity is the `QuantityResult` that lists it.
@@ -283,29 +285,31 @@ collects and deduplicates; the result type only rejects exact duplicates. A V_S 
 
 Sources:
 - the regime (ADR 0028): chord Re band 3·10⁴–1·10⁶, "bubble-sensitive" below 7·10⁴, Mach ≤ 0.3, warned up
-  to 0.6. **Checked where Re and Mach become known:** in the aerodynamic solver adapters, per evaluation,
+  to 0.6, an error beyond. **Checked where Re and Mach become known:** in the aerodynamic solver adapters, per evaluation,
   from the section chords in metres, the evaluated V and the speed of sound at the altitude. Not in input
-  validation, which does not know V.
+  validation, which does not know V. Re is evaluated per station and aggregated (ADR 0028, amended
+  2026-11-01, #1342): one warning per surface, judged at its MAC, and one per control device with a station
+  below the band; every one says where and how much of the surface or device it concerns (ch. 8.8)
 - violated or unchecked preconditions
-- a method world outside its stated range (`world_outside_validity`, `practice`, ch. 8.13): the world leaves the interval and the warning carries its value and the limit
-- the missing fuselage (`fuselage_not_modelled`, `practice`, origin `neutral-point`, once per world): none of the
+- a method world outside its stated range (`world_outside_validity`, `notice`, ch. 8.13): the world leaves the interval and the warning carries its value and the limit
+- the missing fuselage (`fuselage_not_modelled`, `notice`, origin `neutral-point`, once per world): none of the
   three neutral-point worlds models a fuselage, whose contribution is destabilising, so the interval is biased
-  aft and a static margin computed from it is over-reported (`static-margin-measured` inherits it). `practice`: a
+  aft and a static margin computed from it is over-reported (`static-margin-measured` inherits it). `notice`: a
   deliberate, declared simplification (maintainer 2026-10-24, #1205): USAF DATCOM 1978 §4.2.2.1 Method 1
   gives about 1.5-2.1 % MAC forward (BRYAN) and 0.7-1.0 % (JAGUAR), inside Sadraey's "about ±5 % c̄"
-- the equivalent fuselage section (`fuselage_section_equivalent`, `practice`, origin `airplane`, #1307): AeroSandbox has one
+- the equivalent fuselage section (`fuselage_section_equivalent`, `notice`, origin `airplane`, #1307): AeroSandbox has one
   shape exponent per section, so a section with two is replaced by the symmetric one of the same width, height and
   centre and the same cross-section area; `detail`: the section path, `n`, `n_lower`, `n_equivalent`. The perimeter
   (wetted area) is kept only approximately
-- AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`defect`; `detail`: both values and meshes) and
-  `avl_refinement_unchecked` (`defect`)
-- the averaged hinge line of a roll device or deflected flap (`hinge_line_averaged`, `practice`, ch. 8.8):
+- AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`warning`; `detail`: both values and meshes) and
+  `avl_refinement_unchecked` (`warning`)
+- the averaged hinge line of a roll device or deflected flap (`hinge_line_averaged`, `notice`, ch. 8.8):
   AeroBuildup holds one hinge per segment, so a tapered hinge line is replaced by the mean of its root and tip
   (`detail`: wing key, device, `root`, `tip`, `used`)
-- the model range of a deflected flap (#1212, ch. 8.8): `control_surface_fit_range_unknown` (`practice`) from
+- the model range of a deflected flap (#1212, ch. 8.8): `control_surface_fit_range_unknown` (`notice`) from
   AeroBuildup, whose flap is the shift `tau * delta` of the clean section's angle of attack (the section's
   C_L,max is not raised; `detail.flaps`: wing, device, `deflection_deg`), and `avl_flap_linearised`
-  (`practice`) from AVL, whose flap rotates the panel normals linearly in the deflection, without separation
+  (`notice`) from AVL, whose flap rotates the panel normals linearly in the deflection, without separation
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
@@ -669,7 +673,7 @@ quantity.
     `optimum_at_first_cl_peak` at each mass of the sweep, K32): the unscoped ones always, a scoped one when
     its application is listed. A violation is the embedder's: `on_violation: error` makes it
     `postcondition_violated` with `detail.embedded` = `<slug>.<application-id>`, `detail.postcondition` = the
-    id and the variable values of the failing evaluation; `warning` becomes the embedder's `defect` warning
+    id and the variable values of the failing evaluation; `warning` becomes the embedder's `warning` warning
     with the same detail. The embedder node is cached as a whole; the build digest covers the shared code
     (ch. 8.4). Approval of the embedder follows approval of its closure. Evaluating one embedded
     formula several times at different variable values (`spar-break-load-factor`: `spanwise-loads` at
@@ -677,7 +681,7 @@ quantity.
 - **Optional parameters** (`optional:`, a list of input parameter names). The formula receives `None`
   when the bound quantity has neither a value nor a default, and selects its route by data. Unlike
   `given`, the application exists either way. The entry states, per route, which of three outcomes holds:
-  - **a declared method limitation** → a `practice` warning naming the route (ADR 0020). Example: `r_m`
+  - **a declared method limitation** → a `notice` warning naming the route (ADR 0020). Example: `r_m`
     of `motor-propeller-equilibrium`, route A without it (Q-PT-6).
   - **the canon's own definition for that data** → no warning. Example: `flap_deflection` of
     `airplane-configuration` on an aircraft without flaps: there is no configuration, the aircraft is
@@ -707,8 +711,8 @@ outputs (also the ones an application does not expose), registered with `@postco
 
 Both kinds return one of three states:
 - 🟢 held
-- 🔴 violated: a `defect` warning or an error, as `on_violation` in the canon entry says (ch. 8.1)
-- ⚪ unchecked, including "no check registered yet": a `practice` warning
+- 🔴 violated: a `warning` warning or an error, as `on_violation` in the canon entry says (ch. 8.1)
+- ⚪ unchecked, including "no check registered yet": a `notice` warning
 
 ### 8.6 Consistency rules (checked by the importer)
 
@@ -776,24 +780,35 @@ caller's responsibility.
     (one single-process pool per worker slot, #1336, ch. 8.10)
     and the concurrency limit and offers `run_cpu(fn, *args)` and `run_process(files, commands, …)` (an
     async subprocess in its own process group and temp dir, killed and cleaned up on cancellation or
-    timeout, Q17; the AVL adapter is its first user); and `regime(chords_m, v, speed_of_sound,
-    kinematic_viscosity) -> list[KernelWarning]` (ADR 0028 check, ch. 8.2; the atmosphere values come from
+    timeout, Q17; the AVL adapter is its first user). The regime check is `solvers/regime.py`:
+    `regime_by_surface(surfaces, v, speed_of_sound, kinematic_viscosity) -> list[KernelWarning]` (ADR 0028
+    check, amended 2026-11-01, #1342, ch. 8.2; the atmosphere values come from
     the caller, the ISA is the ATM formula's: `air-density-isa` outputs `rho`, `mu` and `a`, the solver entries
-    bind them, and the kinematic viscosity is `mu / rho` of the bound values, never recomputed from the altitude). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
-    or > 10⁶), `reynolds_bubble_sensitive` (practice, 3·10⁴ ≤ Re < 7·10⁴; below the band `reynolds_outside_band`
-    alone applies), `mach_above_limit` (practice,
-    0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
+    bind them, and the kinematic viscosity is `mu / rho` of the bound values, never recomputed from the altitude).
+    `surfaces` are `SurfaceSections` per wing key (`asb_airplane.surface_sections`: the stored chords, the y-z
+    spans of the segments and their devices, and AeroSandbox's `mean_aerodynamic_chord()`, the one producer of
+    the MAC). The band edges are the parameters of the canon rule `reynolds-mach-regime` (`rules.yaml`,
+    sourced from ADR 0028), read through the call's `Rules`, so they appear in `Provenance.rules_used` and
+    can be overridden. Re is evaluated at every station and aggregated: per surface at the MAC (the area-weighted
+    Reynolds number) — `reynolds_outside_band` (`warning`, Re_MAC < 3·10⁴), `reynolds_bubble_sensitive`
+    (`notice`, 3·10⁴ ≤ Re_MAC < 7·10⁴), `reynolds_above_band` (`notice`, Re_MAC > 10⁶) — and per control
+    device: `reynolds_outside_band_at_device` (`warning`) when a station of the device's span lies below 3·10⁴.
+    Every Reynolds warning carries where and how much (`detail`: `wing`, `re_mac`, `c_mac_m`, `re_min` and
+    `re_min_station`, `area_share_below_band`, `area_share_below_bubble`, `span_share_below_band`; the device
+    warning also `device`, `device_re_min`, `device_re_min_station`, `device_span_share_below_band`). Mach once
+    per evaluation: `mach_above_limit` (`notice`, 0.3 < M ≤ 0.6), `mach_beyond_validity` (`error`, M > 0.6).
+    A worker function returns a `WorkerOutcome`
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
     `FormulaError`; a dead worker discards its own worker slot (the others and their model functions stay)
     and becomes `internal`. Tested with a stub solver.
-  - **`minimum_sink_stall_limited`** (`practice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
-  - **The Probe and the lateral chain (#1277).** `aerobuildup_no_downwash` (`practice`): the `static-margin-probe` value is AeroBuildup's, which omits the main-wing downwash on the tail and so is biased toward a larger margin (declared on every probe value). `static_margin_probe_disagrees` (`defect`): the probe differs from the static-margin target by more than `agreement_tolerance` of the rule `static-margin-probe-agreement`; the value stays, never averaged, and the deviation, the tolerance and the target are in `detail`. `avl_body_equivalent_round` (`practice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`practice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
+  - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
+  - **The Probe and the lateral chain (#1277).** `aerobuildup_no_downwash` (`notice`): the `static-margin-probe` value is AeroBuildup's, which omits the main-wing downwash on the tail and so is biased toward a larger margin (declared on every probe value). `static_margin_probe_disagrees` (`warning`): the probe differs from the static-margin target by more than `agreement_tolerance` of the rule `static-margin-probe-agreement`; `static_margin_probe_sign_disagrees` (`error`, #1342): beyond the tolerance, probe and target also differ in sign (one statically stable, the other not); inside the tolerance nothing is declared, even where the signs differ (the tolerance decides first, maintainer 2026-11-02); the value stays, never averaged, and the probe, the deviation, the tolerance and the target are in `detail`. `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
     the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
-    `|p·b/2V| > 0.10`, the documented range of the primer (`defect`). AeroBuildup with a deflected
+    `|p·b/2V| > 0.10`, the documented range of the primer (`warning`). AeroBuildup with a deflected
     control surface: NeuralFoil's `analysis_confidence` at `α_eff` of the deflected strips as a value, and
-    "δ range of the τ fit unknown" (`practice`). A reference point a specific entry cites (Sadraey's
-    20–25°) is emitted by that formula via `ctx.warn`, `practice`, and stated in the entry text.
+    "δ range of the τ fit unknown" (`notice`). A reference point a specific entry cites (Sadraey's
+    20–25°) is emitted by that formula via `ctx.warn`, `notice`, and stated in the entry text.
   - **The ATM tool is an adapter too** (`solvers/atmosphere.py`): `asb.Atmosphere(altitude=h,
     method="isa")`, the canonical model the maintainer fixed (O5, 2026-10-05; ASB first). There is no
     second, hand-written ISA in the kernel. Its `requirements` include aerosandbox, so a missing ASB is
@@ -871,7 +886,7 @@ caller's responsibility.
     - *Validity of the AVL world (#1243).* AVL is linear in δ and its primer gives `|pb/2V| <= 0.10` as the
       practical limit. Outside it (`ROLL_RATE_LIMIT`, tested with `>`: 0.10 itself is inside) the `roll-rate`
       formula declares `world_outside_validity` in the `avl` world (`detail`: `p_hat`, `p_deg_s`, `limit`) and
-      the interval is the AeroBuildup world alone (ch. 8.13). The adapter's own `defect` warning
+      the interval is the AeroBuildup world alone (ch. 8.13). The adapter's own `warning` warning
       `avl_roll_rate_beyond_range` stays: it is the tool's statement, the exclusion is the canon's decision.
     - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
       one sweep on the airplane **without the roll command** (its configured flaps stay): with the deflection the curve has kinks and its first
@@ -925,12 +940,19 @@ caller's responsibility.
       two controls on the same stations). Where a roll control and a flap meet with different hinges the
       split follows the more forward one and the other is measured from it. Declared:
       `control_surface_fit_range_unknown` (AeroBuildup: single-element plain flap through NeuralFoil; the
-      lowest `analysis_confidence` of the sections at the stall or roll optimum is `detail.min_confidence`)
+      lowest `analysis_confidence` of the sections at the stall or roll optimum is `detail.min_confidence`,
+      the mean over each deflected device's span `detail.devices`)
       and `avl_flap_linearised` (AVL: linear in δ, no separation). The rule `flap-model-validity`
-      (adopted by the maintainer 2026-10-26) adds two `defect` declarations ("outside the model's trusted
+      (adopted by the maintainer 2026-10-26) adds two `warning` declarations ("outside the model's trusted
       range", the word `reynolds_outside_band` and `avl_roll_rate_beyond_range` also use), the value still
-      computed: `flap_confidence_low` (`min_confidence` below 0.85, the app's `low_re_low_confidence_flag`,
-      duplicated because the kernel imports nothing from `app/`; `detail`: confidence, threshold, wing) from
+      computed: `flap_confidence_low` (per deflected device — each deflected flap, and the driven aileron of
+      a roll — the area-weighted mean of NeuralFoil's `analysis_confidence` over the sections the device spans
+      below `min_confidence` 0.85, the app's `low_re_low_confidence_flag`, duplicated because the kernel
+      imports nothing from `app/`, #1342; a section's confidence is the chord blend of its two ends and its
+      weight its planform area, as AeroBuildup weights its forces, `aero_buildup.py:686-688, 812-837`, the
+      calls paired as AeroBuildup makes them, `a`, `b`, then the mirrored half; the gap strip the conversion
+      writes at a flap boundary, `opt_flap_rib_gap` wide, is no section of a device; `detail`: wing, device, mean,
+      threshold, the share of the device span below it and the lowest section with its location) from
       `stall-speed` and the AeroBuildup world of `roll-rate`, and `flap_deflection_beyond_validity` (a flap
       above 30 deg; `detail`: limit and flaps) from `stall-speed` and both roll worlds. Both thresholds
       appear in `Provenance.rules_used` and can be overridden by the caller.
@@ -1299,11 +1321,11 @@ implementation, not before (ADR 0021).
     called formula that then fails still took it (it may be the cause of the failure, ADR 0020).
   - **Reporting.** Every default taken is in `provenance.defaults_used` (`{slug, value, unit, source}`,
     sorted by display slug) and
-    logged once per call at `INFO` (ch. 8.14). A **target** default additionally gives the `practice`
+    logged once per call at `INFO` (ch. 8.14). A **target** default additionally gives the `notice`
     warning `default_target_used` (`origin` = the target slug), inherited by every quantity that reads it
     (ch. 8.2); a physical-constant default (`role: input`, e.g. `gravity`) gives none.
   - **ADR 0020.** A target default stands in for a decision the designer did not make, so it is a
-    substitution; the `practice` warning declares it (domain practice, because it is sourced and
+    substitution; the `notice` warning declares it (domain practice, because it is sourced and
     regime-checked). A constant's default is the constant's value, not a substitution, so the provenance
     entry is its declaration. The log level is not the declaration: ADR 0020 asks for the result warning,
     which exists; `INFO` only keeps the operator log free of design choices.
@@ -1315,7 +1337,7 @@ implementation, not before (ADR 0021).
 - **The passed mass always wins** (maintainer, 2026-10-14). Mass comes only from
   `values["aircraft-mass"]`; the geometry's `total_mass_kg` is not used. Otherwise no "what if?"
   calculation at a different mass would be possible. If both are set and differ, the call is **not**
-  aborted, but a warning is issued: code `conflicting_mass`, severity `practice`, `origin` =
+  aborted, but a warning is issued: code `conflicting_mass`, severity `notice`, `origin` =
   `aircraft-mass`, message with both values. Like every warning it is inherited by all quantities whose
   subtree reads the mass (ch. 8.2).
 - **Airfoils are inline.** The kernel loads nothing on its own (ch. 8.8), so `airfoil` in
@@ -1359,6 +1381,7 @@ one code, one test:
 | `non_positive_exponent` | a fuselage super-ellipse exponent `n` or `n_lower` ≤ 0 |
 | `non_positive_thickness` | an airfoil of thickness ≤ 0 (inline contour, or NACA thickness digits `00`) |
 | `too_few_sections` | a wing or a fuselage with fewer than two `x_secs` |
+| `duplicate_section` | two adjacent sections of a wing at one spanwise station: the same y and z of the leading edge (a section of zero span, NaN in AeroBuildup; #1342); `input_path` the second one |
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
@@ -1416,7 +1439,7 @@ not a design input. The kernel's aircraft is the geometry with **every control d
 configuration or a formula sets the angles it needs from `values` (`flap-deflection-landing`,
 `aileron-deflection`, …) or solves for them (trim, `aileron-deflection-required-*`). `values` always
 wins, as with the mass: a non-zero geometry deflection is ignored and reported once per device as a
-`practice` warning `geometry_deflection_ignored` (`origin` = `airplane`, `detail` = device and angle),
+`notice` warning `geometry_deflection_ignored` (`origin` = `airplane`, `detail` = device and angle),
 inherited like `conflicting_mass`. From the device the kernel reads its **role** (which surface acts as
 flap, aileron, elevon, …), its hinge geometry and its span, never an angle.
 
@@ -1520,7 +1543,7 @@ fallback). `airplane-configuration` sets the given deflection as the flaps' stat
 exactly, **also beyond the stops** (ch. 8.11). Its `flap_deflection` is `optional:`: without flaps an absent
 deflection gives the unchanged aircraft (no warning); with flaps it is `missing_input`, and its dependents
 `upstream_failed`. A deflection given for an aircraft without flaps has nothing to act on: unchanged
-aircraft plus a `practice` warning `deflection_without_flap`, because a supplied value is not used. A sampled curve over angle of attack is a quantity of type `polar`
+aircraft plus a `notice` warning `deflection_without_flap`, because a supplied value is not used. A sampled curve over angle of attack is a quantity of type `polar`
 whose slug names its evaluation condition (A2): `polar-stall`, the clean sweep at `V_S` with solver
 drag, an output of `stall-speed` read by `stall-break`. The negative extremum `C_L,min` is not
 read off that polar but is `stall-speed`'s `inverted` application (`n` bound to `{const: -1, source}`)
@@ -1561,7 +1584,7 @@ sampled grid and no `-static` chain.
   `detail.worlds_ok`.
 - **A world outside its validity** (ADR 0027 point 8, maintainer 2026-10-25, #1243). A world whose method states a
   range and whose result lies outside it declares that with `ctx.warn("world_outside_validity", …)` and still
-  returns its values; the warning (`practice`, the world on it, `detail`: the value and the limit) *is* the
+  returns its values; the warning (`notice`, the world on it, `detail`: the value and the limit) *is* the
   exclusion. The merge drops an assignment from `min`, `max` and `Interval.worlds` when a
   `world_outside_validity` warning is anywhere in the subtree of that assignment (a dependent of an excluded
   world is excluded with it); the warnings of the dropped assignment stay on the quantity. This is not a
@@ -1696,16 +1719,16 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q22 | Multi-output formula | requesting two outputs of one application calls the implementation once |
 | Q23 | One world fails | the quantity is `error` with `detail.worlds_ok`; no narrowed interval |
 | Q24 | Missing input value | only the quantities needing it get `missing_input`; the rest compute |
-| Q25 | Pre-/postcondition violated | `on_violation: warning` → value plus `defect` warning; `error` → `precondition_violated` (implementation not called) / `postcondition_violated` (value discarded); the importer rejects an output in `preconditions:` and an input in `postconditions:` |
+| Q25 | Pre-/postcondition violated | `on_violation: warning` → value plus `warning` warning; `error` → `precondition_violated` (implementation not called) / `postcondition_violated` (value discarded); the importer rejects an output in `preconditions:` and an input in `postconditions:` |
 | Q26 | Status precedence | mixed failed/skipped/not-applicable predecessors give the status of ch. 8.13 |
 | Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
 | Q29 | Target not set | `roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
-| Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
-| Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `INFO` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
+| Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `notice` warning naming the route, no `missing_input` |
+| Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `INFO` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`notice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding (engine half built with the first embedder) | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
-| Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter and, since #1243, leaves the interval (`world_outside_validity`, ch. 8.13): with BRYAN and JAGUAR at 20° the roll rate is the AeroBuildup world alone |
+| Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `warning` warning from the adapter and, since #1243, leaves the interval (`world_outside_validity`, ch. 8.13): with BRYAN and JAGUAR at 20° the roll rate is the AeroBuildup world alone |
 | Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a wing whose devices are flaperons only has `has_aileron` but not the butterfly condition — flaperons never count toward it (D10), with one flaperon or several; butterfly needs a device of role `flap` and one of role `aileron` or `elevon`, otherwise the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
 | Q36 | Embedded postcondition and variables (engine half built with the first embedder) | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
 | Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |

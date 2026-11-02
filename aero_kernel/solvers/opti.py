@@ -13,25 +13,27 @@ airplane's model function (``aero_model``), reused from the worker's cache under
 ``model_key``; the sweeps and the other numeric runs evaluate AeroBuildup directly.
 """
 
+import asyncio
 import logging
 import math
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from itertools import pairwise
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, Self, cast
 
 import numpy as np
 from aero_kernel.config import config
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
+from aero_kernel.rules import Rules
+from aero_kernel.runtime import SolverRuntime, WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.aero_model import aero_model, load_casadi, model_key
 from aero_kernel.solvers.aerobuildup import evaluate_forces, scalar, sweep_polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
-from aero_kernel.solvers.asb_airplane import load_aerosandbox, to_asb_airplane
-from aero_kernel.solvers.base import SolverAdapter, regime_by_wing
+from aero_kernel.solvers.asb_airplane import load_aerosandbox, surface_sections, to_asb_airplane
+from aero_kernel.solvers.base import SolverAdapter
 from aero_kernel.solvers.devices import (
     FlapSegment,
     RollSegment,
@@ -40,6 +42,7 @@ from aero_kernel.solvers.devices import (
     roll_hinge_warnings,
     roll_segments,
 )
+from aero_kernel.solvers.regime import RegimeBands, regime_by_surface
 from aero_kernel.solvers.roll_math import (
     EFFECTIVENESS_EXPONENT,
     alpha_for_lift_coefficient,
@@ -48,7 +51,7 @@ from aero_kernel.solvers.roll_math import (
     stability_rolling_moment,
 )
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +59,8 @@ __all__ = [
     "BestGlide",
     "BestGlideSolution",
     "DeflectionDiagnostics",
+    "DeviceConfidence",
+    "DeviceSpan",
     "Evaluation",
     "EvaluationRequest",
     "Forces",
@@ -67,6 +72,7 @@ __all__ = [
     "OptiAdapter",
     "RollRequest",
     "RollSolution",
+    "SectionConfidence",
     "Stall",
     "StallRequest",
     "StallSolution",
@@ -76,6 +82,7 @@ __all__ = [
     "ZeroLiftRequest",
     "ZeroLiftSolution",
     "best_glide_worker",
+    "device_spans",
     "evaluation_worker",
     "min_sink_worker",
     "moment_slope_worker",
@@ -136,6 +143,70 @@ class StallRequest(BaseModel):
     model_key: str | None = None
 
 
+class SectionConfidence(BaseModel):
+    """NeuralFoil's confidence on one section of a device, as AeroBuildup blends it (#1342).
+
+    AeroBuildup evaluates NeuralFoil at both bounding cross-sections of a section and blends them by
+    chord (``aero_buildup.py:686-688, 812-830``); the section's forces are weighted by its planform
+    area (``aero_buildup.py:833``). The confidence of a section is that same chord blend.
+
+    Attributes:
+        area_m2: The section's planform area in m^2 (``Wing.area(type="planform", _sectional=True)``).
+        span_m: The section's span in m (``Wing.span(type="yz", _sectional=True)``).
+        confidence: The chord-weighted blend of the two ends' ``analysis_confidence``.
+        at_m: The midpoint of the section's leading edge in m (geometry frame; ``y`` negative on the
+            mirrored half).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    area_m2: float = Field(ge=0.0, allow_inf_nan=False)
+    span_m: float = Field(ge=0.0, allow_inf_nan=False)
+    confidence: float = Field(allow_inf_nan=False)
+    at_m: tuple[float, float, float]
+
+
+class DeviceConfidence(BaseModel):
+    """NeuralFoil's confidence over the sections spanned by one control device, both halves (#1342).
+
+    Attributes:
+        wing: The wing key.
+        device: The device's label.
+        sections: Every section of the device's span, on both halves of a mirrored wing.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    wing: str
+    device: str
+    sections: tuple[SectionConfidence, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _check_area(self) -> Self:
+        """Require an area to weight with and a span to share."""
+        if (
+            sum(s.area_m2 for s in self.sections) <= 0.0
+            or sum(s.span_m for s in self.sections) <= 0.0
+        ):
+            msg = f"the device {self.device!r} of the wing {self.wing!r} has no area or no span"
+            raise ValueError(msg)
+        return self
+
+    def mean_confidence(self) -> float:
+        """The area-weighted mean of the sections' confidence."""
+        area = sum(s.area_m2 for s in self.sections)
+        return sum(s.area_m2 * s.confidence for s in self.sections) / area
+
+    def span_share_below(self, floor: float) -> float:
+        """The share of the device's span whose section confidence is below ``floor``."""
+        span = sum(s.span_m for s in self.sections)
+        return sum(s.span_m for s in self.sections if s.confidence < floor) / span
+
+    def lowest(self) -> SectionConfidence:
+        """The section of the lowest confidence (the first one on a tie)."""
+        return min(self.sections, key=lambda s: s.confidence)
+
+
 class DeflectionDiagnostics(BaseModel):
     """What the deflected evaluation tells about NeuralFoil's validity (M1, ch. 8.8).
 
@@ -148,6 +219,8 @@ class DeflectionDiagnostics(BaseModel):
             the shift before NeuralFoil's 360-degree blend, which uses the unshifted angle for its
             post-stall weight and is no part of tau.
         max_effective_alpha_wing: The wing key of that section.
+        devices: The confidence over the span of each deflected device (driven aileron, deflected
+            flap), in document order (#1342).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -156,6 +229,7 @@ class DeflectionDiagnostics(BaseModel):
     min_confidence_wing: str
     max_effective_alpha_deg: float
     max_effective_alpha_wing: str
+    devices: tuple[DeviceConfidence, ...]
 
 
 class StallSolution(BaseModel):
@@ -690,7 +764,7 @@ SINK_ALPHA_FRACTION = 0.6
 
 
 def _stall_limited_warning(solution: MinSinkSolution) -> KernelWarning:
-    """The declaration of a minimum sink at the stall boundary (ADR 0020, ``practice``)."""
+    """The declaration of a minimum sink at the stall boundary (ADR 0020, a ``notice``)."""
     return KernelWarning.of(
         "minimum_sink_stall_limited",
         "minimum sink limited by stall: the sink power D*V is still falling at the first C_L peak "
@@ -745,17 +819,55 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
 
 @dataclass(frozen=True)
 class _Seen:
-    """What one section call of the recording pass saw (a wing key, a confidence, an angle)."""
+    """What one NeuralFoil call of the recording pass saw (a wing key, a cross-section, the values)."""
 
     wing: str
+    xsec: int
     confidence: float
     effective_alpha: float
+
+
+class DeviceSpan(BaseModel):
+    """The spanwise extent of one deflected device: ``|y|`` intervals of its segments, in m.
+
+    Attributes:
+        wing: The wing key.
+        device: The device's label.
+        intervals: The ``(low, high)`` interval of ``|y|`` of each of its segments, sorted.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    wing: str
+    device: str
+    intervals: tuple[tuple[float, float], ...]
+
+    def holds(self, y: float) -> bool:
+        """Whether the spanwise station ``|y|`` lies on the device."""
+        return any(low <= abs(y) <= high for low, high in self.intervals)
+
+
+def device_spans(airplane: AirplaneGeometry, segments: Sequence[RollSegment]) -> list[DeviceSpan]:
+    """The spans of the given device segments, grouped by wing and device label, document order.
+
+    A device sits on mirrored surfaces only (``roll_segments``, ``flap_segments``), so a strip's
+    station is compared by ``|y|`` on either half.
+    """
+    grouped: dict[tuple[str, str], set[tuple[float, float]]] = {}
+    for segment in segments:
+        sections = (airplane.wings or {})[segment.wing].x_secs
+        ends = sorted(abs(sections[i].xyz_le[1]) for i in (segment.index, segment.index + 1))
+        grouped.setdefault((segment.wing, segment.device), set()).add((ends[0], ends[1]))
+    return [
+        DeviceSpan(wing=wing, device=device, intervals=tuple(sorted(intervals)))
+        for (wing, device), intervals in grouped.items()
+    ]
 
 
 def _recording_airfoil(
     asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
     base: Any,  # noqa: ANN401  # untyped aerosandbox boundary
-    wing: str,
+    where: tuple[str, int],
     seen: list[_Seen],
 ) -> Any:  # noqa: ANN401  # untyped aerosandbox boundary
     """An airfoil that behaves as ``base`` and records every NeuralFoil call (M1).
@@ -763,8 +875,10 @@ def _recording_airfoil(
     AeroBuildup calls ``get_aero_from_neuralfoil`` on the airfoil of each section with the
     section's control surfaces (``aero_buildup.py:797-806``). The call returns the net's
     ``analysis_confidence`` (``kulfan_airfoil.py:446``); the effective angle is the one the net is
-    given: ``alpha + sum(tau * delta)`` (``kulfan_airfoil.py:216-246``).
+    given: ``alpha + sum(tau * delta)`` (``kulfan_airfoil.py:216-246``). ``where`` is the wing key
+    and the index of the cross-section the airfoil belongs to.
     """
+    wing, xsec = where
 
     class Recording(asb.Airfoil):  # pyright: ignore[reportUntypedBaseClass]  # untyped aerosandbox
         """The recording subclass."""
@@ -784,6 +898,7 @@ def _recording_airfoil(
             seen.append(
                 _Seen(
                     wing=wing,
+                    xsec=xsec,
                     confidence=float(np.min(np.asarray(result["analysis_confidence"]))),
                     effective_alpha=float(np.max(np.asarray(kwargs["alpha"]))) + shift,
                 )
@@ -793,11 +908,102 @@ def _recording_airfoil(
     return Recording(name=base.name, coordinates=base.coordinates)
 
 
+def _is_flap_rib_gap(
+    inner: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    outer: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+) -> bool:
+    """Whether two cross-sections are the two copies of a rib where the flap state changes.
+
+    ``asb_airplane._xsecs`` writes such a rib twice, the second ``opt_flap_rib_gap`` further out in
+    y, with the same chord, x and z: the strip between them is a construction of the conversion, not
+    a section of the wing, and belongs to no device (#1348).
+    """
+    gap = config().opt_flap_rib_gap.value
+    a, b = [float(c) for c in inner.xyz_le], [float(c) for c in outer.xyz_le]
+    return (
+        math.isclose(float(inner.chord), float(outer.chord), rel_tol=0.0, abs_tol=0.0)
+        and math.isclose(a[0], b[0], rel_tol=0.0, abs_tol=0.0)
+        and math.isclose(a[2], b[2], rel_tol=0.0, abs_tol=0.0)
+        and math.isclose(b[1] - a[1], gap, rel_tol=1e-9, abs_tol=0.0)
+    )
+
+
+def _wing_sections(
+    key: str,
+    wing: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    calls: Sequence[_Seen],
+) -> list[SectionConfidence]:
+    """The sections of one wing from its NeuralFoil calls, paired as AeroBuildup makes them.
+
+    AeroBuildup calls the two ends ``a``, ``b`` of a section in turn, and for a mirrored wing the
+    same section again for the mirrored half (``aero_buildup.py:878-892``); the confidence of a
+    section is the chord blend of its two ends, its weight its planform area. The gap strip at a
+    flap boundary is skipped (:func:`_is_flap_rib_gap`).
+
+    Raises:
+        RuntimeError: If the calls do not come in AeroBuildup's pairs (a defect of ours).
+    """
+    halves = 2 if wing.symmetric else 1
+    if len(calls) != 2 * halves * (len(wing.xsecs) - 1):
+        msg = f"the recording pass saw {len(calls)} NeuralFoil calls on the wing {key!r}"
+        raise RuntimeError(msg)
+    pairs = list(zip(calls[::2], calls[1::2], strict=True))
+    areas = wing.area(type="planform", include_centerline_distance=False, _sectional=True)
+    spans = wing.span(type="yz", include_centerline_distance=False, _sectional=True)
+    found: list[SectionConfidence] = []
+    for k, (a, b) in enumerate(pairs):
+        if b.xsec != a.xsec + 1 or a.xsec != k // halves:
+            msg = f"the recording pass saw cross-sections {a.xsec}, {b.xsec} out of order"
+            raise RuntimeError(msg)
+        inner, outer = wing.xsecs[a.xsec], wing.xsecs[b.xsec]
+        if _is_flap_rib_gap(inner, outer):
+            continue
+        chord_a, chord_b = float(inner.chord), float(outer.chord)
+        side = -1.0 if halves == 2 and k % 2 else 1.0
+        middle = [(float(inner.xyz_le[i]) + float(outer.xyz_le[i])) / 2.0 for i in range(3)]
+        found.append(
+            SectionConfidence(
+                area_m2=float(areas[a.xsec]),
+                span_m=float(spans[a.xsec]),
+                confidence=(chord_a * a.confidence + chord_b * b.confidence) / (chord_a + chord_b),
+                at_m=(middle[0], side * middle[1], middle[2]),
+            )
+        )
+    return found
+
+
+def _device_confidence(
+    airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    keys: Sequence[str],
+    seen: Sequence[_Seen],
+    spans: Sequence[DeviceSpan],
+) -> tuple[DeviceConfidence, ...]:
+    """The sections on each device's span, by the spanwise midpoint of each section.
+
+    Raises:
+        RuntimeError: If a device has no section on its span (a defect of ours).
+    """
+    by_wing = {
+        key: _wing_sections(key, wing, [r for r in seen if r.wing == key])
+        for key, wing in zip(keys, airplane.wings, strict=True)
+        if any(span.wing == key for span in spans)
+    }
+    found: list[DeviceConfidence] = []
+    for span in spans:
+        sections = tuple(s for s in by_wing[span.wing] if span.holds(s.at_m[1]))
+        if not sections:
+            msg = f"no section of the wing {span.wing!r} lies on the device {span.device!r}"
+            raise RuntimeError(msg)
+        found.append(DeviceConfidence(wing=span.wing, device=span.device, sections=sections))
+    return tuple(found)
+
+
 def _confidence_run(
     asb: Any,  # noqa: ANN401  # untyped aerosandbox boundary
     airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
     keys: Sequence[str],
     operating_point: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    spans: Sequence[DeviceSpan],
 ) -> DeflectionDiagnostics:
     """One numeric AeroBuildup run with every section's airfoil recording (M1).
 
@@ -806,11 +1012,12 @@ def _confidence_run(
         airplane: The ``asb.Airplane``; its airfoils are replaced here.
         keys: The wing key of each wing of ``airplane``, in order.
         operating_point: The ``asb.OperatingPoint`` to evaluate.
+        spans: The deflected devices whose span confidence is reported.
     """
     seen: list[_Seen] = []
     for key, wing in zip(keys, airplane.wings, strict=True):
-        for xsec in wing.xsecs:
-            xsec.airfoil = _recording_airfoil(asb, xsec.airfoil, key, seen)
+        for index, xsec in enumerate(wing.xsecs):
+            xsec.airfoil = _recording_airfoil(asb, xsec.airfoil, (key, index), seen)
     asb.AeroBuildup(airplane, operating_point, model_size=NEURALFOIL_MODEL_SIZE).run()
     lowest = min(seen, key=lambda record: record.confidence)
     highest = max(seen, key=lambda record: record.effective_alpha)
@@ -819,6 +1026,7 @@ def _confidence_run(
         min_confidence_wing=lowest.wing,
         max_effective_alpha_deg=highest.effective_alpha,
         max_effective_alpha_wing=highest.wing,
+        devices=_device_confidence(airplane, keys, seen, spans),
     )
 
 
@@ -845,7 +1053,10 @@ def _deflection_diagnostics(
         p=p_body,
         r=r_body,
     )
-    return _confidence_run(asb, airplane, list((request.airplane.wings or {}).keys()), point)
+    driven = roll_segments(request.airplane) if abs(request.delta_deg) > 0.0 else []
+    spans = device_spans(request.airplane, [*driven, *flap_segments(request.airplane)])
+    keys = list((request.airplane.wings or {}).keys())
+    return _confidence_run(asb, airplane, keys, point, spans)
 
 
 def _flap_diagnostics(
@@ -862,7 +1073,9 @@ def _flap_diagnostics(
     """
     asb = load_aerosandbox()
     point = asb.OperatingPoint(atmosphere=FixedAtmosphere(request.air), velocity=speed, alpha=alpha)
-    return _confidence_run(asb, airplane, list((request.airplane.wings or {}).keys()), point)
+    spans = device_spans(request.airplane, flap_segments(request.airplane))
+    keys = list((request.airplane.wings or {}).keys())
+    return _confidence_run(asb, airplane, keys, point, spans)
 
 
 def _roll_window(request: RollRequest) -> tuple[float, float, float]:
@@ -1062,6 +1275,10 @@ def _fit_range_warning(
             "min_confidence_wing": found.min_confidence_wing,
             "max_effective_alpha_deg": found.max_effective_alpha_deg,
             "max_effective_alpha_wing": found.max_effective_alpha_wing,
+            "devices": [
+                {"wing": d.wing, "device": d.device, "mean_confidence": d.mean_confidence()}
+                for d in found.devices
+            ],
         }
     if flaps:
         message += (
@@ -1093,12 +1310,6 @@ def _hinge_warnings(*groups: Sequence[RollSegment]) -> list[KernelWarning]:
     """One ``hinge_line_averaged`` warning per device, also where it is both driven and a flap."""
     unique = {(s.wing, s.index): s for group in groups for s in group}
     return roll_hinge_warnings(list(unique.values()))
-
-
-def _regime_warnings(airplane: AirplaneGeometry, v_ms: float, air: AirState) -> list[KernelWarning]:
-    """The regime warnings (ADR 0028) of every wing of the airplane at a speed."""
-    chords = {key: [s.chord for s in wing.x_secs] for key, wing in (airplane.wings or {}).items()}
-    return regime_by_wing(chords, v_ms, air.speed_of_sound, air.kinematic_viscosity)
 
 
 def _diagnostics(started: float, notes: tuple[str, ...] = ()) -> WorkerDiagnostics:
@@ -1433,6 +1644,35 @@ class OptiAdapter(SolverAdapter):
         "neuralfoil": "neuralfoil",
     }
 
+    def __init__(self, runtime: SolverRuntime, rules: Rules | None = None) -> None:
+        """Create the adapter.
+
+        Args:
+            runtime: The runtime of the owning ``compute()`` call or ``CachedKernel``.
+            rules: The rule parameters of the call (the canon's, with the caller's overrides); the
+                regime bands are read from them. If omitted, those of the shipped canon.
+        """
+        super().__init__(runtime)
+        if rules is None:
+            from aero_kernel.build import (
+                shipped_build,  # build imports this module
+            )
+
+            rules = Rules(shipped_build().model)
+        self.rules = rules
+
+    async def _regime_warnings(
+        self, airplane: AirplaneGeometry, v_ms: float, air: AirState
+    ) -> list[KernelWarning]:
+        """The regime warnings (ADR 0028) of every wing at a speed, per surface and device.
+
+        The bands are the canon rule ``reynolds-mach-regime``'s; the sections and AeroSandbox's MAC
+        are read in a worker thread, off the event loop (ch. 8.10).
+        """
+        sections = await asyncio.to_thread(surface_sections, airplane)
+        bands = RegimeBands.of(self.rules)
+        return regime_by_surface(sections, v_ms, air.speed_of_sound, air.kinematic_viscosity, bands)
+
     def settings(self) -> dict[str, JsonValue]:
         """Every constant that shapes an optimisation result: model size, alpha sweep, bounds, limits.
 
@@ -1540,7 +1780,7 @@ class OptiAdapter(SolverAdapter):
         request, flaps = self._request(airplane, mass_kg, gravity, n_load, air)
         solution = await self.runtime.run_cpu(stall_worker, request)
         warnings = _flap_warnings(flaps, solution.diagnostics)
-        warnings += _regime_warnings(airplane, solution.v_s, air)
+        warnings += await self._regime_warnings(airplane, solution.v_s, air)
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)
         return Stall(solution=solution, warnings=tuple(warnings))
 
@@ -1572,7 +1812,7 @@ class OptiAdapter(SolverAdapter):
         request, flaps = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(best_glide_worker, request)
         warnings = _flap_warnings(flaps)
-        warnings += _regime_warnings(airplane, solution.v_md, air)
+        warnings += await self._regime_warnings(airplane, solution.v_md, air)
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
 
@@ -1644,7 +1884,7 @@ class OptiAdapter(SolverAdapter):
         request, flaps = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
         solution = await self.runtime.run_cpu(min_sink_worker, request)
         warnings = _flap_warnings(flaps)
-        warnings += _regime_warnings(airplane, solution.v_mp, air)
+        warnings += await self._regime_warnings(airplane, solution.v_mp, air)
         if solution.stall_limited:
             warnings.append(_stall_limited_warning(solution))
         logger.debug("minimum-sink speed %.4f m/s at %.2f deg", solution.v_mp, solution.alpha_mp)
@@ -1710,7 +1950,7 @@ class OptiAdapter(SolverAdapter):
         warnings = _hinge_warnings(driven, flaps)
         if solution.diagnostics is not None or flaps:
             warnings.append(_fit_range_warning(solution.diagnostics, flaps))
-        warnings += _regime_warnings(airplane, v_ms, air)
+        warnings += await self._regime_warnings(airplane, v_ms, air)
         logger.debug("steady roll %.4f rad/s at %.2f deg", solution.p_rad_s, solution.alpha_deg)
         return SteadyRoll(
             p_rad_s=solution.p_rad_s,
@@ -1763,7 +2003,9 @@ class OptiAdapter(SolverAdapter):
             solution.cl_alpha,
             solution.alpha_deg,
         )
-        return MomentSlope(solution=solution, warnings=tuple(_regime_warnings(airplane, v_ms, air)))
+        return MomentSlope(
+            solution=solution, warnings=tuple(await self._regime_warnings(airplane, v_ms, air))
+        )
 
     def _point_flaps(self, airplane: AirplaneGeometry, v_ms: float) -> list[FlapSegment]:
         """Check the tool, the devices and the speed of a problem at a given speed.
@@ -1808,7 +2050,7 @@ class OptiAdapter(SolverAdapter):
             )
         request = EvaluationRequest(airplane=airplane, air=air, v_ms=v_ms, alpha_deg=alpha_deg)
         forces = await self.runtime.run_cpu(evaluation_worker, request)
-        warnings = [*_flap_warnings(flaps), *_regime_warnings(airplane, v_ms, air)]
+        warnings = [*_flap_warnings(flaps), *await self._regime_warnings(airplane, v_ms, air)]
         logger.debug(
             "AeroBuildup at %.4f m/s, %.2f deg: L %.4f N, D %.4f N",
             v_ms,
@@ -1842,7 +2084,7 @@ class OptiAdapter(SolverAdapter):
             airplane=airplane, air=air, v_ms=v_ms, model_key=self._model_key(airplane, 0.0)
         )
         solution = await self.runtime.run_cpu(zero_lift_worker, request)
-        warnings = [*_flap_warnings(flaps), *_regime_warnings(airplane, v_ms, air)]
+        warnings = [*_flap_warnings(flaps), *await self._regime_warnings(airplane, v_ms, air)]
         logger.debug(
             "zero-lift angle %.4f deg, lift slope %.4f per rad at %.4f m/s",
             solution.alpha_0_deg,

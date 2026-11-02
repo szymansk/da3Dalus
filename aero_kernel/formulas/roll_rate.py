@@ -25,7 +25,7 @@ DEFLECTION_REFERENCE_DEG = 25.0
 
 
 def warn_deflection_beyond_reference(ctx: Context, delta_deg: float) -> None:
-    """Declare an aileron deflection beyond the reference angle (a ``practice`` warning).
+    """Declare an aileron deflection beyond the reference angle (a ``notice``).
 
     Args:
         ctx: The formula context.

@@ -19,7 +19,7 @@ def test_warn_builds_the_catalogue_warning_with_the_origin() -> None:
     context = Context(origin="stall-speed", solvers=SOLVERS)
     context.warn("precondition_unchecked", "Not checked.", {"parameter": "rho"})
     (warning,) = context.warnings
-    assert warning.severity is WarningSeverity.PRACTICE
+    assert warning.severity is WarningSeverity.NOTICE
     assert (warning.origin, warning.world, warning.detail) == (
         "stall-speed",
         None,

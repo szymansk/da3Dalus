@@ -1,6 +1,9 @@
 # ADR 0028 — Engineering constants carry provenance; the regime is defined by flow physics
 
 - **Status:** Accepted. **Supersedes [ADR 0023](0023-engineering-constants-carry-provenance.md).**
+  **Amended 2026-11-01** (#1342): how the per-station Reynolds check is aggregated (per surface at its
+  MAC, per control device at its stations) and the severities of the regime warnings in ADR 0020's three
+  levels — see *Amended (2026-11-01, #1342)*.
 - **Decided:** 2026-10-14, by the maintainer: "Der ADR0023 ist definitiv nicht korrekt und muss geändert
   werden" — the mass range "was a hint to Claude where RC models and UAVs usually lie … it is not needed
   for our calculations, so it must not be a requirement of the calculation core". Regime by flow physics,
@@ -67,6 +70,41 @@ of provenance; attribution is checked, not inherited; the authority hierarchy (S
 Anderson → AeroSandbox/AVL → RC practice); genuine disagreements are recorded, not smoothed (turbulator
 height `Q-WD-10`, `target_static_margin` for `acro_3d` `Q-MS-14`); WCL stays an RC-only constraint, never
 applied to UAV profiles.
+
+## Amended (2026-11-01, #1342)
+
+**Decided** by the maintainer, 2026-11-01 (#1342, after an expert review): "nicht zu komplex … am Ende
+das Flugzeug gut bewertet … Maßnahmen ableiten bzw. begründet dagegen entscheiden, z. B. kaum Einfluss
+aufs Gesamtverhalten". **Why:** the unweighted minimum over every station made the rounded tip of nearly
+every surface (chords of a few millimetres; BRYAN wing 10 mm, Re ≈ 4 100 at 6 m/s) raise "outside the
+core regime" on almost every value, so the warning no longer carried information. ("Am Außenflügel des
+BELEMNITOS ist ja nichts defekt. Nur die Rechnung trägt nicht.")
+
+**Guiding principle.** Every regime warning carries what a designer needs to decide on it: **where** the
+problem is and **how much of the surface or device** it concerns, so that a measure can be derived or
+declined with a reason.
+
+1. **Re is still evaluated at every station** (the table above is unchanged). It is **aggregated** into
+   the warnings as follows:
+   - **Per surface, one warning,** judged by the Reynolds number at the surface's mean aerodynamic chord.
+     The area-weighted chord `∫c² dy / ∫c dy` is the MAC, so this is the area-weighted Reynolds number;
+     the MAC is AeroSandbox's (`Wing.mean_aerodynamic_chord()`, the one producer, ADR 0022). Below 3·10⁴:
+     `warning` "outside the core regime"; 3·10⁴ … 7·10⁴: `notice` "bubble-sensitive".
+   - **Per control device** (aileron, flap, elevator, rudder …): a `warning` naming the device when any
+     station inside its span lies below 3·10⁴. Stall and control effectiveness are decided there
+     (Sadraey §5.8; Scholz §7.3: the c_l peak at η ≈ 1 − λ), so the device is judged by its own stations,
+     not by the surface's MAC.
+   - **Detail of every Reynolds warning:** the surface, Re at the MAC, the lowest station Re and its
+     station, the area share below 3·10⁴ and below 7·10⁴; the device warning also the device and the share
+     of its span below the band.
+2. **Severities in ADR 0020's three levels** (`notice` / `warning` / `error`), which replace the kernel's
+   former `practice` / `defect`: Re > 10⁶ is a **notice** (as the table above says: the tools stay valid);
+   Mach > 0.6 is an **error** (the number is not physically meaningful; the table's "severity: defect").
+3. **What the warning is not.** It states how far the section data can be trusted, not whether the tip
+   stalls; washout leaves it unchanged. Tip-stall risk is a separate quantity.
+
+**Not chosen:** the unweighted minimum over all stations (the cause above); a threshold share of the area
+of our own (5 % was proposed and dropped: "auch hier gewichtet … zusammengefasst und nicht pro Segment").
 
 ## Consequences
 

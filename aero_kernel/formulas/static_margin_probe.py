@@ -3,6 +3,7 @@
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
+from pydantic import JsonValue
 
 __all__ = ["static_margin_probe"]
 
@@ -17,7 +18,11 @@ async def static_margin_probe(x: Inputs, ctx: Context) -> dict[str, float]:
     AeroBuildup runs at the minimum-drag speed and the angle of attack of ``L = m g``, with the moment
     reference at the design CG; ``SM_probe = -C_m,alpha / C_L,alpha`` (Sadraey Eq. 11.17, 11.18). The
     probe is compared with the target: a deviation beyond the rule's ``agreement_tolerance`` is
-    declared, never averaged, and the value stays. AeroBuildup has no wing-tail downwash and so biases
+    declared, never averaged, and the value stays. The tolerance decides first (maintainer
+    2026-11-02, #1342): inside it nothing is declared, even where the signs differ; beyond it a probe
+    and a target of different sign (one stable, one not) are an ``error``
+    (``static_margin_probe_sign_disagrees``), of the same sign a ``warning``
+    (``static_margin_probe_disagrees``). AeroBuildup has no wing-tail downwash and so biases
     the probe toward a larger margin; that is declared on every value. Under worlds it runs once per
     assignment of ``neutral-point``, because the design CG is one (A11).
 
@@ -52,17 +57,28 @@ async def static_margin_probe(x: Inputs, ctx: Context) -> dict[str, float]:
     )
     tolerance = ctx.solvers.rules.value(AGREEMENT_RULE, "agreement_tolerance")
     target = number(x, "sm_target")
-    if abs(margin - target) > tolerance:
+    detail: dict[str, JsonValue] = {
+        "sm_probe": margin,
+        "sm_target": target,
+        "deviation": margin - target,
+        "agreement_tolerance": tolerance,
+    }
+    if abs(margin - target) <= tolerance:
+        return {"c_m_alpha": slopes.cm_alpha, "sm_probe": margin}
+    if (margin > 0.0) != (target > 0.0):
+        ctx.warn(
+            "static_margin_probe_sign_disagrees",
+            f"The static margin from the moment slope, {margin:.4f}, and the target {target:.4f} "
+            "disagree on the sign: one says the airplane is statically stable, the other that it "
+            "is not. Both are reported; they are not averaged.",
+            detail,
+        )
+    else:
         ctx.warn(
             "static_margin_probe_disagrees",
             f"The static margin from the moment slope, {margin:.4f}, differs from the target "
             f"{target:.4f} by more than {tolerance:g} of the mean aerodynamic chord. Both are "
             "reported; they are not averaged.",
-            {
-                "sm_probe": margin,
-                "sm_target": target,
-                "deviation": margin - target,
-                "agreement_tolerance": tolerance,
-            },
+            detail,
         )
     return {"c_m_alpha": slopes.cm_alpha, "sm_probe": margin}
