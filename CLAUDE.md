@@ -341,8 +341,8 @@ Always applicable, on every change:
 - **ADR 0022** — one authority per user-facing quantity: never add a second
   producer of a number a user can see.
 - **ADR 0020** — no *undeclared* fallbacks: every substitution, clamp, retry or
-  truncation emits a `DesignWarning` whose `severity` says whether it is domain
-  practice or a defect.
+  truncation emits a `DesignWarning` whose `severity` is `notice`, `warning`
+  (usable, confidence reduced) or `error` (not physically meaningful).
 - **ADR 0021** — complete but unreachable code is deleted by default; "inert" is
   forbidden.
 - **ADR 0028** (supersedes 0023) — engineering constants carry their source and
