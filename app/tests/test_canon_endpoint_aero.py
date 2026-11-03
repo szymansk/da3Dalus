@@ -10,7 +10,7 @@ import pytest
 
 pytestmark = [pytest.mark.aero, pytest.mark.integration]
 
-BRYAN_V_MD = 7.4468700  # m/s, regression golden of the kernel tests
+BRYAN_V_MD = 7.2306630  # m/s, regression golden of the kernel tests (the kernel's drag, #1346; was 7.4468700)
 
 
 def test_bryan_minimum_drag_speed_through_the_endpoint(client_and_db):
