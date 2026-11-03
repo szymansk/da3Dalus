@@ -343,7 +343,7 @@ def install(
     def sweep_stub(*_: object) -> Polar:
         return sweep
 
-    monkeypatch.setattr(opti_module, "sweep_polar", sweep_stub)
+    monkeypatch.setattr(opti_module, "sweep_lift", sweep_stub)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "load_aerosandbox", boundary.namespace)
     monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
@@ -549,7 +549,7 @@ async def test_the_window_of_alpha_comes_from_the_clean_sweep(
         return lift_curve(UPRIGHT_PEAK, upright=True)
 
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
-    monkeypatch.setattr(opti_module, "sweep_polar", sweep_stub)
+    monkeypatch.setattr(opti_module, "sweep_lift", sweep_stub)
     opti_module.steady_roll_worker(request)
     assert swept == [0.0]
     assert 20.0 in built  # the optimised and the recorded evaluation use the rolled airplane

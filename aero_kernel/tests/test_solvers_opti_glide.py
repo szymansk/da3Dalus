@@ -17,7 +17,14 @@ from aero_kernel.solvers.opti import (
 from aero_kernel.solvers.regime import regime_by_surface
 from aero_kernel.tests.formula_builders import OPT_SETTINGS
 from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
-from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane, direct_aero_model
+from aero_kernel.tests.solver_builders import (
+    AIR,
+    K_E_D0,
+    InProcessRuntime,
+    airplane,
+    direct_aero_model,
+    drag_notice,
+)
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
 
 pytestmark = pytest.mark.asyncio
@@ -56,6 +63,7 @@ async def test_the_glide_hands_the_worker_everything_it_needs(
         AIR,
     )
     assert request.airplane == plane
+    assert request.k_e_d0 == K_E_D0
     assert result.solution == glide()
 
 
@@ -90,10 +98,12 @@ async def test_the_regime_warnings_are_those_of_the_optimum_speed(
         canon_bands(),
     )
     assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
-    assert result.warnings == tuple(expected)
+    assert result.warnings == (*expected, drag_notice())
     fast = canned(glide(18.0))
     monkeypatch.setattr(opti_module, "best_glide_worker", fast)
-    assert (await adapter.best_glide(airplane(), MASS, GRAVITY, 1.0, AIR)).warnings == ()
+    assert (await adapter.best_glide(airplane(), MASS, GRAVITY, 1.0, AIR)).warnings == (
+        drag_notice(),
+    )
 
 
 @pytest.mark.parametrize(
@@ -153,27 +163,44 @@ def install_optimum(
     monkeypatch: pytest.MonkeyPatch,
     v: float,
     alpha: float,
-    drag: float = 0.5,
+    drag: tuple[float, float] = (0.3, 0.2),
     cl: float = 0.55,
     error: Exception | None = None,
     objective: list[object] | None = None,
 ) -> StallRequest:
-    """Fake AeroSandbox so that IPOPT 'returns' (v, alpha) with drag and C_L there."""
+    """Fake AeroSandbox so that IPOPT 'returns' (v, alpha) with (profile, induced) drag and C_L there."""
     polar = lift_curve(UPRIGHT_PEAK, upright=True)
-    values: dict[str, float] = {"speed": v, "alpha": alpha, "D": drag, "CL": cl}
+    values: dict[str, float] = {
+        "speed": v,
+        "alpha": alpha,
+        "D_profile": drag[0],
+        "D_induced": drag[1],
+        "CL": cl,
+    }
     recorded: list[object] = [] if objective is None else objective
 
     class Expr:
-        def __init__(self, name: str) -> None:
+        """An expression that records its name and evaluates at the faked optimum."""
+
+        def __init__(self, name: str, value: float | None = None) -> None:
             self.name = name
+            self.value = values.get(name, 0.0) if value is None else value
 
         def __eq__(self, other: object) -> bool:  # `aero["L"] == lift` builds a constraint
             return True
 
         __hash__ = object.__hash__
 
-        def __mul__(self, other: object) -> "Expr":  # a product records the names of its factors
-            return Expr(f"{self.name}*{getattr(other, 'name', other)}")
+        def __mul__(self, other: "Expr | float") -> "Expr":  # a product records its factors' names
+            if isinstance(other, Expr):
+                return Expr(f"{self.name}*{other.name}", self.value * other.value)
+            return Expr(f"{self.name}*{other}", self.value * other)
+
+        def __rmul__(self, other: float) -> "Expr":
+            return Expr(f"{other}*{self.name}", other * self.value)
+
+        def __add__(self, other: "Expr") -> "Expr":
+            return Expr(f"({self.name}+{other.name})", self.value + other.value)
 
     class FakeOpti:
         def __init__(self) -> None:
@@ -194,7 +221,7 @@ def install_optimum(
                 raise error
 
             def solved(expression: Expr) -> float:
-                return values[expression.name]
+                return expression.value
 
             return solved
 
@@ -202,7 +229,12 @@ def install_optimum(
         return None
 
     def aerobuildup(*_: object, **__: object) -> SimpleNamespace:
-        aero = {"L": Expr("L"), "D": Expr("D"), "CL": Expr("CL")}
+        aero = {
+            "L": Expr("L"),
+            "D_profile": Expr("D_profile"),
+            "D_induced": Expr("D_induced"),
+            "CL": Expr("CL"),
+        }
         return SimpleNamespace(run=lambda: aero)
 
     def sweep(*_: object) -> Polar:
@@ -212,23 +244,25 @@ def install_optimum(
         return SimpleNamespace(s_ref=0.28)
 
     fake = SimpleNamespace(Opti=FakeOpti, OperatingPoint=operating_point, AeroBuildup=aerobuildup)
-    monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+    monkeypatch.setattr(opti_module, "sweep_lift", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake)
     monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
-    request = StallRequest(airplane=airplane(), mass_kg=MASS, gravity=GRAVITY, n_load=1.0, air=AIR)
+    request = StallRequest(
+        airplane=airplane(), mass_kg=MASS, gravity=GRAVITY, n_load=1.0, air=AIR, k_e_d0=K_E_D0
+    )
     return request
 
 
 async def test_the_worker_reads_the_optimum_drag_and_lift_coefficient(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """e_max = m g / D at the optimum: 1.5 * 9.81 / 0.5 = 29.43."""
-    request = install_optimum(monkeypatch, 12.0, 4.0, drag=0.5, cl=0.55)
+    """e_max = m g / D at the optimum, D the kernel's: 1.5 * 9.81 / (0.3 + k_e,D0 * 0.2) = 31.6."""
+    request = install_optimum(monkeypatch, 12.0, 4.0, drag=(0.3, 0.2), cl=0.55)
     outcome = opti_module.best_glide_worker(request)
     solution = outcome.value
     assert (solution.v_md, solution.alpha_md, solution.cl_md) == (12.0, 4.0, 0.55)
-    assert math.isclose(solution.e_max, MASS * GRAVITY / 0.5, rel_tol=1e-12)
+    assert math.isclose(solution.e_max, MASS * GRAVITY / (0.3 + K_E_D0 * 0.2), rel_tol=1e-12)
 
 
 async def test_the_worker_minimises_the_drag_not_the_speed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -236,7 +270,7 @@ async def test_the_worker_minimises_the_drag_not_the_speed(monkeypatch: pytest.M
     request = install_optimum(monkeypatch, 12.0, 4.0, objective=objective)
     opti_module.best_glide_worker(request)
     (minimised,) = objective
-    assert minimised.name == "D"  # type: ignore[attr-defined]
+    assert minimised.name == f"(D_profile+{K_E_D0}*D_induced)"  # type: ignore[attr-defined]
 
 
 V_HIGH = opti_module.V_MAX_MACH * AIR.speed_of_sound

@@ -9,7 +9,7 @@ from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import OptiAdapter, SweepRequest
-from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
+from aero_kernel.tests.solver_builders import AIR, K_E_D0, InProcessRuntime, airplane
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
 
 pytestmark = pytest.mark.asyncio
@@ -38,12 +38,13 @@ async def test_the_sweep_hands_the_worker_everything_it_needs(
     plane = airplane()
     result = await OptiAdapter(InProcessRuntime()).sweep(plane, AIR, 10.0, ALPHAS)
     (request,) = seen
-    assert (request.airplane, request.air, request.v_ms, request.alphas_deg) == (
-        plane,
-        AIR,
-        10.0,
-        ALPHAS,
-    )
+    assert (
+        request.airplane,
+        request.air,
+        request.v_ms,
+        request.alphas_deg,
+        request.k_e_d0,
+    ) == (plane, AIR, 10.0, ALPHAS, K_E_D0)
     assert result == polar
 
 
@@ -105,7 +106,9 @@ async def test_the_worker_sweeps_the_converted_airplane_with_the_adapters_model_
 
     monkeypatch.setattr(opti_module, "sweep_polar", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
-    request = SweepRequest(airplane=airplane(), air=AIR, v_ms=10.0, alphas_deg=ALPHAS)
+    request = SweepRequest(
+        airplane=airplane(), air=AIR, v_ms=10.0, alphas_deg=ALPHAS, k_e_d0=K_E_D0
+    )
     outcome = opti_module.sweep_worker(request)
     assert outcome.value == polar
-    assert calls == [(converted, AIR, 10.0, ALPHAS, opti_module.NEURALFOIL_MODEL_SIZE)]
+    assert calls == [(converted, AIR, 10.0, ALPHAS, opti_module.NEURALFOIL_MODEL_SIZE, K_E_D0)]

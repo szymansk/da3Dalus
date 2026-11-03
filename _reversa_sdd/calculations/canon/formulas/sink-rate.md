@@ -84,6 +84,11 @@ The precondition is violated when `C_L/C_D` falls below the floor stated under *
 the trigonometric form `w_sink = V * sin(gamma)` with `L = W * cos(gamma)` is what holds there. The
 numbers above are exact evaluations of the two dropped factors, not estimates.
 
+**The drag (#1346, maintainer 2026-11-03).** Where the sink rate is formed from the solver's drag rather than
+the parabola, that drag is the kernel's ([[aerobuildup-evaluation]], `D_profile + k_e,D0 · D_induced`); the
+parabola `C_D,par` is fitted to the same drag ([[parabolic-polar-fit]]). The minimum sink speed itself is
+[[minimum-sink-speed-from-polar]]'s.
+
 ## Implementations (1)
 
 | node | claimed | verified | deviation |

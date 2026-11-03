@@ -20,6 +20,7 @@ from aero_kernel.solvers.opti import NEURALFOIL_MODEL_SIZE, ZeroLiftRequest, zer
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.solver_builders import K_E_D0
 from aero_kernel.tests.test_aero_model_real import key
 from aero_kernel.tests.test_stall_speed_fleet import sea_level_air
 
@@ -34,14 +35,15 @@ FD_STEP_DEG = 1e-3
 
 # The tool versions the goldens hold for (as in the other fleet tests).
 GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
-# Regression goldens, BRYAN at sea level and its mass, NeuralFoil xlarge (measured 2026-11-01).
+# Regression goldens, BRYAN at sea level and its mass, NeuralFoil xlarge (measured 2026-11-01; re-recorded
+# 2026-11-03 for #1346: the kernel's drag moves V_md and V_mp, and with them the root and the slope).
 GOLDEN = {
-    "minimum-drag-speed": 7.44686995034896,
-    "zero-lift-angle-best-glide": -3.543279816010856,
-    "lift-curve-slope-best-glide": 5.075791036084288,
-    "minimum-sink-speed": 6.1460436604302355,
-    "zero-lift-angle-minimum-sink": -3.425358875065122,
-    "lift-curve-slope-minimum-sink": 4.464131866889588,
+    "minimum-drag-speed": 7.230662994492074,
+    "zero-lift-angle-best-glide": -3.515387311381626,
+    "lift-curve-slope-best-glide": 4.980706259404333,
+    "minimum-sink-speed": 6.02251899624491,
+    "zero-lift-angle-minimum-sink": -3.421853220357826,
+    "lift-curve-slope-minimum-sink": 4.4124252804453326,
 }
 
 
@@ -141,7 +143,7 @@ async def test_bryan_forces_and_glide_ratio_agree_with_the_sweep_at_the_same_poi
     assert math.isclose(ratio, lift / drag, rel_tol=1e-12)
     air = sea_level_air()
     converted = to_asb_airplane(bryan())
-    polar = sweep_polar(converted, air, v, [alpha, alpha + 1.0], NEURALFOIL_MODEL_SIZE)
+    polar = sweep_polar(converted, air, v, [alpha, alpha + 1.0], NEURALFOIL_MODEL_SIZE, K_E_D0)
     q_s = 0.5 * air.density * v**2 * float(converted.s_ref)
     assert math.isclose(lift, polar.cl[0] * q_s, rel_tol=1e-9)
     assert math.isclose(ratio, polar.cl[0] / polar.cd[0], rel_tol=1e-9)

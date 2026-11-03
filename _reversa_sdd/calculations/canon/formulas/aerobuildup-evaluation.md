@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: AB
 shape: law
-status: approved
+status: draft
 output: lift-force, drag-force
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/approved
+  - status/draft
 inputs: {airplane: airplane, v: flight-speed, alpha: angle-of-attack, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {l: lift-force, d: drag-force}
 ---
@@ -24,12 +24,14 @@ outputs: {l: lift-force, d: drag-force}
 **Canonical form**
 
 ```
-L, D := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere(rho, mu, a)))
+r    := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere(rho, mu, a)))
+L    := r.L
+D    := r.D_profile + k_e,D0 * r.D_induced        (k_e,D0: rule aerobuildup-induced-drag)
 ```
 
 **Produces** [[lift-force]] · [[drag-force]]  ·  **from** [[airplane]] · [[flight-speed]] · [[angle-of-attack]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
 
-**Kind: a procedure — the solver.** AeroBuildup returns lift and drag in newtons. Its internal induced-drag factor `e` is the empirical Nita & Scholz (2012) correlation times a full-scale viscous factor `k_e,D0 = 0.836` (`inviscid.py:25-46`); with NeuralFoil's section profile drag on top, lift-dependent profile drag is partly counted twice. **Declared caveat (ADR 0026, ADR 0028):** on BRYAN AeroBuildup `e = 0.805` against AVL's inviscid 0.875 — about 9 % more induced drag. The Oswald factor shown to users comes from [[parabolic-polar-fit]].
+**Kind: a procedure — the solver.** AeroBuildup returns lift and drag in newtons. `L` is AeroBuildup's. **`D` is the kernel's drag (maintainer decision 2026-11-03, #1346, path B).** AeroBuildup's induced drag uses the Nita & Scholz (2012) Oswald factor, the inviscid (geometric) factor `e_theo` times the full-scale viscous factor `k_e,D0 = 0.83625` (`inviscid.py:63, 67-74, 81`), which folds the lift-dependent part of the profile drag into `e` (Anderson 6e §6.7.2). AeroBuildup also integrates NeuralFoil's section `c_d(c_l)` at each local Reynolds number (`aero_buildup.py:817`), which already contains that drag, so AeroBuildup counts it twice. Where profile drag comes from a section polar, the inviscid factor is the right one (Anderson §5.3.3). The kernel therefore takes the factor out: `D = D_profile + k_e,D0 · D_induced`, with `D_profile` and `D_induced` as AeroBuildup returns them (`aero_buildup.py:344-345`). The induced drag is `L² / (q π b_eff²)` with `b_eff²` a scale-free softmax of the components' `b² e` (`aero_buildup.py:279-290`), which is homogeneous of degree 1, so this equals AeroBuildup with `k_e,D0 = 1` — measured on BRYAN, WIESEL, CHEKKER and BELEMNITOS: ratio 0.836250 for all four (#1346). The fuselage's own `e = 0.95` (`aero_buildup.py:1221`) is scaled with the wings' by the same homogeneity; its share of the softmax is negligible on the fleet (that is what the ratio measures). AeroSandbox is not patched, and there is one producer of drag: the same function (`aero_kernel/solvers/aerobuildup.py:kernel_drag`) serves this single evaluation, the alpha sweep of [[stall-speed]] and the model function of the IPOPT problems ([[minimum-drag-speed-from-polar]], [[minimum-sink-speed-from-polar]]). `k_e,D0` is the parameter `k_e_d0` of the rule `aerobuildup-induced-drag` (`rules.yaml`, sourced, adopted; it appears in `provenance.rules_used`); the aero tier checks that it equals AeroSandbox's (`oswalds_efficiency / e_theo`, to 1·10⁻⁹). **Declared (ADR 0020):** every value that carries the correction gets the `notice` `induced_drag_viscous_factor_removed`, one per evaluation, with `k_e,D0` and the share of AeroBuildup's induced drag removed (`1 − k_e,D0` = 16.4 %) in `detail`. **Measured effect (#1346):** AeroBuildup's induced drag against AVL Trefftz at `C_L` 0.9 was +24 … +28 %; without the factor +3.7 … +6.9 %; NeuralFoil's lift-dependent profile drag is 0.3–1.3 × the term the factor added. The remaining gap is left to flight calibration (BELEMNITOS, #1173 point 4). The Oswald factor shown to users comes from [[parabolic-polar-fit]].
 The Reynolds number is formed inside, per section, from `V` and the local chord, `Re = ρ·V·c/μ`, and the
 Mach number as `V/a`, both from the bound atmosphere (#1201): the solver gets `ρ`, `μ` and `a` from
 [[air-density-isa]] and builds no atmosphere of its own from an altitude.
@@ -64,15 +66,15 @@ the precise one; the sections are the simplified drag and layout model (the fuse
 quantities of all: they are what the solver says about this aircraft at this operating
 point. Verified against the installed AeroSandbox 4.2.9 source.
 
-**Source.** 🟢 Sharpe, PhD thesis 2024: AeroBuildup §5.3, validation §5.4, NeuralFoil analysis confidence §7.2.4, training data §7.2.5. Nita & Scholz (2012), "Estimating the Oswald Factor from Basic Aircraft Geometrical Parameters", Section 5, as cited and implemented in AeroSandbox 4.2.9 `library/aerodynamics/inviscid.py`.
+**Source.** 🟢 Sharpe, PhD thesis 2024: AeroBuildup §5.3, validation §5.4, NeuralFoil analysis confidence §7.2.4, training data §7.2.5. Nita & Scholz (2012), "Estimating the Oswald Factor from Basic Aircraft Geometrical Parameters", Section 5, as cited and implemented in AeroSandbox 4.2.9 `library/aerodynamics/inviscid.py` (the class values of `k_e,D0` read from that transcription; the paper itself is not in the vault, an open gap). Anderson, Fundamentals of Aerodynamics 6e, §6.7.2 (the Oswald factor of the airplane polar absorbs the lift-dependent parasite drag) and §5.3.3 (span efficiency from lifting-line theory). The removal: maintainer decision 2026-11-03, #1346 (path B; the rejected paths were A, keep and declare, and C, an AVL method world).
 
-**Validity in the RC/UAV regime (ADR 0028).** NeuralFoil supplies the section data; its training data cover Re_c of 1.9·10³ to 2.6·10⁸ (95 %; Sharpe 2024 §7.2.5), so the whole regime is inside the trained range. AeroBuildup calls NeuralFoil with its defaults — free transition, `n_crit = 9`, `xtr = 1` (`airfoil.py:651-653`, not overridden in `aero_buildup.py:795-803`) — so the polar is a smooth-surface polar: a turbulator or a rough printed surface is not represented, which matters below Re 7·10⁴. NeuralFoil's own analysis confidence drops sharply near Re_c ≈ 8·10⁴ at C_L ≈ 1.0, where a laminar separation bubble forms (Sharpe 2024 §7.2.4). AeroBuildup was cross-validated on an RC sailplane at Re_c = 1.55·10⁵, M = 0.044 (§5.4): lift and drag polars agree with nonlinear lifting line. Main-wing downwash on the tail is omitted for lift (§5.3), so tail lift is over-counted. The internal `e` uses a viscous factor averaged over full-scale classes (`inviscid.py:66-73`) and is not checked at RC Reynolds numbers [no source for its RC error]. Mach ≤ 0.3: compressibility is negligible. **The regime check** (ADR 0028, amended 2026-11-01, #1342) evaluates the chord Reynolds number at every station and reports one warning per surface, judged at its mean aerodynamic chord (below 3·10⁴ a `warning`, 3·10⁴–7·10⁴ a `notice`, above 10⁶ a `notice`), and one `warning` per control device with a station of its span below 3·10⁴; each carries where and how much of the surface or device it concerns. Mach above 0.6 is an `error`.
+**Validity in the RC/UAV regime (ADR 0028).** NeuralFoil supplies the section data; its training data cover Re_c of 1.9·10³ to 2.6·10⁸ (95 %; Sharpe 2024 §7.2.5), so the whole regime is inside the trained range. AeroBuildup calls NeuralFoil with its defaults — free transition, `n_crit = 9`, `xtr = 1` (`airfoil.py:651-653`, not overridden in `aero_buildup.py:795-803`) — so the polar is a smooth-surface polar: a turbulator or a rough printed surface is not represented, which matters below Re 7·10⁴. NeuralFoil's own analysis confidence drops sharply near Re_c ≈ 8·10⁴ at C_L ≈ 1.0, where a laminar separation bubble forms (Sharpe 2024 §7.2.4). AeroBuildup was cross-validated on an RC sailplane at Re_c = 1.55·10⁵, M = 0.044 (§5.4): lift and drag polars agree with nonlinear lifting line. Main-wing downwash on the tail is omitted for lift (§5.3), so tail lift is over-counted. The internal `e` uses a viscous factor averaged over four full-scale classes (jet 0.873, business jet 0.864, turboprop 0.804, general aviation 0.804; `inviscid.py:67-74`), none of them RC or UAV (ADR 0028); the kernel removes it (see Kind), so the drag it returns carries the inviscid Nita & Scholz factor and NeuralFoil's viscous drag at the local Reynolds number. Mach ≤ 0.3: compressibility is negligible. **The regime check** (ADR 0028, amended 2026-11-01, #1342) evaluates the chord Reynolds number at every station and reports one warning per surface, judged at its mean aerodynamic chord (below 3·10⁴ a `warning`, 3·10⁴–7·10⁴ a `notice`, above 10⁶ a `notice`), and one `warning` per control device with a station of its span below 3·10⁴; each carries where and how much of the surface or device it concerns. Mach above 0.6 is an `error`.
 
 ## Implementations (1)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/aerobuildup_evaluation.py` | EXACT | 🟢 | one numeric AeroBuildup run at `(V, α)` in the bound air state, by the OPT adapter (`OptiAdapter.evaluate`), which owns every AeroBuildup call (ADR 0022); `L` and `D` as AeroBuildup returns them; a deflected flap is evaluated and declared, any other deflected device refused |
+| `aero_kernel/formulas/aerobuildup_evaluation.py` | EXACT | 🟢 | one numeric AeroBuildup run at `(V, α)` in the bound air state, by the OPT adapter (`OptiAdapter.evaluate`), which owns every AeroBuildup call (ADR 0022); `L` as AeroBuildup returns it, `D` the kernel's drag (`solvers/aerobuildup.py:kernel_drag`, `D_profile + k_e,D0 · D_induced`, #1346) with the notice `induced_drag_viscous_factor_removed`; a deflected flap is evaluated and declared, any other deflected device refused |
 
 ## Approval
 
@@ -102,3 +104,9 @@ point. Verified against the installed AeroSandbox 4.2.9 source.
 > caveat moved from ADR 0023 to ADR 0028, which supersedes it; nothing else changed. When #1317 binds the
 > analysis geometry (`analysis-airplane`) instead of `airplane`, the changed input brings this entry back for a
 > short confirmation.
+
+> **Reopened for approval (2026-11-03, #1346).** The drag output changed: `D` is no longer AeroBuildup's total
+> drag but `D_profile + k_e,D0 · D_induced` (maintainer decision 2026-11-03, path B: the full-scale viscous
+> factor removed from AeroBuildup's induced drag, because NeuralFoil's section polars already carry the
+> lift-dependent profile drag). `L`, the inputs and the rest of the procedure are unchanged. The entry is back
+> to `draft` because its computation changed.

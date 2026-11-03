@@ -53,6 +53,10 @@ One user-visible number, two different laws behind it. mission_kpi_service repor
 > `W/D(V_md)` from [[minimum-drag-speed-from-polar]]; this closed form is its **Probe** only. The app's
 > mixing of the two in `mission_kpi_service` is an Ist deviation against the canon, not an open conflict.
 
+**The value it is a Probe of (#1346).** `(L/D)max` of [[minimum-drag-speed-from-polar]] is formed from the
+kernel's drag (`D_profile + k_e,D0 · D_induced`); the parabola's `C_D0` and `e` come from the fit to the same drag
+([[parabolic-polar-fit]]), so the two still compare like with like.
+
 ## Implementations (1)
 
 | node | claimed | verified | deviation |

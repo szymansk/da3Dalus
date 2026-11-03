@@ -4,9 +4,30 @@ from typing import Any
 
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime, WorkerOutcome, run_in_worker
+from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.air import AirState
 
 AIR = AirState(density=1.225, dynamic_viscosity=1.7894e-5, speed_of_sound=340.294)
+
+
+def canon_k_e_d0() -> float:
+    """The viscous factor k_e,D0 of the shipped canon (rule ``aerobuildup-induced-drag``, #1346)."""
+    from aero_kernel.build import shipped_build
+    from aero_kernel.solvers.aerobuildup import INDUCED_DRAG_RULE, VISCOUS_FACTOR_PARAMETER
+
+    rule = shipped_build().model.namespaces["calc"].rules[INDUCED_DRAG_RULE]
+    return rule.parameters[VISCOUS_FACTOR_PARAMETER].value
+
+
+# The factor the worker requests of the fast tier carry: the canon's, as the adapter reads it.
+K_E_D0 = canon_k_e_d0()
+
+
+def drag_notice() -> KernelWarning:
+    """The notice the adapter puts on every value that carries the kernel's drag (#1346)."""
+    from aero_kernel.solvers.opti import induced_drag_notice
+
+    return induced_drag_notice(K_E_D0)
 
 
 class InProcessRuntime(SolverRuntime):

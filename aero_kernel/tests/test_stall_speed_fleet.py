@@ -21,6 +21,7 @@ from aero_kernel.tests.reference_fleet import (
     flap_values,
     reference_document,
 )
+from aero_kernel.tests.solver_builders import K_E_D0
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -101,6 +102,7 @@ async def test_bryan_stalls_where_the_prototype_found_it_with_the_small_model(
         gravity=9.80665,
         n_load=1.0,
         air=sea_level_air(),
+        k_e_d0=K_E_D0,
     )
     solution = opti_module.stall_worker(request).value
     assert close(solution.v_s, 5.29, 2e-3)  # the prototype's two decimals
@@ -146,7 +148,7 @@ async def test_bryans_inverted_stall_gives_no_value_because_the_trough_vanishes_
 
 async def test_bryans_inverted_trough_exists_only_at_the_low_speed_of_the_first_sweep() -> None:
     from aero_kernel.geometry import AirplaneGeometry
-    from aero_kernel.solvers.aerobuildup import sweep_polar
+    from aero_kernel.solvers.aerobuildup import sweep_lift
     from aero_kernel.solvers.air import AirState
     from aero_kernel.solvers.asb_airplane import to_asb_airplane
     from aero_kernel.solvers.opti import ALPHA_MAX_DEG, ALPHA_MIN_DEG, ALPHA_STEP_DEG
@@ -160,8 +162,8 @@ async def test_bryans_inverted_trough_exists_only_at_the_low_speed_of_the_first_
     )
     count = round((ALPHA_MAX_DEG - ALPHA_MIN_DEG) / ALPHA_STEP_DEG)
     grid = [ALPHA_MIN_DEG + k * ALPHA_STEP_DEG for k in range(count + 1)]
-    slow = sweep_polar(airplane, air, 5.88, grid, "small")
-    fast = sweep_polar(airplane, air, 8.32, grid, "small")
+    slow = sweep_lift(airplane, air, 5.88, grid, "small")
+    fast = sweep_lift(airplane, air, 8.32, grid, "small")
     index = first_extremum_from_zero(slow.alpha_deg, slow.cl, upright=False)
     assert index is not None
     assert slow.alpha_deg[index] == -10.5

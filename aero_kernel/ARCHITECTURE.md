@@ -301,6 +301,9 @@ Sources:
   shape exponent per section, so a section with two is replaced by the symmetric one of the same width, height and
   centre and the same cross-section area; `detail`: the section path, `n`, `n_lower`, `n_equivalent`. The perimeter
   (wetted area) is kept only approximately
+- the kernel's drag (`induced_drag_viscous_factor_removed`, `notice`, #1346, ch. 8.8): AeroBuildup's full-scale
+  viscous factor `k_e,D0` is taken out of its induced drag on every drag the kernel reads; one per evaluation
+  (evaluate, stall, best glide, minimum sink), `detail`: `k_e_d0` and `induced_drag_share_removed`
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`warning`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`warning`)
 - the averaged hinge line of a roll device or deflected flap (`hinge_line_averaged`, `notice`, ch. 8.8):
@@ -824,7 +827,7 @@ caller's responsibility.
     build, CHEKKER 3.9 s; the zero-lift angle through the built function 0.9–1.8 s, a stall-like
     minimum-speed problem 3.2 s, against about 6 s for build plus solve). So the IPOPT problems — `_solve`
     (stall, best glide, minimum sink), `steady_roll_worker` and `zero_lift_worker` (#1334) — call one CasADi `Function`
-    `f(V, α, p, q, r, ρ, μ, a) → (L, D, C_L, C_D, C_m, C_l, C_n)` of the converted airplane
+    `f(V, α, p, q, r, ρ, μ, a) → (L, D_profile, D_induced, C_L, C_m, C_l, C_n)` of the converted airplane
     (`aero_model.aero_model`), built once by `build_aero_model`: AeroBuildup run on an `OperatingPoint`
     whose speed, angle, body rates and atmosphere are `casadi.MX` symbols (the atmosphere a duck type
     whose temperature and pressure are derived as in `FixedAtmosphere`). The function comes from the
@@ -832,7 +835,7 @@ caller's responsibility.
     or is built for the call where none is installed (a worker function run in-process). A failure to
     build it is an error of the problem, as the inline build was; there is no fallback to another route
     (ADR 0020), and the inline symbolic build is gone (ADR 0021). The sweeps (`sweep_polar`, the published
-    polars), the recording runs (`_confidence_run`), the start runs of the roll (`_roll_start`) and
+    polars, and `sweep_lift`, the bracketing lift curves), the recording runs (`_confidence_run`), the start runs of the roll (`_roll_start`) and
     `moment_slope_worker` stay numeric AeroBuildup runs: they are no symbolic builds and their values must
     not move. The worker reports in its diagnostics whether the function was built (with the time) or
     reused; the parent logs it at `DEBUG`. `zero_lift_worker` (canon `zero-lift-angle-from-polar`) solves
@@ -842,6 +845,26 @@ caller's responsibility.
     the same as best glide's and minimum sink's, so it is routed to the worker that holds the function.
     Every IPOPT solve passes `max_iter` (`MAX_ITERATIONS`) and IPOPT's convergence tolerance
     (`IPOPT_TOLERANCE` = 1·10⁻⁸, IPOPT's own default) explicitly; both are solver settings of OPT.
+  - **The kernel's drag (#1346, maintainer decision 2026-11-03, path B).** AeroBuildup's induced drag uses the
+    Nita & Scholz Oswald factor `e_theo · k_e,D0`, `k_e,D0 = 0.83625` the mean of four full-scale classes
+    (`inviscid.py:67-74, 81`); NeuralFoil's section polars, which AeroBuildup integrates, already contain the
+    lift-dependent profile drag that factor stands for. Every drag the kernel takes from AeroBuildup is therefore
+    **one function**, `solvers/aerobuildup.py:kernel_drag`: `D = D_profile + k_e,D0 · D_induced` (AeroBuildup's
+    `D_profile` and `D_induced`, `aero_buildup.py:344-345`; numbers, arrays or CasADi expressions alike). Since the
+    softmax of the components' `b² e` is homogeneous of degree 1 this is AeroBuildup with `k_e,D0 = 1`. Its
+    users: `evaluate_forces` (`aerobuildup-evaluation`), `sweep_polar` (`C_D = D / (q·S_ref)`, the published
+    polar of `stall-speed` and the sweep of `stall-break`), and the objectives of `best_glide_worker` (`D`, and
+    `(L/D)max = n m g / D`) and `min_sink_worker` (`D·V`). The model function offers `D_profile` and
+    `D_induced`, never AeroBuildup's total `D` or `C_D`, so no reader can take a second drag (ADR 0022); the
+    bracketing sweeps read lift only (`sweep_lift`). AeroSandbox is not patched. `k_e,D0` is the parameter
+    `k_e_d0` of the canon rule `aerobuildup-induced-drag` (sourced, adopted, overridable): the adapter reads it
+    through the call's `Rules` (`OptiAdapter._k_e_d0`, so it is in `Provenance.rules_used`) and hands it to the
+    worker in the request (`k_e_d0` of `StallRequest`, `SweepRequest`, `EvaluationRequest`); it is applied
+    outside the model function, which therefore needs no new key. The aero tier checks that the canon value is
+    AeroSandbox's (`oswalds_efficiency / e_theo` to 1·10⁻⁹) and that AeroBuildup's `D` is `D_profile +
+    D_induced`. Every value that carries the correction — the evaluation, the stall (its published polar), best
+    glide, minimum sink — gets the `notice` `induced_drag_viscous_factor_removed` (ch. 8.2), once per
+    evaluation, with `k_e_d0` and `induced_drag_share_removed` (`1 − k_e,D0`) in `detail`.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
     the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
     extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the

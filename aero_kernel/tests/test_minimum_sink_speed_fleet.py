@@ -31,14 +31,16 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # NeuralFoil model size xlarge: (V_mp m/s, alpha_mp deg, C_L,mp, V_md m/s). V_md is the golden of
 # test_minimum_drag_speed_fleet.py, recomputed here as the reference of the ratio.
 GOLDEN = {
-    FleetMember.BRYAN: (6.1460437, 4.6544086, 0.9140074, 7.4468700),
-    FleetMember.JAGUAR: (7.1115531, 5.5958411, 0.7834771, 9.0692794),
-    FleetMember.BELEMNITOS: (4.9079007, 5.7739549, 0.9317612, 5.3792137),
-    FleetMember.RV7: (8.0806222, 7.2014265, 0.8170156, 10.2315110),
-    FleetMember.CHEKKER: (7.4625361, 4.6061904, 0.9284639, 9.1449363),
-    FleetMember.WIESEL: (9.8057437, 6.4005273, 0.7409360, 12.5389487),
+    FleetMember.BRYAN: (6.0225190, 5.1468365, 0.9518853, 7.2306630),
+    FleetMember.JAGUAR: (7.1019810, 5.6291430, 0.7855905, 8.8849618),
+    FleetMember.BELEMNITOS: (4.8933654, 5.8417751, 0.9373048, 5.2599903),
+    FleetMember.RV7: (7.9411907, 7.6357058, 0.8459578, 9.9423059),
+    FleetMember.CHEKKER: (7.3310603, 5.0096420, 0.9620648, 8.8958176),
+    FleetMember.WIESEL: (9.7532022, 6.4971152, 0.7489405, 11.9855865),
 }
-# Observed V_mp / V_md of these goldens: BRYAN 0.825, JAGUAR 0.784, BELEMNITOS 0.912, RV-7 0.790, CHEKKER 0.816, WIESEL 0.782. A parabolic polar gives
+# Re-recorded with the kernel's drag (#1346: AeroBuildup's viscous factor k_e,D0 removed from its induced drag),
+# from BRYAN 6.1460437, JAGUAR 7.1115531, BELEMNITOS 4.9079007, RV-7 8.0806222, CHEKKER 7.4625361, WIESEL 9.8057437 m/s.
+# Observed V_mp / V_md of these goldens: BRYAN 0.833, JAGUAR 0.799, BELEMNITOS 0.930, RV-7 0.799, CHEKKER 0.824, WIESEL 0.814. A parabolic polar gives
 # 3^(-1/4) = 0.760; the real polar at Re 1e5 is not parabolic (canon entry, "Observed"). The ratio is
 # reported, not asserted as a tolerance: no source gives one for a computed polar.
 

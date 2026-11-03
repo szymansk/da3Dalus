@@ -97,6 +97,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "avl_body_equivalent_round": WarningSeverity.NOTICE,
     "spiral_halving_time_reported": WarningSeverity.NOTICE,
     "fuselage_section_equivalent": WarningSeverity.NOTICE,
+    "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
 }
 
 

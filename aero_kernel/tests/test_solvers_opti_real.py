@@ -16,6 +16,7 @@ from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 from aero_kernel.solvers.opti import ALPHA_STEP_DEG, OptiAdapter, StallRequest, StallSolution
 from aero_kernel.solvers.stall_math import first_extremum
+from aero_kernel.tests.solver_builders import K_E_D0
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -59,7 +60,12 @@ async def test_the_trainer_stalls_where_the_canon_entry_verified_it_with_the_sma
     quotes 4-5 digits)."""
     monkeypatch.setattr(opti_module, "NEURALFOIL_MODEL_SIZE", "small")
     request = StallRequest(
-        airplane=trainer(), mass_kg=MASS_KG, gravity=GRAVITY, n_load=1.0, air=sea_level()
+        airplane=trainer(),
+        mass_kg=MASS_KG,
+        gravity=GRAVITY,
+        n_load=1.0,
+        air=sea_level(),
+        k_e_d0=K_E_D0,
     )
     solution = opti_module.stall_worker(request).value
     assert math.isclose(solution.v_s, 8.4888, rel_tol=2e-3)
