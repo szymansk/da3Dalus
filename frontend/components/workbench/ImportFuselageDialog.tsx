@@ -4,11 +4,27 @@ import React, { useState, useEffect, useRef } from "react";
 import { Upload, X, Check, Loader2, Maximize2, Minimize2, Plus, Trash2, Play } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 import { useDialog } from "@/hooks/useDialog";
-import { parseLowerExponent, sectionOffset, type SuperEllipseSection } from "@/lib/fuselageSection";
+import {
+  contourWinsWarning,
+  parseLowerExponent,
+  sectionOutline,
+  type ContourPoint,
+  type FuselageSection,
+} from "@/lib/fuselageSection";
 
 /** Tolerant float equality — avoids exact `===` on floating-point scale factors. */
 export function approxEq(a: number, b: number, eps: number = 1e-9): boolean {
   return Math.abs(a - b) < eps;
+}
+
+/** Outline of a section in aeroplane coordinates: the contour when present (gh-1349). */
+function sectionOutlineXyz(xsec: XSec, samples: number): { x: number[]; y: number[]; z: number[] } {
+  const outline = sectionOutline(xsec, samples);
+  return {
+    x: outline.map(() => xsec.xyz[0]),
+    y: outline.map((r) => xsec.xyz[1] + r.y),
+    z: outline.map((r) => xsec.xyz[2] + r.z),
+  };
 }
 
 /** Build Plotly Surface3d traces for a fuselage from xsec dicts */
@@ -23,20 +39,12 @@ export function buildFuselageSurface(
   const yGrid: number[][] = [];
   const zGrid: number[][] = [];
 
+  // contours of one fuselage share their point count, so every row has the same length
   for (const xsec of xsecs) {
-    const xRow: number[] = [];
-    const yRow: number[] = [];
-    const zRow: number[] = [];
-    for (let j = 0; j <= samples; j++) {
-      const t = (j / samples) * 2 * Math.PI;
-      const r = sectionOffset(xsec, t);
-      xRow.push(xsec.xyz[0]);
-      yRow.push(xsec.xyz[1] + r.y);
-      zRow.push(xsec.xyz[2] + r.z);
-    }
-    xGrid.push(xRow);
-    yGrid.push(yRow);
-    zGrid.push(zRow);
+    const row = sectionOutlineXyz(xsec, samples);
+    xGrid.push(row.x);
+    yGrid.push(row.y);
+    zGrid.push(row.z);
   }
 
   return {
@@ -72,17 +80,7 @@ function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; se
       const surfaceTrace = buildFuselageSurface(xsecs, "#FF8400", 0.7, "Reconstructed", 32);
 
       const xsecTraces = xsecs.map((xsec, idx) => {
-        const pts = 48;
-        const x: number[] = [];
-        const y: number[] = [];
-        const z: number[] = [];
-        for (let j = 0; j <= pts; j++) {
-          const t = (j / pts) * 2 * Math.PI;
-          const r = sectionOffset(xsec, t);
-          x.push(xsec.xyz[0]);
-          y.push(xsec.xyz[1] + r.y);
-          z.push(xsec.xyz[2] + r.z);
-        }
+        const { x, y, z } = sectionOutlineXyz(xsec, 48);
         return {
           x, y, z,
           type: "scatter3d",
@@ -173,16 +171,14 @@ function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; se
 }
 
 /**
- * Generate the SVG path of a section outline (gh-1157: lower half uses
- * `n_lower`). SVG y grows downwards, so z is negated to keep the top up.
+ * Generate the SVG path of a section outline: the contour when present
+ * (gh-1349), else the super-ellipse (gh-1157: lower half uses `n_lower`).
+ * SVG y grows downwards, so z is negated to keep the top up.
  */
-export function superellipsePath(xs: SuperEllipseSection, samples: number = 64): string {
-  const points: string[] = [];
-  for (let i = 0; i <= samples; i++) {
-    const t = (i / samples) * 2 * Math.PI;
-    const r = sectionOffset(xs, t);
-    points.push(`${i === 0 ? "M" : "L"}${r.y.toFixed(3)},${(-r.z).toFixed(3)}`);
-  }
+export function sectionPath(xs: FuselageSection, samples: number = 64): string {
+  const points = sectionOutline(xs, samples).map(
+    (r, i) => `${i === 0 ? "M" : "L"}${r.y.toFixed(3)},${(-r.z).toFixed(3)}`,
+  );
   return points.join(" ") + "Z";
 }
 
@@ -192,6 +188,8 @@ export interface XSec {
   b: number;
   n: number;
   n_lower?: number | null;
+  /** gh-1349: measured closed outline; kept as it is, never edited here. */
+  contour?: ContourPoint[] | null;
 }
 
 interface ImportFuselageDialogProps {
@@ -244,10 +242,18 @@ function CrossSectionSvg({
   const xsec = xsecs[idx];
   if (!xsec) return null;
 
-  const maxDim = Math.max(xsec.a, xsec.b, 0.001);
+  const maxDim = Math.max(
+    xsec.a,
+    xsec.b,
+    ...(xsec.contour ?? []).map(([y, z]) => Math.max(Math.abs(y), Math.abs(z))),
+    0.001,
+  );
   const viewSize = 1.2 * maxDim;
+  // An interpolated section would have no contour, which a contour fuselage refuses (gh-1349).
+  const hasContours = xsecs.some((xs) => xs.contour);
 
   const handleInsert = () => {
+    if (hasContours) return;
     const next = xsecs[Math.min(idx + 1, xsecs.length - 1)];
     const newXsec: XSec = {
       xyz: xsec.xyz.map((v, j) => (v + next.xyz[j]) / 2),
@@ -283,9 +289,9 @@ function CrossSectionSvg({
         {/* Grid */}
         <line x1={-viewSize} y1={0} x2={viewSize} y2={0} stroke="#2E2E2E" strokeWidth={viewSize * 0.005} />
         <line x1={0} y1={-viewSize} x2={0} y2={viewSize} stroke="#2E2E2E" strokeWidth={viewSize * 0.005} />
-        {/* Superellipse */}
+        {/* Section outline: contour or super-ellipse */}
         <path
-          d={superellipsePath(xsec)}
+          d={sectionPath(xsec)}
           fill="rgba(255,132,0,0.15)"
           stroke="#FF8400"
           strokeWidth={viewSize * 0.01}
@@ -323,8 +329,13 @@ function CrossSectionSvg({
         </span>
         <button
           onClick={handleInsert}
-          className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-success hover:bg-success/20"
-          title="Insert section after current (interpolated)"
+          disabled={hasContours}
+          className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-success hover:bg-success/20 disabled:opacity-30"
+          title={
+            hasContours
+              ? "Sections with a contour come from the exporter; an interpolated section cannot be inserted"
+              : "Insert section after current (interpolated)"
+          }
         >
           <Plus size={12} />
         </button>
@@ -367,8 +378,15 @@ export function XSecParameterEditor({
     }));
   };
 
+  const contourWarning = contourWinsWarning(xsec);
+
   return (
     <>
+      {contourWarning && (
+        <p role="note" className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-400">
+          {contourWarning}
+        </p>
+      )}
       <div className="grid grid-cols-3 gap-2">
         {(["x", "y", "z"] as const).map((ax, i) => (
           <div key={ax} className="flex flex-col gap-0.5">
@@ -440,7 +458,10 @@ export async function saveFuselage(
 ): Promise<void> {
   const body = JSON.stringify({
     name: fuselageName,
-    x_secs: xsecs.map((xs) => ({ xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n, n_lower: xs.n_lower ?? null })),
+    x_secs: xsecs.map((xs) => ({
+      xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n, n_lower: xs.n_lower ?? null,
+      contour: xs.contour ?? null,
+    })),
   });
 
   let res = await fetch(

@@ -11,7 +11,7 @@ import { useFuselage } from "@/hooks/useFuselage";
 import { useFuselages } from "@/hooks/useFuselages";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { CreateWingDialog } from "./CreateWingDialog";
-import { sectionExponentLabel } from "@/lib/fuselageSection";
+import { sectionShapeLabel } from "@/lib/fuselageSection";
 import { surfaceTypeLabel, type SurfaceType } from "@/lib/surfaceType";
 import { useSurfaceTypeActions } from "@/hooks/useSurfaceType";
 import { ProposedBadge, WingSurfaceTypePanel } from "./WingSurfaceType";
@@ -716,7 +716,7 @@ function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): 
         expanded: false,
         leaf: true,
         selected: isXsSelected,
-        detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm ${sectionExponentLabel(xs)}`,
+        detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm ${sectionShapeLabel(xs)}`,
         onClick: () => {
           params.selectFuselage(fn);
           params.selectFuselageXsec(i);

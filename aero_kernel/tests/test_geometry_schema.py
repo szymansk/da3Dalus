@@ -379,7 +379,8 @@ def full_document() -> dict[str, Any]:
         "x_secs": [rib, tip],
         "units": {"geometry_length": "m", "detail_length": "m", "angle": "deg"},
     }  # fmt: skip
-    station = {"xyz": [0, 0, 0], "a": 0.1, "b": 0.1, "n": 2, "n_lower": 4}
+    contour = [[0, -0.1], [0.1, 0], [0, 0.1], [-0.1, 0]]  # a closed loop, counter-clockwise
+    station = {"xyz": [0, 0, 0], "a": 0.1, "b": 0.1, "n": 2, "n_lower": 4, "contour": contour}
     fuselage = {
         "name": "F", "x_secs": [station, station], "symmetric": False,
         "step_path": "a.step", "solid_step_path": "b.step",

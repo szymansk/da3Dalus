@@ -48,3 +48,23 @@ describe("XSecParameterEditor n_lower field", () => {
     expect(latest[1].xyz).toEqual([0.1, 0, 0.02]);
   });
 });
+
+describe("XSecParameterEditor on a section with a contour (gh-1349)", () => {
+  const CONTOUR: [number, number][] = [
+    [0, -0.05], [0.03, -0.04], [0.05, -0.02], [0.06, 0], [0.05, 0.02], [0.03, 0.04],
+    [0.01, 0.049], [0, 0.05],
+  ];
+
+  it("warns that the contour wins and keeps the contour when the fit is edited", () => {
+    render(<Harness initial={[SECTIONS[0], { ...SECTIONS[1], contour: CONTOUR }]} />);
+    expect(screen.getByText(/contour \(8 points\)\. The contour wins/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("a (width/2)"), { target: { value: "0.07" } });
+    expect(latest[1].a).toBe(0.07);
+    expect(latest[1].contour).toEqual(CONTOUR);
+  });
+
+  it("shows no warning for a plain section", () => {
+    render(<Harness initial={SECTIONS} />);
+    expect(screen.queryByText(/The contour wins/)).toBeNull();
+  });
+});

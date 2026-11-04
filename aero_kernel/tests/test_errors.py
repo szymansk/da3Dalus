@@ -574,6 +574,8 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "too_few_sections": ErrorCategory.INVALID_INPUT,
         "duplicate_section": ErrorCategory.INVALID_INPUT,
         "invalid_airfoil_contour": ErrorCategory.INVALID_INPUT,
+        "invalid_fuselage_contour": ErrorCategory.INVALID_INPUT,
+        "inconsistent_fuselage_contours": ErrorCategory.INVALID_INPUT,
         "segment_on_last_section": ErrorCategory.INVALID_INPUT,
         "control_surface_without_device": ErrorCategory.INVALID_INPUT,
         "missing_surface_type": ErrorCategory.INVALID_INPUT,

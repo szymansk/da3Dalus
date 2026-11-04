@@ -62,6 +62,7 @@ kommt, ist metrisch; was aus dem Bauteilkatalog kommt, ist in Millimetern.
 | Feldgruppe | Einheit | Anmerkung |
 |---|---|---|
 | `xyz_le`, `chord`, `xyz`, `a`, `b`, `xyz_ref` | **m** | die eigentliche Geometrie |
+| `contour` (fuselage section, gh-1349) | **m** | relative to the section's `xyz`, see 7.1b |
 | `twist`, `dihedral`, alle `*_deflection_deg` | **Grad** | |
 | `spare_*` (Maße, Länge, Start, Ursprung) | **m** in der API | in der **Datenbank mm**; `wing_service` rechnet beim Lesen und Schreiben um |
 | `spare_vector` | — | Einheitsvektor, **dimensionslos**, wird nie skaliert |
@@ -345,6 +346,65 @@ Schnittklasse (`app/converters/split_superellipse.py`), die Kontur und Umfang je
 rechnet; ihr `shape` ist der **flächengleiche** Exponent. Wer nur `shape` liest — die
 Zwischenschnitte von AeroSandbox oder die Serialisierung des CAD-Rumpfs — behält damit die
 Querschnittsfläche, verliert aber die Form der Unterseite.
+
+### 7.1b Measured outline (`contour`, gh-1349)
+
+A super-ellipse cannot describe a real former: a low widest point, straight tapered sides, a
+narrow back, a flat bottom with a turtle deck, a wing-saddle notch, an offset canopy (Bf 109,
+Fw 190, kit fuselages). A section may therefore carry its **measured outline** as points:
+
+```json
+{"xyz": [0.42, 0, 0.01], "a": 0.028, "b": 0.048, "n": 2.4, "n_lower": 6.0,
+ "contour": [[0.0, -0.048], [0.0102, -0.0479], ..., [-0.0102, -0.0479]]}
+```
+
+| | |
+|---|---|
+| `contour` | list of `[y, z]` pairs in **metres**, **relative to `xyz`**; `null` or absent: the section is the super-ellipse |
+
+**Format** (maintainer, 2026-11-04).
+- The contour is the **full outline as a closed loop** around the section. Nothing is mirrored and
+  no symmetry is assumed: an asymmetric or concave former is stored as it is.
+- The segment from the last point back to the first is **implicit**. Do **not** repeat the first
+  point at the end.
+- The start point is the writer's choice. Starting at the bottom is recommended. Point `i` of one
+  section is lofted to point `i` of the next, as with airfoil coordinates, so the writer starts
+  every section at the corresponding place. It resamples by arc length and keeps sharp corners
+  as points of their own.
+
+**Rules.** A violation is refused (HTTP 422 in the app, `invalid_input` in the aero kernel), both
+with the path of the offending point or contour:
+
+1. at least **3 points** (canon rule `fuselage-contour.min_contour_points`, the geometric minimum
+   of a polygon);
+2. a **simple polygon**: no repeated consecutive point (the last and the first count as
+   consecutive), and no two segments that cross or touch other than at their shared vertex, the
+   implicit closing segment included;
+3. **counter-clockwise** in the y-z plane (`y` to the right, `z` up, as seen from behind the
+   aircraft): the signed (shoelace) area is positive. Every section therefore runs the same way;
+4. **all or none per fuselage:** if one section of a fuselage has a contour, every section has
+   one, and all have the **same number of points**;
+5. **degenerate ends:** only the **first or the last** section may close the body with a
+   degenerate contour of that same point count: a **point** (all points identical) or a **line**
+   (all points exactly collinear, e.g. a vertical trailing edge: write the same `y` for every
+   point). Rules 2 and 3 do not apply to it. A degenerate contour at any other section is refused,
+   because it would pinch the body.
+
+No tolerance is applied and nothing is repaired: an invalid contour is refused, never resampled
+or clamped (ADR 0020).
+
+**`a`, `b`, `n`, `n_lower` stay as the fit.** The solvers (AeroSandbox `FuselageXSec`, the AVL
+body, the drag estimate) keep using them; nothing derives area, perimeter or wetted area from
+the contour (ADR 0022). The contour wins for **display** (outline, 3D view, import preview) and
+for the **CAD loft** (slice 2 of gh-1349). `a` and `b` are whatever the writer sends; they are not
+checked against the contour.
+
+**No fit check.** The fit is not compared with the contour: the contour exists because the fit
+deviates from the real shape, so a deviation is expected and is no warning (maintainer,
+2026-11-04).
+
+**Mirrored bodies.** A fuselage with `symmetric: true` is mirrored about `y = 0`. Its mirror image
+negates `y` of every contour point and reverses their order, so it stays counter-clockwise.
 
 ### 7.2 Die Kontur erzeugen
 

@@ -5,6 +5,7 @@ from typing import Literal, Optional, OrderedDict
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from app.schemas.Servo import Servo
+from app.schemas.fuselage_contour import ContourPoint, check_contour, contour_set_messages
 
 # --- Shared field descriptions (S1192) ---
 _DESC_TIP_HINGE_REL_CHORD = "Tip hinge position as relative chord (0.0-1.0)"
@@ -818,8 +819,35 @@ class FuselageXSecSuperEllipseSchema(BaseModel):
         ),
         examples=[None, 6.0],
     )
+    contour: Optional[list[ContourPoint]] = Field(
+        default=None,
+        description=(
+            "Measured outline of the section, gh-1349 (geometry format 7.1b): the full outline "
+            "as a closed loop, [y, z] pairs in metres relative to ``xyz``; the segment from the "
+            "last point back to the first is implicit (do not repeat the first point) and the "
+            "start point is the writer's choice. No symmetry is assumed. At least 3 points, a "
+            "simple polygon (no repeated consecutive point, no crossing segments) and "
+            "counter-clockwise with y to the right and z up. Either every section of a fuselage "
+            "has a contour, all with the same number of points, or none; only the first and the "
+            "last section may carry a degenerate contour (a point or an exactly collinear line) "
+            "that closes the body. The contour wins for display and CAD; a, b, n and n_lower stay "
+            "as the fit the aerodynamic solvers use and are not compared with it. ``None``: the "
+            "section is the super-ellipse."
+        ),
+        examples=[None],
+    )
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("contour")
+    @classmethod
+    def _contour_follows_the_format(
+        cls, contour: Optional[list[ContourPoint]]
+    ) -> Optional[list[ContourPoint]]:
+        """Refuse a contour that breaks a rule of format 7.1b; never repair it (ADR 0020)."""
+        if contour is not None:
+            check_contour(contour)
+        return contour
 
 
 class FuselageSchema(BaseModel):
@@ -865,3 +893,14 @@ class FuselageSchema(BaseModel):
     )
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("x_secs")
+    @classmethod
+    def _contours_all_or_none_with_one_count(
+        cls, x_secs: list[FuselageXSecSuperEllipseSchema]
+    ) -> list[FuselageXSecSuperEllipseSchema]:
+        """Refuse a fuselage whose sections mix contours and none, or differ in point count."""
+        messages = contour_set_messages([x_sec.contour for x_sec in x_secs])
+        if messages:
+            raise ValueError("; ".join(message for _, message in messages))
+        return x_secs

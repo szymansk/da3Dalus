@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { fetcher, API_BASE } from "@/lib/fetcher";
+import type { ContourPoint } from "@/lib/fuselageSection";
 
 export interface FuselageXSec {
   xyz: number[];
@@ -10,6 +11,12 @@ export interface FuselageXSec {
   n: number;
   /** gh-1157: exponent of the lower half (z < 0); null/absent = same as `n`. */
   n_lower?: number | null;
+  /**
+   * gh-1349: measured full outline as a closed loop, [y, z] in metres relative
+   * to `xyz`, counter-clockwise, first point not repeated. Wins for display and
+   * CAD; null/absent = the super-ellipse. Read-only in the UI (exporter-written).
+   */
+  contour?: ContourPoint[] | null;
 }
 
 export interface Fuselage {

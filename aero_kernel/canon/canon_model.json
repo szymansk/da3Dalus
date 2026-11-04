@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:3615a9fb982407b0949e03cf9225aa8f6e96b4286a838810edd580f90ec7b766",
+  "content_hash": "sha256:b1f5b93e809f943fbeaa2a0ff9e17f850dfe902855214c978b31d5a7ba317cab",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6884,6 +6884,31 @@
               "status": "adopted",
               "unit": "1",
               "value": 0.85
+            }
+          }
+        },
+        "fuselage-contour": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "invalid_fuselage_contour",
+            "inconsistent_fuselage_contours"
+          ],
+          "criterion": "A fuselage section's optional contour is its full outline as a closed loop, (y, z) in metres relative to the section centre xyz (format 7.1b, #1349); the segment from the last point back to the first is implicit, the first point is not repeated, the start point is the writer's choice, and nothing is assumed about symmetry (asymmetric and concave formers are valid). It has at least min_contour_points points, no repeated consecutive point (also last to first), no two segments that cross or touch other than at a shared vertex (a simple polygon, the closing segment included), and a positive signed area: counter-clockwise with y to the right and z up. If any section of a fuselage has a contour, every section has one with the same number of points (the loft joins point i to point i). Only the first and the last section may carry a degenerate contour of that count, which closes the body: a point (all points identical) or a line (all points exactly collinear, e.g. a vertical trailing edge); the simple-polygon and orientation rules do not apply to it, and a degenerate contour at an interior section is refused. No solver reads the contour and it is not compared with the fit a, b, n, n_lower: the solvers keep the fit (ADR 0022), and a deviation is expected, which is why the contour exists (maintainer 2026-11-03 and 2026-11-04, #1349).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "min_contour_points": {
+              "at_most": null,
+              "basis": "definition",
+              "positive": null,
+              "regime": "regime-independent: a statement about the geometry document, not about the flow",
+              "source": "the geometric minimum of a polygon: three points are the least that enclose an area (maintainer 2026-11-04, #1349; replaces the 8 points of the issue proposal)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 3.0
             }
           }
         },

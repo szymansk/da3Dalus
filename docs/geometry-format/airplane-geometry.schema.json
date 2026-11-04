@@ -405,7 +405,7 @@
 
     "FuselageXSecSuperEllipse": {
       "type": "object",
-      "description": "One fuselage station. The outline is the super-ellipse |y/a|^n + |z/b|^n = 1 in the section plane (below the centre line with `n_lower` in place of `n` when given), which is ALWAYS normal to the x-axis — the format has no field for a section normal, and the converters hard-code [1, 0, 0]. A section cannot be tilted.",
+      "description": "One fuselage station. The outline is the super-ellipse |y/a|^n + |z/b|^n = 1 in the section plane (below the centre line with `n_lower` in place of `n` when given), or the point `contour` when given, which is ALWAYS normal to the x-axis — the format has no field for a section normal, and the converters hard-code [1, 0, 0]. A section cannot be tilted.",
       "required": ["xyz", "a", "b", "n"],
       "additionalProperties": false,
       "properties": {
@@ -436,6 +436,18 @@
           "description": "Super-ellipse exponent of the lower half (z < 0), gh-1157. null or absent: the lower half uses `n`. Both halves share `a` and `b` and meet at (±a, 0), so the outline stays closed. Lets a body be boxy underneath (large n_lower) and rounded on top (n = 2) — the OpenVSP super-ellipse with Super_TopBotSym off. Consumers that know only one exponent use the area-equivalent exponent, so the section area is kept.",
           "exclusiveMinimum": 0.0,
           "examples": [null, 6.0, 8.0]
+        },
+        "contour": {
+          "type": ["array", "null"],
+          "description": "Measured outline of the section, gh-1349 (format 7.1b): the FULL outline as a closed loop, [y, z] pairs in metres relative to `xyz`. The segment from the last point back to the first is implicit; do not repeat the first point. The start point is the writer's choice (starting at the bottom is recommended). No symmetry is assumed: asymmetric and concave formers are valid. At least 3 points; a simple polygon (no repeated consecutive point, no crossing or touching segments, the closing segment included); counter-clockwise with y to the right and z up (signed area > 0). If one section of a fuselage has a contour, all have one with the same number of points (point i is lofted to point i). Only the first and the last section may carry a degenerate contour that closes the body: a point (all points identical) or a line (all points exactly collinear); the polygon and orientation rules do not apply to it. The contour wins for display and CAD; `a`, `b`, `n`, `n_lower` stay as the fit the solvers use (AeroSandbox, AVL) and are not compared with it. null or absent: the section is the super-ellipse.",
+          "minItems": 3,
+          "items": {
+            "type": "array",
+            "prefixItems": [{ "type": "number" }, { "type": "number" }],
+            "items": false,
+            "minItems": 2
+          },
+          "examples": [null, [[0.0, -0.04], [0.03, 0.0], [0.0, 0.04], [-0.03, 0.0]]]
         }
       }
     }

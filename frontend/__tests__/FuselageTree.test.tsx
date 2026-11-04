@@ -220,3 +220,30 @@ describe("Fuselage in AeroplaneTree", () => {
     expect(xsec1?.className).toContain("font-semibold");
   });
 });
+
+describe("Fuselage sections with a contour in AeroplaneTree (gh-1349)", () => {
+  it("labels a section with its contour point count", async () => {
+    const user = userEvent.setup();
+    const contour = [
+      [0, -0.04], [0.02, -0.03], [0.04, 0], [0.03, 0.02], [0.02, 0.03], [0.01, 0.035],
+      [0.005, 0.039], [0, 0.04],
+    ];
+    ctxOverrides = { selectedFuselage: "TestFuselage" };
+    fuselageReturnValue = {
+      fuselage: {
+        ...mockFuselageData,
+        x_secs: mockFuselageData.x_secs.map((xs) => ({ ...xs, contour })),
+      },
+    };
+    render(
+      <AeroplaneTree
+        aeroplaneId="aero-1"
+        wingNames={[]}
+        fuselageNames={["TestFuselage"]}
+        aeroplaneName="eHawk"
+      />
+    );
+    await user.click(screen.getByText("TestFuselage"));
+    expect(screen.getByText("a=50.0mm b=40.0mm n=2.3 \u00B7 contour (8 points)")).toBeDefined();
+  });
+});

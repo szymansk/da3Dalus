@@ -13,12 +13,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import schemas
-from app.core.exceptions import ConflictError, InternalError, NotFoundError
+from app.core.exceptions import ConflictError, InternalError, NotFoundError, ValidationError
 from app.models.aeroplanemodel import (
     AeroplaneModel,
     FuselageModel,
     FuselageXSecSuperEllipseModel,
 )
+from app.schemas.fuselage_contour import contour_set_messages
 from app.services.wing_service import get_aeroplane_or_raise
 
 logger = logging.getLogger(__name__)
@@ -190,6 +191,22 @@ def delete_fuselage(
 # --- Cross-section operations ---
 
 
+def _ensure_contours_consistent(contours: list, fuselage_name: str) -> None:
+    """Refuse a single-section change that would break the fuselage's all-or-none contour rule.
+
+    The whole-fuselage writes are checked by ``FuselageSchema``; a create or update of one
+    section is checked here against its siblings (gh-1349). Raises ``ValidationError`` (422)
+    with the ``input_path`` of the first offending section.
+    """
+    messages = contour_set_messages(contours)
+    if messages:
+        index, message = messages[0]
+        raise ValidationError(
+            message=f"Fuselage {fuselage_name!r}: {message}",
+            details={"input_path": f"x_secs[{index}].contour", "fuselage_name": fuselage_name},
+        )
+
+
 def get_fuselage_cross_sections(
     db: Session,
     aeroplane_uuid,
@@ -301,6 +318,10 @@ def create_cross_section(
         else:
             insertion_index = index
 
+        contours = [xs.contour for xs in existing]
+        contours.insert(insertion_index, data["contour"])
+        _ensure_contours_consistent(contours, fuselage_name)
+
         # Shift sort_index of following cross-sections
         for xs in existing[insertion_index:]:
             xs.sort_index = xs.sort_index + 1
@@ -350,6 +371,9 @@ def update_cross_section(
             )
 
         data = xsec_data.model_dump()
+        contours = [xs.contour for xs in x_secs]
+        contours[index] = data["contour"]
+        _ensure_contours_consistent(contours, fuselage_name)
         new_xsec = FuselageXSecSuperEllipseModel(sort_index=index, **data)
         fuselage.x_secs[index] = new_xsec
         aeroplane.updated_at = datetime.now()

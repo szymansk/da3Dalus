@@ -23,6 +23,10 @@ from typing import cast
 from aero_kernel import geometry
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
+from aero_kernel.fuselage_contour import (
+    contour_defect,
+    contour_set_defects,
+)
 from aero_kernel.geometry import Wing
 from aero_kernel.rules import Rules
 from aero_kernel.schema import AircraftInput, ComputeRequest, KernelWarning
@@ -512,6 +516,64 @@ def _fuselage_findings(
                         "",
                         "Give the super-ellipse exponent a value > 0.",
                     )
+            findings += _contour_findings(x_sec, section, rules)
+        findings += _contour_set_findings(fuselage, path)
+    return findings
+
+
+_CONTOUR_HINT = (
+    "Give the full outline as a simple closed polygon, counter-clockwise with y to the right and "
+    "z up, (y, z) in metres relative to xyz, the first point not repeated (format 7.1b)."
+)
+
+
+def _finite_contour(x_sec: geometry.FuselageXSecSuperEllipse) -> bool:
+    """Whether a section has a contour whose numbers are all finite (the walk reports the rest)."""
+    contour = x_sec.contour
+    return contour is not None and all(math.isfinite(c) for point in contour for c in point)
+
+
+def _contour_findings(
+    x_sec: geometry.FuselageXSecSuperEllipse, section: str, rules: Rules
+) -> list[KernelError]:
+    """Check a section's contour against the rule ``fuselage-contour`` (#1349)."""
+    contour = x_sec.contour
+    if contour is None or not _finite_contour(x_sec):
+        return []
+    minimum = int(rules.value("fuselage-contour", "min_contour_points"))
+    defect = contour_defect(contour, minimum)
+    if defect is None:
+        return []
+    path = f"{section}.contour" if defect.point is None else f"{section}.contour[{defect.point}]"
+    return [
+        _finding(
+            "invalid_fuselage_contour",
+            path,
+            f"The fuselage contour at {section}.contour {defect.message}",
+            _CONTOUR_HINT,
+        )
+    ]
+
+
+def _contour_set_findings(fuselage: geometry.Fuselage, path: str) -> list[KernelError]:
+    """Check a fuselage's contours: all or none, one point count, degenerate only at the ends."""
+    findings: list[KernelError] = []
+    for defect in contour_set_defects([x_sec.contour for x_sec in fuselage.x_secs]):
+        section = f"{path}.x_secs[{defect.section}]"
+        if defect.kind == "degenerate":
+            code = "invalid_fuselage_contour"
+            hint = "Give the section a real outline, or end the fuselage at it."
+        else:
+            code = "inconsistent_fuselage_contours"
+            hint = "Give every section of the fuselage a contour with the same number of points, or none."
+        findings.append(
+            _finding(
+                code,
+                f"{section}.contour",
+                f"The fuselage section {section} {defect.message}",
+                hint,
+            )
+        )
     return findings
 
 

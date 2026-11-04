@@ -11,7 +11,7 @@ import { useWingConfig } from "@/hooks/useWingConfig";
 import type { WingConfigSegment } from "@/hooks/useWingConfig";
 import { useFuselage, type FuselageXSec } from "@/hooks/useFuselage";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
-import { parseLowerExponent } from "@/lib/fuselageSection";
+import { contourPointCount, contourWinsWarning, parseLowerExponent } from "@/lib/fuselageSection";
 
 /** Parse a number input string, allowing empty/partial input during editing */
 function num(v: string, fallback = 0): number {
@@ -820,7 +820,18 @@ function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, 
     b: Number.parseFloat(b) || 0.001,
     n: Math.max(0.5, Math.min(10, Number.parseFloat(n) || 2)),
     n_lower: parseLowerExponent(nLower),
+    // gh-1349: the contour is read-only here and travels back unchanged
+    contour: xsec.contour ?? null,
   });
+
+  // Editing the fit of a section with a contour does not change its drawn or built shape.
+  const fitEdited =
+    a !== String(xsec.a) ||
+    b !== String(xsec.b) ||
+    n !== String(xsec.n) ||
+    nLower !== (xsec.n_lower == null ? "" : String(xsec.n_lower));
+  const contourWarning = fitEdited ? contourWinsWarning(xsec) : null;
+  const contourCount = contourPointCount(xsec);
 
   useImperativeHandle(ref, () => ({
     async save() {
@@ -907,6 +918,16 @@ function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, 
           <Field label="n (exponent)" value={n} onChange={(v) => { setN(v); markDirty(); }} />
           <Field label="n lower (bottom, empty = n)" value={nLower} onChange={(v) => { setNLower(v); markDirty(); }} />
         </div>
+        {contourCount != null && (
+          <div className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+            contour ({contourCount} points) {"\u00B7"} read-only
+          </div>
+        )}
+        {contourWarning && (
+          <p role="note" className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-400">
+            {contourWarning}
+          </p>
+        )}
       </div>
 
       {error && (
