@@ -772,8 +772,11 @@ class FuselageXSecSuperEllipseSchema(BaseModel):
 
     Axis convention (gh-706) — keep consistent across the stack:
 
-    * ``a`` → ASB ``FuselageXSec.width``  (Y, lateral / left-right)
-    * ``b`` → ASB ``FuselageXSec.height`` (Z, vertical / up-down)
+    * ``2a`` → ASB ``FuselageXSec.width``  (Y, lateral / left-right)
+    * ``2b`` → ASB ``FuselageXSec.height`` (Z, vertical / up-down)
+
+    ASB takes full dimensions; the one conversion is
+    ``app.converters.superellipse_asb.superellipse_to_asb_xsec`` (gh-1146).
     """
 
     xyz: list[float] = Field(
@@ -785,7 +788,7 @@ class FuselageXSecSuperEllipseSchema(BaseModel):
         ...,
         description=(
             "Y-direction half-axis (semi-width) of the superellipse in metres. "
-            "Maps to ASB FuselageXSec.width."
+            "The full width of the section is 2a."
         ),
         examples=[0.5, 0.6],
     )
@@ -793,7 +796,7 @@ class FuselageXSecSuperEllipseSchema(BaseModel):
         ...,
         description=(
             "Z-direction half-axis (semi-height) of the superellipse in metres. "
-            "Maps to ASB FuselageXSec.height."
+            "The full height of the section is 2b."
         ),
         examples=[0.5, 0.4],
     )

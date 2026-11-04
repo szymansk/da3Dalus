@@ -57,12 +57,12 @@
   - Confidence: 🟢
 
 - [ ] **T-04 — `FuselageXSecSuperEllipseSchema` and the axis convention.**
-  `xyz`, `a`, `b`, `n` all required; `a` is the **Y half-axis** mapping to ASB
-  `FuselageXSec.width`, `b` the **Z half-axis** mapping to `.height`. Document
-  it on the fields — they are **half-axes, not diameters**.
+  `xyz`, `a`, `b`, `n` all required; `a` is the **Y half-axis** (`2a` maps to ASB
+  `FuselageXSec.width`), `b` the **Z half-axis** (`2b` maps to `.height`, #1146).
+  Document it on the fields — they are **half-axes, not diameters**.
   - Legacy origin: `app/schemas/aeroplaneschema.py:711-723` (gh-706)
-  - Definition of done: a conversion test asserts `width == a` and
-    `height == b` on the produced ASB `FuselageXSec`.
+  - Definition of done: a conversion test asserts `width == 2a` and
+    `height == 2b` on the produced ASB `FuselageXSec` (#1146).
   - Confidence: 🟢
 
 ### Lifecycle
@@ -344,8 +344,8 @@
       skin.
 - [ ] **TT-20 — Adaptive stations:** curvature-weighted placement beats uniform
       placement on a reference body's `volume_ratio`.
-- [ ] **TT-21 — ASB axis mapping:** `width == a` and `height == b` on the
-      converted `FuselageXSec`.
+- [ ] **TT-21 — ASB axis mapping:** `width == 2a` and `height == 2b` on the
+      converted `FuselageXSec` (#1146).
 
 ## Data Migration Tasks
 

@@ -98,8 +98,8 @@ flowchart TD
 
     subgraph MEAN["Meaning of the parameters"]
         M1["shape law: |y/a|^n + |z/b|^n = 1"]
-        M2["a = Y half-axis (semi-width)  -> ASB FuselageXSec.width"]
-        M3["b = Z half-axis (semi-height) -> ASB FuselageXSec.height"]
+        M2["a = Y half-axis (semi-width);  2a -> ASB FuselageXSec.width (#1146)"]
+        M3["b = Z half-axis (semi-height); 2b -> ASB FuselageXSec.height (#1146)"]
         M4["n = 2 -> ellipse;  n large -> rectangle"]
         M5["area = 4ab x Gamma(1+1/n)^2 / Gamma(1+2/n)"]
     end

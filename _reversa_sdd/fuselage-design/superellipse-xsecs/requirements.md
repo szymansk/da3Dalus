@@ -69,9 +69,11 @@ In the cross-section plane (Y lateral, Z vertical):
 |y/a|^n + |z/b|^n = 1
 ```
 
-`a` is the **Y half-axis** (semi-width) and maps to ASB
-`FuselageXSec.width`; `b` is the **Z half-axis** (semi-height) and maps to
-`FuselageXSec.height` (gh-706, `app/schemas/aeroplaneschema.py:711-723`).
+`a` is the **Y half-axis** (semi-width) and `2a` maps to ASB
+`FuselageXSec.width`; `b` is the **Z half-axis** (semi-height) and `2b` maps to
+`FuselageXSec.height` (gh-706 axis order; factor two corrected by gh-1146 — ASB
+takes full dimensions, `Q-FD-3`). The one conversion is
+`app/converters/superellipse_asb.py` (`superellipse_to_asb_xsec`).
 `n = 2` is an ellipse; larger `n` approaches a rectangle.
 
 A consumer that treats `a` / `b` as full widths **halves the body**; a consumer
@@ -180,7 +182,7 @@ This slice **writes neither STEP column**; it only stores and serves them.
 | RF-09 | module RF-09 | Serve the Surface STEP artefact for download | Should | `GET .../fuselages/{name}/step` → 200 with the file; no `step_path` → 404 |
 | RF-10 | module RF-10 | Serve the sewed Solid STEP artefact for download | Should | `GET .../fuselages/{name}/solid_step` → 200; `solid_step_path` null → 404 |
 | RF-21 | module RF-21 | Carry the `symmetric` XZ-mirror flag with default `False` | Must | A fuselage created without `symmetric` reads back `false` |
-| RF-X1 | new (slice-local) | Map `a → ASB width` and `b → ASB height` on conversion | Must | The produced `FuselageXSec` has `width == a` and `height == b`, not `2a` / `2b` |
+| RF-X1 | new (slice-local) | Map `2a → ASB width` and `2b → ASB height` on conversion, through the one seam `superellipse_to_asb_xsec` (gh-1146, `Q-FD-3`) | Must | The produced `FuselageXSec` has `width == 2a` and `height == 2b` |
 
 ## Non-functional Requirements
 
@@ -274,9 +276,9 @@ Feature: Superellipse parameterisation
   Scenario: The half-axes map to ASB width and height
     Given a cross-section with a 0.12 and b 0.08
     When it is converted to an ASB FuselageXSec
-    Then width is 0.12
-    And height is 0.08
-    # They are half-axes, not diameters — no factor of two is applied
+    Then width is 0.24
+    And height is 0.16
+    # They are half-axes, ASB takes full dimensions: width = 2a, height = 2b (#1146)
 
   Scenario: An exponent of two is an ellipse
     Given a cross-section with n 2.0, a 0.10 and b 0.05

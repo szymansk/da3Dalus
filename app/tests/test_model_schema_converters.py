@@ -690,10 +690,10 @@ def test_fuselage_model_to_fuselage_config():
     assert fuselage_config.name == "fuselage-a"
     assert fuselage_config.asb_fuselage is not None
     assert len(fuselage_config.asb_fuselage.xsecs) == 2
-    # Axis convention (gh-706): schema.a = Y-half-axis (ASB.width),
-    # schema.b = Z-half-axis (ASB.height). The second xsec has a=0.06, b=0.05.
-    assert fuselage_config.asb_fuselage.xsecs[1].width == pytest.approx(0.06)
-    assert fuselage_config.asb_fuselage.xsecs[1].height == pytest.approx(0.05)
+    # Axis convention (gh-706): schema.a = Y half-axis, schema.b = Z half-axis.
+    # ASB takes the full width 2a and height 2b (gh-1146). Second xsec: a=0.06, b=0.05.
+    assert fuselage_config.asb_fuselage.xsecs[1].width == pytest.approx(2 * 0.06)
+    assert fuselage_config.asb_fuselage.xsecs[1].height == pytest.approx(2 * 0.05)
 
 
 # ---------------------------------------------------------------------------
@@ -704,10 +704,10 @@ def test_fuselage_model_to_fuselage_config():
 class TestFuselageAxisConvention:
     """The schema's ``a``/``b`` fields map to ASB's ``width``/``height`` via:
 
-        a  →  ASB.width   (Y half-axis, lateral / sideways)
-        b  →  ASB.height  (Z half-axis, vertical / up-down)
+        2a  →  ASB.width   (a = Y half-axis, lateral / sideways)
+        2b  →  ASB.height  (b = Z half-axis, vertical / up-down)
 
-    ASB's own ellipse equation is ``(y/width)^n + (z/height)^n = 1``.
+    ASB takes full dimensions and evaluates ``width / 2`` and ``height / 2`` (gh-1146).
 
     These tests use deliberately **asymmetric** cross-sections (a ≠ b) so
     that any axis swap is immediately visible — symmetric (round)
@@ -731,8 +731,8 @@ class TestFuselageAxisConvention:
 
         xsecs = _asb_fuselage_xsecs_from_schema(wide_fuselage)
 
-        assert xsecs[1].width == pytest.approx(1.0)
-        assert xsecs[1].height == pytest.approx(0.5)
+        assert xsecs[1].width == pytest.approx(2 * 1.0)
+        assert xsecs[1].height == pytest.approx(2 * 0.5)
         assert xsecs[1].width > xsecs[1].height, (
             f"Source body was wider than tall (a=1.0 > b=0.5); after the "
             f"converter the ASB xsec must still satisfy width > height, "
@@ -761,8 +761,8 @@ class TestFuselageAxisConvention:
 
         assert fuselage_config.asb_fuselage is not None
         xs = fuselage_config.asb_fuselage.xsecs[1]
-        assert xs.width == pytest.approx(0.4)
-        assert xs.height == pytest.approx(0.1)
+        assert xs.width == pytest.approx(2 * 0.4)
+        assert xs.height == pytest.approx(2 * 0.1)
         assert xs.width > xs.height
 
 
