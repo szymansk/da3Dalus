@@ -583,7 +583,8 @@ def _mirror_contour_y(contour):
     """
     if contour is None:
         return None
-    return [(-float(y), float(z)) for y, z in reversed(contour)]
+    # 0.0 - y, not -y: a point on the centre line stays +0.0 instead of becoming -0.0
+    return [(0.0 - float(y), float(z)) for y, z in reversed(contour)]
 
 
 def _mirror_fuselage_schema_y(

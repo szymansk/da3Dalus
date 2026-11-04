@@ -79,25 +79,29 @@ class TestSectionSchema:
         assert len(xsec.contour) == len(contour)
 
     def test_two_points_are_refused_at_the_contour(self):
+        payload = section(0.0, count=2)
         with pytest.raises(ValidationError) as caught:
-            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, count=2))
+            schemas.FuselageXSecSuperEllipseSchema(**payload)
         (error,) = caught.value.errors()
         assert error["loc"] == ("contour",)
         assert "at least 3" in error["msg"]
 
     def test_a_clockwise_contour_is_refused(self):
+        payload = section(0.0, contour=ASYMMETRIC[::-1])
         with pytest.raises(ValidationError, match="clockwise"):
-            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, contour=ASYMMETRIC[::-1]))
+            schemas.FuselageXSecSuperEllipseSchema(**payload)
 
     def test_a_figure_eight_is_refused_naming_the_point(self):
         eight = [[0.0, 0.0], [0.02, 0.02], [0.02, 0.0], [0.0, 0.02]]
+        payload = section(0.0, contour=eight)
         with pytest.raises(ValidationError, match=r"contour\[2\].*crosses itself"):
-            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, contour=eight))
+            schemas.FuselageXSecSuperEllipseSchema(**payload)
 
     def test_a_repeated_closing_point_is_refused(self):
         closed = ellipse(0.03, 0.05) + [ellipse(0.03, 0.05)[0]]
+        payload = section(0.0, contour=closed)
         with pytest.raises(ValidationError, match="repeats point"):
-            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, contour=closed))
+            schemas.FuselageXSecSuperEllipseSchema(**payload)
 
     @pytest.mark.parametrize("bad", [math.nan, math.inf])
     def test_a_non_finite_point_is_refused(self, bad):
@@ -131,18 +135,19 @@ class TestFuselageSchema:
 
     @pytest.mark.parametrize("degenerate", [POINT, LINE], ids=["point", "line"])
     def test_a_degenerate_interior_section_is_refused(self, degenerate):
+        payload = body(section(0.0), section(0.5, contour=degenerate), section(1.0))
         with pytest.raises(ValidationError, match=r"x_secs\[1\] has a degenerate contour"):
-            schemas.FuselageSchema(
-                **body(section(0.0), section(0.5, contour=degenerate), section(1.0))
-            )
+            schemas.FuselageSchema(**payload)
 
     def test_a_section_without_contour_among_contours_is_refused(self):
+        payload = body(section(0.0), section(0.5, contour=False))
         with pytest.raises(ValidationError, match=r"x_secs\[1\] has no contour"):
-            schemas.FuselageSchema(**body(section(0.0), section(0.5, contour=False)))
+            schemas.FuselageSchema(**payload)
 
     def test_different_point_counts_are_refused(self):
+        payload = body(section(0.0), section(0.5, count=11))
         with pytest.raises(ValidationError, match=r"x_secs\[1\] has a contour of 11 points"):
-            schemas.FuselageSchema(**body(section(0.0), section(0.5, count=11)))
+            schemas.FuselageSchema(**payload)
 
 
 # --------------------------------------------------------------------------- converters
@@ -171,6 +176,10 @@ def test_the_mirrored_cad_copy_negates_y_and_keeps_counter_clockwise():
     ]
     for xs in mirrored.x_secs:
         assert [list(p) for p in xs.contour] == expected
+    # a point on the centre line stays on it as +0.0, never -0.0
+    assert all(
+        math.copysign(1.0, p[0]) == 1.0 for xs in mirrored.x_secs for p in xs.contour if p[0] == 0
+    )
     # the mirror image is itself a valid, counter-clockwise contour
     schemas.FuselageSchema.model_validate(mirrored.model_dump())
 

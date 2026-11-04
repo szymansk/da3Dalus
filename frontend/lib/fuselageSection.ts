@@ -96,9 +96,13 @@ export function sectionOutline(xs: FuselageSection, samples: number): SectionPoi
   return points;
 }
 
-/** First point of `contour` with the largest `score` (ties keep the earlier point). */
+/**
+ * First point of a non-empty `contour` with the largest `score` (ties keep the
+ * earlier point); callers pass only contours with at least one point.
+ */
 function extremePoint(contour: ContourPoint[], score: (p: ContourPoint) => number): SectionPoint {
-  const [y, z] = contour.reduce((best, p) => (score(p) > score(best) ? p : best));
+  const [first, ...rest] = contour;
+  const [y, z] = rest.reduce((best, p) => (score(p) > score(best) ? p : best), first);
   return { y, z };
 }
 
