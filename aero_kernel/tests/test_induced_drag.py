@@ -198,7 +198,7 @@ async def test_an_override_of_the_factor_reaches_the_worker(
 
 
 @pytest.mark.asyncio
-async def test_the_stall_glide_and_sink_problems_carry_the_factor_and_the_notice(
+async def test_glide_and_sink_declare_the_factor_and_the_stall_does_not(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from aero_kernel.tests.test_solvers_opti import solution
@@ -224,4 +224,80 @@ async def test_the_stall_glide_and_sink_problems_carry_the_factor_and_the_notice
         (await adapter.min_sink(airplane(), 1.5, 9.81, 1.0, AIR)).warnings,
     ]
     assert [r.k_e_d0 for r in requests] == [canon_k_e_d0()] * 3
-    assert [[w.code for w in warnings].count(CODE) for warnings in found] == [1, 1, 1]
+    # V_S, C_L,max and alpha_S read lift only: the stall carries no drag and declares none (the
+    # polar's C_D is corrected; its reader declares it)
+    assert [[w.code for w in warnings].count(CODE) for warnings in found] == [0, 1, 1]
+
+
+# --- the admissible range of the factor ----------------------------------------------------------
+
+
+def test_the_factor_is_bounded_to_0_exclusive_1_inclusive_in_the_canon() -> None:
+    """A viscous factor removes part of the induced drag: it is > 0 and at most 1 (1 removes nothing)."""
+    rule = shipped_build().model.namespaces["calc"].rules[INDUCED_DRAG_RULE]
+    parameter = rule.parameters[VISCOUS_FACTOR_PARAMETER]
+    assert (parameter.positive, parameter.at_most) == (True, 1.0)
+
+
+@pytest.mark.parametrize(
+    ("value", "code"),
+    [(0.0, "non_positive_value"), (-0.5, "non_positive_value"), (1.2, "value_above_maximum")],
+)
+def test_an_override_outside_the_range_is_refused(value: float, code: str) -> None:
+    from aero_kernel.errors import ErrorCategory
+    from aero_kernel.rules import rule_override_errors
+
+    key = f"{INDUCED_DRAG_RULE}.{VISCOUS_FACTOR_PARAMETER}"
+    (error,) = rule_override_errors({key: value}, shipped_build().model)
+    assert (error.code, error.category, error.input_path) == (
+        code,
+        ErrorCategory.INVALID_INPUT,
+        f"rule_overrides.{key}",
+    )
+
+
+@pytest.mark.parametrize("value", [1.0, 0.5, 1e-6])
+def test_an_override_inside_the_range_is_accepted(value: float) -> None:
+    from aero_kernel.rules import rule_override_errors
+
+    key = f"{INDUCED_DRAG_RULE}.{VISCOUS_FACTOR_PARAMETER}"
+    assert rule_override_errors({key: value}, shipped_build().model) == ()
+
+
+@pytest.mark.asyncio
+async def test_a_call_with_an_override_outside_the_range_computes_nothing() -> None:
+    from aero_kernel import compute
+    from aero_kernel.schema import AircraftInput
+    from aero_kernel.tests.engine_builders import request
+    from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+
+    aircraft = AircraftInput.model_validate(
+        {
+            "airplane": reference_document(FleetMember.BRYAN),
+            "values": {"aircraft-mass": FleetMember.BRYAN.mass_kg, "altitude": 0.0},
+            "rule_overrides": {f"{INDUCED_DRAG_RULE}.{VISCOUS_FACTOR_PARAMETER}": 1.5},
+        }
+    )
+    result = await compute(aircraft, request("wing-loading"))
+    assert [e.code for e in result.input_errors] == ["value_above_maximum"]
+
+
+@pytest.mark.parametrize(("bounds", "value"), [({"positive": True}, 0.0), ({"at_most": 1.0}, 1.5)])
+def test_a_rule_parameter_outside_its_own_bounds_is_refused_by_the_model(
+    bounds: dict[str, object], value: float
+) -> None:
+    from aero_kernel.canon.model import RuleParameter
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        RuleParameter.model_validate(
+            {
+                "value": value,
+                "unit": "1",
+                "basis": "sourced",
+                "status": "adopted",
+                "source": "s",
+                "regime": "r",
+                **bounds,
+            }
+        )

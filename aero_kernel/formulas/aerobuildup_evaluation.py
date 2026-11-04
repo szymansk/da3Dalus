@@ -1,4 +1,4 @@
-"""Canon formula ``aerobuildup-evaluation``: L, D := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere)).
+"""Canon formula ``aerobuildup-evaluation``: L and the kernel's D of AeroBuildup at (V, alpha) (#1346).
 
 One numeric AeroBuildup run at the caller's operating point in the bound ISA air state (#1201); tool
 AB, run by the OPT adapter, which owns every AeroBuildup call (ADR 0022). The airplane is converted
@@ -22,7 +22,8 @@ async def aerobuildup_evaluation(x: Inputs, ctx: Context) -> dict[str, float]:
         ctx: The formula context; ``ctx.solvers.opti`` runs AeroBuildup.
 
     Returns:
-        ``l`` the lift and ``d`` the drag in N, as AeroBuildup returns them.
+        ``l`` the lift in N as AeroBuildup returns it, ``d`` the kernel's drag in N
+        (``solvers.aerobuildup.kernel_drag``: ``D_profile + k_e,D0 * D_induced``, #1346).
 
     Raises:
         TypeError: If ``airplane`` is not the geometry or a number is not a number.

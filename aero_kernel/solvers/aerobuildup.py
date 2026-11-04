@@ -46,8 +46,10 @@ def kernel_drag(result: Mapping[str, Any], viscous_factor: float) -> Any:  # noq
     ``D = D_profile + k_e,D0 * D_induced`` (canon ``aerobuildup-evaluation``, rule
     ``aerobuildup-induced-drag``, #1346). AeroBuildup's induced drag is ``L^2 / (q pi b_eff^2)`` with
     ``b_eff^2`` a scale-free softmax of the components' ``b^2 e`` (``aero_buildup.py:279-290``), which
-    is homogeneous of degree 1, so this equals AeroBuildup run with ``k_e,D0 = 1``. AeroBuildup's own
-    total ``D`` is never read.
+    is homogeneous of degree 1, so this equals AeroBuildup run with ``k_e,D0 = 1`` while the wings
+    dominate that softmax: every wing's ``e`` carries ``k_e,D0``, a fuselage's own ``e = 0.95``
+    (``aero_buildup.py:1221``) does not, so where the fuselage term counts the equality is not exact
+    (the aero tier compares both on BRYAN and BELEMNITOS). AeroBuildup's own total ``D`` is never read.
 
     Args:
         result: An AeroBuildup result, or the model function's outputs: ``D_profile`` and

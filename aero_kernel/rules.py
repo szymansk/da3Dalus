@@ -141,7 +141,9 @@ class Rules:
 def rule_override_errors(
     overrides: Mapping[str, float], model: CanonModel
 ) -> tuple[KernelError, ...]:
-    """Refuse the overrides that name no adopted parameter of the canon, or are not finite.
+    """Refuse overrides of no adopted canon parameter, not finite, or outside its bounds.
+
+    The bounds are the parameter's ``positive`` and ``at_most`` (as for a supplied quantity).
 
     Args:
         overrides: The caller's ``rule_overrides``.
@@ -172,6 +174,18 @@ def rule_override_errors(
                 "non_finite_number",
                 f"Value at rule_overrides.{key} is {overrides[key]}; it must be a finite number.",
                 "Give the override a finite value.",
+            )
+        elif entry.positive and overrides[key] <= 0:
+            code, message, hint = (
+                "non_positive_value",
+                f"Value at rule_overrides.{key} is {overrides[key]}; it must be > 0.",
+                f"Give `{key}` a value > 0.",
+            )
+        elif entry.at_most is not None and overrides[key] > entry.at_most:
+            code, message, hint = (
+                "value_above_maximum",
+                f"Value at rule_overrides.{key} is {overrides[key]}; it must be <= {entry.at_most}.",
+                f"Give `{key}` a value <= {entry.at_most}.",
             )
         else:
             continue

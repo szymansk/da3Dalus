@@ -1839,7 +1839,8 @@ class OptiAdapter(SolverAdapter):
         solution = await self.runtime.run_cpu(stall_worker, request)
         warnings = _flap_warnings(flaps, solution.diagnostics)
         warnings += await self._regime_warnings(airplane, solution.v_s, air)
-        warnings.append(induced_drag_notice(request.k_e_d0))  # the drag of the published polar
+        # No drag notice: V_S, C_L,max and alpha_S read lift only. The published polar's C_D is the
+        # kernel's drag; the formula that reads it declares it (ADR 0020, #1346).
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)
         return Stall(solution=solution, warnings=tuple(warnings))
 

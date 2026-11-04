@@ -544,6 +544,10 @@ class RuleParameter(BaseModel):
         status: ``adopted``, or ``pending`` while it is a proposal the maintainer has not decided.
         source: Where the value comes from.
         regime: Why it holds in the RC/UAV regime (ADR 0028).
+        positive: ``True`` where the parameter is strictly greater than zero by its definition,
+            otherwise omitted (``None``), as for a quantity; an override at or below zero is refused.
+        at_most: The largest admissible value, otherwise omitted (``None``), as for a quantity; an
+            override above it is refused.
     """
 
     model_config = _MODEL_CONFIG
@@ -554,6 +558,28 @@ class RuleParameter(BaseModel):
     status: RuleStatus
     source: NonBlank
     regime: NonBlank
+    positive: Literal[True] | None = None
+    at_most: FiniteNumber | None = None
+
+    @field_validator("positive", mode="before")
+    @classmethod
+    def _positive_is_the_boolean(cls, value: object) -> object:
+        """Reject 1, 1.0 and "true": Python and pydantic read them as ``True``, JSON Schema does not."""
+        if value is not None and not isinstance(value, bool):
+            msg = "positive must be the boolean true"
+            raise ValueError(msg)
+        return value
+
+    @model_validator(mode="after")
+    def _check_value_in_bounds(self) -> Self:
+        """The canon's own value must satisfy the parameter's bounds."""
+        if self.positive and self.value <= 0:
+            msg = f"value {self.value} of a positive parameter must be > 0"
+            raise ValueError(msg)
+        if self.at_most is not None and self.value > self.at_most:
+            msg = f"value {self.value} exceeds the parameter's at_most {self.at_most}"
+            raise ValueError(msg)
+        return self
 
 
 class RuleTarget(BaseModel):

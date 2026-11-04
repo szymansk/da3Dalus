@@ -85,3 +85,58 @@ def test_aerobuildups_drag_is_the_sum_of_the_two_parts_the_kernel_reads(
         atol=0.0,
     )
     assert bool(np.all(induced > 0.0))
+
+
+# The kernel's drag and AeroBuildup's own drag with k_e,D0 = 1 are the same arithmetic up to the order
+# of the operations: the scale-free softmax of the components' b^2 e is homogeneous of degree 1, and the
+# fuselage's term (e = 0.95, without k_e,D0) is far below the wings' and gets no weight in the softmax
+# (relative softness 0.01). Measured on BRYAN, BELEMNITOS, WIESEL and CHEKKER: at most 4.4e-16 apart.
+# 1e-12 leaves four orders of magnitude for rounding; a fuselage term that counted would show at the
+# 1e-6 resolution of the #1346 measurement, so the test still catches a lost equality.
+K1_RELATIVE_TOLERANCE = 1e-12
+
+
+@pytest.mark.parametrize("member", [FleetMember.BRYAN, FleetMember.BELEMNITOS])
+def test_the_kernels_drag_is_aerobuildups_with_the_viscous_factor_set_to_one(
+    member: FleetMember, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The claim of #1346: D_profile + k_e,D0 D_induced equals AeroBuildup run with k_e,D0 = 1.
+
+    AeroBuildup's Oswald factor is divided by the canon's k_e,D0 for one run only (this test's
+    monkeypatch, undone after it), which is AeroSandbox with k_e,D0 = 1.
+    """
+    import importlib
+
+    from aero_kernel.geometry import AirplaneGeometry
+    from aero_kernel.solvers.air import FixedAtmosphere
+
+    asb = load_aerosandbox()
+    aerolib = importlib.import_module("aerosandbox.library.aerodynamics")  # untyped AeroSandbox
+    original = aerolib.oswalds_efficiency
+    converted = to_asb_airplane(AirplaneGeometry.model_validate(reference_document(member)))
+    alphas = np.array([-2.0, 2.0, 6.0, 10.0])
+
+    def run() -> dict[str, object]:
+        return asb.AeroBuildup(
+            converted,
+            asb.OperatingPoint(
+                atmosphere=FixedAtmosphere(sea_level_air()),
+                velocity=np.full_like(alphas, 9.0),
+                alpha=alphas,
+            ),
+            model_size="xlarge",
+        ).run()
+
+    as_is = run()
+
+    def without_viscous_factor(*args: object, **kwargs: object) -> object:
+        return original(*args, **kwargs) / K_E_D0
+
+    monkeypatch.setattr(aerolib, "oswalds_efficiency", without_viscous_factor)
+    factor_one = run()
+    assert np.allclose(
+        np.asarray(kernel_drag(as_is, K_E_D0), dtype=float),
+        np.asarray(factor_one["D"], dtype=float),
+        rtol=K1_RELATIVE_TOLERANCE,
+        atol=0.0,
+    )

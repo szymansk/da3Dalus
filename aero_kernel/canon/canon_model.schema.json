@@ -1104,8 +1104,20 @@
     },
     "RuleParameter": {
       "additionalProperties": false,
-      "description": "A threshold of a validation rule, with its unit, basis, status, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``.\n    basis: ``definition``, ``standard``, ``sourced`` or ``convention`` (chosen, adopted on the\n        maintainer's word).\n    status: ``adopted``, or ``pending`` while it is a proposal the maintainer has not decided.\n    source: Where the value comes from.\n    regime: Why it holds in the RC/UAV regime (ADR 0028).",
+      "description": "A threshold of a validation rule, with its unit, basis, status, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``.\n    basis: ``definition``, ``standard``, ``sourced`` or ``convention`` (chosen, adopted on the\n        maintainer's word).\n    status: ``adopted``, or ``pending`` while it is a proposal the maintainer has not decided.\n    source: Where the value comes from.\n    regime: Why it holds in the RC/UAV regime (ADR 0028).\n    positive: ``True`` where the parameter is strictly greater than zero by its definition,\n        otherwise omitted (``None``), as for a quantity; an override at or below zero is refused.\n    at_most: The largest admissible value, otherwise omitted (``None``), as for a quantity; an\n        override above it is refused.",
       "properties": {
+        "at_most": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At Most"
+        },
         "basis": {
           "enum": [
             "definition",
@@ -1115,6 +1127,19 @@
           ],
           "title": "Basis",
           "type": "string"
+        },
+        "positive": {
+          "anyOf": [
+            {
+              "const": true,
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Positive"
         },
         "regime": {
           "minLength": 1,

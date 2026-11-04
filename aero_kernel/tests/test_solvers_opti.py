@@ -18,7 +18,6 @@ from aero_kernel.tests.solver_builders import (
     InProcessRuntime,
     airplane,
     direct_aero_model,
-    drag_notice,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -69,16 +68,12 @@ async def test_the_stall_carries_the_regime_warnings_of_its_stall_speed(
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=6.0)))
     fast = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
     assert [w.code for w in fast.warnings] == [
-        "reynolds_bubble_sensitive",
-        "induced_drag_viscous_factor_removed",
-    ]
+        "reynolds_bubble_sensitive"
+    ]  # no drag: no drag notice
     assert fast.warnings[0].detail["wing"] == "Main"
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=2.0)))
     slow = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
-    assert [w.code for w in slow.warnings] == [
-        "reynolds_outside_band",
-        "induced_drag_viscous_factor_removed",
-    ]
+    assert [w.code for w in slow.warnings] == ["reynolds_outside_band"]
     assert all(w.origin is None for w in (*fast.warnings, *slow.warnings))
 
 
@@ -429,9 +424,9 @@ async def test_the_stall_regime_warnings_are_those_of_the_stall_speed(
         canon_bands(),
     )
     assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
-    assert result.warnings == (*expected, drag_notice())
+    assert result.warnings == tuple(expected)
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=18.0)))
-    assert (await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)).warnings == (drag_notice(),)
+    assert (await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)).warnings == ()
 
 
 async def test_a_stall_with_a_deflected_flap_records_the_confidence_at_the_optimum(
@@ -523,7 +518,7 @@ async def test_the_regime_bands_are_the_call_rules(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=6.0)))
     rules = Rules(shipped_build().model, {"reynolds-mach-regime.re_bubble_max": 5e4})
     result = await OptiAdapter(InProcessRuntime(), rules).stall(airplane(), 1.5, 9.81, 1.0, AIR)
-    assert result.warnings == (drag_notice(),)
+    assert result.warnings == ()
     assert ("reynolds-mach-regime", "re_bubble_max", True) in {
         (u.rule, u.parameter, u.overridden) for u in rules.used()
     }

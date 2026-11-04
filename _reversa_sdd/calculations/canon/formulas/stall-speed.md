@@ -253,6 +253,8 @@ can never fire is inert (ADR 0021). The Ist finding below is what the binding re
 > **Reopened for approval (2026-11-03, #1346).** Only the `C_D` column of the published polar `polar-stall`
 > changed: it is now the kernel's drag (`D_profile + k_e,D0 · D_induced`) over `q·S_ref`, no longer AeroBuildup's
 > `C_D`. `V_S`, `C_L,max`, `α_S`, the take-off, landing and inverted applications, the bracketing and the
-> postconditions read lift only and are unchanged (their goldens did not move). The result carries the `notice`
-> `induced_drag_viscous_factor_removed` for the polar. The entry is back to `draft` because the computation
-> of one of its outputs changed.
+> postconditions read lift only and are unchanged (their goldens did not move). The result carries **no**
+> `induced_drag_viscous_factor_removed` notice: none of its values reads drag, and a notice on `V_S` and its
+> subtree would declare a correction they do not carry (ADR 0020). The formula that reads the polar's `C_D`
+> declares it (Soll: [[parabolic-polar-fit]] when implemented). The entry is back to `draft` because the
+> computation of one of its outputs changed.

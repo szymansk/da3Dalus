@@ -303,7 +303,8 @@ Sources:
   (wetted area) is kept only approximately
 - the kernel's drag (`induced_drag_viscous_factor_removed`, `notice`, #1346, ch. 8.8): AeroBuildup's full-scale
   viscous factor `k_e,D0` is taken out of its induced drag on every drag the kernel reads; one per evaluation
-  (evaluate, stall, best glide, minimum sink), `detail`: `k_e_d0` and `induced_drag_share_removed`
+  (evaluate, best glide, minimum sink; not the stall, whose values read lift only — the reader of the published
+  polar's `C_D` declares it), `detail`: `k_e_d0` and `induced_drag_share_removed`
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`warning`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`warning`)
 - the averaged hinge line of a roll device or deflected flap (`hinge_line_averaged`, `notice`, ch. 8.8):
@@ -862,8 +863,8 @@ caller's responsibility.
     worker in the request (`k_e_d0` of `StallRequest`, `SweepRequest`, `EvaluationRequest`); it is applied
     outside the model function, which therefore needs no new key. The aero tier checks that the canon value is
     AeroSandbox's (`oswalds_efficiency / e_theo` to 1·10⁻⁹) and that AeroBuildup's `D` is `D_profile +
-    D_induced`. Every value that carries the correction — the evaluation, the stall (its published polar), best
-    glide, minimum sink — gets the `notice` `induced_drag_viscous_factor_removed` (ch. 8.2), once per
+    D_induced`. Every value that carries the correction — the evaluation, best glide, minimum sink — gets the
+    `notice` `induced_drag_viscous_factor_removed` (ch. 8.2), once per
     evaluation, with `k_e_d0` and `induced_drag_share_removed` (`1 − k_e,D0`) in `detail`.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
     the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own

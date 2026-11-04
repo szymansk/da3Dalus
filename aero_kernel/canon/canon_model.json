@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e6afd6741edf7b3b1f952b6a977025181dcfd3dc18743dea53ef177b6027dac1",
+  "content_hash": "sha256:3615a9fb982407b0949e03cf9225aa8f6e96b4286a838810edd580f90ec7b766",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6656,12 +6656,14 @@
           "codes": [
             "induced_drag_viscous_factor_removed"
           ],
-          "criterion": "AeroBuildup's induced drag uses the Nita-Scholz Oswald factor, which multiplies the inviscid (geometric) factor by the empirical viscous factor k_e_d0 (aerosandbox/library/aerodynamics/inviscid.py:67-74, 81); that factor folds the lift-dependent profile drag into e, and NeuralFoil's section polars, which AeroBuildup integrates at each local Reynolds number, already contain that drag: AeroBuildup counts it twice. Wherever the kernel takes drag from AeroBuildup (the single evaluation, the alpha sweep, the model function of the IPOPT problems) it therefore uses D = D_profile + k_e_d0 * D_induced and C_D = D / (q S_ref), with D_profile and D_induced as AeroBuildup returns them (aero_buildup.py:344-345); the softmax that combines the components' effective spans (aero_buildup.py:279-290) is homogeneous of degree 1, so this equals AeroBuildup with k_e_d0 = 1 (measured on four fleet aircraft: ratio 0.836250, #1346). AeroSandbox is not patched. Every value that carries the correction is declared by the notice induced_drag_viscous_factor_removed (one per evaluation), with k_e_d0 and the share of AeroBuildup's induced drag removed (1 - k_e_d0) in its detail (maintainer 2026-11-03, #1346, path B).",
+          "criterion": "AeroBuildup's induced drag uses the Nita-Scholz Oswald factor, which multiplies the inviscid (geometric) factor by the empirical viscous factor k_e_d0 (aerosandbox/library/aerodynamics/inviscid.py:67-74, 81); that factor folds the lift-dependent profile drag into e, and NeuralFoil's section polars, which AeroBuildup integrates at each local Reynolds number, already contain that drag: AeroBuildup counts it twice. Wherever the kernel takes drag from AeroBuildup (the single evaluation, the alpha sweep, the model function of the IPOPT problems) it therefore uses D = D_profile + k_e_d0 * D_induced and C_D = D / (q S_ref), with D_profile and D_induced as AeroBuildup returns them (aero_buildup.py:344-345); the softmax that combines the components' effective spans (aero_buildup.py:279-290) is homogeneous of degree 1, and every wing's e carries k_e_d0, so this equals AeroBuildup with k_e_d0 = 1 while the wings dominate the softmax; a fuselage's own e = 0.95 (aero_buildup.py:1221) carries no k_e_d0, so where the fuselage term counts the equality is not exact (measured on four fleet aircraft: ratio 0.836250, #1346; the aero tier compares the two on BRYAN and BELEMNITOS). The parameter is greater than zero and at most 1 (1 removes nothing); an override outside that is refused. AeroSandbox is not patched. Every value that carries the correction is declared by the notice induced_drag_viscous_factor_removed (one per evaluation), with k_e_d0 and the share of AeroBuildup's induced drag removed (1 - k_e_d0) in its detail (maintainer 2026-11-03, #1346, path B).",
           "kind": "tool",
           "on_violation": "warning",
           "parameters": {
             "k_e_d0": {
+              "at_most": 1.0,
               "basis": "sourced",
+              "positive": true,
               "regime": "not an RC/UAV value: the four classes are full-scale aircraft (ADR 0028), which is why the kernel removes the factor instead of applying it; the value is AeroSandbox's, so that the removal is exact. Measured on BRYAN, WIESEL, CHEKKER and BELEMNITOS (#1346): AeroBuildup's induced drag against AVL Trefftz at C_L 0.9 is +24 to +28 % with the factor and +3.7 to +6.9 % without it; NeuralFoil's lift-dependent profile drag is 0.3 to 1.3 times the term the factor adds",
               "source": "Nita & Scholz (2012), Estimating the Oswald Factor from Basic Aircraft Geometrical Parameters, section 5: the class values of the viscous factor k_e,D0 (jet transport 0.873, business jet 0.864, turboprop 0.804, general aviation 0.804), as transcribed in AeroSandbox 4.2.9 aerosandbox/library/aerodynamics/inviscid.py:67-74, which uses their mean 0.83625; the paper itself is not in the vault (open gap, #1346). Anderson, Fundamentals of Aerodynamics 6e, 6.7.2: the Oswald factor of the complete-airplane polar absorbs the lift-dependent part of the parasite drag; 5.3.3: where the profile drag comes from a section polar, the inviscid span efficiency factor is the right one. Removal decided by the maintainer 2026-11-03, #1346 (path B). The aero tier checks that this value equals AeroSandbox's (oswalds_efficiency over its e_theo)",
               "status": "adopted",
@@ -6723,7 +6725,9 @@
           "on_violation": "error",
           "parameters": {
             "min_contour_points": {
+              "at_most": null,
               "basis": "definition",
+              "positive": null,
               "regime": "regime-independent",
               "source": "three points are the least that enclose an area; the first and last point being the trailing edge makes the order Selig",
               "status": "adopted",
@@ -6785,7 +6789,9 @@
           "on_violation": "warning",
           "parameters": {
             "max_roll_rate_coefficient": {
+              "at_most": null,
               "basis": "sourced",
+              "positive": null,
               "regime": "RC/UAV: model roll rates stay inside the primer's range at approach speed (BRYAN 0.29, JAGUAR 0.28 at 20 deg are beyond it, which is why the AVL world is dropped there); the limit is a property of AVL's linearisation, not of the flow regime",
               "source": "AVL primer (Avl/avl_doc.txt:121-141): -0.10 < pb/2V < 0.10 is the practical limit for roll rates, beyond which results should be interpreted with caution; adopted for the AVL world by the maintainer on #1243, 2026-10-25",
               "status": "adopted",
@@ -6860,7 +6866,9 @@
           "on_violation": "warning",
           "parameters": {
             "max_flap_deflection": {
+              "at_most": null,
               "basis": "convention",
+              "positive": null,
               "regime": "transport and general-aviation material for the separation angle, not checked at model Reynolds number (ADR 0028); the adopted value is deliberately below it",
               "source": "plain-flap separation above about 40 deg (Scholz ch. 8 / Sadraey 5.12.2), earlier at low Re; 30 deg keeps a margin; adopted by the maintainer 2026-10-26, #1212",
               "status": "adopted",
@@ -6868,7 +6876,9 @@
               "value": 30.0
             },
             "min_confidence": {
+              "at_most": null,
               "basis": "convention",
+              "positive": null,
               "regime": "RC/UAV: measured at chord Reynolds numbers 1e5 and 3e5, inside the band of ADR 0028",
               "source": "the app's existing low-confidence flag for NeuralFoil polars, app/settings.py low_re_low_confidence_flag = 0.85 ('Low analysis confidence - validate with XFoil'); one threshold for one concept; adopted by the maintainer 2026-10-26, #1212. The kernel must not import app/ (E8), so the value is stated twice: a later change of either must change both. Measured on RV-7 (NACA 23013.5, Re 1e5, hinge 0.75): flap 15 deg gives confidence of at least 0.93 at the section, 30 deg 0.35 to 0.8",
               "status": "adopted",
@@ -6890,7 +6900,9 @@
           "on_violation": "error",
           "parameters": {
             "join_tolerance": {
+              "at_most": null,
               "basis": "convention",
+              "positive": null,
               "regime": "regime-independent: a statement about the geometry document, not about the flow",
               "source": "a numerical identity of two positions of one rib; no published source (maintainer 2026-10-26, #1299: a domain limit that stays an overridable rule parameter)",
               "status": "adopted",
@@ -6925,7 +6937,9 @@
           "on_violation": "error",
           "parameters": {
             "max_inclination": {
+              "at_most": null,
               "basis": "convention",
+              "positive": null,
               "regime": "regime-independent: a statement about the shape of the surface, not about the flow",
               "source": "adopted by the maintainer on 2026-10-25 (#1253); no published source. The dihedral of a real main wing stays far below it, even a strong V (10-15 deg), while a fin or a V-tail typed main_wing has y-extent <= z-extent",
               "status": "adopted",
@@ -6947,7 +6961,9 @@
           "on_violation": "error",
           "parameters": {
             "min_sections": {
+              "at_most": null,
               "basis": "definition",
+              "positive": null,
               "regime": "regime-independent",
               "source": "a lofted surface is defined by at least two sections",
               "status": "adopted",
@@ -6982,7 +6998,9 @@
           "on_violation": "error",
           "parameters": {
             "required_main_wings": {
+              "at_most": null,
               "basis": "definition",
+              "positive": null,
               "regime": "regime-independent",
               "source": "one reference wing per airplane; biplanes are out of v1 (ARCHITECTURE 8.5)",
               "status": "adopted",
@@ -7022,7 +7040,9 @@
           "on_violation": "warning",
           "parameters": {
             "mach_limit": {
+              "at_most": null,
               "basis": "sourced",
+              "positive": null,
               "regime": "regime-independent (a statement about compressibility); the RC/UAV regime lies far below it",
               "source": "ADR 0028: Anderson, Fundamentals of Aerodynamics 6e, 8.5: below Mach 0.3 the density changes by less than 5 %, the flow is incompressible",
               "status": "adopted",
@@ -7030,7 +7050,9 @@
               "value": 0.3
             },
             "mach_validity": {
+              "at_most": null,
               "basis": "sourced",
+              "positive": null,
               "regime": "regime-independent (a statement about compressibility); the RC/UAV regime lies far below it",
               "source": "ADR 0028: AVL documentation, Prandtl-Glauert 'expected valid' to about Mach 0.6; NeuralFoil's Laitone correction; above it a value is not physically meaningful (error, amended 2026-11-01, #1342)",
               "status": "adopted",
@@ -7038,7 +7060,9 @@
               "value": 0.6
             },
             "re_band_max": {
+              "at_most": null,
               "basis": "sourced",
+              "positive": null,
               "regime": "defines the RC/UAV regime (ADR 0028): the upper end of the core band",
               "source": "ADR 0028: Lissaman 1983 p. 228, 'low Re' is 1e4 to 1e6; above it the tools stay valid (NeuralFoil trained to Re about 2.6e8, Sharpe 2024 7.2.5), a notice only",
               "status": "adopted",
@@ -7046,7 +7070,9 @@
               "value": 1000000.0
             },
             "re_band_min": {
+              "at_most": null,
               "basis": "sourced",
+              "positive": null,
               "regime": "defines the RC/UAV regime (ADR 0028): the lower end of the core chord Reynolds band",
               "source": "ADR 0028 (maintainer 2026-10-14): Lissaman, Low-Reynolds-Number Airfoils, Ann. Rev. Fluid Mech. 15 (1983) p. 227-228: below about 3e4 separation can involve the whole trailing edge; the band edge itself is marked uncited practice in the ADR",
               "status": "adopted",
@@ -7054,7 +7080,9 @@
               "value": 30000.0
             },
             "re_bubble_max": {
+              "at_most": null,
               "basis": "sourced",
+              "positive": null,
               "regime": "defines the RC/UAV regime (ADR 0028): the bubble-sensitive part of the core band",
               "source": "ADR 0028: Lissaman 1983 p. 228, critical Re about 70 000 (a laminar bubble needs about Re 50 000 of run to reattach); Sharpe 2024 PhD thesis 7.2.4, NeuralFoil's analysis confidence drops near Re 80 000",
               "status": "adopted",
@@ -7117,7 +7145,9 @@
           "on_violation": "warning",
           "parameters": {
             "agreement_tolerance": {
+              "at_most": null,
               "basis": "convention",
+              "positive": null,
               "regime": "regime-independent as a statement about agreement; the value rests on the spread of the methods in the RC/UAV regime",
               "source": "maintainer 2026-10-25: 5 % MAC. Reasoning: the neutral-point worlds spread 3-6 % MAC (textbook against AVL, BRYAN and JAGUAR), plus the declared probe bias (AeroBuildup has no wing-tail downwash)",
               "status": "adopted",
