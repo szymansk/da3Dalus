@@ -25,7 +25,7 @@ from app.converters.model_schema_converters import (
     fuselage_schema_to_fuselage_config,
 )
 from app.converters.split_superellipse import SplitSuperEllipseFuselageXSec
-from app.converters.superellipse_asb import FULL_OVER_HALF_AXIS, superellipse_to_asb_xsec
+from app.converters.superellipse_asb import superellipse_to_asb_xsec
 from app.models.aeroplanemodel import FuselageModel
 
 A = 0.0226  # BRYAN's largest half-width in metres (issue #1146)
@@ -33,9 +33,6 @@ B = 0.0420  # BRYAN's largest half-height in metres
 
 
 class TestSeam:
-    def test_full_over_half_axis_is_two(self):
-        assert FULL_OVER_HALF_AXIS == 2.0
-
     def test_width_is_twice_the_half_axis_a(self):
         xsec = superellipse_to_asb_xsec(xyz=[0.1, 0.0, 0.0], a=A, b=B, n=2.0)
         assert xsec.width == pytest.approx(2.0 * A)

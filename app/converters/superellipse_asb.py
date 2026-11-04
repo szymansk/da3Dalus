@@ -11,13 +11,14 @@ AeroSandbox goes through :func:`superellipse_to_asb_xsec`.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
-if TYPE_CHECKING:
-    from aerosandbox import FuselageXSec
+from aerosandbox import FuselageXSec
+
+from app.converters.split_superellipse import SplitSuperEllipseFuselageXSec
 
 # Full dimension over half-axis: a super-ellipse spans -a..+a laterally and -b..+b vertically.
-FULL_OVER_HALF_AXIS = 2.0
+_FULL_OVER_HALF_AXIS = 2.0
 
 # Every super-ellipse section lies in the Y-Z plane, normal to the fuselage axis X.
 _SECTION_NORMAL = (1.0, 0.0, 0.0)
@@ -36,18 +37,12 @@ def superellipse_to_asb_xsec(
     A section whose ``n_lower`` differs from ``n`` becomes a split super-ellipse (gh-1157)
     with the same full width and height.
     """
-    # Imported here so that the constant above stays importable without AeroSandbox
-    # (platform guard; the plausibility service reuses it).
-    from aerosandbox import FuselageXSec
-
-    from app.converters.split_superellipse import SplitSuperEllipseFuselageXSec
-
     common = {
         "xyz_c": [float(value) for value in xyz],
         "xyz_normal": list(_SECTION_NORMAL),
         "radius": None,
-        "width": FULL_OVER_HALF_AXIS * float(a),
-        "height": FULL_OVER_HALF_AXIS * float(b),
+        "width": _FULL_OVER_HALF_AXIS * float(a),
+        "height": _FULL_OVER_HALF_AXIS * float(b),
     }
     if n_lower is None or float(n_lower) == float(n):
         return FuselageXSec(shape=float(n), **common)

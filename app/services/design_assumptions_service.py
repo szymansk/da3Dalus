@@ -14,7 +14,6 @@ from app.models.computation_config import (
     AircraftComputationConfigModel,
     COMPUTATION_CONFIG_DEFAULTS,
 )
-from app.services.fuselage_plausibility_service import fuselage_aspect_ratio_warnings
 from app.services.surface_type_service import surface_type_warnings
 from app.schemas.design_assumption import (
     DESIGN_CHOICE_PARAMS,
@@ -148,10 +147,7 @@ def list_assumptions(db: Session, aeroplane_uuid) -> AssumptionsSummary:
         return AssumptionsSummary(
             assumptions=assumptions,
             warnings_count=warnings_count,
-            design_warnings=(
-                surface_type_warnings(aeroplane.wings or [])
-                + fuselage_aspect_ratio_warnings(aeroplane.fuselages or [])
-            ),
+            design_warnings=surface_type_warnings(aeroplane.wings or []),
         )
     except NotFoundError:
         raise

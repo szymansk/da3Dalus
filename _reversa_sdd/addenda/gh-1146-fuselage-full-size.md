@@ -18,7 +18,7 @@ best L/D 9.20 instead of 7.78). Every app path now goes through one seam,
 `app/converters/superellipse_asb.py::superellipse_to_asb_xsec`, which gives
 `width = 2a`, `height = 2b` (also for split sections with `n_lower`, gh-1157). The
 previous inline conversion `_asb_fuselage_xsec` is deleted. The aspect-ratio band of
-`Q-FD-3` ③ is declared as a `DesignWarning` in the assumptions summary.
+`Q-FD-3` ③ is not built: the maintainer rejected it (see *Decisions*).
 
 ## Impacto por artefato da extração
 
@@ -37,7 +37,6 @@ previous inline conversion `_asb_fuselage_xsec` is deleted. The aspect-ratio ban
 | `code-analysis.md` | fuselage axis convention, l.597 | `regra-alterada` | Corrected in place. |
 | `flowcharts/fuselage-design.md` | shape-law nodes M2/M3, l.101-102 | `regra-alterada` | Corrected in place. |
 | `fuselage-design/superellipse-xsecs/` | conversion to ASB | `componente-novo` | One seam `superellipse_to_asb_xsec(xyz, a, b, n, n_lower)` in `app/converters/superellipse_asb.py`, used by `_asb_fuselage_xsecs_from_schema` and `fuselage_model_to_fuselage_config`. |
-| `fuselage-design/superellipse-xsecs/` | plausibility | `regra-nova` | `GET /aeroplanes/{id}/assumptions` → `design_warnings` carries `FUSELAGE_ASPECT_RATIO_OUTSIDE_BAND` (`severity: warning`) for a body whose `max(2a)/max(2b)` lies outside `[0.3, 3.0]` (`app/services/fuselage_plausibility_service.py`). Never an exception. |
 | `aeroplane-core/` | schema → ASB airplane | `delta-de-contrato-externo` | Every number that depends on the fuselage (AeroBuildup drag, L/D, polar, side force, `C_nβ`) changes for every aircraft with a fuselage; the stored rows do not change. |
 
 The corrections above edit the extraction in place, which this README normally reserves
@@ -52,8 +51,8 @@ for re-extraction; issue #1146 mandated it because the old text recorded the bug
 - `Q-FD-3 ①` — one conversion seam for every **app** path. The `cad_designer` slicer keeps
   its own `2.0 * a` (read-only package, routing would modify it); the OpenVSP handler builds
   no ASB section (its `2.0 * a` is the rounded-rectangle exponent input, already correct).
-- `Q-FD-3 ③` — aspect-ratio band `2a/2b ∈ [0.3, 3.0]` as `DesignWarning`, judged per body
-  on the largest section of each axis.
+- **Rejected:** `Q-FD-3 ③` — Q-FD-3 ③ rejected, maintainer 2026-11-04: no source for the [0.3, 3.0] band; plausibility only against real reference geometry (#1353 STEP bounding box, #1349 contour). Recorded under the `Q-FD-3` answer in
+  `questions.md`.
 - **Not implemented:** `Q-FD-3 ②` — the import-time bounding-box check
   `2a ≤ 1.02 · Y_extent(step)` and the audit query over rows with a surviving `step_path`.
   The slicer's metrics carry no source bounding box and the slicer is read-only; tracked
