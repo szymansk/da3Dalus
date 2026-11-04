@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from app.converters.superellipse_asb import FULL_OVER_HALF_AXIS
 from app.schemas.design_warning import DesignWarning
 
 FUSELAGE_ASPECT_RATIO_OUTSIDE_BAND_CODE = "FUSELAGE_ASPECT_RATIO_OUTSIDE_BAND"
@@ -31,8 +32,8 @@ def fuselage_aspect_ratio_warnings(fuselages: Iterable) -> list[DesignWarning]:
     warnings = []
     for fuselage in fuselages:
         sections = fuselage.x_secs or []
-        max_width = max((2.0 * float(xs.a) for xs in sections), default=0.0)
-        max_height = max((2.0 * float(xs.b) for xs in sections), default=0.0)
+        max_width = max((FULL_OVER_HALF_AXIS * float(xs.a) for xs in sections), default=0.0)
+        max_height = max((FULL_OVER_HALF_AXIS * float(xs.b) for xs in sections), default=0.0)
         if max_width <= 0.0 or max_height <= 0.0:
             continue
         ratio = max_width / max_height

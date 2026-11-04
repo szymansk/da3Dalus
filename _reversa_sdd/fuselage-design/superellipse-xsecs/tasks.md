@@ -57,13 +57,13 @@ No geometry kernel is required for this slice. CadQuery is needed only by
 
 - [ ] **T-04 — `FuselageXSecSuperEllipseSchema` and the axis convention.**
   (module T-04)
-  `xyz`, `a`, `b`, `n` all required; `a` is the **Y half-axis** mapping to ASB
-  `FuselageXSec.width`, `b` the **Z half-axis** mapping to `.height`. Document it
-  on the fields — they are **half-axes, not diameters**, and no factor of two is
-  applied anywhere.
+  `xyz`, `a`, `b`, `n` all required; `a` is the **Y half-axis** (`2a` maps to ASB
+  `FuselageXSec.width`), `b` the **Z half-axis** (`2b` maps to `.height`). Document it
+  on the fields — they are **half-axes, not diameters**; the factor two is applied
+  once, in the ASB seam `superellipse_to_asb_xsec` (#1146).
   - Legacy origin: `app/schemas/aeroplaneschema.py:711-723` (gh-706)
-  - Definition of done: a conversion test asserts `width == a` and
-    `height == b` (not `2a` / `2b`) on the produced ASB `FuselageXSec`.
+  - Definition of done: a conversion test asserts `width == 2a` and
+    `height == 2b` on the produced ASB `FuselageXSec` (#1146).
   - Confidence: 🟢
 
 - [ ] **T-05 — Superellipse identities available to consumers.**
@@ -185,8 +185,8 @@ No geometry kernel is required for this slice. CadQuery is needed only by
 - [ ] **TT-11 — STEP download:** a fuselage without `solid_step_path` returns
       404; a present path resolves under `ARTIFACTS_BASE_DIR` and never escapes
       it.
-- [ ] **TT-12 — ASB axis mapping:** `width == a` and `height == b` on the
-      converted `FuselageXSec` — a factor-of-two regression must fail this test.
+- [ ] **TT-12 — ASB axis mapping:** `width == 2a` and `height == 2b` on the
+      converted `FuselageXSec` (#1146) — a factor-of-two regression must fail this test.
 - [ ] **TT-13 — Superellipse identities:** `n = 2` gives `area == π·a·b`;
       `perimeter` matches a reference ellipse approximation.
 - [ ] **TT-14 — Ordering:** cross-sections created out of order come back sorted

@@ -159,7 +159,9 @@ No database is required for this slice — it persists nothing. 🟢
   - Legacy origin: `app/schemas/aeroplaneschema.py:711-723` (gh-706);
     data-dictionary §Module: fuselage-design
   - Definition of done: a round-trip test slices a STEP, `PUT`s the result and
-    reads it back with `a` and `b` unchanged — no factor of two, no scaling;
+    reads it back with the stored half-axes `a` and `b` unchanged — no factor of
+    two and no scaling in storage (the factor two belongs only to the ASB seam,
+    `width = 2a`, `height = 2b`, #1146);
     a millimetre-authored fixture triggers the plausibility `DesignWarning`
     rather than silently storing a 1000×-oversized body.
   - Confidence: 🟢

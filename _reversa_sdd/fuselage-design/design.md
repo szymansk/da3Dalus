@@ -191,8 +191,8 @@ circumference, and the bounds stop the optimiser from degenerating into a cross
 ### F7 — Axis convention (gh-706) 🟢
 
 ```
-a  (Y half-axis, semi-width)  → ASB FuselageXSec.width
-b  (Z half-axis, semi-height) → ASB FuselageXSec.height
+2a (a = Y half-axis, semi-width)  → ASB FuselageXSec.width   (#1146)
+2b (b = Z half-axis, semi-height) → ASB FuselageXSec.height  (#1146)
 ```
 
 (`app/schemas/aeroplaneschema.py:711-723`.) They are **half-axes, not

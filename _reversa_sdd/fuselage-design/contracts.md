@@ -45,8 +45,8 @@ colliding item. 🟢 CONFIRMED.
 
 There is **no** millimetre exception in this module — unlike
 `wing_xsec_spares` (gh-402). `a` and `b` are **half-axes, not diameters**;
-they map to ASB `FuselageXSec.width` / `.height` respectively (gh-706,
-`app/schemas/aeroplaneschema.py:711-723`). 🟢
+`2a` and `2b` map to ASB `FuselageXSec.width` / `.height` respectively (gh-706,
+#1146, `app/converters/superellipse_asb.py`). 🟢
 
 **Decided mechanism, not a bare assertion (`Q-FD-3`, expert consensus endorsed
 by the maintainer 2026-08-14) — not yet implemented.** The two independent
@@ -103,8 +103,8 @@ mention. 🟢 CONFIRMED behaviour; 🟢 CONFIRMED target, not yet implemented.
 | Field | Type | Required | Unit | Notes |
 |---|---|---|---|---|
 | `xyz` | `list[float]` | yes | metres | section centre `[x, y, z]` |
-| `a` | `float` | yes | metres | **Y half-axis** → ASB `width` |
-| `b` | `float` | yes | metres | **Z half-axis** → ASB `height` |
+| `a` | `float` | yes | metres | **Y half-axis**; `2a` → ASB `width` (#1146) |
+| `b` | `float` | yes | metres | **Z half-axis**; `2b` → ASB `height` (#1146) |
 | `n` | `float` | yes | — | exponent; `2` = ellipse, larger → rectangular |
 
 (`app/schemas/aeroplaneschema.py:711`.) Shape law:
