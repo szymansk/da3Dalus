@@ -135,7 +135,6 @@ class TestKernelWarning:
             "avl_body_equivalent_round": WarningSeverity.NOTICE,
             "spiral_halving_time_reported": WarningSeverity.NOTICE,
             "fuselage_section_equivalent": WarningSeverity.NOTICE,
-            "fuselage_contour_fit_mismatch": WarningSeverity.WARNING,
             "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
         }
 

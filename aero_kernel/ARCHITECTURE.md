@@ -301,12 +301,6 @@ Sources:
   shape exponent per section, so a section with two is replaced by the symmetric one of the same width, height and
   centre and the same cross-section area; `detail`: the section path, `n`, `n_lower`, `n_equivalent`. The perimeter
   (wetted area) is kept only approximately
-- the fit of a fuselage contour (`fuselage_contour_fit_mismatch`, `warning`, origin `airplane`, #1349): a section
-  whose valid point `contour` (format 7.1b) is further from its super-ellipse fit than the rule parameter
-  `fuselage-contour-fit.max_fit_deviation` (1 mm, maintainer 2026-11-03): the largest of |max y − a|,
-  |max z − b| and |min z + b|. The solvers compute with the fit, never with the contour (ADR 0022), so the
-  analysed body is coarser than the one drawn and built; `detail`: the section path, `deviation_m`,
-  `max_fit_deviation_m`, `a`, `b`
 - the kernel's drag (`induced_drag_viscous_factor_removed`, `notice`, #1346, ch. 8.8): AeroBuildup's full-scale
   viscous factor `k_e,D0` is taken out of its induced drag on every drag the kernel reads; one per evaluation
   (evaluate, best glide, minimum sink; not the stall, whose values read lift only — the reader of the published
@@ -1398,9 +1392,7 @@ Validation` returns `errors` (`KernelError`s of category `invalid_input`, all of
 `warnings` (input facts the engine attaches to every dependent: `conflicting_mass`, origin
 `aircraft-mass`; `geometry_deflection_ignored`, origin `airplane`; `fuselage_section_equivalent`, origin
 `airplane`, once per fuselage section with `n_lower` different from `n`, which the ASB conversion maps to the
-symmetric section of equal cross-section area, `superellipse.equivalent_exponent`, #1307;
-`fuselage_contour_fit_mismatch`, origin `airplane`, once per section whose contour the fit misses by more
-than `fuselage-contour-fit.max_fit_deviation`, #1349). It needs no canon model but the kernel configuration's area tolerance; the checks
+symmetric section of equal cross-section area, `superellipse.equivalent_exponent`, #1307). It needs no canon model but the kernel configuration's area tolerance; the checks
 of `values` slugs against the canon (`unknown_quantity`, `not_an_input`) are a second function added with
 the canon loader, not a stub now (ADR 0021). **A rule exists only for a field the kernel reads**;
 CAD-only fields (`number_interpolation_points`, servo geometry, step paths) are not validated. One rule,
@@ -1414,7 +1406,7 @@ one code, one test:
 | `non_positive_thickness` | an airfoil of thickness ≤ 0 (inline contour, or NACA thickness digits `00`) |
 | `too_few_sections` | a wing or a fuselage with fewer than two `x_secs` |
 | `duplicate_section` | two adjacent sections of a wing at one spanwise station: the same y and z of the leading edge (a section of zero span, NaN in AeroBuildup; #1342); `input_path` the second one |
-| `invalid_fuselage_contour` | a fuselage section's `contour` (format 7.1b, #1349) with fewer than `fuselage-contour.min_contour_points` (8) points, a first point that is not the bottom centre (y = 0, z < 0) or a last point that is not the top centre (y = 0, z > 0), a point with y < 0, an interior point on y = 0, or a polar angle atan2(z, y) that does not rise strictly from point to point; `input_path` the point (`…contour[i]`) or, for the count, the contour. Checked only on finite points (the walk reports the others). The kernel reads the contour for this check and for the fit warning only; no solver reads it |
+| `invalid_fuselage_contour` | a fuselage section's `contour` (format 7.1b, #1349) with fewer than `fuselage-contour.min_contour_points` (8) points, a first point that is not the bottom centre (y = 0, z < 0) or a last point that is not the top centre (y = 0, z > 0), a point with y < 0, an interior point on y = 0, or a polar angle atan2(z, y) that does not rise strictly from point to point; `input_path` the point (`…contour[i]`) or, for the count, the contour. Checked only on finite points (the walk reports the others). The kernel reads the contour for this check only; no solver reads it, and no deviation from the a/b fit is warned about (the contour exists because the fit deviates; maintainer 2026-11-04) |
 | `inconsistent_fuselage_contours` | a fuselage in which some sections have a `contour` and others none, or the contours differ in point count (the loft joins point i to point i); one finding per section that differs from the first section with a contour, `input_path` its `contour` |
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |

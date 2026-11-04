@@ -9,9 +9,9 @@ a contour has one with the same number of points.
 
 The contour is display and CAD geometry. No solver reads it: AeroSandbox and AVL take the fitted
 ``a``, ``b``, ``n``, ``n_lower`` (ADR 0022, maintainer 2026-11-03). The kernel reads it only to
-check it (``fuselage-contour``) and to declare how far the fit is from it
-(``fuselage-contour-fit``). These functions are pure and know no thresholds; the caller passes the
-canon's.
+check it (``fuselage-contour``). A deviation of the fit from the contour is expected, not warned
+about: the contour exists because the fit deviates (maintainer 2026-11-04). These functions are
+pure and know no thresholds; the caller passes the canon's.
 
 The order rule: the contour is star-shaped about the section centre and runs counter-clockwise, so
 the polar angle ``atan2(z, y)`` rises strictly from -90 deg at the first point to +90 deg at the
@@ -27,7 +27,6 @@ __all__ = [
     "ContourDefect",
     "ContourSetDefect",
     "contour_defect",
-    "contour_fit_deviation",
     "contour_set_defects",
 ]
 
@@ -158,23 +157,3 @@ def contour_set_defects(
                 )
             )
     return defects
-
-
-def contour_fit_deviation(contour: Sequence[ContourPoint], a: float, b: float) -> float:
-    """Return how far the super-ellipse fit's extent is from the contour's, metres.
-
-    The largest of three distances: the contour's widest point to the semi-axis ``a``, its top to
-    ``b`` and its bottom to ``-b`` (the fit is centred on ``xyz``, as the contour is).
-
-    Args:
-        contour: A valid half contour (:func:`contour_defect` is ``None``), metres.
-        a: The fit's semi-axis in y, metres.
-        b: The fit's semi-axis in z, metres.
-
-    Returns:
-        The deviation, >= 0.
-    """
-    widest = max(y for y, _ in contour)
-    top = max(z for _, z in contour)
-    bottom = min(z for _, z in contour)
-    return max(abs(widest - a), abs(top - b), abs(bottom + b))

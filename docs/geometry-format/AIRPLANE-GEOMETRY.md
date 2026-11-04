@@ -392,15 +392,9 @@ body, the drag estimate) keep using them; nothing derives area, perimeter or wet
 the contour (ADR 0022). The contour wins for **display** (outline, 3D view, import preview) and
 for the **CAD loft** (slice 2 of gh-1349).
 
-**Fit check.** For a valid contour the fit's extent is compared with the contour's:
-
-$$d = \max\left(\left|\max_i y_i - a\right|,\ \left|\max_i z_i - b\right|,\
-\left|\min_i z_i + b\right|\right)$$
-
-A section with $d > 1\,\mathrm{mm}$ (canon rule `fuselage-contour-fit.max_fit_deviation`) is
-declared with the warning `fuselage_contour_fit_mismatch` (severity `warning`): the analysed body
-is coarser than the drawn one. It is a warning, not an error (maintainer, gh-1349). In the app it
-is listed in the aircraft's `design_warnings` (code `FUSELAGE_CONTOUR_FIT_MISMATCH`).
+**No fit check.** The fit is not compared with the contour: the contour exists because the fit
+deviates from the real shape, so a deviation is expected and is no warning (maintainer,
+2026-11-04).
 
 ### 7.2 Die Kontur erzeugen
 

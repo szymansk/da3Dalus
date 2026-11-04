@@ -1006,41 +1006,15 @@ class TestFuselageContour:
         assert _codes(errors) == ["non_finite_number"]
         assert _paths(errors) == [f"{BODY}.x_secs[0].contour[3][1]"]
 
-    def test_a_contour_more_than_one_millimetre_off_the_fit_warns(self) -> None:
+    def test_a_contour_off_the_fit_is_admissible_and_not_warned(self) -> None:
+        """The contour exists because the fit deviates; that is expected (maintainer 2026-11-04)."""
         document = _with_contours(_document())
-        section = document["airplane"]["fuselages"]["Body"]["x_secs"][1]
-        section["contour"][0] = [0.0, -0.0515]  # the bottom 1.5 mm below -b
+        document["airplane"]["fuselages"]["Body"]["x_secs"][1]["a"] = 0.09
         result = _result(document)
         assert result.errors == ()
-        (warning,) = result.warnings
-        assert warning.code == "fuselage_contour_fit_mismatch"
-        assert warning.severity is WarningSeverity.WARNING
-        assert warning.origin == "airplane"
-        assert warning.detail["section"] == f"{BODY}.x_secs[1]"
-        deviation = warning.detail["deviation_m"]
-        assert isinstance(deviation, float)
-        assert math.isclose(deviation, 0.0015, abs_tol=1e-12)
-        assert warning.detail["max_fit_deviation_m"] == 0.001
-        assert "1.5 mm" in warning.message
-
-    def test_a_deviation_within_one_millimetre_does_not_warn(self) -> None:
-        document = _with_contours(_document())
-        document["airplane"]["fuselages"]["Body"]["x_secs"][1]["contour"][0] = [0.0, -0.0509]
-        assert _result(document).warnings == ()
-
-    def test_an_invalid_contour_is_not_compared_with_the_fit(self) -> None:
-        document = _with_contours(_document(), count=7)
-        document["airplane"]["fuselages"]["Body"]["x_secs"][1]["a"] = 0.09
-        assert _result(document).warnings == ()
+        assert result.warnings == ()
 
     def test_the_point_minimum_comes_from_the_canon(self) -> None:
         document = _with_contours(_document(), count=7)
         document["rule_overrides"] = {"fuselage-contour.min_contour_points": 6.0}
         assert _validate(document) == ()
-
-    def test_a_non_finite_semi_axis_is_an_error_and_no_fit_warning(self) -> None:
-        document = _with_contours(_document())
-        document["airplane"]["fuselages"]["Body"]["x_secs"][1]["a"] = math.nan
-        result = _result(document)
-        assert _codes(result.errors) == ["non_finite_number"]
-        assert result.warnings == ()

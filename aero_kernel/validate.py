@@ -25,7 +25,6 @@ from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.fuselage_contour import (
     contour_defect,
-    contour_fit_deviation,
     contour_set_defects,
 )
 from aero_kernel.geometry import Wing
@@ -652,48 +651,6 @@ def _fuselage_section_warnings(fuselages: Mapping[str, geometry.Fuselage]) -> li
     return warnings
 
 
-def _fuselage_contour_warnings(
-    fuselages: Mapping[str, geometry.Fuselage], rules: Rules
-) -> list[KernelWarning]:
-    """Declare every valid contour whose super-ellipse fit is further away than the canon allows.
-
-    The solvers compute with ``a``, ``b``, ``n``, ``n_lower``; a contour the fit misses by more
-    than ``fuselage-contour-fit.max_fit_deviation`` means the analysed body is coarser than the
-    one drawn and built (#1349, ADR 0020). An invalid contour is an error elsewhere, not compared.
-    """
-    warnings: list[KernelWarning] = []
-    for key, fuselage in fuselages.items():
-        for index, x_sec in enumerate(fuselage.x_secs):
-            contour = x_sec.contour
-            if contour is None or not _finite_contour(x_sec):
-                continue
-            if not (math.isfinite(x_sec.a) and math.isfinite(x_sec.b)):
-                continue
-            minimum = int(rules.value("fuselage-contour", "min_contour_points"))
-            if contour_defect(contour, minimum) is not None:
-                continue
-            limit = rules.value("fuselage-contour-fit", "max_fit_deviation")
-            deviation = contour_fit_deviation(contour, x_sec.a, x_sec.b)
-            if deviation <= limit:
-                continue
-            section = f"{_key_path('airplane.fuselages', key)}.x_secs[{index}]"
-            message = (
-                f"The super-ellipse fit (a = {x_sec.a} m, b = {x_sec.b} m) of the fuselage "
-                f"section {section} is {deviation * 1000:.1f} mm away from its contour, more than "
-                f"{limit * 1000:g} mm; the solvers compute with the fit, so the analysed body is "
-                "coarser than the one drawn and built."
-            )
-            detail: dict[str, JsonValue] = {
-                "section": section,
-                "deviation_m": deviation,
-                "max_fit_deviation_m": limit,
-                "a": x_sec.a,
-                "b": x_sec.b,
-            }
-            warnings.append(_warning("fuselage_contour_fit_mismatch", "airplane", message, detail))
-    return warnings
-
-
 def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Validation:
     """Report every physically inadmissible value of an aircraft input, and the input's caveats.
 
@@ -727,7 +684,6 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
         _mass_warnings(aircraft)
         + _deflection_warnings(airplane.wings or {})
         + _fuselage_section_warnings(airplane.fuselages or {})
-        + _fuselage_contour_warnings(airplane.fuselages or {}, rules)
     )
     logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))

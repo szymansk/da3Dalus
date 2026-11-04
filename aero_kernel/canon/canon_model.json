@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:02f22ad6c56f23347ea96cdbafadfdc15284213842ecf1d07f8413078ea021b2",
+  "content_hash": "sha256:654a88835c5ea6d1e4cb45e29d780c9cee077bd2bbf7fba19c50a82d12a0c7b8",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6909,30 +6909,6 @@
               "status": "adopted",
               "unit": "1",
               "value": 8.0
-            }
-          }
-        },
-        "fuselage-contour-fit": {
-          "applies_to": {
-            "formula": null,
-            "quantity": "airplane"
-          },
-          "codes": [
-            "fuselage_contour_fit_mismatch"
-          ],
-          "criterion": "The super-ellipse fit a, b of a section with a valid contour describes its extent to within max_fit_deviation: the largest of |max y - a|, |max z - b| and |min z + b| over the contour points. A larger distance is declared per section by the warning fuselage_contour_fit_mismatch: the solvers compute with the fit, which is then a coarser body than the one drawn and built; the input is not refused (maintainer 2026-11-03, #1349, ADR 0020).",
-          "kind": "input",
-          "on_violation": "warning",
-          "parameters": {
-            "max_fit_deviation": {
-              "at_most": null,
-              "basis": "convention",
-              "positive": true,
-              "regime": "regime-independent: a statement about the geometry document, not about the flow",
-              "source": "decided by the maintainer in #1349 (2026-11-03): 'a contour mismatch with a/b larger than 1 mm is a warning, not an error'; no published source",
-              "status": "adopted",
-              "unit": "m",
-              "value": 0.001
             }
           }
         },

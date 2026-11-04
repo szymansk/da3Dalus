@@ -17,10 +17,6 @@ from app import schemas
 from app.converters.model_schema_converters import _mirror_fuselage_schema_y
 from app.models.aeroplanemodel import AeroplaneModel, FuselageModel
 from app.services.aeroplane_clone_service import clone_aeroplane_subgraph
-from app.services.fuselage_contour_service import (
-    FUSELAGE_CONTOUR_FIT_MISMATCH_CODE,
-    fuselage_contour_fit_warnings,
-)
 
 
 def half_ellipse(a: float, b: float, count: int = 13) -> list[list[float]]:
@@ -252,48 +248,20 @@ def test_cloning_an_aeroplane_copies_the_contours(client_and_db):
     assert contours == [xs["contour"] for xs in sent["x_secs"]]
 
 
-# --------------------------------------------------------------------------- fit warning
+# --------------------------------------------------------------------------- no fit warning
 
 
-def _schema_fuselage(*sections: dict) -> schemas.FuselageSchema:
-    return schemas.FuselageSchema(**body(*sections))
-
-
-def test_a_contour_more_than_1_mm_off_the_fit_is_declared_as_a_warning():
-    off = section(0.5)
-    off["contour"][0] = [0.0, -0.0515]  # the bottom 1.5 mm below -b
-    (warning,) = fuselage_contour_fit_warnings([_schema_fuselage(section(0.0), off)])
-    assert warning.code == FUSELAGE_CONTOUR_FIT_MISMATCH_CODE
-    assert warning.severity == "warning"
-    assert warning.category == "substituted_assumption"
-    assert warning.context["fuselage"] == "Rumpf"
-    assert warning.context["section"] == 1
-    assert warning.context["deviation_m"] == pytest.approx(0.0015)
-    assert warning.context["max_fit_deviation_m"] == 0.001
-    assert "1.5 mm" in warning.message
-
-
-def test_a_contour_within_1_mm_of_the_fit_is_not_declared():
-    close = section(0.5)
-    close["contour"][0] = [0.0, -0.0509]
-    assert fuselage_contour_fit_warnings([_schema_fuselage(section(0.0), close)]) == []
-
-
-def test_a_fuselage_without_contours_is_never_declared():
-    plain = _schema_fuselage(section(0.0, contour=False), section(0.5, a=0.2, contour=False))
-    assert fuselage_contour_fit_warnings([plain]) == []
-
-
-def test_the_fit_warning_reaches_the_design_warnings_of_the_aeroplane(client_and_db):
+def test_a_contour_off_the_fit_is_not_a_design_warning(client_and_db):
+    """The contour exists because the fit deviates; that is expected (maintainer 2026-11-04)."""
     client, _ = client_and_db
     plane_id = _plane(client)
-    off = section(0.5, a=0.03)
+    off = section(0.5)
     off["a"] = 0.033  # the fit is 3 mm wider than the contour
-    client.put(f"/aeroplanes/{plane_id}/fuselages/Rumpf", json=body(section(0.0), off))
-
+    assert (
+        client.put(
+            f"/aeroplanes/{plane_id}/fuselages/Rumpf", json=body(section(0.0), off)
+        ).status_code
+        == 201
+    )
     warnings = client.get(f"/aeroplanes/{plane_id}/assumptions").json()["design_warnings"]
-    codes = [w["code"] for w in warnings]
-    assert codes.count(FUSELAGE_CONTOUR_FIT_MISMATCH_CODE) == 1
-    (warning,) = [w for w in warnings if w["code"] == FUSELAGE_CONTOUR_FIT_MISMATCH_CODE]
-    assert warning["severity"] == "warning"
-    assert warning["context"]["deviation_m"] == pytest.approx(0.003)
+    assert warnings == []

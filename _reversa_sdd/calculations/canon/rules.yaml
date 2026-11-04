@@ -90,22 +90,6 @@ fuselage-contour:
       source: "decided by the maintainer in #1349 (2026-11-03, validation 'at least 8 points'); no published source. Measured on the T-D plan formers in #1349: 24 points give 0.16-0.33 mm rms, 48 points 0.05-0.12 mm"
       regime: "regime-independent: a statement about the geometry document, not about the flow"
 
-fuselage-contour-fit:
-  applies_to: {quantity: airplane}
-  kind: input
-  on_violation: warning
-  criterion: "The super-ellipse fit a, b of a section with a valid contour describes its extent to within max_fit_deviation: the largest of |max y - a|, |max z - b| and |min z + b| over the contour points. A larger distance is declared per section by the warning fuselage_contour_fit_mismatch: the solvers compute with the fit, which is then a coarser body than the one drawn and built; the input is not refused (maintainer 2026-11-03, #1349, ADR 0020)."
-  codes: [fuselage_contour_fit_mismatch]
-  parameters:
-    max_fit_deviation:
-      value: 0.001
-      unit: m
-      basis: convention
-      status: adopted
-      positive: true
-      source: "decided by the maintainer in #1349 (2026-11-03): 'a contour mismatch with a/b larger than 1 mm is a warning, not an error'; no published source"
-      regime: "regime-independent: a statement about the geometry document, not about the flow"
-
 segment-details-not-on-last-section:
   applies_to: {quantity: airplane}
   kind: input

@@ -1,7 +1,6 @@
 """Validation of the optional fuselage-section contour (gh-1349).
 
-The rules and their thresholds are the aero kernel's (canon rules ``fuselage-contour`` and
-``fuselage-contour-fit``): the app applies the same functions to the same numbers, so a contour the
+The rules and their threshold are the aero kernel's (canon rule ``fuselage-contour``): the app applies the same functions to the same numbers, so a contour the
 API accepts is one the kernel accepts. Nothing is repaired: an invalid contour is refused
 (ADR 0020).
 """

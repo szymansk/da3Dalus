@@ -4,7 +4,6 @@ import math
 
 from aero_kernel.fuselage_contour import (
     contour_defect,
-    contour_fit_deviation,
     contour_set_defects,
 )
 
@@ -135,26 +134,3 @@ class TestContourSetDefects:
         assert [d.section for d in defects] == [1]
         assert "10 points" in defects[0].message
         assert "13" in defects[0].message
-
-
-class TestFitDeviation:
-    def test_a_contour_on_the_fit_has_no_deviation(self) -> None:
-        assert math.isclose(
-            contour_fit_deviation(ellipse(0.03, 0.05), 0.03, 0.05), 0.0, abs_tol=1e-12
-        )
-
-    def test_the_largest_of_width_top_and_bottom_counts(self) -> None:
-        contour = ellipse(0.03, 0.05)
-        # lower the bottom by 2 mm: the top and the width still match
-        contour[0] = (0.0, -0.052)
-        assert math.isclose(contour_fit_deviation(contour, 0.03, 0.05), 0.002, abs_tol=1e-12)
-
-    def test_a_narrower_contour_deviates_by_the_width_difference(self) -> None:
-        assert math.isclose(
-            contour_fit_deviation(ellipse(0.0285, 0.05), 0.03, 0.05), 0.0015, abs_tol=1e-12
-        )
-
-    def test_a_top_above_b_deviates(self) -> None:
-        contour = ellipse(0.03, 0.05)
-        contour[-1] = (0.0, 0.0512)
-        assert math.isclose(contour_fit_deviation(contour, 0.03, 0.05), 0.0012, abs_tol=1e-12)
