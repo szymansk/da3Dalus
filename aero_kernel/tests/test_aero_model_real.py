@@ -30,6 +30,7 @@ from aero_kernel.solvers.opti import (
 )
 from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.reference_fleet import FleetMember, flap_values, reference_document
+from aero_kernel.tests.solver_builders import K_E_D0
 from aero_kernel.tests.test_roll_rate_fleet import V_APP
 from aero_kernel.tests.test_stall_speed_fleet import sea_level_air
 
@@ -68,6 +69,7 @@ def stall_request(member: FleetMember, cached: bool) -> StallRequest:
         gravity=GRAVITY,
         n_load=1.0,
         air=sea_level_air(),
+        k_e_d0=K_E_D0,
         model_key=key(airplane, 0.0) if cached else None,
     )
 

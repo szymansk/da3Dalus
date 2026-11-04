@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:81eea884ecb29fb98cc7244925c2285592e6f84f5942f272c00fc007ff1e67e3",
+  "content_hash": "sha256:aa92487463f446938eec244b4dc179a2be54a01db096fffc7c90013e2e90b7c3",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -757,7 +757,9 @@
           "on_violation": "error",
           "parameters": {
             "min_contour_points": {
+              "at_most": null,
               "basis": "definition",
+              "positive": null,
               "regime": "regime-independent",
               "source": "three points are the least that enclose an area",
               "status": "adopted",
@@ -779,7 +781,9 @@
           "on_violation": "error",
           "parameters": {
             "max_inclination": {
+              "at_most": null,
               "basis": "convention",
+              "positive": null,
               "regime": "regime-independent",
               "source": "adopted by the maintainer on 2026-10-25",
               "status": "adopted",
@@ -801,7 +805,9 @@
           "on_violation": "error",
           "parameters": {
             "min_sections": {
+              "at_most": null,
               "basis": "definition",
+              "positive": null,
               "regime": "regime-independent",
               "source": "a lofted surface is defined by at least two sections",
               "status": "adopted",
@@ -823,7 +829,9 @@
           "on_violation": "error",
           "parameters": {
             "required_main_wings": {
+              "at_most": null,
               "basis": "definition",
+              "positive": null,
               "regime": "regime-independent",
               "source": "one reference wing per airplane",
               "status": "adopted",

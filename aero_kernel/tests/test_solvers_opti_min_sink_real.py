@@ -10,7 +10,7 @@ from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 from aero_kernel.solvers.opti import StallRequest
-from aero_kernel.tests.solver_builders import airplane, direct_aero_model
+from aero_kernel.tests.solver_builders import K_E_D0, airplane, direct_aero_model
 from aero_kernel.tests.test_solvers_opti_real import GRAVITY, MASS_KG, sea_level
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
@@ -28,7 +28,11 @@ def cl_of(alpha_deg: Any) -> Any:  # a float or a CasADi expression
 
 
 def install_parabolic(monkeypatch: pytest.MonkeyPatch) -> None:
-    """AeroBuildup replaced by CD = CD0 + k CL^2; the optimiser stays the real IPOPT."""
+    """AeroBuildup replaced by CD = CD0 + k CL^2 for the kernel's drag; the optimiser stays the real IPOPT.
+
+    The fake's induced drag holds the viscous factor as AeroBuildup's does, so the kernel's drag
+    ``D_profile + k_e,D0 * D_induced`` is the parabola (#1346).
+    """
     real = load_aerosandbox()
 
     class Parabolic:
@@ -38,7 +42,12 @@ def install_parabolic(monkeypatch: pytest.MonkeyPatch) -> None:
         def run(self) -> dict[str, Any]:
             q = 0.5 * 1.2249991558877122 * self.op.velocity**2 * S_REF
             cl = cl_of(self.op.alpha)
-            return {"L": q * cl, "D": q * (CD0 + K * cl**2), "CL": cl}
+            return {
+                "L": q * cl,
+                "D_profile": q * CD0,
+                "D_induced": q * K * cl**2 / K_E_D0,
+                "CL": cl,
+            }
 
     def operating_point(**kwargs: Any) -> SimpleNamespace:
         return SimpleNamespace(**kwargs)
@@ -50,7 +59,7 @@ def install_parabolic(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = SimpleNamespace(Opti=real.Opti, OperatingPoint=operating_point, AeroBuildup=Parabolic)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake)
     monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
-    monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+    monkeypatch.setattr(opti_module, "sweep_lift", sweep)
 
     def convert(_airplane: object) -> SimpleNamespace:
         return SimpleNamespace(s_ref=S_REF)
@@ -70,7 +79,7 @@ async def test_a_parabolic_polar_gives_the_closed_form_answers(
     install_parabolic(monkeypatch)
     air = sea_level()
     request = StallRequest(
-        airplane=airplane(), mass_kg=MASS_KG, gravity=GRAVITY, n_load=1.0, air=air
+        airplane=airplane(), mass_kg=MASS_KG, gravity=GRAVITY, n_load=1.0, air=air, k_e_d0=K_E_D0
     )
     solution = opti_module.min_sink_worker(request).value
     glide = opti_module.best_glide_worker(request).value
@@ -92,7 +101,9 @@ async def test_a_heavier_airplane_flies_the_minimum_sink_faster_by_the_square_ro
     air = sea_level()
     light, heavy = (
         opti_module.min_sink_worker(
-            StallRequest(airplane=airplane(), mass_kg=m, gravity=GRAVITY, n_load=1.0, air=air)
+            StallRequest(
+                airplane=airplane(), mass_kg=m, gravity=GRAVITY, n_load=1.0, air=air, k_e_d0=K_E_D0
+            )
         ).value
         for m in (1.0, 4.0)
     )
@@ -109,7 +120,12 @@ async def test_a_minimum_beyond_the_lift_peak_is_returned_at_the_peak_flagged_st
     install_parabolic(monkeypatch)
     monkeypatch.setattr(sys.modules[__name__], "CD0", 0.03)
     request = StallRequest(
-        airplane=airplane(), mass_kg=MASS_KG, gravity=GRAVITY, n_load=1.0, air=sea_level()
+        airplane=airplane(),
+        mass_kg=MASS_KG,
+        gravity=GRAVITY,
+        n_load=1.0,
+        air=sea_level(),
+        k_e_d0=K_E_D0,
     )
     solution = opti_module.min_sink_worker(request).value
     assert solution.stall_limited is True
@@ -121,6 +137,11 @@ async def test_a_minimum_beyond_the_lift_peak_is_returned_at_the_peak_flagged_st
 async def test_an_interior_minimum_is_not_flagged(monkeypatch: pytest.MonkeyPatch) -> None:
     install_parabolic(monkeypatch)
     request = StallRequest(
-        airplane=airplane(), mass_kg=MASS_KG, gravity=GRAVITY, n_load=1.0, air=sea_level()
+        airplane=airplane(),
+        mass_kg=MASS_KG,
+        gravity=GRAVITY,
+        n_load=1.0,
+        air=sea_level(),
+        k_e_d0=K_E_D0,
     )
     assert opti_module.min_sink_worker(request).value.stall_limited is False

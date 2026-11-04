@@ -12,7 +12,13 @@ from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import DeviceSpan, OptiAdapter, StallRequest, StallSolution
 from aero_kernel.solvers.regime import regime_by_surface
 from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
-from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane, direct_aero_model
+from aero_kernel.tests.solver_builders import (
+    AIR,
+    K_E_D0,
+    InProcessRuntime,
+    airplane,
+    direct_aero_model,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -61,7 +67,9 @@ async def test_the_stall_carries_the_regime_warnings_of_its_stall_speed(
     adapter = OptiAdapter(InProcessRuntime())
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=6.0)))
     fast = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
-    assert [w.code for w in fast.warnings] == ["reynolds_bubble_sensitive"]
+    assert [w.code for w in fast.warnings] == [
+        "reynolds_bubble_sensitive"
+    ]  # no drag: no drag notice
     assert fast.warnings[0].detail["wing"] == "Main"
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=2.0)))
     slow = await adapter.stall(airplane(), 1.5, 9.81, 1.0, AIR)
@@ -243,10 +251,13 @@ def install_failing_solver(monkeypatch: pytest.MonkeyPatch, error: Exception) ->
         Opti=FakeOpti, OperatingPoint=operating_point, AeroBuildup=aerobuildup
     )
     monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+    monkeypatch.setattr(opti_module, "sweep_lift", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake_asb)
     monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
-    return StallRequest(airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
+    return StallRequest(
+        airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR, k_e_d0=K_E_D0
+    )
 
 
 async def test_an_ipopt_failure_is_not_converged(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -325,10 +336,13 @@ def install_solution(monkeypatch: pytest.MonkeyPatch, v_s: float, alpha_s: float
         Opti=FakeOpti, OperatingPoint=operating_point, AeroBuildup=aerobuildup
     )
     monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+    monkeypatch.setattr(opti_module, "sweep_lift", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake_asb)
     monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
-    return StallRequest(airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
+    return StallRequest(
+        airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR, k_e_d0=K_E_D0
+    )
 
 
 V_HIGH = opti_module.V_MAX_MACH * AIR.speed_of_sound
@@ -486,7 +500,9 @@ async def test_the_flap_diagnostics_run_at_the_optimum_of_the_request(
     )
     monkeypatch.setattr(opti_module, "_confidence_run", confidence_run)
     flapped = airplane(device=("flap", 30.0), hinge=0.8)
-    request = StallRequest(airplane=flapped, mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR)
+    request = StallRequest(
+        airplane=flapped, mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR, k_e_d0=K_E_D0
+    )
     found = opti_module._flap_diagnostics(request, "asb", 8.0, 15.0)  # pyright: ignore[reportPrivateUsage]
     # the flap's span: the first panel, |y| 0 to 0.3 m
     assert found == "asb:['Main']:point:[('Main', ((0.0, 0.3),))]"

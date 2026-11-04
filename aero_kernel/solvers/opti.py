@@ -10,7 +10,10 @@ a numeric run. There is no fixed point on V; the bracketing sweep is made once a
 from a first estimate. An active bound at the optimum, a missing extremum or a failed solve is an error, never a value
 (ADR 0020). Each problem is one pool job (a picklable worker). IPOPT sees AeroBuildup through the
 airplane's model function (``aero_model``), reused from the worker's cache under the request's
-``model_key``; the sweeps and the other numeric runs evaluate AeroBuildup directly.
+``model_key``; the sweeps and the other numeric runs evaluate AeroBuildup directly. Every drag a
+problem reads is the kernel's (``aerobuildup.kernel_drag``: the viscous factor k_e,D0 of the canon rule
+``aerobuildup-induced-drag`` taken out of AeroBuildup's induced drag, #1346); the adapter reads the
+factor from the call's rules, hands it to the worker and declares it on every value that carries it.
 """
 
 import asyncio
@@ -30,7 +33,16 @@ from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime, WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers.aero_model import aero_model, load_casadi, model_key
-from aero_kernel.solvers.aerobuildup import evaluate_forces, scalar, sweep_polar
+from aero_kernel.solvers.aerobuildup import (
+    INDUCED_DRAG_RULE,
+    VISCOUS_FACTOR_PARAMETER,
+    LiftCurve,
+    evaluate_forces,
+    kernel_drag,
+    scalar,
+    sweep_lift,
+    sweep_polar,
+)
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
 from aero_kernel.solvers.asb_airplane import load_aerosandbox, surface_sections, to_asb_airplane
 from aero_kernel.solvers.base import SolverAdapter
@@ -84,6 +96,7 @@ __all__ = [
     "best_glide_worker",
     "device_spans",
     "evaluation_worker",
+    "induced_drag_notice",
     "min_sink_worker",
     "moment_slope_worker",
     "stall_worker",
@@ -129,6 +142,8 @@ class StallRequest(BaseModel):
         gravity: Gravity in m/s^2, > 0.
         n_load: Load factor; the lift balance is ``L = n m g`` (negative: inverted flight).
         air: The air state.
+        k_e_d0: The viscous factor the kernel takes out of AeroBuildup's induced drag (rule
+            ``aerobuildup-induced-drag``, read by the adapter from the call's rules).
         model_key: The key of the airplane's model function (``aero_model.model_key``), computed
             by the adapter; ``None`` builds the function for this call without caching it.
     """
@@ -140,6 +155,7 @@ class StallRequest(BaseModel):
     gravity: float
     n_load: float
     air: AirState
+    k_e_d0: float
     model_key: str | None = None
 
 
@@ -261,6 +277,8 @@ class SweepRequest(BaseModel):
         air: The air state.
         v_ms: True airspeed in m/s, > 0.
         alphas_deg: Angles of attack in degrees, strictly rising.
+        k_e_d0: The viscous factor the kernel takes out of AeroBuildup's induced drag (rule
+            ``aerobuildup-induced-drag``).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -269,6 +287,7 @@ class SweepRequest(BaseModel):
     air: AirState
     v_ms: float
     alphas_deg: tuple[float, ...]
+    k_e_d0: float
 
 
 class BestGlideSolution(BaseModel):
@@ -421,7 +440,7 @@ def _grid() -> list[float]:
     return [ALPHA_MIN_DEG + k * ALPHA_STEP_DEG for k in range(count + 1)]
 
 
-def _bracket(polar: Polar, upright: bool) -> int:
+def _bracket(polar: LiftCurve, upright: bool) -> int:
     """The sample index of the first C_L peak (upright) or trough (inverted) from alpha = 0.
 
     Raises:
@@ -508,10 +527,10 @@ def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG
     grid = _grid()
     area = float(airplane.s_ref)
     v_first = math.sqrt(2.0 * abs(lift) / (air.density * area * BRACKET_CL))
-    first = sweep_polar(airplane, air, v_first, grid, NEURALFOIL_MODEL_SIZE)
+    first = sweep_lift(airplane, air, v_first, grid, NEURALFOIL_MODEL_SIZE)
     cl_first = abs(first.cl[_bracket(first, upright)])
     v_bracket = math.sqrt(2.0 * abs(lift) / (air.density * area * cl_first))
-    bracket = sweep_polar(airplane, air, v_bracket, grid, NEURALFOIL_MODEL_SIZE)
+    bracket = sweep_lift(airplane, air, v_bracket, grid, NEURALFOIL_MODEL_SIZE)
     alpha_peak = bracket.alpha_deg[_bracket(bracket, upright)]
     if upright:
         low, high = ALPHA_MIN_DEG, alpha_peak + peak_margin_deg
@@ -663,7 +682,14 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
         "stall",
     )
     angles = sorted({*_grid(), optimum.alpha})
-    polar = sweep_polar(problem.airplane, request.air, optimum.speed, angles, NEURALFOIL_MODEL_SIZE)
+    polar = sweep_polar(
+        problem.airplane,
+        request.air,
+        optimum.speed,
+        angles,
+        NEURALFOIL_MODEL_SIZE,
+        request.k_e_d0,
+    )
     cl_max = polar.cl[polar.alpha_deg.index(optimum.alpha)]
     found = (
         _flap_diagnostics(request, problem.airplane, optimum.speed, optimum.alpha)
@@ -703,6 +729,7 @@ def sweep_worker(request: SweepRequest) -> WorkerOutcome[Polar]:
         request.v_ms,
         request.alphas_deg,
         NEURALFOIL_MODEL_SIZE,
+        request.k_e_d0,
     )
     diagnostics = WorkerDiagnostics(duration_s=time.perf_counter() - started)
     return WorkerOutcome(value=polar, diagnostics=diagnostics)
@@ -723,8 +750,9 @@ def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]
     """Solve the best-glide problem in the pool worker (canon ``minimum-drag-speed-from-polar``).
 
     The same bracketing as the stall (the window of alpha ends one sweep step past the first
-    C_L peak), then IPOPT minimises ``D`` subject to ``L = n m g``. At fixed lift the minimum drag is
-    the maximum lift-to-drag ratio. A bound active at the optimum is an error.
+    C_L peak), then IPOPT minimises ``D`` subject to ``L = n m g``, ``D`` the kernel's drag
+    (``kernel_drag``, #1346). At fixed lift the minimum drag is the maximum lift-to-drag ratio. A bound
+    active at the optimum is an error.
 
     Args:
         request: The problem; ``n_load`` must be positive.
@@ -741,11 +769,11 @@ def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]
     optimum = _solve(
         problem,
         request,
-        lambda _speed, aero: aero["D"],
+        lambda _speed, aero: kernel_drag(aero, request.k_e_d0),
         (GLIDE_SPEED_FACTOR * problem.v_bracket, GLIDE_ALPHA_FRACTION * problem.alpha_peak),
         "best-glide",
     )
-    drag = optimum.value(optimum.aero["D"])
+    drag = optimum.value(kernel_drag(optimum.aero, request.k_e_d0))
     solution = BestGlideSolution(
         v_md=optimum.speed,
         e_max=abs(problem.lift) / drag,
@@ -763,6 +791,22 @@ SINK_SPEED_FACTOR = 1.15
 SINK_ALPHA_FRACTION = 0.6
 
 
+def induced_drag_notice(k_e_d0: float) -> KernelWarning:
+    """The declaration of the kernel's drag on a value that carries it (ADR 0020, a ``notice``, #1346).
+
+    One per evaluation, never per section. ``detail``: the factor and the share of AeroBuildup's
+    induced drag the kernel removes, ``1 - k_e,D0``.
+    """
+    return KernelWarning.of(
+        "induced_drag_viscous_factor_removed",
+        "the drag is AeroBuildup's with its induced part divided by AeroBuildup's full-scale viscous "
+        f"factor k_e,D0 = {k_e_d0:.5f} (Nita & Scholz 2012): D = D_profile + k_e,D0 * D_induced, "
+        "because NeuralFoil's section polars already contain the lift-dependent profile drag that "
+        f"the factor adds; {1.0 - k_e_d0:.1%} of AeroBuildup's induced drag is removed",
+        detail={"k_e_d0": k_e_d0, "induced_drag_share_removed": 1.0 - k_e_d0},
+    )
+
+
 def _stall_limited_warning(solution: MinSinkSolution) -> KernelWarning:
     """The declaration of a minimum sink at the stall boundary (ADR 0020, a ``notice``)."""
     return KernelWarning.of(
@@ -778,7 +822,8 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
     """Solve the minimum-sink problem in the pool worker (canon ``minimum-sink-speed-from-polar``).
 
     The same bracketing as the stall, but the window of alpha ends at the first C_L peak itself,
-    then IPOPT minimises ``D V`` subject to ``L = n m g``. At fixed weight ``D V`` is proportional
+    then IPOPT minimises ``D V`` subject to ``L = n m g``, ``D`` the kernel's drag (``kernel_drag``,
+    #1346). At fixed weight ``D V`` is proportional
     to the sink rate, and AeroBuildup forms the Reynolds number from ``V`` inside the constraint.
     The peak is the end of the pre-stall branch: a polar whose sink rate is still falling there has
     its minimum limited by the stall, not at an interior optimum, and that optimum sits on the upper
@@ -802,7 +847,7 @@ def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
     optimum = _solve(
         problem,
         request,
-        lambda speed, aero: aero["D"] * speed,
+        lambda speed, aero: kernel_drag(aero, request.k_e_d0) * speed,
         (SINK_SPEED_FACTOR * problem.v_bracket, SINK_ALPHA_FRACTION * problem.alpha_peak),
         "minimum-sink",
         upper_alpha_is_a_result=True,
@@ -1095,7 +1140,7 @@ def _roll_window(request: RollRequest) -> tuple[float, float, float]:
     """
     air = request.air
     clean = to_asb_airplane(request.airplane)
-    polar = sweep_polar(clean, air, request.v_ms, _grid(), NEURALFOIL_MODEL_SIZE)
+    polar = sweep_lift(clean, air, request.v_ms, _grid(), NEURALFOIL_MODEL_SIZE)
     peak = _bracket(polar, upright=True)
     area = float(clean.s_ref)
     cl_needed = request.mass_kg * request.gravity / (0.5 * air.density * request.v_ms**2 * area)
@@ -1400,7 +1445,7 @@ def moment_slope_worker(request: MomentSlopeRequest) -> WorkerOutcome[MomentSlop
         * request.gravity
         / (0.5 * request.air.density * request.v_ms**2 * converted.s_ref)
     )
-    polar = sweep_polar(converted, request.air, request.v_ms, _grid(), NEURALFOIL_MODEL_SIZE)
+    polar = sweep_lift(converted, request.air, request.v_ms, _grid(), NEURALFOIL_MODEL_SIZE)
     peak = _bracket(polar, upright=True)
     alpha = alpha_for_lift_coefficient(polar.alpha_deg, polar.cl, peak, wanted)
     if alpha is None:
@@ -1453,6 +1498,8 @@ class EvaluationRequest(BaseModel):
         air: The air state.
         v_ms: True airspeed in m/s, > 0.
         alpha_deg: Angle of attack in degrees, finite.
+        k_e_d0: The viscous factor the kernel takes out of AeroBuildup's induced drag (rule
+            ``aerobuildup-induced-drag``).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -1461,17 +1508,18 @@ class EvaluationRequest(BaseModel):
     air: AirState
     v_ms: float
     alpha_deg: float
+    k_e_d0: float
 
 
 class Forces(BaseModel):
-    """Lift and drag at one operating point, as AeroBuildup returns them (canon ``aerobuildup-evaluation``).
+    """Lift and drag at one operating point (canon ``aerobuildup-evaluation``).
 
     No sign is imposed: a drag of zero or below is a defective solver result that the reader's
     precondition (``lift-to-drag-ratio``: ``drag_positive``) refuses, never a value this model hides.
 
     Attributes:
-        lift_n: Lift in N.
-        drag_n: Drag in N.
+        lift_n: Lift in N, as AeroBuildup returns it.
+        drag_n: The kernel's drag in N (``kernel_drag``, #1346).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -1513,6 +1561,7 @@ def evaluation_worker(request: EvaluationRequest) -> WorkerOutcome[Forces]:
         request.v_ms,
         request.alpha_deg,
         NEURALFOIL_MODEL_SIZE,
+        request.k_e_d0,
     )
     diagnostics = WorkerDiagnostics(duration_s=time.perf_counter() - started)
     return WorkerOutcome(value=Forces(lift_n=lift, drag_n=drag), diagnostics=diagnostics)
@@ -1673,6 +1722,14 @@ class OptiAdapter(SolverAdapter):
         bands = RegimeBands.of(self.rules)
         return regime_by_surface(sections, v_ms, air.speed_of_sound, air.kinematic_viscosity, bands)
 
+    def _k_e_d0(self) -> float:
+        """The viscous factor k_e,D0 of the call's rules (canon rule ``aerobuildup-induced-drag``).
+
+        Read through the call's ``Rules``, so it appears in ``Provenance.rules_used`` and can be
+        overridden (#1346).
+        """
+        return self.rules.value(INDUCED_DRAG_RULE, VISCOUS_FACTOR_PARAMETER)
+
     def settings(self) -> dict[str, JsonValue]:
         """Every constant that shapes an optimisation result: model size, alpha sweep, bounds, limits.
 
@@ -1749,6 +1806,7 @@ class OptiAdapter(SolverAdapter):
             gravity=gravity,
             n_load=n_load,
             air=air,
+            k_e_d0=self._k_e_d0(),
             model_key=self._model_key(airplane, 0.0),
         )
         return request, flaps
@@ -1781,6 +1839,8 @@ class OptiAdapter(SolverAdapter):
         solution = await self.runtime.run_cpu(stall_worker, request)
         warnings = _flap_warnings(flaps, solution.diagnostics)
         warnings += await self._regime_warnings(airplane, solution.v_s, air)
+        # No drag notice: V_S, C_L,max and alpha_S read lift only. The published polar's C_D is the
+        # kernel's drag; the formula that reads it declares it (ADR 0020, #1346).
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)
         return Stall(solution=solution, warnings=tuple(warnings))
 
@@ -1813,6 +1873,7 @@ class OptiAdapter(SolverAdapter):
         solution = await self.runtime.run_cpu(best_glide_worker, request)
         warnings = _flap_warnings(flaps)
         warnings += await self._regime_warnings(airplane, solution.v_md, air)
+        warnings.append(induced_drag_notice(request.k_e_d0))
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
 
@@ -1851,7 +1912,9 @@ class OptiAdapter(SolverAdapter):
                 "give at least one angle, rising",
                 "alphas_deg",
             )
-        request = SweepRequest(airplane=airplane, air=air, v_ms=v_ms, alphas_deg=angles)
+        request = SweepRequest(
+            airplane=airplane, air=air, v_ms=v_ms, alphas_deg=angles, k_e_d0=self._k_e_d0()
+        )
         polar = await self.runtime.run_cpu(sweep_worker, request)
         logger.debug("sweep of %d angles at %.4f m/s", len(angles), v_ms)
         return polar
@@ -1885,6 +1948,7 @@ class OptiAdapter(SolverAdapter):
         solution = await self.runtime.run_cpu(min_sink_worker, request)
         warnings = _flap_warnings(flaps)
         warnings += await self._regime_warnings(airplane, solution.v_mp, air)
+        warnings.append(induced_drag_notice(request.k_e_d0))
         if solution.stall_limited:
             warnings.append(_stall_limited_warning(solution))
         logger.debug("minimum-sink speed %.4f m/s at %.2f deg", solution.v_mp, solution.alpha_mp)
@@ -2048,9 +2112,15 @@ class OptiAdapter(SolverAdapter):
             raise _invalid(
                 f"alpha = {alpha_deg} is not admissible", "give a finite angle of attack", "alpha"
             )
-        request = EvaluationRequest(airplane=airplane, air=air, v_ms=v_ms, alpha_deg=alpha_deg)
+        request = EvaluationRequest(
+            airplane=airplane, air=air, v_ms=v_ms, alpha_deg=alpha_deg, k_e_d0=self._k_e_d0()
+        )
         forces = await self.runtime.run_cpu(evaluation_worker, request)
-        warnings = [*_flap_warnings(flaps), *await self._regime_warnings(airplane, v_ms, air)]
+        warnings = [
+            *_flap_warnings(flaps),
+            *await self._regime_warnings(airplane, v_ms, air),
+            induced_drag_notice(request.k_e_d0),
+        ]
         logger.debug(
             "AeroBuildup at %.4f m/s, %.2f deg: L %.4f N, D %.4f N",
             v_ms,

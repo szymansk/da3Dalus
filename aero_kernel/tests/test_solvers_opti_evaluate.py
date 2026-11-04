@@ -18,7 +18,7 @@ from aero_kernel.solvers.aerobuildup import evaluate_forces
 from aero_kernel.solvers.opti import EvaluationRequest, Forces, OptiAdapter
 from aero_kernel.solvers.regime import regime_by_surface
 from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
-from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
+from aero_kernel.tests.solver_builders import AIR, K_E_D0, InProcessRuntime, airplane, drag_notice
 
 pytestmark = pytest.mark.asyncio
 
@@ -42,11 +42,12 @@ async def test_the_adapter_hands_the_worker_the_operating_point(
     plane = airplane()
     result = await OptiAdapter(InProcessRuntime()).evaluate(plane, AIR, 10.0, 4.0)
     (request,) = seen
-    assert (request.airplane, request.air, request.v_ms, request.alpha_deg) == (
+    assert (request.airplane, request.air, request.v_ms, request.alpha_deg, request.k_e_d0) == (
         plane,
         AIR,
         10.0,
         4.0,
+        K_E_D0,
     )
     assert result.forces == FORCES
 
@@ -63,7 +64,7 @@ async def test_the_regime_warnings_are_those_of_the_callers_speed(
         AIR.kinematic_viscosity,
         canon_bands(),
     )
-    assert result.warnings == tuple(expected)
+    assert result.warnings == (*expected, drag_notice())
 
 
 @pytest.mark.parametrize(
@@ -133,21 +134,25 @@ async def test_the_worker_evaluates_the_converted_airplane(monkeypatch: pytest.M
 
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
     monkeypatch.setattr(opti_module, "evaluate_forces", forces)
-    request = EvaluationRequest(airplane=airplane(), air=AIR, v_ms=10.0, alpha_deg=4.0)
+    request = EvaluationRequest(
+        airplane=airplane(), air=AIR, v_ms=10.0, alpha_deg=4.0, k_e_d0=K_E_D0
+    )
     outcome = opti_module.evaluation_worker(request)
     assert outcome.value == FORCES
-    assert seen == [(converted, AIR, 10.0, 4.0, opti_module.NEURALFOIL_MODEL_SIZE)]
+    assert seen == [(converted, AIR, 10.0, 4.0, opti_module.NEURALFOIL_MODEL_SIZE, K_E_D0)]
 
 
 async def test_evaluate_forces_reads_lift_and_drag_of_one_aerobuildup_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """AeroBuildup's own L and D in newtons, at the given point; nothing derived from coefficients."""
+    """AeroBuildup's own L and the kernel's D in newtons, at the given point; nothing derived from
+    coefficients. The kernel's D is AeroBuildup's profile drag plus k_e,D0 times its induced drag."""
     runs: list[dict[str, Any]] = []
 
     def aerobuildup(airplane: object, op_point: Any, **kwargs: object) -> SimpleNamespace:
         runs.append({"airplane": airplane, "op": op_point, **kwargs})
-        return SimpleNamespace(run=lambda: {"L": np.array([14.7]), "D": 0.98, "CL": 0.5})
+        result = {"L": np.array([14.7]), "D": 1.0, "D_profile": 0.6, "D_induced": 0.4, "CL": 0.5}
+        return SimpleNamespace(run=lambda: result)
 
     def operating_point(**kwargs: Any) -> SimpleNamespace:
         return SimpleNamespace(**kwargs)
@@ -155,8 +160,9 @@ async def test_evaluate_forces_reads_lift_and_drag_of_one_aerobuildup_run(
     fake = SimpleNamespace(AeroBuildup=aerobuildup, OperatingPoint=operating_point)
     monkeypatch.setattr(aerobuildup_module, "load_aerosandbox", lambda: fake)
     plane = object()
-    lift, drag = evaluate_forces(plane, AIR, 10.0, 4.0, "xlarge")
-    assert (lift, drag) == (14.7, 0.98)
+    lift, drag = evaluate_forces(plane, AIR, 10.0, 4.0, "xlarge", K_E_D0)
+    assert lift == 14.7
+    assert math.isclose(drag, 0.6 + K_E_D0 * 0.4, rel_tol=1e-15)
     (run,) = runs
     assert (run["airplane"], run["model_size"]) == (plane, "xlarge")
     assert (run["op"].velocity, run["op"].alpha) == (10.0, 4.0)
@@ -171,15 +177,23 @@ async def test_sweep_polar_runs_aerobuildup_over_the_angles_at_one_speed(
 
     def aerobuildup(_airplane: object, op_point: Any, **_: object) -> SimpleNamespace:
         seen.append(op_point)
-        result = {"CL": np.array([0.1, 0.5]), "CD": np.array([0.02, 0.03]), "Cm": np.zeros(2)}
+        result = {
+            "CL": np.array([0.1, 0.5]),
+            "Cm": np.zeros(2),
+            "D_profile": np.array([0.02, 0.03]),
+            "D_induced": np.zeros(2),
+        }
         return SimpleNamespace(run=lambda: result)
 
     def operating_point(**kwargs: Any) -> SimpleNamespace:
-        return SimpleNamespace(**kwargs)
+        point = SimpleNamespace(**kwargs)
+        point.dynamic_pressure = lambda: np.ones(2)  # q S_ref = 1: C_D equals the drag in N
+        return point
 
     fake = SimpleNamespace(AeroBuildup=aerobuildup, OperatingPoint=operating_point)
     monkeypatch.setattr(aerobuildup_module, "load_aerosandbox", lambda: fake)
-    polar = aerobuildup_module.sweep_polar(object(), AIR, 9.0, [0.0, 4.0], "xlarge")
+    plane = SimpleNamespace(s_ref=1.0)
+    polar = aerobuildup_module.sweep_polar(plane, AIR, 9.0, [0.0, 4.0], "xlarge", K_E_D0)
     assert (polar.alpha_deg, polar.cl, polar.cd, polar.cm) == (
         (0.0, 4.0),
         (0.1, 0.5),

@@ -58,6 +58,14 @@ gone with the false cycle.
 
 **Validity in the RC/UAV regime (ADR 0028).** The parabola is an empirical approximation even at full scale: parasite drag varies with lift, and the Oswald factor absorbs that variation (Anderson §6.7.2). At low Reynolds number the variation is large, because laminar separation and transition change section drag with angle of attack (Anderson §20.3.2, qualitative); the polar can then depart from a parabola, and the fit residual measures how far. A low fitted `e` then partly reflects viscous drag, not induced drag: it is a display value, not a Trefftz-plane span efficiency. Along the level-flight polar Re falls as C_L rises (V ∝ C_L^-½), so the fitted C_D0 belongs to that flight path, not to one Reynolds number. Mach ≤ 0.3: no wave drag, no correction.
 
+**The solver drag it is fitted to (#1346, maintainer 2026-11-03).** The solver polar's `C_D` is the kernel's
+drag of AeroBuildup, `(D_profile + k_e,D0 · D_induced) / (q·S_ref)` ([[aerobuildup-evaluation]]): AeroBuildup's
+full-scale viscous factor `k_e,D0` is taken out of its induced drag, because NeuralFoil's section polars already
+contain the lift-dependent profile drag. The fitted `e` is therefore no longer lowered twice for that drag; on
+the four fleet aircraft of the #1346 measurement (level-flight sweep, this entry's window, sea level) it rises by
++11.5 … +15.7 % (BRYAN 0.665 → 0.769, WIESEL 0.542 → 0.611, CHEKKER 0.621 → 0.711, BELEMNITOS 0.501 → 0.559), `C_D0`
+unchanged. Still a display value, not a Trefftz-plane span efficiency.
+
 ## Implementations (0)
 
 None in aero_kernel yet; no register node is mapped to this entry.

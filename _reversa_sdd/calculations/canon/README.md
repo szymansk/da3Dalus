@@ -635,7 +635,9 @@ parameters are not confused. The file is optional; an empty file means no rules.
 - `criterion` — the rule in words; a threshold is named by its parameter;
 - `codes` — the error codes the kernel reports for a violation; a test finds each of them in the kernel's code,
   so a rule cannot name a check that does not exist;
-- `parameters` — `<name>: {value, unit, basis, status, source, regime}`. `basis` is `definition`, `standard`,
+- `parameters` — `<name>: {value, unit, basis, status, source, regime, positive?, at_most?}`. `positive: true`
+  and `at_most` bound the parameter as they bound a supplied quantity: the canon's value must lie inside them, and an
+  override outside them is refused (`non_positive_value`, `value_above_maximum`; #1346). `basis` is `definition`, `standard`,
   `sourced` or `convention`; `status` is `adopted`, or `pending` while the value is a proposal the maintainer has
   not decided (the kernel refuses to read a pending value). `source` and `regime` are as for a default.
 

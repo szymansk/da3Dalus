@@ -19,31 +19,32 @@ SM_TARGET = 0.10
 WORLDS = ("textbook", "pappas", "avl")
 ABS_M = 1e-4  # the regression tolerance of the AVL world
 # Regression goldens (m), per world textbook / Pappas / AVL: the design CG at SM_target = 0.10 and the
-# arms l_H,CG and l_V,CG from it.
+# arms l_H,CG and l_V,CG from it. Re-recorded for #1346: the AVL world's design CG follows its neutral point,
+# which moved with C_L,md (the kernel's drag); textbook and Pappas did not move.
 GOLDEN_CG = {
-    FleetMember.BRYAN: (0.1266041726, 0.1269010159, 0.1307588397),
-    FleetMember.JAGUAR: (0.1075391889, 0.1133476263, 0.1158455146),
-    FleetMember.RV7: (0.2378507, 0.2398105, 0.2416460),
-    FleetMember.CHEKKER: (0.1744891, 0.1799456, 0.1846912),
-    FleetMember.WIESEL: (0.1756829, 0.1840378, 0.1804037),
-    FleetMember.BELEMNITOS: (0.05741363154, 0.07125825067, 0.06118300891),
+    FleetMember.BRYAN: (0.1266041726, 0.1269010159, 0.1305588397),
+    FleetMember.JAGUAR: (0.1075391889, 0.1133476263, 0.1159685146),
+    FleetMember.RV7: (0.2378507263, 0.2398104591, 0.2411650000),
+    FleetMember.CHEKKER: (0.1744890879, 0.1799455657, 0.1852121647),
+    FleetMember.WIESEL: (0.1756829122, 0.1840377581, 0.1800916814),
+    FleetMember.BELEMNITOS: (0.0574136315, 0.0712582507, 0.0612200089),
 }
 GOLDEN_L_H = {
-    FleetMember.BRYAN: (0.2972459914, 0.2969491481, 0.2930913242),
-    FleetMember.JAGUAR: (0.2447503047, 0.2389418673, 0.2364439791),
-    FleetMember.RV7: (0.3942354, 0.3922757, 0.3904401),
-    FleetMember.CHEKKER: (0.3526446, 0.3471881, 0.3424425),
-    FleetMember.WIESEL: (0.3805503, 0.3721954, 0.3758295),
+    FleetMember.BRYAN: (0.2972459914, 0.2969491481, 0.2932913242),
+    FleetMember.JAGUAR: (0.2447503047, 0.2389418673, 0.2363209791),
+    FleetMember.RV7: (0.3942354143, 0.3922756815, 0.3909211406),
+    FleetMember.CHEKKER: (0.3526446228, 0.3471881450, 0.3419215460),
+    FleetMember.WIESEL: (0.3805502876, 0.3721954417, 0.3761415184),
     # the V-tail is both the horizontal and the vertical surface: one quarter-chord MAC (#1208)
-    FleetMember.BELEMNITOS: (0.5955587562, 0.5817141370, 0.5917893788),
+    FleetMember.BELEMNITOS: (0.5955587562, 0.5817141371, 0.5917523788),
 }
 GOLDEN_L_V = {
-    FleetMember.BRYAN: (0.3157883688, 0.3154915255, 0.3116337017),
-    FleetMember.JAGUAR: (0.2320591484, 0.2262507110, 0.2237528227),
-    FleetMember.RV7: (0.4082399, 0.4062802, 0.4044446),
-    FleetMember.CHEKKER: (0.3694571, 0.3640006, 0.3592550),
-    FleetMember.WIESEL: (0.3944157, 0.3860609, 0.3896950),
-    FleetMember.BELEMNITOS: (0.5955587562, 0.5817141370, 0.5917893788),
+    FleetMember.BRYAN: (0.3157883688, 0.3154915255, 0.3118337017),
+    FleetMember.JAGUAR: (0.2320591484, 0.2262507110, 0.2236298227),
+    FleetMember.RV7: (0.4082399071, 0.4062801743, 0.4049256333),
+    FleetMember.CHEKKER: (0.3694570830, 0.3640006052, 0.3587340062),
+    FleetMember.WIESEL: (0.3944157416, 0.3860608957, 0.3900069724),
+    FleetMember.BELEMNITOS: (0.5955587562, 0.5817141371, 0.5917523788),
 }
 
 

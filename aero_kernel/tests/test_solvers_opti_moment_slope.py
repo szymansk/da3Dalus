@@ -162,7 +162,7 @@ def install(
         return curve
 
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
-    monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+    monkeypatch.setattr(opti_module, "sweep_lift", sweep)
     return asked
 
 

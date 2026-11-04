@@ -172,11 +172,11 @@ def rv7_landing() -> AirplaneGeometry:
 async def test_a_flap_down_raises_the_lift_at_a_fixed_angle_of_attack() -> None:
     """The sign of the mapping: trailing edge down positive in AeroSandbox, so a positive flap
     deflection shifts the lift curve up (RV-7: C_L at 0 deg 0.358 clean, 0.589 with 30 deg)."""
-    from aero_kernel.solvers.aerobuildup import sweep_polar
+    from aero_kernel.solvers.aerobuildup import sweep_lift
 
     plane = AirplaneGeometry.model_validate(reference_document(FleetMember.RV7))
-    clean = sweep_polar(to_asb_airplane(plane), sea_level(), 6.8, (0.0, 1.0), "xlarge")
-    flapped = sweep_polar(to_asb_airplane(rv7_landing()), sea_level(), 6.8, (0.0, 1.0), "xlarge")
+    clean = sweep_lift(to_asb_airplane(plane), sea_level(), 6.8, (0.0, 1.0), "xlarge")
+    flapped = sweep_lift(to_asb_airplane(rv7_landing()), sea_level(), 6.8, (0.0, 1.0), "xlarge")
     assert flapped.cl[0] > clean.cl[0]
     assert math.isclose(flapped.cl[0], 0.5886141, abs_tol=5e-3)  # regression of this build
 

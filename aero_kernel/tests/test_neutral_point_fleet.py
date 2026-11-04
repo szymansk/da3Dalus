@@ -40,12 +40,12 @@ CG = {
     # the design CG of the canon (cg-for-target-margin, SM_target 0.10) in the AVL world, from the
     # kernel's centre-of-gravity-design; test_cg_for_target_margin... checks it. Never a hand-chosen
     # position (maintainer 2026-10-26).
-    FleetMember.RV7: 0.241646,
+    FleetMember.RV7: 0.241165,
     # CHEKKER and WIESEL likewise: the design CG of the AVL world (the geometry format has no CG)
-    FleetMember.CHEKKER: 0.18469116469928673,
-    FleetMember.WIESEL: 0.1804036813580844,
+    FleetMember.CHEKKER: 0.18521216469928675,
+    FleetMember.WIESEL: 0.1800916813580844,
     # BELEMNITOS (V-tail, #1208): the design CG of the AVL world at SM_target 0.10
-    FleetMember.BELEMNITOS: 0.06118300890616699,
+    FleetMember.BELEMNITOS: 0.06122000890616699,
 }
 DESIGN_CG_MEMBERS = (
     FleetMember.RV7,
@@ -61,16 +61,19 @@ WORLDS = ("textbook", "pappas", "avl")
 # BRYAN 0.1398911924/0.1401394435 -> 0.1398961691/0.1402057906 m, JAGUAR 0.1180210991/0.1238206059 ->
 # 0.1181103705/0.1239713559 m; the eta = 0.9 values below moved from 0.1441142600/0.1233721388.
 GOLDEN_NP = {
-    FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.144039),
-    FleetMember.JAGUAR: (0.1180376743, 0.1238461117, 0.126344),
-    FleetMember.RV7: (0.2561507, 0.2581105, 0.259946),
-    FleetMember.CHEKKER: (0.1906369, 0.1960934, 0.200839),
-    FleetMember.WIESEL: (0.1919482, 0.2003031, 0.196669),
+    FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.143839),
+    FleetMember.JAGUAR: (0.1180376743, 0.1238461117, 0.126467),
+    FleetMember.RV7: (0.2561507, 0.2581105, 0.259465),
+    FleetMember.CHEKKER: (0.1906369, 0.1960934, 0.20136),
+    FleetMember.WIESEL: (0.1919482, 0.2003031, 0.196357),
     # V-tail (#1208): S_h,eff = sum S_i cos^2(nu_i) with the root carried to the centreline, the lift slope from the
     # developed panel aspect ratio;
     # recorded from the kernel (regression). The AVL mesh is declared not converged (1.27 % MAC).
-    FleetMember.BELEMNITOS: (0.07140062263587507, 0.08524524177346318, 0.07517),
+    FleetMember.BELEMNITOS: (0.07140062263587507, 0.08524524177346318, 0.075207),
 }
+# #1346 (the kernel's drag moves C_L,md and with it the AVL world's lift coefficient): the AVL world moved from
+# BRYAN 0.144039, JAGUAR 0.126344, RV-7 0.259946, CHEKKER 0.200839, WIESEL 0.196669, BELEMNITOS 0.07517 m; the
+# textbook and Pappas worlds did not move, and the design CGs above follow the AVL world.
 # Since #1262 the area includes the centreline gap: textbook/Pappas BRYAN 0.1398961691/0.1402057906 ->
 # 0.1398843329/0.1401811762 m, JAGUAR 0.1181103705/0.1239713559 -> 0.1180376743/0.1238461117 m.
 # The textbook world with the former constant given explicitly as tail-efficiency (continuity).
@@ -84,8 +87,9 @@ GOLDEN_TEXTBOOK_ETA_09 = {
 }
 # AeroSandbox's c_MAC of the main wing (gh-1240); it was the kernel's projected 0.13277219 / 0.10504547.
 C_MAC = {member: member.asb_reference[2] for member in FleetMember}
-# BRYAN's C_L at the minimum-drag speed (test_minimum_drag_speed_fleet.GOLDEN) and the AVL neutral
-# point of the template's own aligned mesh under the kernel's conditions at that C_L:
+# BRYAN's C_L at the minimum-drag speed before #1346 (AeroBuildup's drag as is) and the AVL neutral
+# point of the template's own aligned mesh under the kernel's conditions at that C_L (a fixed reference
+# point of the writer, independent of the drag):
 # scripts/sim_export/crrcsim/avl_kernel_reference.py, AVL_CONVERGENCE.md "Kernel conditions".
 BRYAN_CL_MD = 0.6225775
 BRYAN_TEMPLATE_X_NP = 0.144023

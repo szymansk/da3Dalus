@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: law
-status: approved
+status: draft
 output: stall-speed, max-lift-coefficient, angle-of-attack-stall, polar-stall, inverted-max-lift-coefficient, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/optimization
-  - status/approved
+  - status/draft
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {v_s: null, cl_max: null, alpha_s: null, polar: null}
@@ -104,7 +104,9 @@ One authority for C_L,max.
 **Fourth output: `polar-stall`, the published sweep** (maintainer, 2026-10-14, D4). The α sweep that
 brackets the first `C_L` peak (K32: sweep, then IPOPT restricted to the pre-stall branch) is **published**,
 not only an internal step: the sampled whole-aircraft polar (α, `C_L`, `C_D`, `C_m`; the solver's drag, not
-the parabola — ADR 0026) at the clean stall condition `V_S`, `n = 1`. [[stall-break]] reads it,
+the parabola — ADR 0026) at the clean stall condition `V_S`, `n = 1`. Its `C_D` is the kernel's drag over
+`q·S_ref`, `(D_profile + k_e,D0 · D_induced) / (q·S_ref)` (#1346, [[aerobuildup-evaluation]]); `C_L` and `C_m` are
+AeroBuildup's. The bracketing sweeps read `C_L` only. [[stall-break]] reads it,
 so the sweep must run far enough past the peak for that scan. Take-off, landing and inverted return their
 sweeps without exposing them (`polar: null`), and their stall angle the same way (`alpha_s: null`): no
 quantity nobody reads (architect, 2026-10-14).
@@ -248,3 +250,11 @@ can never fire is inert (ADR 0021). The Ist finding below is what the binding re
 > difference is the NeuralFoil model size, xlarge vs small) — regression, not validation against flight.
 > This is the relation and the method the implementations are measured against.
 
+> **Reopened for approval (2026-11-03, #1346).** Only the `C_D` column of the published polar `polar-stall`
+> changed: it is now the kernel's drag (`D_profile + k_e,D0 · D_induced`) over `q·S_ref`, no longer AeroBuildup's
+> `C_D`. `V_S`, `C_L,max`, `α_S`, the take-off, landing and inverted applications, the bracketing and the
+> postconditions read lift only and are unchanged (their goldens did not move). The result carries **no**
+> `induced_drag_viscous_factor_removed` notice: none of its values reads drag, and a notice on `V_S` and its
+> subtree would declare a correction they do not carry (ADR 0020). The formula that reads the polar's `C_D`
+> declares it (Soll: [[parabolic-polar-fit]] when implemented). The entry is back to `draft` because the
+> computation of one of its outputs changed.

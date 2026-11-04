@@ -3,7 +3,9 @@
 Building AeroBuildup symbolically costs more than solving through it (BRYAN, NeuralFoil
 ``xlarge``: 3.3 s to build, 0.9 s for the zero-lift angle through the built function). So the
 Opti problems call one CasADi ``Function`` per converted airplane, built once:
-``f(V, alpha, p, q, r, rho, mu, a) -> (L, D, CL, CD, Cm, Cl, Cn)``. The function is a
+``f(V, alpha, p, q, r, rho, mu, a) -> (L, D_profile, D_induced, CL, Cm, Cl, Cn)``. It offers the two
+parts of AeroBuildup's drag, never its total: a problem that needs drag forms the kernel's drag from
+them (``aerobuildup.kernel_drag``, #1346), so there is one producer of drag. The function is a
 mechanism, never a value: a problem solved through a cached function gives the same numbers as one
 solved through a function built for it.
 
@@ -51,9 +53,11 @@ MAX_MODELS_PER_WORKER = 2
 # The inputs of the function, in order: true airspeed (m/s), angle of attack (deg), the body rates
 # p, q, r (rad/s), density (kg/m^3), dynamic viscosity (Pa s), speed of sound (m/s).
 MODEL_INPUTS = ("v", "alpha", "p", "q", "r", "density", "dynamic_viscosity", "speed_of_sound")
-# The AeroBuildup outputs the Opti problems read: lift and drag (N), their coefficients, and the
-# pitching, rolling and yawing moment coefficients (body axes, as AeroBuildup returns them).
-MODEL_OUTPUTS = ("L", "D", "CL", "CD", "Cm", "Cl", "Cn")
+# The AeroBuildup outputs the Opti problems read: lift, the profile and the induced drag (N), the lift
+# coefficient, and the pitching, rolling and yawing moment coefficients (body axes, as AeroBuildup
+# returns them). AeroBuildup's total drag and its coefficient are left out: they hold the viscous
+# factor the kernel removes (``aerobuildup.kernel_drag``, #1346).
+MODEL_OUTPUTS = ("L", "D_profile", "D_induced", "CL", "Cm", "Cl", "Cn")
 
 
 def model_key(

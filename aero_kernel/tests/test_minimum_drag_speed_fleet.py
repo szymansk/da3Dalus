@@ -30,18 +30,24 @@ SLUGS = (
     "angle-of-attack-best-glide",
     "lift-coefficient-best-glide",
 )
+# k_e,D0 = 1: the kernel's drag D_profile + k_e,D0 * D_induced is then AeroBuildup's own (#1346), the
+# drag the prototype used.
+AEROBUILDUP_AS_IS = 1.0
 # The tool versions the goldens hold for. A different version may move them; this is then noticed
 # here (and the goldens are re-recorded deliberately), not discovered later.
 GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # Regression goldens at sea level, mass of the fleet member, ISA, AeroSandbox's S_ref of the main wing (gh-1240),
-# NeuralFoil model size xlarge: (V_md m/s, (L/D)max, alpha_md deg, C_L,md).
+# NeuralFoil model size xlarge: (V_md m/s, (L/D)max, alpha_md deg, C_L,md). Re-recorded with the kernel's drag
+# (#1346: AeroBuildup's viscous factor k_e,D0 removed from its induced drag); before, V_md / (L/D)max were BRYAN
+# 7.4468700 / 7.7276780, JAGUAR 9.0692794 / 10.4719556, BELEMNITOS 5.3792137 / 13.8824812, RV-7 10.2315110 /
+# 9.5383095, CHEKKER 9.1449363 / 9.2766026, WIESEL 12.5389487 / 11.8938174.
 GOLDEN = {
-    FleetMember.BRYAN: (7.4468700, 7.7276780, 1.3379343, 0.6225775),
-    FleetMember.JAGUAR: (9.0692794, 10.4719556, 2.1200951, 0.4817366),
-    FleetMember.BELEMNITOS: (5.3792137, 13.8824812, 4.1222829, 0.7756370),
-    FleetMember.RV7: (10.2315110, 9.5383095, 2.7798438, 0.5096129),
-    FleetMember.CHEKKER: (9.1449363, 9.2766026, 0.9118733, 0.6182677),
-    FleetMember.WIESEL: (12.5389487, 11.8938174, 3.0752193, 0.4531266),
+    FleetMember.BRYAN: (7.2306630, 8.3568527, 1.7236595, 0.6603661),
+    FleetMember.JAGUAR: (8.8849618, 11.0911866, 2.3196645, 0.5019311),
+    FleetMember.BELEMNITOS: (5.2599903, 14.8391368, 4.4632809, 0.8111968),
+    FleetMember.RV7: (9.9423059, 10.2825158, 3.2198890, 0.5396917),
+    FleetMember.CHEKKER: (8.8958176, 9.9654926, 1.3233626, 0.6533805),
+    FleetMember.WIESEL: (11.9855865, 12.6842314, 3.5502794, 0.4959332),
 }
 
 
@@ -73,10 +79,11 @@ async def test_bryan_best_glide_where_the_prototype_found_it_with_the_small_mode
 ) -> None:
     """Prototype (CRRCSim branch, ERGEBNISSE_STABILITAET.md, 151 g): V_md = 7.82 m/s, C_L = 0.5656.
 
-    The prototype used AeroSandbox's default NeuralFoil model, "small", so the worker is run in this
-    process with that size: 7.818 m/s (0.02 % from the prototype), C_L 0.5662 (0.1 %), (L/D)max 7.78.
-    With the kernel's "xlarge" the same airplane gives 7.447 m/s, 4.8 % lower: the model size, not
-    the procedure, is the difference.
+    The prototype used AeroSandbox's default NeuralFoil model, "small", and AeroBuildup's drag as it
+    is, so the worker is run in this process with that size and with k_e,D0 = 1 (the kernel's drag
+    is then AeroBuildup's own, #1346): 7.818 m/s (0.02 % from the prototype), C_L 0.5662 (0.1 %),
+    (L/D)max 7.78. With the kernel's "xlarge" and AeroBuildup as is the same airplane gives
+    7.447 m/s, 4.8 % lower: the model size, not the procedure, is the difference.
     """
     installed = {name: importlib.metadata.version(name) for name in GOLDEN_TOOL_VERSIONS}
     assert installed == GOLDEN_TOOL_VERSIONS  # the 7.8181 below holds for these versions only
@@ -91,6 +98,7 @@ async def test_bryan_best_glide_where_the_prototype_found_it_with_the_small_mode
             dynamic_viscosity=1.789380278077583e-05,
             speed_of_sound=340.2941077869353,
         ),
+        k_e_d0=AEROBUILDUP_AS_IS,
     )
     solution = opti_module.best_glide_worker(request_).value
     assert close(solution.v_md, 7.82, 2e-3)

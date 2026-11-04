@@ -10,7 +10,7 @@ from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import MinSinkSolution, OptiAdapter, StallRequest
 from aero_kernel.solvers.regime import regime_by_surface
 from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
-from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, airplane
+from aero_kernel.tests.solver_builders import AIR, K_E_D0, InProcessRuntime, airplane, drag_notice
 from aero_kernel.tests.test_solvers_opti_glide import (
     GRAVITY,
     MASS,
@@ -53,6 +53,7 @@ async def test_the_sink_hands_the_worker_everything_it_needs(
         AIR,
     )
     assert request.airplane == plane
+    assert request.k_e_d0 == K_E_D0
     assert result.solution == sink()
 
 
@@ -72,9 +73,11 @@ async def test_the_regime_warnings_are_those_of_the_optimum_speed(
         canon_bands(),
     )
     assert [w.code for w in expected] == ["reynolds_bubble_sensitive"]
-    assert result.warnings == tuple(expected)
+    assert result.warnings == (*expected, drag_notice())
     monkeypatch.setattr(opti_module, "min_sink_worker", canned(sink(18.0)))
-    assert (await adapter.min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)).warnings == ()
+    assert (await adapter.min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)).warnings == (
+        drag_notice(),
+    )
 
 
 @pytest.mark.parametrize(
@@ -130,12 +133,13 @@ async def test_the_worker_reads_the_optimum_speed_angle_and_lift_coefficient(
 async def test_the_worker_minimises_the_sink_power_drag_times_speed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """D V is the power the glide loses; at fixed weight it is proportional to the sink rate."""
+    """D V is the power the glide loses; at fixed weight it is proportional to the sink rate. D is
+    the kernel's drag (#1346)."""
     objective: list[object] = []
     request = install_optimum(monkeypatch, 9.0, 7.0, objective=objective)
     opti_module.min_sink_worker(request)
     (minimised,) = objective
-    assert minimised.name == "D*speed"  # type: ignore[attr-defined]
+    assert minimised.name == f"(D_profile+{K_E_D0}*D_induced)*speed"  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize(
@@ -211,9 +215,9 @@ async def test_the_adapter_declares_a_stall_limited_optimum_with_a_notice(
     assert "still falling" in warning.message
 
 
-async def test_the_adapter_declares_nothing_for_an_interior_optimum(
+async def test_the_adapter_declares_only_the_kernels_drag_for_an_interior_optimum(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(opti_module, "min_sink_worker", canned(sink(18.0)))
     result = await OptiAdapter(InProcessRuntime()).min_sink(airplane(), MASS, GRAVITY, 1.0, AIR)
-    assert [w.code for w in result.warnings] == []
+    assert result.warnings == (drag_notice(),)

@@ -45,6 +45,13 @@ Anderson §6.7.2 draws a distinction the app must not lose: the SPAN efficiency 
 
 **Validity in the RC/UAV regime (ADR 0028).** Prandtl lifting-line: valid for moderate-to-high AR unswept wings, which covers RC well. The RC-specific weakness is the constant-e assumption: at Re 5e4-3e5 the lift-dependent parasite term r*C_L^2 is LARGER than at transport scale (laminar separation bubble drag rises steeply outside the drag bucket), so a single e fitted over the whole polar is a worse approximation for a model than for an airliner. The 0.8 literal fallback is an Oswald-band number (Anderson's 0.70-0.85) being used where a span efficiency may be meant - state which one it is.
 
+**AeroBuildup's `e` and the kernel (#1346, maintainer 2026-11-03).** AeroBuildup's internal factor is the
+Nita & Scholz Oswald factor, `e_theo · k_e,D0` with the full-scale viscous factor `k_e,D0 = 0.83625`, an
+Oswald factor in Anderson's sense (§6.7.2), applied on top of NeuralFoil's section profile drag. The kernel takes
+`k_e,D0` out ([[aerobuildup-evaluation]], rule `aerobuildup-induced-drag`), so the induced drag of the kernel's
+drag carries the inviscid `e_theo` (the span efficiency of §5.3.3), and the lift-dependent profile drag is
+NeuralFoil's only.
+
 ## Implementations (2)
 
 | node | claimed | verified | deviation |

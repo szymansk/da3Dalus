@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: route
-status: approved
+status: draft
 output: minimum-drag-speed, max-lift-to-drag-ratio, angle-of-attack-best-glide, lift-coefficient-best-glide
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/route
   - kind/optimization
-  - status/approved
+  - status/draft
 tex: \begin{aligned}V_md = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha) \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs:
@@ -32,9 +32,11 @@ applications:
 **Canonical form**
 
 ```
-minimize over V, alpha:   D(V, alpha)
+minimize over V, alpha:   D(V, alpha)          D = D_profile + k_e,D0 * D_induced  (aerobuildup-evaluation)
 subject to:               L(V, alpha) = n * m * g
 ```
+
+**The drag `D` (#1346, maintainer decision 2026-11-03).** `D(V, α)` is the kernel's drag of AeroBuildup, `D_profile + k_e,D0 · D_induced`, the same function as in [[aerobuildup-evaluation]] (`solvers/aerobuildup.py:kernel_drag`) applied to the outputs of the airplane's model function (`solvers/aero_model.py`, which offers `D_profile` and `D_induced` and not AeroBuildup's total): the full-scale viscous factor `k_e,D0` (rule `aerobuildup-induced-drag`) is taken out of AeroBuildup's induced drag, because NeuralFoil's section polars already contain the lift-dependent profile drag. The result carries the `notice` `induced_drag_viscous_factor_removed`. Measured on the fleet (#1346, sea level): V_md −2.2 … −4.4 %, (L/D)max +6.6 … +8.1 % against AeroBuildup as is.
 
 **Produces** [[minimum-drag-speed]] · [[max-lift-to-drag-ratio]] · [[angle-of-attack-best-glide]] · [[lift-coefficient-best-glide]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
 
@@ -122,3 +124,8 @@ against an argmax (a sweep mixing Reynolds numbers) does not apply. The paraboli
 is its Probe ([[max-lift-to-drag-parabolic]]).
 
 > **Approved** (maintainer, 2026-10-24, approval block 1). This is the relation the implementations are measured against.
+
+> **Reopened for approval (2026-11-03, #1346).** The drag the optimisation minimises, and with it `V_md`,
+> `(L/D)max = m·g / D(V_md)`, `α_md` and `C_L,md`, is now the kernel's drag (`D_profile + k_e,D0 · D_induced`,
+> see "The drag `D`" above), no longer AeroBuildup's total. The problem, the method and the convergence are
+> unchanged. The entry is back to `draft` because its computation changed.

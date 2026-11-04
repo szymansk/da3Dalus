@@ -77,4 +77,8 @@ negative glide ratio. The violation is therefore an **error** at this formula, n
 > glide ratio comes from the best-glide optimisation, the displayed parabola value from
 > [[max-lift-to-drag-parabolic]] (ADR 0026).
 
+**2026-11-03 (#1346):** the drag `d` is the kernel's ([[aerobuildup-evaluation]], `D_profile + k_e,D0 · D_induced`).
+The relation `E = L / D` and this entry's computation are unchanged, so its approval stands; stage 2 waits for
+the re-approval of [[aerobuildup-evaluation]].
+
 **2026-10-02:** from the solver's forces at the operating point, not from the parabola (`C_D,par` is an approximation, measured non-parabolic at Re ≈ 1e5). ADR 0004's closed form governs only `(L/D)max`, see [[max-lift-to-drag-parabolic]].
