@@ -62,6 +62,7 @@ kommt, ist metrisch; was aus dem Bauteilkatalog kommt, ist in Millimetern.
 | Feldgruppe | Einheit | Anmerkung |
 |---|---|---|
 | `xyz_le`, `chord`, `xyz`, `a`, `b`, `xyz_ref` | **m** | die eigentliche Geometrie |
+| `contour` (fuselage section, gh-1349) | **m** | relative to the section's `xyz`, see 7.1b |
 | `twist`, `dihedral`, alle `*_deflection_deg` | **Grad** | |
 | `spare_*` (Maße, Länge, Start, Ursprung) | **m** in der API | in der **Datenbank mm**; `wing_service` rechnet beim Lesen und Schreiben um |
 | `spare_vector` | — | Einheitsvektor, **dimensionslos**, wird nie skaliert |
@@ -345,6 +346,61 @@ Schnittklasse (`app/converters/split_superellipse.py`), die Kontur und Umfang je
 rechnet; ihr `shape` ist der **flächengleiche** Exponent. Wer nur `shape` liest — die
 Zwischenschnitte von AeroSandbox oder die Serialisierung des CAD-Rumpfs — behält damit die
 Querschnittsfläche, verliert aber die Form der Unterseite.
+
+### 7.1b Measured outline (`contour`, gh-1349)
+
+A super-ellipse cannot describe a scale fuselage with a low widest point, straight tapered sides
+and a narrow back (Bf 109, Fw 190, kit fuselages with a flat bottom and a turtle deck). A section
+may therefore carry its **measured outline** as points:
+
+```json
+{"xyz": [0.42, 0, 0.01], "a": 0.028, "b": 0.048, "n": 2.4, "n_lower": 6.0,
+ "contour": [[0.0, -0.048], [0.0102, -0.0479], ..., [0.0059, 0.0475], [0.0, 0.048]]}
+```
+
+| | |
+|---|---|
+| `contour` | list of `[y, z]` pairs in **metres**, **relative to `xyz`**; `null` or absent: the section is the super-ellipse |
+
+**Format.** Only the **right half** (`y >= 0`) is stored. It runs from the **bottom centre**
+(`y = 0`, `z < 0`) over the right side to the **top centre** (`y = 0`, `z > 0`). The body is
+mirrored about `y = 0`, so the section is symmetric by construction. Point `i` of one section is
+lofted to point `i` of the next, as with airfoil coordinates; the writer resamples by arc length,
+keeps sharp corners as points of their own and starts at the bottom centre.
+
+**Rules** (a violation is refused: HTTP 422 in the app, `invalid_input` in the aero kernel, both
+with the path of the offending point or contour):
+
+1. at least **8 points** (canon rule `fuselage-contour.min_contour_points`);
+2. the first point is the bottom centre (`y = 0` exactly, `z < 0`), the last the top centre
+   (`y = 0` exactly, `z > 0`);
+3. every `y >= 0`, and no point but the first and the last lies on `y = 0`;
+4. **order:** the polar angle $\varphi_i = \operatorname{atan2}(z_i, y_i)$ about `xyz` rises
+   **strictly** from point to point, from $-90°$ to $+90°$. The outline is star-shaped about the
+   section centre and runs counter-clockwise in the y-z plane (`y` to the right, `z` up, as seen from behind the aircraft); it cannot
+   double back, cross itself or repeat a point;
+5. **all or none per fuselage:** if one section of a fuselage has a contour, every section has
+   one, and all have the **same number of points**. A nose or tail that closes to a point or a
+   line (`a = 0` or `b = 0`) therefore cannot be part of a contour fuselage; end it at the last
+   real former.
+
+No tolerance is applied and nothing is repaired: an invalid contour is refused, never resampled
+or clamped (ADR 0020).
+
+**`a`, `b`, `n`, `n_lower` stay as the fit.** The solvers (AeroSandbox `FuselageXSec`, the AVL
+body, the drag estimate) keep using them; nothing derives area, perimeter or wetted area from
+the contour (ADR 0022). The contour wins for **display** (outline, 3D view, import preview) and
+for the **CAD loft** (slice 2 of gh-1349).
+
+**Fit check.** For a valid contour the fit's extent is compared with the contour's:
+
+$$d = \max\left(\left|\max_i y_i - a\right|,\ \left|\max_i z_i - b\right|,\
+\left|\min_i z_i + b\right|\right)$$
+
+A section with $d > 1\,\mathrm{mm}$ (canon rule `fuselage-contour-fit.max_fit_deviation`) is
+declared with the warning `fuselage_contour_fit_mismatch` (severity `warning`): the analysed body
+is coarser than the drawn one. It is a warning, not an error (maintainer, gh-1349). In the app it
+is listed in the aircraft's `design_warnings` (code `FUSELAGE_CONTOUR_FIT_MISMATCH`).
 
 ### 7.2 Die Kontur erzeugen
 

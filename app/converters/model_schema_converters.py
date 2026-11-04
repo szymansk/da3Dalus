@@ -609,6 +609,8 @@ def _mirror_fuselage_schema_y(
                 b=xs.b,
                 n=xs.n,
                 n_lower=xs.n_lower,
+                # relative to the section's own centre and symmetric about it: unchanged
+                contour=xs.contour,
             )
             for xs in fuselage.x_secs
         ],

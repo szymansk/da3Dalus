@@ -358,6 +358,7 @@ def clone_aeroplane_subgraph(
                 b=xsec.b,
                 n=xsec.n,
                 n_lower=xsec.n_lower,
+                contour=copy.deepcopy(xsec.contour),
                 sort_index=xsec.sort_index,
             )
             db.add(new_xsec)

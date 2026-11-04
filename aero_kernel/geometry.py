@@ -90,6 +90,10 @@ class FuselageXSecSuperEllipse(_Frozen):
         b: Semi-axis in z (half-height), metres.
         n: Exponent of the section, or of the upper half (``z >= 0``) when ``n_lower`` is set.
         n_lower: Exponent of the lower half (``z < 0``); ``None`` means the same as ``n``.
+        contour: The measured right half outline, ``(y, z)`` in metres relative to ``xyz``, from
+            the bottom centre to the top centre (format 7.1b, #1349); ``None`` if the section has
+            none. Display and CAD geometry: no solver reads it, the kernel only checks it and
+            declares its distance to the fit (:mod:`aero_kernel.fuselage_contour`).
     """
 
     xyz: Point3
@@ -97,6 +101,7 @@ class FuselageXSecSuperEllipse(_Frozen):
     b: Num
     n: Num
     n_lower: Num | None = None
+    contour: tuple[tuple[Num, Num], ...] | None = None
 
 
 class Fuselage(_Frozen):

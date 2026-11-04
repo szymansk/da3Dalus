@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Wing, XSec } from "@/hooks/useWings";
 import type { Fuselage } from "@/hooks/useFuselage";
-import { sectionOffset } from "@/lib/fuselageSection";
+import { sectionExtremes, sectionOutline } from "@/lib/fuselageSection";
 import { API_BASE } from "@/lib/fetcher";
 
 interface WingOutlineViewerProps {
@@ -736,29 +736,27 @@ export function buildFuselageTraces(fuselage: Fuselage, color: string, selectedI
     color, 1.5, "dash",
   ));
 
-  // Cross-section outlines
+  // Cross-section outlines: the contour when a section has one (gh-1349)
   const nPts = 32;
   for (let idx = 0; idx < xsecs.length; idx++) {
     const xs = xsecs[idx];
     const isSelected = selectedIdx === idx;
     const xsecColor = isSelected ? COLOR_FUSELAGE_HIGHLIGHT : color;
     const xsecWidth = isSelected ? 3 : 1.5;
-    const cx: number[] = [], cy: number[] = [], cz: number[] = [];
-    for (let j = 0; j <= nPts; j++) {
-      const theta = (2 * Math.PI * j) / nPts;
-      const r = sectionOffset(xs, theta);
-      cx.push(xs.xyz[0]);
-      cy.push(xs.xyz[1] + r.y);
-      cz.push(xs.xyz[2] + r.z);
-    }
-    traces.push(scatter3d(cx, cy, cz, xsecColor, xsecWidth));
+    const outline = sectionOutline(xs, nPts);
+    traces.push(scatter3d(
+      outline.map(() => xs.xyz[0]),
+      outline.map((r) => xs.xyz[1] + r.y),
+      outline.map((r) => xs.xyz[2] + r.z),
+      xsecColor, xsecWidth,
+    ));
   }
 
-  // Longitudinal lines (solid, along top/bottom/sides)
-  for (const angle of [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
+  // Longitudinal lines (solid, along right side/top/left side/bottom)
+  for (const side of ["right", "top", "left", "bottom"] as const) {
     const lx: number[] = [], ly: number[] = [], lz: number[] = [];
     for (const xs of xsecs) {
-      const r = sectionOffset(xs, angle);
+      const r = sectionExtremes(xs)[side];
       lx.push(xs.xyz[0]);
       ly.push(xs.xyz[1] + r.y);
       lz.push(xs.xyz[2] + r.z);

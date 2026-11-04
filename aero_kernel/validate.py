@@ -23,6 +23,11 @@ from typing import cast
 from aero_kernel import geometry
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
+from aero_kernel.fuselage_contour import (
+    contour_defect,
+    contour_fit_deviation,
+    contour_set_defects,
+)
 from aero_kernel.geometry import Wing
 from aero_kernel.rules import Rules
 from aero_kernel.schema import AircraftInput, ComputeRequest, KernelWarning
@@ -512,7 +517,56 @@ def _fuselage_findings(
                         "",
                         "Give the super-ellipse exponent a value > 0.",
                     )
+            findings += _contour_findings(x_sec, section, rules)
+        findings += _contour_set_findings(fuselage, path)
     return findings
+
+
+_CONTOUR_HINT = (
+    "Give the right half outline from the bottom centre over the right side to the top centre, "
+    "(y, z) in metres relative to xyz (format 7.1b)."
+)
+
+
+def _finite_contour(x_sec: geometry.FuselageXSecSuperEllipse) -> bool:
+    """Whether a section has a contour whose numbers are all finite (the walk reports the rest)."""
+    contour = x_sec.contour
+    return contour is not None and all(math.isfinite(c) for point in contour for c in point)
+
+
+def _contour_findings(
+    x_sec: geometry.FuselageXSecSuperEllipse, section: str, rules: Rules
+) -> list[KernelError]:
+    """Check a section's contour against the rule ``fuselage-contour`` (#1349)."""
+    contour = x_sec.contour
+    if contour is None or not _finite_contour(x_sec):
+        return []
+    minimum = int(rules.value("fuselage-contour", "min_contour_points"))
+    defect = contour_defect(contour, minimum)
+    if defect is None:
+        return []
+    path = f"{section}.contour" if defect.point is None else f"{section}.contour[{defect.point}]"
+    return [
+        _finding(
+            "invalid_fuselage_contour",
+            path,
+            f"The fuselage contour at {section}.contour {defect.message}",
+            _CONTOUR_HINT,
+        )
+    ]
+
+
+def _contour_set_findings(fuselage: geometry.Fuselage, path: str) -> list[KernelError]:
+    """Check that a fuselage's sections have a contour all or none, with one point count."""
+    return [
+        _finding(
+            "inconsistent_fuselage_contours",
+            f"{path}.x_secs[{defect.section}].contour",
+            f"The fuselage section {path}.x_secs[{defect.section}] {defect.message}",
+            "Give every section of the fuselage a contour with the same number of points, or none.",
+        )
+        for defect in contour_set_defects([x_sec.contour for x_sec in fuselage.x_secs])
+    ]
 
 
 def _warning(code: str, origin: str, message: str, detail: dict[str, JsonValue]) -> KernelWarning:
@@ -598,6 +652,48 @@ def _fuselage_section_warnings(fuselages: Mapping[str, geometry.Fuselage]) -> li
     return warnings
 
 
+def _fuselage_contour_warnings(
+    fuselages: Mapping[str, geometry.Fuselage], rules: Rules
+) -> list[KernelWarning]:
+    """Declare every valid contour whose super-ellipse fit is further away than the canon allows.
+
+    The solvers compute with ``a``, ``b``, ``n``, ``n_lower``; a contour the fit misses by more
+    than ``fuselage-contour-fit.max_fit_deviation`` means the analysed body is coarser than the
+    one drawn and built (#1349, ADR 0020). An invalid contour is an error elsewhere, not compared.
+    """
+    warnings: list[KernelWarning] = []
+    for key, fuselage in fuselages.items():
+        for index, x_sec in enumerate(fuselage.x_secs):
+            contour = x_sec.contour
+            if contour is None or not _finite_contour(x_sec):
+                continue
+            if not (math.isfinite(x_sec.a) and math.isfinite(x_sec.b)):
+                continue
+            minimum = int(rules.value("fuselage-contour", "min_contour_points"))
+            if contour_defect(contour, minimum) is not None:
+                continue
+            limit = rules.value("fuselage-contour-fit", "max_fit_deviation")
+            deviation = contour_fit_deviation(contour, x_sec.a, x_sec.b)
+            if deviation <= limit:
+                continue
+            section = f"{_key_path('airplane.fuselages', key)}.x_secs[{index}]"
+            message = (
+                f"The super-ellipse fit (a = {x_sec.a} m, b = {x_sec.b} m) of the fuselage "
+                f"section {section} is {deviation * 1000:.1f} mm away from its contour, more than "
+                f"{limit * 1000:g} mm; the solvers compute with the fit, so the analysed body is "
+                "coarser than the one drawn and built."
+            )
+            detail: dict[str, JsonValue] = {
+                "section": section,
+                "deviation_m": deviation,
+                "max_fit_deviation_m": limit,
+                "a": x_sec.a,
+                "b": x_sec.b,
+            }
+            warnings.append(_warning("fuselage_contour_fit_mismatch", "airplane", message, detail))
+    return warnings
+
+
 def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Validation:
     """Report every physically inadmissible value of an aircraft input, and the input's caveats.
 
@@ -631,6 +727,7 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
         _mass_warnings(aircraft)
         + _deflection_warnings(airplane.wings or {})
         + _fuselage_section_warnings(airplane.fuselages or {})
+        + _fuselage_contour_warnings(airplane.fuselages or {}, rules)
     )
     logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:3615a9fb982407b0949e03cf9225aa8f6e96b4286a838810edd580f90ec7b766",
+  "content_hash": "sha256:02f22ad6c56f23347ea96cdbafadfdc15284213842ecf1d07f8413078ea021b2",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6884,6 +6884,55 @@
               "status": "adopted",
               "unit": "1",
               "value": 0.85
+            }
+          }
+        },
+        "fuselage-contour": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "invalid_fuselage_contour",
+            "inconsistent_fuselage_contours"
+          ],
+          "criterion": "A fuselage section's optional contour is its right half outline, (y, z) in metres relative to the section centre xyz (format 7.1b, #1349): at least min_contour_points points; the first point is the bottom centre (y = 0, z < 0) and the last the top centre (y = 0, z > 0); every y >= 0 and no interior point on y = 0; the polar angle atan2(z, y) rises strictly from point to point (star-shaped about xyz, counter-clockwise, no doubling back, no repeated point). If any section of a fuselage has a contour, every section has one with the same number of points (the loft joins point i to point i). No solver reads the contour: it is display and CAD geometry, the solvers keep the fitted a, b, n, n_lower (maintainer 2026-11-03, #1349, ADR 0022).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "min_contour_points": {
+              "at_most": null,
+              "basis": "convention",
+              "positive": null,
+              "regime": "regime-independent: a statement about the geometry document, not about the flow",
+              "source": "decided by the maintainer in #1349 (2026-11-03, validation 'at least 8 points'); no published source. Measured on the T-D plan formers in #1349: 24 points give 0.16-0.33 mm rms, 48 points 0.05-0.12 mm",
+              "status": "adopted",
+              "unit": "1",
+              "value": 8.0
+            }
+          }
+        },
+        "fuselage-contour-fit": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "fuselage_contour_fit_mismatch"
+          ],
+          "criterion": "The super-ellipse fit a, b of a section with a valid contour describes its extent to within max_fit_deviation: the largest of |max y - a|, |max z - b| and |min z + b| over the contour points. A larger distance is declared per section by the warning fuselage_contour_fit_mismatch: the solvers compute with the fit, which is then a coarser body than the one drawn and built; the input is not refused (maintainer 2026-11-03, #1349, ADR 0020).",
+          "kind": "input",
+          "on_violation": "warning",
+          "parameters": {
+            "max_fit_deviation": {
+              "at_most": null,
+              "basis": "convention",
+              "positive": true,
+              "regime": "regime-independent: a statement about the geometry document, not about the flow",
+              "source": "decided by the maintainer in #1349 (2026-11-03): 'a contour mismatch with a/b larger than 1 mm is a warning, not an error'; no published source",
+              "status": "adopted",
+              "unit": "m",
+              "value": 0.001
             }
           }
         },

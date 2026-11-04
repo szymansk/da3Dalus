@@ -526,6 +526,9 @@ class FuselageXSecSuperEllipseModel(Base):
     n = Column(Float, nullable=False)
     # Exponent of the lower half (z < 0); NULL = same as ``n`` (gh-1157).
     n_lower = Column(Float, nullable=True)
+    # Measured right half outline, [[y, z], ...] in metres relative to ``xyz`` (gh-1349,
+    # geometry format 7.1b); NULL = the section is the super-ellipse. Display/CAD only.
+    contour = Column(JSON, nullable=True)
     # index to maintain ordering of cross-sections within a fuselage
     sort_index = Column(Integer, default=0, nullable=False)
 

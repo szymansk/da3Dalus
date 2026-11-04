@@ -11,7 +11,7 @@ import { buildFuselageTraces } from "@/components/workbench/WingOutlineViewer";
 import {
   buildFuselageSurface,
   saveFuselage,
-  superellipsePath,
+  sectionPath,
   type XSec,
 } from "@/components/workbench/ImportFuselageDialog";
 import type { Fuselage } from "@/hooks/useFuselage";
@@ -60,9 +60,9 @@ describe("buildFuselageSurface (import preview)", () => {
   });
 });
 
-describe("superellipsePath (section SVG)", () => {
+describe("sectionPath (section SVG)", () => {
   it("keeps the top up (SVG y grows downwards) and squares the belly", () => {
-    const pts = superellipsePath(BOXY_BELLY, 8)
+    const pts = sectionPath(BOXY_BELLY, 8)
       .replace(/Z$/, "")
       .split(" ")
       .map((p) => p.slice(1).split(",").map(Number));
@@ -91,5 +91,60 @@ describe("saveFuselage (import dialog)", () => {
     expect(init.method).toBe("PUT");
     const body = JSON.parse(init.body);
     expect(body.x_secs.map((x: XSec) => x.n_lower)).toEqual([8, null]);
+  });
+});
+
+// ── gh-1349: every renderer draws the contour when a section has one ──
+
+const CONTOUR: [number, number][] = [
+  [0, -1], [0.5, -0.95], [0.9, -0.6], [1, 0], [0.9, 0.6], [0.6, 0.9], [0.3, 0.98], [0, 1],
+];
+const C0: XSec = { xyz: [0, 0, 0], a: 1, b: 1, n: 2, contour: CONTOUR };
+const C1: XSec = { xyz: [1, 0, 0.1], a: 1, b: 1, n: 2, contour: CONTOUR };
+
+describe("contour sections (gh-1349)", () => {
+  it("the workbench viewer draws the mirrored contour and runs the side line through its widest point", () => {
+    const traces = buildFuselageTraces({ name: "f", x_secs: [C0, C1] }, "#fff");
+    expect(traces).toHaveLength(7);
+    const outline = traces[1];
+    expect(outline.y).toHaveLength(15);
+    expect(outline.y.slice(0, 8)).toEqual(CONTOUR.map(([y]) => y));
+    expect(outline.z.slice(0, 8)).toEqual(CONTOUR.map(([, z]) => z));
+    expect(outline.y[8]).toBe(-0.3);
+    expect(traces[2].z[0]).toBeCloseTo(-0.9, 12); // xyz z offset 0.1 applied
+    // longitudinal lines: right side, top, left side, bottom
+    expect(traces[3].y).toEqual([1, 1]);
+    expect(traces[4].z).toEqual([1, 1.1]);
+    expect(traces[5].y).toEqual([-1, -1]);
+    expect(traces[6].z).toEqual([-1, -0.9]);
+  });
+
+  it("the import preview surface lofts point i to point i of the contours", () => {
+    const surf = buildFuselageSurface([C0, C1], "#f80", 0.5, "s", 8);
+    expect(surf.y[0]).toHaveLength(15);
+    expect(surf.y[1]).toHaveLength(15);
+    expect(surf.z[0][3]).toBe(0);
+    expect(surf.z[1][3]).toBeCloseTo(0.1, 12);
+    expect(surf.y[0][9]).toBe(-0.6);
+  });
+
+  it("the section SVG draws the contour, top up", () => {
+    const pts = sectionPath(C0, 8)
+      .replace(/Z$/, "")
+      .split(" ")
+      .map((p) => p.slice(1).split(",").map(Number));
+    expect(pts).toHaveLength(15);
+    expect(pts[0]).toEqual([0, 1]); // bottom centre, SVG y down
+    expect(pts[7]).toEqual([0, -1]); // top centre
+  });
+
+  it("the import save keeps the contour and sends null without one", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+    await saveFuselage("aero-1", "body", [C0, ROUND]);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.x_secs[0].contour).toEqual(CONTOUR);
+    expect(sent.x_secs[1].contour).toBeNull();
+    vi.unstubAllGlobals();
   });
 });
