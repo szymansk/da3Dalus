@@ -29,7 +29,7 @@ direct authoring in [`superellipse-xsecs/`](superellipse-xsecs/requirements.md).
 - CRUD for fuselages and their superellipse cross-sections, ordered by
   `sort_index`. 🟢
 - Own the superellipse shape law `|y/a|^n + |z/b|^n = 1` and the axis convention
-  `a → ASB width` (Y half-axis), `b → ASB height` (Z half-axis). 🟢
+  `2a → ASB width` (`a` = Y half-axis), `2b → ASB height` (`b` = Z half-axis), #1146. 🟢
 - Slice an uploaded STEP solid into cross-sections and fit a symmetric
   superellipse to each, reporting the reconstruction fidelity alongside the
   result. 🟢
@@ -57,9 +57,10 @@ them (→ `cad-generation`); running the aerodynamic model over the xsecs
   |y/a|^n + |z/b|^n = 1
   ```
 
-  `a` is the **Y half-axis** (semi-width) and maps to ASB
-  `FuselageXSec.width`; `b` is the **Z half-axis** (semi-height) and maps to
-  `FuselageXSec.height` (gh-706, `app/schemas/aeroplaneschema.py:711-723`).
+  `a` is the **Y half-axis** (semi-width) and `2a` maps to ASB
+  `FuselageXSec.width`; `b` is the **Z half-axis** (semi-height) and `2b` maps to
+  `FuselageXSec.height` (gh-706 axis order, factor two #1146,
+  `app/converters/superellipse_asb.py`).
   `n = 2` is an ellipse; larger `n` approaches a rectangle.
 - **BR-F2 — All fuselage lengths are metres.** 🟢 `xyz`, `a` and `b` are stored
   and served in metres; `n` is dimensionless. Unlike `wing_xsec_spares`, this

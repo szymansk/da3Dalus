@@ -1823,6 +1823,8 @@ The three failure modes have very different signatures, and the one that matters
 
 _Full reasoning: [`expert-consensus-aero.md`](expert-consensus-aero.md)_
 
+**Note (2026-11-04):** Q-FD-3 ③ rejected, maintainer 2026-11-04: no source for the [0.3, 3.0] band; plausibility only against real reference geometry (#1353 STEP bounding box, #1349 contour). ① (the conversion seam) shipped with #1146.
+
 ---
 
 ## Q-FD-4 — What `volume_ratio` / `area_ratio` counts as an unacceptable fit?

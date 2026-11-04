@@ -9,7 +9,7 @@ from aerosandbox import FuselageXSec
 from cadquery import Vector
 
 from app import schemas
-from app.converters.split_superellipse import SplitSuperEllipseFuselageXSec
+from app.converters.superellipse_asb import superellipse_to_asb_xsec
 from app.converters.spare_origin_preservation import (
     scale_db_origin_to_config,
     should_preserve_normal_spare,
@@ -476,17 +476,16 @@ def _scale_asb_wing_geometry_schema(
 def _asb_fuselage_xsecs_from_schema(
     fuselage: schemas.FuselageSchema, *, mirror_y: bool = False
 ) -> List[FuselageXSec]:
-    # Axis convention (gh-706): schema.a = Y-half-axis = ASB.width,
-    # schema.b = Z-half-axis = ASB.height. ASB's own ellipse equation is
-    # ``(y/width)^n + (z/height)^n = 1`` — so a goes to width, b to
-    # height. The pre-fix code had these swapped, rotating every
-    # non-circular fuselage by 90° around the spine.
+    # Axis convention (gh-706): schema.a = Y half-axis -> ASB width,
+    # schema.b = Z half-axis -> ASB height; swapping them rotates every
+    # non-circular fuselage by 90° around the spine. ASB takes the full
+    # width/height, so the seam doubles both (gh-1146).
     #
     # ``mirror_y`` (gh-715): when True, flip every xsec's y centre
     # so the caller can build the mirrored half of a symmetric
     # fuselage (paired sub-fuselages like landing-gear struts).
     return [
-        _asb_fuselage_xsec(
+        superellipse_to_asb_xsec(
             xyz=[
                 float(x_sec.xyz[0]),
                 -float(x_sec.xyz[1]) if mirror_y else float(x_sec.xyz[1]),
@@ -499,22 +498,6 @@ def _asb_fuselage_xsecs_from_schema(
         )
         for x_sec in fuselage.x_secs
     ]
-
-
-def _asb_fuselage_xsec(
-    *, xyz: list[float], a: float, b: float, n: float, n_lower: Optional[float]
-) -> FuselageXSec:
-    """One ASB section; a split super-ellipse when ``n_lower`` differs (gh-1157)."""
-    common = dict(
-        xyz_c=[float(value) for value in xyz],
-        xyz_normal=[1.0, 0.0, 0.0],
-        radius=None,
-        width=float(a),
-        height=float(b),
-    )
-    if n_lower is None or float(n_lower) == float(n):
-        return FuselageXSec(shape=float(n), **common)
-    return SplitSuperEllipseFuselageXSec(shape_upper=float(n), shape_lower=float(n_lower), **common)
 
 
 def _asb_fuselage_is_degenerate(fuselage, *, eps: float = 1e-9) -> bool:
@@ -630,12 +613,11 @@ def fuselage_model_to_fuselage_config(
     fuselage: FuselageModel,
 ) -> FuselageConfiguration:
     fuselage_config = FuselageConfiguration(name=fuselage.name)
-    # See ``_asb_fuselage_xsecs_from_schema`` for axis-convention (gh-706):
-    # schema.a → ASB.width (Y), schema.b → ASB.height (Z).
+    # Same seam as ``_asb_fuselage_xsecs_from_schema`` (gh-706, gh-1146).
     fuselage_config.asb_fuselage = asb.Fuselage(
         name=fuselage.name,
         xsecs=[
-            _asb_fuselage_xsec(
+            superellipse_to_asb_xsec(
                 xyz=x_sec.xyz, a=x_sec.a, b=x_sec.b, n=x_sec.n, n_lower=x_sec.n_lower
             )
             for x_sec in (fuselage.x_secs or [])

@@ -227,8 +227,8 @@ erDiagram
     fuselage_xsecs {
         int id PK
         json xyz "cross-section centre, metres"
-        float a "Y half-axis in metres, maps to ASB FuselageXSec.width"
-        float b "Z half-axis in metres, maps to ASB FuselageXSec.height"
+        float a "Y half-axis in metres, 2a maps to ASB FuselageXSec.width (#1146)"
+        float b "Z half-axis in metres, 2b maps to ASB FuselageXSec.height (#1146)"
         float n "superellipse exponent. 2 = ellipse, larger = rectangular"
         int sort_index
         int fuselage_id FK "ON DELETE CASCADE"

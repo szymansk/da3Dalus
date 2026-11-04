@@ -594,8 +594,8 @@ Shape law in the cross-section plane (Y lateral, Z vertical):
 ```
 
 `a`, `b` are **half-axes**, not diameters. Axis convention (gh-706):
-`a → ASB FuselageXSec.width` (Y), `b → ASB FuselageXSec.height` (Z)
-(`app/schemas/aeroplaneschema.py:711-723`). `n = 2` gives an ellipse; larger `n`
+`2a → ASB FuselageXSec.width` (Y), `2b → ASB FuselageXSec.height` (Z)
+(`app/converters/superellipse_asb.py`, #1146). `n = 2` gives an ellipse; larger `n`
 approaches a rectangle. The polar form used by the code is
 
 ```

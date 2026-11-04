@@ -278,8 +278,8 @@ DB columns default to `NULL`. 🟢 CONFIRMED
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
 | `xyz` | JSON `[x,y,z]` | yes | — | cross-section centre, metres |
-| `a` | Float | yes | — | **Y half-axis** (semi-width) in metres → ASB `FuselageXSec.width` (gh-706) |
-| `b` | Float | yes | — | **Z half-axis** (semi-height) in metres → ASB `FuselageXSec.height` |
+| `a` | Float | yes | — | **Y half-axis** (semi-width) in metres; `2a` → ASB `FuselageXSec.width` (gh-706, #1146) |
+| `b` | Float | yes | — | **Z half-axis** (semi-height) in metres; `2b` → ASB `FuselageXSec.height` (#1146) |
 | `n` | Float | yes | — | superellipse exponent (`2` = ellipse, larger → rectangular) |
 | `sort_index` | Integer | yes | `0` | ordering along the body |
 | `fuselage_id` | Integer FK → `fuselages.id` `ON DELETE CASCADE` | no | — | |
