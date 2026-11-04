@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#1146](https://github.com/szymansk/da3Dalus/issues/1146) |
-| PR | [#PR_NUMBER](https://github.com/szymansk/da3Dalus/pull/PR_NUMBER) |
+| PR | [#1351](https://github.com/szymansk/da3Dalus/pull/1351) |
 | Merged | pending |
 
 ## Vigência
