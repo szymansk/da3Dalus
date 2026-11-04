@@ -178,9 +178,9 @@ class TestConverters:
         assert all(isinstance(xs, SplitSuperEllipseFuselageXSec) for xs in xsecs)
         assert xsecs[1].shape_upper == pytest.approx(N_TOP)
         assert xsecs[1].shape_lower == pytest.approx(N_BOTTOM)
-        # gh-706 axis convention unchanged.
-        assert xsecs[1].width == pytest.approx(0.02)
-        assert xsecs[1].height == pytest.approx(0.025)
+        # gh-706 axis convention; ASB takes the full width 2a and height 2b (gh-1146).
+        assert xsecs[1].width == pytest.approx(2 * 0.02)
+        assert xsecs[1].height == pytest.approx(2 * 0.025)
 
     def test_mirror_keeps_n_lower(self):
         mirrored = _mirror_fuselage_schema_y(_body(N_BOTTOM))
