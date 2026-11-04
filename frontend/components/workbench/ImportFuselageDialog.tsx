@@ -188,7 +188,7 @@ export interface XSec {
   b: number;
   n: number;
   n_lower?: number | null;
-  /** gh-1349: measured right half outline; kept as it is, never edited here. */
+  /** gh-1349: measured closed outline; kept as it is, never edited here. */
   contour?: ContourPoint[] | null;
 }
 

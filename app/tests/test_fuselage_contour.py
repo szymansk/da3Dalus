@@ -1,9 +1,9 @@
 """The optional point contour of a fuselage section (gh-1349, slice 1: format, backend, display).
 
-A contour is the measured right half outline, ``[y, z]`` in metres relative to the section's
-``xyz``, from the bottom centre to the top centre. It is display and CAD geometry; the solvers keep
-the super-ellipse fit ``a``/``b``/``n``/``n_lower``. These tests use an in-memory SQLite database,
-never the real one.
+A contour is the measured full outline of a section as a closed loop, ``[y, z]`` in metres
+relative to the section's ``xyz``, counter-clockwise, the closing segment implicit (maintainer
+2026-11-04). It is display and CAD geometry; the solvers keep the super-ellipse fit
+``a``/``b``/``n``/``n_lower``. These tests use an in-memory SQLite database, never the real one.
 """
 
 from __future__ import annotations
@@ -19,21 +19,39 @@ from app.models.aeroplanemodel import AeroplaneModel, FuselageModel
 from app.services.aeroplane_clone_service import clone_aeroplane_subgraph
 
 
-def half_ellipse(a: float, b: float, count: int = 13) -> list[list[float]]:
-    """Right half of the ellipse (a, b), bottom centre to top centre; odd count hits y = a."""
-    points = []
-    for index in range(count):
-        angle = -math.pi / 2 + math.pi * index / (count - 1)
-        points.append([a * math.cos(angle), b * math.sin(angle)])
-    points[0] = [0.0, -b]
-    points[-1] = [0.0, b]
-    return points
+def ellipse(a: float, b: float, count: int = 16) -> list[list[float]]:
+    """The full ellipse (a, b) as a closed loop, counter-clockwise from the bottom centre."""
+    return [
+        [
+            a * math.cos(-math.pi / 2 + 2 * math.pi * i / count),
+            b * math.sin(-math.pi / 2 + 2 * math.pi * i / count),
+        ]
+        for i in range(count)
+    ]
 
 
-def section(x: float, a: float = 0.03, b: float = 0.05, contour=True, count: int = 13) -> dict:
+# lopsided: wider on the right, canopy offset to the left
+ASYMMETRIC = [
+    [0.0, -0.04],
+    [0.035, -0.02],
+    [0.03, 0.02],
+    [0.01, 0.05],
+    [-0.015, 0.03],
+    [-0.02, -0.025],
+]
+# a wing-saddle notch cut into the bottom: concave
+SADDLE = [
+    [0.0, -0.03], [0.02, -0.03], [0.02, -0.045], [0.03, -0.045], [0.03, 0.02],
+    [0.0, 0.05], [-0.03, 0.02], [-0.03, -0.045], [-0.02, -0.045], [-0.02, -0.03],
+]  # fmt: skip
+
+
+def section(x: float, a: float = 0.03, b: float = 0.05, contour=True, count: int = 16) -> dict:
     payload = {"xyz": [x, 0.0, 0.0], "a": a, "b": b, "n": 2.0}
-    if contour:
-        payload["contour"] = half_ellipse(a, b, count)
+    if contour is True:
+        payload["contour"] = ellipse(a, b, count)
+    elif contour:
+        payload["contour"] = contour
     return payload
 
 
@@ -55,30 +73,31 @@ class TestSectionSchema:
         xsec = schemas.FuselageXSecSuperEllipseSchema(**payload)
         assert [list(p) for p in xsec.contour] == payload["contour"]
 
-    def test_fewer_than_eight_points_are_refused_at_the_contour(self):
+    @pytest.mark.parametrize("contour", [ASYMMETRIC, SADDLE], ids=["asymmetric", "concave"])
+    def test_asymmetric_and_concave_formers_are_valid(self, contour):
+        xsec = schemas.FuselageXSecSuperEllipseSchema(**section(0.0, contour=contour))
+        assert len(xsec.contour) == len(contour)
+
+    def test_two_points_are_refused_at_the_contour(self):
         with pytest.raises(ValidationError) as caught:
-            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, count=7))
+            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, count=2))
         (error,) = caught.value.errors()
         assert error["loc"] == ("contour",)
-        assert "at least 8" in error["msg"]
+        assert "at least 3" in error["msg"]
 
-    def test_a_point_on_the_left_half_is_refused_naming_the_point(self):
-        payload = section(0.0)
-        payload["contour"][4][0] = -0.001
-        with pytest.raises(ValidationError, match=r"contour\[4\].*y >= 0"):
-            schemas.FuselageXSecSuperEllipseSchema(**payload)
+    def test_a_clockwise_contour_is_refused(self):
+        with pytest.raises(ValidationError, match="clockwise"):
+            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, contour=ASYMMETRIC[::-1]))
 
-    def test_a_contour_from_top_to_bottom_is_refused(self):
-        payload = section(0.0)
-        payload["contour"].reverse()
-        with pytest.raises(ValidationError, match="bottom centre"):
-            schemas.FuselageXSecSuperEllipseSchema(**payload)
+    def test_a_figure_eight_is_refused_naming_the_point(self):
+        eight = [[0.0, 0.0], [0.02, 0.02], [0.02, 0.0], [0.0, 0.02]]
+        with pytest.raises(ValidationError, match=r"contour\[2\].*crosses itself"):
+            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, contour=eight))
 
-    def test_points_out_of_order_are_refused(self):
-        payload = section(0.0)
-        payload["contour"][3], payload["contour"][4] = payload["contour"][4], payload["contour"][3]
-        with pytest.raises(ValidationError, match="turns back"):
-            schemas.FuselageXSecSuperEllipseSchema(**payload)
+    def test_a_repeated_closing_point_is_refused(self):
+        closed = ellipse(0.03, 0.05) + [ellipse(0.03, 0.05)[0]]
+        with pytest.raises(ValidationError, match="repeats point"):
+            schemas.FuselageXSecSuperEllipseSchema(**section(0.0, contour=closed))
 
     @pytest.mark.parametrize("bad", [math.nan, math.inf])
     def test_a_non_finite_point_is_refused(self, bad):
@@ -94,12 +113,28 @@ class TestSectionSchema:
             schemas.FuselageXSecSuperEllipseSchema(**payload)
 
 
+POINT = [[0.0, 0.0]] * 16
+LINE = [[0.0, -0.02 + 0.0025 * i] for i in range(16)]
+
+
 class TestFuselageSchema:
     def test_no_contour_anywhere_is_valid(self):
         schemas.FuselageSchema(**body(section(0.0, contour=False), section(0.5, contour=False)))
 
     def test_contours_with_one_count_everywhere_are_valid(self):
         schemas.FuselageSchema(**body(section(0.0), section(0.5, a=0.02, b=0.04)))
+
+    def test_a_point_nose_and_a_line_tail_close_the_body(self):
+        schemas.FuselageSchema(
+            **body(section(0.0, contour=POINT), section(0.5), section(1.0, contour=LINE))
+        )
+
+    @pytest.mark.parametrize("degenerate", [POINT, LINE], ids=["point", "line"])
+    def test_a_degenerate_interior_section_is_refused(self, degenerate):
+        with pytest.raises(ValidationError, match=r"x_secs\[1\] has a degenerate contour"):
+            schemas.FuselageSchema(
+                **body(section(0.0), section(0.5, contour=degenerate), section(1.0))
+            )
 
     def test_a_section_without_contour_among_contours_is_refused(self):
         with pytest.raises(ValidationError, match=r"x_secs\[1\] has no contour"):
@@ -113,11 +148,31 @@ class TestFuselageSchema:
 # --------------------------------------------------------------------------- converters
 
 
-def test_the_mirrored_cad_copy_keeps_the_contour():
-    fuselage = schemas.FuselageSchema(**body(section(0.0), section(0.5)))
+def test_the_mirrored_cad_copy_negates_y_and_keeps_counter_clockwise():
+    sent = [
+        [0.0, -0.04],
+        [0.035, -0.02],
+        [0.03, 0.02],
+        [0.01, 0.05],
+        [-0.015, 0.03],
+        [-0.02, -0.025],
+    ]
+    fuselage = schemas.FuselageSchema(
+        **body(section(0.0, contour=sent), section(0.5, contour=sent))
+    )
     mirrored = _mirror_fuselage_schema_y(fuselage)
-    # the half contour is relative to the section's own centre: mirroring the centre keeps it
-    assert [xs.contour for xs in mirrored.x_secs] == [xs.contour for xs in fuselage.x_secs]
+    expected = [
+        [0.02, -0.025],
+        [0.015, 0.03],
+        [-0.01, 0.05],
+        [-0.03, 0.02],
+        [-0.035, -0.02],
+        [-0.0, -0.04],
+    ]
+    for xs in mirrored.x_secs:
+        assert [list(p) for p in xs.contour] == expected
+    # the mirror image is itself a valid, counter-clockwise contour
+    schemas.FuselageSchema.model_validate(mirrored.model_dump())
 
 
 def test_the_model_round_trip_keeps_the_contour():
@@ -163,12 +218,12 @@ def test_a_fuselage_without_contours_reads_contour_null(client_and_db):
 def test_an_invalid_contour_is_a_422_at_the_contour(client_and_db):
     client, _ = client_and_db
     plane_id = _plane(client)
-    sent = body(section(0.0), section(0.5, count=7))
+    sent = body(section(0.0), section(0.5, count=2))
     response = client.put(f"/aeroplanes/{plane_id}/fuselages/Rumpf", json=sent)
     assert response.status_code == 422
     (detail,) = response.json()["detail"]
     assert detail["loc"] == ["body", "x_secs", 1, "contour"]
-    assert "at least 8" in detail["msg"]
+    assert "at least 3" in detail["msg"]
 
 
 def test_a_mixed_fuselage_is_a_422_naming_the_section(client_and_db):
@@ -265,3 +320,15 @@ def test_a_contour_off_the_fit_is_not_a_design_warning(client_and_db):
     )
     warnings = client.get(f"/aeroplanes/{plane_id}/assumptions").json()["design_warnings"]
     assert warnings == []
+
+
+def test_a_single_section_update_may_not_pinch_the_body(client_and_db):
+    client, _ = client_and_db
+    plane_id = _plane(client)
+    url = f"/aeroplanes/{plane_id}/fuselages/Rumpf"
+    client.put(url, json=body(section(0.0), section(0.5), section(1.0)))
+    pinched = client.put(f"{url}/cross_sections/1", json=section(0.5, contour=POINT))
+    assert pinched.status_code == 422
+    assert "x_secs[1] has a degenerate contour" in pinched.json()["detail"]
+    closed = client.put(f"{url}/cross_sections/2", json=section(1.0, contour=LINE))
+    assert closed.status_code == 200

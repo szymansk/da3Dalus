@@ -575,6 +575,17 @@ def _fuselage_configs_with_mirrors(
     return configs
 
 
+def _mirror_contour_y(contour):
+    """Mirror a closed contour about y = 0: negate y and reverse the order (gh-1349).
+
+    Mirroring flips the orientation; reversing the points keeps the loop counter-clockwise.
+    Every section is reversed alike, so point i still lofts to point i.
+    """
+    if contour is None:
+        return None
+    return [(-float(y), float(z)) for y, z in reversed(contour)]
+
+
 def _mirror_fuselage_schema_y(
     fuselage: schemas.FuselageSchema,
 ) -> schemas.FuselageSchema:
@@ -592,8 +603,7 @@ def _mirror_fuselage_schema_y(
                 b=xs.b,
                 n=xs.n,
                 n_lower=xs.n_lower,
-                # relative to the section's own centre and symmetric about it: unchanged
-                contour=xs.contour,
+                contour=_mirror_contour_y(xs.contour),
             )
             for xs in fuselage.x_secs
         ],

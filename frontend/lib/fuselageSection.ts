@@ -21,8 +21,9 @@ export type ContourPoint = [number, number];
 /** A fuselage section as the API returns it, with its optional contour. */
 export interface FuselageSection extends SuperEllipseSection {
   /**
-   * gh-1349: measured right half outline (y >= 0) from the bottom centre over
-   * the right side to the top centre. `null`/absent: the super-ellipse.
+   * gh-1349: measured full outline as a closed loop, counter-clockwise, the
+   * closing segment implicit (first point not repeated); no symmetry assumed.
+   * `null`/absent: the super-ellipse.
    */
   contour?: ContourPoint[] | null;
 }
@@ -77,21 +78,16 @@ export function contourPointCount(xs: FuselageSection): number | null {
 /**
  * Closed outline of a section as offsets from its centre.
  *
- * With a contour: the contour's own points (right half, bottom centre to top
- * centre), then the left half mirrored about y = 0 from the top back to the
- * bottom centre, which closes the outline: 2N - 1 points, never resampled, so
- * the sample count is ignored. Without: today's super-ellipse at
+ * With a contour: the contour's own points as given, then its first point
+ * again to close the loop: N + 1 points, never mirrored or resampled, so the
+ * sample count is ignored. Without: today's super-ellipse at
  * theta = 2*pi*j/samples, j = 0..samples.
  */
 export function sectionOutline(xs: FuselageSection, samples: number): SectionPoint[] {
   const contour = xs.contour;
-  if (contour) {
-    const right = contour.map(([y, z]) => ({ y, z }));
-    const left = contour
-      .slice(0, -1)
-      .reverse()
-      .map(([y, z]) => ({ y: y === 0 ? 0 : -y, z }));
-    return [...right, ...left];
+  if (contour && contour.length > 0) {
+    const points = contour.map(([y, z]) => ({ y, z }));
+    return [...points, points[0]];
   }
   const points: SectionPoint[] = [];
   for (let j = 0; j <= samples; j++) {
@@ -100,11 +96,17 @@ export function sectionOutline(xs: FuselageSection, samples: number): SectionPoi
   return points;
 }
 
+/** First point of `contour` with the largest `score` (ties keep the earlier point). */
+function extremePoint(contour: ContourPoint[], score: (p: ContourPoint) => number): SectionPoint {
+  const [y, z] = contour.reduce((best, p) => (score(p) > score(best) ? p : best));
+  return { y, z };
+}
+
 /**
  * The four points the longitudinal lines run through: right side, top, left
- * side, bottom. A contour gives its widest point (mirrored for the left), its
- * last point (top centre) and its first (bottom centre); a super-ellipse its
- * points at 0, 90, 180 and 270 degrees.
+ * side, bottom. A contour gives its points of largest y, largest z, smallest y
+ * and smallest z (it may be asymmetric); a super-ellipse its points at 0, 90,
+ * 180 and 270 degrees.
  */
 export function sectionExtremes(xs: FuselageSection): {
   right: SectionPoint;
@@ -114,14 +116,11 @@ export function sectionExtremes(xs: FuselageSection): {
 } {
   const contour = xs.contour;
   if (contour && contour.length > 0) {
-    const [wy, wz] = contour.reduce((widest, p) => (p[0] > widest[0] ? p : widest));
-    const [ty, tz] = contour[contour.length - 1];
-    const [by, bz] = contour[0];
     return {
-      right: { y: wy, z: wz },
-      top: { y: ty, z: tz },
-      left: { y: -wy, z: wz },
-      bottom: { y: by, z: bz },
+      right: extremePoint(contour, ([y]) => y),
+      top: extremePoint(contour, ([, z]) => z),
+      left: extremePoint(contour, ([y]) => -y),
+      bottom: extremePoint(contour, ([, z]) => -z),
     };
   }
   return {

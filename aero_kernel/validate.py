@@ -522,8 +522,8 @@ def _fuselage_findings(
 
 
 _CONTOUR_HINT = (
-    "Give the right half outline from the bottom centre over the right side to the top centre, "
-    "(y, z) in metres relative to xyz (format 7.1b)."
+    "Give the full outline as a simple closed polygon, counter-clockwise with y to the right and "
+    "z up, (y, z) in metres relative to xyz, the first point not repeated (format 7.1b)."
 )
 
 
@@ -556,16 +556,25 @@ def _contour_findings(
 
 
 def _contour_set_findings(fuselage: geometry.Fuselage, path: str) -> list[KernelError]:
-    """Check that a fuselage's sections have a contour all or none, with one point count."""
-    return [
-        _finding(
-            "inconsistent_fuselage_contours",
-            f"{path}.x_secs[{defect.section}].contour",
-            f"The fuselage section {path}.x_secs[{defect.section}] {defect.message}",
-            "Give every section of the fuselage a contour with the same number of points, or none.",
+    """Check a fuselage's contours: all or none, one point count, degenerate only at the ends."""
+    findings: list[KernelError] = []
+    for defect in contour_set_defects([x_sec.contour for x_sec in fuselage.x_secs]):
+        section = f"{path}.x_secs[{defect.section}]"
+        if defect.kind == "degenerate":
+            code = "invalid_fuselage_contour"
+            hint = "Give the section a real outline, or end the fuselage at it."
+        else:
+            code = "inconsistent_fuselage_contours"
+            hint = "Give every section of the fuselage a contour with the same number of points, or none."
+        findings.append(
+            _finding(
+                code,
+                f"{section}.contour",
+                f"The fuselage section {section} {defect.message}",
+                hint,
+            )
         )
-        for defect in contour_set_defects([x_sec.contour for x_sec in fuselage.x_secs])
-    ]
+    return findings
 
 
 def _warning(code: str, origin: str, message: str, detail: dict[str, JsonValue]) -> KernelWarning:

@@ -53,32 +53,30 @@ describe("fuselageSection (gh-1157)", () => {
   });
 });
 
-// ── gh-1349: the optional point contour ─────────────────────────
+// ── gh-1349: the optional closed point contour ─────────────────
 
-/** Right half, bottom centre → right side → top centre (flat bottom, narrow back). */
-const HALF: ContourPoint[] = [
-  [0, -0.04],
-  [0.012, -0.04],
-  [0.024, -0.039],
-  [0.026, -0.02],
-  [0.025, 0],
-  [0.022, 0.02],
-  [0.015, 0.035],
-  [0.006, 0.042],
-  [0, 0.043],
+/** Asymmetric former: wider on the right, canopy offset to the left. */
+const ASYM: ContourPoint[] = [
+  [0, -0.04], [0.035, -0.02], [0.03, 0.02], [0.01, 0.05], [-0.015, 0.03], [-0.02, -0.025],
 ];
-const withContour = { a: 0.026, b: 0.042, n: 2.4, n_lower: 6, contour: HALF };
+/** Concave former: a wing-saddle notch cut into the bottom. */
+const SADDLE: ContourPoint[] = [
+  [0, -0.03], [0.02, -0.03], [0.02, -0.045], [0.03, -0.045], [0.03, 0.02],
+  [0, 0.05], [-0.03, 0.02], [-0.03, -0.045], [-0.02, -0.045], [-0.02, -0.03],
+];
+const withContour = { a: 0.03, b: 0.045, n: 2.4, n_lower: 6, contour: ASYM };
 
 describe("fuselageSection contour (gh-1349)", () => {
-  it("returns the contour itself, mirrored to the left half and closed", () => {
+  it("draws an asymmetric contour as given and closes it, without mirroring", () => {
     const outline = sectionOutline(withContour, 32);
-    // 9 right-half points, 7 mirrored interior points, the closing start point
-    expect(outline).toHaveLength(2 * HALF.length - 1);
-    HALF.forEach(([y, z], i) => expect(outline[i]).toEqual({ y, z }));
-    // the left half runs top → bottom with y mirrored
-    expect(outline[HALF.length]).toEqual({ y: -0.006, z: 0.042 });
-    expect(outline[2 * HALF.length - 3]).toEqual({ y: -0.012, z: -0.04 });
+    expect(outline).toHaveLength(ASYM.length + 1);
+    ASYM.forEach(([y, z], i) => expect(outline[i]).toEqual({ y, z }));
     expect(outline[outline.length - 1]).toEqual(outline[0]);
+  });
+
+  it("draws a concave contour point for point", () => {
+    const outline = sectionOutline({ a: 0.03, b: 0.05, n: 2, contour: SADDLE }, 8);
+    expect(outline.slice(0, -1).map((p) => [p.y, p.z])).toEqual(SADDLE);
   });
 
   it("ignores the sample count for a contour (never resampled)", () => {
@@ -97,11 +95,11 @@ describe("fuselageSection contour (gh-1349)", () => {
     expect(sectionOutline(plain, 16)).toEqual(outline);
   });
 
-  it("takes the extremes from the contour: widest point, top and bottom centre", () => {
+  it("takes the extremes from the contour itself, also when it is asymmetric", () => {
     expect(sectionExtremes(withContour)).toEqual({
-      right: { y: 0.026, z: -0.02 },
-      top: { y: 0, z: 0.043 },
-      left: { y: -0.026, z: -0.02 },
+      right: { y: 0.035, z: -0.02 },
+      top: { y: 0.01, z: 0.05 },
+      left: { y: -0.02, z: -0.025 },
       bottom: { y: 0, z: -0.04 },
     });
   });
@@ -116,9 +114,9 @@ describe("fuselageSection contour (gh-1349)", () => {
   });
 
   it("counts the contour points and labels the section with them", () => {
-    expect(contourPointCount(withContour)).toBe(9);
+    expect(contourPointCount(withContour)).toBe(6);
     expect(contourPointCount({ a: 1, b: 1, n: 2 })).toBeNull();
-    expect(sectionShapeLabel(withContour)).toBe("n=2.4/6.0 · contour (9 points)");
+    expect(sectionShapeLabel(withContour)).toBe("n=2.4/6.0 \u00B7 contour (6 points)");
     expect(sectionShapeLabel({ a: 1, b: 1, n: 2 })).toBe("n=2.0");
   });
 });

@@ -79,15 +79,15 @@ fuselage-contour:
   applies_to: {quantity: airplane}
   kind: input
   on_violation: error
-  criterion: "A fuselage section's optional contour is its right half outline, (y, z) in metres relative to the section centre xyz (format 7.1b, #1349): at least min_contour_points points; the first point is the bottom centre (y = 0, z < 0) and the last the top centre (y = 0, z > 0); every y >= 0 and no interior point on y = 0; the polar angle atan2(z, y) rises strictly from point to point (star-shaped about xyz, counter-clockwise, no doubling back, no repeated point). If any section of a fuselage has a contour, every section has one with the same number of points (the loft joins point i to point i). No solver reads the contour: it is display and CAD geometry, the solvers keep the fitted a, b, n, n_lower (maintainer 2026-11-03, #1349, ADR 0022)."
+  criterion: "A fuselage section's optional contour is its full outline as a closed loop, (y, z) in metres relative to the section centre xyz (format 7.1b, #1349); the segment from the last point back to the first is implicit, the first point is not repeated, the start point is the writer's choice, and nothing is assumed about symmetry (asymmetric and concave formers are valid). It has at least min_contour_points points, no repeated consecutive point (also last to first), no two segments that cross or touch other than at a shared vertex (a simple polygon, the closing segment included), and a positive signed area: counter-clockwise with y to the right and z up. If any section of a fuselage has a contour, every section has one with the same number of points (the loft joins point i to point i). Only the first and the last section may carry a degenerate contour of that count, which closes the body: a point (all points identical) or a line (all points exactly collinear, e.g. a vertical trailing edge); the simple-polygon and orientation rules do not apply to it, and a degenerate contour at an interior section is refused. No solver reads the contour and it is not compared with the fit a, b, n, n_lower: the solvers keep the fit (ADR 0022), and a deviation is expected, which is why the contour exists (maintainer 2026-11-03 and 2026-11-04, #1349)."
   codes: [invalid_fuselage_contour, inconsistent_fuselage_contours]
   parameters:
     min_contour_points:
-      value: 8
+      value: 3
       unit: "1"
-      basis: convention
+      basis: definition
       status: adopted
-      source: "decided by the maintainer in #1349 (2026-11-03, validation 'at least 8 points'); no published source. Measured on the T-D plan formers in #1349: 24 points give 0.16-0.33 mm rms, 48 points 0.05-0.12 mm"
+      source: "the geometric minimum of a polygon: three points are the least that enclose an area (maintainer 2026-11-04, #1349; replaces the 8 points of the issue proposal)"
       regime: "regime-independent: a statement about the geometry document, not about the flow"
 
 segment-details-not-on-last-section:

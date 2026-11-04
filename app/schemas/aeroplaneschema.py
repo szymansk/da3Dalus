@@ -822,14 +822,17 @@ class FuselageXSecSuperEllipseSchema(BaseModel):
     contour: Optional[list[ContourPoint]] = Field(
         default=None,
         description=(
-            "Measured outline of the section, gh-1349 (geometry format 7.1b): the right half "
-            "only, [y, z] pairs in metres relative to ``xyz``, from the bottom centre (y = 0, "
-            "z < 0) over the right side to the top centre (y = 0, z > 0); the body is mirrored "
-            "about y = 0. At least 8 points, every y >= 0, only the first and last point on "
-            "y = 0, and the polar angle atan2(z, y) rises strictly from point to point. Either "
-            "every section of a fuselage has a contour, all with the same number of points, or "
-            "none. The contour wins for display and CAD; a, b, n and n_lower stay as the fit the "
-            "aerodynamic solvers use. ``None``: the section is the super-ellipse."
+            "Measured outline of the section, gh-1349 (geometry format 7.1b): the full outline "
+            "as a closed loop, [y, z] pairs in metres relative to ``xyz``; the segment from the "
+            "last point back to the first is implicit (do not repeat the first point) and the "
+            "start point is the writer's choice. No symmetry is assumed. At least 3 points, a "
+            "simple polygon (no repeated consecutive point, no crossing segments) and "
+            "counter-clockwise with y to the right and z up. Either every section of a fuselage "
+            "has a contour, all with the same number of points, or none; only the first and the "
+            "last section may carry a degenerate contour (a point or an exactly collinear line) "
+            "that closes the body. The contour wins for display and CAD; a, b, n and n_lower stay "
+            "as the fit the aerodynamic solvers use and are not compared with it. ``None``: the "
+            "section is the super-ellipse."
         ),
         examples=[None],
     )

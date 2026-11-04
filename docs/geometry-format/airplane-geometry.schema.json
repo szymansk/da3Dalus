@@ -439,15 +439,15 @@
         },
         "contour": {
           "type": ["array", "null"],
-          "description": "Measured outline of the section, gh-1349 (format 7.1b). Right half only: [y, z] pairs in metres relative to `xyz`, from the bottom centre (y = 0, z < 0) over the right side to the top centre (y = 0, z > 0); the body is mirrored about y = 0. At least 8 points; every y >= 0 and only the first and last point on y = 0; the polar angle atan2(z, y) rises strictly from point to point (star-shaped about xyz, no doubling back, no repeated point). If one section of a fuselage has a contour, all have one with the same number of points (point i is lofted to point i). The contour wins for display and CAD; `a`, `b`, `n`, `n_lower` stay as the fit the solvers use (AeroSandbox, AVL). The fit is not compared with the contour: it is expected to deviate. null or absent: the section is the super-ellipse.",
-          "minItems": 8,
+          "description": "Measured outline of the section, gh-1349 (format 7.1b): the FULL outline as a closed loop, [y, z] pairs in metres relative to `xyz`. The segment from the last point back to the first is implicit; do not repeat the first point. The start point is the writer's choice (starting at the bottom is recommended). No symmetry is assumed: asymmetric and concave formers are valid. At least 3 points; a simple polygon (no repeated consecutive point, no crossing or touching segments, the closing segment included); counter-clockwise with y to the right and z up (signed area > 0). If one section of a fuselage has a contour, all have one with the same number of points (point i is lofted to point i). Only the first and the last section may carry a degenerate contour that closes the body: a point (all points identical) or a line (all points exactly collinear); the polygon and orientation rules do not apply to it. The contour wins for display and CAD; `a`, `b`, `n`, `n_lower` stay as the fit the solvers use (AeroSandbox, AVL) and are not compared with it. null or absent: the section is the super-ellipse.",
+          "minItems": 3,
           "items": {
             "type": "array",
             "prefixItems": [{ "type": "number" }, { "type": "number" }],
             "items": false,
             "minItems": 2
           },
-          "examples": [null]
+          "examples": [null, [[0.0, -0.04], [0.03, 0.0], [0.0, 0.04], [-0.03, 0.0]]]
         }
       }
     }

@@ -12,9 +12,9 @@ export interface FuselageXSec {
   /** gh-1157: exponent of the lower half (z < 0); null/absent = same as `n`. */
   n_lower?: number | null;
   /**
-   * gh-1349: measured right half outline, [y, z] in metres relative to `xyz`,
-   * bottom centre to top centre. Wins for display and CAD; null/absent = the
-   * super-ellipse. Read-only in the UI (written by the exporter).
+   * gh-1349: measured full outline as a closed loop, [y, z] in metres relative
+   * to `xyz`, counter-clockwise, first point not repeated. Wins for display and
+   * CAD; null/absent = the super-ellipse. Read-only in the UI (exporter-written).
    */
   contour?: ContourPoint[] | null;
 }
