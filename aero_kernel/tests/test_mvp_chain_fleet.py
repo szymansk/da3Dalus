@@ -36,8 +36,6 @@ SLUGS = (
     "vertical-tail-volume",
     "spiral-parameter-md",
     "spiral-parameter-mp",
-    "pitching-moment-slope",
-    "static-margin-probe",
     "dihedral-effect-md",
     "weathercock-stability-md",
     "spiral-criterion-md",
@@ -58,8 +56,6 @@ GOLDEN = {
         "vertical-tail-volume": (0.055889564925848935, 0.05583702833957879, 0.055189651166659415),
         "spiral-parameter-md": (1.6155184313587483, 1.613999832608647, 1.5952870414770695),
         "spiral-parameter-mp": (1.120758479366261, 1.1197049584698766, 1.106723045712814),
-        "pitching-moment-slope": (-1.4436129778163864, -1.4294986190608094, -1.255575752813618),
-        "static-margin-probe": (0.22942818143457014, 0.2271850375233085, 0.1995441063830674),
         "dihedral-effect-md": (-0.056925, -0.056933, -0.057032),
         "weathercock-stability-md": (0.075972, 0.07583, 0.074087),
         "spiral-criterion-md": (
@@ -95,8 +91,6 @@ GOLDEN = {
             0.00043665092111332875,
             0.00043159275680957753,
         ),
-        "pitching-moment-slope": (-1.426121553753487, -1.0739215138884206, -0.9150015013991577),
-        "static-margin-probe": (0.2243358908771365, 0.16893310315393084, 0.14393420843408636),
         "dihedral-effect-md": (-0.032411, -0.032474, -0.032502),
         "weathercock-stability-md": (0.031008, 0.02994, 0.029459),
         "spiral-criterion-md": (-0.0024717262300000004, -0.002363510886, -0.0023148166369999995),
@@ -116,8 +110,6 @@ GOLDEN = {
         "vertical-tail-volume": (0.08299981005376741, 0.08260137411188775, 0.08232598055728932),
         "spiral-parameter-md": (3.4131676914627334, 3.3967829710271054, 3.3854580730257293),
         "spiral-parameter-mp": (2.1774822888254683, 2.1670294069922154, 2.1598045159086534),
-        "pitching-moment-slope": (-0.6778813884409696, -0.6382616575235455, -0.6108770333397091),
-        "static-margin-probe": (0.18305057099737562, 0.1723519229877638, 0.16495716163441196),
         "dihedral-effect-md": (-0.11597, -0.116064, -0.116129),
         "weathercock-stability-md": (0.116069, 0.115102, 0.114434),
         "spiral-criterion-md": (0.006072173627000001, 0.0061375107559999975, 0.006182598777999999),
@@ -141,8 +133,6 @@ GOLDEN = {
         "vertical-tail-volume": (0.042546551629209804, 0.04191818550080524, 0.04131168576051653),
         "spiral-parameter-md": (1.2155634727111202, 1.1976109269952153, 1.1802831083525032),
         "spiral-parameter-mp": (0.8255425979642333, 0.8133502348642426, 0.8015821513865011),
-        "pitching-moment-slope": (-1.5915360909006295, -1.424689138216708, -1.2636482595058407),
-        "static-margin-probe": (0.323966890814736, 0.2900041746614783, 0.2572233203231332),
         "dihedral-effect-md": (-0.128846, -0.128896, -0.128945),
         "weathercock-stability-md": (0.006817, 0.005717, 0.004655),
         "spiral-criterion-md": (0.006618280529999999, 0.006777835579, 0.0069319636),
@@ -174,8 +164,6 @@ GOLDEN = {
         "vertical-tail-volume": (0.025408286952336757, 0.024817634809059307, 0.025245895706618834),
         "spiral-parameter-md": (0.8486991754892165, 0.8289699435287594, 0.8432749091226565),
         "spiral-parameter-mp": (0.7345125179051271, 0.7174377188925601, 0.729818049403501),
-        "pitching-moment-slope": (-1.6603701408253544, -1.0356796408837208, -1.4886205423083105),
-        "static-margin-probe": (0.26113414426880915, 0.1628861602054342, 0.23412228508482902),
         "dihedral-effect-md": (-0.094868, -0.095005, -0.094905),
         "weathercock-stability-md": (0.016994, 0.015078, 0.016467),
         "spiral-criterion-md": (-0.00180481026, -0.0014463230339999999, -0.0017061973919999995),
@@ -198,8 +186,6 @@ GOLDEN = {
         "vertical-tail-volume": (0.03972881444148937, 0.03888724528575182, 0.039284726758123625),
         "spiral-parameter-md": (3.680333345186025, 3.602373429450246, 3.6391946721031836),
         "spiral-parameter-mp": (2.437042082476476, 2.385418607759728, 2.409800887694143),
-        "pitching-moment-slope": (-1.2859724818479887, -1.035713935790254, -1.1539135331577746),
-        "static-margin-probe": (0.2633351799093963, 0.21208845404223456, 0.23629279175346216),
         "dihedral-effect-md": (-0.088023, -0.08815, -0.08809),
         "weathercock-stability-md": (0.043546, 0.041818, 0.042634),
         "spiral-criterion-md": (
@@ -273,7 +259,6 @@ async def test_the_chain_per_world_is_the_regression_golden(member: FleetMember)
 async def test_the_declared_caveats_travel_with_the_values(member: FleetMember) -> None:
     by_slug = {q.slug: q for q in (await run(member)).quantities}
     assert "avl_body_equivalent_round" in {w.code for w in by_slug["dihedral-effect-md"].warnings}
-    assert "aerobuildup_no_downwash" in {w.code for w in by_slug["static-margin-probe"].warnings}
 
 
 @pytest.mark.asyncio

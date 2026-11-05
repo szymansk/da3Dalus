@@ -329,18 +329,3 @@ aerobuildup-induced-drag:
       at_most: 1.0
       source: "Nita & Scholz (2012), Estimating the Oswald Factor from Basic Aircraft Geometrical Parameters, section 5: the class values of the viscous factor k_e,D0 (jet transport 0.873, business jet 0.864, turboprop 0.804, general aviation 0.804), as transcribed in AeroSandbox 4.2.9 aerosandbox/library/aerodynamics/inviscid.py:67-74, which uses their mean 0.83625; the paper itself is not in the vault (open gap, #1346). Anderson, Fundamentals of Aerodynamics 6e, 6.7.2: the Oswald factor of the complete-airplane polar absorbs the lift-dependent part of the parasite drag; 5.3.3: where the profile drag comes from a section polar, the inviscid span efficiency factor is the right one. Removal decided by the maintainer 2026-11-03, #1346 (path B). The aero tier checks that this value equals AeroSandbox's (oswalds_efficiency over its e_theo)"
       regime: "not an RC/UAV value: the four classes are full-scale aircraft (ADR 0028), which is why the kernel removes the factor instead of applying it; the value is AeroSandbox's, so that the removal is exact. Measured on BRYAN, WIESEL, CHEKKER and BELEMNITOS (#1346): AeroBuildup's induced drag against AVL Trefftz at C_L 0.9 is +24 to +28 % with the factor and +3.7 to +6.9 % without it; NeuralFoil's lift-dependent profile drag is 0.3 to 1.3 times the term the factor adds"
-
-static-margin-probe-agreement:
-  applies_to: {formula: static-margin-probe}
-  kind: probe
-  on_violation: warning
-  criterion: "The static margin from the moment slope (the probe) agrees with the target static margin to within agreement_tolerance, in fractions of the mean aerodynamic chord; the tolerance decides first: inside it nothing is reported, even where the signs differ; a larger deviation is reported, never averaged: as static_margin_probe_sign_disagrees (error) when probe and target differ in sign, else as static_margin_probe_disagrees (warning) (maintainer 2026-11-02, #1342)."
-  codes: [static_margin_probe_disagrees, static_margin_probe_sign_disagrees]
-  parameters:
-    agreement_tolerance:
-      value: 0.05
-      unit: "1"
-      basis: convention
-      status: adopted
-      source: "maintainer 2026-10-25: 5 % MAC. Reasoning: the neutral-point worlds spread 3-6 % MAC (textbook against AVL, BRYAN and JAGUAR), plus the declared probe bias (AeroBuildup has no wing-tail downwash)"
-      regime: "regime-independent as a statement about agreement; the value rests on the spread of the methods in the RC/UAV regime"

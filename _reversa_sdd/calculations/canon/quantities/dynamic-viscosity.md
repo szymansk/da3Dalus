@@ -22,4 +22,4 @@ at sea level). With [[air-density]] and the speed it forms the Reynolds number `
 
 **Produced by.** [[air-density-isa]]
 
-**Used by.** [[aerobuildup-evaluation]] · [[endurance-and-range-optimum]] · [[mass-envelope]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[roll-rate]] · [[stall-speed]] · [[static-margin-probe]] · [[zero-lift-angle-from-polar]]
+**Used by.** [[aerobuildup-evaluation]] · [[endurance-and-range-optimum]] · [[mass-envelope]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[roll-rate]] · [[stall-speed]] · [[zero-lift-angle-from-polar]]

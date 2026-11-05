@@ -42,7 +42,6 @@ def upright_polar(peak_at: float = 15.75, peak: float = 1.19) -> Polar:
         alpha_deg=tuple(alphas),
         cl=tuple(cl(a) for a in alphas),
         cd=(0.05,) * len(alphas),
-        cm=(-0.02,) * len(alphas),
     )
 
 
@@ -87,7 +86,7 @@ def test_the_probe_is_violated_when_alpha_s_is_not_a_sample_of_the_polar() -> No
 def test_the_probe_of_inverted_flight_uses_the_magnitudes() -> None:
     alphas = [a * STEP for a in range(-60, 21)]  # -15 .. 5 deg
     cl = [-0.7 + 0.03 * (a + 10.0) ** 2 / 10.0 * (1 if a > -10 else 0.3) for a in alphas]
-    polar = Polar(alpha_deg=tuple(alphas), cl=tuple(cl), cd=(0.05,) * len(cl), cm=(0.0,) * len(cl))
+    polar = Polar(alpha_deg=tuple(alphas), cl=tuple(cl), cd=(0.05,) * len(cl))
     y = y_of(polar, -10.0, n=-1.0)
     assert cl_max_at_stall_reynolds_number(x_of(-1.0), y).state == "held"
 
@@ -110,7 +109,6 @@ def test_the_first_peak_check_is_violated_when_the_curve_never_turns() -> None:
         alpha_deg=alphas,
         cl=tuple(0.1 * i * STEP for i in range(41)),
         cd=(0.05,) * 41,
-        cm=(0.0,) * 41,
     )
     assert optimum_at_first_cl_peak(x_of(), y_of(polar, 5.0)).state == "violated"
 
@@ -118,7 +116,7 @@ def test_the_first_peak_check_is_violated_when_the_curve_never_turns() -> None:
 def inverted_polar(trough_at: float = -10.0) -> Polar:
     alphas = [a * STEP for a in range(-60, 21)]  # -15 .. 5 deg
     cl = [-0.7 + 0.02 * abs(a - trough_at) for a in alphas]
-    return Polar(alpha_deg=tuple(alphas), cl=tuple(cl), cd=(0.05,) * 81, cm=(0.0,) * 81)
+    return Polar(alpha_deg=tuple(alphas), cl=tuple(cl), cd=(0.05,) * 81)
 
 
 def test_the_first_trough_check_holds_at_the_first_sampled_trough() -> None:

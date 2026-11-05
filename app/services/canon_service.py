@@ -37,8 +37,9 @@ from app.schemas.canon import CanonComputeRequest, CanonComputeResponse, CanonFl
 
 
 # Nodes the process-wide kernel cache keeps (gh-1332). An entry is a node's outputs, warnings and
-# thresholds as JSON text: about 1 KB for a scalar node, about 14 KB for a node that also returns
-# its stall polar (161 angles of attack x 4 coefficients). 4096 entries are at most about 56 MB if
+# thresholds as JSON text: about 1 KB for a scalar node, at most about 14 KB for a node that also
+# returns its stall polar (161 angles of attack with C_L and C_D; measured while it still carried C_m,
+# removed in #1347). 4096 entries are at most about 56 MB if
 # every one held a polar, a few MB in practice (one polar per stall application, the rest scalars),
 # and hold several hundred full Expert View computations.
 KERNEL_CACHE_ENTRIES = 4096

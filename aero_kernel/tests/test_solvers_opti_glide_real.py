@@ -51,7 +51,7 @@ def install_parabolic(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def sweep(_airplane: object, _air: object, _v: float, alphas: list[float], _size: str) -> Polar:
         cl = tuple(float(cl_of(a)) for a in alphas)
-        return Polar(alpha_deg=tuple(alphas), cl=cl, cd=(CD0,) * len(cl), cm=(0.0,) * len(cl))
+        return Polar(alpha_deg=tuple(alphas), cl=cl, cd=(CD0,) * len(cl))
 
     fake = SimpleNamespace(Opti=real.Opti, OperatingPoint=operating_point, AeroBuildup=Parabolic)
     monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake)
