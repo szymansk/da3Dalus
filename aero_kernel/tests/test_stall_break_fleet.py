@@ -22,7 +22,8 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # Regression goldens at sea level, mass of the fleet member, ISA, f = 0.10, NeuralFoil model size
 # xlarge: (alpha_break deg, width deg, alpha_S deg). width = alpha_break - alpha_S.
 GOLDEN = {
-    FleetMember.BRYAN: (14.7822439, 1.5835136, 13.1987303),
+    # #1355 slice 2 (canopy merged); before: (14.7822439, 1.5835136, 13.1987303)
+    FleetMember.BRYAN: (14.7771530, 1.5787213, 13.1984316),
     FleetMember.JAGUAR: (11.0671515, 1.1418603, 9.9252912),
     FleetMember.BELEMNITOS: (11.0568417, 1.4866984, 9.5701434),
     FleetMember.RV7: (16.3483882, 1.2300212, 15.1183671),

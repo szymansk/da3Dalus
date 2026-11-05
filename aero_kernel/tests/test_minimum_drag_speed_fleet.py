@@ -18,6 +18,7 @@ from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import (
     FleetMember,
+    bryan_as_the_prototype,
     reference_document,
 )
 from aero_kernel.tests.test_regime_fleet import assert_regime_per_surface
@@ -41,8 +42,10 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # (#1346: AeroBuildup's viscous factor k_e,D0 removed from its induced drag); before, V_md / (L/D)max were BRYAN
 # 7.4468700 / 7.7276780, JAGUAR 9.0692794 / 10.4719556, BELEMNITOS 5.3792137 / 13.8824812, RV-7 10.2315110 /
 # 9.5383095, CHEKKER 9.1449363 / 9.2766026, WIESEL 12.5389487 / 11.8938174.
+# BRYAN re-recorded for #1355 slice 2 (its canopy merged into the fuselage, only the visible part counts);
+# before: (7.2306630, 8.3568527, 1.7236595, 0.6603661).
 GOLDEN = {
-    FleetMember.BRYAN: (7.2306630, 8.3568527, 1.7236595, 0.6603661),
+    FleetMember.BRYAN: (7.6649267, 9.6087249, 0.9810230, 0.5876584),
     FleetMember.JAGUAR: (8.8849618, 11.0911866, 2.3196645, 0.5019311),
     FleetMember.BELEMNITOS: (5.2599903, 14.8391368, 4.4632809, 0.8111968),
     FleetMember.RV7: (9.9423059, 10.2825158, 3.2198890, 0.5396917),
@@ -83,13 +86,14 @@ async def test_bryan_best_glide_where_the_prototype_found_it_with_the_small_mode
     is, so the worker is run in this process with that size and with k_e,D0 = 1 (the kernel's drag
     is then AeroBuildup's own, #1346): 7.818 m/s (0.02 % from the prototype), C_L 0.5662 (0.1 %),
     (L/D)max 7.78. With the kernel's "xlarge" and AeroBuildup as is the same airplane gives
-    7.447 m/s, 4.8 % lower: the model size, not the procedure, is the difference.
+    7.447 m/s, 4.8 % lower: the model size, not the procedure, is the difference. The prototype
+    had no canopy merge, so its geometry is BRYAN with the canopy a body of its own (#1355).
     """
     installed = {name: importlib.metadata.version(name) for name in GOLDEN_TOOL_VERSIONS}
     assert installed == GOLDEN_TOOL_VERSIONS  # the 7.8181 below holds for these versions only
     monkeypatch.setattr(opti_module, "NEURALFOIL_MODEL_SIZE", "small")
     request_ = StallRequest(
-        airplane=AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN)),
+        airplane=AirplaneGeometry.model_validate(bryan_as_the_prototype()),
         mass_kg=FleetMember.BRYAN.mass_kg,
         gravity=9.80665,
         n_load=1.0,

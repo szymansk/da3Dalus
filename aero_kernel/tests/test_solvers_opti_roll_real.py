@@ -136,14 +136,16 @@ async def test_bryan_at_the_approach_speed_and_twenty_degrees_converges_from_its
     """BRYAN at V_app 6.819 m/s, 20 deg: IPOPT, started from a fixed fraction (0.1) of the roll-rate
     window, ended in 'Infeasible_Problem_Detected' although the equilibrium exists (a fraction of 0.2
     to 0.5 reaches p = 8.5546 rad/s, p_hat 0.3424, alpha 3.93 deg). The start is the zero of the
-    secant of the rolling moment at the weight-carrying alpha."""
+    secant of the rolling moment at the weight-carrying alpha. The case keeps the V_app of the
+    failure; with the canopy merged (#1355 slice 2) the equilibrium moved from p = 8.5546408 rad/s,
+    alpha 3.9310246 deg."""
     airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN))
     async with SolverRuntime(max_workers=1) as runtime:
         found = await OptiAdapter(runtime).steady_roll(
             airplane, FleetMember.BRYAN.mass_kg, 9.80665, sea_level(), 6.818986359246604, 20.0
         )
-    assert math.isclose(found.p_rad_s, 8.5546408, abs_tol=1e-4)
-    assert math.isclose(found.alpha_deg, 3.9310246, abs_tol=1e-3)
+    assert math.isclose(found.p_rad_s, 8.5530718, abs_tol=1e-4)
+    assert math.isclose(found.alpha_deg, 3.9429796, abs_tol=1e-3)
 
 
 async def test_jaguar_at_forty_degrees_fails_loudly_and_never_returns_a_value() -> None:

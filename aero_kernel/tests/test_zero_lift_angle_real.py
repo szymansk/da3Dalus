@@ -37,13 +37,15 @@ FD_STEP_DEG = 1e-3
 GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # Regression goldens, BRYAN at sea level and its mass, NeuralFoil xlarge (measured 2026-11-01; re-recorded
 # 2026-11-03 for #1346: the kernel's drag moves V_md and V_mp, and with them the root and the slope).
+# Re-recorded for #1355 slice 2 (BRYAN's canopy merged); before: 7.230662994492074,
+# -3.515387311381626, 4.980706259404333, 6.02251899624491, -3.421853220357826, 4.4124252804453326.
 GOLDEN = {
-    "minimum-drag-speed": 7.230662994492074,
-    "zero-lift-angle-best-glide": -3.515387311381626,
-    "lift-curve-slope-best-glide": 4.980706259404333,
-    "minimum-sink-speed": 6.02251899624491,
-    "zero-lift-angle-minimum-sink": -3.421853220357826,
-    "lift-curve-slope-minimum-sink": 4.4124252804453326,
+    "minimum-drag-speed": 7.664926694158355,
+    "zero-lift-angle-best-glide": -3.6132002046649974,
+    "lift-curve-slope-best-glide": 5.0559843432476805,
+    "minimum-sink-speed": 6.412624702401902,
+    "zero-lift-angle-minimum-sink": -3.481523436882498,
+    "lift-curve-slope-minimum-sink": 4.501778851784002,
 }
 
 
@@ -66,8 +68,9 @@ async def test_bryan_at_8_m_s_the_root_and_the_ad_slope_match_a_finite_differenc
         ZeroLiftRequest(airplane=airplane, air=air, v_ms=V_REFERENCE, model_key=the_key)
     )
     solution = outcome.value
-    assert math.isclose(solution.alpha_0_deg, -3.624, abs_tol=0.01), solution
-    assert math.isclose(solution.cl_alpha_per_rad, 5.284, rel_tol=1e-3), solution
+    # #1355 slice 2 (canopy merged): before -3.624 deg and 5.284 /rad
+    assert math.isclose(solution.alpha_0_deg, -3.663, abs_tol=0.01), solution
+    assert math.isclose(solution.cl_alpha_per_rad, 5.173, rel_tol=1e-3), solution
     assert outcome.diagnostics.solver_status == "Solve_Succeeded"
     assert outcome.diagnostics.iterations is not None
     assert outcome.diagnostics.iterations <= 10

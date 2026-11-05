@@ -30,8 +30,9 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # Regression goldens at sea level, mass of the fleet member, ISA, AeroSandbox's S_ref of the main wing (gh-1240),
 # NeuralFoil model size xlarge: (V_mp m/s, alpha_mp deg, C_L,mp, V_md m/s). V_md is the golden of
 # test_minimum_drag_speed_fleet.py, recomputed here as the reference of the ratio.
+# BRYAN re-recorded for #1355 slice 2 (canopy merged); before: (6.0225190, 5.1468365, 0.9518853, 7.2306630).
 GOLDEN = {
-    FleetMember.BRYAN: (6.0225190, 5.1468365, 0.9518853, 7.2306630),
+    FleetMember.BRYAN: (6.4126247, 3.7242834, 0.8395940, 7.6649267),
     FleetMember.JAGUAR: (7.1019810, 5.6291430, 0.7855905, 8.8849618),
     FleetMember.BELEMNITOS: (4.8933654, 5.8417751, 0.9373048, 5.2599903),
     FleetMember.RV7: (7.9411907, 7.6357058, 0.8459578, 9.9423059),
