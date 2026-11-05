@@ -44,7 +44,6 @@ def test_the_sweep_equals_asbs_own_aerobuildup_in_the_same_air(altitude: float) 
     for ours, theirs, key in (
         (polar.cl, reference["CL"], "CL"),
         (polar.cd, expected_cd, "CD"),
-        (polar.cm, reference["Cm"], "Cm"),
     ):
         assert all(
             math.isclose(a, float(b), rel_tol=1e-9, abs_tol=1e-12)

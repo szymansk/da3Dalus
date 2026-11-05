@@ -319,7 +319,7 @@ Kriterien erst nach RC-Fachquelle.
 
 **Stabilität (02.10.2026)** — Umfang mit Maintainer: statisch längs + seitlich, vordere
 SP-Grenze aus Höhenruderwirkung; Dynamik später. Schritt 1 angelegt: `neutral-point` (V_md),
-`static-margin`, `cg-for-target-margin`, `static-margin-probe`; x_CG Eingabe, SM_target Zielwert.
+`static-margin`, `cg-for-target-margin`, `static-margin-probe` (gestrichen 05.11.2026, #1347, siehe unten); x_CG Eingabe, SM_target Zielwert.
 Als Nächstes: Seitenstabilität (C_lβ, C_nβ), vordere Grenze.
 
 **A10 (02.10.2026, Maintainer): Der Kanon rechnet, er bewertet nicht.** SM_min/Bänder/Pass-Fail →
@@ -595,3 +595,32 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **`has_horizontal_tail` (Maintainer 17.10.2026):** neuer Begriff im Bedingungsvokabular — eine Fläche horizontal_tail oder v_tail (surface_type, #1187); ein V-Leitwerk zählt als Höhenleitwerk. Begriffe über die Flächentyp-Ontologie sind vollständig definiert, auch ohne nutzenden Eintrag („Das ist doch eine klare Ontologie … gilt nicht als unbenötigter Code“); die README-Regel „ein neuer Begriff braucht einen Eintrag, der die Bedingung nennt“ bleibt und hat dafür eine Ausnahme.
 
+**Static-margin probe removed (maintainer 2026-11-05, #1347, option D).** The formula
+`static-margin-probe`, its outputs `pitching-moment-slope` and `static-margin-probe`, the rule
+`static-margin-probe-agreement` (parameter `agreement_tolerance` = 0.05) and the warnings
+`static_margin_probe_disagrees`, `static_margin_probe_sign_disagrees` and `aerobuildup_no_downwash`
+are deleted from the canon and the aero_kernel (ADR 0021; no replacement producer, ADR 0022). The
+agreement rule of 2026-11-02 (#1342: |probe − target| ≤ 0.05, tolerance first, sign disagreement an
+`error`) is superseded by this deletion. Reasons, measured on BRYAN, JAGUAR, CHEKKER, BELEMNITOS,
+WIESEL and RV-7 (issue comment of 2026-11-04):
+- AeroBuildup's neutral point lies +0.04 … +0.16 MAC aft of AVL's and +0.08 … +0.22 MAC aft of the
+  textbook world, because AeroBuildup omits the main-wing downwash on the tail (Sharpe 2024 §5.3,
+  §5.4; AVL's 1 − dε/dα is 0.50–0.70, AeroBuildup's tail share 1.35–2.1× AVL's). The probe read
+  0.18–0.32 against a target of 0.10, so its warning fired on every aircraft: the bias exceeds both
+  the tolerance of 0.05 and the spread of the neutral-point worlds.
+- NeuralFoil's low-Re lift-curve shape makes the probe vary by up to 0.6 MAC within α_md ± 1.5°
+  (RV-7 0.022–0.647, BELEMNITOS 0.207–0.453; linear section polars flatten it to ±0.002): the
+  sensitivity to α is larger than the quantity.
+- Trim (all-moving tail) moves it strongly; RV-7 flips sign (0.183 → −0.076).
+Pitch stability stays covered by the worlds of `neutral-point` (ADR 0027, unchanged) and
+`static-margin`. With the probe the only reader of AeroBuildup's pitching moment is gone, so the
+polar type drops its `C_m` column (α, C_L, C_D) and the AeroBuildup model function its `Cm` output
+(ADR 0021). Addendum: `_reversa_sdd/addenda/gh-1347-static-margin-probe-removed.md`.
+
+**`fuselage_not_modelled` claims no number (maintainer 2026-11-05, #1347).** The declaration of
+`neutral-point` no longer states "about 1–2 % MAC" (DATCOM): the fuselage moves the neutral point
+forward, typically by a few percent MAC, so the computed static margin is optimistic; choose the CG
+rather forward for the first flight. Code and severity (`notice`) unchanged, no new computation.
+Reason: the comparison of 2026-11-04 on #1347 gave 2–11 % MAC with AVL bodies and 0.4–11 % with
+AeroBuildup; the models disagree per aircraft, so no figure is reliable, and for an RC aircraft the CG
+is set in flight, so no further investigation.

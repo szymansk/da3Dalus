@@ -430,7 +430,6 @@ async def test_steady_roll_no_cl_peak_in_sweep_is_not_converged(
         alpha_deg=alphas,
         cl=tuple(0.1 * (a + 20.0) for a in alphas),
         cd=(0.05,) * 161,
-        cm=(-0.02,) * 161,
     )
     request = install(monkeypatch, Boundary(2.0, 4.0), polar=rising)
     with pytest.raises(FormulaError) as raised:

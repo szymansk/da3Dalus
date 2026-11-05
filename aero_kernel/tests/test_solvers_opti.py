@@ -25,7 +25,7 @@ pytestmark = pytest.mark.asyncio
 
 def solution(v_s: float = 8.0, cl: float = 1.2, alpha_s: float = 14.0) -> StallSolution:
     alphas = (0.0, alpha_s, 20.0)
-    polar = Polar(alpha_deg=alphas, cl=(0.3, cl, 1.0), cd=(0.01,) * 3, cm=(-0.01,) * 3)
+    polar = Polar(alpha_deg=alphas, cl=(0.3, cl, 1.0), cd=(0.01,) * 3)
     return StallSolution(v_s=v_s, cl_max=cl, alpha_s=alpha_s, polar=polar)
 
 

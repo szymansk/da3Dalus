@@ -103,10 +103,10 @@ One authority for C_L,max.
 
 **Fourth output: `polar-stall`, the published sweep** (maintainer, 2026-10-14, D4). The α sweep that
 brackets the first `C_L` peak (K32: sweep, then IPOPT restricted to the pre-stall branch) is **published**,
-not only an internal step: the sampled whole-aircraft polar (α, `C_L`, `C_D`, `C_m`; the solver's drag, not
+not only an internal step: the sampled whole-aircraft polar (α, `C_L`, `C_D`; the solver's drag, not
 the parabola — ADR 0026) at the clean stall condition `V_S`, `n = 1`. Its `C_D` is the kernel's drag over
-`q·S_ref`, `(D_profile + k_e,D0 · D_induced) / (q·S_ref)` (#1346, [[aerobuildup-evaluation]]); `C_L` and `C_m` are
-AeroBuildup's. The bracketing sweeps read `C_L` only. [[stall-break]] reads it,
+`q·S_ref`, `(D_profile + k_e,D0 · D_induced) / (q·S_ref)` (#1346, [[aerobuildup-evaluation]]); `C_L` is
+AeroBuildup's. It carries no `C_m`: no formula reads one (removed with the static-margin probe, #1347). The bracketing sweeps read `C_L` only. [[stall-break]] reads it,
 so the sweep must run far enough past the peak for that scan. Take-off, landing and inverted return their
 sweeps without exposing them (`polar: null`), and their stall angle the same way (`alpha_s: null`): no
 quantity nobody reads (architect, 2026-10-14).

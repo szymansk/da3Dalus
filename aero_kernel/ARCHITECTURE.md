@@ -295,8 +295,10 @@ Sources:
 - the missing fuselage (`fuselage_not_modelled`, `notice`, origin `neutral-point`, once per world): none of the
   three neutral-point worlds models a fuselage, whose contribution is destabilising, so the interval is biased
   aft and a static margin computed from it is over-reported (`static-margin-measured` inherits it). `notice`: a
-  deliberate, declared simplification (maintainer 2026-10-24, #1205): USAF DATCOM 1978 §4.2.2.1 Method 1
-  gives about 1.5-2.1 % MAC forward (BRYAN) and 0.7-1.0 % (JAGUAR), inside Sadraey's "about ±5 % c̄"
+  deliberate, declared simplification (maintainer 2026-10-24, #1205). The message claims no number: the
+  fuselage moves the neutral point forward, typically by a few percent MAC, so the computed static margin is
+  optimistic and the first-flight CG is chosen rather forward (maintainer 2026-11-05, #1347: the models
+  disagree per aircraft, 2-11 % MAC with AVL bodies and 0.4-11 % with AeroBuildup, so no figure is reliable)
 - the equivalent fuselage section (`fuselage_section_equivalent`, `notice`, origin `airplane`, #1307): AeroSandbox has one
   shape exponent per section, so a section with two is replaced by the symmetric one of the same width, height and
   centre and the same cross-section area; `detail`: the section path, `n`, `n_lower`, `n_equivalent`. The perimeter
@@ -419,7 +421,7 @@ No internal paths or mechanisms in any field (ADR 0019).
   the AeroBuildup world cached.
 - the call's whole **`rule_overrides`** map (maintainer 2026-10-29, #1332, option A). Formulas and adapters
   read rule thresholds through `ctx.solvers.rules` (`flap-model-validity`, `avl-roll-rate-validity`,
-  `hinge-line-continuity`, `static-margin-probe-agreement`; ch. 8.11 "Validation rules"); they are not bound
+  `hinge-line-continuity`; ch. 8.11 "Validation rules"); they are not bound
   parameters. The canon values are in `canon_model.json`, so the build digest covers them; the caller's
   overrides are here. The whole map, not only the thresholds a node reads (those are known only after it
   ran): an override expires more nodes than it changes, never a stale value.
@@ -806,7 +808,7 @@ caller's responsibility.
     `FormulaError`; a dead worker discards its own worker slot (the others and their model functions stay)
     and becomes `internal`. Tested with a stub solver.
   - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
-  - **The Probe and the lateral chain (#1277).** `aerobuildup_no_downwash` (`notice`): the `static-margin-probe` value is AeroBuildup's, which omits the main-wing downwash on the tail and so is biased toward a larger margin (declared on every probe value). `static_margin_probe_disagrees` (`warning`): the probe differs from the static-margin target by more than `agreement_tolerance` of the rule `static-margin-probe-agreement`; `static_margin_probe_sign_disagrees` (`error`, #1342): beyond the tolerance, probe and target also differ in sign (one statically stable, the other not); inside the tolerance nothing is declared, even where the signs differ (the tolerance decides first, maintainer 2026-11-02); the value stays, never averaged, and the probe, the deviation, the tolerance and the target are in `detail`. `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
+  - **The lateral chain (#1277).** The static-margin probe and its warnings (`aerobuildup_no_downwash`, `static_margin_probe_disagrees`, `static_margin_probe_sign_disagrees`) are deleted (maintainer 2026-11-05, #1347; reasons in the canon's `STAND.md`). `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
     the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
     `|p·b/2V| > 0.10`, the documented range of the primer (`warning`). AeroBuildup with a deflected
@@ -828,7 +830,7 @@ caller's responsibility.
     build, CHEKKER 3.9 s; the zero-lift angle through the built function 0.9–1.8 s, a stall-like
     minimum-speed problem 3.2 s, against about 6 s for build plus solve). So the IPOPT problems — `_solve`
     (stall, best glide, minimum sink), `steady_roll_worker` and `zero_lift_worker` (#1334) — call one CasADi `Function`
-    `f(V, α, p, q, r, ρ, μ, a) → (L, D_profile, D_induced, C_L, C_m, C_l, C_n)` of the converted airplane
+    `f(V, α, p, q, r, ρ, μ, a) → (L, D_profile, D_induced, C_L, C_l, C_n)` of the converted airplane
     (`aero_model.aero_model`), built once by `build_aero_model`: AeroBuildup run on an `OperatingPoint`
     whose speed, angle, body rates and atmosphere are `casadi.MX` symbols (the atmosphere a duck type
     whose temperature and pressure are derived as in `FixedAtmosphere`). The function comes from the
@@ -836,8 +838,8 @@ caller's responsibility.
     or is built for the call where none is installed (a worker function run in-process). A failure to
     build it is an error of the problem, as the inline build was; there is no fallback to another route
     (ADR 0020), and the inline symbolic build is gone (ADR 0021). The sweeps (`sweep_polar`, the published
-    polars, and `sweep_lift`, the bracketing lift curves), the recording runs (`_confidence_run`), the start runs of the roll (`_roll_start`) and
-    `moment_slope_worker` stay numeric AeroBuildup runs: they are no symbolic builds and their values must
+    polars, and `sweep_lift`, the bracketing lift curves), the recording runs (`_confidence_run`), and the start runs of the roll (`_roll_start`)
+    stay numeric AeroBuildup runs: they are no symbolic builds and their values must
     not move. The worker reports in its diagnostics whether the function was built (with the time) or
     reused; the parent logs it at `DEBUG`. `zero_lift_worker` (canon `zero-lift-angle-from-polar`) solves
     `C_L(V, α) = 0` on α alone (start 0°, no bounds) and reads `C_Lα` as the CasADi Jacobian of the same
@@ -1793,7 +1795,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 
 ---
 
-## Appendix A — mapping of all 57 canon formulas
+## Appendix A — mapping of all 56 canon formulas
 
 How the columns are filled:
 - **in → out:** counted from the "Produces … from" line.
@@ -1857,7 +1859,6 @@ model (part of `IMPORT_REPORT.md`).
 | `stall-break` | procedure | OPT | law | 7 → 2 | 1 | – | – | seconds | later |
 | `stall-speed` | optimization | OPT | law | 5 → 4 | 4 | yes | – | seconds | core chain |
 | `stall-wing-loading-limit` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
-| `static-margin-probe` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain |
 | `static-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `static-thrust-to-weight` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `thrust-at-airspeed-from-coefficient` | law | APP | law | 4 → 1 | 1 | – | – | instant | later |

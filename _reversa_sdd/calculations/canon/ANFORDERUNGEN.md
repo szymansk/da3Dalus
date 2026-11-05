@@ -808,8 +808,10 @@ Physik**, keine Vereinfachung der Zeichnung.
 
 Wichtig ist die Einschränkung: Für $x_\mathrm{NP}$ ist der Zyklus entartet, für
 $C_{m\alpha}$ **nicht** — dessen Vorzeichen wechselt genau bei
-$\mathbf{x}_\mathrm{ref} = x_\mathrm{NP}$. $C_{m\alpha}$ speist nur die Probe, also hängt
-genau die Probe am konvergierten $x_\mathrm{CG}$ und sonst nichts.
+$\mathbf{x}_\mathrm{ref} = x_\mathrm{NP}$. $C_{m\alpha}$ speiste nur die Probe, also hing
+genau die Probe am konvergierten $x_\mathrm{CG}$ und sonst nichts. **Die Probe ist am 05.11.2026
+gestrichen (#1347, Maintainer, Option D; Begründung in `STAND.md`):** kein Kanonknoten liest
+$C_{m\alpha}$ mehr; die Längsstabilität decken die Welten von `neutral-point` und `static-margin`.
 
 #### Die Rechnungen darin
 
@@ -820,17 +822,17 @@ genau die Probe am konvergierten $x_\mathrm{CG}$ und sonst nichts.
 | $\rho = \rho_\mathrm{ISA}(h)$ | law | `formulas/air-density-isa.md` — **freigegeben** |
 | $W = m\,g$ | law | `formulas/weight-from-mass.md` — **freigegeben** |
 | $\alpha$ aus $L = W$ bei $V$ | **procedure** | §3.4.2 — Beziehung entschieden, drei Angaben offen |
-| AeroBuildup bei $V_{md}$ | Solveraufruf | `neutral-point`: liefert $x_\mathrm{NP}$ (ohne Rückbezug auf $x_\mathrm{CG}$); `static-margin-probe`: mit $\mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$ $C_{m\alpha}$, $C_{L\alpha}$ |
+| AeroBuildup bei $V_{md}$ | Solveraufruf | `neutral-point`: liefert $x_\mathrm{NP}$ (ohne Rückbezug auf $x_\mathrm{CG}$); ~~`static-margin-probe`: mit $\mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$ $C_{m\alpha}$, $C_{L\alpha}$~~ (gestrichen 05.11.2026, #1347) |
 | Abrissproblem (`asb.Opti` + AeroBuildup) | Optimierung | liefert $V_S$ **und** $C_{L,\max,\mathrm{stall}}$ (§3.4.1) |
 | $x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$ | law | `formulas/cg-for-target-margin.md` (02.10.2026) — ADR 0011 |
 | $SM = (x_\mathrm{NP} - x_\mathrm{CG})/\bar{c}$ | law | `formulas/static-margin.md` (02.10.2026) |
-| Probe $SM \overset{?}{=} -C_{m\alpha}/C_{L\alpha}$ | Probe | `formulas/static-margin-probe.md` (02.10.2026) — zwei Wege zu einer Größe sind ein *Test*, keine zweite Wahrheit |
+| ~~Probe $SM \overset{?}{=} -C_{m\alpha}/C_{L\alpha}$~~ | Probe | **gestrichen 05.11.2026 (#1347)**, vorher `formulas/static-margin-probe.md` (02.10.2026); Begründung in `STAND.md` |
 | $V_S = \sqrt{2W/(\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}})}$ | optimization | `formulas/stall-speed.md` — Beziehung freigegeben, Methode wartet auf den Flottenvergleich |
 
 **Angelegt am 02.10.2026 (Längsstabilität, statisch):** `neutral-point` (bei $V_{md}$, dem
 benannten Punkt — der Neutralpunkt hängt kaum vom Anstellwinkel ab), `static-margin`,
 `cg-for-target-margin` (Auslegungsrichtung), `static-margin-probe` mit
-`pitching-moment-slope`. $x_\mathrm{CG}$ ist in der Analyse eine **Eingabe** wie die Masse
+`pitching-moment-slope` (beide am 05.11.2026 gestrichen, #1347). $x_\mathrm{CG}$ ist in der Analyse eine **Eingabe** wie die Masse
 (A6); $SM_\mathrm{target}$ ein **Zielwert** (A9). Der Umfang ist mit dem Maintainer vereinbart:
 statisch längs **und** seitlich, dazu die vordere Schwerpunktgrenze aus der
 Höhenruderwirkung; Dynamik später.
@@ -2401,7 +2403,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K19 | Reisegeschwindigkeit nicht ersetzen: $t_{max}$ bei $V_{mp}$, $R_{max}$ bei $V_{md}$; $V_{cruise,target}$ als Zielwert; Abstandsverhältnis zum Abriss gestrichen | §3.5, §3.7 | `V_cruise := V_md`, `V_C = V_D/1,4` mit `V_D = 1,4·V_max` |
 | K20 | Pistenstufe/Feldlänge nicht im Kanon (Over-Engineering) — die Feldlängen-Funktion der App hat damit keine Kanon-Grundlage; Entfernen nach ADR 0021 bei der Freigabe entscheiden | §3.8, §3.9 | `field_length_service` |
 | K21 | Butterfly im Anflug: $V_{S0}(s)$, $V_{app}(s)$, Gleitwinkel, $s_{max}$ | §3.7 | — |
-| K22 | Längsstabilität statisch: $x_{NP}$ bei $V_{md}$, $SM$, $x_{CG}$ aus $SM_{target}$, Probe $-C_{m\alpha}/C_{L\alpha}$ | §2.3 | ADR-0004-Kontext (ein Wert am Reiseflugpunkt), eigene Neutralpunkt-Wege |
+| K22 | Längsstabilität statisch: $x_{NP}$ bei $V_{md}$, $SM$, $x_{CG}$ aus $SM_{target}$; die Probe $-C_{m\alpha}/C_{L\alpha}$ ist am 05.11.2026 gestrichen (#1347) | §2.3 | ADR-0004-Kontext (ein Wert am Reiseflugpunkt), eigene Neutralpunkt-Wege |
 | K23 | Seitenstabilität statisch ($C_{l\beta}$, $C_{n\beta}$, Spiralkriterium) bei $V_{md}$ und im Anflug | §2.3 | — |
 | K24 | Massenhüllkurve: $V_S(m)$, $V_{max}(m)$, $ROC_{max}(m)$, $m_{max,level}$, $m_{max,TO}$, trimmbarer Schwerpunktbereich über der Masse; $m_{max,struct}$ | §2.3 | `forward_cg`-Endpunkt, Nutzlast-/Missionsrechnungen |
 | K25 | Unscharfe Größen nach A11: der Kanon rechnet je Methodenwelt durch die ganze Kette und gibt [min, max] aus; Kennzeichnung im Navigator und in der App | §4 A11 | Rechenkern, Ausgabeschemata |

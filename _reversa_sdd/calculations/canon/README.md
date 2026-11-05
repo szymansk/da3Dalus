@@ -602,7 +602,7 @@ every method world of a formula's `worlds` field to the tool that computes it (`
 version and settings of its tool (#1221). A tool or world the taxonomy lacks is a finding.
 
 **Probe.** A quantity that only verifies another carries `checks: <slug>` — the quantity whose value it
-checks (`static-margin-probe` checks `static-margin-target`). The importer carries it; the navigator links
+checks (`minimum-drag-speed-probe` checks `minimum-drag-speed`). The importer carries it; the navigator links
 probe and value. The slug of a probe says nothing.
 
 The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `uncertainty`, `tags`; a quantity has no `status`, it is derived)
@@ -704,7 +704,7 @@ and is shown at the binding as a "fixed constant (not overridable)" with its sou
 
 Closed. The unit is the unit of the values. A dimensionless quantity is written `unit: 1` — one spelling
 for the whole canon (#1181); the `airplane` and `components` types carry `—` (not a number). A `polar` has a unit per
-column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` field says `1`.
+column: α in `deg`, the coefficients `C_L`, `C_D` in `1`; its `unit` field says `1`.
 
 | type | what the value is |
 |---|---|
@@ -712,7 +712,7 @@ column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` fie
 | `airplane` | the aircraft geometry: geometry, sections, airfoils — not a number |
 | `components` | the fitted-components document: motor, battery, propeller with its APC table — not a number |
 | `curve` | one value per point of a swept variable (the crow mix `s`, the mass `m`), named in the symbol |
-| `polar` | the sampled whole-aircraft coefficients over angle of attack — α, C_L, C_D, C_m, of equal length — at one evaluation condition, which the slug names (A2) |
+| `polar` | the sampled whole-aircraft coefficients over angle of attack — α, C_L, C_D, of equal length — at one evaluation condition, which the slug names (A2); no `C_m`, since no formula reads it (removed with the static-margin probe, #1347) |
 | `curve_pair` | two curves over the same swept variable that bound a range — a lower and an upper edge |
 | `per_control_surface` | **output only**: one value per control surface, keyed by `<wing>.<device>[_left\|_right]`: the wing's name (required, unique), the device's `name` from the geometry (derived exactly as the geometry format derives it when omitted) and `_left` / `_right` for a mirrored device, e.g. `Seitenleitwerk_links.rudder`; twin fins are separate devices; no length limit; not tied to the mixing names of #955, nor to any solver-internal name. Each entry maps the id of the producing application to a number in the declared unit, so a dual-role surface carries one value per role. Several applications of one formula may produce the same `per_control_surface` quantity; it is the union of the applicable applications' entries. A role without surfaces makes its application not applicable (`when`); when no application applies, the quantity is not applicable (the `when` rule). Two surfaces with the same key are an invalid input (`invalid_input`) |
 

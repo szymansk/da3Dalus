@@ -91,9 +91,6 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "mach_above_limit": WarningSeverity.NOTICE,
     "mach_beyond_validity": WarningSeverity.ERROR,
     "minimum_sink_stall_limited": WarningSeverity.NOTICE,
-    "aerobuildup_no_downwash": WarningSeverity.NOTICE,
-    "static_margin_probe_disagrees": WarningSeverity.WARNING,
-    "static_margin_probe_sign_disagrees": WarningSeverity.ERROR,
     "avl_body_equivalent_round": WarningSeverity.NOTICE,
     "spiral_halving_time_reported": WarningSeverity.NOTICE,
     "fuselage_section_equivalent": WarningSeverity.NOTICE,
@@ -596,7 +593,6 @@ class Polar(BaseModel):
         alpha_deg: Angle of attack in degrees, strictly rising.
         cl: Lift coefficient, normalised by the reference area of the airplane.
         cd: Drag coefficient (the solver's drag, not a fitted parabola, ADR 0026).
-        cm: Pitching-moment coefficient about the airplane's reference point.
         conditions: The flow the sweep was computed at; ``None`` for a polar built by hand.
     """
 
@@ -605,15 +601,14 @@ class Polar(BaseModel):
     alpha_deg: tuple[FiniteFloat, ...] = Field(min_length=2)
     cl: tuple[FiniteFloat, ...]
     cd: tuple[FiniteFloat, ...]
-    cm: tuple[FiniteFloat, ...]
     conditions: FlowConditions | None = None
 
     @model_validator(mode="after")
     def _check_series(self) -> Self:
         """Require equally long series and a strictly rising angle of attack."""
-        lengths = {len(self.alpha_deg), len(self.cl), len(self.cd), len(self.cm)}
+        lengths = {len(self.alpha_deg), len(self.cl), len(self.cd)}
         if len(lengths) != 1:
-            msg = "alpha_deg, cl, cd and cm must have the same length"
+            msg = "alpha_deg, cl and cd must have the same length"
             raise ValueError(msg)
         if any(b <= a for a, b in zip(self.alpha_deg, self.alpha_deg[1:], strict=False)):
             msg = "alpha_deg must be strictly rising"

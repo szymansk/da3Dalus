@@ -345,7 +345,7 @@ async def _pair(x: Inputs, ctx: Context) -> Mapping[str, object]:
 
 
 # A real polar: the engine type-checks a polar output (stall-break is the first reader).
-A_POLAR = Polar(alpha_deg=(0.0, 1.0), cl=(0.1, 0.2), cd=(0.01, 0.01), cm=(0.0, 0.0))
+A_POLAR = Polar(alpha_deg=(0.0, 1.0), cl=(0.1, 0.2), cd=(0.01, 0.01))
 
 
 async def _one(x: Inputs, ctx: Context) -> Mapping[str, object]:

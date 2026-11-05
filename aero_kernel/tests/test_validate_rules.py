@@ -145,10 +145,6 @@ def test_a_pending_parameter_is_never_read() -> None:
         rules.value("a-proposal", "limit")
 
 
-def test_the_adopted_probe_tolerance_is_read_as_five_percent_mac() -> None:
-    assert Rules(MODEL).value("static-margin-probe-agreement", "agreement_tolerance") == 0.05
-
-
 @pytest.mark.asyncio
 async def test_the_rule_runs_on_every_path_and_the_provenance_names_the_thresholds() -> None:
     """stall-speed alone does not pass through airplane-geometry; the input rule still refuses."""
