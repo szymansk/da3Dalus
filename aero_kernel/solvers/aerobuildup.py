@@ -103,7 +103,7 @@ def sweep_lift(
 ) -> LiftCurve:
     """Run AeroBuildup over the angles of attack and read the lift coefficient only.
 
-    The bracketing sweeps of the IPOPT problems and of the roll and moment-slope windows locate the
+    The bracketing sweeps of the IPOPT problems and of the roll window locate the
     first C_L extremum; they read no drag. Runs in a pool worker.
 
     Args:
@@ -147,7 +147,7 @@ def sweep_polar(
         viscous_factor: k_e,D0 (rule ``aerobuildup-induced-drag``).
 
     Returns:
-        The polar (C_L and C_m as AeroBuildup computes them, C_D the kernel's).
+        The polar (C_L as AeroBuildup computes it, C_D the kernel's).
     """
     result, point = _sweep(asb_airplane, air, velocity_ms, alphas_deg, model_size)
     airplane: Any = asb_airplane  # the untyped asb.Airplane: its reference area
@@ -157,7 +157,6 @@ def sweep_polar(
         alpha_deg=tuple(float(a) for a in alphas_deg),
         cl=tuple(float(v) for v in result["CL"]),
         cd=tuple(float(v) for v in np.broadcast_to(cd, (len(alphas_deg),))),
-        cm=tuple(float(v) for v in result["Cm"]),
         conditions=FlowConditions(
             v_ms=velocity_ms,
             density=air.density,

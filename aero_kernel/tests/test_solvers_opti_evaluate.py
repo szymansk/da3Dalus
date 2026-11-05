@@ -179,7 +179,6 @@ async def test_sweep_polar_runs_aerobuildup_over_the_angles_at_one_speed(
         seen.append(op_point)
         result = {
             "CL": np.array([0.1, 0.5]),
-            "Cm": np.zeros(2),
             "D_profile": np.array([0.02, 0.03]),
             "D_induced": np.zeros(2),
         }
@@ -194,12 +193,7 @@ async def test_sweep_polar_runs_aerobuildup_over_the_angles_at_one_speed(
     monkeypatch.setattr(aerobuildup_module, "load_aerosandbox", lambda: fake)
     plane = SimpleNamespace(s_ref=1.0)
     polar = aerobuildup_module.sweep_polar(plane, AIR, 9.0, [0.0, 4.0], "xlarge", K_E_D0)
-    assert (polar.alpha_deg, polar.cl, polar.cd, polar.cm) == (
-        (0.0, 4.0),
-        (0.1, 0.5),
-        (0.02, 0.03),
-        (0.0, 0.0),
-    )
+    assert (polar.alpha_deg, polar.cl, polar.cd) == ((0.0, 4.0), (0.1, 0.5), (0.02, 0.03))
     assert polar.conditions is not None
     assert polar.conditions.v_ms == 9.0
     (point,) = seen

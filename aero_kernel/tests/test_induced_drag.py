@@ -123,7 +123,6 @@ def test_the_sweep_drag_coefficient_is_the_kernel_drag_over_q_s_ref(
     result = {
         "CL": np.array([0.1, 0.5]),
         "CD": np.array([9.0, 9.0]),  # AeroBuildup's own C_D: never read
-        "Cm": np.zeros(2),
         "D_profile": np.array([1.0, 1.5]),
         "D_induced": np.array([0.1, 2.0]),
     }

@@ -16,7 +16,6 @@ def polar(**change: object) -> Polar:
         "alpha_deg": ALPHAS,
         "cl": (-0.1, 0.1, 0.3, 0.5, 0.7),
         "cd": (0.02, 0.01, 0.01, 0.02, 0.03),
-        "cm": (0.0, -0.01, -0.02, -0.03, -0.04),
     }
     return Polar.model_validate({**fields, **change})
 
@@ -32,7 +31,7 @@ def test_a_polar_holds_equally_long_finite_series_over_rising_alpha() -> None:
         {"alpha_deg": (0.0, 0.0, 1.0, 2.0, 3.0)},
         {"alpha_deg": (2.0, 1.0, 0.0, -1.0, -2.0)},
         {"cd": (0.0, 0.0, 0.0, 0.0, math.nan)},
-        {"cm": (0.0, 0.0, 0.0, 0.0, math.inf)},
+        {"cl": (0.0, 0.0, 0.0, 0.0, math.inf)},
     ],
 )
 def test_a_polar_rejects_unequal_series_a_non_rising_alpha_and_non_finite_values(
@@ -44,7 +43,7 @@ def test_a_polar_rejects_unequal_series_a_non_rising_alpha_and_non_finite_values
 
 def test_a_polar_needs_two_samples() -> None:
     with pytest.raises(ValidationError):
-        Polar(alpha_deg=(0.0,), cl=(0.0,), cd=(0.0,), cm=(0.0,))
+        Polar(alpha_deg=(0.0,), cl=(0.0,), cd=(0.0,))
 
 
 def test_an_air_state_has_a_kinematic_viscosity() -> None:

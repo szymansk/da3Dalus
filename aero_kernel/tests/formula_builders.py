@@ -49,7 +49,6 @@ IMPLEMENTED = {
     "calc:vertical-tail-arm",
     "calc:vertical-tail-volume",
     "calc:spiral-parameter",
-    "calc:static-margin-probe",
     "calc:lateral-static-stability-md",
     "calc:lateral-static-stability-app",
     "calc:lateral-static-stability-mp",

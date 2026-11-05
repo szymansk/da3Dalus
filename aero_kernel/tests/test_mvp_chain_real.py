@@ -1,19 +1,14 @@
 """The MVP-chain adapters against real AeroSandbox and AVL (aero tier).
 
 The fin area and the V-tail share are compared with the fast tier's stand-in, the lateral derivatives
-with their physical signs and with the airplane without its fuselage, and the moment slope with the
-transfer of the moment reference.
+with their physical signs and with the airplane without its fuselage.
 """
-
-import math
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
-from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.asb_airplane import fin_area, horizontal_tail_area, surface_properties
 from aero_kernel.solvers.avl import AvlAdapter
-from aero_kernel.solvers.opti import OptiAdapter
 from aero_kernel.tests.asb_fakes import (
     stand_in_fin_area,
     stand_in_horizontal_tail_area,
@@ -30,8 +25,6 @@ from aero_kernel.tests.test_v_tail_neutral_point import (
 )
 
 pytestmark = [pytest.mark.aero]
-
-AIR = AirState(density=1.225, dynamic_viscosity=1.7894e-5, speed_of_sound=340.294)
 
 
 def plane(member: FleetMember) -> AirplaneGeometry:
@@ -122,23 +115,6 @@ async def test_the_fuselage_changes_the_weathercock_stability() -> None:
         without = await adapter.lateral_derivatives(bare, 0.6, 0.13)
     assert without.warnings == ()
     assert with_body.c_n_beta != without.c_n_beta
-
-
-@pytest.mark.asyncio
-async def test_the_moment_slope_moves_with_the_reference_by_the_arm_in_chords() -> None:
-    """SM(x_ref) is linear in the reference: moving it aft by d lowers the margin by d / c_MAC."""
-    airplane = plane(FleetMember.BRYAN)
-    c_mac = FleetMember.BRYAN.reference.c_mac
-    async with SolverRuntime() as runtime:
-        adapter = OptiAdapter(runtime)
-        near = await adapter.moment_slope(airplane, 0.151, 9.80665, AIR, 8.0, 0.13)
-        far = await adapter.moment_slope(airplane, 0.151, 9.80665, AIR, 8.0, 0.14)
-    first, second = near.solution, far.solution
-    assert close(first.cl_alpha, second.cl_alpha, 1e-9)
-    margin_near = -first.cm_alpha / first.cl_alpha
-    margin_far = -second.cm_alpha / second.cl_alpha
-    assert abs((margin_near - margin_far) - 0.01 / c_mac) < 5e-3
-    assert math.isfinite(margin_near)
 
 
 @pytest.mark.parametrize("rise", RISES[1:])  # a flat V-tail has no fin share to add

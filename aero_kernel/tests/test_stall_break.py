@@ -49,7 +49,6 @@ def curve(points: Sequence[tuple[float, float]]) -> Polar:
         alpha_deg=tuple(a for a, _ in points),
         cl=tuple(c for _, c in points),
         cd=(0.05,) * len(points),
-        cm=(0.0,) * len(points),
     )
 
 
@@ -130,14 +129,12 @@ def _interpolated(polar: Polar, alphas: Sequence[float]) -> Polar:
     import numpy as np
 
     cl = [float(np.interp(a, polar.alpha_deg, polar.cl)) for a in alphas]
-    return Polar(alpha_deg=tuple(alphas), cl=tuple(cl), cd=(0.05,) * len(cl), cm=(0.0,) * len(cl))
+    return Polar(alpha_deg=tuple(alphas), cl=tuple(cl), cd=(0.05,) * len(cl))
 
 
 async def test_a_polar_that_never_falls_to_the_level_gives_no_value_and_runs_no_sweep() -> None:
     flat = lift_curve_at((ALPHA_S, CL_MAX), True, [14.0, 15.0, 15.75, 16.0, 25.0])
-    flat = Polar(
-        alpha_deg=flat.alpha_deg, cl=(1.0, 1.1, CL_MAX, 1.18, 1.17), cd=flat.cd, cm=flat.cm
-    )
+    flat = Polar(alpha_deg=flat.alpha_deg, cl=(1.0, 1.1, CL_MAX, 1.18, 1.17), cd=flat.cd)
     stub = StubOpti()
     x = break_x(flat)
     context = context_with(StubAtmosphere({}), opti=stub)
