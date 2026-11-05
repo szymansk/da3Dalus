@@ -183,7 +183,7 @@ class TestConverters:
         assert xsecs[1].height == pytest.approx(2 * 0.025)
 
     def test_mirror_keeps_n_lower(self):
-        mirrored = _mirror_fuselage_schema_y(_body(N_BOTTOM))
+        mirrored = _mirror_fuselage_schema_y(_body(N_BOTTOM), set())
         assert all(xs.n_lower == pytest.approx(N_BOTTOM) for xs in mirrored.x_secs)
 
     def test_mirrored_asb_xsec_stays_split(self):

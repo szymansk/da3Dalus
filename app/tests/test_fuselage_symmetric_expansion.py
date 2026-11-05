@@ -53,7 +53,7 @@ class TestMirrorFuselageSchemaY:
         from app.converters.model_schema_converters import _mirror_fuselage_schema_y
 
         original = _make_strut(symmetric=True)
-        mirror = _mirror_fuselage_schema_y(original)
+        mirror = _mirror_fuselage_schema_y(original, set())
         assert mirror.name == "Strut (mirror)"
         # Mirrored half is not symmetric — IS the other half already.
         assert mirror.symmetric is False
@@ -64,7 +64,7 @@ class TestMirrorFuselageSchemaY:
         from app.converters.model_schema_converters import _mirror_fuselage_schema_y
 
         original = _make_strut()
-        mirror = _mirror_fuselage_schema_y(original)
+        mirror = _mirror_fuselage_schema_y(original, set())
         for o_xs, m_xs in zip(original.x_secs, mirror.x_secs, strict=True):
             assert m_xs.a == o_xs.a
             assert m_xs.b == o_xs.b
@@ -74,7 +74,7 @@ class TestMirrorFuselageSchemaY:
         from app.converters.model_schema_converters import _mirror_fuselage_schema_y
 
         original = _make_strut()
-        _mirror_fuselage_schema_y(original)
+        _mirror_fuselage_schema_y(original, set())
         assert original.x_secs[0].xyz == [0.0, 0.6, -0.3]
         assert original.symmetric is True
 

@@ -165,7 +165,7 @@ def test_the_mirrored_cad_copy_negates_y_and_keeps_counter_clockwise():
     fuselage = schemas.FuselageSchema(
         **body(section(0.0, contour=sent), section(0.5, contour=sent))
     )
-    mirrored = _mirror_fuselage_schema_y(fuselage)
+    mirrored = _mirror_fuselage_schema_y(fuselage, set())
     expected = [
         [0.02, -0.025],
         [0.015, 0.03],

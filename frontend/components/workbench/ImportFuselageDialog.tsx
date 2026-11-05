@@ -11,6 +11,8 @@ import {
   type ContourPoint,
   type FuselageSection,
 } from "@/lib/fuselageSection";
+import { NEW_BODY, type BodyFields, type BodyRelation, type BodyRole } from "@/lib/bodyRole";
+import { BodyRoleFields } from "./BodyRoleFields";
 
 /** Tolerant float equality — avoids exact `===` on floating-point scale factors. */
 export function approxEq(a: number, b: number, eps: number = 1e-9): boolean {
@@ -201,6 +203,10 @@ interface ImportFuselageDialogProps {
   initialXsecs?: XSec[];
   initialName?: string;
   initialSelectedIndex?: number;
+  /** gh-1355: role, attachment and mirror flag of the edited body, kept on save */
+  initialBody?: BodyFields;
+  /** gh-1355: the aeroplane's bodies, offered as the body this one sits on */
+  bodies?: readonly BodyRelation[];
 }
 
 /** Extract fidelity metrics from the slicing response */
@@ -455,9 +461,14 @@ export async function saveFuselage(
   aeroplaneId: string,
   fuselageName: string,
   xsecs: XSec[],
+  bodyFields: BodyFields,
 ): Promise<void> {
   const body = JSON.stringify({
     name: fuselageName,
+    // gh-1355: a full save replaces the body, so its role, parent and mirror flag go with it
+    role: bodyFields.role,
+    attached_to: bodyFields.attached_to,
+    symmetric: bodyFields.symmetric,
     x_secs: xsecs.map((xs) => ({
       xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n, n_lower: xs.n_lower ?? null,
       contour: xs.contour ?? null,
@@ -721,6 +732,10 @@ interface PreviewPhaseProps {
   fidelity: { volume_ratio: number; area_ratio: number } | null;
   fuselageName: string;
   setFuselageName: (v: string) => void;
+  role: BodyRole;
+  attachedTo: string | null;
+  bodies: readonly BodyRelation[];
+  setBody: (role: BodyRole, attachedTo: string | null) => void;
 }
 
 function renderPreviewPhase(p: PreviewPhaseProps) {
@@ -808,6 +823,16 @@ function renderPreviewPhase(p: PreviewPhaseProps) {
         />
       </div>
       )}
+      {!p.viewerMaximized && !p.xsecsMaximized && (
+        <BodyRoleFields
+          name={p.fuselageName}
+          role={p.role}
+          attachedTo={p.attachedTo}
+          bodies={p.bodies}
+          onChange={p.setBody}
+          idPrefix="fuselage-save"
+        />
+      )}
     </div>
   );
 }
@@ -820,6 +845,8 @@ export function ImportFuselageDialog({
   initialXsecs,
   initialName,
   initialSelectedIndex,
+  initialBody = NEW_BODY,
+  bodies = [],
 }: Readonly<ImportFuselageDialogProps>) {
   const editMode = !!initialXsecs;
   const [phase, setPhase] = useState<Phase>(editMode ? "preview" : "upload");
@@ -839,6 +866,12 @@ export function ImportFuselageDialog({
   const [error, setError] = useState<string | null>(null);
   const [fidelity, setFidelity] = useState<{ volume_ratio: number; area_ratio: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [role, setRole] = useState<BodyRole>(initialBody.role);
+  const [attachedTo, setAttachedTo] = useState<string | null>(initialBody.attached_to);
+  const setBody = (r: BodyRole, parent: string | null) => {
+    setRole(r);
+    setAttachedTo(parent);
+  };
   const { dialogRef, handleClose: dialogHandleClose } = useDialog(open, () => { handleReset(); onClose(); });
 
   const handleFileSelect = (selectedFile: File) => {
@@ -870,7 +903,11 @@ export function ImportFuselageDialog({
     setSaving(true);
     setError(null);
     try {
-      await saveFuselage(aeroplaneId, fuselageName, xsecs);
+      await saveFuselage(aeroplaneId, fuselageName, xsecs, {
+        role,
+        attached_to: attachedTo,
+        symmetric: initialBody.symmetric,
+      });
       onSaved?.();
       handleReset();
       onClose();
@@ -907,6 +944,7 @@ export function ImportFuselageDialog({
     setError(null);
     setFidelity(null);
     setSaving(false);
+    setBody(initialBody.role, initialBody.attached_to);
   };
 
   return (
@@ -966,6 +1004,7 @@ export function ImportFuselageDialog({
             viewerMaximized, setViewerMaximized,
             xsecsMaximized, setXsecsMaximized,
             fidelity, fuselageName, setFuselageName,
+            role, attachedTo, bodies, setBody,
           })}
         </div>
 

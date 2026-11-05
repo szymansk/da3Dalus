@@ -1048,3 +1048,76 @@ class TestFuselageContour:
         document = _with_contours(_document(), count=2)
         document["rule_overrides"] = {"fuselage-contour.min_contour_points": 2.0}
         assert _validate(document) == ()
+
+
+def _with_canopy(
+    document: dict[str, Any], x: tuple[float, float] = (0.1, 0.3), **fields: Any
+) -> dict[str, Any]:
+    """Add a canopy on the body ``Body`` (#1355): a, the top edge real, n_lower 1 inside."""
+    canopy: dict[str, Any] = {
+        "name": "Canopy",
+        "role": "canopy",
+        "attached_to": "Body",
+        "x_secs": [
+            {"xyz": [x[0], 0.0, 0.04], "a": 0.02, "b": 0.03, "n": 2.0, "n_lower": 1.0},
+            {"xyz": [x[1], 0.0, 0.04], "a": 0.02, "b": 0.03, "n": 2.0, "n_lower": 1.0},
+        ],
+    }
+    canopy.update(fields)
+    document["airplane"]["fuselages"]["Canopy"] = canopy
+    return document
+
+
+CANOPY = 'airplane.fuselages["Canopy"]'
+
+
+class TestBodyAttachment:
+    """Role and attached_to of a body (canon rule body-attachment, #1355)."""
+
+    def test_a_canopy_on_its_body_is_admissible(self) -> None:
+        result = _result(_with_canopy(_document()))
+        assert result.errors == ()
+        # n_lower = 1 under n = 2 is declared per section, as for any body (gh-1157)
+        assert set(_codes_of_warnings(result)) == {"fuselage_section_equivalent"}
+
+    def test_role_defaults_to_fuselage_and_attached_to_to_none(self) -> None:
+        aircraft = AircraftInput.model_validate(_document())
+        assert aircraft.airplane.fuselages is not None
+        body = aircraft.airplane.fuselages["Body"]
+        assert (body.role, body.attached_to) == ("fuselage", None)
+
+    def test_an_unknown_role_does_not_parse(self) -> None:
+        document = _document()
+        document["airplane"]["fuselages"]["Body"]["role"] = "cockpit"
+        with pytest.raises(ValueError, match="role"):
+            AircraftInput.model_validate(document)
+
+    def test_a_canopy_without_parent_is_refused_at_attached_to(self) -> None:
+        errors = _validate(_with_canopy(_document(), attached_to=None))
+        assert _codes(errors) == ["invalid_body_attachment"]
+        assert _paths(errors) == [f"{CANOPY}.attached_to"]
+        assert errors[0].category is ErrorCategory.INVALID_INPUT
+
+    def test_an_unknown_parent_is_refused_at_attached_to(self) -> None:
+        errors = _validate(_with_canopy(_document(), attached_to="Fuselage"))
+        assert _codes(errors) == ["invalid_body_attachment"]
+        assert _paths(errors) == [f"{CANOPY}.attached_to"]
+
+    def test_a_cycle_is_refused(self) -> None:
+        document = _with_canopy(_document())
+        document["airplane"]["fuselages"]["Body"]["attached_to"] = "Canopy"
+        errors = _validate(document)
+        assert _codes(errors) == ["invalid_body_attachment"] * 2
+        assert _paths(errors) == [f"{BODY}.attached_to", f"{CANOPY}.attached_to"]
+
+    def test_a_canopy_reaching_behind_its_parent_is_refused_at_the_section(self) -> None:
+        errors = _validate(_with_canopy(_document(), x=(0.1, 0.6)))
+        assert _codes(errors) == ["canopy_outside_parent"]
+        assert _paths(errors) == [f"{CANOPY}.x_secs[1].xyz[0]"]
+        assert "0.6" in errors[0].message
+
+    def test_the_range_of_a_canopy_on_a_body_with_one_section_is_not_compared(self) -> None:
+        """One section is no loft: too_few_sections is the one finding (one cause, one code)."""
+        document = _with_canopy(_document(), x=(0.1, 0.6))
+        del document["airplane"]["fuselages"]["Body"]["x_secs"][1]
+        assert _codes(_validate(document)) == ["too_few_sections"]

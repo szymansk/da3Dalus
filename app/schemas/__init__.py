@@ -21,6 +21,7 @@ from app.schemas.aeroplaneschema import TrailingEdgeServoSchema
 from app.schemas.aeroplaneschema import TrailingEdgeServoPatchSchema
 from app.schemas.aeroplaneschema import ControlSurfaceServoDetailsSchema
 from app.schemas.aeroplaneschema import ControlSurfaceServoDetailsPatchSchema
+from app.schemas.aeroplaneschema import BodyRole
 from app.schemas.aeroplaneschema import FuselageSchema
 from app.schemas.aeroplaneschema import FuselageXSecSuperEllipseSchema
 from app.schemas.flight_profile import (

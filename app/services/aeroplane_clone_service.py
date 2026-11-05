@@ -344,6 +344,8 @@ def clone_aeroplane_subgraph(
             aeroplane_id=clone.id,
             name=fus.name,
             symmetric=fus.symmetric,
+            role=fus.role,
+            attached_to=fus.attached_to,  # names are kept, so the parent is the clone's own
             step_path=None,  # regenerated on demand
             solid_step_path=None,  # regenerated on demand
         )

@@ -241,6 +241,7 @@ export default function WorkbenchPage() {
               aeroplaneId={aeroplaneId}
               wingNames={wingNames}
               fuselageNames={fuselageNames}
+              fuselageBodies={allFuselages}
               aeroplaneName={aeroplaneName}
               isWingVisible={(wn) => effectiveVisibleWings.has(wn)}
               onTogglePreview={toggleWingVisibility}
@@ -364,7 +365,7 @@ export default function WorkbenchPage() {
                 <X size={14} />
               </button>
             </div>
-            <PropertyForm ref={formRef} onGeometryChanged={() => { mutateAllWings(); mutateSelectedWing(); mutateAllFuselages(); }} />
+            <PropertyForm ref={formRef} fuselageBodies={allFuselages} onGeometryChanged={() => { mutateAllWings(); mutateSelectedWing(); mutateAllFuselages(); }} />
           </div>
         )}
       </dialog>

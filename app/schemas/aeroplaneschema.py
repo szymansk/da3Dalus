@@ -55,6 +55,21 @@ class SurfaceType(str, Enum):
     WINGLET = "winglet"
 
 
+class BodyRole(str, Enum):
+    """What a fuselage body is (gh-1355, geometry format 7.6).
+
+    Stated by the writer, never inferred from the body's name (ADR 0020). Not to be confused
+    with ``SurfaceType`` (wings) or ``ControlSurfaceRole`` (trailing-edge devices).
+    """
+
+    FUSELAGE = "fuselage"
+    CANOPY = "canopy"
+    NACELLE = "nacelle"
+    FAIRING = "fairing"
+    POD = "pod"
+    OTHER = "other"
+
+
 # gh-772: roles that combine a symmetric and an antisymmetric axis on ONE physical
 # surface — they get a SECOND AVL CONTROL line (a secondary mix gain).
 DUAL_ROLE_VALUES = {"elevon", "flaperon", "ruddervator"}
@@ -868,6 +883,26 @@ class FuselageSchema(BaseModel):
             "main fuselage usually sits on the symmetry plane itself "
             "and should not be mirrored."
         ),
+    )
+    role: BodyRole = Field(
+        default=BodyRole.FUSELAGE,
+        description=(
+            "What the body is, gh-1355 (geometry format 7.6): fuselage, canopy, nacelle, "
+            "fairing, pod or other. Stated by the writer, never inferred from the name. A "
+            "canopy needs attached_to and lies within its parent's x range. No solver reads the "
+            "role yet: the drag of a canopy is computed for the whole body."
+        ),
+        examples=["fuselage", "canopy"],
+    )
+    attached_to: Optional[str] = Field(
+        default=None,
+        description=(
+            "Name of the body of the same aeroplane this one sits on, gh-1355. Must name "
+            "another existing body without forming a cycle; required for a canopy. A body that "
+            "others are attached to cannot be deleted until they are detached or deleted. "
+            "``None``: the body sits on no other body."
+        ),
+        examples=[None, "Fuselage"],
     )
     step_path: Optional[str] = Field(
         default=None,

@@ -9,9 +9,11 @@ import { useUnsavedChanges } from "./UnsavedChangesContext";
 import { useWing, type XSec } from "@/hooks/useWings";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import type { WingConfigSegment } from "@/hooks/useWingConfig";
-import { useFuselage, type FuselageXSec } from "@/hooks/useFuselage";
+import { useFuselage, type Fuselage, type FuselageXSec } from "@/hooks/useFuselage";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { contourPointCount, contourWinsWarning, parseLowerExponent } from "@/lib/fuselageSection";
+import { bodyFields, bodyRole, type BodyRelation, type BodyRole } from "@/lib/bodyRole";
+import { BodyRoleFields } from "./BodyRoleFields";
 
 /** Parse a number input string, allowing empty/partial input during editing */
 function num(v: string, fallback = 0): number {
@@ -516,17 +518,18 @@ interface FuselageXsecFormOptions {
   mode: Mode;
   selectedFuselage: string | null;
   selectedFuselageXsecIndex: number | null;
-  fuselage: { x_secs: FuselageXSec[] } | null | undefined;
+  fuselage: Fuselage | null | undefined;
   aeroplaneId: string | null;
   updateFuselageXSec: (idx: number, xsec: FuselageXSec) => Promise<void>;
   mutateFuselage: () => Promise<unknown>;
   onGeometryChanged: ((wingName: string) => void) | undefined;
   formRef: React.RefObject<PropertyFormHandle | null>;
+  fuselageBodies: readonly BodyRelation[];
 }
 
 function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactElement | null {
   const { mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
-    aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged, formRef } = opts;
+    aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged, formRef, fuselageBodies } = opts;
   if (mode !== "fuselage" || !selectedFuselage || selectedFuselageXsecIndex === null || !fuselage) {
     return null;
   }
@@ -539,6 +542,7 @@ function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactEleme
       fuselageName={selectedFuselage}
       xsecIndex={selectedFuselageXsecIndex}
       xsec={fxsec}
+      fuselageBodies={fuselageBodies}
       onSave={async (updated) => {
         await updateFuselageXSec(selectedFuselageXsecIndex, updated);
         await mutateFuselage();
@@ -550,9 +554,11 @@ function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactEleme
 
 // ── Main Component ──────────────────────────────────────────────
 
-export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
+export function PropertyForm({ onGeometryChanged, ref, fuselageBodies = [] }: Readonly<{
   onGeometryChanged?: (wingName: string) => void;
   ref?: React.Ref<PropertyFormHandle>;
+  /** gh-1355: role and attachment of every body, for the attached_to choice */
+  fuselageBodies?: readonly BodyRelation[];
 }>) {
   const { aeroplaneId, selectedWing, selectedXsecIndex, selectXsec, selectedFuselage, selectedFuselageXsecIndex, treeMode } =
     useAeroplaneContext();
@@ -573,7 +579,7 @@ export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
     aeroplaneId,
     wingMode === "wingconfig" ? selectedWing : null,
   );
-  const { fuselage, updateXSec: updateFuselageXSec, mutate: mutateFuselage } = useFuselage(
+  const { fuselage, updateXSec: updateFuselageXSec, saveBody, mutate: mutateFuselage } = useFuselage(
     aeroplaneId,
     treeMode === "fuselage" ? selectedFuselage : null,
   );
@@ -650,9 +656,25 @@ export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
   const fuselageXsecForm = renderFuselageXsecForm({
     mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
     aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged,
-    formRef: fuselageFormRef,
+    formRef: fuselageFormRef, fuselageBodies,
   });
   if (fuselageXsecForm) return fuselageXsecForm;
+
+  // gh-1355: the body itself is selected (no section): its role and the body it sits on
+  if (mode === "fuselage" && selectedFuselage && selectedFuselageXsecIndex === null && fuselage) {
+    return (
+      <FuselageBodyForm
+        ref={fuselageFormRef}
+        fuselageName={selectedFuselage}
+        fuselage={fuselage}
+        bodies={fuselageBodies}
+        onSave={async (fields) => {
+          await saveBody(fields);
+          onGeometryChanged?.("");
+        }}
+      />
+    );
+  }
 
   // No segment/xsec selected — nothing to show
   if (selectedXsecIndex === null || !xsec) {
@@ -778,13 +800,86 @@ export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
 
 
 
+// ── Fuselage Body Form (gh-1355) ──────────────────────────────
+
+function FuselageBodyForm({ fuselageName, fuselage, bodies, onSave, ref }: Readonly<{
+  fuselageName: string;
+  fuselage: Fuselage;
+  bodies: readonly BodyRelation[];
+  onSave: (fields: { role: BodyRole; attached_to: string | null }) => Promise<void>;
+  ref?: React.Ref<PropertyFormHandle>;
+}>) {
+  const [role, setRole] = useState<BodyRole>(bodyRole(fuselage));
+  const [attachedTo, setAttachedTo] = useState<string | null>(fuselage.attached_to ?? null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { setDirty } = useUnsavedChanges();
+
+  const reset = () => {
+    setRole(bodyRole(fuselage));
+    setAttachedTo(fuselage.attached_to ?? null);
+    setError(null);
+  };
+  useEffect(reset, [fuselage]);
+
+  const save = async (rethrow: boolean) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave({ role, attached_to: attachedTo });
+      setDirty(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      if (rethrow) throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({ save: () => save(true) }));
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-2.5 px-4">
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+        {fuselageName} {"\u00B7"} Body Properties
+      </span>
+      <div className="mt-3">
+        <BodyRoleFields
+          name={fuselageName}
+          role={role}
+          attachedTo={attachedTo}
+          bodies={bodies}
+          onChange={(r, parent) => { setRole(r); setAttachedTo(parent); setDirty(true); }}
+          idPrefix="fuselage-body"
+        />
+      </div>
+      {error && (
+        <p className="mt-2 rounded-xl border border-destructive bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="mt-3 flex justify-end gap-2">
+        <button onClick={() => { reset(); setDirty(false); }} disabled={saving}
+          className="rounded-full border border-border-strong bg-background px-3.5 py-2 text-[13px] text-foreground hover:bg-sidebar-accent disabled:opacity-50">
+          Cancel
+        </button>
+        <button onClick={() => { save(false).catch(() => {}); }} disabled={saving}
+          className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50">
+          {saving ? "Saving\u2026" : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Fuselage XSec Form ────────────────────────────────────────
 
-function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, ref }: Readonly<{
+function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, ref, fuselageBodies }: Readonly<{
   aeroplaneId: string | null;
   fuselageName: string;
   xsecIndex: number;
   xsec: FuselageXSec;
+  fuselageBodies: readonly BodyRelation[];
   onSave: (updated: FuselageXSec) => Promise<void>;
   ref?: React.Ref<PropertyFormHandle>;
 }>) {
@@ -901,6 +996,8 @@ function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, 
           initialXsecs={fuselage.x_secs}
           initialName={fuselageName}
           initialSelectedIndex={xsecIndex}
+          initialBody={bodyFields(fuselage)}
+          bodies={fuselageBodies}
         />
       )}
 

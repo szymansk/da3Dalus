@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:b1f5b93e809f943fbeaa2a0ff9e17f850dfe902855214c978b31d5a7ba317cab",
+  "content_hash": "sha256:b25cd90e52a09378b5bd4ae1c2e9a27347087607f19b75729564af2a86ca05bb",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6799,6 +6799,20 @@
               "value": 0.1
             }
           }
+        },
+        "body-attachment": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "invalid_body_attachment",
+            "canopy_outside_parent"
+          ],
+          "criterion": "Every body under fuselages has a role (fuselage, canopy, nacelle, fairing, pod or other; fuselage when the document does not say), stated by the writer and never inferred from its name, and optionally attached_to, the name of the body it sits on (#1355, maintainer 2026-11-05). attached_to, when set, names another body of the same aircraft, and the chain of attached_to has no cycle. A body of role canopy has attached_to. A canopy's x range, from the smallest to the largest xyz[0] of its sections, lies within its parent's x range, ends included and without tolerance; the ranges are compared only when both bodies have at least minimum-sections.min_sections sections with finite positions (a body with fewer is refused by too_few_sections, a non-finite position by finite-numbers). Nothing else is checked: neither whether a canopy's contour describes only its visible part, nor whether several bodies on the symmetry plane lack symmetric. No solver reads the role or attached_to: the drag of a canopy is computed for the whole body (#1355 slice 2, pending a decision).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
         },
         "control-surface-needs-device": {
           "applies_to": {

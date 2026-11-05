@@ -5,10 +5,12 @@ This module contains the core logic for fuselage management,
 separated from HTTP concerns for better testability and reusability.
 """
 
+import json
 import logging
 from datetime import datetime
 from typing import List
 
+from aero_kernel.body_attachment import AttachedBody, AttachmentDefect, attachment_defects
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -19,7 +21,7 @@ from app.models.aeroplanemodel import (
     FuselageModel,
     FuselageXSecSuperEllipseModel,
 )
-from app.schemas.fuselage_contour import contour_set_messages
+from app.schemas.fuselage_contour import canon_threshold, contour_set_messages
 from app.services.wing_service import get_aeroplane_or_raise
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,60 @@ def _get_fuselage_or_raise(aeroplane: AeroplaneModel, fuselage_name: str) -> Fus
             },
         )
     return fuselage
+
+
+def _attached_bodies(aeroplane: AeroplaneModel) -> dict[str, AttachedBody]:
+    """What the attachment rules read of every body of the aeroplane, by name (gh-1355)."""
+    return {
+        f.name: AttachedBody(
+            # a body not flushed yet has no column default applied; the format's default is
+            # fuselage (the schema always sets it, so this only covers hand-built models)
+            role=f.role if f.role is not None else "fuselage",
+            attached_to=f.attached_to,
+            x=tuple(float(xs.xyz[0]) for xs in f.x_secs),
+        )
+        for f in aeroplane.fuselages
+    }
+
+
+def _attachment_path(defect: AttachmentDefect) -> str:
+    """The input path of an attachment defect, e.g. ``fuselages["Canopy"].attached_to``."""
+    path = f"fuselages[{json.dumps(defect.body, ensure_ascii=False)}]"
+    if defect.section is None:
+        return f"{path}.attached_to"
+    return f"{path}.x_secs[{defect.section}].xyz[0]"
+
+
+def _ensure_attachments_valid(aeroplane: AeroplaneModel) -> None:
+    """Refuse a change that breaks the role / attached_to rules of the bodies (gh-1355).
+
+    Runs on the aeroplane's bodies as they would be after the change, with the aero kernel's
+    rules (canon rule ``body-attachment``), so a document the API accepts is one the kernel
+    accepts. Raises ``ValidationError`` (422) naming every offending path; nothing is repaired.
+    """
+    minimum = int(canon_threshold("minimum-sections", "min_sections"))
+    defects = attachment_defects(_attached_bodies(aeroplane), minimum)
+    if not defects:
+        return
+    paths = [_attachment_path(defect) for defect in defects]
+    raise ValidationError(
+        message="; ".join(f"{path}: {d.message}" for path, d in zip(paths, defects, strict=True)),
+        details={"input_path": paths[0], "code": defects[0].code},
+    )
+
+
+def _ensure_nothing_attached(aeroplane: AeroplaneModel, fuselage_name: str) -> None:
+    """Refuse to delete a body that others sit on: their attached_to would dangle (gh-1355)."""
+    children = [f.name for f in aeroplane.fuselages if f.attached_to == fuselage_name]
+    if children:
+        raise ConflictError(
+            message=(
+                f"Fuselage {fuselage_name!r} cannot be deleted: "
+                f"{', '.join(repr(c) for c in children)} attached_to it. Delete them or attach "
+                "them to another body first."
+            ),
+            details={"fuselage_name": fuselage_name, "attached": children},
+        )
 
 
 def list_fuselage_names(db: Session, aeroplane_uuid) -> List[str]:
@@ -86,6 +142,7 @@ def create_fuselage(
 
         fuselage = FuselageModel.from_dict(name=fuselage_name, data=fuselage_data.model_dump())
         plane.fuselages.append(fuselage)
+        _ensure_attachments_valid(plane)
         db.add(fuselage)
         plane.updated_at = datetime.now()
 
@@ -94,7 +151,7 @@ def create_fuselage(
 
         sync_group_for_fuselage(db, str(aeroplane_uuid), fuselage_name)
         db.flush()
-    except (NotFoundError, ConflictError):
+    except (NotFoundError, ConflictError, ValidationError):
         raise
     except SQLAlchemyError as e:
         logger.error("Database error when creating aeroplane fuselage: %s", e)
@@ -121,6 +178,7 @@ def update_fuselage(
         new_fuselage = FuselageModel.from_dict(name=fuselage_name, data=fuselage_data.model_dump())
         plane.fuselages.remove(fuselage)
         plane.fuselages.append(new_fuselage)
+        _ensure_attachments_valid(plane)
         plane.updated_at = datetime.now()
 
         # Auto-sync: ensure group exists in component tree (gh#108)
@@ -173,6 +231,7 @@ def delete_fuselage(
     try:
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(plane, fuselage_name)
+        _ensure_nothing_attached(plane, fuselage_name)
         db.delete(fuselage)
         plane.updated_at = datetime.now()
 
@@ -334,6 +393,7 @@ def create_cross_section(
             fuselage.x_secs.append(new_xsec)
         else:
             fuselage.x_secs.insert(insertion_index, new_xsec)
+        _ensure_attachments_valid(aeroplane)
 
         aeroplane.updated_at = datetime.now()
         db.add(new_xsec)
@@ -376,6 +436,7 @@ def update_cross_section(
         _ensure_contours_consistent(contours, fuselage_name)
         new_xsec = FuselageXSecSuperEllipseModel(sort_index=index, **data)
         fuselage.x_secs[index] = new_xsec
+        _ensure_attachments_valid(aeroplane)
         aeroplane.updated_at = datetime.now()
         db.flush()
     except NotFoundError:
@@ -410,6 +471,7 @@ def delete_cross_section(
             )
 
         xsec = x_secs.pop(index)
+        _ensure_attachments_valid(aeroplane)
         db.delete(xsec)
 
         # Update sort_index for remaining cross-sections

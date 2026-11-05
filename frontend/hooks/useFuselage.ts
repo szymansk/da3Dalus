@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { fetcher, API_BASE } from "@/lib/fetcher";
 import type { ContourPoint } from "@/lib/fuselageSection";
+import type { BodyRole } from "@/lib/bodyRole";
 
 export interface FuselageXSec {
   xyz: number[];
@@ -29,6 +30,10 @@ export interface Fuselage {
    * main fuselage which sits on the symmetry plane itself.
    */
   symmetric?: boolean;
+  /** gh-1355: what the body is; absent = fuselage (the format's default). */
+  role?: BodyRole;
+  /** gh-1355: name of the body this one sits on; null/absent = none. A canopy has one. */
+  attached_to?: string | null;
   /**
    * gh-729: relative path to the per-geom STEP file exported at
    * OpenVSP-import time. ``null`` for CAD-created fuselages.
@@ -98,11 +103,30 @@ export function useFuselage(aeroplaneId: string | null, fuselageName: string | n
     mutate();
   }
 
+  /** gh-1355: change role and parent; the update replaces the whole body, so it sends it all. */
+  async function saveBody(fields: { role: BodyRole; attached_to: string | null }): Promise<void> {
+    if (!aeroplaneId || !fuselageName || !data) return;
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, ...fields }),
+      },
+    );
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Update failed: ${res.status} ${body}`);
+    }
+    mutate();
+  }
+
   return {
     fuselage: data ?? null,
     error,
     isLoading,
     mutate,
     updateXSec,
+    saveBody,
   };
 }
