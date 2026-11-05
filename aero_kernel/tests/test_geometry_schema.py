@@ -383,11 +383,12 @@ def full_document() -> dict[str, Any]:
     station = {"xyz": [0, 0, 0], "a": 0.1, "b": 0.1, "n": 2, "n_lower": 4, "contour": contour}
     fuselage = {
         "name": "F", "x_secs": [station, station], "symmetric": False,
-        "step_path": "a.step", "solid_step_path": "b.step",
+        "step_path": "a.step", "solid_step_path": "b.step", "role": "fuselage",
     }  # fmt: skip
+    canopy = {"name": "C", "x_secs": [station, station], "role": "canopy", "attached_to": "F"}
     return {
         "name": "Full", "total_mass_kg": 3.0, "xyz_ref": [0.1, 0, 0],
-        "wings": {"W": wing}, "fuselages": {"F": fuselage},
+        "wings": {"W": wing}, "fuselages": {"F": fuselage, "C": canopy},
     }  # fmt: skip
 
 

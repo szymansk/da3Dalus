@@ -98,6 +98,7 @@ Flächen und Rümpfe sind **Abbildungen über den Namen**, keine Listen — der 
 Schlüssel, und die Einfügereihenfolge bleibt erhalten. Unter `wings` steht jede tragende
 Fläche: Tragfläche, Höhen- und Seitenleitwerk, Canard. Unter `fuselages` steht nicht nur
 der Rumpf, sondern jeder Drehkörper — Gondel, Radverkleidung, Haube.
+What a body is is stated in its field `role`, the body it sits on in `attached_to` (§7.6, gh-1355).
 
 ---
 
@@ -467,6 +468,64 @@ der Körper nicht aus einem `.vsp3`-Import stammt oder das Vernähen nicht gelan
 falsch**, weil der Hauptrumpf selbst auf der Symmetrieebene liegt und nicht gespiegelt
 werden darf. Gesetzt wird es für **paarweise** Nebenkörper, von denen nur eine Seite
 gespeichert ist: Fahrwerksbeine, Radverkleidungen, Motorhauben (gh-715).
+
+### 7.6 Role and attachment of a body (`role`, `attached_to`, gh-1355)
+
+Every body under `fuselages` is the same kind of object: a chain of sections. What a body **is**
+— the main fuselage, its canopy, an engine nacelle, a wheel fairing — is stated explicitly, never
+guessed from its name (ADR 0020; maintainer, 2026-11-05):
+
+```json
+"fuselages": {
+  "fuselage": {"name": "fuselage", "role": "fuselage", "x_secs": [...]},
+  "canopy":   {"name": "canopy",   "role": "canopy", "attached_to": "fuselage", "x_secs": [...]}
+}
+```
+
+| | |
+|---|---|
+| `role` | `fuselage` · `canopy` · `nacelle` · `fairing` · `pod` · `other`; absent: `fuselage` |
+| `attached_to` | the **name** (the key under `fuselages`) of the body this one sits on; `null` or absent: none |
+
+`fuselage` is a main body; `canopy` the canopy or cabin hood on another body; `nacelle` an engine
+nacelle or cowling; `fairing` a wheel or strut fairing or a fillet; `pod` an external pod;
+`other` anything else. A document without these fields is unchanged: every body is a
+`fuselage` that sits on nothing.
+
+**Rules.** A violation is refused (HTTP 422 in the app, `invalid_input` in the aero kernel, canon
+rule `body-attachment`), both with the path of the offending field:
+
+1. `attached_to`, when set, names **another existing body** of the same aircraft — not itself —
+   and the chain of `attached_to` has **no cycle** (kernel code `invalid_body_attachment`, path
+   `….attached_to`);
+2. a body of role **`canopy` has `attached_to`** (same code and path); for every other role it is
+   optional;
+3. a canopy's **x range** — from the smallest to the largest `xyz[0]` of its sections — lies
+   **inside its parent's**, ends included, without tolerance (kernel code
+   `canopy_outside_parent`, path `….x_secs[i].xyz[0]` of the section outside). The ranges are
+   compared only when both bodies have at least `minimum-sections.min_sections` sections with
+   finite positions; a body with fewer is refused by `too_few_sections` anyway.
+
+Nothing else is checked: neither whether several bodies on the symmetry plane lack `symmetric`,
+nor whether a body called "canopy" lacks the role, nor whether a canopy's contour describes only
+its visible part.
+
+**Canopy convention** (as the plan importer writes it). `a` and the **top edge** are the real
+canopy; the centre `xyz[2]` lies at the **joint height** on the parent; `n_lower = 1`, so the
+lower half is a wedge that lies **inside** the parent and is never built. Only the part outside
+the parent is real geometry. With a `contour` (§7.1b, a full closed loop) the writer may
+describe just the visible part instead.
+
+**Not yet in the solvers.** No solver reads `role` or `attached_to`: the drag and wetted area of a
+canopy are computed for the **whole** body, its hidden lower half included. Handling of the
+hidden part is a separate follow-up (gh-1355 slice 2, pending a decision).
+
+**In the app.** Bodies are written one at a time, so a parent is created **before** the bodies
+attached to it. A body that others are attached to cannot be deleted (HTTP 409 naming them):
+delete them or attach them to another body first. Renaming is not possible through the API —
+an update keeps the name of its path — so no reference can dangle. A section edit of either body
+is checked against rule 3 as well. A `symmetric` body attached to a `symmetric` parent sits on the
+parent's mirror image in its mirrored copy (`attached_to` becomes `"<parent> (mirror)"`).
 
 ---
 

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Wing, XSec } from "@/hooks/useWings";
 import type { Fuselage } from "@/hooks/useFuselage";
 import { sectionExtremes, sectionOutline } from "@/lib/fuselageSection";
+import { CANOPY_OPACITY, bodyRole } from "@/lib/bodyRole";
 import { API_BASE } from "@/lib/fetcher";
 
 interface WingOutlineViewerProps {
@@ -764,6 +765,10 @@ export function buildFuselageTraces(fuselage: Fuselage, color: string, selectedI
     traces.push(scatter3d(lx, ly, lz, color, 1.5));
   }
 
+  // gh-1355: a canopy is semi-transparent so the body it sits on shows through
+  if (bodyRole(fuselage) === "canopy") {
+    for (const trace of traces) trace.opacity = CANOPY_OPACITY;
+  }
   return traces;
 }
 

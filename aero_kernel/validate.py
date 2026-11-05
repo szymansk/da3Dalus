@@ -21,6 +21,7 @@ from itertools import pairwise
 from typing import cast
 
 from aero_kernel import geometry
+from aero_kernel.body_attachment import AttachedBody, attachment_defects
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.fuselage_contour import (
@@ -521,6 +522,42 @@ def _fuselage_findings(
     return findings
 
 
+_ATTACHMENT_HINTS = {
+    "invalid_body_attachment": (
+        "Set attached_to to the name of another body of this aircraft, without a cycle; a canopy "
+        "needs one."
+    ),
+    "canopy_outside_parent": (
+        "Keep every section of the canopy within the x range of the body it sits on, or attach "
+        "it to the body it really sits on."
+    ),
+}
+
+
+def _attachment_findings(
+    fuselages: Mapping[str, geometry.Fuselage], rules: Rules
+) -> list[KernelError]:
+    """Check role and attached_to of the bodies against the rule ``body-attachment`` (#1355)."""
+    bodies = {
+        key: AttachedBody(
+            role=fuselage.role,
+            attached_to=fuselage.attached_to,
+            x=tuple(x_sec.xyz[0] for x_sec in fuselage.x_secs),
+        )
+        for key, fuselage in fuselages.items()
+    }
+    minimum = int(rules.value("minimum-sections", "min_sections"))
+    findings: list[KernelError] = []
+    for defect in attachment_defects(bodies, minimum):
+        path = _key_path("airplane.fuselages", defect.body)
+        if defect.section is None:
+            path = f"{path}.attached_to"
+        else:
+            path = f"{path}.x_secs[{defect.section}].xyz[0]"
+        findings.append(_finding(defect.code, path, defect.message, _ATTACHMENT_HINTS[defect.code]))
+    return findings
+
+
 _CONTOUR_HINT = (
     "Give the full outline as a simple closed polygon, counter-clockwise with y to the right and "
     "z up, (y, z) in metres relative to xyz, the first point not repeated (format 7.1b)."
@@ -687,6 +724,7 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
     errors = _non_finite(airplane, "airplane", skip=frozenset({"wings", "fuselages"}))
     errors += _wing_findings(airplane.wings or {}, rules)
     errors += _fuselage_findings(airplane.fuselages or {}, rules)
+    errors += _attachment_findings(airplane.fuselages or {}, rules)
     for slug in sorted(aircraft.values):
         errors += _non_finite(aircraft.values[slug], _values_path(slug))
     warnings = (

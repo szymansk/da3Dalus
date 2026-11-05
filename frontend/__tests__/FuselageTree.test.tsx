@@ -247,3 +247,63 @@ describe("Fuselage sections with a contour in AeroplaneTree (gh-1349)", () => {
     expect(screen.getByText("a=50.0mm b=40.0mm n=2.3 \u00B7 contour (8 points)")).toBeDefined();
   });
 });
+
+describe("Body roles in AeroplaneTree (gh-1355)", () => {
+  const bodies = [
+    { name: "Haube", role: "canopy" as const, attached_to: "Rumpf" },
+    { name: "Rumpf", role: "fuselage" as const, attached_to: null },
+    { name: "Gondel", role: "nacelle" as const, attached_to: null },
+  ];
+
+  it("lists a canopy under its parent, one level deeper, with its own icon and chip", () => {
+    render(
+      <AeroplaneTree
+        aeroplaneId="aero-1"
+        wingNames={[]}
+        fuselageNames={["Haube", "Rumpf", "Gondel"]}
+        fuselageBodies={bodies}
+        aeroplaneName="eHawk"
+      />
+    );
+    const rows = screen.getAllByRole("treeitem").map((r) => r.textContent ?? "");
+    const order = ["Rumpf", "Haube", "Gondel"].map((n) => rows.findIndex((t) => t.includes(n)));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+
+    const canopyRow = screen.getByText("Haube").closest('[role="treeitem"]') as HTMLElement;
+    const parentRow = screen.getByText("Rumpf").closest('[role="treeitem"]') as HTMLElement;
+    expect(Number.parseInt(canopyRow.style.paddingLeft)).toBeGreaterThan(
+      Number.parseInt(parentRow.style.paddingLeft),
+    );
+    expect(screen.getByText("CANOPY")).toBeDefined();
+    expect(screen.getByText("NACELLE")).toBeDefined();
+    expect(screen.getByLabelText("canopy")).toBeDefined();
+    expect(screen.getByLabelText("nacelle")).toBeDefined();
+  });
+
+  it("shows a body without loaded data as a fuselage", () => {
+    render(
+      <AeroplaneTree aeroplaneId="aero-1" wingNames={[]} fuselageNames={["X"]} aeroplaneName="eHawk" />
+    );
+    expect(screen.getByText("FUSELAGE")).toBeDefined();
+    expect(screen.getByLabelText("fuselage")).toBeDefined();
+  });
+
+  it("opens the body properties from the edit button of a body row", async () => {
+    const user = userEvent.setup();
+    const onNodeEdit = vi.fn();
+    render(
+      <AeroplaneTree
+        aeroplaneId="aero-1"
+        wingNames={[]}
+        fuselageNames={["Rumpf"]}
+        fuselageBodies={bodies}
+        aeroplaneName="eHawk"
+        onNodeEdit={onNodeEdit}
+      />
+    );
+    const row = screen.getByText("Rumpf").closest('[role="treeitem"]') as HTMLElement;
+    await user.click(row.querySelector('button[title="Edit"]') as HTMLElement);
+    expect(mockSelectFuselage).toHaveBeenCalledWith("Rumpf");
+    expect(onNodeEdit).toHaveBeenCalled();
+  });
+});

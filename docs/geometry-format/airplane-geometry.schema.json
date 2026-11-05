@@ -392,6 +392,18 @@
           "description": "When true the body is duplicated with y to -y by every downstream consumer. Use it for PAIRED sub-bodies stored on one side only — gear struts, wheel fairings, cowlings. The main fuselage normally sits on the symmetry plane itself and must NOT be mirrored (gh-715).",
           "default": false
         },
+        "role": {
+          "enum": ["fuselage", "canopy", "nacelle", "fairing", "pod", "other"],
+          "default": "fuselage",
+          "description": "What the body is (gh-1355, AIRPLANE-GEOMETRY.md \u00a77.6), stated by the writer and never inferred from the name. 'fuselage': a main body. 'canopy': the canopy or cabin hood on another body; needs attached_to, and its x range (smallest to largest xyz[0] of its sections) lies within its parent's, ends included. Convention: a and the top edge are the real canopy, xyz[2] lies at the joint height on the parent, n_lower = 1 so the lower half lies inside the parent; with a contour (\u00a77.1b, a full closed loop) the writer may describe just the visible part. 'nacelle': engine nacelle or cowling. 'fairing': wheel or strut fairing, fillet. 'pod': an external pod. 'other': anything else. No solver reads the role yet: the drag of a canopy is computed for the whole body.",
+          "examples": ["fuselage", "canopy"]
+        },
+        "attached_to": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Name (the key under fuselages) of the body this one sits on (gh-1355). Must name another body of the same aeroplane, and the chain of attached_to must not form a cycle. Required for role 'canopy', optional for every other role. Null: the body sits on no other body.",
+          "examples": [null, "fuselage"]
+        },
         "step_path": {
           "type": ["string", "null"],
           "description": "Path, relative to ARTIFACTS_BASE_DIR, to the per-body STEP file exported at OpenVSP import (gh-729). Surface geometry only. Null when the body did not come from a .vsp3 import."

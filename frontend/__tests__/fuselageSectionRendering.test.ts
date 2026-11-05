@@ -15,6 +15,7 @@ import {
   type XSec,
 } from "@/components/workbench/ImportFuselageDialog";
 import type { Fuselage } from "@/hooks/useFuselage";
+import { CANOPY_OPACITY, NEW_BODY } from "@/lib/bodyRole";
 
 // Unit half-axes: the outline offset is cos/sin raised to 2/n.
 const BOXY_BELLY: XSec = { xyz: [0, 0, 0], a: 1, b: 1, n: 2, n_lower: 8 };
@@ -83,7 +84,7 @@ describe("saveFuselage (import dialog)", () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
     vi.stubGlobal("fetch", fetchMock);
 
-    await saveFuselage("aero-1", "main body", [BOXY_BELLY, ROUND]);
+    await saveFuselage("aero-1", "main body", [BOXY_BELLY, ROUND], NEW_BODY);
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0];
@@ -91,6 +92,20 @@ describe("saveFuselage (import dialog)", () => {
     expect(init.method).toBe("PUT");
     const body = JSON.parse(init.body);
     expect(body.x_secs.map((x: XSec) => x.n_lower)).toEqual([8, null]);
+  });
+
+  it("sends role, attached_to and symmetric of the body (gh-1355)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await saveFuselage("aero-1", "Haube", [ROUND, ROUND], {
+      role: "canopy",
+      attached_to: "Rumpf",
+      symmetric: true,
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect([body.role, body.attached_to, body.symmetric]).toEqual(["canopy", "Rumpf", true]);
   });
 });
 
@@ -140,10 +155,28 @@ describe("contour sections (gh-1349)", () => {
   it("the import save keeps the contour and sends null without one", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
     vi.stubGlobal("fetch", fetchMock);
-    await saveFuselage("aero-1", "body", [C0, ROUND]);
+    await saveFuselage("aero-1", "body", [C0, ROUND], NEW_BODY);
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent.x_secs[0].contour).toEqual(CONTOUR);
     expect(sent.x_secs[1].contour).toBeNull();
     vi.unstubAllGlobals();
+  });
+});
+
+// ── gh-1355: a canopy is drawn semi-transparent ──
+
+describe("buildFuselageTraces of a canopy (gh-1355)", () => {
+  it("draws every trace of a canopy semi-transparent", () => {
+    const canopy: Fuselage = { name: "c", role: "canopy", attached_to: "f", x_secs: [ROUND, ROUND] };
+    const traces = buildFuselageTraces(canopy, "#fff");
+    expect(traces.length).toBeGreaterThan(0);
+    expect(traces.every((t) => t.opacity === CANOPY_OPACITY)).toBe(true);
+  });
+
+  it("draws every other body opaque", () => {
+    for (const role of ["fuselage", "nacelle", undefined] as const) {
+      const traces = buildFuselageTraces({ name: "f", role, x_secs: [ROUND, ROUND] }, "#fff");
+      expect(traces.every((t) => t.opacity === undefined)).toBe(true);
+    }
   });
 });

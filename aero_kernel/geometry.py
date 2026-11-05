@@ -19,6 +19,7 @@ from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Fie
 __all__ = [
     "Airfoil",
     "AirplaneGeometry",
+    "BodyRole",
     "ControlSurface",
     "Fuselage",
     "FuselageXSecSuperEllipse",
@@ -81,6 +82,10 @@ class _Frozen(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+# What a body is (format ch. 7.6, #1355): stated by the writer, never inferred from the name.
+BodyRole = Literal["fuselage", "canopy", "nacelle", "fairing", "pod", "other"]
+
+
 class FuselageXSecSuperEllipse(_Frozen):
     """One fuselage station: the outline ``|y/a|^n + |z/b|^n = 1`` normal to the x axis.
 
@@ -111,6 +116,11 @@ class Fuselage(_Frozen):
         name: Body name.
         x_secs: Sections in loft order.
         symmetric: Whether the body is mirrored about y = 0 (paired sub-bodies only).
+        role: What the body is (format ch. 7.6, #1355); stated by the writer, never inferred
+            from the name. No solver reads it: the drag of a canopy is computed for the whole
+            body.
+        attached_to: Name (key) of the body this one sits on; ``None`` if it sits on none. A
+            canopy has one (:mod:`aero_kernel.body_attachment`).
         step_path: Path of the exported STEP surface geometry; kept verbatim, never read.
         solid_step_path: Path of the sewed solid STEP geometry; kept verbatim, never read.
     """
@@ -118,6 +128,8 @@ class Fuselage(_Frozen):
     name: str
     x_secs: tuple[FuselageXSecSuperEllipse, ...]
     symmetric: Flag = False
+    role: BodyRole = "fuselage"
+    attached_to: str | None = None
     step_path: str | None = None
     solid_step_path: str | None = None
 

@@ -613,6 +613,7 @@ def test_all_pins_the_public_names() -> None:
     assert sorted(geometry.__all__) == sorted(
         [
             "Airfoil",
+            "BodyRole",
             "AirplaneGeometry",
             "ControlSurface",
             "Fuselage",
@@ -633,7 +634,7 @@ def test_all_pins_the_public_names() -> None:
 
 
 @pytest.mark.parametrize(
-    "name", [n for n in geometry.__all__ if n not in {"Airfoil", "SurfaceType"}]
+    "name", [n for n in geometry.__all__ if n not in {"Airfoil", "BodyRole", "SurfaceType"}]
 )
 def test_docstring_documents_every_attribute(name: str) -> None:
     model = getattr(geometry, name)

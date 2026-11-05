@@ -565,14 +565,26 @@ def _fuselage_configs_with_mirrors(
     ``aeroplane_schema_to_airplane_configuration_async`` pipeline
     (which needs cadquery and is fast-tier-excluded).
     """
-    configs: List[FuselageConfiguration] = []
+    return [
+        fuselage_schema_to_fuselage_config(f) for f in _fuselage_schemas_with_mirrors(fuselages)
+    ]
+
+
+def _fuselage_schemas_with_mirrors(
+    fuselages: dict[str, schemas.FuselageSchema],
+) -> List[schemas.FuselageSchema]:
+    """Return every fuselage, each ``symmetric=True`` one followed by its mirrored half.
+
+    A mirrored body sits on the mirrored half of its parent when the parent is mirrored too
+    (gh-1355): a fairing on a symmetric nacelle pairs with the nacelle's mirror image.
+    """
+    mirrored_parents = {name for name, f in fuselages.items() if f.symmetric}
+    expanded: List[schemas.FuselageSchema] = []
     for fuselage_schema in fuselages.values():
-        configs.append(fuselage_schema_to_fuselage_config(fuselage_schema))
+        expanded.append(fuselage_schema)
         if fuselage_schema.symmetric:
-            configs.append(
-                fuselage_schema_to_fuselage_config(_mirror_fuselage_schema_y(fuselage_schema))
-            )
-    return configs
+            expanded.append(_mirror_fuselage_schema_y(fuselage_schema, mirrored_parents))
+    return expanded
 
 
 def _mirror_contour_y(contour):
@@ -587,16 +599,30 @@ def _mirror_contour_y(contour):
     return [(0.0 - float(y), float(z)) for y, z in reversed(contour)]
 
 
+def _mirror_name(name: str) -> str:
+    """The name of the mirrored half of a ``symmetric`` body (gh-715)."""
+    return f"{name} (mirror)"
+
+
 def _mirror_fuselage_schema_y(
     fuselage: schemas.FuselageSchema,
+    mirrored_parents: set[str],
 ) -> schemas.FuselageSchema:
     """Return a copy of ``fuselage`` with every xsec mirrored about
     the XZ plane (y → -y). Used to build the mirror half of a
     ``symmetric=True`` fuselage for the CAD pipeline (gh-715).
+
+    The copy keeps the role; its ``attached_to`` names the mirrored half of the parent when the
+    parent is one of ``mirrored_parents``, else the parent itself (gh-1355).
     """
+    parent = fuselage.attached_to
+    if parent is not None and parent in mirrored_parents:
+        parent = _mirror_name(parent)
     return schemas.FuselageSchema(
-        name=f"{fuselage.name} (mirror)",
+        name=_mirror_name(fuselage.name),
         symmetric=False,
+        role=fuselage.role,
+        attached_to=parent,
         x_secs=[
             schemas.FuselageXSecSuperEllipseSchema(
                 xyz=[float(xs.xyz[0]), -float(xs.xyz[1]), float(xs.xyz[2])],

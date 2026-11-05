@@ -545,6 +545,13 @@ class FuselageModel(Base):
     # geometry with y → -y. Used for paired sub-fuselages like
     # landing-gear struts where OpenVSP stores only one side.
     symmetric = Column(Boolean, nullable=False, default=False, server_default="0")
+    # What the body is (gh-1355): fuselage | canopy | nacelle | fairing | pod | other, checked by
+    # ``BodyRole`` in the schema. Non-null with server default 'fuselage', so every row written
+    # before gh-1355 is a fuselage.
+    role = Column(String, nullable=False, default="fuselage", server_default="fuselage")
+    # Name of the body of the same aeroplane this one sits on (gh-1355); NULL: on none. The
+    # fuselage service keeps it pointing at an existing body (no dangling reference).
+    attached_to = Column(String, nullable=True)
     # Relative path to a per-geom STEP file exported at OpenVSP-import
     # time (gh-729). Stored as Surface-only — see ``solid_step_path``
     # below for the sewed-Solid follow-up. Resolved against
@@ -574,6 +581,8 @@ class FuselageModel(Base):
     def from_dict(cls, name, data):
         xsec_dicts = data.pop("x_secs", [])
         data.pop("name", None)
+        if data.get("role") is not None:
+            data["role"] = getattr(data["role"], "value", data["role"])
         fuselage = cls(name=name, **data)
         for i, xd in enumerate(xsec_dicts):
             fuselage.x_secs.append(FuselageXSecSuperEllipseModel(sort_index=i, **xd))

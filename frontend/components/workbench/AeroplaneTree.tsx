@@ -7,11 +7,19 @@ import { useWing, useAllWingData } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import { API_BASE } from "@/lib/fetcher";
+import { parseApiError } from "@/lib/parseApiError";
 import { useFuselage } from "@/hooks/useFuselage";
 import { useFuselages } from "@/hooks/useFuselages";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { CreateWingDialog } from "./CreateWingDialog";
 import { sectionShapeLabel } from "@/lib/fuselageSection";
+import {
+  BODY_ROLE_ICONS,
+  bodyRole,
+  bodyTreeOrder,
+  type BodyRelation,
+  type BodyRole,
+} from "@/lib/bodyRole";
 import { surfaceTypeLabel, type SurfaceType } from "@/lib/surfaceType";
 import { useSurfaceTypeActions } from "@/hooks/useSurfaceType";
 import { ProposedBadge, WingSurfaceTypePanel } from "./WingSurfaceType";
@@ -27,6 +35,9 @@ interface TreeNode {
   leaf?: boolean;
   mono?: boolean;
   muted?: boolean;
+  // gh-1355: glyph before the label (body role), with its accessible name
+  icon?: string;
+  iconLabel?: string;
   chip?: string;
   // gh-1187: wing role label; roleProposed marks an unconfirmed (inferred) role.
   roleLabel?: string;
@@ -562,6 +573,8 @@ interface BuildTreeDataParams {
   onConfirmRole?: (wingName: string, current: SurfaceType) => void;
   wingNames: string[];
   fuselageNames: string[];
+  // gh-1355: role and attachment of the bodies, when loaded
+  fuselageBodies?: readonly BodyRelation[];
   aeroplaneName?: string;
   aeroplaneId?: string | null;
   expandedSet: Set<string>;
@@ -668,67 +681,70 @@ function fuselageStepHrefs(
   return { stepHref: `${base}/step`, solidStepHref: `${base}/solid_step` };
 }
 
-function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): void {
-  for (const fn of params.fuselageNames) {
-    const fusExpanded = params.expandedSet.has(`fuselage-${fn}`);
-    const { stepHref, solidStepHref } = fuselageStepHrefs(params.aeroplaneId, fn);
-    treeData.push({
-      id: `fuselage-${fn}`,
-      label: fn,
-      level: 1,
-      expanded: fusExpanded,
-      chip: "FUSELAGE",
-      onClick: () => {
-        params.selectFuselage(fn);
-      },
-      onDelete: () => params.handleDeleteFuselage(fn),
-      previewVisible: params.isFuselageVisible?.(fn) ?? true,
-      onPreviewToggle: params.onToggleFuselagePreview
-        ? () => params.onToggleFuselagePreview!(fn)
-        : undefined,
-      downloadHref: stepHref,
-      downloadLabel: `Download ${fn}.stp (surface)`,
-      solidDownloadHref: solidStepHref,
-      solidDownloadLabel: `Download ${fn}_solid.stp (closed Solid for CAD)`,
-    });
-
-    if (!fusExpanded) continue;
-
-    const hasFusData = params.fuselage && params.selectedFuselage === fn && params.fuselage.x_secs;
-    if (!hasFusData) {
-      treeData.push({
-        id: `fuselage-${fn}-loading`,
-        label: "loading\u2026",
-        level: 2,
-        leaf: true,
-        muted: true,
-      });
-      continue;
-    }
-
-    for (let i = 0; i < params.fuselage!.x_secs.length; i++) {
-      const xs = params.fuselage!.x_secs[i];
-      const isXsSelected = params.selectedFuselageXsecIndex === i;
-      treeData.push({
-        id: `fuselage-${fn}-xsec-${i}`,
-        label: `xsec ${i}`,
-        level: 2,
-        expanded: false,
-        leaf: true,
-        selected: isXsSelected,
-        detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm ${sectionShapeLabel(xs)}`,
-        onClick: () => {
+function buildBodyNode(params: BuildTreeDataParams, fn: string, depth: number, role: BodyRole): TreeNode {
+  const { stepHref, solidStepHref } = fuselageStepHrefs(params.aeroplaneId, fn);
+  return {
+    id: `fuselage-${fn}`,
+    label: fn,
+    level: 1 + depth,
+    expanded: params.expandedSet.has(`fuselage-${fn}`),
+    icon: BODY_ROLE_ICONS[role],
+    iconLabel: role,
+    chip: role.toUpperCase(),
+    onClick: () => {
+      params.selectFuselage(fn);
+    },
+    onEdit: params.onNodeEdit
+      ? () => {
           params.selectFuselage(fn);
-          params.selectFuselageXsec(i);
-        },
-        onEdit: () => {
-          params.selectFuselage(fn);
-          params.selectFuselageXsec(i);
           params.onNodeEdit?.();
-        },
-        onDelete: () => params.handleDeleteFuselageXsec(fn, i),
-      });
-    }
+        }
+      : undefined,
+    onDelete: () => params.handleDeleteFuselage(fn),
+    previewVisible: params.isFuselageVisible?.(fn) ?? true,
+    onPreviewToggle: params.onToggleFuselagePreview
+      ? () => params.onToggleFuselagePreview!(fn)
+      : undefined,
+    downloadHref: stepHref,
+    downloadLabel: `Download ${fn}.stp (surface)`,
+    solidDownloadHref: solidStepHref,
+    solidDownloadLabel: `Download ${fn}_solid.stp (closed Solid for CAD)`,
+  };
+}
+
+function buildBodySectionNodes(params: BuildTreeDataParams, fn: string, level: number): TreeNode[] {
+  const xsecs = params.selectedFuselage === fn ? params.fuselage?.x_secs : undefined;
+  if (!xsecs) {
+    return [{ id: `fuselage-${fn}-loading`, label: "loading\u2026", level, leaf: true, muted: true }];
+  }
+  return xsecs.map((xs, i) => ({
+    id: `fuselage-${fn}-xsec-${i}`,
+    label: `xsec ${i}`,
+    level,
+    expanded: false,
+    leaf: true,
+    selected: params.selectedFuselageXsecIndex === i,
+    detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm ${sectionShapeLabel(xs)}`,
+    onClick: () => {
+      params.selectFuselage(fn);
+      params.selectFuselageXsec(i);
+    },
+    onEdit: () => {
+      params.selectFuselage(fn);
+      params.selectFuselageXsec(i);
+      params.onNodeEdit?.();
+    },
+    onDelete: () => params.handleDeleteFuselageXsec(fn, i),
+  }));
+}
+
+function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): void {
+  const bodies = params.fuselageBodies ?? [];
+  // gh-1355: a body is listed under the body it is attached to (a canopy under its fuselage)
+  for (const { name: fn, depth } of bodyTreeOrder(params.fuselageNames, bodies)) {
+    const node = buildBodyNode(params, fn, depth, bodyRole(bodies.find((b) => b.name === fn)));
+    treeData.push(node);
+    if (node.expanded) treeData.push(...buildBodySectionNodes(params, fn, 2 + depth));
   }
 }
 
@@ -738,6 +754,8 @@ interface AeroplaneTreeProps {
   aeroplaneId: string | null;
   wingNames: string[];
   fuselageNames?: string[];
+  /** gh-1355: role and attachment of every body, for the role icon and the nesting. */
+  fuselageBodies?: readonly BodyRelation[];
   aeroplaneName?: string;
   isWingVisible?: (wingName: string) => boolean;
   isWingLoading?: (wingName: string) => boolean;
@@ -763,7 +781,7 @@ interface AeroplaneTreeProps {
 // ── Component ───────────────────────────────────────────────────
 
 export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
-  const { aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onWingSaved, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onEditTurbulator, onDeleteTurbulator, onAddSpar, onAddTed, onAddTurbulator } = props;
+  const { aeroplaneId, wingNames, fuselageNames = [], fuselageBodies, aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onWingSaved, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onEditTurbulator, onDeleteTurbulator, onAddSpar, onAddTed, onAddTurbulator } = props;
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -881,7 +899,8 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
       `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fusName)}`,
       { method: "DELETE" },
     );
-    if (!res.ok) { alert(`Delete fuselage failed: ${res.status}`); return; }
+    // gh-1355: a body others are attached to is refused (409) with the reason
+    if (!res.ok) { alert(await parseApiError(res, "Delete fuselage")); return; }
     if (selectedFuselage === fusName) selectFuselage(null);
     await mutateFuselageList();
   }
@@ -937,6 +956,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
     aeroplaneId,
     wingNames,
     fuselageNames,
+    fuselageBodies,
     aeroplaneName,
     expandedSet,
     wing,
@@ -1081,6 +1101,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
         open={importFuselageOpen}
         onClose={() => setImportFuselageOpen(false)}
         aeroplaneId={aeroplaneId}
+        bodies={fuselageBodies}
         onSaved={() => {
           mutateFuselageList();
           onFuselageSaved?.();
@@ -1138,6 +1159,12 @@ function TreeRow({ node, onToggle }: Readonly<{ node: TreeNode; onToggle: () => 
         </span>
       )}
       {isLeaf && <span className="w-3 shrink-0" />}
+
+      {node.icon && (
+        <span role="img" aria-label={node.iconLabel} title={node.iconLabel} className="text-[12px] text-muted-foreground">
+          {node.icon}
+        </span>
+      )}
 
       <span className={`text-[13px] ${
         node.muted ? "text-[12px] text-muted-foreground" : "text-foreground"
