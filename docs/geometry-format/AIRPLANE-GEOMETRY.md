@@ -516,9 +516,38 @@ lower half is a wedge that lies **inside** the parent and is never built. Only t
 the parent is real geometry. With a `contour` (§7.1b, a full closed loop) the writer may
 describe just the visible part instead.
 
-**Not yet in the solvers.** No solver reads `role` or `attached_to`: the drag and wetted area of a
-canopy are computed for the **whole** body, its hidden lower half included. Handling of the
-hidden part is a separate follow-up (gh-1355 slice 2, pending a decision).
+A canopy's parent is **not itself a canopy** (rule 2, same code and path): the solvers fold every
+canopy into one parent.
+
+**In the solvers: only the visible part of a canopy counts** (gh-1355 slice 2, canon rule
+`canopy-merge`, maintainer decision 2026-11-05 — no textbook method: Scholz and Sadraey have none
+for canopies, Sadraey's drag build-up takes one fuselage wetted area). For the solvers only, the
+aero kernel merges every body of role `canopy` into the body it is `attached_to`; the stored
+document stays as written and `contour` is not read. Nacelles, fairings, pods and other bodies stay
+bodies of their own. Per parent:
+
+1. the stations are the parent's sections plus the canopy stations inside its x range (an exact
+   duplicate x collapses into the parent's section); where no canopy shows — outside every canopy,
+   a canopy section with `a` or `b` = 0, or a canopy hidden inside the parent — the parent's
+   section is used **verbatim**;
+2. every body's section at a station is linear in x between its neighbours (`xyz`, `a`, `b`, `n`,
+   `n_lower`; `n_lower` defaults to `n`);
+3. the outline is the **envelope**: at every height z the larger half-width of parent and canopies,
+   measured about the parent's y (an off-centre canopy counts with its offset). A gap of zero width
+   between them (a canopy floating just above the parent) is closed with the smaller of the widest
+   half-width below and above it; a waist of positive width is kept;
+4. the envelope is refitted to one section with two exponents (§7.1a): centre the middle of its
+   height, `b` half the height, `a` the largest half-width, and `n` / `n_lower` such that each
+   half keeps the envelope's area;
+5. several canopies on one parent fold into the same envelope.
+
+AeroBuildup then takes the equivalent symmetric section of each refitted section (§7.1a) and AVL
+the round body of its area. Every merged canopy is declared by the notice
+`canopy_merged_into_fuselage` (canopy, parent, number of merged stations, the canopy's own wetted
+area, the visible wetted area added, the largest area and perimeter deviation of the refit); a
+clamped refit exponent is the warning `canopy_merge_exponent_clamped`, a canopy whose `xyz[1]`
+differs from its parent's the warning `canopy_off_centre`. Write a canopy as a whole body (the
+canopy convention above); its hidden part is cut away by the merge.
 
 **In the app.** Bodies are written one at a time, so a parent is created **before** the bodies
 attached to it. A body that others are attached to cannot be deleted (HTTP 409 naming them):

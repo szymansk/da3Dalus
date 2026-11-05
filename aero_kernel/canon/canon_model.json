@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:01ca2dcc14d0b09ec3e33a6266ff51b48de55f013a734465f34f066a10626dc6",
+  "content_hash": "sha256:9301a425b06315009761c0a286d58d601f23932d72554e39cb50ffe2e8ffd6e9",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6752,7 +6752,7 @@
             "invalid_body_attachment",
             "canopy_outside_parent"
           ],
-          "criterion": "Every body under fuselages has a role (fuselage, canopy, nacelle, fairing, pod or other; fuselage when the document does not say), stated by the writer and never inferred from its name, and optionally attached_to, the name of the body it sits on (#1355, maintainer 2026-11-05). attached_to, when set, names another body of the same aircraft, and the chain of attached_to has no cycle. A body of role canopy has attached_to. A canopy's x range, from the smallest to the largest xyz[0] of its sections, lies within its parent's x range, ends included and without tolerance; the ranges are compared only when both bodies have at least minimum-sections.min_sections sections with finite positions (a body with fewer is refused by too_few_sections, a non-finite position by finite-numbers). Nothing else is checked: neither whether a canopy's contour describes only its visible part, nor whether several bodies on the symmetry plane lack symmetric. The parent of a canopy is not itself a canopy (slice 2: every canopy is merged into one parent; a canopy on a canopy is refused with invalid_body_attachment). How the solvers use role and attached_to is the tool rule canopy-merge.",
+          "criterion": "Every body under fuselages has a role (fuselage, canopy, nacelle, fairing, pod or other; fuselage when the document does not say), stated by the writer and never inferred from its name, and optionally attached_to, the name of the body it sits on (#1355, maintainer 2026-11-05). attached_to, when set, names another body of the same aircraft, and the chain of attached_to has no cycle. A body of role canopy has attached_to. A canopy's x range, from the smallest to the largest xyz[0] of its sections, lies within its parent's x range, ends included and without tolerance; the ranges are compared only when both bodies have at least minimum-sections.min_sections sections with finite positions (a body with fewer is refused by too_few_sections, a non-finite position by finite-numbers). The parent of a canopy is not itself a canopy (slice 2: every canopy is merged into one parent; a canopy on a canopy is refused with invalid_body_attachment). Nothing else is checked: neither whether a canopy's contour describes only its visible part, nor whether several bodies on the symmetry plane lack symmetric. How the solvers use role and attached_to is the tool rule canopy-merge.",
           "kind": "input",
           "on_violation": "error",
           "parameters": {}

@@ -303,6 +303,17 @@ Sources:
   shape exponent per section, so a section with two is replaced by the symmetric one of the same width, height and
   centre and the same cross-section area; `detail`: the section path, `n`, `n_lower`, `n_equivalent`. The perimeter
   (wetted area) is kept only approximately
+- the canopy merge (#1355 slice 2, canon rule `canopy-merge`, origin `airplane`, from validation): the solvers see
+  every canopy merged into the body it is `attached_to` (`solver_bodies.merged_bodies`, the one producer that
+  `to_asb_airplane`, `avl_body.mesh_bodies` and validation read, ADR 0022): the envelope of parent and canopies
+  per station, refitted to a split super-ellipse that keeps each half's area, so only the canopy's visible part
+  counts (maintainer decision 2026-11-05). `canopy_merged_into_fuselage` (`notice`, one per canopy; `detail`:
+  `canopy`, `parent`, `canopies_on_parent`, `merged_stations`, `canopy_wetted_area_m2`,
+  `visible_wetted_area_added_m2`, `area_max_deviation`, `perimeter_max_deviation`); `canopy_merge_exponent_clamped`
+  (`warning`): a refitted exponent clamped to the configured bracket; `canopy_off_centre` (`warning`): a canopy
+  whose `xyz[1]` differs from its parent's, counted with its offset on both sides. Grid, bisection tolerance and
+  bracket are numeric settings (`opt_body_merge_*` in `config.yaml`), reported among the solver settings of
+  AeroBuildup and AVL. Declared only for an admissible input
 - the kernel's drag (`induced_drag_viscous_factor_removed`, `notice`, #1346, ch. 8.8): AeroBuildup's full-scale
   viscous factor `k_e,D0` is taken out of its induced drag on every drag the kernel reads; one per evaluation
   (evaluate, best glide, minimum sink; not the stall, whose values read lift only — the reader of the published
@@ -1394,7 +1405,9 @@ Validation` returns `errors` (`KernelError`s of category `invalid_input`, all of
 `warnings` (input facts the engine attaches to every dependent: `conflicting_mass`, origin
 `aircraft-mass`; `geometry_deflection_ignored`, origin `airplane`; `fuselage_section_equivalent`, origin
 `airplane`, once per fuselage section with `n_lower` different from `n`, which the ASB conversion maps to the
-symmetric section of equal cross-section area, `superellipse.equivalent_exponent`, #1307). It needs no canon model but the kernel configuration's area tolerance; the checks
+symmetric section of equal cross-section area, `superellipse.equivalent_exponent`, #1307; for an admissible
+input with canopies `canopy_merged_into_fuselage`, `canopy_merge_exponent_clamped` and `canopy_off_centre`, origin
+`airplane`, from `solver_bodies.merged_bodies`, #1355). It needs no canon model but the kernel configuration's area tolerance; the checks
 of `values` slugs against the canon (`unknown_quantity`, `not_an_input`) are a second function added with
 the canon loader, not a stub now (ADR 0021). **A rule exists only for a field the kernel reads**;
 CAD-only fields (`number_interpolation_points`, servo geometry, step paths) are not validated. One rule,
@@ -1410,8 +1423,8 @@ one code, one test:
 | `duplicate_section` | two adjacent sections of a wing at one spanwise station: the same y and z of the leading edge (a section of zero span, NaN in AeroBuildup; #1342); `input_path` the second one |
 | `invalid_fuselage_contour` | a fuselage section's `contour` (format 7.1b, #1349: the full outline as a closed loop, the closing segment implicit) with fewer than `fuselage-contour.min_contour_points` (3) points, a repeated consecutive point (last to first included), two segments that cross or touch other than at a shared vertex, or a signed area ≤ 0 (not counter-clockwise with y right, z up); or a degenerate contour (a point, or all points exactly collinear) at a section other than the first or the last, where it would pinch the body (at the ends it is admissible and the polygon rules do not apply). `input_path` the point (`…contour[i]`) or the contour. Checked only on finite points (the walk reports the others). The kernel reads the contour for this check only; no solver reads it, and it is not compared with the a/b fit (the contour exists because the fit deviates; maintainer 2026-11-04) |
 | `inconsistent_fuselage_contours` | a fuselage in which some sections have a `contour` and others none, or the contours differ in point count (the loft joins point i to point i); one finding per section that differs from the first section with a contour, `input_path` its `contour` |
-| `invalid_body_attachment` | a body's `attached_to` (#1355, rule `body-attachment`) that names the body itself, a name that is not a body of the aircraft, or a body whose `attached_to` chain leads back to it (one finding per body in the cycle); or a body of `role` `canopy` without `attached_to`. `input_path` the body's `attached_to`. The role is the writer's, never inferred from a name |
-| `canopy_outside_parent` | a section of a `canopy` whose `xyz[0]` lies ahead of the first or behind the last `xyz[0]` of the body it is `attached_to` (ends included, no tolerance); compared only when both bodies have at least `minimum-sections.min_sections` sections with finite positions. `input_path` the section's `xyz[0]`. No solver reads `role` or `attached_to`: the drag of a canopy is computed for the whole body (#1355 slice 2 pending) |
+| `invalid_body_attachment` | a body's `attached_to` (#1355, rule `body-attachment`) that names the body itself, a name that is not a body of the aircraft, or a body whose `attached_to` chain leads back to it (one finding per body in the cycle); or a body of `role` `canopy` without `attached_to`, or attached to another canopy. `input_path` the body's `attached_to`. The role is the writer's, never inferred from a name |
+| `canopy_outside_parent` | a section of a `canopy` whose `xyz[0]` lies ahead of the first or behind the last `xyz[0]` of the body it is `attached_to` (ends included, no tolerance); compared only when both bodies have at least `minimum-sections.min_sections` sections with finite positions. `input_path` the section's `xyz[0]`. The solvers see each canopy merged into its parent (rule `canopy-merge`, #1355 slice 2) |
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |

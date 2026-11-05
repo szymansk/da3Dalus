@@ -154,3 +154,20 @@ def test_the_substituted_fuselage_is_accepted_by_aerobuildup(member: FleetMember
         airplane, asb.OperatingPoint(velocity=10.0, alpha=5.0)
     ).run()
     assert all(math.isfinite(float(np.ravel(result[key])[0])) for key in ("CL", "CD", "Cm"))
+
+
+def test_bryans_canopy_reaches_aerosandbox_merged_into_the_fuselage() -> None:
+    """#1355 slice 2: one body; its wetted area lies between the fuselage alone and both bodies,
+    and its volume adds only the visible part of the canopy to the fuselage's."""
+    document = reference_document(FleetMember.BRYAN)
+    plane = AirplaneGeometry.model_validate(document)
+    (merged,) = to_asb_airplane(plane).fuselages
+    separate = dict(document)
+    separate["fuselages"] = {
+        key: {k: v for k, v in body.items() if k not in ("role", "attached_to")}
+        for key, body in document["fuselages"].items()
+    }
+    rumpf, haube = to_asb_airplane(AirplaneGeometry.model_validate(separate)).fuselages
+    assert merged.name == "Rumpf"
+    assert rumpf.area_wetted() < merged.area_wetted() < rumpf.area_wetted() + haube.area_wetted()
+    assert rumpf.volume() < merged.volume() < rumpf.volume() + haube.volume()

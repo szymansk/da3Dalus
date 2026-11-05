@@ -151,6 +151,18 @@ def test_a_canopy_without_parent_is_a_422(client_and_db):
     assert "needs attached_to" in response.json()["detail"]
 
 
+def test_a_canopy_on_a_canopy_is_a_422(client_and_db):
+    """gh-1355 slice 2: the solvers fold every canopy into one parent that is no canopy."""
+    client, _ = client_and_db
+    plane_id = _with_fuselage(client)
+    assert _put(client, plane_id, canopy()).status_code == 201
+    hood = {**canopy(attached_to="Haube"), "name": "Haube2"}
+    response = _put(client, plane_id, hood)
+    assert response.status_code == 422
+    assert 'fuselages["Haube2"].attached_to' in response.json()["detail"]
+    assert "itself a canopy" in response.json()["detail"]
+
+
 def test_an_unknown_parent_is_a_422(client_and_db):
     client, _ = client_and_db
     plane_id = _with_fuselage(client)
