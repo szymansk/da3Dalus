@@ -7,15 +7,15 @@ The role is stated by the writer, never inferred from a name (ADR 0020). The rul
 
 1. ``attached_to``, when set, names another body of the same aircraft; the chain of
    ``attached_to`` has no cycle;
-2. a canopy has ``attached_to``;
+2. a canopy has ``attached_to``, and its parent is no canopy (slice 2: the merge folds every
+   canopy into one parent);
 3. a canopy's x range (the smallest to the largest ``xyz[0]`` of its sections) lies inside its
    parent's, ends included.
 
 Rule 3 compares only bodies that have a loft, at least ``min_sections`` sections with finite
 positions: a body with fewer is refused by ``too_few_sections``, a non-finite position by the walk
 over the numbers. These functions are pure and know no thresholds; the caller passes the canon's.
-No solver reads the role: the drag of a canopy is still computed for the whole body (#1355,
-slice 2 pending).
+The solvers see each canopy merged into its parent (:mod:`aero_kernel.solver_bodies`, slice 2).
 """
 
 import math
@@ -74,7 +74,10 @@ def _cycle(name: str, bodies: Mapping[str, AttachedBody]) -> list[str] | None:
 def _reference_defects(
     name: str, body: AttachedBody, bodies: Mapping[str, AttachedBody]
 ) -> list[AttachmentDefect]:
-    """Rules 1 and 2: the parent exists, is another body, is not in a cycle; a canopy has one."""
+    """Rules 1 and 2: the parent exists, is another body and not in a cycle; a canopy has one.
+
+    The parent of a canopy is no canopy.
+    """
     parent = body.attached_to
     if parent is None:
         if body.role != "canopy":
@@ -84,6 +87,11 @@ def _reference_defects(
         message = f"Body {name!r} is attached to itself."
     elif parent not in bodies:
         message = f"Body {name!r} is attached to {parent!r}, which is not a body of this aircraft."
+    elif body.role == "canopy" and bodies[parent].role == "canopy":
+        message = (
+            f"Canopy {name!r} is attached to {parent!r}, itself a canopy; a canopy sits on a body "
+            "that is no canopy."
+        )
     else:
         cycle = _cycle(name, bodies)
         if cycle is None:

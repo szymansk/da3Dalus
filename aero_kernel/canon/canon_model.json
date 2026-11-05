@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e04d392bccd036a7c68ae7a9ffc6eb5d56322b5718bf5e4cb2a88806dad4d6c4",
+  "content_hash": "sha256:01ca2dcc14d0b09ec3e33a6266ff51b48de55f013a734465f34f066a10626dc6",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -73,6 +73,34 @@
           "source": "float noise of an angle that is a multiple of a quarter degree; many orders below the sweep step",
           "unit": "deg",
           "value": 1e-09
+        },
+        "opt_body_merge_area_tolerance": {
+          "basis": "numerical",
+          "guards": "Canopy merge (#1355): the relative disagreement of a refitted half's area and its envelope's at which the bisection for its exponent stops.",
+          "source": "a margin over floating-point noise of the gamma-function area (about 1e-16), as opt_fuselage_area_tolerance: the search is a bisection, so the tolerance costs only a few extra halvings",
+          "unit": "1",
+          "value": 1e-12
+        },
+        "opt_body_merge_exponent_max": {
+          "basis": "numerical",
+          "guards": "Canopy merge (#1355): the largest exponent the refit of an envelope's half searches; a half whose area fraction lies above f(1000) = 0.999998 (practically a rectangle) is clamped to it and declared (canopy_merge_exponent_clamped).",
+          "source": "a search bracket, no domain value: the fleet's bodies use exponents up to 50 (f = 0.9994), so 1000 leaves a wide margin; above it a section is a rectangle to 2e-6 of its area",
+          "unit": "1",
+          "value": 1000.0
+        },
+        "opt_body_merge_exponent_min": {
+          "basis": "numerical",
+          "guards": "Canopy merge (#1355): the smallest exponent the refit of an envelope's half searches; a half whose area fraction lies below f(0.1) = 5.4e-6 is clamped to it and declared (canopy_merge_exponent_clamped).",
+          "source": "a search bracket, no domain value: f(0.1) = 5.4e-6 of the bounding box, far below any envelope of a body and its canopy",
+          "unit": "1",
+          "value": 0.1
+        },
+        "opt_body_merge_z_cells": {
+          "basis": "numerical",
+          "guards": "Canopy merge (#1355): the number of cells of the z grid on which the envelope of a body and its canopies is taken (at the cell midpoints), integrated and measured at one station; even, so the middle of the envelope's height is a cell boundary.",
+          "source": "a resolution, no domain threshold: the midpoint area of an ellipse on 2000 cells is within 3.5e-6 of the closed form and that of a rectangle exact, far below what AeroBuildup resolves of a body; the merge costs milliseconds per station",
+          "unit": "1",
+          "value": 2000.0
         },
         "opt_flap_rib_gap": {
           "basis": "numerical",
@@ -6724,9 +6752,24 @@
             "invalid_body_attachment",
             "canopy_outside_parent"
           ],
-          "criterion": "Every body under fuselages has a role (fuselage, canopy, nacelle, fairing, pod or other; fuselage when the document does not say), stated by the writer and never inferred from its name, and optionally attached_to, the name of the body it sits on (#1355, maintainer 2026-11-05). attached_to, when set, names another body of the same aircraft, and the chain of attached_to has no cycle. A body of role canopy has attached_to. A canopy's x range, from the smallest to the largest xyz[0] of its sections, lies within its parent's x range, ends included and without tolerance; the ranges are compared only when both bodies have at least minimum-sections.min_sections sections with finite positions (a body with fewer is refused by too_few_sections, a non-finite position by finite-numbers). Nothing else is checked: neither whether a canopy's contour describes only its visible part, nor whether several bodies on the symmetry plane lack symmetric. No solver reads the role or attached_to: the drag of a canopy is computed for the whole body (#1355 slice 2, pending a decision).",
+          "criterion": "Every body under fuselages has a role (fuselage, canopy, nacelle, fairing, pod or other; fuselage when the document does not say), stated by the writer and never inferred from its name, and optionally attached_to, the name of the body it sits on (#1355, maintainer 2026-11-05). attached_to, when set, names another body of the same aircraft, and the chain of attached_to has no cycle. A body of role canopy has attached_to. A canopy's x range, from the smallest to the largest xyz[0] of its sections, lies within its parent's x range, ends included and without tolerance; the ranges are compared only when both bodies have at least minimum-sections.min_sections sections with finite positions (a body with fewer is refused by too_few_sections, a non-finite position by finite-numbers). Nothing else is checked: neither whether a canopy's contour describes only its visible part, nor whether several bodies on the symmetry plane lack symmetric. The parent of a canopy is not itself a canopy (slice 2: every canopy is merged into one parent; a canopy on a canopy is refused with invalid_body_attachment). How the solvers use role and attached_to is the tool rule canopy-merge.",
           "kind": "input",
           "on_violation": "error",
+          "parameters": {}
+        },
+        "canopy-merge": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "airplane"
+          },
+          "codes": [
+            "canopy_merged_into_fuselage",
+            "canopy_merge_exponent_clamped",
+            "canopy_off_centre"
+          ],
+          "criterion": "Only the visible part of a canopy counts (maintainer decision 2026-11-05, #1355): this is the maintainer's decision, not a textbook method; Scholz and Sadraey have no canopy method, and Sadraey's drag build-up (Eq. 7.5/7.6) takes one wetted area for the fuselage. Every body of role canopy is therefore merged, for the solvers only, into the body it sits on (attached_to); nacelles, fairings, pods and other bodies stay bodies of their own. The stored document is never changed and the measured contour is never read. Per parent: (1) stations are the union of the parent's sections and the canopies' stations inside its x range, exact duplicates collapsed; where no canopy shows (outside every canopy, a canopy section of size 0, or a canopy hidden inside the parent) the parent's section is kept verbatim and nothing is inserted; (2) each body's section at a station is linear in x between its neighbours (xyz, a, b, n, n_lower; n_lower defaults to n); (3) on a z grid the half-width is the largest of the bodies' half-widths about the parent's y, an off-centre canopy counting with its offset; an interior gap of zero width (a canopy floating just above the parent) is filled with the smaller of the widest half-width below and above it, a notch of positive width is kept; (4) the envelope is refitted to one section of two exponents: centre the middle of its height, b half the height, a the largest half-width, and each half's exponent the one that keeps that half's area, f(n) = A_half / (2 a b) with f(n) = Gamma(1 + 1/n)^2 / Gamma(1 + 2/n), by bisection; (5) several canopies on one parent fold into the same envelope. AeroSandbox then takes the equivalent symmetric section of each refitted section (aerosandbox-fuselage-shape) and AVL the round body of its area. The z grid (opt_body_merge_z_cells), the bisection tolerance (opt_body_merge_area_tolerance) and the exponent bracket (opt_body_merge_exponent_min/max) are numeric settings of config.yaml, not engineering constants. Declared (ADR 0020) by the notice canopy_merged_into_fuselage, origin airplane, one per canopy (detail: canopy, parent, canopies_on_parent, merged_stations, canopy_wetted_area_m2, visible_wetted_area_added_m2, area_max_deviation, perimeter_max_deviation); a refitted exponent clamped to the bracket is the warning canopy_merge_exponent_clamped, a canopy not centred on its parent's y the warning canopy_off_centre. The axis kink of a merged body (#1358) is not treated here.",
+          "kind": "tool",
+          "on_violation": "warning",
           "parameters": {}
         },
         "control-surface-needs-device": {

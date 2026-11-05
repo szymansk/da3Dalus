@@ -122,6 +122,10 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_hinge_floor": 1e-16,
     "opt_flap_rib_gap_m": 1e-6,
     "opt_fuselage_area_tolerance": 1e-12,
+    "opt_body_merge_z_cells": 2000.0,
+    "opt_body_merge_area_tolerance": 1e-12,
+    "opt_body_merge_exponent_min": 0.1,
+    "opt_body_merge_exponent_max": 1000.0,
 }
 
 

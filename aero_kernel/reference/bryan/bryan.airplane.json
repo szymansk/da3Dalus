@@ -2158,6 +2158,8 @@
   },
   "Haube": {
    "name": "Haube",
+   "role": "canopy",
+   "attached_to": "Rumpf",
    "symmetric": false,
    "x_secs": [
     {

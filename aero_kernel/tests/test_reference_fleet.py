@@ -80,6 +80,9 @@ SURFACE_TYPES = {
 # BELEMNITOS' source carries a provenance note the format has no field for; the copy omits it.
 BELEMNITOS_NOTE = ("quelle", "e-Hawk_Segler.airplane.json (aiHawk), umgewandelt 2026-10-13")
 RV7_ROOT_AIRFOIL = ("naca23013.5", "./components/airfoils/naca23013.5.dat")
+# BRYAN's `Haube` is the canopy on `Rumpf` (#1355 slice 2, README): role and attached_to are
+# additions; every other body of the fleet is a fuselage without attachment.
+BODY_ROLES = {FleetMember.BRYAN: {"Haube": ("canopy", "Rumpf")}}
 
 
 def canonical_sha256(document: object) -> str:
@@ -93,6 +96,12 @@ def test_a_copy_without_its_additions_is_the_source(member: FleetMember) -> None
     document = json.loads(member.json_path.read_text())
     added = {name: wing.pop("surface_type") for name, wing in document["wings"].items()}
     assert added == SURFACE_TYPES[member]
+    roles = {
+        name: (body.pop("role"), body.pop("attached_to"))
+        for name, body in document["fuselages"].items()
+        if "role" in body
+    }
+    assert roles == BODY_ROLES.get(member, {})
     if member is FleetMember.BELEMNITOS:
         assert BELEMNITOS_NOTE[0] not in document
         document[BELEMNITOS_NOTE[0]] = BELEMNITOS_NOTE[1]

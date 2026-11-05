@@ -669,6 +669,10 @@ class KernelConfig(BaseModel):
     opt_hinge_floor: ConfigValue
     opt_flap_rib_gap: ConfigValue
     opt_fuselage_area_tolerance: ConfigValue
+    opt_body_merge_z_cells: ConfigValue
+    opt_body_merge_area_tolerance: ConfigValue
+    opt_body_merge_exponent_min: ConfigValue
+    opt_body_merge_exponent_max: ConfigValue
     avl_contour_margin: ConfigValue
 
 

@@ -128,3 +128,31 @@ opt_fuselage_area_tolerance:
   guards: "Fuselage section: the relative disagreement of the cross-section area of the equivalent symmetric section and of the section with two exponents, at which the bracketed search for the equivalent exponent stops."
   basis: numerical
   source: "a margin over floating-point noise of the gamma-function area (about 1e-16): the search is a bisection, so the tolerance costs only a few extra halvings; a looser value would leave a visible area error in the drag build-up"
+
+opt_body_merge_z_cells:
+  value: 2000
+  unit: "1"
+  guards: "Canopy merge (#1355): the number of cells of the z grid on which the envelope of a body and its canopies is taken (at the cell midpoints), integrated and measured at one station; even, so the middle of the envelope's height is a cell boundary."
+  basis: numerical
+  source: "a resolution, no domain threshold: the midpoint area of an ellipse on 2000 cells is within 3.5e-6 of the closed form and that of a rectangle exact, far below what AeroBuildup resolves of a body; the merge costs milliseconds per station"
+
+opt_body_merge_area_tolerance:
+  value: 1.0e-12
+  unit: "1"
+  guards: "Canopy merge (#1355): the relative disagreement of a refitted half's area and its envelope's at which the bisection for its exponent stops."
+  basis: numerical
+  source: "a margin over floating-point noise of the gamma-function area (about 1e-16), as opt_fuselage_area_tolerance: the search is a bisection, so the tolerance costs only a few extra halvings"
+
+opt_body_merge_exponent_min:
+  value: 0.1
+  unit: "1"
+  guards: "Canopy merge (#1355): the smallest exponent the refit of an envelope's half searches; a half whose area fraction lies below f(0.1) = 5.4e-6 is clamped to it and declared (canopy_merge_exponent_clamped)."
+  basis: numerical
+  source: "a search bracket, no domain value: f(0.1) = 5.4e-6 of the bounding box, far below any envelope of a body and its canopy"
+
+opt_body_merge_exponent_max:
+  value: 1000.0
+  unit: "1"
+  guards: "Canopy merge (#1355): the largest exponent the refit of an envelope's half searches; a half whose area fraction lies above f(1000) = 0.999998 (practically a rectangle) is clamped to it and declared (canopy_merge_exponent_clamped)."
+  basis: numerical
+  source: "a search bracket, no domain value: the fleet's bodies use exponents up to 50 (f = 0.9994), so 1000 leaves a wide margin; above it a section is a rectangle to 2e-6 of its area"

@@ -13,6 +13,7 @@ from itertools import pairwise
 
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry, Fuselage, FuselageXSecSuperEllipse
+from aero_kernel.solver_bodies import solver_bodies
 from pydantic import BaseModel, ConfigDict
 
 __all__ = ["MeshBody", "body_file_text", "equivalent_radius", "mesh_bodies"]
@@ -104,6 +105,9 @@ def _body(fuselage: Fuselage) -> MeshBody:
 def mesh_bodies(airplane: AirplaneGeometry) -> tuple[MeshBody, ...]:
     """Every fuselage of the airplane as an AVL body, in document order.
 
+    The bodies are the solver bodies: each canopy merged into the body it sits on
+    (:func:`~aero_kernel.solver_bodies.solver_bodies`, #1355).
+
     Args:
         airplane: The validated geometry document.
 
@@ -114,7 +118,7 @@ def mesh_bodies(airplane: AirplaneGeometry) -> tuple[MeshBody, ...]:
         FormulaError: ``unsupported_configuration`` for a mirrored fuselage, one with two sections at
             the same x, or one without a cross-section area.
     """
-    return tuple(_body(fuselage) for fuselage in (airplane.fuselages or {}).values())
+    return tuple(_body(fuselage) for fuselage in solver_bodies(airplane))
 
 
 def body_file_text(body: MeshBody) -> str:

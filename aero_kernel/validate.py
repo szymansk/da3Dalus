@@ -31,6 +31,7 @@ from aero_kernel.fuselage_contour import (
 from aero_kernel.geometry import Wing
 from aero_kernel.rules import Rules
 from aero_kernel.schema import AircraftInput, ComputeRequest, KernelWarning
+from aero_kernel.solver_bodies import CanopyMerge, merged_bodies
 from aero_kernel.superellipse import equivalent_exponent
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -697,6 +698,71 @@ def _fuselage_section_warnings(fuselages: Mapping[str, geometry.Fuselage]) -> li
     return warnings
 
 
+def _canopy_notice(merge: CanopyMerge) -> KernelWarning:
+    """Declare that a canopy is merged into the body it sits on (#1355, ADR 0020)."""
+    others = [key for key in merge.canopies_on_parent if key != merge.canopy]
+    together = f" together with {', '.join(repr(k) for k in others)}" if others else ""
+    message = (
+        f"The canopy {merge.canopy!r} is merged into the body it sits on, {merge.parent!r}"
+        f"{together}: the solvers see one body, the envelope of both, so only the canopy's "
+        f"visible part counts (maintainer 2026-11-05). {merge.merged_stations} stations are "
+        f"refitted to sections of two exponents that keep the envelope's area (AeroSandbox then "
+        f"takes the equivalent symmetric section of each, as for fuselage_section_equivalent); "
+        f"the wetted area grows by {merge.wetted_area_added:.6g} m^2 instead of the canopy's "
+        f"{merge.canopy_wetted_area:.6g} m^2. The stored geometry is unchanged."
+    )
+    detail: dict[str, JsonValue] = {
+        "canopy": merge.canopy,
+        "parent": merge.parent,
+        "canopies_on_parent": list(merge.canopies_on_parent),
+        "merged_stations": merge.merged_stations,
+        "canopy_wetted_area_m2": merge.canopy_wetted_area,
+        "visible_wetted_area_added_m2": merge.wetted_area_added,
+        "area_max_deviation": merge.area_deviation,
+        "perimeter_max_deviation": merge.perimeter_deviation,
+    }
+    return _warning("canopy_merged_into_fuselage", "airplane", message, detail)
+
+
+def _canopy_merge_warnings(airplane: geometry.AirplaneGeometry) -> list[KernelWarning]:
+    """The declarations of the canopy merge: one notice per canopy, warnings for its caveats.
+
+    Read from the one producer of the solver bodies (:func:`merged_bodies`, ADR 0022): the
+    solvers see what is declared here.
+    """
+    warnings: list[KernelWarning] = []
+    for merge in merged_bodies(airplane).merges:
+        warnings.append(_canopy_notice(merge))
+        if merge.clamped_exponents:
+            message = (
+                f"Merging the canopy {merge.canopy!r} into {merge.parent!r}: "
+                f"{merge.clamped_exponents} refitted exponents lie outside the search bracket and "
+                f"are clamped to it, so the merged sections' area differs from the envelope's by "
+                f"up to {merge.area_deviation:.3g} (relative)."
+            )
+            detail: dict[str, JsonValue] = {
+                "canopy": merge.canopy,
+                "parent": merge.parent,
+                "clamped_exponents": merge.clamped_exponents,
+                "area_max_deviation": merge.area_deviation,
+            }
+            warnings.append(_warning("canopy_merge_exponent_clamped", "airplane", message, detail))
+        if merge.off_centre:
+            message = (
+                f"The canopy {merge.canopy!r} is not centred on {merge.parent!r} (up to "
+                f"{merge.off_centre:.6g} m off in y); the merged body stays on its parent's y, so "
+                "the canopy counts with its offset on both sides and the body grows wider than it "
+                "is."
+            )
+            detail = {
+                "canopy": merge.canopy,
+                "parent": merge.parent,
+                "off_centre_m": merge.off_centre,
+            }
+            warnings.append(_warning("canopy_off_centre", "airplane", message, detail))
+    return warnings
+
+
 def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Validation:
     """Report every physically inadmissible value of an aircraft input, and the input's caveats.
 
@@ -732,6 +798,8 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
         + _deflection_warnings(airplane.wings or {})
         + _fuselage_section_warnings(airplane.fuselages or {})
     )
+    if not errors:  # the merge reads an admissible geometry only
+        warnings += _canopy_merge_warnings(airplane)
     logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))
 
