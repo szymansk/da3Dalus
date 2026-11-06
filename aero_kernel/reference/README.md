@@ -79,6 +79,15 @@ app-side migration is #1187.
 
 No aircraft of the fleet has a canard, twin fins or winglets.
 
+`role` and `attached_to` (format 7.6, #1355) on BRYAN's body `Haube`, inserted after `name`:
+`"role": "canopy"`, `"attached_to": "Rumpf"`. `Haube` is the canopy on `Rumpf` (its x range
+0.134 to 0.238 m lies inside the fuselage's, its lower edge at the fuselage's top z = 0.027 m, its
+half-width that of the fuselage). The marking is done by hand and explicitly, for slice 2 (the
+canopy merge, canon rule `canopy-merge`): since then the solvers see one merged body instead of
+the fuselage and the whole canopy, and BRYAN's goldens moved (before/after in the PR of #1355
+slice 2). No other aircraft of the fleet has a canopy body; every other body keeps the default
+role `fuselage` without attachment.
+
 BELEMNITOS' source carries a top-level `quelle` ("e-Hawk_Segler.airplane.json (aiHawk), umgewandelt
 2026-10-13"), a provenance note for which the format has no field (the kernel rejects unknown
 keys). The copy **omits** it; the test puts it back before it hashes.

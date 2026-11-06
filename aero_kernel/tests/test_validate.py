@@ -1077,8 +1077,12 @@ class TestBodyAttachment:
     def test_a_canopy_on_its_body_is_admissible(self) -> None:
         result = _result(_with_canopy(_document()))
         assert result.errors == ()
-        # n_lower = 1 under n = 2 is declared per section, as for any body (gh-1157)
-        assert set(_codes_of_warnings(result)) == {"fuselage_section_equivalent"}
+        # n_lower = 1 under n = 2 is declared per section, as for any body (gh-1157); the
+        # canopy is merged into its body for the solvers and that is declared too (slice 2)
+        assert set(_codes_of_warnings(result)) == {
+            "fuselage_section_equivalent",
+            "canopy_merged_into_fuselage",
+        }
 
     def test_role_defaults_to_fuselage_and_attached_to_to_none(self) -> None:
         aircraft = AircraftInput.model_validate(_document())
@@ -1121,3 +1125,68 @@ class TestBodyAttachment:
         document = _with_canopy(_document(), x=(0.1, 0.6))
         del document["airplane"]["fuselages"]["Body"]["x_secs"][1]
         assert _codes(_validate(document)) == ["too_few_sections"]
+
+
+class TestCanopyMerge:
+    """The declarations of the canopy merge (#1355 slice 2, ADR 0020)."""
+
+    def test_a_merged_canopy_is_declared_once_with_its_figures(self) -> None:
+        result = _result(_with_canopy(_document()))
+        (notice,) = [w for w in result.warnings if w.code == "canopy_merged_into_fuselage"]
+        assert notice.severity is WarningSeverity.NOTICE
+        assert notice.origin == "airplane"
+        assert notice.detail["canopy"] == "Canopy"
+        assert notice.detail["parent"] == "Body"
+        assert notice.detail["merged_stations"] == 2
+        for key in (
+            "canopy_wetted_area_m2",
+            "visible_wetted_area_added_m2",
+            "area_max_deviation",
+            "perimeter_max_deviation",
+        ):
+            assert isinstance(notice.detail[key], float), key
+        assert "Canopy" in notice.message
+        assert "Body" in notice.message
+
+    def test_a_centred_canopy_without_clamping_has_no_warning(self) -> None:
+        codes = _codes_of_warnings(_result(_with_canopy(_document())))
+        assert "canopy_off_centre" not in codes
+        assert "canopy_merge_exponent_clamped" not in codes
+
+    def test_an_off_centre_canopy_is_a_warning(self) -> None:
+        document = _with_canopy(_document())
+        for x_sec in document["airplane"]["fuselages"]["Canopy"]["x_secs"]:
+            x_sec["xyz"][1] = 0.01
+        (warning,) = [w for w in _result(document).warnings if w.code == "canopy_off_centre"]
+        assert warning.severity is WarningSeverity.WARNING
+        assert warning.detail["off_centre_m"] == 0.01
+
+    def test_a_clamped_refit_exponent_is_a_warning(self) -> None:
+        document = _with_canopy(_document())
+        fuselages = document["airplane"]["fuselages"]
+        for x_sec in fuselages["Body"]["x_secs"]:
+            x_sec["n"] = 5000.0
+        for x_sec in fuselages["Canopy"]["x_secs"]:
+            x_sec.update(a=0.05, b=0.02, n=5000.0, n_lower=None)
+            x_sec["xyz"][2] = 0.07
+        (warning,) = [
+            w for w in _result(document).warnings if w.code == "canopy_merge_exponent_clamped"
+        ]
+        assert warning.severity is WarningSeverity.WARNING
+        clamped = warning.detail["clamped_exponents"]
+        assert isinstance(clamped, int)
+        assert clamped > 0
+
+    def test_an_invalid_input_gets_no_merge_declaration(self) -> None:
+        result = _result(_with_canopy(_document(), attached_to="Fuselage"))
+        assert "canopy_merged_into_fuselage" not in _codes_of_warnings(result)
+
+    def test_a_canopy_on_a_canopy_is_refused(self) -> None:
+        document = _with_canopy(_document())
+        second = {**document["airplane"]["fuselages"]["Canopy"], "name": "Hood"}
+        second["attached_to"] = "Canopy"
+        document["airplane"]["fuselages"]["Hood"] = second
+        errors = _validate(document)
+        assert _codes(errors) == ["invalid_body_attachment"]
+        assert _paths(errors) == ['airplane.fuselages["Hood"].attached_to']
+        assert "canopy" in errors[0].message

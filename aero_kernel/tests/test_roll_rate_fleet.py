@@ -36,21 +36,23 @@ pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 SLUGS = ("roll-rate-approach", "roll-rate-nondimensional-approach")
 AB, AVL = "roll-rate=aerobuildup", "roll-rate=avl"
 # Regression goldens: (AeroBuildup world, AVL world) of p in deg/s and of p_hat = p b / 2 V.
+# BRYAN re-recorded for #1355 slice 2 (canopy merged); before: p (490.14462, 410.51230), p_hat
+# (0.3431387, 0.28739), V_app 6.818986359246604 m/s, fit-range warning 0.6547296 / 18.692106.
 GOLDEN_P = {
-    FleetMember.BRYAN: (490.14462, 410.51230),
+    FleetMember.BRYAN: (492.28133, 411.91345),
     FleetMember.JAGUAR: (346.50673, 419.59114),
     FleetMember.BELEMNITOS: (115.91897, 120.59319),
     FleetMember.WIESEL: (338.54708, 340.28853),
 }
 GOLDEN_P_HAT = {
-    FleetMember.BRYAN: (0.3431387, 0.28739),
+    FleetMember.BRYAN: (0.3434264, 0.28736),
     FleetMember.JAGUAR: (0.2304946, 0.27911),
     FleetMember.BELEMNITOS: (0.2599288, 0.27041),
     FleetMember.WIESEL: (0.2564309, 0.25775),
 }
 # V_app = 1.3 V_S (m/s) of the slice-3 stall golden path; the fleet has no flap, so V_S,landing = V_S.
 V_APP = {
-    FleetMember.BRYAN: 6.818986359246604,
+    FleetMember.BRYAN: 6.842975091879155,
     FleetMember.JAGUAR: 8.188976805083124,
     FleetMember.BELEMNITOS: 5.834674251667882,
     FleetMember.WIESEL: 10.537451950170093,
@@ -221,7 +223,7 @@ def _detail(warning: KernelWarning, key: str) -> float:
 
 async def test_the_regression_values_of_the_fit_range_warning() -> None:
     expected = {
-        FleetMember.BRYAN: (0.6547296, "Hoehenleitwerk", 18.692106, "Tragflaeche"),
+        FleetMember.BRYAN: (0.6388560, "Hoehenleitwerk", 18.652788, "Tragflaeche"),
         FleetMember.JAGUAR: (0.4667034, "Tragflaeche", 14.617064, "Tragflaeche"),
         FleetMember.BELEMNITOS: (0.8018459, "V-Leitwerk", 16.349829, "Tragflaeche"),
         FleetMember.WIESEL: (0.0277381, "main_wing", 15.675805, "main_wing"),

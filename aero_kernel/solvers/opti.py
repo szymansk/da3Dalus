@@ -1626,6 +1626,10 @@ class OptiAdapter(SolverAdapter):
             "opt_hinge_floor": config().opt_hinge_floor.value,
             "opt_flap_rib_gap_m": config().opt_flap_rib_gap.value,
             "opt_fuselage_area_tolerance": config().opt_fuselage_area_tolerance.value,
+            "opt_body_merge_z_cells": config().opt_body_merge_z_cells.value,
+            "opt_body_merge_area_tolerance": config().opt_body_merge_area_tolerance.value,
+            "opt_body_merge_exponent_min": config().opt_body_merge_exponent_min.value,
+            "opt_body_merge_exponent_max": config().opt_body_merge_exponent_max.value,
         }
 
     def _model_key(self, airplane: AirplaneGeometry, roll_deg: float) -> str:

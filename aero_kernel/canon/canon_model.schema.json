@@ -632,6 +632,18 @@
         "opt_alpha_margin_deg": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_body_merge_area_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_body_merge_exponent_max": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_body_merge_exponent_min": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_body_merge_z_cells": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_flap_rib_gap": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -667,6 +679,10 @@
         "opt_hinge_floor",
         "opt_flap_rib_gap",
         "opt_fuselage_area_tolerance",
+        "opt_body_merge_z_cells",
+        "opt_body_merge_area_tolerance",
+        "opt_body_merge_exponent_min",
+        "opt_body_merge_exponent_max",
         "avl_contour_margin"
       ],
       "title": "KernelConfig",

@@ -117,8 +117,8 @@ class Fuselage(_Frozen):
         x_secs: Sections in loft order.
         symmetric: Whether the body is mirrored about y = 0 (paired sub-bodies only).
         role: What the body is (format ch. 7.6, #1355); stated by the writer, never inferred
-            from the name. No solver reads it: the drag of a canopy is computed for the whole
-            body.
+            from the name. The solvers see a canopy merged into the body it sits on
+            (:mod:`aero_kernel.solver_bodies`, #1355).
         attached_to: Name (key) of the body this one sits on; ``None`` if it sits on none. A
             canopy has one (:mod:`aero_kernel.body_attachment`).
         step_path: Path of the exported STEP surface geometry; kept verbatim, never read.

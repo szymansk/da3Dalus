@@ -18,6 +18,7 @@ from aero_kernel.tests.engine_builders import request
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import (
     FleetMember,
+    bryan_as_the_prototype,
     flap_values,
     reference_document,
 )
@@ -35,8 +36,9 @@ SLUGS = (
 )
 # Regression goldens at sea level, mass of the fleet member, ISA, AeroSandbox's S_ref of the main wing
 # (gh-1240; V_S and alpha_S did not move, the lift coefficients did), NeuralFoil model size xlarge.
-BRYAN_V_S = 5.2453741  # m/s
-BRYAN_CL_MAX, BRYAN_ALPHA_S = 1.2548391, 13.1987303
+# Re-recorded for #1355 slice 2 (canopy merged); before: 5.2453741 m/s, C_L,max 1.2548391 at 13.1987303 deg.
+BRYAN_V_S = 5.2638270  # m/s
+BRYAN_CL_MAX, BRYAN_ALPHA_S = 1.2460566, 13.1984316
 BRYAN_V_S_SMALL = 5.2894317  # m/s, the small model of the prototype
 JAGUAR_V_S = 6.2992129  # m/s
 JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 0.9985795, 9.9252911
@@ -93,11 +95,12 @@ async def test_bryan_stalls_where_the_prototype_found_it_with_the_small_model(
     process with that size: 5.2894 m/s, 0.01 % from the prototype. The prototype took S from
     AeroSandbox's own planform area (7.0 dm2); the kernel passes AeroSandbox's S_ref of the main
     wing (6.9985 dm2) to AeroBuildup, so C_L,max differs a little while V_S, which fixes S * C_L,
-    agrees.
+    agrees. The prototype had no canopy merge: its geometry is BRYAN with the canopy a body of its
+    own (#1355).
     """
     monkeypatch.setattr(opti_module, "NEURALFOIL_MODEL_SIZE", "small")
     request = StallRequest(
-        airplane=AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN)),
+        airplane=AirplaneGeometry.model_validate(bryan_as_the_prototype()),
         mass_kg=FleetMember.BRYAN.mass_kg,
         gravity=9.80665,
         n_load=1.0,
@@ -110,8 +113,9 @@ async def test_bryan_stalls_where_the_prototype_found_it_with_the_small_model(
 
 
 async def test_bryan_regression_goldens_with_the_xlarge_model() -> None:
-    """xlarge, the size the kernel uses (maintainer 2026-10-22): 5.2454 m/s, 0.85 % below the
-    prototype, which the small model reproduces (test above). C_L,max 1.256 at 13.2 deg."""
+    """xlarge, the size the kernel uses (maintainer 2026-10-22), the canopy merged (#1355): 5.2638
+    m/s, 0.5 % below the prototype, which the small model reproduces with the canopy a body of its
+    own (test above). C_L,max 1.246 at 13.2 deg."""
     result = await stall_result(FleetMember.BRYAN)
     assert_goldens_are_pinned_to_their_tools(result)
     quantities = {q.slug: q for q in result.quantities}

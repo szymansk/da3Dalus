@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry, FuselageXSecSuperEllipse
+from aero_kernel.solver_bodies import solver_bodies
 from aero_kernel.solvers.avl_body import (
     body_file_text,
     equivalent_radius,
@@ -213,3 +214,21 @@ def test_the_lateral_derivatives_are_read_from_the_stability_axis_block() -> Non
 
 def test_a_missing_derivative_is_no_result() -> None:
     assert parse_lateral_output(LATERAL.replace("Cnr", "Cxx")) is None
+
+
+def test_a_canopy_is_merged_into_its_body_before_it_becomes_an_avl_body() -> None:
+    """One producer (#1355): AVL gets the merged body's area, never the canopy as a body."""
+    plane = with_fuselages(
+        Rumpf=([section(0.0, 0.05, 0.04, 2.0), section(1.0, 0.05, 0.04, 2.0)], False),
+        Haube=(
+            [section(0.3, 0.03, 0.03, 2.0, z=0.04), section(0.6, 0.03, 0.03, 2.0, z=0.04)],
+            False,
+        ),
+    )
+    dumped = plane.model_dump(mode="json")
+    dumped["fuselages"]["Haube"].update(role="canopy", attached_to="Rumpf")
+    plane = AirplaneGeometry.model_validate(dumped)
+    (body,) = mesh_bodies(plane)
+    (merged,) = solver_bodies(plane)
+    assert body.name == "Rumpf"
+    assert [r for _, r in body.stations] == [equivalent_radius(s) for s in merged.x_secs]

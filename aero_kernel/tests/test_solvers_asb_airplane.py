@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.solver_bodies import solver_bodies
 from aero_kernel.solvers import asb_airplane
 from aero_kernel.solvers.asb_airplane import (
     fin_area,
@@ -423,3 +424,27 @@ def test_the_regime_sections_take_the_mac_from_aerosandbox() -> None:
     for key, wing in (geometry().wings or {}).items():
         assert sections[key].chords_m == tuple(x.chord for x in wing.x_secs)
         assert by_wing[key] == FAKE_REFERENCE.get(wing.name, FAKE_DEFAULT_REFERENCE)[2]
+
+
+def test_a_canopy_is_merged_into_the_body_it_sits_on_before_conversion() -> None:
+    """One producer (#1355): ASB gets the merged body, never the canopy as a body of its own."""
+    document = geometry_document()
+    document["fuselages"]["Haube"] = {
+        "name": "Haube",
+        "role": "canopy",
+        "attached_to": "Body",
+        "x_secs": [
+            {"xyz": [0.15, 0.0, 0.05], "a": 0.03, "b": 0.03, "n": 2.0},
+            {"xyz": [0.25, 0.0, 0.05], "a": 0.03, "b": 0.03, "n": 2.0},
+        ],
+    }
+    plane = AirplaneGeometry.model_validate(document)
+    (body,) = to_asb_airplane(plane).kwargs["fuselages"]
+    (expected,) = solver_bodies(plane)
+    assert body.kwargs["name"] == "Body"
+    assert [s.kwargs["xyz_c"][0] for s in body.kwargs["xsecs"]] == [
+        s.xyz[0] for s in expected.x_secs
+    ]
+    assert [s.kwargs["height"] for s in body.kwargs["xsecs"]] == [
+        2.0 * s.b for s in expected.x_secs
+    ]

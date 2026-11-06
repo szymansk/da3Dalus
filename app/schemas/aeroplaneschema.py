@@ -889,8 +889,9 @@ class FuselageSchema(BaseModel):
         description=(
             "What the body is, gh-1355 (geometry format 7.6): fuselage, canopy, nacelle, "
             "fairing, pod or other. Stated by the writer, never inferred from the name. A "
-            "canopy needs attached_to and lies within its parent's x range. No solver reads the "
-            "role yet: the drag of a canopy is computed for the whole body."
+            "canopy needs attached_to, naming a body that is no canopy, and lies within its "
+            "parent's x range. The aero kernel merges a canopy into its parent for the solvers, "
+            "so only its visible part counts."
         ),
         examples=["fuselage", "canopy"],
     )

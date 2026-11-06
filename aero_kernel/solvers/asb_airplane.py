@@ -25,6 +25,7 @@ from aero_kernel.geometry import (
 )
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.graph import AILERON_ROLES
+from aero_kernel.solver_bodies import solver_bodies
 from aero_kernel.solvers.devices import flap_segments, roll_deflection, roll_segments
 from aero_kernel.solvers.regime import SurfaceSections
 from aero_kernel.superellipse import equivalent_exponent
@@ -673,7 +674,8 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
             is the clean airplane, bit for bit.
 
     Returns:
-        The ``asb.Airplane``, wings and fuselages in document order.
+        The ``asb.Airplane``, wings and fuselages in document order; each canopy merged into the
+        body it sits on (:func:`~aero_kernel.solver_bodies.solver_bodies`, #1355).
 
     Raises:
         ValueError: If the document does not have exactly one main wing.
@@ -696,7 +698,8 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
         _wing(asb, main_key, (airplane.wings or {})[main_key], 0.0) if flaps else built[main_key]
     )
     wings = list(built.values())
-    fuselages = [_fuselage(asb, fuselage) for fuselage in (airplane.fuselages or {}).values()]
+    # every canopy merged into the body it sits on: the one producer of the solver bodies (#1355)
+    fuselages = [_fuselage(asb, fuselage) for fuselage in solver_bodies(airplane)]
     logger.debug(
         "converted airplane %s: %d wings, %d fuselages", airplane.name, len(wings), len(fuselages)
     )

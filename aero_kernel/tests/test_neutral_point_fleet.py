@@ -61,7 +61,8 @@ WORLDS = ("textbook", "pappas", "avl")
 # BRYAN 0.1398911924/0.1401394435 -> 0.1398961691/0.1402057906 m, JAGUAR 0.1180210991/0.1238206059 ->
 # 0.1181103705/0.1239713559 m; the eta = 0.9 values below moved from 0.1441142600/0.1233721388.
 GOLDEN_NP = {
-    FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.143839),
+    # #1355 slice 2 (canopy merged): the AVL world moved from 0.143839
+    FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.144211),
     FleetMember.JAGUAR: (0.1180376743, 0.1238461117, 0.126467),
     FleetMember.RV7: (0.2561507, 0.2581105, 0.259465),
     FleetMember.CHEKKER: (0.1906369, 0.1960934, 0.20136),

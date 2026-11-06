@@ -125,3 +125,18 @@ def test_a_non_canopy_body_may_reach_beyond_its_parent() -> None:
 def test_the_range_is_not_compared_against_a_missing_parent() -> None:
     defects = attachment_defects({"canopy": _canopy(attached_to="fuselage")}, MIN_SECTIONS)
     assert [d.code for d in defects] == ["invalid_body_attachment"]
+
+
+def test_a_canopy_on_a_canopy_is_refused() -> None:
+    """Only a body that is no canopy takes a canopy: the merge folds canopies into one parent."""
+    bodies = {"fuselage": _body(), "canopy": _canopy(), "hood": _canopy(attached_to="canopy")}
+    defects = attachment_defects(bodies, MIN_SECTIONS)
+    assert [(d.body, d.field, d.code) for d in defects] == [
+        ("hood", "attached_to", "invalid_body_attachment")
+    ]
+    assert "'canopy', itself a canopy" in defects[0].message
+
+
+def test_a_nacelle_on_a_canopy_is_admissible() -> None:
+    bodies = {"fuselage": _body(), "canopy": _canopy(), "light": _body(attached_to="canopy")}
+    assert attachment_defects(bodies, MIN_SECTIONS) == []
