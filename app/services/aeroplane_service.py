@@ -20,6 +20,7 @@ from app.converters.model_schema_converters import (
     wing_model_to_wing_config,
 )
 from app.models.aeroplanemodel import AeroplaneModel, BranchModel
+from app.services.design_assumptions_service import set_estimate
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import (
     AirplaneConfiguration,
 )
@@ -276,7 +277,11 @@ def set_aeroplane_mass(db: Session, aeroplane_uuid, total_mass_kg: float) -> boo
         if aeroplane.total_mass_kg is None:
             created = True
 
+        # gh-1368: write both places — ``total_mass_kg`` and the ``mass``
+        # design assumption's estimate (the value the computations read).
+        # ``set_estimate`` keeps ``active_source`` as it is.
         aeroplane.total_mass_kg = total_mass_kg
+        set_estimate(db, aeroplane_uuid, "mass", total_mass_kg)
         aeroplane.updated_at = datetime.now()
 
         return created

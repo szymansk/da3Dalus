@@ -182,6 +182,12 @@ def update_assumption(
 
         active_was_estimate = row.active_source == "ESTIMATE"
         row.estimate_value = data.estimate_value
+        if param_name == "mass":
+            # gh-1368: the mass lives in two places — the ``mass`` estimate
+            # and ``aeroplanes.total_mass_kg``. Every writer of the mass
+            # writes both, so they never diverge. ``active_source`` is
+            # left as it is (a CALCULATED mass stays CALCULATED).
+            aeroplane.total_mass_kg = data.estimate_value
         row.divergence_pct = compute_divergence_pct(data.estimate_value, row.calculated_value)
         db.flush()
         db.refresh(row)
@@ -200,6 +206,28 @@ def update_assumption(
     except SQLAlchemyError as exc:
         logger.error("DB error in update_assumption: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
+
+
+def set_estimate(db: Session, aeroplane_uuid, param_name: str, value: float) -> AssumptionRead:
+    """Write the estimate of one assumption, creating the rows when absent.
+
+    An aeroplane that never had its assumptions seeded gets them through
+    ``seed_defaults`` — the same idempotent path the assumptions feature
+    uses — before the estimate is written via ``update_assumption``.
+    ``active_source`` is not touched.
+    """
+    aeroplane = _get_aeroplane(db, aeroplane_uuid)
+    row_exists = (
+        db.query(DesignAssumptionModel.id)
+        .filter(
+            DesignAssumptionModel.aeroplane_id == aeroplane.id,
+            DesignAssumptionModel.parameter_name == param_name,
+        )
+        .first()
+    )
+    if row_exists is None:
+        seed_defaults(db, aeroplane_uuid)
+    return update_assumption(db, aeroplane_uuid, param_name, AssumptionWrite(estimate_value=value))
 
 
 def switch_source(
