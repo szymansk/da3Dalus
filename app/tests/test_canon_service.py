@@ -22,11 +22,16 @@ from aero_kernel.schema import (
 )
 
 from app.core.exceptions import NotFoundError, ValidationError
-from app.schemas.canon import CanonAircraftRef, CanonComputeRequest
+from sqlalchemy.orm import Session
+
+from app.schemas.canon import CanonComputeRequest, CanonFleetRef
 from app.services import canon_service
 from aero_kernel import CachedKernel
 
 PROVENANCE = Provenance(build_digest="test")
+
+# A fleet aircraft needs no database: the session of a fleet request is never used.
+NO_DB = Session()
 
 
 def ok(slug: str, value: float) -> QuantityResult:
@@ -90,7 +95,7 @@ def request_of(
     fresh: bool = False,
 ) -> CanonComputeRequest:
     return CanonComputeRequest(
-        aircraft=CanonAircraftRef(fleet=fleet),
+        aircraft=CanonFleetRef(fleet=fleet),
         quantities=list(quantities),
         values=values or {},
         include_long_runs=include_long_runs,
@@ -125,7 +130,8 @@ async def test_the_kernel_gets_the_fleet_aircraft_with_the_callers_values(
     await canon_service.compute_canon(
         request_of(
             "stall-speed", fleet="rv-7", values={"aircraft-mass": 0.7}, include_long_runs=True
-        )
+        ),
+        NO_DB,
     )
     ((aircraft, request),) = kernel.calls
     assert aircraft.values["aircraft-mass"] == pytest.approx(0.7)
@@ -136,7 +142,7 @@ async def test_the_kernel_gets_the_fleet_aircraft_with_the_callers_values(
 
 @pytest.mark.asyncio
 async def test_the_response_carries_the_results_and_the_provenance(kernel: StubKernel) -> None:
-    response = await canon_service.compute_canon(request_of("stall-speed"))
+    response = await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
     assert [q.slug for q in response.quantities] == ["stall-speed"]
     assert response.quantities[0].value == pytest.approx(7.5)
     assert response.provenance.build_digest == "test"
@@ -152,7 +158,7 @@ async def test_the_measured_run_time_of_each_quantity_is_passed_through(
     )
     timed = ok("stall-speed", 7.5).model_copy(update={"timing": timing})
     use_kernel(monkeypatch, StubKernel(timed))
-    response = await canon_service.compute_canon(request_of("stall-speed"))
+    response = await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
     assert response.quantities[0].timing == timing
 
 
@@ -160,7 +166,7 @@ async def test_the_measured_run_time_of_each_quantity_is_passed_through(
 async def test_an_unknown_aircraft_is_not_found(kernel: StubKernel) -> None:
     request = request_of("stall-speed", fleet="nonexistent")
     with pytest.raises(NotFoundError):
-        await canon_service.compute_canon(request)
+        await canon_service.compute_canon(request, NO_DB)
     assert kernel.calls == []
 
 
@@ -168,7 +174,7 @@ async def test_an_unknown_aircraft_is_not_found(kernel: StubKernel) -> None:
 async def test_a_quantity_requested_twice_is_a_validation_error(kernel: StubKernel) -> None:
     request = request_of("stall-speed", "stall-speed")
     with pytest.raises(ValidationError):
-        await canon_service.compute_canon(request)
+        await canon_service.compute_canon(request, NO_DB)
 
 
 @pytest.mark.asyncio
@@ -183,7 +189,7 @@ async def test_input_errors_of_the_kernel_are_passed_through(
         return ComputeResult(input_errors=(error,), provenance=PROVENANCE)
 
     use_kernel(monkeypatch, refuse)
-    response = await canon_service.compute_canon(request_of("stall-speed"))
+    response = await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
     assert [e.code for e in response.input_errors] == ["not_an_input"]
     assert response.quantities == []
 
@@ -191,13 +197,13 @@ async def test_input_errors_of_the_kernel_are_passed_through(
 @pytest.mark.asyncio
 async def test_a_skipped_long_run_asks_for_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
     use_kernel(monkeypatch, StubKernel(skipped_long_run("neutral-point"), ok("a", 1.0)))
-    response = await canon_service.compute_canon(request_of("neutral-point", "a"))
+    response = await canon_service.compute_canon(request_of("neutral-point", "a"), NO_DB)
     assert response.needs_confirmation == ["neutral-point"]
 
 
 @pytest.mark.asyncio
 async def test_the_kernel_logs_of_the_request_are_returned(kernel: StubKernel) -> None:
-    response = await canon_service.compute_canon(request_of("stall-speed"))
+    response = await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
     started = [r for r in response.logs if r.message == "node started"]
     assert len(started) == 1
     assert started[0].level == "DEBUG"
@@ -217,7 +223,7 @@ async def test_logs_of_other_loggers_are_not_returned(
         return ComputeResult(quantities=(ok("stall-speed", 1.0),), provenance=PROVENANCE)
 
     use_kernel(monkeypatch, noisy)
-    response = await canon_service.compute_canon(request_of("stall-speed"))
+    response = await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
     assert [r.message for r in response.logs] == ["the kernel"]
 
 
@@ -231,7 +237,7 @@ async def test_file_paths_are_not_part_of_a_log_message(monkeypatch: pytest.Monk
         return ComputeResult(quantities=(ok("stall-speed", 1.0),), provenance=PROVENANCE)
 
     use_kernel(monkeypatch, leaky)
-    (record,) = (await canon_service.compute_canon(request_of("stall-speed"))).logs
+    (record,) = (await canon_service.compute_canon(request_of("stall-speed"), NO_DB)).logs
     assert "/private" not in record.message
     assert record.message == "temp directory not removed: <path>, speed 7.5 m/s"
 
@@ -247,8 +253,8 @@ async def test_concurrent_requests_keep_their_own_logs(monkeypatch: pytest.Monke
 
     use_kernel(monkeypatch, answer)
     first, second = await asyncio.gather(
-        canon_service.compute_canon(request_of("a")),
-        canon_service.compute_canon(request_of("b")),
+        canon_service.compute_canon(request_of("a"), NO_DB),
+        canon_service.compute_canon(request_of("b"), NO_DB),
     )
     assert [r.message for r in first.logs] == ["start a", "end a"]
     assert [r.message for r in second.logs] == ["start b", "end b"]
@@ -260,7 +266,7 @@ async def test_the_kernel_logger_level_is_restored(kernel: StubKernel) -> None:
     before = kernel_logger.level
     kernel_logger.setLevel(logging.WARNING)
     try:
-        response = await canon_service.compute_canon(request_of("stall-speed"))
+        response = await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
         assert any(r.message == "node started" for r in response.logs)  # DEBUG was captured
         assert kernel_logger.level == logging.WARNING
     finally:
@@ -272,7 +278,7 @@ async def test_verdicts_cover_the_requested_quantities_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     use_kernel(monkeypatch, StubKernel(ok("horizontal-tail-volume", 0.5)))
-    response = await canon_service.compute_canon(request_of("horizontal-tail-volume"))
+    response = await canon_service.compute_canon(request_of("horizontal-tail-volume"), NO_DB)
     assert response.verdicts
     assert {v.quantity for v in response.verdicts} == {"horizontal-tail-volume"}
     assert response.verdicts[0].value == pytest.approx(0.5)
@@ -286,15 +292,15 @@ async def test_a_fresh_request_recomputes_with_the_stateless_compute(
     stateless, cached = StubKernel(ok("stall-speed", 7.5)), StubKernel(ok("stall-speed", 1.0))
     monkeypatch.setattr(canon_service, "KERNEL", Facade(cached))
     monkeypatch.setattr(canon_service, "compute", stateless)
-    response = await canon_service.compute_canon(request_of("stall-speed", fresh=True))
+    response = await canon_service.compute_canon(request_of("stall-speed", fresh=True), NO_DB)
     assert (len(stateless.calls), len(cached.calls)) == (1, 0)
     assert response.quantities[0].value == pytest.approx(7.5)
 
 
 @pytest.mark.asyncio
 async def test_a_request_uses_the_shared_cached_kernel_by_default(kernel: StubKernel) -> None:
-    await canon_service.compute_canon(request_of("stall-speed"))
-    await canon_service.compute_canon(request_of("stall-speed"))
+    await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
+    await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
     assert len(kernel.calls) == 2  # both through the one facade
 
 

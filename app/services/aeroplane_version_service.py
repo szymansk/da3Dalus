@@ -564,3 +564,15 @@ def list_aeroplanes_heads_only(db: Session) -> list[AeroplaneModel]:
         .order_by(AeroplaneModel.name)
         .all()
     )
+
+
+def list_main_branch_heads(db: Session) -> list[AeroplaneModel]:
+    """Return the current state of every aeroplane: the head of its main branch, by name.
+
+    Legacy aeroplanes (``branch_id IS NULL``) have no branches and are their own current state.
+    """
+    return [
+        aeroplane
+        for aeroplane in list_aeroplanes_heads_only(db)
+        if aeroplane.branch_id is None or aeroplane.branch.is_main
+    ]
