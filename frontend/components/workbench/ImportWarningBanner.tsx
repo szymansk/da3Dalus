@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { ImportOpenVspWarning } from "./ImportOpenVspButton";
+import type { ImportOpenVspWarning } from "@/lib/openvspImport";
 
 /**
  * Warning banner for the OpenVSP `.vsp3` importer (gh-648).

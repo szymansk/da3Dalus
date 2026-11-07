@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 
-import type { ScaleOption } from "./ImportOpenVspButton";
+import type { ScaleOption } from "@/lib/openvspImport";
 
 /**
  * Compact radio group for the optional Quick-Scale during OpenVSP

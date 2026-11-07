@@ -310,6 +310,10 @@ jobs:
         run: npx tsc --noEmit
         working-directory: frontend
 
+      - name: Dependency rules (dependency-cruiser)
+        run: npm run deps:check
+        working-directory: frontend
+
       - name: Run unit tests with coverage
         run: npm run test:unit -- --coverage
         working-directory: frontend
