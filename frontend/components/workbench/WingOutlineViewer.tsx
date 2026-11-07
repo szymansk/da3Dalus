@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Wing, XSec } from "@/hooks/useWings";
 import type { Fuselage } from "@/hooks/useFuselage";
-import { sectionExtremes, sectionOutline } from "@/lib/fuselageSection";
+import { mirrorSectionY, sectionExtremes, sectionOutline } from "@/lib/fuselageSection";
 import { CANOPY_OPACITY, bodyRole } from "@/lib/bodyRole";
 import { API_BASE } from "@/lib/fetcher";
 
@@ -855,7 +855,7 @@ interface CollectTracesOptions {
   showQuarterChord: boolean;
 }
 
-async function collectAllTraces(opts: CollectTracesOptions): Promise<PlotlyData[]> {
+export async function collectAllTraces(opts: CollectTracesOptions): Promise<PlotlyData[]> {
   const traces: PlotlyData[] = [];
 
   for (const wing of opts.wings) {
@@ -876,10 +876,7 @@ async function collectAllTraces(opts: CollectTracesOptions): Promise<PlotlyData[
         ...fuse,
         name: `${fuse.name} (mirror)`,
         symmetric: false,
-        x_secs: fuse.x_secs.map((xs) => ({
-          ...xs,
-          xyz: [xs.xyz[0], -xs.xyz[1], xs.xyz[2]],
-        })),
+        x_secs: fuse.x_secs.map(mirrorSectionY),
       };
       traces.push(...buildFuselageTraces(mirrored, "#3B82F6", null));
     }
