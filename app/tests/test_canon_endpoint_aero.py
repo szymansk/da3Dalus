@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.models.aeroplanemodel import DesignAssumptionModel
+from app.models.aeroplanemodel import DesignAssumptionModel, WingModel, WingXSecModel
 from app.tests.conftest import seed_integration_aeroplane
 
 pytestmark = [pytest.mark.aero, pytest.mark.integration]
@@ -42,11 +42,20 @@ def test_bryan_minimum_drag_speed_through_the_endpoint(client_and_db):
 
 def test_wing_loading_of_a_stored_aeroplane_through_the_endpoint(client_and_db):
     # The main wing of the seeded aeroplane is a trapezoid from the centre line: chord 0.20 m at
-    # the root, 0.15 m at the tip, 0.5 m half span, mirrored, so S_ref = 2 * 0.5 * 0.175 = 0.175 m^2.
+    # the root, 0.15 m at the tip, 0.5 m half span, mirrored, so S_ref = 2 * 0.5 * 0.175 = 0.175 m^2
+    # once its root twist (2 deg, which tilts the root chord out of the planform) is set to 0.
     # W/S = m g / S_ref with the mass assumption (1.1 kg) and standard gravity (canon default).
     client, session_factory = client_and_db
     with session_factory() as db:
         plane = seed_integration_aeroplane(db)
+        root = (
+            db.query(WingXSecModel)
+            .join(WingModel)
+            .filter(WingModel.aeroplane_id == plane.id, WingModel.name == "main_wing")
+            .filter(WingXSecModel.sort_index == 0)
+            .one()
+        )
+        root.twist = 0.0
         db.add(
             DesignAssumptionModel(
                 aeroplane_id=plane.id,
