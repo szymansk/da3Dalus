@@ -632,6 +632,9 @@
         "opt_alpha_margin_deg": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_body_axis_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_body_merge_area_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -683,6 +686,7 @@
         "opt_body_merge_area_tolerance",
         "opt_body_merge_exponent_min",
         "opt_body_merge_exponent_max",
+        "opt_body_axis_tolerance",
         "avl_contour_margin"
       ],
       "title": "KernelConfig",

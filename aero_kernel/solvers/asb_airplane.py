@@ -12,6 +12,7 @@ from itertools import pairwise
 from typing import Any
 
 import numpy as np
+from aero_kernel.body_axis import aerobuildup_bodies
 from aero_kernel.config import config
 from aero_kernel.devices import FLAP_ROLES
 from aero_kernel.errors import ErrorCategory, FormulaError
@@ -25,7 +26,6 @@ from aero_kernel.geometry import (
 )
 from aero_kernel.geometry_properties import MainWingProperties, SurfaceProperties
 from aero_kernel.graph import AILERON_ROLES
-from aero_kernel.solver_bodies import solver_bodies
 from aero_kernel.solvers.devices import flap_segments, roll_deflection, roll_segments
 from aero_kernel.solvers.regime import SurfaceSections
 from aero_kernel.superellipse import equivalent_exponent
@@ -675,7 +675,9 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
 
     Returns:
         The ``asb.Airplane``, wings and fuselages in document order; each canopy merged into the
-        body it sits on (:func:`~aero_kernel.solver_bodies.solver_bodies`, #1355).
+        body it sits on (:func:`~aero_kernel.solver_bodies.solver_bodies`, #1355) and each body's
+        section centres placed in z on its least-squares axis
+        (:func:`~aero_kernel.body_axis.aerobuildup_bodies`, #1358).
 
     Raises:
         ValueError: If the document does not have exactly one main wing.
@@ -698,8 +700,9 @@ def to_asb_airplane(airplane: AirplaneGeometry, roll_deg: float = 0.0) -> Any:  
         _wing(asb, main_key, (airplane.wings or {})[main_key], 0.0) if flaps else built[main_key]
     )
     wings = list(built.values())
-    # every canopy merged into the body it sits on: the one producer of the solver bodies (#1355)
-    fuselages = [_fuselage(asb, fuselage) for fuselage in solver_bodies(airplane)]
+    # every canopy merged into the body it sits on (#1355), then each body's section centres put
+    # in z on its least-squares axis (#1358): the one producer of the AeroBuildup bodies
+    fuselages = [_fuselage(asb, fuselage) for fuselage in aerobuildup_bodies(airplane).bodies]
     logger.debug(
         "converted airplane %s: %d wings, %d fuselages", airplane.name, len(wings), len(fuselages)
     )

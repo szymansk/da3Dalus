@@ -3,6 +3,7 @@
 from typing import Any
 
 import pytest
+from aero_kernel.body_axis import aerobuildup_bodies
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.solver_bodies import solver_bodies
@@ -27,7 +28,7 @@ from aero_kernel.tests.asb_fakes import (
     FakeWing,
     install_fake_aerosandbox,
 )
-from aero_kernel.tests.formula_builders import near
+from aero_kernel.tests.formula_builders import all_near, near
 
 NACA = "naca2412"
 CONTOUR = [[1.0, 0.0], [0.5, 0.05], [0.0, 0.0], [0.5, -0.04], [1.0, 0.0]]
@@ -217,17 +218,54 @@ def test_a_fuselage_becomes_super_ellipse_sections_with_full_widths() -> None:
     assert isinstance(body, FakeFuselage)
     assert body.kwargs["name"] == "Body"
     sections = body.kwargs["xsecs"]
-    assert [list(s.kwargs["xyz_c"]) for s in sections] == [
-        [0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.01],
-        [0.5, 0.0, 0.0],
-    ]
+    # x and y as given; z on the body's least-squares axis (#1358)
+    assert [list(s.kwargs["xyz_c"][:2]) for s in sections] == [[0.0, 0.0], [0.2, 0.0], [0.5, 0.0]]
+    assert all_near(
+        [s.kwargs["xyz_c"][2] for s in sections],
+        least_squares_z([(0.0, 0.0), (0.2, 0.01), (0.5, 0.0)]),
+        tol=1e-15,
+    )
     assert [(s.kwargs["width"], s.kwargs["height"], s.kwargs["shape"]) for s in sections] == [
         (0.0, 0.0, 2.0),
         (0.1, 0.08, 2.5),
         (0.0, 0.0, 2.0),
     ]
     assert all(set(s.kwargs) == {"xyz_c", "width", "height", "shape"} for s in sections)
+
+
+def least_squares_z(centres: list[tuple[float, float]]) -> list[float]:
+    """The unweighted least-squares line z(x) through centres (x, z), evaluated at each x."""
+    x_mean = sum(x for x, _ in centres) / len(centres)
+    z_mean = sum(z for _, z in centres) / len(centres)
+    slope = sum((x - x_mean) * (z - z_mean) for x, z in centres)
+    slope /= sum((x - x_mean) ** 2 for x, _ in centres)
+    return [z_mean + slope * (x - x_mean) for x, _ in centres]
+
+
+def test_aerobuildup_gets_every_body_on_its_straight_axis() -> None:
+    """The one producer of the AeroBuildup bodies (#1358): canopy merge first, then the axis."""
+    document = geometry_document()
+    document["fuselages"]["Haube"] = {
+        "name": "Haube",
+        "role": "canopy",
+        "attached_to": "Body",
+        "x_secs": [
+            {"xyz": [0.15, 0.0, 0.05], "a": 0.03, "b": 0.03, "n": 2.0},
+            {"xyz": [0.25, 0.0, 0.05], "a": 0.03, "b": 0.03, "n": 2.0},
+        ],
+    }
+    plane = AirplaneGeometry.model_validate(document)
+    (body,) = to_asb_airplane(plane).kwargs["fuselages"]
+    (expected,) = aerobuildup_bodies(plane).bodies
+    assert [list(s.kwargs["xyz_c"]) for s in body.kwargs["xsecs"]] == [
+        list(s.xyz) for s in expected.x_secs
+    ]
+    (merged,) = solver_bodies(plane)
+    assert all_near(
+        [s.kwargs["xyz_c"][2] for s in body.kwargs["xsecs"]],
+        least_squares_z([(s.xyz[0], s.xyz[2]) for s in merged.x_secs]),
+        tol=1e-15,
+    )
 
 
 def with_fuselage_change(**change: object) -> AirplaneGeometry:
@@ -256,12 +294,16 @@ def test_different_upper_and_lower_exponents_become_one_equivalent_exponent() ->
     document = geometry_document()
     section = document["fuselages"]["Body"]["x_secs"][1]
     section["n_lower"] = 3.0
-    (body,) = to_asb_airplane(AirplaneGeometry.model_validate(document)).kwargs["fuselages"]
+    plane = AirplaneGeometry.model_validate(document)
+    (body,) = to_asb_airplane(plane).kwargs["fuselages"]
     converted = body.kwargs["xsecs"][1].kwargs
     assert converted["shape"] == equivalent_exponent(section["n"], 3.0)
     assert converted["width"] == 2.0 * section["a"]
     assert converted["height"] == 2.0 * section["b"]
-    assert converted["xyz_c"] == section["xyz"]
+    # the centre: x and y as given, z on the body's straight axis (#1358)
+    (straight,) = aerobuildup_bodies(plane).bodies
+    assert converted["xyz_c"] == list(straight.x_secs[1].xyz)
+    assert converted["xyz_c"][:2] == section["xyz"][:2]
 
 
 def test_an_equal_lower_exponent_is_the_same_section() -> None:

@@ -1630,6 +1630,7 @@ class OptiAdapter(SolverAdapter):
             "opt_body_merge_area_tolerance": config().opt_body_merge_area_tolerance.value,
             "opt_body_merge_exponent_min": config().opt_body_merge_exponent_min.value,
             "opt_body_merge_exponent_max": config().opt_body_merge_exponent_max.value,
+            "opt_body_axis_tolerance_m": config().opt_body_axis_tolerance.value,
         }
 
     def _model_key(self, airplane: AirplaneGeometry, roll_deg: float) -> str:

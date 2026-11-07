@@ -65,8 +65,13 @@ the precise one; the sections are the simplified drag and layout model (the fuse
 only, into the body it sits on (rule `canopy-merge`, #1355, maintainer 2026-11-05: only the visible part of
 a canopy counts); the merged sections are declared by the notice `canopy_merged_into_fuselage`, and the
 stored document is not changed. AeroBuildup and AVL receive the same merged bodies
-(`aero_kernel/solver_bodies.py`, one producer). A section's measured point contour (rule
-`fuselage-contour`, #1349) is never read by the solvers: they keep the super-ellipse parameters.
+(`aero_kernel/solver_bodies.py`, one producer). AeroBuildup alone then sees each merged body on a
+straight axis: the z of every section centre is placed on the least-squares line z(x) through all that
+body's centres, because AeroBuildup takes each segment's axis from two consecutive centres and would
+give a stepped centre crossflow drag at α = 0 (rule `fuselage-axis-straightened`, #1358, maintainer
+2026-11-07; declared by the notice `fuselage_axis_straightened`); AVL keeps the true centres. A
+section's measured point contour (rule `fuselage-contour`, #1349) is never read by the solvers: they
+keep the super-ellipse parameters.
 
 **Why this entry exists.** These were inputs, though they are the most airplane-dependent
 quantities of all: they are what the solver says about this aircraft at this operating
