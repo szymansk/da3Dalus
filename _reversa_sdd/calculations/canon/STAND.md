@@ -624,3 +624,14 @@ rather forward for the first flight. Code and severity (`notice`) unchanged, no 
 Reason: the comparison of 2026-11-04 on #1347 gave 2–11 % MAC with AVL bodies and 0.4–11 % with
 AeroBuildup; the models disagree per aircraft, so no figure is reliable, and for an RC aircraft the CG
 is set in flight, so no further investigation.
+
+**Four entries approved again (maintainer 2026-11-07).** `aerobuildup-evaluation`, `stall-speed`,
+`minimum-drag-speed-from-polar` and `minimum-sink-speed-from-polar`, reopened on 2026-11-03 by #1346
+(the kernel's drag `D_profile + k_e,D0 · D_induced`), are `approved` again with that drag. No
+computation changed on approval. Text added: `aerobuildup-evaluation` names the canopy merge (rule
+`canopy-merge`, #1355) and states that the solvers do not read the point contour (rule
+`fuselage-contour`, #1349); the approval notes of the other three carry BRYAN's reference values
+since the canopy merge (PR #1361). **Decided (maintainer 2026-11-07):** the three entries whose slug
+ends in `-from-polar` read no polar (two optimisations and a root) and are renamed after the quantity
+they produce: `minimum-drag-speed`, `minimum-sink-speed`, `zero-lift-angle`, as `stall-speed` is
+named; a rename only, in its own change.

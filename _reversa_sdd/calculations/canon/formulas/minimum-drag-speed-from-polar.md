@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: route
-status: draft
+status: approved
 output: minimum-drag-speed, max-lift-to-drag-ratio, angle-of-attack-best-glide, lift-coefficient-best-glide
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/route
   - kind/optimization
-  - status/draft
+  - status/approved
 tex: \begin{aligned}V_md = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha) \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs:
@@ -129,3 +129,8 @@ is its Probe ([[max-lift-to-drag-parabolic]]).
 > `(L/D)max = m·g / D(V_md)`, `α_md` and `C_L,md`, is now the kernel's drag (`D_profile + k_e,D0 · D_induced`,
 > see "The drag `D`" above), no longer AeroBuildup's total. The problem, the method and the convergence are
 > unchanged. The entry is back to `draft` because its computation changed.
+
+> **Approved again** (maintainer, 2026-11-07) with the kernel's drag (#1346). Reference since the canopy merge
+> (#1355, PR #1361): BRYAN `V_md` 7.665 m/s, `(L/D)max` 9.609 (before 7.231 m/s, 8.357); regression, not
+> validation against flight. The slug is to be renamed to `minimum-drag-speed` (maintainer 2026-11-07: the entry
+> reads no polar), a rename without a change to the computation.

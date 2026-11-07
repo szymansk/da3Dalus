@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: law
-status: draft
+status: approved
 output: stall-speed, max-lift-coefficient, angle-of-attack-stall, polar-stall, inverted-max-lift-coefficient, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/optimization
-  - status/draft
+  - status/approved
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {v_s: null, cl_max: null, alpha_s: null, polar: null}
@@ -258,3 +258,8 @@ can never fire is inert (ADR 0021). The Ist finding below is what the binding re
 > subtree would declare a correction they do not carry (ADR 0020). The formula that reads the polar's `C_D`
 > declares it (Soll: [[parabolic-polar-fit]] when implemented). The entry is back to `draft` because the
 > computation of one of its outputs changed.
+
+> **Approved again** (maintainer, 2026-11-07) with the kernel's drag in the `C_D` column of `polar-stall` (#1346)
+> and no `C_m` column (#1347). Reference value since the canopy merge (#1355, PR #1361): BRYAN `V_S` 5.2638 m/s,
+> `C_L,max` 1.2461 (before 5.2454 m/s, 1.2548; +0.35 %, the canopy `Haube` merged into the fuselage); regression,
+> not validation against flight.
