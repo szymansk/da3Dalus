@@ -1031,6 +1031,14 @@ def _persist_aeroplane(
                 result, component_type="WEIGHT_ITEM", component_name=item.name, exc=exc
             )
 
+    # gh-1368: a declared vehicle TotalMass is written to both places
+    # (``total_mass_kg`` and the ``mass`` assumption's estimate) through
+    # the same service the mass endpoint uses. It runs after the weight
+    # items so their aggregation does not switch the mass to CALCULATED
+    # on import; ``active_source`` stays as the assumptions feature left it.
+    if result.aeroplane.total_mass_kg is not None:
+        aeroplane_service.set_aeroplane_mass(db, aeroplane.uuid, result.aeroplane.total_mass_kg)
+
     return str(aeroplane.uuid), aeroplane.name
 
 

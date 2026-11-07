@@ -6,30 +6,40 @@ written back.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import Annotated
 
-from app.schemas.canon import CanonComputeRequest, CanonComputeResponse, CanonFleetEntry
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.schemas.canon import CanonAircraftList, CanonComputeRequest, CanonComputeResponse
 from app.services import canon_service
 
 router = APIRouter()
 
 
 @router.get(
-    "/canon/fleet",
-    operation_id="list_canon_fleet",
-    summary="List the reference aircraft of the canon/kernel view",
+    "/canon/aircraft",
+    operation_id="list_canon_aircraft",
+    summary="List the aircraft of the canon/kernel view",
+    description=(
+        "The kernel's reference fleet and, separately, the stored aeroplanes, each in its current "
+        "state (the head of its main branch) with the mass the kernel gets for it. Canon/kernel "
+        "view (development), experts only (ADR 0030)."
+    ),
 )
-def list_canon_fleet() -> list[CanonFleetEntry]:
+def list_canon_aircraft(db: Annotated[Session, Depends(get_db)]) -> CanonAircraftList:
     """The aircraft the canon/kernel view (development, experts only) can load."""
-    return canon_service.list_fleet()
+    return canon_service.list_aircraft(db)
 
 
 @router.post(
     "/canon/compute",
     operation_id="compute_canon_quantities",
-    summary="Compute canon quantities of a reference aircraft with the kernel",
+    summary="Compute canon quantities of an aircraft with the kernel",
     description=(
-        "Computes the requested quantities and their subtrees with the aero kernel and judges "
+        'Computes, for a reference-fleet aircraft (`{"fleet": "<id>"}`) or a stored '
+        'aeroplane in its stored state (`{"aeroplane": "<id>"}`), the requested quantities and their subtrees with the aero kernel and judges '
         "them against Drela's design rules. Quantities that take minutes are skipped unless "
         "`include_long_runs` is set; they are then listed in `needs_confirmation`. The kernel's "
         "log records of the request are returned in `logs`. Each computation step whose inputs "
@@ -38,6 +48,8 @@ def list_canon_fleet() -> list[CanonFleetEntry]:
         "everything. Canon/kernel view (development), experts only (ADR 0030)."
     ),
 )
-async def compute_canon_quantities(request: CanonComputeRequest) -> CanonComputeResponse:
-    """Compute canon quantities for a reference aircraft."""
-    return await canon_service.compute_canon(request)
+async def compute_canon_quantities(
+    request: CanonComputeRequest, db: Annotated[Session, Depends(get_db)]
+) -> CanonComputeResponse:
+    """Compute canon quantities for a reference aircraft or a stored aeroplane."""
+    return await canon_service.compute_canon(request, db)

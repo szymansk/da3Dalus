@@ -363,11 +363,16 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         # Create request body
         mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
 
-        result = asyncio.run(
-            create_aeroplane_total_mass_kg(
-                aeroplane_id=test_id, total_mass_kg=mass_request, response=response, db=mock_db
+        # gh-1368: the mass is also written to the ``mass`` design
+        # assumption; that service boundary is patched for this mock-DB test.
+        with patch("app.services.aeroplane_service.set_estimate") as mock_set_estimate:
+            result = asyncio.run(
+                create_aeroplane_total_mass_kg(
+                    aeroplane_id=test_id, total_mass_kg=mass_request, response=response, db=mock_db
+                )
             )
-        )
+
+        mock_set_estimate.assert_called_once_with(mock_db, test_id, "mass", test_mass)
 
         # Assertions
         mock_db.query.assert_called_once_with(AeroplaneModel)
@@ -397,11 +402,16 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         # Create request body
         mass_request = AeroplaneMassRequest(total_mass_kg=new_mass)
 
-        result = asyncio.run(
-            create_aeroplane_total_mass_kg(
-                aeroplane_id=test_id, total_mass_kg=mass_request, response=response, db=mock_db
+        # gh-1368: the mass is also written to the ``mass`` design
+        # assumption; that service boundary is patched for this mock-DB test.
+        with patch("app.services.aeroplane_service.set_estimate") as mock_set_estimate:
+            result = asyncio.run(
+                create_aeroplane_total_mass_kg(
+                    aeroplane_id=test_id, total_mass_kg=mass_request, response=response, db=mock_db
+                )
             )
-        )
+
+        mock_set_estimate.assert_called_once_with(mock_db, test_id, "mass", new_mass)
 
         # Assertions
         mock_db.query.assert_called_once_with(AeroplaneModel)
