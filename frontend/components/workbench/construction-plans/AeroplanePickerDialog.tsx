@@ -4,10 +4,8 @@ import { useState } from "react";
 import { Search, ChevronDown, X, Trash2 } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import type { Aeroplane } from "@/hooks/useAeroplanes";
-import ImportOpenVspButton, {
-  type ImportOpenVspResponse,
-  type ScaleOption,
-} from "@/components/workbench/ImportOpenVspButton";
+import ImportOpenVspButton from "@/components/workbench/ImportOpenVspButton";
+import type { ImportOpenVspResponse, ScaleOption } from "@/lib/openvspImport";
 import { ImportScaleInputs } from "@/components/workbench/ImportScaleInputs";
 
 interface AeroplanePickerDialogProps {
