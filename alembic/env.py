@@ -1,4 +1,5 @@
 import os, sys
+
 # insert the project root (one level above alembic/) onto sys.path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)
@@ -20,16 +21,18 @@ if env_db_url:
     config.set_main_option("sqlalchemy.url", env_db_url)
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# disable_existing_loggers=False: migrations also run in-process (the migration tests call
+# alembic.command), and the default would disable every logger the host process already has,
+# e.g. aero_kernel.runtime, for the rest of that process (gh-1357).
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from app.db.base import Base
-import app.models.aeroplanemodel       # this module imports Base and defines tables
+import app.models.aeroplanemodel  # this module imports Base and defines tables
 import app.models.flightprofilemodel
 import app.models.component
 import app.models.component_type
@@ -92,9 +95,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
