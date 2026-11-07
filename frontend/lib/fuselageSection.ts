@@ -155,3 +155,19 @@ export function contourWinsWarning(xs: FuselageSection): string | null {
     "the drawn or built shape."
   );
 }
+
+/**
+ * Mirror a section across the XZ plane (y -> -y) for the mirrored copy of a
+ * `symmetric` body (gh-1360). A contour is mirrored point by point as (-y, z)
+ * in reversed order, so the loop stays counter-clockwise; `0 - y` avoids -0.
+ * Same rule as the backend's `_mirror_contour_y`.
+ */
+export function mirrorSectionY<T extends FuselageSection & { xyz: number[] }>(xs: T): T {
+  const mirrored: T = { ...xs, xyz: [xs.xyz[0], -xs.xyz[1], xs.xyz[2]] };
+  if (xs.contour) {
+    mirrored.contour = xs.contour
+      .map(([y, z]): ContourPoint => [0 - y, z])
+      .reverse();
+  }
+  return mirrored;
+}

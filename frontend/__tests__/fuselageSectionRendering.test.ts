@@ -7,7 +7,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("@/lib/fetcher", () => ({ API_BASE: "http://api.test" }));
 
-import { buildFuselageTraces } from "@/components/workbench/WingOutlineViewer";
+import { buildFuselageTraces, collectAllTraces } from "@/components/workbench/WingOutlineViewer";
 import {
   buildFuselageSurface,
   saveFuselage,
@@ -16,6 +16,7 @@ import {
 } from "@/components/workbench/ImportFuselageDialog";
 import type { Fuselage } from "@/hooks/useFuselage";
 import { CANOPY_OPACITY, NEW_BODY } from "@/lib/bodyRole";
+import { mirrorSectionY, type FuselageSection } from "@/lib/fuselageSection";
 
 // Unit half-axes: the outline offset is cos/sin raised to 2/n.
 const BOXY_BELLY: XSec = { xyz: [0, 0, 0], a: 1, b: 1, n: 2, n_lower: 8 };
@@ -178,5 +179,60 @@ describe("buildFuselageTraces of a canopy (gh-1355)", () => {
       const traces = buildFuselageTraces({ name: "f", role, x_secs: [ROUND, ROUND] }, "#fff");
       expect(traces.every((t) => t.opacity === undefined)).toBe(true);
     }
+  });
+});
+
+describe("mirrored copy of a symmetric body (gh-1360)", () => {
+  // Asymmetric CCW loop in [y, z]: a right triangle hanging off +y
+  const CONTOUR: [number, number][] = [
+    [0.1, -0.2],
+    [0.5, -0.2],
+    [0.1, 0.3],
+  ];
+  const body: Fuselage = {
+    name: "gear",
+    symmetric: true,
+    x_secs: [
+      { xyz: [0, 0.4, 0], a: 1, b: 1, n: 2, contour: CONTOUR } as never,
+      { xyz: [1, 0.4, 0], a: 1, b: 1, n: 2, contour: CONTOUR } as never,
+    ],
+  };
+
+  it("draws the mirrored contour as (-y, z) in reversed order", async () => {
+    const traces = await collectAllTraces({
+      wings: [],
+      fuselages: [body],
+      visibleWings: new Set(),
+      visibleFuselages: new Set(["gear"]),
+      selectedWing: null,
+      selectedXsecIndex: null,
+      selectedFuselage: null,
+      selectedFuselageXsecIndex: null,
+      showQuarterChord: false,
+    });
+    // per body: [centreline, 2 outlines, 4 longitudinal lines] -> 7 traces
+    const perBody = traces.length / 2;
+    const original = traces[1];
+    const mirrored = traces[perBody + 1];
+    // original: centre y 0.4 + contour y, closed by repeating the first point
+    expect(original.y.slice(0, 3)).toEqual([0.5, 0.9, 0.5]);
+    // mirrored: centre y -0.4 + (-y), reversed order
+    const expectedY = [-0.1, -0.5, -0.1].map((v) => -0.4 + v);
+    const expectedZ = [0.3, -0.2, -0.2];
+    expectedY.forEach((v, i) => expect(mirrored.y[i]).toBeCloseTo(v, 9));
+    expectedZ.forEach((v, i) => expect(mirrored.z[i]).toBeCloseTo(v, 9));
+  });
+});
+
+describe("mirrorSectionY", () => {
+  it("mirrors the contour, never yields -0, and leaves a contour-less section alone", () => {
+    const m = mirrorSectionY<FuselageSection & { xyz: number[] }>({
+      xyz: [0, 0.4, 0], a: 1, b: 1, n: 2, contour: [[0, 1], [2, 3]],
+    });
+    expect(m.xyz).toEqual([0, -0.4, 0]);
+    expect(m.contour).toEqual([[-2, 3], [0, 1]]);
+    expect(Object.is(m.contour![1][0], 0)).toBe(true);
+    const plain = mirrorSectionY<FuselageSection & { xyz: number[] }>({ xyz: [0, 1, 0], a: 1, b: 1, n: 2 });
+    expect(plain.contour).toBeUndefined();
   });
 });
