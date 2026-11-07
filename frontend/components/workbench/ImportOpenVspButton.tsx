@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 
 import ImportProgressBar from "./ImportProgressBar";
+import type { ImportOpenVspResponse, ScaleOption } from "@/lib/openvspImport";
 
 /**
  * Frontend upload control for the OpenVSP `.vsp3` importer (gh-646).
@@ -22,39 +23,6 @@ import ImportProgressBar from "./ImportProgressBar";
  * direct multiplier on all length-typed fields. Masses are
  * intentionally NOT scaled (see backend service docstring).
  */
-export type ImportOpenVspWarning = {
-  component_type: string;
-  component_name: string;
-  reason: string;
-  severity: "info" | "warning" | "error";
-};
-
-export type ImportOpenVspResponse = {
-  aeroplane_uuid: string;
-  aeroplane_name: string;
-  n_wings: number;
-  n_fuselages: number;
-  n_weight_items: number;
-  warnings: ImportOpenVspWarning[];
-  lossy_components: string[];
-};
-
-/**
- * Optional scaling instruction for the import request.
- *
- * - ``none``        — import as-is, no rescale.
- * - ``target_span`` — rescale to the requested wingspan in metres.
- * - ``scale_factor``— multiply all length-typed fields by the factor.
- *
- * Both ``target_span_m`` and ``scale_factor`` are validated server-side
- * (out-of-range → 422). The UI should also enforce reasonable bounds
- * to prevent obvious mistakes.
- */
-export type ScaleOption =
-  | { mode: "none" }
-  | { mode: "target_span"; target_span_m: number }
-  | { mode: "scale_factor"; scale_factor: number };
-
 type Props = {
   onImported?: (response: ImportOpenVspResponse) => void;
   onError?: (message: string) => void;

@@ -7,7 +7,7 @@ import { parseSseStream } from "@/lib/sseStream";
 import type {
   ImportOpenVspResponse,
   ScaleOption,
-} from "./ImportOpenVspButton";
+} from "@/lib/openvspImport";
 
 /**
  * gh-737: progress bar for the streaming OpenVSP-import endpoint.
