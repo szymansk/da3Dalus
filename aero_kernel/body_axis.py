@@ -81,7 +81,7 @@ def straight_axis(body: Fuselage, tolerance: float) -> tuple[Fuselage, AxisStrai
     z = np.array([float(s.xyz[2]) for s in body.x_secs])
     dx = x - x.mean()
     spread = float(dx @ dx)
-    if spread == 0.0:  # no line in x; validation refuses such a body before it gets here
+    if spread <= 0.0:  # no line in x; validation refuses such a body before it gets here
         return body, None
     slope = float(dx @ (z - z.mean())) / spread
     line = z.mean() + slope * dx
