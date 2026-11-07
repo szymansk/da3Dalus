@@ -15,9 +15,9 @@ type: scalar
 
 # Lift coefficient at best glide · `C_L,md`
 
-The lift coefficient at the optimum of [[minimum-drag-speed-from-polar]].
+The lift coefficient at the optimum of [[minimum-drag-speed]].
 
 **Unit.** `1`
 
-**Produced by.** [[minimum-drag-speed-from-polar]]
+**Produced by.** [[minimum-drag-speed]]
 

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:9301a425b06315009761c0a286d58d601f23932d72554e39cb50ffe2e8ffd6e9",
+  "content_hash": "sha256:ef677e376b73a508377a6491d36eb686b5cf9435ef794c2b033eeb3cdbb9a68e",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -2195,46 +2195,7 @@
           ],
           "worlds": []
         },
-        "minimum-drag-speed-closed-form": {
-          "applications": [
-            {
-              "bind": {
-                "cd0": "calc:zero-lift-drag-coefficient",
-                "k": "calc:induced-drag-factor",
-                "rho": "calc:air-density",
-                "w_s": "calc:wing-loading"
-              },
-              "given": null,
-              "id": "default",
-              "produce": {
-                "v_md_probe": "calc:minimum-drag-speed-probe"
-              },
-              "when": null
-            }
-          ],
-          "cost": "instant",
-          "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
-          "inputs": {
-            "cd0": "calc:zero-lift-drag-coefficient",
-            "k": "calc:induced-drag-factor",
-            "rho": "calc:air-density",
-            "w_s": "calc:wing-loading"
-          },
-          "kind": "law",
-          "optional": [],
-          "outputs": {
-            "v_md_probe": "calc:minimum-drag-speed-probe"
-          },
-          "postconditions": [],
-          "preconditions": [],
-          "tool": "APP",
-          "uncertainty": null,
-          "variables": [],
-          "worlds": []
-        },
-        "minimum-drag-speed-from-polar": {
+        "minimum-drag-speed": {
           "applications": [
             {
               "bind": {
@@ -2288,7 +2249,46 @@
           "variables": [],
           "worlds": []
         },
-        "minimum-sink-speed-from-polar": {
+        "minimum-drag-speed-closed-form": {
+          "applications": [
+            {
+              "bind": {
+                "cd0": "calc:zero-lift-drag-coefficient",
+                "k": "calc:induced-drag-factor",
+                "rho": "calc:air-density",
+                "w_s": "calc:wing-loading"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "v_md_probe": "calc:minimum-drag-speed-probe"
+              },
+              "when": null
+            }
+          ],
+          "cost": "instant",
+          "direction": "analysis",
+          "embeds": [],
+          "embeds_closure": [],
+          "inputs": {
+            "cd0": "calc:zero-lift-drag-coefficient",
+            "k": "calc:induced-drag-factor",
+            "rho": "calc:air-density",
+            "w_s": "calc:wing-loading"
+          },
+          "kind": "law",
+          "optional": [],
+          "outputs": {
+            "v_md_probe": "calc:minimum-drag-speed-probe"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "APP",
+          "uncertainty": null,
+          "variables": [],
+          "worlds": []
+        },
+        "minimum-sink-speed": {
           "applications": [
             {
               "bind": {
@@ -3582,7 +3582,7 @@
           "variables": [],
           "worlds": []
         },
-        "zero-lift-angle-from-polar": {
+        "zero-lift-angle": {
           "applications": [
             {
               "bind": {

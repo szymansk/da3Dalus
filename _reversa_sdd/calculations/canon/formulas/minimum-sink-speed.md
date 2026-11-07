@@ -1,5 +1,5 @@
 ---
-canon: minimum-sink-speed-from-polar
+canon: minimum-sink-speed
 entry: formula
 kind: optimization
 tool: OPT
@@ -123,7 +123,7 @@ polar instead of a closed form.
 
 > **Approval confirmed** (maintainer, 2026-10-25) with the inputs `dynamic-viscosity` (μ) and `speed-of-sound`
 > (a) from air-density-isa — the Reynolds and Mach numbers of the polar, as in stall-speed and
-> minimum-drag-speed-from-polar (added with the kernel implementation, #1230).
+> minimum-drag-speed (added with the kernel implementation, #1230).
 
 > **Reopened for approval (2026-11-03, #1346).** The sink power the optimisation minimises, `D·V`, now uses the
 > kernel's drag (`D_profile + k_e,D0 · D_induced`, see "The drag `D`" above), no longer AeroBuildup's total, so
@@ -132,5 +132,5 @@ polar instead of a closed form.
 
 > **Approved again** (maintainer, 2026-11-07) with the kernel's drag (#1346). Reference since the canopy merge
 > (#1355, PR #1361): BRYAN `V_mp` 6.413 m/s, `α_mp` 3.72°, `C_L,mp` 0.840 (before 6.023 m/s, 5.15°, 0.952);
-> regression, not validation against flight. The slug is to be renamed to `minimum-sink-speed` (maintainer
-> 2026-11-07: the entry reads no polar), a rename without a change to the computation.
+> regression, not validation against flight. Renamed from `minimum-sink-speed-from-polar` to `minimum-sink-speed`
+> (maintainer 2026-11-07: the entry reads no polar); a rename only, the computation is unchanged.

@@ -1,10 +1,10 @@
 """The Opti adapter: optimisation problems over AeroBuildup (ARCHITECTURE ch. 8.8).
 
 The canon procedure for stall speed (``stall-speed``, K32 / O3) and best glide
-(``minimum-drag-speed-from-polar``): an alpha sweep brackets the first C_L extremum, IPOPT
+(``minimum-drag-speed``): an alpha sweep brackets the first C_L extremum, IPOPT
 (``asb.Opti``) then minimises V (stall) or D (best glide) on the branch before it. The stall adds one
 more sweep at the resulting V_S, the published polar at the Reynolds number of the stall. The
-zero-lift angle (``zero-lift-angle-from-polar``) is the root of C_L(V, alpha) at a given V, with its
+zero-lift angle (``zero-lift-angle``) is the root of C_L(V, alpha) at a given V, with its
 slope by automatic differentiation; a single AeroBuildup evaluation (``aerobuildup-evaluation``) is
 a numeric run. There is no fixed point on V; the bracketing sweep is made once at a speed refined
 from a first estimate. An active bound at the optimum, a missing extremum or a failed solve is an error, never a value
@@ -117,7 +117,7 @@ V_MIN_MS = 1.0
 V_MAX_MACH = 0.6
 # IPOPT: iteration limit as in the survey scripts; the convergence tolerance is IPOPT's own default
 # (``tol`` = 1e-8, IPOPT options reference), passed explicitly so that no library default is hidden
-# (canon zero-lift-angle-from-polar, "Convergence").
+# (canon zero-lift-angle, "Convergence").
 MAX_ITERATIONS = 300
 IPOPT_TOLERANCE = 1e-8
 # The NeuralFoil model AeroBuildup evaluates its sections with: "xlarge", the author's default, at the
@@ -286,7 +286,7 @@ class SweepRequest(BaseModel):
 
 
 class BestGlideSolution(BaseModel):
-    """The solution of the best-glide problem (canon ``minimum-drag-speed-from-polar``).
+    """The solution of the best-glide problem (canon ``minimum-drag-speed``).
 
     Attributes:
         v_md: Minimum-drag speed in m/s.
@@ -318,7 +318,7 @@ class BestGlide(BaseModel):
 
 
 class MinSinkSolution(BaseModel):
-    """The solution of the minimum-sink problem (canon ``minimum-sink-speed-from-polar``).
+    """The solution of the minimum-sink problem (canon ``minimum-sink-speed``).
 
     Attributes:
         v_mp: Minimum-sink speed in m/s.
@@ -742,7 +742,7 @@ GLIDE_ALPHA_FRACTION = 0.5
 
 
 def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]:
-    """Solve the best-glide problem in the pool worker (canon ``minimum-drag-speed-from-polar``).
+    """Solve the best-glide problem in the pool worker (canon ``minimum-drag-speed``).
 
     The same bracketing as the stall (the window of alpha ends one sweep step past the first
     C_L peak), then IPOPT minimises ``D`` subject to ``L = n m g``, ``D`` the kernel's drag
@@ -814,7 +814,7 @@ def _stall_limited_warning(solution: MinSinkSolution) -> KernelWarning:
 
 
 def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
-    """Solve the minimum-sink problem in the pool worker (canon ``minimum-sink-speed-from-polar``).
+    """Solve the minimum-sink problem in the pool worker (canon ``minimum-sink-speed``).
 
     The same bracketing as the stall, but the window of alpha ends at the first C_L peak itself,
     then IPOPT minimises ``D V`` subject to ``L = n m g``, ``D`` the kernel's drag (``kernel_drag``,
@@ -1456,7 +1456,7 @@ class ZeroLiftRequest(BaseModel):
 
 
 class ZeroLiftSolution(BaseModel):
-    """The root of the lift curve and its slope there (canon ``zero-lift-angle-from-polar``).
+    """The root of the lift curve and its slope there (canon ``zero-lift-angle``).
 
     Attributes:
         alpha_0_deg: The zero-lift angle of attack in degrees.
@@ -1483,7 +1483,7 @@ class ZeroLift(BaseModel):
     warnings: tuple[KernelWarning, ...]
 
 
-# The start of the zero-lift solve: 0 deg (canon zero-lift-angle-from-polar, "Method"); the root is the
+# The start of the zero-lift solve: 0 deg (canon zero-lift-angle, "Method"); the root is the
 # one nearest it. A start only, not a bound: no angle range is imposed (ch. 8.11).
 ZERO_LIFT_START_DEG = 0.0
 ZERO_LIFT_HINT = (
@@ -1547,8 +1547,8 @@ class OptiAdapter(SolverAdapter):
 
     ``stall`` minimises V, ``best_glide`` minimises D and ``min_sink`` minimises D V subject to the
     lift balance, all on the pre-stall branch bracketed by an alpha sweep (canon ``stall-speed``,
-    ``minimum-drag-speed-from-polar`` and ``minimum-sink-speed-from-polar``); ``zero_lift`` solves
-    ``C_L = 0`` (``zero-lift-angle-from-polar``); ``evaluate`` runs AeroBuildup at one operating point
+    ``minimum-drag-speed`` and ``minimum-sink-speed``); ``zero_lift`` solves
+    ``C_L = 0`` (``zero-lift-angle``); ``evaluate`` runs AeroBuildup at one operating point
     (``aerobuildup-evaluation``, tool AB: this adapter owns every AeroBuildup call, ADR 0022).
 
     Attributes:
@@ -1956,7 +1956,7 @@ class OptiAdapter(SolverAdapter):
         return Evaluation(forces=forces, warnings=tuple(warnings))
 
     async def zero_lift(self, airplane: AirplaneGeometry, air: AirState, v_ms: float) -> ZeroLift:
-        """The root of ``C_L(V, alpha)`` and ``dC_L/dalpha`` there (canon ``zero-lift-angle-from-polar``).
+        """The root of ``C_L(V, alpha)`` and ``dC_L/dalpha`` there (canon ``zero-lift-angle``).
 
         The job carries the airplane's model key, the same as best glide's and minimum sink's for
         this airplane, so it is routed to the worker that holds the model function (ch. 8.10).

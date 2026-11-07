@@ -852,7 +852,7 @@ caller's responsibility.
     polars, and `sweep_lift`, the bracketing lift curves), the recording runs (`_confidence_run`), and the start runs of the roll (`_roll_start`)
     stay numeric AeroBuildup runs: they are no symbolic builds and their values must
     not move. The worker reports in its diagnostics whether the function was built (with the time) or
-    reused; the parent logs it at `DEBUG`. `zero_lift_worker` (canon `zero-lift-angle-from-polar`) solves
+    reused; the parent logs it at `DEBUG`. `zero_lift_worker` (canon `zero-lift-angle`) solves
     `C_L(V, α) = 0` on α alone (start 0°, no bounds) and reads `C_Lα` as the CasADi Jacobian of the same
     `C_L` expression at the root, per degree of the model's α converted to per radian: an automatic
     derivative of the solved model, no finite-difference step. Its request carries the airplane's model key,
@@ -1860,8 +1860,8 @@ model (part of `IMPORT_REPORT.md`).
 | `mean-geometric-chord` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `min-sustained-turn-radius` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
 | `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later |
-| `minimum-drag-speed-from-polar` | optimization | OPT | route | 5 → 2 | 1 | – | – | seconds | core chain |
-| `minimum-sink-speed-from-polar` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | core chain |
+| `minimum-drag-speed` | optimization | OPT | route | 5 → 2 | 1 | – | – | seconds | core chain |
+| `minimum-sink-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | core chain |
 | `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe |
 | `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later |
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
@@ -1880,7 +1880,7 @@ model (part of `IMPORT_REPORT.md`).
 | `vertical-tail-volume` | law | APP | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `weight-from-mass` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `wing-loading` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
-| `zero-lift-angle-from-polar` | optimization | OPT | single | 5 → 2 | 2 | – | – | seconds | later · implemented (#1334) |
+| `zero-lift-angle` | optimization | OPT | single | 5 → 2 | 2 | – | – | seconds | later · implemented (#1334) |
 
 *57 entries; core chain 27, probes 6, later 24. `airplane-configuration` added, `inverted-max-lift-coefficient` removed (its output is `stall-speed`'s `inverted` application).*
 

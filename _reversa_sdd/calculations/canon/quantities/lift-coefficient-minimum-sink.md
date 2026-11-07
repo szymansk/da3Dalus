@@ -14,10 +14,10 @@ type: scalar
 
 # Lift coefficient at minimum sink · `C_L,mp`
 
-The lift coefficient at the optimum of [[minimum-sink-speed-from-polar]].
+The lift coefficient at the optimum of [[minimum-sink-speed]].
 
 **Unit.** `1`
 
-**Produced by.** [[minimum-sink-speed-from-polar]]
+**Produced by.** [[minimum-sink-speed]]
 
 **Used by.** [[turn-sideslip]]

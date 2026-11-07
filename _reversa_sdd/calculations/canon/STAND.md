@@ -635,3 +635,6 @@ since the canopy merge (PR #1361). **Decided (maintainer 2026-11-07):** the thre
 ends in `-from-polar` read no polar (two optimisations and a root) and are renamed after the quantity
 they produce: `minimum-drag-speed`, `minimum-sink-speed`, `zero-lift-angle`, as `stall-speed` is
 named; a rename only, in its own change.
+**Done (2026-11-07):** renamed in the canon, `canon_model.json`, the aero_kernel (modules
+`aero_kernel/formulas/minimum_drag_speed.py`, `minimum_sink_speed.py`, `zero_lift_angle.py`) and the
+navigator; older entries of this file and ADR 0026 keep the names they were written with.

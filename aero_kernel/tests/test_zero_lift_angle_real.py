@@ -1,4 +1,4 @@
-"""zero-lift-angle-from-polar and aerobuildup-evaluation against the real AeroBuildup (aero tier).
+"""zero-lift-angle and aerobuildup-evaluation against the real AeroBuildup (aero tier).
 
 The BRYAN reference of the canon entry (8 m/s, sea level): root -3.6 deg, C_Lalpha 5.29 /rad, three
 IPOPT iterations, residual |C_L| about 1e-9. The slope is the automatic derivative; a central finite

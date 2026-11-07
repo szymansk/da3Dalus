@@ -12,8 +12,8 @@ from aero_kernel.formulas.airplane_geometry import airplane_geometry
 from aero_kernel.formulas.aspect_ratio import aspect_ratio
 from aero_kernel.formulas.dynamic_pressure import dynamic_pressure
 from aero_kernel.formulas.mean_geometric_chord import mean_geometric_chord
-from aero_kernel.formulas.minimum_drag_speed_from_polar import minimum_drag_speed_from_polar
-from aero_kernel.formulas.minimum_sink_speed_from_polar import minimum_sink_speed_from_polar
+from aero_kernel.formulas.minimum_drag_speed import minimum_drag_speed
+from aero_kernel.formulas.minimum_sink_speed import minimum_sink_speed
 from aero_kernel.formulas.stall_speed import stall_speed
 from aero_kernel.formulas.values import number
 from aero_kernel.formulas.weight_from_mass import weight_from_mass
@@ -290,8 +290,8 @@ async def test_minimum_drag_speed_asks_the_optimiser_with_the_bound_air_and_retu
     stub = StubOpti()
     x = stall_x()
     x["n_load"] = 1.0
-    assert set(x) == set(MODEL.formula("minimum-drag-speed-from-polar").inputs)  # type: ignore[union-attr]
-    result = await minimum_drag_speed_from_polar(x, context_with(StubAtmosphere({}), opti=stub))
+    assert set(x) == set(MODEL.formula("minimum-drag-speed").inputs)  # type: ignore[union-attr]
+    result = await minimum_drag_speed(x, context_with(StubAtmosphere({}), opti=stub))
     ((airplane, mass, gravity, n_load, air),) = stub.glide_calls
     assert airplane is x["airplane"]
     assert (mass, gravity, n_load) == (1.5, 9.81, 1.0)
@@ -313,7 +313,7 @@ async def test_minimum_drag_speed_forwards_the_regime_warnings_of_the_optimiser(
             return BestGlide(solution=glide.solution, warnings=(warning,))
 
     context = context_with(StubAtmosphere({}), opti=Warned(), origin="minimum-drag-speed")
-    await minimum_drag_speed_from_polar(stall_x(), context)
+    await minimum_drag_speed(stall_x(), context)
     (warning,) = context.warnings
     assert (warning.code, warning.origin, warning.detail) == (
         "reynolds_bubble_sensitive",
@@ -327,7 +327,7 @@ async def test_minimum_drag_speed_rejects_a_value_that_is_not_the_geometry() -> 
     x["airplane"] = 1.0
     context = context_with(StubAtmosphere({}))
     with pytest.raises(TypeError, match="airplane"):
-        await minimum_drag_speed_from_polar(x, context)
+        await minimum_drag_speed(x, context)
 
 
 async def test_minimum_sink_speed_asks_the_optimiser_with_the_bound_air_and_returns_its_outputs() -> (
@@ -335,8 +335,8 @@ async def test_minimum_sink_speed_asks_the_optimiser_with_the_bound_air_and_retu
 ):
     stub = StubOpti()
     x = stall_x()
-    assert set(x) == set(MODEL.formula("minimum-sink-speed-from-polar").inputs)  # type: ignore[union-attr]
-    result = await minimum_sink_speed_from_polar(x, context_with(StubAtmosphere({}), opti=stub))
+    assert set(x) == set(MODEL.formula("minimum-sink-speed").inputs)  # type: ignore[union-attr]
+    result = await minimum_sink_speed(x, context_with(StubAtmosphere({}), opti=stub))
     ((airplane, mass, gravity, n_load, air),) = stub.sink_calls
     assert airplane is x["airplane"]
     assert (mass, gravity, n_load) == (1.5, 9.81, 1.0)
@@ -359,7 +359,7 @@ async def test_minimum_sink_speed_forwards_the_regime_warnings_of_the_optimiser(
             return MinSink(solution=sink.solution, warnings=(warning,))
 
     context = context_with(StubAtmosphere({}), opti=Warned(), origin="minimum-sink-speed")
-    await minimum_sink_speed_from_polar(stall_x(), context)
+    await minimum_sink_speed(stall_x(), context)
     (warning,) = context.warnings
     assert (warning.code, warning.origin, warning.detail) == (
         "reynolds_bubble_sensitive",
@@ -376,7 +376,7 @@ async def test_minimum_sink_speed_passes_a_failed_solve_on_without_a_value() -> 
     context = context_with(StubAtmosphere({}), opti=Failing())
     x = stall_x()
     with pytest.raises(FormulaError) as raised:
-        await minimum_sink_speed_from_polar(x, context)
+        await minimum_sink_speed(x, context)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
 
 
@@ -385,4 +385,4 @@ async def test_minimum_sink_speed_rejects_a_value_that_is_not_the_geometry() -> 
     x["airplane"] = 1.0
     context = context_with(StubAtmosphere({}))
     with pytest.raises(TypeError, match="airplane"):
-        await minimum_sink_speed_from_polar(x, context)
+        await minimum_sink_speed(x, context)

@@ -1,4 +1,4 @@
-"""minimum-drag-speed-from-polar through the engine on the shipped canon, stub optimiser (fast tier)."""
+"""minimum-drag-speed through the engine on the shipped canon, stub optimiser (fast tier)."""
 
 import math
 

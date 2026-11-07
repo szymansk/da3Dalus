@@ -18,4 +18,4 @@ Best achievable glide ratio over the polar.
 
 **Unit.** `1`
 
-**Produced by.** [[minimum-drag-speed-from-polar]]
+**Produced by.** [[minimum-drag-speed]]

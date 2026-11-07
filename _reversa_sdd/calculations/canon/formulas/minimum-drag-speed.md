@@ -1,5 +1,5 @@
 ---
-canon: minimum-drag-speed-from-polar
+canon: minimum-drag-speed
 entry: formula
 kind: optimization
 tool: OPT
@@ -132,5 +132,5 @@ is its Probe ([[max-lift-to-drag-parabolic]]).
 
 > **Approved again** (maintainer, 2026-11-07) with the kernel's drag (#1346). Reference since the canopy merge
 > (#1355, PR #1361): BRYAN `V_md` 7.665 m/s, `(L/D)max` 9.609 (before 7.231 m/s, 8.357); regression, not
-> validation against flight. The slug is to be renamed to `minimum-drag-speed` (maintainer 2026-11-07: the entry
-> reads no polar), a rename without a change to the computation.
+> validation against flight. Renamed from `minimum-drag-speed-from-polar` to `minimum-drag-speed`
+> (maintainer 2026-11-07: the entry reads no polar); a rename only, the computation is unchanged.

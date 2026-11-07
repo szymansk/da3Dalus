@@ -20,5 +20,5 @@ The slope `∂C_L/∂α` of the computed lift curve at its zero-lift point, at t
 
 **Unit.** `1/rad`
 
-**Produced by.** [[zero-lift-angle-from-polar]]
+**Produced by.** [[zero-lift-angle]]
 

@@ -1,4 +1,4 @@
-"""zero-lift-angle-from-polar: the root of C_L(V, alpha) and dC_L/dalpha there, at V_md and V_mp.
+"""zero-lift-angle: the root of C_L(V, alpha) and dC_L/dalpha there, at V_md and V_mp.
 
 Fast tier: the formula against a stub optimiser, and both applications through the engine on the
 shipped canon (each binds the speed of its optimum).
@@ -7,7 +7,7 @@ shipped canon (each binds the speed of its optimum).
 import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.context import Value
-from aero_kernel.formulas.zero_lift_angle_from_polar import zero_lift_angle_from_polar
+from aero_kernel.formulas.zero_lift_angle import zero_lift_angle
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import KernelWarning, QuantityStatus
 from aero_kernel.solvers.air import AirState
@@ -34,7 +34,7 @@ def inputs(application: str) -> dict[str, Value]:
     speed = "minimum-drag-speed" if application == "best_glide" else "minimum-sink-speed"
     return inputs_from_model(
         MODEL,
-        "zero-lift-angle-from-polar",
+        "zero-lift-angle",
         {
             "airplane": AirplaneGeometry.model_validate(airplane_document()),
             speed: 9.0,
@@ -52,7 +52,7 @@ async def test_the_formula_returns_the_root_and_the_slope_at_the_bound_speed(
 ) -> None:
     stub = StubOpti()
     context = context_with(StubAtmosphere({}), opti=stub)
-    result = await zero_lift_angle_from_polar(inputs(application), context)
+    result = await zero_lift_angle(inputs(application), context)
     expected = stub_zero_lift(9.0)
     assert result == {"alpha_0": expected.alpha_0_deg, "cl_alpha": expected.cl_alpha_per_rad}
     ((_, air, v),) = stub.zero_lift_calls
@@ -70,7 +70,7 @@ async def test_the_adapters_caveats_become_the_formulas_warnings() -> None:
             return ZeroLift(solution=solution, warnings=(warning,))
 
     context = context_with(StubAtmosphere({}), opti=Caveated(), origin="zero-lift-angle-best-glide")
-    await zero_lift_angle_from_polar(inputs("best_glide"), context)
+    await zero_lift_angle(inputs("best_glide"), context)
     (warning,) = context.warnings
     assert (warning.code, warning.origin) == ("reynolds_outside_band", "zero-lift-angle-best-glide")
 

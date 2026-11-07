@@ -20,8 +20,8 @@ from aero_kernel.formulas import (
     lift_coefficient_required,
     lift_to_drag_ratio,
     mean_geometric_chord,
-    minimum_drag_speed_from_polar,
-    minimum_sink_speed_from_polar,
+    minimum_drag_speed,
+    minimum_sink_speed,
     neutral_point,
     roll_rate,
     rudder_roll_authority,
@@ -36,7 +36,7 @@ from aero_kernel.formulas import (
     vertical_tail_volume,
     weight_from_mass,
     wing_loading,
-    zero_lift_angle_from_polar,
+    zero_lift_angle,
 )
 from aero_kernel.registry import DEFAULT_REGISTRY
 
@@ -56,8 +56,8 @@ __all__ = [
     "lift_coefficient_required",
     "lift_to_drag_ratio",
     "mean_geometric_chord",
-    "minimum_drag_speed_from_polar",
-    "minimum_sink_speed_from_polar",
+    "minimum_drag_speed",
+    "minimum_sink_speed",
     "neutral_point",
     "roll_rate",
     "rudder_roll_authority",
@@ -72,7 +72,7 @@ __all__ = [
     "vertical_tail_volume",
     "weight_from_mass",
     "wing_loading",
-    "zero_lift_angle_from_polar",
+    "zero_lift_angle",
 ]
 
 DEFAULT_REGISTRY.freeze()
