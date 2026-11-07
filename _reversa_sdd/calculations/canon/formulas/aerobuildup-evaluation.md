@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 tool: AB
 shape: law
-status: draft
+status: approved
 output: lift-force, drag-force
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
-  - status/draft
+  - status/approved
 inputs: {airplane: airplane, v: flight-speed, alpha: angle-of-attack, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {l: lift-force, d: drag-force}
 ---
@@ -61,6 +61,12 @@ AeroSandbox then computes of the equivalent section are its own closed-form fits
 gamma function, `xsec_perimeter` within 0.3 % near `n` = 2 and up to 7 % at `n` ≈ 45, a property of ASB's fit at
 the near-rectangular sections of CHEKKER, and independent of the substitution). The fuselage's STEP geometry is
 the precise one; the sections are the simplified drag and layout model (the fuselage in the xsec roles).
+**Canopies and contours.** Before the conversion, every body of role `canopy` is merged, for the solvers
+only, into the body it sits on (rule `canopy-merge`, #1355, maintainer 2026-11-05: only the visible part of
+a canopy counts); the merged sections are declared by the notice `canopy_merged_into_fuselage`, and the
+stored document is not changed. AeroBuildup and AVL receive the same merged bodies
+(`aero_kernel/solver_bodies.py`, one producer). A section's measured point contour (rule
+`fuselage-contour`, #1349) is never read by the solvers: they keep the super-ellipse parameters.
 
 **Why this entry exists.** These were inputs, though they are the most airplane-dependent
 quantities of all: they are what the solver says about this aircraft at this operating
@@ -110,3 +116,7 @@ point. Verified against the installed AeroSandbox 4.2.9 source.
 > factor removed from AeroBuildup's induced drag, because NeuralFoil's section polars already carry the
 > lift-dependent profile drag). `L`, the inputs and the rest of the procedure are unchanged. The entry is back
 > to `draft` because its computation changed.
+
+> **Approved again** (maintainer, 2026-11-07) with `D = D_profile + k_e,D0 · D_induced` (#1346). The paragraph
+> "Canopies and contours" was added on approval (text only, no change to the computation): it names the
+> canopy merge (#1355) and states that the solvers do not read the point contour (#1349).

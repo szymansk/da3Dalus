@@ -4,7 +4,7 @@ entry: formula
 kind: optimization
 tool: OPT
 shape: law
-status: draft
+status: approved
 output: minimum-sink-speed, angle-of-attack-minimum-sink, lift-coefficient-minimum-sink
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -14,7 +14,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/optimization
-  - status/draft
+  - status/approved
 tex: \begin{aligned}V_mp = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha)\,V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density, mu: dynamic-viscosity, a: speed-of-sound}
 outputs: {v_mp: minimum-sink-speed, alpha_mp: angle-of-attack-minimum-sink, cl_mp: lift-coefficient-minimum-sink}
@@ -129,3 +129,8 @@ polar instead of a closed form.
 > kernel's drag (`D_profile + k_e,D0 · D_induced`, see "The drag `D`" above), no longer AeroBuildup's total, so
 > `V_mp`, `α_mp` and `C_L,mp` change. The problem, the method, the stall-limited case and the convergence are
 > unchanged. The entry is back to `draft` because its computation changed.
+
+> **Approved again** (maintainer, 2026-11-07) with the kernel's drag (#1346). Reference since the canopy merge
+> (#1355, PR #1361): BRYAN `V_mp` 6.413 m/s, `α_mp` 3.72°, `C_L,mp` 0.840 (before 6.023 m/s, 5.15°, 0.952);
+> regression, not validation against flight. The slug is to be renamed to `minimum-sink-speed` (maintainer
+> 2026-11-07: the entry reads no polar), a rename without a change to the computation.

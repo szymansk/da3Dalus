@@ -88,8 +88,8 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | formula | stage 1 | inputs | missing |
 |---|---|---|---|
 | advance-ratio-from-speed | draft | 2 of 3 | propeller-speed (motor-propeller-equilibrium: not approved) |
-| aerobuildup-evaluation | draft | 6 of 6 |  |
-| aileron-deflection-required | approved | 7 of 9 | approach-speed (stall-speed: not approved via speed-from-stall-margin); roll-rate-target-approach (no data source) |
+| aerobuildup-evaluation | approved | 6 of 6 |  |
+| aileron-deflection-required | approved | 8 of 9 | roll-rate-target-approach (no data source) |
 | air-density-isa | approved | 1 of 1 |  |
 | airplane-components | approved | 1 of 1 |  |
 | airplane-configuration | approved | 3 of 3 |  |
@@ -98,59 +98,59 @@ Stage 1 is the formula's own status; stage 2 is derived and transitive: every in
 | battery-mass-from-capacity | draft | 1 of 2 | battery-energy-required (no data source) |
 | best-angle-of-climb | draft | 12 of 12 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | best-rate-of-climb | draft | 12 of 12 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
-| butterfly-approach | draft | 5 of 8 | approach-speed (stall-speed: not approved via speed-from-stall-margin); crow-aileron-deflection (no data source); crow-flap-deflection (no data source) |
-| cg-for-target-margin | approved | 2 of 3 | neutral-point (minimum-drag-speed-from-polar: not approved via neutral-point) |
+| butterfly-approach | draft | 6 of 8 | crow-aileron-deflection (no data source); crow-flap-deflection (no data source) |
+| cg-for-target-margin | approved | 3 of 3 |  |
 | control-surface-hinge-moments | approved | 12 of 12 |  |
 | cruise-target-performance | draft | 14 of 14 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
 | dive-speed | draft | 12 of 12 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
-| drag-polar | draft | 0 of 3 | induced-drag-factor (not approved; aspect-ratio: not approved via induced-drag-factor; parabolic-polar-fit: not approved via induced-drag-factor; stall-speed: not approved via induced-drag-factor, parabolic-polar-fit); lift-coefficient (lift-coefficient-required: not approved); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; stall-speed: not approved via parabolic-polar-fit) |
+| drag-polar | draft | 0 of 3 | induced-drag-factor (not approved; aspect-ratio: not approved via induced-drag-factor; parabolic-polar-fit: not approved via induced-drag-factor); lift-coefficient (lift-coefficient-required: not approved); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
 | dynamic-pressure | approved | 2 of 2 |  |
-| endurance-and-range | draft | 13 of 15 | minimum-drag-speed (minimum-drag-speed-from-polar: not approved); minimum-sink-speed (minimum-sink-speed-from-polar: not approved); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
-| endurance-and-range-optimum | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load; embedded: stall-speed: not approved |
-| horizontal-tail-arm | approved | 1 of 2 | centre-of-gravity-design (minimum-drag-speed-from-polar: not approved via cg-for-target-margin, neutral-point) |
-| horizontal-tail-volume | approved | 3 of 4 | horizontal-tail-arm (minimum-drag-speed-from-polar: not approved via horizontal-tail-arm, cg-for-target-margin, neutral-point) |
-| induced-drag-factor | draft | 0 of 2 | aspect-ratio (not approved); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; stall-speed: not approved via parabolic-polar-fit) |
-| lateral-static-stability-app | approved | 4 of 6 | approach-speed (stall-speed: not approved via speed-from-stall-margin); centre-of-gravity-design (minimum-drag-speed-from-polar: not approved via cg-for-target-margin, neutral-point) |
-| lateral-static-stability-md | approved | 4 of 6 | centre-of-gravity-design (minimum-drag-speed-from-polar: not approved via cg-for-target-margin, neutral-point); minimum-drag-speed (minimum-drag-speed-from-polar: not approved) |
-| lateral-static-stability-mp | approved | 4 of 6 | centre-of-gravity-design (minimum-drag-speed-from-polar: not approved via cg-for-target-margin, neutral-point); minimum-sink-speed (minimum-sink-speed-from-polar: not approved) |
+| endurance-and-range | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
+| endurance-and-range-optimum | draft | 15 of 15 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: motor-propeller-part-load: not approved; embedded: propeller-table-lookup: not approved via motor-propeller-part-load; embedded: thrust-at-airspeed-from-coefficient: not approved via motor-propeller-part-load |
+| horizontal-tail-arm | approved | 2 of 2 |  |
+| horizontal-tail-volume | approved | 4 of 4 |  |
+| induced-drag-factor | draft | 0 of 2 | aspect-ratio (not approved); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
+| lateral-static-stability-app | approved | 6 of 6 |  |
+| lateral-static-stability-md | approved | 6 of 6 |  |
+| lateral-static-stability-mp | approved | 6 of 6 |  |
 | lift-coefficient-required | draft | 5 of 5 |  |
-| lift-to-drag-ratio | approved | 0 of 2 | drag-force (aerobuildup-evaluation: not approved); lift-force (aerobuildup-evaluation: not approved) |
+| lift-to-drag-ratio | approved | 2 of 2 |  |
 | maneuvering-speed | approved | 5 of 5 |  |
-| mass-envelope | draft | 18 of 21 | neutral-point (minimum-drag-speed-from-polar: not approved via neutral-point); stall-speed-takeoff (stall-speed: not approved); takeoff-speed (stall-speed: not approved via speed-from-stall-margin); embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: best-rate-of-climb: not approved; embedded: propeller-table-lookup: not approved via best-rate-of-climb; embedded: thrust-at-airspeed-from-coefficient: not approved via best-rate-of-climb; embedded: max-level-speed: not approved; embedded: stall-speed: not approved |
+| mass-envelope | draft | 21 of 21 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: best-rate-of-climb: not approved; embedded: propeller-table-lookup: not approved via best-rate-of-climb; embedded: thrust-at-airspeed-from-coefficient: not approved via best-rate-of-climb; embedded: max-level-speed: not approved |
 | max-level-speed | draft | 12 of 12 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
-| max-lift-to-drag-parabolic | draft | 0 of 3 | aspect-ratio (not approved); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; stall-speed: not approved via parabolic-polar-fit); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; stall-speed: not approved via parabolic-polar-fit) |
+| max-lift-to-drag-parabolic | draft | 0 of 3 | aspect-ratio (not approved); oswald-efficiency (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
 | max-mass-structure | draft | 1 of 2 | break-load-factor-positive (spar-break-load-factor: not approved) |
 | max-sustained-turn-rate | draft | 13 of 13 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | mean-geometric-chord | draft | 2 of 2 |  |
 | min-sustained-turn-radius | draft | 13 of 13 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
-| minimum-drag-speed-closed-form | draft | 2 of 4 | induced-drag-factor (not approved; aspect-ratio: not approved via induced-drag-factor; parabolic-polar-fit: not approved via induced-drag-factor; stall-speed: not approved via induced-drag-factor, parabolic-polar-fit); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit; stall-speed: not approved via parabolic-polar-fit) |
-| minimum-drag-speed-from-polar | draft | 6 of 6 |  |
-| minimum-sink-speed-from-polar | draft | 6 of 6 |  |
+| minimum-drag-speed-closed-form | draft | 2 of 4 | induced-drag-factor (not approved; aspect-ratio: not approved via induced-drag-factor; parabolic-polar-fit: not approved via induced-drag-factor); zero-lift-drag-coefficient (parabolic-polar-fit: not approved; aspect-ratio: not approved via parabolic-polar-fit) |
+| minimum-drag-speed-from-polar | approved | 6 of 6 |  |
+| minimum-sink-speed-from-polar | approved | 6 of 6 |  |
 | motor-propeller-equilibrium | draft | 10 of 10 |  |
 | motor-propeller-part-load | draft | 13 of 13 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
-| neutral-point | approved | 5 of 6 | minimum-drag-speed (minimum-drag-speed-from-polar: not approved) |
-| parabolic-polar-fit | draft | 4 of 6 | aspect-ratio (not approved); max-lift-coefficient (stall-speed: not approved) |
+| neutral-point | approved | 6 of 6 |  |
+| parabolic-polar-fit | draft | 5 of 6 | aspect-ratio (not approved) |
 | propeller-table-lookup | draft | 1 of 2 | advance-ratio (advance-ratio-from-speed: not approved; motor-propeller-equilibrium: not approved via advance-ratio-from-speed) |
-| roll-rate | draft | 8 of 9 | approach-speed (stall-speed: not approved via speed-from-stall-margin) |
+| roll-rate | draft | 9 of 9 |  |
 | roll-rate-cruise-target | approved | 6 of 6 |  |
-| rudder-roll-authority | approved | 0 of 3 | spiral-parameter-md (minimum-drag-speed-from-polar: not approved via spiral-parameter; minimum-sink-speed-from-polar: not approved via spiral-parameter); spiral-parameter-mp (minimum-drag-speed-from-polar: not approved via spiral-parameter; minimum-sink-speed-from-polar: not approved via spiral-parameter); vertical-tail-volume (minimum-drag-speed-from-polar: not approved via vertical-tail-volume, vertical-tail-arm, cg-for-target-margin, neutral-point) |
-| sink-rate | draft | 1 of 3 | drag-coefficient-parabolic (drag-polar: not approved; induced-drag-factor: not approved via drag-polar; aspect-ratio: not approved via drag-polar, induced-drag-factor; parabolic-polar-fit: not approved via drag-polar, induced-drag-factor; stall-speed: not approved via drag-polar, induced-drag-factor, parabolic-polar-fit; lift-coefficient-required: not approved via drag-polar); lift-coefficient (lift-coefficient-required: not approved) |
+| rudder-roll-authority | approved | 3 of 3 |  |
+| sink-rate | draft | 1 of 3 | drag-coefficient-parabolic (drag-polar: not approved; induced-drag-factor: not approved via drag-polar; aspect-ratio: not approved via drag-polar, induced-drag-factor; parabolic-polar-fit: not approved via drag-polar, induced-drag-factor; lift-coefficient-required: not approved via drag-polar); lift-coefficient (lift-coefficient-required: not approved) |
 | spanwise-loads | approved | 6 of 6 |  |
 | spar-break-load-factor | draft | 5 of 5 |  |
-| speed-from-stall-margin | approved | 3 of 5 | stall-speed-landing (stall-speed: not approved); stall-speed-takeoff (stall-speed: not approved) |
-| spiral-parameter | approved | 6 of 9 | minimum-drag-speed (minimum-drag-speed-from-polar: not approved); minimum-sink-speed (minimum-sink-speed-from-polar: not approved); vertical-tail-arm (minimum-drag-speed-from-polar: not approved via vertical-tail-arm, cg-for-target-margin, neutral-point) |
-| stall-break | approved | 2 of 5 | angle-of-attack-stall (stall-speed: not approved); max-lift-coefficient (stall-speed: not approved); polar-stall (stall-speed: not approved) |
-| stall-speed | draft | 8 of 8 |  |
-| stall-wing-loading-limit | approved | 1 of 3 | max-lift-coefficient (stall-speed: not approved); stall-speed-target (no data source) |
-| static-margin | draft | 2 of 3 | neutral-point (minimum-drag-speed-from-polar: not approved via neutral-point) |
+| speed-from-stall-margin | approved | 5 of 5 |  |
+| spiral-parameter | approved | 9 of 9 |  |
+| stall-break | approved | 5 of 5 |  |
+| stall-speed | approved | 8 of 8 |  |
+| stall-wing-loading-limit | approved | 2 of 3 | stall-speed-target (no data source) |
+| static-margin | draft | 3 of 3 |  |
 | static-thrust-to-weight | draft | 11 of 11 | embedded: advance-ratio-from-speed: not approved; embedded: motor-propeller-equilibrium: not approved via advance-ratio-from-speed; embedded: propeller-table-lookup: not approved; embedded: thrust-at-airspeed-from-coefficient: not approved |
 | thrust-at-airspeed-from-coefficient | draft | 2 of 4 | propeller-speed (motor-propeller-equilibrium: not approved); thrust-coefficient (propeller-table-lookup: not approved; advance-ratio-from-speed: not approved via propeller-table-lookup; motor-propeller-equilibrium: not approved via propeller-table-lookup, advance-ratio-from-speed) |
-| turn-sideslip | approved | 4 of 7 | dihedral-effect-mp (minimum-drag-speed-from-polar: not approved via lateral-static-stability-mp, cg-for-target-margin, neutral-point; minimum-sink-speed-from-polar: not approved via lateral-static-stability-mp); lift-coefficient-minimum-sink (minimum-sink-speed-from-polar: not approved); roll-due-to-yaw-rate-mp (minimum-drag-speed-from-polar: not approved via lateral-static-stability-mp, cg-for-target-margin, neutral-point; minimum-sink-speed-from-polar: not approved via lateral-static-stability-mp) |
-| vertical-tail-arm | approved | 1 of 2 | centre-of-gravity-design (minimum-drag-speed-from-polar: not approved via cg-for-target-margin, neutral-point) |
-| vertical-tail-volume | approved | 3 of 4 | vertical-tail-arm (minimum-drag-speed-from-polar: not approved via vertical-tail-arm, cg-for-target-margin, neutral-point) |
+| turn-sideslip | approved | 7 of 7 |  |
+| vertical-tail-arm | approved | 2 of 2 |  |
+| vertical-tail-volume | approved | 4 of 4 |  |
 | weight-from-mass | approved | 2 of 2 |  |
 | wing-loading | approved | 3 of 3 |  |
-| zero-lift-angle-from-polar | approved | 4 of 6 | minimum-drag-speed (minimum-drag-speed-from-polar: not approved); minimum-sink-speed (minimum-sink-speed-from-polar: not approved) |
+| zero-lift-angle-from-polar | approved | 6 of 6 |  |
 
 ### Unmapped inputs
 
