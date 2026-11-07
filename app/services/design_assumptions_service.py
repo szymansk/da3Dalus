@@ -65,6 +65,22 @@ def _assumption_to_read(model: DesignAssumptionModel) -> AssumptionRead:
     )
 
 
+def _sync_total_mass(aeroplane: AeroplaneModel, row: DesignAssumptionModel) -> None:
+    """Mirror the effective ``mass`` into ``aeroplanes.total_mass_kg`` (gh-1368).
+
+    The mass lives in two places; ``total_mass_kg`` always holds the mass the
+    app computes with — the calculated value while it is active, otherwise the
+    estimate (maintainer decision 2026-11-07). Every writer of the ``mass``
+    row calls this, so the two never diverge.
+    """
+    if row.parameter_name != "mass":
+        return
+    if row.active_source == "CALCULATED" and row.calculated_value is not None:
+        aeroplane.total_mass_kg = row.calculated_value
+    else:
+        aeroplane.total_mass_kg = row.estimate_value
+
+
 def get_effective_assumption(db: Session, aeroplane_id: int, param_name: str) -> float | None:
     """Return the effective (active-source) value of a design assumption, or None.
 
@@ -103,6 +119,9 @@ def seed_defaults(db: Session, aeroplane_uuid) -> AssumptionsSummary:
 
         for param_name, default_value in PARAMETER_DEFAULTS.items():
             if param_name not in existing_names:
+                if param_name == "mass" and aeroplane.total_mass_kg is not None:
+                    # gh-1368: a mass already stored on the aeroplane is the estimate.
+                    default_value = aeroplane.total_mass_kg
                 row = DesignAssumptionModel(
                     aeroplane_id=aeroplane.id,
                     parameter_name=param_name,
@@ -182,12 +201,8 @@ def update_assumption(
 
         active_was_estimate = row.active_source == "ESTIMATE"
         row.estimate_value = data.estimate_value
-        if param_name == "mass":
-            # gh-1368: the mass lives in two places — the ``mass`` estimate
-            # and ``aeroplanes.total_mass_kg``. Every writer of the mass
-            # writes both, so they never diverge. ``active_source`` is
-            # left as it is (a CALCULATED mass stays CALCULATED).
-            aeroplane.total_mass_kg = data.estimate_value
+        # ``active_source`` is left as it is (a CALCULATED mass stays CALCULATED).
+        _sync_total_mass(aeroplane, row)
         row.divergence_pct = compute_divergence_pct(data.estimate_value, row.calculated_value)
         db.flush()
         db.refresh(row)
@@ -256,6 +271,7 @@ def switch_source(
                 raise ValidationError(message=f"No calculated value available for '{param_name}'")
 
         row.active_source = data.active_source
+        _sync_total_mass(aeroplane, row)
         db.flush()
         db.refresh(row)
         if param_name in {"mass", "cg_x"}:
@@ -326,6 +342,7 @@ def update_calculated_value(
 
         if should_switch:
             row.active_source = "CALCULATED"
+        _sync_total_mass(aeroplane, row)
 
         db.flush()
         db.refresh(row)

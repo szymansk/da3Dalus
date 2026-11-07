@@ -5,6 +5,11 @@ An aeroplane's mass lives in ``aeroplanes.total_mass_kg`` and in the
 app's computations read the effective assumption, so every writer of the
 mass must write both: ``total_mass_kg`` and the ``mass`` estimate.
 ``active_source`` is never changed by setting the mass.
+
+Maintainer decision (2026-11-07): ``total_mass_kg`` always holds the mass the
+app computes with — the effective value of the ``mass`` assumption. While the
+calculated value is active, ``total_mass_kg`` follows it; writing the mass then
+changes only the estimate.
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ from __future__ import annotations
 from app.converters.openvsp_importer import ImportResult
 from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
 from app.schemas.aeroplaneschema import AeroplaneSchema
-from app.schemas.design_assumption import AssumptionWrite
+from app.schemas.design_assumption import AssumptionSourceSwitch, AssumptionWrite
 from app.services import aeroplane_service
 from app.services import design_assumptions_service as da_svc
 from app.services.openvsp_import_service import _persist_aeroplane
@@ -80,7 +85,7 @@ class TestSetAeroplaneMassWritesBoth:
             assert row.active_source == "CALCULATED"
             assert row.calculated_value == 1.9
             db.refresh(aeroplane)
-            assert aeroplane.total_mass_kg == 2.1
+            assert aeroplane.total_mass_kg == 1.9
 
 
 class TestMassEndpointWritesBoth:
@@ -158,3 +163,75 @@ class TestOpenVspImportWritesBoth:
             plane = db.query(AeroplaneModel).filter(AeroplaneModel.name == "vsp-nomass").one()
             assert plane.total_mass_kg is None
             assert _mass_row(db, plane.id) is None
+
+
+class TestTotalMassFollowsEffectiveMass:
+    """``total_mass_kg`` is the effective mass (maintainer 2026-11-07)."""
+
+    def test_auto_switch_to_calculated_updates_total_mass(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+            da_svc.seed_defaults(db, aeroplane.uuid)
+            da_svc.update_calculated_value(
+                db, aeroplane.uuid, "mass", 1.9, "weight_items", auto_switch_source=True
+            )
+            db.commit()
+
+            db.refresh(aeroplane)
+            assert aeroplane.total_mass_kg == 1.9
+
+    def test_calculated_value_without_switch_leaves_total_mass(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+            da_svc.seed_defaults(db, aeroplane.uuid)
+            da_svc.update_calculated_value(db, aeroplane.uuid, "mass", 1.9, "weight_items")
+            db.commit()
+
+            db.refresh(aeroplane)
+            assert aeroplane.total_mass_kg == 2.0
+
+    def test_new_calculated_value_while_active_updates_total_mass(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+            da_svc.seed_defaults(db, aeroplane.uuid)
+            da_svc.update_calculated_value(
+                db, aeroplane.uuid, "mass", 1.9, "weight_items", auto_switch_source=True
+            )
+            da_svc.update_calculated_value(db, aeroplane.uuid, "mass", 2.3, "weight_items")
+            db.commit()
+
+            db.refresh(aeroplane)
+            assert aeroplane.total_mass_kg == 2.3
+
+    def test_switch_source_moves_total_mass(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+            da_svc.seed_defaults(db, aeroplane.uuid)
+            da_svc.update_calculated_value(db, aeroplane.uuid, "mass", 1.9, "weight_items")
+
+            da_svc.switch_source(
+                db, aeroplane.uuid, "mass", AssumptionSourceSwitch(active_source="CALCULATED")
+            )
+            db.refresh(aeroplane)
+            assert aeroplane.total_mass_kg == 1.9
+
+            da_svc.switch_source(
+                db, aeroplane.uuid, "mass", AssumptionSourceSwitch(active_source="ESTIMATE")
+            )
+            db.refresh(aeroplane)
+            assert aeroplane.total_mass_kg == 2.0
+
+    def test_seeding_takes_the_stored_total_mass_as_estimate(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db, total_mass_kg=0.625)
+            da_svc.seed_defaults(db, aeroplane.uuid)
+            db.commit()
+
+            assert _mass_row(db, aeroplane.id).estimate_value == 0.625
+            db.refresh(aeroplane)
+            assert aeroplane.total_mass_kg == 0.625
