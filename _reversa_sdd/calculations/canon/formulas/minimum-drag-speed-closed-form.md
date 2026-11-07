@@ -33,7 +33,7 @@ V_md,probe = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
 
 **Produces** [[minimum-drag-speed-probe]]  ·  **from** [[wing-loading]] · [[air-density]] · [[zero-lift-drag-coefficient]] · [[induced-drag-factor]]
 
-**The Probe of [[minimum-drag-speed]] (maintainer decision 2026-10-25).** Its output [[minimum-drag-speed-probe]] `checks` [[minimum-drag-speed]], the value of the optimisation in [[minimum-drag-speed-from-polar]], which is the authority. The closed form assumes a constant zero-lift drag and a constant induced-drag factor; at our Reynolds numbers both depend on the speed. Comparing the two routes is a test (ADR 0022), not a second truth.
+**The Probe of [[minimum-drag-speed]] (maintainer decision 2026-10-25).** Its output [[minimum-drag-speed-probe]] `checks` [[minimum-drag-speed]], the value of the optimisation in [[minimum-drag-speed]], which is the authority. The closed form assumes a constant zero-lift drag and a constant induced-drag factor; at our Reynolds numbers both depend on the speed. Comparing the two routes is a test (ADR 0022), not a second truth.
 
 The formula itself is a law (Sadraey Eq. 4.80, an algebraic consequence of the parabolic polar); it is the quantity that is the probe, as for [[max-lift-to-drag-parabolic]].
 

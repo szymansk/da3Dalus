@@ -50,10 +50,10 @@ Identical in all three. Both Anderson and Scholz also give the companion result 
 One user-visible number, two different laws behind it. mission_kpi_service reports the empirical max(C_L/C_D) taken from the AeroBuildup sweep when the polar fit produced an ld_max, and the parabolic closed form otherwise. These agree only if the real polar is parabolic. The formula string rendered next to the KPI is unconditionally the closed form, so in the common case the displayed derivation does not describe the displayed value.
 
 > **Decided** (ADR 0026, 2026-10-02; confirmed by the maintainer 2026-10-24): the authority for E_max is
-> `W/D(V_md)` from [[minimum-drag-speed-from-polar]]; this closed form is its **Probe** only. The app's
+> `W/D(V_md)` from [[minimum-drag-speed]]; this closed form is its **Probe** only. The app's
 > mixing of the two in `mission_kpi_service` is an Ist deviation against the canon, not an open conflict.
 
-**The value it is a Probe of (#1346).** `(L/D)max` of [[minimum-drag-speed-from-polar]] is formed from the
+**The value it is a Probe of (#1346).** `(L/D)max` of [[minimum-drag-speed]] is formed from the
 kernel's drag (`D_profile + k_e,D0 · D_induced`); the parabola's `C_D0` and `e` come from the fit to the same drag
 ([[parabolic-polar-fit]]), so the two still compare like with like.
 
@@ -75,6 +75,6 @@ kernel's drag (`D_profile + k_e,D0 · D_induced`); the parabola's `C_D0` and `e`
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
 **Probe, not authority (ADR 0026, 2026-10-02).** It assumes a parabolic polar; the authority
-is `W/D(V_md)` from [[minimum-drag-speed-from-polar]]. A deviation beyond tolerance is
+is `W/D(V_md)` from [[minimum-drag-speed]]. A deviation beyond tolerance is
 reported as "polar not parabolic" (ADR 0020). Note: ADR 0004 cited this as Scholz eq. 5.39 —
 in Scholz 5.39 is `C_L,md`; the formula follows from the same polar.

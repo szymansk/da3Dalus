@@ -1,4 +1,4 @@
-"""Canon formula ``minimum-drag-speed-from-polar``: best glide as an optimisation (ch. 8.5, 8.12).
+"""Canon formula ``minimum-drag-speed``: best glide as an optimisation (ch. 8.5, 8.12).
 
 The formula passes the airplane, the mass, the load factor and the ISA air state to the OPT adapter,
 which brackets the first C_L peak and minimises the drag subject to the lift balance in the process
@@ -9,11 +9,11 @@ from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
 
-__all__ = ["minimum_drag_speed_from_polar"]
+__all__ = ["minimum_drag_speed"]
 
 
-@formula("minimum-drag-speed-from-polar")
-async def minimum_drag_speed_from_polar(x: Inputs, ctx: Context) -> dict[str, float]:
+@formula("minimum-drag-speed")
+async def minimum_drag_speed(x: Inputs, ctx: Context) -> dict[str, float]:
     """The speed at which the airplane carries ``n m g`` with the least drag, and the glide ratio there.
 
     Args:

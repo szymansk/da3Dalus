@@ -1,4 +1,4 @@
-"""Canon formula ``zero-lift-angle-from-polar``: the root of C_L(V, alpha) and the slope there.
+"""Canon formula ``zero-lift-angle``: the root of C_L(V, alpha) and the slope there.
 
 ``alpha_0`` solves ``C_L(V, alpha) = 0`` with IPOPT over AeroBuildup, started at 0 deg with no angle
 range; ``C_Lalpha`` is ``dC_L/dalpha`` at ``(V, alpha_0)`` by automatic differentiation of the same
@@ -11,11 +11,11 @@ from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
 
-__all__ = ["zero_lift_angle_from_polar"]
+__all__ = ["zero_lift_angle"]
 
 
-@formula("zero-lift-angle-from-polar")
-async def zero_lift_angle_from_polar(x: Inputs, ctx: Context) -> dict[str, float]:
+@formula("zero-lift-angle")
+async def zero_lift_angle(x: Inputs, ctx: Context) -> dict[str, float]:
     """The zero-lift angle of attack and the lift-curve slope at it, at the bound speed.
 
     Args:

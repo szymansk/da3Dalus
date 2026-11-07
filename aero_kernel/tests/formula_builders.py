@@ -37,8 +37,8 @@ IMPLEMENTED = {
     "calc:airplane-configuration",
     "calc:stall-speed",
     "calc:stall-break",
-    "calc:minimum-drag-speed-from-polar",
-    "calc:minimum-sink-speed-from-polar",
+    "calc:minimum-drag-speed",
+    "calc:minimum-sink-speed",
     "calc:neutral-point",
     "calc:static-margin",
     "calc:speed-from-stall-margin",
@@ -58,7 +58,7 @@ IMPLEMENTED = {
     "calc:stall-wing-loading-limit",
     "calc:aerobuildup-evaluation",
     "calc:lift-to-drag-ratio",
-    "calc:zero-lift-angle-from-polar",
+    "calc:zero-lift-angle",
 }
 
 

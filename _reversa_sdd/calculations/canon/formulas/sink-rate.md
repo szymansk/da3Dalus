@@ -41,7 +41,7 @@ w_sink = V * C_D,par / C_L
 >
 > app/services/analysis_service.py:514-515 applies the small-glide-angle form across the ENTIRE sweep, including the low-CL / high-speed end of every curve. At the characteristic points this is harmless (L/D ~ 10-20 => gamma ~ 3-6°, error < 0.5%). At the fast end of an RC polar L/D falls to order 2-5, i.e. gamma = 11-27°, where w = V*CD/CL overstates the true V*sin(gamma) by the dropped cos(gamma) factor (2% at L/D=5, ~12% at L/D=2) and V itself is overstated because line 514 sets L = W rather than W cos(gamma). Consequence: the right-hand tail of the plotted speed polar is optimistically steep, and the validity limit is stated nowhere in the code or the response schema.
 
-**Evaluated by.** None — direct elementwise evaluation over the sampled drag polar (numpy). The argmin/argmax that pick V_min_sink and V_best_glide from w and CL/CD (analysis_service.py:521-523) are exhaustive grid searches, but those belong to the minimum-sink-speed-from-polar / minimum-drag-speed-from-polar entries, not to this one.
+**Evaluated by.** None — direct elementwise evaluation over the sampled drag polar (numpy). The argmin/argmax that pick V_min_sink and V_best_glide from w and CL/CD (analysis_service.py:521-523) are exhaustive grid searches, but those belong to the minimum-sink-speed / minimum-drag-speed entries, not to this one.
 
 **Accuracy.** Not applicable — exact evaluation, no iteration and no tolerance. The result is exact at each sampled polar point and is defined nowhere between them; the returned V/w arrays are the sample points themselves (analysis_service.py:517-519, ordered by V), so the plotted curve is a straight-line interpolation of the alpha-sweep discretisation.
 
@@ -87,7 +87,7 @@ numbers above are exact evaluations of the two dropped factors, not estimates.
 **The drag (#1346, maintainer 2026-11-03).** Where the sink rate is formed from the solver's drag rather than
 the parabola, that drag is the kernel's ([[aerobuildup-evaluation]], `D_profile + k_e,D0 · D_induced`); the
 parabola `C_D,par` is fitted to the same drag ([[parabolic-polar-fit]]). The minimum sink speed itself is
-[[minimum-sink-speed-from-polar]]'s.
+[[minimum-sink-speed]]'s.
 
 ## Implementations (1)
 

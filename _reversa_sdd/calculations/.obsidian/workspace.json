@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "canon/formulas/minimum-sink-speed-from-polar.md",
+                "file": "canon/formulas/minimum-sink-speed.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "minimum-sink-speed-from-polar"
+              "title": "minimum-sink-speed"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "canon/formulas/minimum-sink-speed-from-polar.md",
+                "file": "canon/formulas/minimum-sink-speed.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Rückverweise auf minimum-sink-speed-from-polar"
+              "title": "Rückverweise auf minimum-sink-speed"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "canon/formulas/minimum-sink-speed-from-polar.md",
+                "file": "canon/formulas/minimum-sink-speed.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Ausgehende Links von minimum-sink-speed-from-polar öffnen"
+              "title": "Ausgehende Links von minimum-sink-speed öffnen"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "canon/formulas/minimum-sink-speed-from-polar.md",
+                "file": "canon/formulas/minimum-sink-speed.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von minimum-sink-speed-from-polar"
+              "title": "Gliederung von minimum-sink-speed"
             }
           }
         ]

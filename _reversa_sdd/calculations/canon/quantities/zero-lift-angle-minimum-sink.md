@@ -20,5 +20,5 @@ The angle of attack at which the computed lift coefficient is zero, at the Reyno
 
 **Unit.** `deg`
 
-**Produced by.** [[zero-lift-angle-from-polar]]
+**Produced by.** [[zero-lift-angle]]
 

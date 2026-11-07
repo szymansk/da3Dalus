@@ -1,5 +1,5 @@
 ---
-canon: zero-lift-angle-from-polar
+canon: zero-lift-angle
 entry: formula
 kind: optimization
 tool: OPT
@@ -64,7 +64,7 @@ worker reuses that model across solves of the same airplane, so a repeat solve c
 - BRYAN, sea level: −3.6° at 8 m/s, −4.3° at 12 m/s, −5.3° at 20 m/s.
 
 So the zero-lift angle has no single value. Each application binds the speed of one optimum,
-[[minimum-drag-speed-from-polar]] and [[minimum-sink-speed-from-polar]], so its α_0 and C_Lα hold at that
+[[minimum-drag-speed]] and [[minimum-sink-speed]], so its α_0 and C_Lα hold at that
 optimum's Reynolds number. A Reynolds-dependent quantity carries its condition in its name (STAND §2).
 
 **Readers.** No canon formula reads these four quantities. They are characteristics of the lift curve
@@ -108,7 +108,7 @@ step size and no second AeroBuildup run.
 
 > Anderson, Fundamentals of Aerodynamics 6e, §4.3 (zero-lift angle `α_L=0`, lift slope `a_0`) and §5.3.3
 > (finite-wing `C_L = a (α − α_L=0)`; `α_L=0` independent of AR). The method is AeroBuildup (Sharpe 2024,
-> §5.3) inside IPOPT, as for [[stall-speed]] and [[minimum-drag-speed-from-polar]].
+> §5.3) inside IPOPT, as for [[stall-speed]] and [[minimum-drag-speed]].
 
 **Validity in the RC/UAV regime (ADR 0028).** The tool limits of [[aerobuildup-evaluation]] apply:
 - NeuralFoil free-transition polar, `n_crit` = 9;
@@ -121,7 +121,7 @@ point of the polar. Mach ≤ 0.3.
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/zero_lift_angle_from_polar.py` | EXACT | 🟢 | both applications; IPOPT in `asb.Opti` on α alone (start 0°, no bounds, `C_L = 0` through the airplane's model function, routed by its model key), `max_iter` as the other Opti problems, `tol` 1·10⁻⁸ passed explicitly; `C_Lα` the CasADi Jacobian of that `C_L` expression at the root, per degree converted to per radian; failure or a non-finite root or slope is `not_converged`. BRYAN at 8 m/s, sea level: −3.624°, 5.284 /rad, 3 iterations, checked against a central finite difference of the model function (aero tier) |
+| `aero_kernel/formulas/zero_lift_angle.py` | EXACT | 🟢 | both applications; IPOPT in `asb.Opti` on α alone (start 0°, no bounds, `C_L = 0` through the airplane's model function, routed by its model key), `max_iter` as the other Opti problems, `tol` 1·10⁻⁸ passed explicitly; `C_Lα` the CasADi Jacobian of that `C_L` expression at the root, per degree converted to per radian; failure or a non-finite root or slope is `not_converged`. BRYAN at 8 m/s, sea level: −3.624°, 5.284 /rad, 3 iterations, checked against a central finite difference of the model function (aero tier) |
 
 ## Approval
 
@@ -139,3 +139,6 @@ point of the polar. Mach ≤ 0.3.
 > function instead of AeroBuildup's finite-difference stability derivative (option a): no step size the canon
 > does not own, no second run, and the slope of the very model whose root was solved. This is the relation the
 > implementations are measured against.
+
+> **Renamed** (maintainer, 2026-11-07) from `zero-lift-angle-from-polar` to `zero-lift-angle`: the entry reads no
+> polar, it solves for the root of `C_L(V, α)`. A rename only; the computation and the approval are unchanged.
