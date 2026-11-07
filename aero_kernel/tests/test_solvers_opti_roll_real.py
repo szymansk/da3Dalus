@@ -144,8 +144,8 @@ async def test_bryan_at_the_approach_speed_and_twenty_degrees_converges_from_its
         found = await OptiAdapter(runtime).steady_roll(
             airplane, FleetMember.BRYAN.mass_kg, 9.80665, sea_level(), 6.818986359246604, 20.0
         )
-    assert math.isclose(found.p_rad_s, 8.5530718, abs_tol=1e-4)
-    assert math.isclose(found.alpha_deg, 3.9429796, abs_tol=1e-3)
+    assert math.isclose(found.p_rad_s, 8.5505017, abs_tol=1e-4)  # #1358: was 8.5530718
+    assert math.isclose(found.alpha_deg, 3.9625325, abs_tol=1e-3)  # #1358: was 3.9429796
 
 
 async def test_jaguar_at_forty_degrees_fails_loudly_and_never_returns_a_value() -> None:

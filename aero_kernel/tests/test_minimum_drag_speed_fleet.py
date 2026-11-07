@@ -19,6 +19,7 @@ from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import (
     FleetMember,
     bryan_as_the_prototype,
+    convert_with_the_true_body_axes,
     reference_document,
 )
 from aero_kernel.tests.test_regime_fleet import assert_regime_per_surface
@@ -45,12 +46,42 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # BRYAN re-recorded for #1355 slice 2 (its canopy merged into the fuselage, only the visible part counts);
 # before: (7.2306630, 8.3568527, 1.7236595, 0.6603661).
 GOLDEN = {
-    FleetMember.BRYAN: (7.6649267, 9.6087249, 0.9810230, 0.5876584),
-    FleetMember.JAGUAR: (8.8849618, 11.0911866, 2.3196645, 0.5019311),
-    FleetMember.BELEMNITOS: (5.2599903, 14.8391368, 4.4632809, 0.8111968),
-    FleetMember.RV7: (9.9423059, 10.2825158, 3.2198890, 0.5396917),
-    FleetMember.CHEKKER: (8.8958176, 9.9654926, 1.3233626, 0.6533805),
-    FleetMember.WIESEL: (11.9855865, 12.6842314, 3.5502794, 0.4959332),
+    FleetMember.BRYAN: (
+        7.7115090,
+        9.7448970,
+        0.9138034,
+        0.5805802,
+    ),  # #1358: was 7.6649267, 9.6087249, 0.9810230, 0.5876584
+    FleetMember.JAGUAR: (
+        8.9849874,
+        11.4240420,
+        2.2086100,
+        0.4908178,
+    ),  # #1358: was 8.8849618, 11.0911866, 2.3196645, 0.5019311
+    FleetMember.BELEMNITOS: (
+        5.2599903,
+        14.8435692,
+        4.4637211,
+        0.8111968,
+    ),  # #1358: was 14.8391368, 4.4632809
+    FleetMember.RV7: (
+        9.9524821,
+        10.3440635,
+        3.2120554,
+        0.5385886,
+    ),  # #1358: was 9.9423059, 10.2825158, 3.2198890, 0.5396917
+    FleetMember.CHEKKER: (
+        9.7394293,
+        11.9131723,
+        0.0388367,
+        0.5450933,
+    ),  # #1358: was 8.8958176, 9.9654926, 1.3233626, 0.6533805
+    FleetMember.WIESEL: (
+        12.0893466,
+        12.8538066,
+        3.4526886,
+        0.4874568,
+    ),  # #1358: was 11.9855865, 12.6842314, 3.5502794, 0.4959332
 }
 
 
@@ -92,6 +123,7 @@ async def test_bryan_best_glide_where_the_prototype_found_it_with_the_small_mode
     installed = {name: importlib.metadata.version(name) for name in GOLDEN_TOOL_VERSIONS}
     assert installed == GOLDEN_TOOL_VERSIONS  # the 7.8181 below holds for these versions only
     monkeypatch.setattr(opti_module, "NEURALFOIL_MODEL_SIZE", "small")
+    convert_with_the_true_body_axes(monkeypatch)  # nor did it straighten the body axes (#1358)
     request_ = StallRequest(
         airplane=AirplaneGeometry.model_validate(bryan_as_the_prototype()),
         mass_kg=FleetMember.BRYAN.mass_kg,

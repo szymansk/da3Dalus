@@ -23,12 +23,28 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # xlarge: (alpha_break deg, width deg, alpha_S deg). width = alpha_break - alpha_S.
 GOLDEN = {
     # #1355 slice 2 (canopy merged); before: (14.7822439, 1.5835136, 13.1987303)
-    FleetMember.BRYAN: (14.7771530, 1.5787213, 13.1984316),
-    FleetMember.JAGUAR: (11.0671515, 1.1418603, 9.9252912),
-    FleetMember.BELEMNITOS: (11.0568417, 1.4866984, 9.5701434),
-    FleetMember.RV7: (16.3483882, 1.2300212, 15.1183671),
-    FleetMember.CHEKKER: (18.3309795, 9.4154012, 8.9155783),
-    FleetMember.WIESEL: (13.1242734, 1.2375227, 11.8867507),
+    FleetMember.BRYAN: (
+        14.7782769,
+        1.5715911,
+        13.2066858,
+    ),  # #1358: was 14.7771530, 1.5787213, 13.1984316
+    FleetMember.JAGUAR: (11.0671515, 1.1414790, 9.9255623),  # #1358: was 1.1418603, 9.9252912
+    FleetMember.BELEMNITOS: (11.0568417, 1.4866270, 9.5702527),  # #1358: was 1.4866984, 9.5701434
+    FleetMember.RV7: (
+        16.3556190,
+        1.2315166,
+        15.1241024,
+    ),  # #1358: was 16.3483882, 1.2300212, 15.1183671
+    FleetMember.CHEKKER: (
+        18.3273580,
+        9.4186545,
+        8.9087036,
+    ),  # #1358: was 18.3309795, 9.4154012, 8.9155783
+    FleetMember.WIESEL: (
+        13.1238767,
+        1.2376665,
+        11.8862101,
+    ),  # #1358: was 13.1242734, 1.2375227, 11.8867507
 }
 
 
