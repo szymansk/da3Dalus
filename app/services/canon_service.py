@@ -1,4 +1,7 @@
-"""Expert View backend (gh-1282, ADR 0030): compute canon quantities of a reference-fleet aircraft.
+"""Expert View backend (gh-1282, ADR 0030): compute canon quantities of an aircraft with the kernel.
+
+The aircraft is one of the kernel's reference fleet or a stored aeroplane in its current state;
+``canon_aeroplane_input`` is the one seam that turns a stored aeroplane into the kernel's input.
 
 The kernel's values are shown beside the app's own in this view only (ADR 0030); nothing computed
 here is written back. Only the kernel's public API is used: ``compute``, ``CachedKernel``,
@@ -30,10 +33,20 @@ from aero_kernel.schema import (
     ReasonCode,
 )
 from pydantic import ValidationError as PydanticValidationError
+from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.kernel_log_capture import capture_kernel_logs
-from app.schemas.canon import CanonComputeRequest, CanonComputeResponse, CanonFleetEntry
+from app.schemas.canon import (
+    CanonAeroplaneEntry,
+    CanonAeroplaneRef,
+    CanonAircraftList,
+    CanonComputeRequest,
+    CanonComputeResponse,
+    CanonFleetEntry,
+)
+from app.services.aeroplane_version_service import list_main_branch_heads
+from app.services.canon_aeroplane_input import effective_mass_kg, stored_aircraft_input
 
 
 # Nodes the process-wide kernel cache keeps (gh-1332). An entry is a node's outputs, warnings and
@@ -154,6 +167,33 @@ def list_fleet() -> list[CanonFleetEntry]:
     ]
 
 
+def list_aircraft(db: Session) -> CanonAircraftList:
+    """The aircraft the Expert View can load: the reference fleet and the stored aeroplanes.
+
+    A stored aeroplane is listed once, in its current state (the head of its main branch), with
+    the mass the kernel gets for it.
+    """
+    return CanonAircraftList(
+        fleet=list_fleet(),
+        aeroplanes=[
+            CanonAeroplaneEntry(
+                id=aeroplane.uuid, name=aeroplane.name, mass_kg=effective_mass_kg(db, aeroplane)
+            )
+            for aeroplane in list_main_branch_heads(db)
+        ],
+    )
+
+
+def _aircraft_input(request: CanonComputeRequest, db: Session) -> AircraftInput:
+    """The kernel input of the requested aircraft, with the caller's values over its own."""
+    if isinstance(request.aircraft, CanonAeroplaneRef):
+        return stored_aircraft_input(db, request.aircraft.aeroplane, request.values)
+    member = FleetMember.from_fleet_id(request.aircraft.fleet)
+    if member is None:
+        raise NotFoundError(entity="Fleet aircraft", resource_id=request.aircraft.fleet)
+    return aircraft_input(member, request.values)
+
+
 def _kernel_request(request: CanonComputeRequest) -> ComputeRequest:
     """The kernel request, or a validation error for what the kernel refuses to build."""
     try:
@@ -194,8 +234,8 @@ def _needs_confirmation(result: ComputeResult) -> list[str]:
     ]
 
 
-async def compute_canon(request: CanonComputeRequest) -> CanonComputeResponse:
-    """Compute the requested quantities of a fleet aircraft with the kernel.
+async def compute_canon(request: CanonComputeRequest, db: Session) -> CanonComputeResponse:
+    """Compute the requested quantities of a fleet aircraft or a stored aeroplane with the kernel.
 
     The kernel never runs on the application's event loop, so a long computation does not block
     it. By default the request goes through the shared :class:`CachedKernel` on its own loop, and
@@ -205,20 +245,19 @@ async def compute_canon(request: CanonComputeRequest) -> CanonComputeResponse:
     Args:
         request: The aircraft, the quantities, the caller's input values, the long-run flag and
             whether to bypass the cache.
+        db: The session a stored aeroplane is read from.
 
     Returns:
         The kernel's results, Drela's verdicts for the requested quantities, the quantities that
         wait for a confirmation and the kernel's log records of this request.
 
     Raises:
-        NotFoundError: If the fleet has no such aircraft.
-        ValidationError: If the quantities cannot form a kernel request.
+        NotFoundError: If the fleet or the database has no such aircraft.
+        ValidationError: If the quantities cannot form a kernel request, or a stored aeroplane
+            does not convert (its ``input_errors`` name each item by its input path).
     """
-    member = FleetMember.from_fleet_id(request.aircraft.fleet)
-    if member is None:
-        raise NotFoundError(entity="Fleet aircraft", resource_id=request.aircraft.fleet)
+    aircraft = _aircraft_input(request, db)
     kernel_request = _kernel_request(request)
-    aircraft = aircraft_input(member, request.values)
     with capture_kernel_logs() as logs:
         result = await _run_kernel(aircraft, kernel_request, fresh=request.fresh)
         verdicts = judge_result(result, aircraft.airplane)

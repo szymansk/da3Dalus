@@ -1,3 +1,5 @@
+import type { CanonAircraftRef } from "@/types/canon";
+
 /**
  * Where the Expert View finds the canon navigator and how it connects it to the backend.
  *
@@ -10,19 +12,19 @@ export const CANON_NAVIGATOR_PATH = "/canon-navigator.html";
 /**
  * The address of the connected navigator for one aircraft.
  * @param apiBase The backend's base address, as the app's fetcher uses it.
- * @param aircraftId A fleet identifier from GET /canon/fleet.
+ * @param aircraft A fleet aircraft or a stored aeroplane from GET /canon/aircraft.
  * @param basePath The app's base path (a preview stage serves it under one); a public file is not
  *   prefixed by Next.js when it is the `src` of an iframe.
  */
 export function canonNavigatorUrl(
   apiBase: string,
-  aircraftId: string,
+  aircraft: CanonAircraftRef,
   basePath: string = process.env.NEXT_PUBLIC_BASE_PATH ?? "",
 ): string {
   const query = new URLSearchParams({
     connected: "1",
     api: apiBase,
-    aircraft: aircraftId,
+    ...aircraft,
   });
   return `${basePath}${CANON_NAVIGATOR_PATH}?${query.toString()}`;
 }

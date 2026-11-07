@@ -10,7 +10,8 @@ import {
   type Route,
 } from "./canonNavigator.helpers";
 
-const QUERY = "?connected=1&api=http://api.test&aircraft=bryan";
+const QUERY = "?connected=1&api=http://api.test&fleet=bryan";
+const AEROPLANE_ID = "6f1c1a52-8f3c-4a43-9d9a-2c7c4c3b5a10";
 
 const FLEET = [
   { id: "bryan", name: "BRYAN", mass_kg: 0.151, flap_deflections: {} },
@@ -21,6 +22,13 @@ const FLEET = [
     flap_deflections: { "flap-deflection-landing": 30 },
   },
 ];
+
+const AEROPLANES = [
+  { id: AEROPLANE_ID, name: "Chekker (plan)", mass_kg: 0.45 },
+  { id: "0b7c1a52-8f3c-4a43-9d9a-2c7c4c3b5a11", name: "No mass yet", mass_kg: null },
+];
+
+const AIRCRAFT = { fleet: FLEET, aeroplanes: AEROPLANES };
 
 const PROVENANCE = { build_digest: "t", defaults_used: [] };
 
@@ -55,7 +63,7 @@ function response(over: Record<string, unknown> = {}): Reply {
 /** A backend that serves the fleet and answers compute requests with `compute`. */
 function backend(compute: (body: Record<string, unknown>) => Reply): Route {
   return (url, init) => {
-    if (url.endsWith("/canon/fleet")) return { body: FLEET };
+    if (url.endsWith("/canon/aircraft")) return { body: AIRCRAFT };
     return compute(JSON.parse(String(init?.body)));
   };
 }
@@ -98,7 +106,7 @@ describe("the connected navigator", () => {
   it("loads the aircraft and shows the development label", async () => {
     const nav = openNavigator(QUERY, answerOk);
     await settle();
-    expect(nav.calls[0].url).toBe("http://api.test/canon/fleet");
+    expect(nav.calls[0].url).toBe("http://api.test/canon/aircraft");
     expect(nav.document.getElementById("conn")!.hidden).toBe(false);
     expect(nav.document.getElementById("connLabel")!.textContent).toBe(
       "Canon/kernel view (development), experts only",
@@ -108,12 +116,40 @@ describe("the connected navigator", () => {
   });
 
   it("reports an unknown aircraft and an unreachable backend", async () => {
-    const unknown = openNavigator("?connected=1&api=http://api.test&aircraft=zzz", answerOk);
+    const unknown = openNavigator("?connected=1&api=http://api.test&fleet=zzz", answerOk);
     await settle();
     expect(unknown.document.getElementById("connAircraft")!.textContent).toContain("Unknown aircraft");
     const down = openNavigator(QUERY, () => ({ status: 503, body: { error: { message: "down" } } }));
     await settle();
     expect(down.document.getElementById("connAircraft")!.textContent).toContain("not reachable: down");
+  });
+
+  it("loads a stored aeroplane and computes it by its id", async () => {
+    const nav = openNavigator(`?connected=1&api=http://api.test&aeroplane=${AEROPLANE_ID}`, answerOk);
+    await settle();
+    const label = nav.document.getElementById("connAircraft")!.textContent!;
+    expect(label).toContain("Chekker (plan)");
+    expect(label).toContain("mass 0.45 kg");
+    await selectAndCompute(nav, "stall-speed");
+    expect(computeCalls(nav)[0].body!.aircraft).toEqual({ aeroplane: AEROPLANE_ID });
+    nav.click(nav.node("aircraft-mass"));
+    await settle();
+    const panel = nav.document.getElementById("kres")!.textContent!;
+    expect(panel).toContain("0.45");
+    expect(panel).toContain("mass design assumption");
+  });
+
+  it("says when a stored aeroplane has no mass and when it is unknown", async () => {
+    const massless = openNavigator(
+      "?connected=1&api=http://api.test&aeroplane=0b7c1a52-8f3c-4a43-9d9a-2c7c4c3b5a11",
+      answerOk,
+    );
+    await settle();
+    expect(massless.document.getElementById("connAircraft")!.textContent).toContain("mass not set");
+    expect((massless.document.getElementById("computeAll") as HTMLButtonElement).disabled).toBe(false);
+    const unknown = openNavigator("?connected=1&api=http://api.test&aeroplane=zzz", answerOk);
+    await settle();
+    expect(unknown.document.getElementById("connAircraft")!.textContent).toContain("Unknown aircraft");
   });
 
   it("selects a quantity without a request and computes it on Compute", async () => {
@@ -397,7 +433,7 @@ describe("the connected navigator", () => {
 
     it("of a failed request becomes an error at every requested node", async () => {
       const nav = openNavigator(QUERY, (url) =>
-        url.endsWith("/canon/fleet") ? { body: FLEET } : { status: 500, body: { error: { message: "boom" } } },
+        url.endsWith("/canon/aircraft") ? { body: AIRCRAFT } : { status: 500, body: { error: { message: "boom" } } },
       );
       await settle();
       await selectAndCompute(nav, "stall-speed");
