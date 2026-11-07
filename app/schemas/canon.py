@@ -6,9 +6,12 @@ contract for values, warnings, errors and verdicts: the endpoint adds no second 
 
 from __future__ import annotations
 
+from typing import Annotated, Any
+from uuid import UUID
+
 from aero_kernel.evaluation import RuleVerdict
 from aero_kernel.schema import KernelError, Provenance, QuantityResult
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
 
 class CanonFleetEntry(BaseModel):
@@ -22,12 +25,56 @@ class CanonFleetEntry(BaseModel):
     )
 
 
-class CanonAircraftRef(BaseModel):
-    """The aircraft of a compute request."""
+class CanonAeroplaneEntry(BaseModel):
+    """A stored aeroplane in its current state: the head of its main branch."""
+
+    id: UUID = Field(description="The aeroplane's id, used in compute requests.")
+    name: str = Field(description="Name a person reads.")
+    mass_kg: float | None = Field(
+        description=(
+            "The `mass` design assumption with its active source (estimate or calculated), in kg; "
+            "null when the aeroplane has none."
+        )
+    )
+
+
+class CanonAircraftList(BaseModel):
+    """The aircraft the Expert View can load, in two groups."""
+
+    fleet: list[CanonFleetEntry] = Field(description="The kernel's reference fleet.")
+    aeroplanes: list[CanonAeroplaneEntry] = Field(
+        description="The stored aeroplanes, each in its current state, by name."
+    )
+
+
+class CanonFleetRef(BaseModel):
+    """A reference-fleet aircraft of a compute request."""
 
     model_config = ConfigDict(extra="forbid")
 
     fleet: str = Field(description="Identifier of a reference-fleet aircraft.")
+
+
+class CanonAeroplaneRef(BaseModel):
+    """A stored aeroplane of a compute request."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    aeroplane: UUID = Field(description="Id of a stored aeroplane.")
+
+
+def _aircraft_kind(value: Any) -> str | None:
+    """Which reference a request names: a stored aeroplane when it has the key, else the fleet."""
+    if isinstance(value, dict):
+        return "aeroplane" if "aeroplane" in value else "fleet"
+    return "aeroplane" if isinstance(value, CanonAeroplaneRef) else "fleet"
+
+
+CanonAircraftRef = Annotated[
+    Annotated[CanonFleetRef, Tag("fleet")] | Annotated[CanonAeroplaneRef, Tag("aeroplane")],
+    Discriminator(_aircraft_kind),
+]
+"""The aircraft of a compute request: ``{"fleet": "<id>"}`` or ``{"aeroplane": "<uuid>"}``."""
 
 
 class CanonComputeRequest(BaseModel):
@@ -41,7 +88,9 @@ class CanonComputeRequest(BaseModel):
     )
     values: dict[str, float] = Field(
         default_factory=dict,
-        description="Input values by canon slug in the quantity's SI unit; they replace the fleet's own.",
+        description=(
+            "Input values by canon slug in the quantity's SI unit; they replace the aircraft's own."
+        ),
     )
     include_long_runs: bool = Field(
         default=False, description="Whether quantities that take minutes (AVL, mass envelope) run."

@@ -1103,18 +1103,22 @@ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitWhenSi
 
 </script>
 <script>
-// Connected mode (gh-1282, ADR 0030): ?connected=1&api=<base>&aircraft=<fleet id>. A click on a quantity
+// Connected mode (gh-1282, ADR 0030): ?connected=1&api=<base>&fleet=<fleet id>, or &aeroplane=<id> for a
+// stored aeroplane in its current state (slice 2). A click on a quantity
 // selects it; Compute (or Compute all) computes it with the kernel through the backend (gh-1330). Without
 // the parameter this block does nothing and the page is exactly the published artifact. One graph
 // implementation: the nodes above are decorated here.
 (function(){
 const QP=new URLSearchParams(location.search);
 if(QP.get('connected')!=='1') return;
-const API=(QP.get('api')||'').replace(/\/+$/,''), AIRCRAFT=QP.get('aircraft')||'';
+const API=(QP.get('api')||'').replace(/\/+$/,'');
+// The aircraft of every compute request: a stored aeroplane by its id, else a fleet aircraft.
+const REF=QP.has('aeroplane')?{aeroplane:QP.get('aeroplane')}:{fleet:QP.get('fleet')||''};
+const AIRCRAFT=REF.aeroplane!==undefined?REF.aeroplane:REF.fleet;
 const RANK={DEBUG:10,INFO:20,WARNING:30,ERROR:40,CRITICAL:50};
 const GLYPH={ok:'\u2713',warning:'!',invalid:'!',error:'\u00d7',computing:'\u2026',na:'\u2013',skipped:'\u25cb'};
 const STATE_TEXT={ok:'computed',warning:'computed with warnings',invalid:'computed, not physically meaningful (an error-severity warning)',error:'failed',computing:'computing',na:'not applicable',skipped:'waiting for confirmation (long run)'};
-const S={res:{},verd:{},cause:{},inflight:new Set(),stale:new Set(),values:{},defaultsUsed:{},fleet:null,logs:[],minLevel:'DEBUG'};
+const S={res:{},verd:{},cause:{},inflight:new Set(),stale:new Set(),values:{},defaultsUsed:{},ac:null,logs:[],minLevel:'DEBUG'};
 const $=id=>document.getElementById(id);
 const attr=s=>esc(s).replace(/"/g,'&quot;');
 const fmt=v=>Number.isFinite(v)?String(+v.toPrecision(6)):String(v);
@@ -1186,7 +1190,7 @@ async function compute(slugs,includeLong,fresh){
   paintAll();
   const t0=performance.now();
   try{
-    absorb(await postJson('/canon/compute',{aircraft:{fleet:AIRCRAFT},quantities:slugs,values:S.values,include_long_runs:!!includeLong,fresh:!!fresh}),slugs,performance.now()-t0,fresh);
+    absorb(await postJson('/canon/compute',{aircraft:REF,quantities:slugs,values:S.values,include_long_runs:!!includeLong,fresh:!!fresh}),slugs,performance.now()-t0,fresh);
   }catch(e){
     for(const s of slugs) S.res[s]={slug:s,status:'error',error:{code:'request_failed',category:'internal',message:String(e.message||e),hint:'Check that the backend is running and reachable.',detail:{}}};
     addLog({level:'ERROR',logger:'expert-view',message:'compute failed: '+(e.message||e)});
@@ -1281,13 +1285,17 @@ function verdictHtml(v){
   const col=v.severity==='bad'?'var(--bad)':v.severity==='caution'?'var(--mvp)':'var(--good)';
   return `<div class="issue" style="border-color:${col}"><b style="color:${col}">${esc(v.rule_id)}</b> <span class="sub">${esc(v.status.replace('_',' '))}${v.severity?' \u00b7 '+(v.severity==='bad'?'red':'yellow'):''}</span><br>${esc(v.text)}</div>`;
 }
-function fleetValue(q){
-  if(!S.fleet) return undefined;
-  return q==='aircraft-mass'?S.fleet.mass_kg:S.fleet.flap_deflections[q];
+// The value the aircraft itself gives an input: the fleet's mass and flap deflections, or a stored
+// aeroplane's mass design assumption (its flap deflections are the canon defaults).
+function aircraftValue(q){
+  if(!S.ac) return undefined;
+  const v=q==='aircraft-mass'?S.ac.mass_kg:(S.ac.flap_deflections||{})[q];
+  return v===null?undefined:v;
 }
 function inputHtml(q){
-  const u=unitOf(q), ov=S.values[q], fv=fleetValue(q), df=DEFS[q], taken=S.defaultsUsed[q];
-  const used=ov!==undefined?[ov,'your override']:fv!==undefined?[fv,'fleet value']:df?[df.value,'default \u00b7 '+df.basis]:null;
+  const u=unitOf(q), ov=S.values[q], fv=aircraftValue(q), df=DEFS[q], taken=S.defaultsUsed[q];
+  const own=REF.aeroplane!==undefined?'the aeroplane\'s mass design assumption':'fleet value';
+  const used=ov!==undefined?[ov,'your override']:fv!==undefined?[fv,own]:df?[df.value,'default \u00b7 '+df.basis]:null;
   let h=used?`<div class="kv">${fmt(used[0])}${u?' '+esc(u):''}</div><p class="sub" style="margin:4px 0 0">${esc(used[1])}${taken&&ov===undefined&&fv===undefined?' \u00b7 taken in the last computation':''}</p>`
     :`<p class="sub" style="margin:0">Read from the aircraft geometry or not set; the kernel reports what is missing when a result needs it.</p>`;
   if(givenValue(q)) h+=`<div class="ovrow"><label for="ovIn">Override${u?' ('+esc(u)+')':''}</label><input type="number" step="any" id="ovIn" value="${ov!==undefined?attr(ov):''}" placeholder="${used?attr(fmt(used[0])):''}">
@@ -1362,11 +1370,12 @@ $('logToggle').addEventListener('click',()=>{ const p=$('logpanel'); p.classList
   head.addEventListener('pointermove',ev=>{ if(drag) $('logpanel').style.setProperty('--logh',Math.max(60,Math.min(innerHeight*0.8,drag.h+drag.y-ev.clientY))+'px'); });
   head.addEventListener('pointerup',()=>{ drag=null; }); }
 $('connAircraft').textContent='Loading the aircraft\u2026';
-getJson('/canon/fleet').then(fleet=>{
-  S.fleet=fleet.find(a=>a.id===AIRCRAFT);
-  $('connAircraft').innerHTML=S.fleet?`Aircraft <b>${esc(S.fleet.name)}</b> \u00b7 mass ${fmt(S.fleet.mass_kg)} kg${Object.keys(S.fleet.flap_deflections).length?' \u00b7 flaps':''}`
+getJson('/canon/aircraft').then(list=>{
+  S.ac=(REF.aeroplane!==undefined?list.aeroplanes:list.fleet).find(a=>a.id===AIRCRAFT)||null;
+  const mass=S.ac&&(S.ac.mass_kg===null?'mass not set':`mass ${fmt(S.ac.mass_kg)} kg`);
+  $('connAircraft').innerHTML=S.ac?`Aircraft <b>${esc(S.ac.name)}</b> \u00b7 ${mass}${Object.keys(S.ac.flap_deflections||{}).length?' \u00b7 flaps':''}`
     :`<span style="color:var(--bad)">Unknown aircraft \u201c${esc(AIRCRAFT)}\u201d</span>`;
-  $('computeAll').disabled=!S.fleet; refreshPanel();
+  $('computeAll').disabled=!S.ac; refreshPanel();
 }).catch(e=>{ $('connAircraft').innerHTML=`<span style="color:var(--bad)">Backend not reachable: ${esc(e.message)}</span>`; $('computeAll').disabled=true; });
 refreshStats(); renderLog();
 if(typeof sel==='string'&&Q[sel]) augment(sel,false);

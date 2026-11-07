@@ -1,12 +1,18 @@
-"""Expert View backend (gh-1282): one fleet quantity through the endpoint with the real kernel.
+"""Expert View backend (gh-1282): a fleet and a stored-aeroplane quantity through the endpoint.
 
-Aero tier: real AeroSandbox and IPOPT. The golden is the regression value of
-``aero_kernel/tests/test_minimum_drag_speed_fleet.py`` (not a validation).
+Aero tier: real AeroSandbox and IPOPT. The fleet golden is the regression value of
+``aero_kernel/tests/test_minimum_drag_speed_fleet.py`` (not a validation); the stored aeroplane's is
+computed by hand from its geometry.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
+
+from app.models.aeroplanemodel import DesignAssumptionModel
+from app.tests.conftest import seed_integration_aeroplane
 
 pytestmark = [pytest.mark.aero, pytest.mark.integration]
 
@@ -32,3 +38,34 @@ def test_bryan_minimum_drag_speed_through_the_endpoint(client_and_db):
     assert any(record["formula"] for record in body["logs"])
     assert all("/Users/" not in record["message"] for record in body["logs"])
     assert body["provenance"]["defaults_used"]
+
+
+def test_wing_loading_of_a_stored_aeroplane_through_the_endpoint(client_and_db):
+    # The main wing of the seeded aeroplane is a trapezoid from the centre line: chord 0.20 m at
+    # the root, 0.15 m at the tip, 0.5 m half span, mirrored, so S_ref = 2 * 0.5 * 0.175 = 0.175 m^2.
+    # W/S = m g / S_ref with the mass assumption (1.1 kg) and standard gravity (canon default).
+    client, session_factory = client_and_db
+    with session_factory() as db:
+        plane = seed_integration_aeroplane(db)
+        db.add(
+            DesignAssumptionModel(
+                aeroplane_id=plane.id,
+                parameter_name="mass",
+                estimate_value=1.1,
+                active_source="ESTIMATE",
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
+        aeroplane_id = str(plane.uuid)
+    response = client.post(
+        "/canon/compute",
+        json={"aircraft": {"aeroplane": aeroplane_id}, "quantities": ["wing-loading"]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["input_errors"] == []
+    (quantity,) = body["quantities"]
+    assert quantity["status"] == "ok"
+    assert quantity["unit"] == "N/m^2"
+    assert quantity["value"] == pytest.approx(1.1 * 9.80665 / 0.175, rel=1e-6)

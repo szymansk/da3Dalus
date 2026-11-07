@@ -105,8 +105,8 @@ async function stubBackend(page: Page) {
     if (request.method() === "OPTIONS") {
       return route.fulfill({ status: 204, headers: CORS });
     }
-    if (request.url().endsWith("/canon/fleet")) {
-      return route.fulfill({ status: 200, headers: CORS, json: FLEET });
+    if (request.url().endsWith("/canon/aircraft")) {
+      return route.fulfill({ status: 200, headers: CORS, json: { fleet: FLEET, aeroplanes: [] } });
     }
     computeRequests += 1;
     const body = request.postDataJSON() as { quantities: string[]; fresh?: boolean };
