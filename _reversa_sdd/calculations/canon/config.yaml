@@ -156,3 +156,10 @@ opt_body_merge_exponent_max:
   guards: "Canopy merge (#1355): the largest exponent the refit of an envelope's half searches; a half whose area fraction lies above f(1000) = 0.999998 (practically a rectangle) is clamped to it and declared (canopy_merge_exponent_clamped)."
   basis: numerical
   source: "a search bracket, no domain value: the fleet's bodies use exponents up to 50 (f = 0.9994), so 1000 leaves a wide margin; above it a section is a rectangle to 2e-6 of its area"
+
+opt_body_axis_tolerance:
+  value: 1.0e-9
+  unit: m
+  guards: "Straight body axis for AeroBuildup (#1358): the largest vertical distance of a body's section centre from the least-squares line through all its centres up to which the centres count as already on a line, so the body is handed over unchanged and nothing is declared."
+  basis: numerical
+  source: "a margin over the floating-point round-off of the least-squares fit on coordinates of metres (about 1e-16 m per metre of body); a nanometre is far below any coordinate a geometry document states, so every real step of the axis is straightened and declared"

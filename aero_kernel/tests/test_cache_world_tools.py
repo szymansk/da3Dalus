@@ -182,6 +182,7 @@ def test_a_changed_avl_config_value_misses_the_cache_in_the_avl_world(
         "opt_body_merge_area_tolerance",
         "opt_body_merge_exponent_min",
         "opt_body_merge_exponent_max",
+        "opt_body_axis_tolerance",
     ],
 )
 def test_a_changed_optimisation_config_value_misses_the_cache_in_the_aerobuildup_world(

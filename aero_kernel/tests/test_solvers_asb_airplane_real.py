@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from aero_kernel.body_axis import aerobuildup_bodies
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.solvers.asb_airplane import main_wing_properties, to_asb_airplane
 from aero_kernel.superellipse import quadrant_area_fraction
@@ -128,9 +129,14 @@ def test_a_section_with_two_exponents_converts_to_a_section_with_the_area_of_its
     plane = AirplaneGeometry.model_validate(reference_document(member))
     converted = to_asb_airplane(plane)
     seen = 0
-    for source, built in zip((plane.fuselages or {}).values(), converted.fuselages, strict=True):
-        for section, xsec in zip(source.x_secs, built.xsecs, strict=True):
-            assert list(xsec.xyz_c) == list(section.xyz)
+    # no canopies on these two, so the solver bodies are the document's; AeroBuildup sees each on
+    # its straight axis (#1358): x and y of the centre as written, z on the least-squares line
+    assert all(body.role != "canopy" for body in (plane.fuselages or {}).values())
+    sources = zip((plane.fuselages or {}).values(), aerobuildup_bodies(plane).bodies, strict=True)
+    for (source, straight), built in zip(sources, converted.fuselages, strict=True):
+        for section, on_axis, xsec in zip(source.x_secs, straight.x_secs, built.xsecs, strict=True):
+            assert list(xsec.xyz_c) == list(on_axis.xyz)
+            assert list(xsec.xyz_c)[:2] == list(section.xyz)[:2]
             assert (xsec.width, xsec.height) == (2.0 * section.a, 2.0 * section.b)
             if section.n_lower is None or section.n_lower == section.n:
                 assert xsec.shape == section.n

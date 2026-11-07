@@ -549,6 +549,15 @@ clamped refit exponent is the warning `canopy_merge_exponent_clamped`, a canopy 
 differs from its parent's the warning `canopy_off_centre`. Write a canopy as a whole body (the
 canopy convention above); its hidden part is cut away by the merge.
 
+**Straight axis for AeroBuildup (#1358).** AeroBuildup takes the axis of each body segment from
+two consecutive section centres, so a step of the centre between two close sections would count as
+a steeply inclined segment with crossflow drag at α = 0. For AeroBuildup only, after the canopy
+merge, the `z` of every section centre is placed on the least-squares line `z(x)` through all
+centres of that body; `x`, `y`, `a`, `b`, `n` and `n_lower` stay, AVL and the stored document keep
+the true centres. Every changed body is declared by the notice `fuselage_axis_straightened` (body,
+number of sections, largest vertical shift and the section where it occurs). Write the centres as
+they are; the straightening is the solver's concern, not the writer's.
+
 **In the app.** Bodies are written one at a time, so a parent is created **before** the bodies
 attached to it. A body that others are attached to cannot be deleted (HTTP 409 naming them):
 delete them or attach them to another body first. Renaming is not possible through the API —

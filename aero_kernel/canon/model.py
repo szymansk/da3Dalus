@@ -673,6 +673,7 @@ class KernelConfig(BaseModel):
     opt_body_merge_area_tolerance: ConfigValue
     opt_body_merge_exponent_min: ConfigValue
     opt_body_merge_exponent_max: ConfigValue
+    opt_body_axis_tolerance: ConfigValue
     avl_contour_margin: ConfigValue
 
 

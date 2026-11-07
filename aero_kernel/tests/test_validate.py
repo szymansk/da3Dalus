@@ -1078,10 +1078,12 @@ class TestBodyAttachment:
         result = _result(_with_canopy(_document()))
         assert result.errors == ()
         # n_lower = 1 under n = 2 is declared per section, as for any body (gh-1157); the
-        # canopy is merged into its body for the solvers and that is declared too (slice 2)
+        # canopy is merged into its body for the solvers and that is declared too (slice 2);
+        # the envelope lifts the merged centres, so AeroBuildup's straight axis is declared (#1358)
         assert set(_codes_of_warnings(result)) == {
             "fuselage_section_equivalent",
             "canopy_merged_into_fuselage",
+            "fuselage_axis_straightened",
         }
 
     def test_role_defaults_to_fuselage_and_attached_to_to_none(self) -> None:
@@ -1190,3 +1192,50 @@ class TestCanopyMerge:
         assert _codes(errors) == ["invalid_body_attachment"]
         assert _paths(errors) == ['airplane.fuselages["Hood"].attached_to']
         assert "canopy" in errors[0].message
+
+
+def _with_kinked_axis(document: dict[str, Any]) -> dict[str, Any]:
+    """Give the body ``Body`` a third section whose centre steps up by 0.03 m (#1358)."""
+    sections = document["airplane"]["fuselages"]["Body"]["x_secs"]
+    sections.insert(1, {"xyz": [0.2, 0.0, 0.03], "a": 0.05, "b": 0.05, "n": 2.0})
+    sections[2]["xyz"][2] = 0.03
+    return document
+
+
+class TestFuselageAxisStraightened:
+    """AeroBuildup sees each body on its least-squares axis: declared per body (#1358, ADR 0020)."""
+
+    def test_a_body_off_its_line_is_declared_once_with_the_largest_shift(self) -> None:
+        (notice,) = _result(_with_kinked_axis(_document())).warnings
+        assert notice.code == "fuselage_axis_straightened"
+        assert notice.severity is WarningSeverity.NOTICE
+        assert notice.origin == "airplane"
+        # centres (0, 0), (0.2, 0.03), (0.5, 0.03): the line misses the middle one most
+        x, z = [0.0, 0.2, 0.5], [0.0, 0.03, 0.03]
+        x_mean, z_mean = sum(x) / 3, sum(z) / 3
+        slope = sum((a - x_mean) * (b - z_mean) for a, b in zip(x, z, strict=True))
+        slope /= sum((a - x_mean) ** 2 for a in x)
+        shifts = [abs(z_mean + slope * (a - x_mean) - b) for a, b in zip(x, z, strict=True)]
+        index = shifts.index(max(shifts))
+        assert notice.detail["fuselage"] == "Body"
+        assert notice.detail["section_index"] == index
+        assert notice.detail["x_m"] == x[index]
+        largest = notice.detail["largest_shift_m"]
+        assert isinstance(largest, float)
+        assert math.isclose(largest, max(shifts), rel_tol=1e-12)
+        assert notice.detail["sections"] == 3
+        assert "Body" in notice.message
+        assert "AeroBuildup" in notice.message
+
+    def test_a_straight_body_is_not_declared(self) -> None:
+        document = _document()
+        for section in document["airplane"]["fuselages"]["Body"]["x_secs"]:
+            section["xyz"][2] = 0.1 * section["xyz"][0]
+        assert _result(document).warnings == ()
+
+    def test_an_invalid_input_gets_no_straightening_declaration(self) -> None:
+        document = _with_kinked_axis(_document())
+        document["airplane"]["fuselages"]["Body"]["x_secs"][1]["a"] = -0.05
+        result = _result(document)
+        assert result.errors != ()
+        assert "fuselage_axis_straightened" not in _codes_of_warnings(result)

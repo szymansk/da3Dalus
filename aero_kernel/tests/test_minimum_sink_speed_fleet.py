@@ -32,12 +32,42 @@ GOLDEN_TOOL_VERSIONS = {"aerosandbox": "4.2.9", "neuralfoil": "0.3.2"}
 # test_minimum_drag_speed_fleet.py, recomputed here as the reference of the ratio.
 # BRYAN re-recorded for #1355 slice 2 (canopy merged); before: (6.0225190, 5.1468365, 0.9518853, 7.2306630).
 GOLDEN = {
-    FleetMember.BRYAN: (6.4126247, 3.7242834, 0.8395940, 7.6649267),
-    FleetMember.JAGUAR: (7.1019810, 5.6291430, 0.7855905, 8.8849618),
-    FleetMember.BELEMNITOS: (4.8933654, 5.8417751, 0.9373048, 5.2599903),
-    FleetMember.RV7: (7.9411907, 7.6357058, 0.8459578, 9.9423059),
-    FleetMember.CHEKKER: (7.3310603, 5.0096420, 0.9620648, 8.8958176),
-    FleetMember.WIESEL: (9.7532022, 6.4971152, 0.7489405, 11.9855865),
+    FleetMember.BRYAN: (
+        6.4546825,
+        3.6050250,
+        0.8286883,
+        7.7115090,
+    ),  # #1358: was 6.4126247, 3.7242834, 0.8395940, 7.6649267
+    FleetMember.JAGUAR: (
+        7.1085573,
+        5.6116187,
+        0.7841376,
+        8.9849874,
+    ),  # #1358: was 7.1019810, 5.6291430, 0.7855905, 8.8849618
+    FleetMember.BELEMNITOS: (
+        4.8934801,
+        5.8417751,
+        0.9372608,
+        5.2599903,
+    ),  # #1358: was 4.8933654, 0.9373048
+    FleetMember.RV7: (
+        7.9388254,
+        7.6737171,
+        0.8464620,
+        9.9524821,
+    ),  # #1358: was 7.9411907, 7.6357058, 0.8459578, 9.9423059
+    FleetMember.CHEKKER: (
+        7.7966254,
+        3.6754048,
+        0.8505984,
+        9.7394293,
+    ),  # #1358: was 7.3310603, 5.0096420, 0.9620648, 8.8958176
+    FleetMember.WIESEL: (
+        9.7641003,
+        6.4824095,
+        0.7472696,
+        12.0893466,
+    ),  # #1358: was 9.7532022, 6.4971152, 0.7489405, 11.9855865
 }
 # Re-recorded with the kernel's drag (#1346: AeroBuildup's viscous factor k_e,D0 removed from its induced drag),
 # from BRYAN 6.1460437, JAGUAR 7.1115531, BELEMNITOS 4.9079007, RV-7 8.0806222, CHEKKER 7.4625361, WIESEL 9.8057437 m/s.

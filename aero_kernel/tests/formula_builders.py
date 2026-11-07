@@ -126,6 +126,7 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_body_merge_area_tolerance": 1e-12,
     "opt_body_merge_exponent_min": 0.1,
     "opt_body_merge_exponent_max": 1000.0,
+    "opt_body_axis_tolerance_m": 1e-9,
 }
 
 

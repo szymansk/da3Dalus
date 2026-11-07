@@ -314,6 +314,16 @@ Sources:
   whose `xyz[1]` differs from its parent's, counted with its offset on both sides. Grid, bisection tolerance and
   bracket are numeric settings (`opt_body_merge_*` in `config.yaml`), reported among the solver settings of
   AeroBuildup and AVL. Declared only for an admissible input
+- the straight body axis (#1358, canon rule `fuselage-axis-straightened`, origin `airplane`, from validation):
+  AeroBuildup takes each segment's axis from two consecutive section centres, so a stepped centre would be a
+  steeply inclined segment with Jorgensen crossflow drag at α = 0. For AeroBuildup only, after the canopy merge,
+  the z of every section centre of a body becomes the unweighted least-squares line z(x) through all its centres
+  (`body_axis.aerobuildup_bodies`, the one producer that `to_asb_airplane` and validation read, ADR 0022); x, y,
+  `a`, `b`, `n`, `n_lower` stay, AVL and the stored document keep the true centres (maintainer decision
+  2026-11-07). `fuselage_axis_straightened` (`notice`, one per changed body; `detail`: `fuselage`, `sections`,
+  `largest_shift_m`, `section_index`, `x_m`). A body with fewer than two sections or within
+  `opt_body_axis_tolerance` (`config.yaml`, numeric, reported among AeroBuildup's solver settings) of its line is
+  unchanged and not declared. Declared only for an admissible input
 - the kernel's drag (`induced_drag_viscous_factor_removed`, `notice`, #1346, ch. 8.8): AeroBuildup's full-scale
   viscous factor `k_e,D0` is taken out of its induced drag on every drag the kernel reads; one per evaluation
   (evaluate, best glide, minimum sink; not the stall, whose values read lift only — the reader of the published
@@ -1407,7 +1417,8 @@ Validation` returns `errors` (`KernelError`s of category `invalid_input`, all of
 `airplane`, once per fuselage section with `n_lower` different from `n`, which the ASB conversion maps to the
 symmetric section of equal cross-section area, `superellipse.equivalent_exponent`, #1307; for an admissible
 input with canopies `canopy_merged_into_fuselage`, `canopy_merge_exponent_clamped` and `canopy_off_centre`, origin
-`airplane`, from `solver_bodies.merged_bodies`, #1355). It needs no canon model but the kernel configuration's area tolerance; the checks
+`airplane`, from `solver_bodies.merged_bodies`, #1355; `fuselage_axis_straightened`, origin `airplane`, from
+`body_axis.aerobuildup_bodies`, #1358). It needs no canon model but the kernel configuration's area tolerance; the checks
 of `values` slugs against the canon (`unknown_quantity`, `not_an_input`) are a second function added with
 the canon loader, not a stub now (ADR 0021). **A rule exists only for a field the kernel reads**;
 CAD-only fields (`number_interpolation_points`, servo geometry, step paths) are not validated. One rule,
