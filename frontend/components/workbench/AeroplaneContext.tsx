@@ -11,7 +11,7 @@ import {
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-import type { ImportOpenVspWarning } from "@/components/workbench/ImportOpenVspButton";
+import type { ImportOpenVspWarning } from "@/lib/openvspImport";
 
 export type TreeMode = "wingconfig" | "asb" | "fuselage";
 

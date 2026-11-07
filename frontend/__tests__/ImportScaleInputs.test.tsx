@@ -11,7 +11,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ImportScaleInputs } from "@/components/workbench/ImportScaleInputs";
-import type { ScaleOption } from "@/components/workbench/ImportOpenVspButton";
+import type { ScaleOption } from "@/lib/openvspImport";
 
 const noneOpt: ScaleOption = { mode: "none" };
 const spanOpt: ScaleOption = { mode: "target_span", target_span_m: 1.5 };
