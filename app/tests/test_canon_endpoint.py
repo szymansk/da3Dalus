@@ -96,6 +96,45 @@ def use_kernel(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(canon_service, "KERNEL", Facade())
 
 
+# The first six and the 28 plan models of #1372, by their fleet ids.
+FLEET_IDS = {
+    "bryan",
+    "jaguar",
+    "rv-7",
+    "chekker",
+    "wiesel",
+    "belemnitos",
+    "a6m2_zero",
+    "aeronca_champ",
+    "albatros_4",
+    "barracuda",
+    "bf109_e",
+    "d520_dewoitine",
+    "dardo",
+    "estrela",
+    "extra_300_ep",
+    "f3a_competicion",
+    "force_5",
+    "force_four",
+    "fw190_a8",
+    "gee_bee_r3",
+    "kastaway",
+    "miles_magister",
+    "mini_funtana",
+    "p36_hawk",
+    "p39",
+    "snoopy",
+    "sonas_40",
+    "spirit_100",
+    "sprite",
+    "super_trident",
+    "ultra_mini_stick",
+    "voodoo",
+    "windfreak",
+    "wristocrat",
+}
+
+
 @pytest.mark.integration
 def test_the_fleet_is_listed(client_and_db):
     client, _ = client_and_db
@@ -103,7 +142,7 @@ def test_the_fleet_is_listed(client_and_db):
     assert response.status_code == 200
     fleet = response.json()["fleet"]
     ids = {entry["id"] for entry in fleet}
-    assert ids == {"bryan", "jaguar", "rv-7", "chekker", "wiesel", "belemnitos"}
+    assert ids == FLEET_IDS
     assert set(fleet[0]) == {"id", "name", "mass_kg", "flap_deflections"}
 
 

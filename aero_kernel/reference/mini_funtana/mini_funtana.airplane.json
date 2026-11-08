@@ -1,0 +1,797 @@
+{
+ "name": "MINI_FUNTANA",
+ "wings": {
+  "main_wing": {
+   "name": "main_wing",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.161158,
+      0.0,
+      -0.0095
+     ],
+     "chord": 0.28115,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.167799,
+      0.0889,
+      -0.0095
+     ],
+     "chord": 0.259192,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7059,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7059,
+      "rel_chord_tip": 0.6925,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.196036,
+      0.4669,
+      -0.0095
+     ],
+     "chord": 0.165825,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.19626,
+      0.4699,
+      -0.0095
+     ],
+     "chord": 0.165084,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_main_wing_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "horizontal_tail": {
+   "name": "horizontal_tail",
+   "surface_type": "horizontal_tail",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.69853,
+      0.0,
+      0.0207
+     ],
+     "chord": 0.08573,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.8888,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.8888,
+      "rel_chord_tip": 0.8888,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.69853,
+      0.0071,
+      0.0207
+     ],
+     "chord": 0.08573,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.8888,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.8888,
+      "rel_chord_tip": 0.7713,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.69853,
+      0.0073,
+      0.0207
+     ],
+     "chord": 0.098791,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7713,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7713,
+      "rel_chord_tip": 0.7388,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.698731,
+      0.011,
+      0.0207
+     ],
+     "chord": 0.102875,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7388,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7388,
+      "rel_chord_tip": 0.4953,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.706211,
+      0.0482,
+      0.0207
+     ],
+     "chord": 0.138349,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4953,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4953,
+      "rel_chord_tip": 0.4953,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.73227,
+      0.1778,
+      0.0207
+     ],
+     "chord": 0.08573,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/mini_funtana_horizontal_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "vertical_tail": {
+   "name": "vertical_tail",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.7955,
+      0.0,
+      -0.0317
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat"
+    },
+    {
+     "xyz_le": [
+      0.7955,
+      0.0,
+      -0.031592
+     ],
+     "chord": 0.0032,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 1.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 1.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.7955,
+      0.0,
+      -0.029
+     ],
+     "chord": 0.077956,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.7955,
+      0.0,
+      -0.0144
+     ],
+     "chord": 0.08596,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.7955,
+      0.0,
+      0.0348
+     ],
+     "chord": 0.076154,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.586,
+      "servo_placement": "top",
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.695489,
+      0.0,
+      0.035
+     ],
+     "chord": 0.176125,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.586,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.586,
+      "rel_chord_tip": 0.5495,
+      "servo_placement": "top",
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.715185,
+      0.0,
+      0.0573
+     ],
+     "chord": 0.151984,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.5495,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.5495,
+      "rel_chord_tip": 0.4373,
+      "servo_placement": "top",
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.760723,
+      0.0,
+      0.1556
+     ],
+     "chord": 0.086853,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat"
+    },
+    {
+     "xyz_le": [
+      0.7637,
+      0.0,
+      0.162
+     ],
+     "chord": 0.0826,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/bryan_platte.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "fuselage": {
+   "name": "fuselage",
+   "x_secs": [
+    {
+     "xyz": [
+      0.038173,
+      0.0,
+      0.00241
+     ],
+     "a": 0.040337,
+     "b": 0.015414,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.038773,
+      0.0,
+      0.000961
+     ],
+     "a": 0.043106,
+     "b": 0.020713,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.039616,
+      0.0,
+      0.000174
+     ],
+     "a": 0.046324,
+     "b": 0.023489,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.0419,
+      0.0,
+      -0.001329
+     ],
+     "a": 0.04975,
+     "b": 0.028119,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.0428,
+      0.0,
+      -0.001781
+     ],
+     "a": 0.05071,
+     "b": 0.029388,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.0462,
+      0.0,
+      -0.003392
+     ],
+     "a": 0.052495,
+     "b": 0.032971,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.05,
+      0.0,
+      -0.005052
+     ],
+     "a": 0.053007,
+     "b": 0.035503,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.0533,
+      0.0,
+      -0.006414
+     ],
+     "a": 0.053092,
+     "b": 0.036944,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.0589,
+      0.0,
+      -0.008128
+     ],
+     "a": 0.052716,
+     "b": 0.038755,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.065373,
+      0.0,
+      -0.009367
+     ],
+     "a": 0.05228,
+     "b": 0.040107,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.0723,
+      0.0,
+      -0.009986
+     ],
+     "a": 0.051815,
+     "b": 0.040847,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.0791,
+      0.0,
+      -0.010013
+     ],
+     "a": 0.051357,
+     "b": 0.040992,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.1863,
+      0.0,
+      -0.007555
+     ],
+     "a": 0.044147,
+     "b": 0.040559,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.2384,
+      0.0,
+      -0.004947
+     ],
+     "a": 0.040643,
+     "b": 0.041762,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.2597,
+      0.0,
+      0.002305
+     ],
+     "a": 0.03921,
+     "b": 0.048439,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.273373,
+      0.0,
+      0.006456
+     ],
+     "a": 0.038291,
+     "b": 0.052222,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.2849,
+      0.0,
+      0.009416
+     ],
+     "a": 0.037515,
+     "b": 0.054871,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.296773,
+      0.0,
+      0.011879
+     ],
+     "a": 0.036717,
+     "b": 0.057013,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.3089,
+      0.0,
+      0.013665
+     ],
+     "a": 0.035901,
+     "b": 0.058472,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.3221,
+      0.0,
+      0.014976
+     ],
+     "a": 0.035013,
+     "b": 0.059427,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.3366,
+      0.0,
+      0.015882
+     ],
+     "a": 0.034038,
+     "b": 0.059943,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.3589,
+      0.0,
+      0.016535
+     ],
+     "a": 0.032538,
+     "b": 0.059995,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.3832,
+      0.0,
+      0.016608
+     ],
+     "a": 0.030904,
+     "b": 0.059411,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.4111,
+      0.0,
+      0.016058
+     ],
+     "a": 0.029027,
+     "b": 0.058109,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.4857,
+      0.0,
+      0.013306
+     ],
+     "a": 0.02401,
+     "b": 0.053345,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.704973,
+      0.0,
+      0.004968
+     ],
+     "a": 0.009262,
+     "b": 0.039248,
+     "n": 3.0,
+     "n_lower": 4.0
+    },
+    {
+     "xyz": [
+      0.7951,
+      0.0,
+      0.00048
+     ],
+     "a": 0.0032,
+     "b": 0.034481,
+     "n": 3.0,
+     "n_lower": 4.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  }
+ },
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ]
+}

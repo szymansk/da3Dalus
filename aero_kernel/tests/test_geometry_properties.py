@@ -14,7 +14,7 @@ import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.solvers.asb_airplane import main_wing_properties, surface_properties
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import WITH_PITCH_TAIL, FleetMember, reference_document
 
 pytestmark = pytest.mark.aero
 
@@ -240,7 +240,7 @@ def test_surface_properties_of_a_swept_polyhedral_twisted_wing_match_asb_directl
     )
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", WITH_PITCH_TAIL)
 def test_the_fleet_main_wing_and_tail_surfaces_match_asb_directly(member: FleetMember) -> None:
     document = reference_document(member)
     airplane = AirplaneGeometry.model_validate(document)

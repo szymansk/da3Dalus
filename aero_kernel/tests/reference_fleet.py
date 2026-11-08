@@ -21,7 +21,11 @@ from aero_kernel.reference_fleet import (
 
 __all__ = [
     "FLAP_DEFLECTIONS_DEG",
+    "MVP_FLEET",
+    "PLAN_BATCH",
     "REFERENCE_DIR",
+    "TAILLESS",
+    "WITH_PITCH_TAIL",
     "FleetMember",
     "aircraft_input",
     "bryan_as_the_prototype",
@@ -31,6 +35,22 @@ __all__ = [
     "read_selig_coordinates",
     "reference_document",
 ]
+
+# The six aircraft whose goldens the per-quantity fleet tests pin (test_*_fleet.py) and whose AVL
+# files are snapshots; the 28 plan models of #1372 have their goldens in test_plan_batch_fleet.py,
+# one compute each.
+MVP_FLEET = (
+    FleetMember.BRYAN,
+    FleetMember.JAGUAR,
+    FleetMember.CHEKKER,
+    FleetMember.BELEMNITOS,
+    FleetMember.WIESEL,
+    FleetMember.RV7,
+)
+PLAN_BATCH = tuple(member for member in FleetMember if member not in MVP_FLEET)
+# The flying wings of the batch: a main wing and a fin, no surface that trims the pitch.
+TAILLESS = (FleetMember.VOODOO, FleetMember.WINDFREAK)
+WITH_PITCH_TAIL = tuple(member for member in FleetMember if member not in TAILLESS)
 
 
 def bryan_as_the_prototype() -> dict[str, Any]:

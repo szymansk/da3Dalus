@@ -25,6 +25,11 @@ BELOW_THE_BAND = {
     (FleetMember.JAGUAR, "horizontal_tail"),
     (FleetMember.JAGUAR, "vertical_tail"),
     (FleetMember.BELEMNITOS, "v_tail"),
+    # the plan batch (#1372): the small horizontal tails of three 0.75 m warbirds and WRISTOCRAT's
+    (FleetMember.BF109_E, "horizontal_tail"),
+    (FleetMember.D520_DEWOITINE, "horizontal_tail"),
+    (FleetMember.FW190_A8, "horizontal_tail"),
+    (FleetMember.WRISTOCRAT, "horizontal_tail"),
 }
 
 
@@ -78,8 +83,8 @@ def surface_codes(warnings: list[KernelWarning]) -> list[str]:
 
 @pytest.mark.parametrize("member", list(FleetMember), ids=lambda m: m.name)
 def test_only_the_small_tails_leave_the_band_at_their_mac(member: FleetMember) -> None:
-    """No main wing carries reynolds_outside_band from its tip strips; BRYAN's and JAGUAR's tails
-    and BELEMNITOS' V-tail do (stand-in MAC)."""
+    """No main wing carries reynolds_outside_band from its tip strips; the tails in BELOW_THE_BAND
+    do (stand-in MAC)."""
     sections = stand_in_surface_sections(aircraft_input(member).airplane)
     for surface_type, warnings in warnings_of(member, sections).items():
         below = (member, surface_type) in BELOW_THE_BAND

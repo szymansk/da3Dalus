@@ -1,0 +1,1068 @@
+{
+ "name": "VOODOO",
+ "wings": {
+  "main_wing": {
+   "name": "main_wing",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.186317,
+      0.0,
+      0.009573
+     ],
+     "chord": 0.433002,
+     "twist": 1.334,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.271964,
+      0.2258,
+      0.009526
+     ],
+     "chord": 0.35046,
+     "twist": 1.334,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.328713,
+      0.375412,
+      0.009506
+     ],
+     "chord": 0.314292,
+     "twist": 1.334,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.360945,
+      0.4604,
+      0.009495
+     ],
+     "chord": 0.294287,
+     "twist": -0.3161,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.364093,
+      0.4687,
+      0.009494
+     ],
+     "chord": 0.292345,
+     "twist": -0.4772,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.365415,
+      0.472186,
+      0.009493
+     ],
+     "chord": 0.290974,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.8705,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.8705,
+      "rel_chord_tip": 0.86,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.380479,
+      0.5119,
+      0.009489
+     ],
+     "chord": 0.283586,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.86,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.86,
+      "rel_chord_tip": 0.8364,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.398155,
+      0.5585,
+      0.009486
+     ],
+     "chord": 0.278338,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.8364,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.8364,
+      "rel_chord_tip": 0.7923,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.424328,
+      0.6275,
+      0.009483
+     ],
+     "chord": 0.273155,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.7923,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.7923,
+      "rel_chord_tip": 0.7432,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.458124,
+      0.7166,
+      0.009477
+     ],
+     "chord": 0.262747,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.7432,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.7432,
+      "rel_chord_tip": 0.7287,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.473145,
+      0.7562,
+      0.009472
+     ],
+     "chord": 0.255072,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.7287,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.7287,
+      "rel_chord_tip": 0.7264,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.481859,
+      0.7781,
+      0.009469
+     ],
+     "chord": 0.248156,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.7264,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.7264,
+      "rel_chord_tip": 0.7365,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.495142,
+      0.804164,
+      0.009459
+     ],
+     "chord": 0.231741,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.7365,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.7365,
+      "rel_chord_tip": 0.748,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.510764,
+      0.8249,
+      0.009448
+     ],
+     "chord": 0.211228,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.748,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.748,
+      "rel_chord_tip": 0.7643,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.524992,
+      0.8404,
+      0.009436
+     ],
+     "chord": 0.19097,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.7643,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.7643,
+      "rel_chord_tip": 0.7824,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.539432,
+      0.8521,
+      0.009424
+     ],
+     "chord": 0.170232,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.7824,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.7824,
+      "rel_chord_tip": 0.8162,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.55564,
+      0.8631,
+      0.00941
+     ],
+     "chord": 0.145233,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.8162,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.8162,
+      "rel_chord_tip": 0.8799,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.575515,
+      0.8722,
+      0.009392
+     ],
+     "chord": 0.113603,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elvn",
+      "hinge_point": 0.8799,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elvn",
+      "role": "elevator",
+      "rel_chord_root": 0.8799,
+      "rel_chord_tip": 0.9091,
+      "servo_placement": "top",
+      "positive_deflection_deg": 0.0,
+      "negative_deflection_deg": 53.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.582929,
+      0.874522,
+      0.009386
+     ],
+     "chord": 0.10215,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.589915,
+      0.876173,
+      0.009379
+     ],
+     "chord": 0.090932,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.59222,
+      0.8767,
+      0.009375
+     ],
+     "chord": 0.082807,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.601341,
+      0.8786,
+      0.009369
+     ],
+     "chord": 0.071954,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.620903,
+      0.881316,
+      0.009349
+     ],
+     "chord": 0.037592,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.638174,
+      0.882142,
+      0.009329
+     ],
+     "chord": 0.002541,
+     "twist": -0.54,
+     "airfoil": "./components/airfoils/voodoo_main_wing_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "vertical_tail": {
+   "name": "vertical_tail",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.569595,
+      0.0,
+      0.016129
+     ],
+     "chord": 0.007239,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.561975,
+      0.0,
+      0.017844
+     ],
+     "chord": 0.015518,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.54303,
+      0.0,
+      0.021829
+     ],
+     "chord": 0.033846,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.501015,
+      0.0,
+      0.029845
+     ],
+     "chord": 0.076899,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.429084,
+      0.0,
+      0.038929
+     ],
+     "chord": 0.151673,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.356235,
+      0.0,
+      0.043498
+     ],
+     "chord": 0.227212,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.323723,
+      0.0,
+      0.045029
+     ],
+     "chord": 0.260063,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.323723,
+      0.0,
+      0.045847
+     ],
+     "chord": 0.260234,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.33559,
+      0.0,
+      0.048529
+     ],
+     "chord": 0.249986,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.352191,
+      0.0,
+      0.055129
+     ],
+     "chord": 0.237069,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.375092,
+      0.0,
+      0.067229
+     ],
+     "chord": 0.222122,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.396045,
+      0.0,
+      0.079429
+     ],
+     "chord": 0.210242,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.441743,
+      0.0,
+      0.107729
+     ],
+     "chord": 0.184367,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.485735,
+      0.0,
+      0.132729
+     ],
+     "chord": 0.154128,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.520718,
+      0.0,
+      0.150029
+     ],
+     "chord": 0.127273,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.5288,
+      0.0,
+      0.153929
+     ],
+     "chord": 0.120767,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.532133,
+      0.0,
+      0.155529
+     ],
+     "chord": 0.117539,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.548139,
+      0.0,
+      0.163068
+     ],
+     "chord": 0.103385,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.566653,
+      0.0,
+      0.169929
+     ],
+     "chord": 0.085819,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.586614,
+      0.0,
+      0.175229
+     ],
+     "chord": 0.064216,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.595743,
+      0.0,
+      0.177429
+     ],
+     "chord": 0.05046,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.611251,
+      0.0,
+      0.17926
+     ],
+     "chord": 0.011896,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.61887,
+      0.0,
+      0.179451
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/voodoo_vertical_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "fuselage": {
+   "name": "fuselage",
+   "x_secs": [
+    {
+     "xyz": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.004,
+      0.0,
+      0.000327
+     ],
+     "a": 0.005276,
+     "b": 0.004327,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.009,
+      0.0,
+      0.000568
+     ],
+     "a": 0.008068,
+     "b": 0.008442,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.027228,
+      0.0,
+      0.000259
+     ],
+     "a": 0.015462,
+     "b": 0.016342,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0538,
+      0.0,
+      0.000406
+     ],
+     "a": 0.024459,
+     "b": 0.024524,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0666,
+      0.0,
+      0.000274
+     ],
+     "a": 0.027899,
+     "b": 0.027544,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0792,
+      0.0,
+      2.2e-05
+     ],
+     "a": 0.030925,
+     "b": 0.030681,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1117,
+      0.0,
+      -0.000176
+     ],
+     "a": 0.036981,
+     "b": 0.037157,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.142724,
+      0.0,
+      -0.000705
+     ],
+     "a": 0.040704,
+     "b": 0.041234,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1976,
+      0.0,
+      -0.000996
+     ],
+     "a": 0.044831,
+     "b": 0.045538,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1985,
+      0.0,
+      -0.00084
+     ],
+     "a": 0.044831,
+     "b": 0.045417,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2173,
+      0.0,
+      -0.001315
+     ],
+     "a": 0.045784,
+     "b": 0.046482,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2294,
+      0.0,
+      -0.001369
+     ],
+     "a": 0.046101,
+     "b": 0.047018,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.236,
+      0.0,
+      -0.001346
+     ],
+     "a": 0.046309,
+     "b": 0.047286,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2894,
+      0.0,
+      -0.00192
+     ],
+     "a": 0.046323,
+     "b": 0.04774,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.349631,
+      0.0,
+      -0.002464
+     ],
+     "a": 0.04518,
+     "b": 0.046216,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.4155,
+      0.0,
+      -0.002318
+     ],
+     "a": 0.040862,
+     "b": 0.04226,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.4536,
+      0.0,
+      -0.002565
+     ],
+     "a": 0.037411,
+     "b": 0.038654,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.4912,
+      0.0,
+      -0.002991
+     ],
+     "a": 0.032878,
+     "b": 0.034105,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5248,
+      0.0,
+      -0.003026
+     ],
+     "a": 0.027686,
+     "b": 0.028494,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5334,
+      0.0,
+      -0.002977
+     ],
+     "a": 0.026067,
+     "b": 0.026932,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5623,
+      0.0,
+      -0.003357
+     ],
+     "a": 0.019975,
+     "b": 0.02118,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5707,
+      0.0,
+      -0.002977
+     ],
+     "a": 0.01806,
+     "b": 0.019405,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5737,
+      0.0,
+      -0.002737
+     ],
+     "a": 0.017381,
+     "b": 0.019058,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5804,
+      0.0,
+      -0.002906
+     ],
+     "a": 0.015776,
+     "b": 0.016829,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.596,
+      0.0,
+      -0.003032
+     ],
+     "a": 0.011214,
+     "b": 0.012241,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.615315,
+      0.0,
+      -0.003918
+     ],
+     "a": 0.004524,
+     "b": 0.00529,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.626618,
+      0.0,
+      -0.004572
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  }
+ },
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ]
+}

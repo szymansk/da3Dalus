@@ -59,6 +59,148 @@ class FleetMember(Enum):
         0.500,  # approx., maintainer 2026-10-25
         (0.15006000000000005, 0.8200000000000003, 0.183),
     )
+    # The 28 plan models of the plugin batch 2026-11-05 (DB ids 99-126, #1372): exported as WIESEL
+    # and RV-7 were; each mass and its source are in the README (maintainer, 2026-11-07).
+    A6M2_ZERO = (
+        "a6m2_zero/a6m2_zero.airplane.json",
+        0.36,  # DB value; the six 0.75 m warbirds share dimensions (maintainer)
+        (0.09479807326962095, 0.7474914295219584, 0.13407792070363186),
+    )
+    AERONCA_CHAMP = (
+        "aeronca_champ/aeronca_champ.airplane.json",
+        0.39,  # median wing loading of comparable models x S (maintainer)
+        (0.1294784806772935, 0.9056393264512532, 0.14573613857950724),
+    )
+    ALBATROS_4 = (
+        "albatros_4/albatros_4.airplane.json",
+        5.0,  # DB, unverified (plugin)
+        (1.1311692134091602, 4.064558065525576, 0.29417471214604574),
+    )
+    BARRACUDA = (
+        "barracuda/barracuda.airplane.json",
+        1.54,  # median wing loading of comparable models x S (maintainer)
+        (0.4023164909750201, 2.457015197486458, 0.16416371729872276),
+    )
+    BF109_E = (
+        "bf109_e/bf109_e.airplane.json",
+        0.36,  # DB value; the six 0.75 m warbirds share dimensions (maintainer)
+        (0.0957230190752197, 0.7492411231287676, 0.13413742218102967),
+    )
+    D520_DEWOITINE = (
+        "d520_dewoitine/d520_dewoitine.airplane.json",
+        0.36,  # DB value; the six 0.75 m warbirds share dimensions (maintainer)
+        (0.09476688109185386, 0.7474981146561575, 0.13404662459599262),
+    )
+    DARDO = (
+        "dardo/dardo.airplane.json",
+        1.35,  # DB, unverified (plugin)
+        (0.36946099131525617, 1.927554320345861, 0.1958035204702476),
+    )
+    ESTRELA = (
+        "estrela/estrela.airplane.json",
+        1.7,  # plan, ~74 g/dm2, maintainer
+        (0.23151605462, 1.018414, 0.22732999999999998),
+    )
+    EXTRA_300_EP = (
+        "extra_300_ep/extra_300_ep.airplane.json",
+        0.75,  # DB, unverified (plugin)
+        (0.19197062149999997, 1.0406, 0.18985958664669428),
+    )
+    F3A_COMPETICION = (
+        "f3a_competicion/f3a_competicion.airplane.json",
+        4.7,  # DB, unverified; ~70 g/dm2 asked, not answered
+        (0.6759957462548665, 1.9485249049007831, 0.37342847542564533),
+    )
+    FORCE_5 = (
+        "force_5/force_5.airplane.json",
+        1.22,  # DB, unverified (plugin)
+        (0.5724266395037543, 2.527810402831847, 0.2299532119717108),
+    )
+    FORCE_FOUR = (
+        "force_four/force_four.airplane.json",
+        0.68,  # DB, unverified (plugin)
+        (0.1797914721005986, 1.5527399940193276, 0.11761377164746496),
+    )
+    FW190_A8 = (
+        "fw190_a8/fw190_a8.airplane.json",
+        0.35,  # DB value; the six 0.75 m warbirds share dimensions (maintainer)
+        (0.09577666253242607, 0.749720419961544, 0.13416719896227158),
+    )
+    GEE_BEE_R3 = (
+        "gee_bee_r3/gee_bee_r3.airplane.json",
+        12.0,  # plan's estimated dry weight 26-27 lb (maintainer); no fuel
+        (1.287059606197243, 2.640250014911991, 0.5166963370124031),
+    )
+    KASTAWAY = (
+        "kastaway/kastaway.airplane.json",
+        0.65,  # median wing loading of comparable models x S (maintainer)
+        (0.24415894831438648, 1.4997514240263492, 0.16709797334211204),
+    )
+    MILES_MAGISTER = (
+        "miles_magister/miles_magister.airplane.json",
+        0.36,  # DB value; the six 0.75 m warbirds share dimensions (maintainer)
+        (0.08159563230371851, 0.7487165429539202, 0.11232509890328313),
+    )
+    MINI_FUNTANA = (
+        "mini_funtana/mini_funtana.airplane.json",
+        0.539,  # DB, unverified (plugin)
+        (0.20968555679999998, 0.9398, 0.22814871664371625),
+    )
+    P36_HAWK = (
+        "p36_hawk/p36_hawk.airplane.json",
+        0.36,  # DB value; the six 0.75 m warbirds share dimensions (maintainer)
+        (0.09532716016852054, 0.7638246544032625, 0.13333577980035768),
+    )
+    P39 = (
+        "p39/p39.airplane.json",
+        9.5,  # median wing loading of comparable models x S (maintainer)
+        (1.0064408524931268, 2.3353239865776505, 0.45949137781802324),
+    )
+    SNOOPY = (
+        "snoopy/snoopy.airplane.json",
+        1.474,  # DB, unverified (plugin)
+        (0.5972707311632537, 3.202277572817502, 0.190562377571955),
+    )
+    SONAS_40 = (
+        "sonas_40/sonas_40.airplane.json",
+        2.1,  # median wing loading of comparable models x S (maintainer)
+        (0.3637375073024503, 1.4168474017450945, 0.2593836576159867),
+    )
+    SPIRIT_100 = (
+        "spirit_100/spirit_100.airplane.json",
+        1.26,  # median wing loading of comparable models x S (maintainer)
+        (0.6147868353514252, 2.553729771840085, 0.24506431173279),
+    )
+    SPRITE = (
+        "sprite/sprite.airplane.json",
+        1.0,  # median wing loading of comparable models x S (maintainer)
+        (0.18980244358684775, 0.9908482738198826, 0.1932739094141681),
+    )
+    SUPER_TRIDENT = (
+        "super_trident/super_trident.airplane.json",
+        1.05,  # DB, unverified (plugin)
+        (0.42168247164334927, 2.5332538154891835, 0.16764138961672956),
+    )
+    ULTRA_MINI_STICK = (
+        "ultra_mini_stick/ultra_mini_stick.airplane.json",
+        0.35,  # DB, unverified (plugin)
+        (0.1503972208444533, 0.831300002110264, 0.18592093571634968),
+    )
+    VOODOO = (
+        "voodoo/voodoo.airplane.json",
+        1.16,  # median wing loading of comparable models x S (maintainer)
+        (0.5408542135972135, 1.7643736535977261, 0.3212452748241717),
+    )
+    WINDFREAK = (
+        "windfreak/windfreak.airplane.json",
+        2.6,  # median wing loading of comparable models x S (maintainer)
+        (0.9073078179033027, 2.493476936709209, 0.3652262185601376),
+    )
+    WRISTOCRAT = (
+        "wristocrat/wristocrat.airplane.json",
+        0.34,  # DB, unverified (plugin)
+        (0.21277910716807166, 1.4556142295425263, 0.14754900416659267),
+    )
 
     def __init__(
         self, relative_path: str, mass_kg: float, asb_reference: tuple[float, float, float]

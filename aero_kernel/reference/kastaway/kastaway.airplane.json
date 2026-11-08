@@ -1,0 +1,4796 @@
+{
+ "name": "KASTAWAY",
+ "wings": {
+  "main_wing": {
+   "name": "main_wing",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.195229,
+      0.0,
+      0.009961
+     ],
+     "chord": 0.179494,
+     "twist": 1.25,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.194552,
+      0.4229,
+      0.045004
+     ],
+     "chord": 0.179681,
+     "twist": 1.25,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.255731,
+      0.683327,
+      0.149258
+     ],
+     "chord": 0.11819,
+     "twist": -0.0705,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.267636,
+      0.698742,
+      0.155453
+     ],
+     "chord": 0.106267,
+     "twist": -0.1486,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.294211,
+      0.714249,
+      0.161731
+     ],
+     "chord": 0.079285,
+     "twist": -0.2273,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.314401,
+      0.719914,
+      0.164058
+     ],
+     "chord": 0.058049,
+     "twist": -0.256,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.323943,
+      0.721957,
+      0.164909
+     ],
+     "chord": 0.046528,
+     "twist": -0.2663,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.340644,
+      0.723442,
+      0.16556
+     ],
+     "chord": 0.027467,
+     "twist": -0.2739,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.361609,
+      0.72465,
+      0.166125
+     ],
+     "chord": 0.0001,
+     "twist": -0.28,
+     "airfoil": "./components/airfoils/kastaway_main_wing_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "horizontal_tail": {
+   "name": "horizontal_tail",
+   "surface_type": "horizontal_tail",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.708321,
+      0.0,
+      -0.001101
+     ],
+     "chord": 0.093811,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.708655,
+      0.00508,
+      -0.001101
+     ],
+     "chord": 0.093477,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.9457,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.9457,
+      "rel_chord_tip": 0.6537,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.714103,
+      0.0327,
+      -0.001101
+     ],
+     "chord": 0.126885,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6537,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6537,
+      "rel_chord_tip": 0.6988,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.733492,
+      0.1284,
+      -0.001101
+     ],
+     "chord": 0.090954,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6988,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6988,
+      "rel_chord_tip": 0.6786,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.748812,
+      0.1547,
+      -0.001101
+     ],
+     "chord": 0.071089,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6786,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6786,
+      "rel_chord_tip": 0.594,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.766607,
+      0.1665,
+      -0.001101
+     ],
+     "chord": 0.051255,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.594,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.594,
+      "rel_chord_tip": 0.5096,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.776607,
+      0.1697,
+      -0.001101
+     ],
+     "chord": 0.040123,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5096,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5096,
+      "rel_chord_tip": 0.2976,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.79168,
+      0.1737,
+      -0.001101
+     ],
+     "chord": 0.018051,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.2976,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.2976,
+      "rel_chord_tip": 0.1002,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.795779,
+      0.174413,
+      -0.001101
+     ],
+     "chord": 0.012704,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.805518,
+      0.176107,
+      -0.001101
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_horizontal_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "vertical_tail": {
+   "name": "vertical_tail",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.771328,
+      -0.0,
+      -0.052578
+     ],
+     "chord": 0.074279,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.740811,
+      -0.0,
+      -0.047778
+     ],
+     "chord": 0.12773,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.738208,
+      -0.0,
+      -0.047075
+     ],
+     "chord": 0.134083,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.3195,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.3195,
+      "rel_chord_tip": 0.3399,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.732526,
+      -0.0,
+      -0.045478
+     ],
+     "chord": 0.145115,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.3399,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.3399,
+      "rel_chord_tip": 0.4171,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.713872,
+      -0.0,
+      -0.035978
+     ],
+     "chord": 0.174325,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.4171,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.4171,
+      "rel_chord_tip": 0.4383,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.707983,
+      -0.0,
+      -0.029978
+     ],
+     "chord": 0.186182,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.4383,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.4383,
+      "rel_chord_tip": 0.4484,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.707983,
+      -0.0,
+      -0.025078
+     ],
+     "chord": 0.187455,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.4484,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.4484,
+      "rel_chord_tip": 0.5183,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.707983,
+      -0.0,
+      -7.8e-05
+     ],
+     "chord": 0.186256,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.5183,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.5183,
+      "rel_chord_tip": 0.6279,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.653581,
+      -0.0,
+      0.000222
+     ],
+     "chord": 0.240644,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.6279,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.6279,
+      "rel_chord_tip": 0.6696,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.765821,
+      -0.0,
+      0.085422
+     ],
+     "chord": 0.121575,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.6696,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.6696,
+      "rel_chord_tip": 0.686,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.786369,
+      -0.0,
+      0.100322
+     ],
+     "chord": 0.099561,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.686,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.686,
+      "rel_chord_tip": 0.6782,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.805526,
+      -0.0,
+      0.109222
+     ],
+     "chord": 0.079018,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.6782,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.6782,
+      "rel_chord_tip": 0.7161,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.825342,
+      -0.0,
+      0.115622
+     ],
+     "chord": 0.051627,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.7161,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.7161,
+      "rel_chord_tip": 0.7698,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.83327,
+      -0.0,
+      0.116679
+     ],
+     "chord": 0.038415,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.847174,
+      -0.0,
+      0.118533
+     ],
+     "chord": 0.015241,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/kastaway_vertical_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "fuselage": {
+   "name": "fuselage",
+   "x_secs": [
+    {
+     "xyz": [
+      0.0,
+      0.0,
+      -0.019473
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0,
+     "contour": [
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.0037,
+      0.0,
+      -0.018206
+     ],
+     "a": 0.00479,
+     "b": 0.00749,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.0074898
+      ],
+      [
+       0.0007332,
+       -0.0074898
+      ],
+      [
+       0.0014664,
+       -0.0074898
+      ],
+      [
+       0.0021995,
+       -0.0074898
+      ],
+      [
+       0.0029327,
+       -0.0074898
+      ],
+      [
+       0.0036659,
+       -0.0074898
+      ],
+      [
+       0.0043991,
+       -0.0074898
+      ],
+      [
+       0.0047902,
+       -0.0070993
+      ],
+      [
+       0.0047902,
+       -0.0062641
+      ],
+      [
+       0.0047902,
+       -0.0054289
+      ],
+      [
+       0.0047902,
+       -0.0045936
+      ],
+      [
+       0.0047902,
+       -0.0037584
+      ],
+      [
+       0.0047902,
+       -0.0029232
+      ],
+      [
+       0.0047902,
+       -0.002088
+      ],
+      [
+       0.0047902,
+       -0.0012528
+      ],
+      [
+       0.0047902,
+       -0.0004176
+      ],
+      [
+       0.0047902,
+       0.0004176
+      ],
+      [
+       0.0047902,
+       0.0012528
+      ],
+      [
+       0.0047902,
+       0.002088
+      ],
+      [
+       0.0047902,
+       0.0029232
+      ],
+      [
+       0.0047902,
+       0.0037584
+      ],
+      [
+       0.0047902,
+       0.0045936
+      ],
+      [
+       0.0047902,
+       0.0054288
+      ],
+      [
+       0.0047902,
+       0.006264
+      ],
+      [
+       0.0047902,
+       0.0070992
+      ],
+      [
+       0.0045946,
+       0.0072945
+      ],
+      [
+       0.0043991,
+       0.0074898
+      ],
+      [
+       0.0036659,
+       0.0074898
+      ],
+      [
+       0.0029327,
+       0.0074898
+      ],
+      [
+       0.0021995,
+       0.0074898
+      ],
+      [
+       0.0014664,
+       0.0074898
+      ],
+      [
+       0.0007332,
+       0.0074898
+      ],
+      [
+       0.0,
+       0.0074898
+      ],
+      [
+       -0.0007332,
+       0.0074898
+      ],
+      [
+       -0.0014664,
+       0.0074898
+      ],
+      [
+       -0.0021995,
+       0.0074898
+      ],
+      [
+       -0.0029327,
+       0.0074898
+      ],
+      [
+       -0.0036659,
+       0.0074898
+      ],
+      [
+       -0.0043991,
+       0.0074898
+      ],
+      [
+       -0.0047902,
+       0.0070992
+      ],
+      [
+       -0.0047902,
+       0.006264
+      ],
+      [
+       -0.0047902,
+       0.0054288
+      ],
+      [
+       -0.0047902,
+       0.0045936
+      ],
+      [
+       -0.0047902,
+       0.0037584
+      ],
+      [
+       -0.0047902,
+       0.0029232
+      ],
+      [
+       -0.0047902,
+       0.002088
+      ],
+      [
+       -0.0047902,
+       0.0012528
+      ],
+      [
+       -0.0047902,
+       0.0004176
+      ],
+      [
+       -0.0047902,
+       -0.0004176
+      ],
+      [
+       -0.0047902,
+       -0.0012528
+      ],
+      [
+       -0.0047902,
+       -0.002088
+      ],
+      [
+       -0.0047902,
+       -0.0029232
+      ],
+      [
+       -0.0047902,
+       -0.0037584
+      ],
+      [
+       -0.0047902,
+       -0.0045936
+      ],
+      [
+       -0.0047902,
+       -0.0054289
+      ],
+      [
+       -0.0047902,
+       -0.0062641
+      ],
+      [
+       -0.0047902,
+       -0.0070993
+      ],
+      [
+       -0.0045946,
+       -0.0072945
+      ],
+      [
+       -0.0043991,
+       -0.0074898
+      ],
+      [
+       -0.0036659,
+       -0.0074898
+      ],
+      [
+       -0.0029327,
+       -0.0074898
+      ],
+      [
+       -0.0021995,
+       -0.0074898
+      ],
+      [
+       -0.0014664,
+       -0.0074898
+      ],
+      [
+       -0.0007332,
+       -0.0074898
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.0068,
+      0.0,
+      -0.019281
+     ],
+     "a": 0.007157,
+     "b": 0.010347,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.0103474
+      ],
+      [
+       0.0010955,
+       -0.0103474
+      ],
+      [
+       0.002191,
+       -0.0103474
+      ],
+      [
+       0.0032866,
+       -0.0103474
+      ],
+      [
+       0.0043821,
+       -0.0103474
+      ],
+      [
+       0.0054776,
+       -0.0103474
+      ],
+      [
+       0.0065731,
+       -0.0103474
+      ],
+      [
+       0.0071575,
+       -0.0098078
+      ],
+      [
+       0.0071575,
+       -0.008654
+      ],
+      [
+       0.0071575,
+       -0.0075001
+      ],
+      [
+       0.0071575,
+       -0.0063462
+      ],
+      [
+       0.0071575,
+       -0.0051924
+      ],
+      [
+       0.0071575,
+       -0.0040385
+      ],
+      [
+       0.0071575,
+       -0.0028846
+      ],
+      [
+       0.0071575,
+       -0.0017308
+      ],
+      [
+       0.0071575,
+       -0.0005769
+      ],
+      [
+       0.0071575,
+       0.000577
+      ],
+      [
+       0.0071575,
+       0.0017309
+      ],
+      [
+       0.0071575,
+       0.0028847
+      ],
+      [
+       0.0071575,
+       0.0040386
+      ],
+      [
+       0.0071575,
+       0.0051925
+      ],
+      [
+       0.0071575,
+       0.0063463
+      ],
+      [
+       0.0071575,
+       0.0075002
+      ],
+      [
+       0.0071575,
+       0.0086541
+      ],
+      [
+       0.0071575,
+       0.0098079
+      ],
+      [
+       0.0068653,
+       0.0100777
+      ],
+      [
+       0.0065731,
+       0.0103475
+      ],
+      [
+       0.0054776,
+       0.0103475
+      ],
+      [
+       0.0043821,
+       0.0103475
+      ],
+      [
+       0.0032866,
+       0.0103475
+      ],
+      [
+       0.002191,
+       0.0103475
+      ],
+      [
+       0.0010955,
+       0.0103475
+      ],
+      [
+       0.0,
+       0.0103475
+      ],
+      [
+       -0.0010955,
+       0.0103475
+      ],
+      [
+       -0.002191,
+       0.0103475
+      ],
+      [
+       -0.0032866,
+       0.0103475
+      ],
+      [
+       -0.0043821,
+       0.0103475
+      ],
+      [
+       -0.0054776,
+       0.0103475
+      ],
+      [
+       -0.0065731,
+       0.0103475
+      ],
+      [
+       -0.0071575,
+       0.0098079
+      ],
+      [
+       -0.0071575,
+       0.0086541
+      ],
+      [
+       -0.0071575,
+       0.0075002
+      ],
+      [
+       -0.0071575,
+       0.0063463
+      ],
+      [
+       -0.0071575,
+       0.0051925
+      ],
+      [
+       -0.0071575,
+       0.0040386
+      ],
+      [
+       -0.0071575,
+       0.0028847
+      ],
+      [
+       -0.0071575,
+       0.0017309
+      ],
+      [
+       -0.0071575,
+       0.000577
+      ],
+      [
+       -0.0071575,
+       -0.0005769
+      ],
+      [
+       -0.0071575,
+       -0.0017308
+      ],
+      [
+       -0.0071575,
+       -0.0028846
+      ],
+      [
+       -0.0071575,
+       -0.0040385
+      ],
+      [
+       -0.0071575,
+       -0.0051924
+      ],
+      [
+       -0.0071575,
+       -0.0063462
+      ],
+      [
+       -0.0071575,
+       -0.0075001
+      ],
+      [
+       -0.0071575,
+       -0.008654
+      ],
+      [
+       -0.0071575,
+       -0.0098078
+      ],
+      [
+       -0.0068653,
+       -0.0100776
+      ],
+      [
+       -0.0065731,
+       -0.0103474
+      ],
+      [
+       -0.0054776,
+       -0.0103474
+      ],
+      [
+       -0.0043821,
+       -0.0103474
+      ],
+      [
+       -0.0032866,
+       -0.0103474
+      ],
+      [
+       -0.002191,
+       -0.0103474
+      ],
+      [
+       -0.0010955,
+       -0.0103474
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.0153,
+      0.0,
+      -0.019854
+     ],
+     "a": 0.010769,
+     "b": 0.015087,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.0150866
+      ],
+      [
+       0.0016483,
+       -0.0150866
+      ],
+      [
+       0.0032965,
+       -0.0150866
+      ],
+      [
+       0.0049448,
+       -0.0150866
+      ],
+      [
+       0.0065931,
+       -0.0150866
+      ],
+      [
+       0.0082413,
+       -0.0150866
+      ],
+      [
+       0.0098896,
+       -0.0150866
+      ],
+      [
+       0.0107688,
+       -0.0142999
+      ],
+      [
+       0.0107688,
+       -0.0126176
+      ],
+      [
+       0.0107688,
+       -0.0109352
+      ],
+      [
+       0.0107688,
+       -0.0092529
+      ],
+      [
+       0.0107688,
+       -0.0075705
+      ],
+      [
+       0.0107688,
+       -0.0058882
+      ],
+      [
+       0.0107688,
+       -0.0042059
+      ],
+      [
+       0.0107688,
+       -0.0025235
+      ],
+      [
+       0.0107688,
+       -0.0008412
+      ],
+      [
+       0.0107688,
+       0.0008411
+      ],
+      [
+       0.0107688,
+       0.0025235
+      ],
+      [
+       0.0107688,
+       0.0042058
+      ],
+      [
+       0.0107688,
+       0.0058882
+      ],
+      [
+       0.0107688,
+       0.0075705
+      ],
+      [
+       0.0107688,
+       0.0092528
+      ],
+      [
+       0.0107688,
+       0.0109352
+      ],
+      [
+       0.0107688,
+       0.0126175
+      ],
+      [
+       0.0107688,
+       0.0142999
+      ],
+      [
+       0.0103292,
+       0.0146932
+      ],
+      [
+       0.0098896,
+       0.0150866
+      ],
+      [
+       0.0082413,
+       0.0150866
+      ],
+      [
+       0.0065931,
+       0.0150866
+      ],
+      [
+       0.0049448,
+       0.0150866
+      ],
+      [
+       0.0032965,
+       0.0150866
+      ],
+      [
+       0.0016483,
+       0.0150866
+      ],
+      [
+       0.0,
+       0.0150866
+      ],
+      [
+       -0.0016483,
+       0.0150866
+      ],
+      [
+       -0.0032965,
+       0.0150866
+      ],
+      [
+       -0.0049448,
+       0.0150866
+      ],
+      [
+       -0.0065931,
+       0.0150866
+      ],
+      [
+       -0.0082413,
+       0.0150866
+      ],
+      [
+       -0.0098896,
+       0.0150866
+      ],
+      [
+       -0.0107688,
+       0.0142999
+      ],
+      [
+       -0.0107688,
+       0.0126175
+      ],
+      [
+       -0.0107688,
+       0.0109352
+      ],
+      [
+       -0.0107688,
+       0.0092528
+      ],
+      [
+       -0.0107688,
+       0.0075705
+      ],
+      [
+       -0.0107688,
+       0.0058882
+      ],
+      [
+       -0.0107688,
+       0.0042058
+      ],
+      [
+       -0.0107688,
+       0.0025235
+      ],
+      [
+       -0.0107688,
+       0.0008411
+      ],
+      [
+       -0.0107688,
+       -0.0008412
+      ],
+      [
+       -0.0107688,
+       -0.0025235
+      ],
+      [
+       -0.0107688,
+       -0.0042059
+      ],
+      [
+       -0.0107688,
+       -0.0058882
+      ],
+      [
+       -0.0107688,
+       -0.0075705
+      ],
+      [
+       -0.0107688,
+       -0.0092529
+      ],
+      [
+       -0.0107688,
+       -0.0109352
+      ],
+      [
+       -0.0107688,
+       -0.0126176
+      ],
+      [
+       -0.0107688,
+       -0.0142999
+      ],
+      [
+       -0.0103292,
+       -0.0146932
+      ],
+      [
+       -0.0098896,
+       -0.0150866
+      ],
+      [
+       -0.0082413,
+       -0.0150866
+      ],
+      [
+       -0.0065931,
+       -0.0150866
+      ],
+      [
+       -0.0049448,
+       -0.0150866
+      ],
+      [
+       -0.0032965,
+       -0.0150866
+      ],
+      [
+       -0.0016483,
+       -0.0150866
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.0366,
+      0.0,
+      -0.019884
+     ],
+     "a": 0.014424,
+     "b": 0.020015,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.0200153
+      ],
+      [
+       0.0022077,
+       -0.0200153
+      ],
+      [
+       0.0044154,
+       -0.0200153
+      ],
+      [
+       0.0066231,
+       -0.0200153
+      ],
+      [
+       0.0088308,
+       -0.0200153
+      ],
+      [
+       0.0110385,
+       -0.0200153
+      ],
+      [
+       0.0132462,
+       -0.0200153
+      ],
+      [
+       0.0144238,
+       -0.0189716
+      ],
+      [
+       0.0144238,
+       -0.0167396
+      ],
+      [
+       0.0144238,
+       -0.0145077
+      ],
+      [
+       0.0144238,
+       -0.0122757
+      ],
+      [
+       0.0144238,
+       -0.0100438
+      ],
+      [
+       0.0144238,
+       -0.0078118
+      ],
+      [
+       0.0144238,
+       -0.0055799
+      ],
+      [
+       0.0144238,
+       -0.0033479
+      ],
+      [
+       0.0144238,
+       -0.001116
+      ],
+      [
+       0.0144238,
+       0.001116
+      ],
+      [
+       0.0144238,
+       0.0033479
+      ],
+      [
+       0.0144238,
+       0.0055799
+      ],
+      [
+       0.0144238,
+       0.0078118
+      ],
+      [
+       0.0144238,
+       0.0100438
+      ],
+      [
+       0.0144238,
+       0.0122757
+      ],
+      [
+       0.0144238,
+       0.0145076
+      ],
+      [
+       0.0144238,
+       0.0167396
+      ],
+      [
+       0.0144238,
+       0.0189715
+      ],
+      [
+       0.013835,
+       0.0194934
+      ],
+      [
+       0.0132462,
+       0.0200153
+      ],
+      [
+       0.0110385,
+       0.0200153
+      ],
+      [
+       0.0088308,
+       0.0200153
+      ],
+      [
+       0.0066231,
+       0.0200153
+      ],
+      [
+       0.0044154,
+       0.0200153
+      ],
+      [
+       0.0022077,
+       0.0200153
+      ],
+      [
+       0.0,
+       0.0200153
+      ],
+      [
+       -0.0022077,
+       0.0200153
+      ],
+      [
+       -0.0044154,
+       0.0200153
+      ],
+      [
+       -0.0066231,
+       0.0200153
+      ],
+      [
+       -0.0088308,
+       0.0200153
+      ],
+      [
+       -0.0110385,
+       0.0200153
+      ],
+      [
+       -0.0132462,
+       0.0200153
+      ],
+      [
+       -0.0144238,
+       0.0189715
+      ],
+      [
+       -0.0144238,
+       0.0167396
+      ],
+      [
+       -0.0144238,
+       0.0145076
+      ],
+      [
+       -0.0144238,
+       0.0122757
+      ],
+      [
+       -0.0144238,
+       0.0100438
+      ],
+      [
+       -0.0144238,
+       0.0078118
+      ],
+      [
+       -0.0144238,
+       0.0055799
+      ],
+      [
+       -0.0144238,
+       0.0033479
+      ],
+      [
+       -0.0144238,
+       0.001116
+      ],
+      [
+       -0.0144238,
+       -0.001116
+      ],
+      [
+       -0.0144238,
+       -0.0033479
+      ],
+      [
+       -0.0144238,
+       -0.0055799
+      ],
+      [
+       -0.0144238,
+       -0.0078118
+      ],
+      [
+       -0.0144238,
+       -0.0100438
+      ],
+      [
+       -0.0144238,
+       -0.0122757
+      ],
+      [
+       -0.0144238,
+       -0.0145077
+      ],
+      [
+       -0.0144238,
+       -0.0167396
+      ],
+      [
+       -0.0144238,
+       -0.0189716
+      ],
+      [
+       -0.013835,
+       -0.0194934
+      ],
+      [
+       -0.0132462,
+       -0.0200153
+      ],
+      [
+       -0.0110385,
+       -0.0200153
+      ],
+      [
+       -0.0088308,
+       -0.0200153
+      ],
+      [
+       -0.0066231,
+       -0.0200153
+      ],
+      [
+       -0.0044154,
+       -0.0200153
+      ],
+      [
+       -0.0022077,
+       -0.0200153
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.0735,
+      0.0,
+      -0.019357
+     ],
+     "a": 0.016792,
+     "b": 0.02729,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.0272896
+      ],
+      [
+       0.0025702,
+       -0.0272896
+      ],
+      [
+       0.0051404,
+       -0.0272896
+      ],
+      [
+       0.0077106,
+       -0.0272896
+      ],
+      [
+       0.0102808,
+       -0.0272896
+      ],
+      [
+       0.012851,
+       -0.0272896
+      ],
+      [
+       0.0154212,
+       -0.0272896
+      ],
+      [
+       0.0167921,
+       -0.0258666
+      ],
+      [
+       0.0167921,
+       -0.0228234
+      ],
+      [
+       0.0167921,
+       -0.0197803
+      ],
+      [
+       0.0167921,
+       -0.0167372
+      ],
+      [
+       0.0167921,
+       -0.0136941
+      ],
+      [
+       0.0167921,
+       -0.010651
+      ],
+      [
+       0.0167921,
+       -0.0076078
+      ],
+      [
+       0.0167921,
+       -0.0045647
+      ],
+      [
+       0.0167921,
+       -0.0015216
+      ],
+      [
+       0.0167921,
+       0.0015215
+      ],
+      [
+       0.0167921,
+       0.0045647
+      ],
+      [
+       0.0167921,
+       0.0076078
+      ],
+      [
+       0.0167921,
+       0.0106509
+      ],
+      [
+       0.0167921,
+       0.013694
+      ],
+      [
+       0.0167921,
+       0.0167371
+      ],
+      [
+       0.0167921,
+       0.0197803
+      ],
+      [
+       0.0167921,
+       0.0228234
+      ],
+      [
+       0.0167921,
+       0.0258665
+      ],
+      [
+       0.0161066,
+       0.026578
+      ],
+      [
+       0.0154212,
+       0.0272895
+      ],
+      [
+       0.012851,
+       0.0272895
+      ],
+      [
+       0.0102808,
+       0.0272895
+      ],
+      [
+       0.0077106,
+       0.0272895
+      ],
+      [
+       0.0051404,
+       0.0272895
+      ],
+      [
+       0.0025702,
+       0.0272895
+      ],
+      [
+       0.0,
+       0.0272895
+      ],
+      [
+       -0.0025702,
+       0.0272895
+      ],
+      [
+       -0.0051404,
+       0.0272895
+      ],
+      [
+       -0.0077106,
+       0.0272895
+      ],
+      [
+       -0.0102808,
+       0.0272895
+      ],
+      [
+       -0.012851,
+       0.0272895
+      ],
+      [
+       -0.0154212,
+       0.0272895
+      ],
+      [
+       -0.0167921,
+       0.0258665
+      ],
+      [
+       -0.0167921,
+       0.0228234
+      ],
+      [
+       -0.0167921,
+       0.0197803
+      ],
+      [
+       -0.0167921,
+       0.0167371
+      ],
+      [
+       -0.0167921,
+       0.013694
+      ],
+      [
+       -0.0167921,
+       0.0106509
+      ],
+      [
+       -0.0167921,
+       0.0076078
+      ],
+      [
+       -0.0167921,
+       0.0045647
+      ],
+      [
+       -0.0167921,
+       0.0015215
+      ],
+      [
+       -0.0167921,
+       -0.0015216
+      ],
+      [
+       -0.0167921,
+       -0.0045647
+      ],
+      [
+       -0.0167921,
+       -0.0076078
+      ],
+      [
+       -0.0167921,
+       -0.010651
+      ],
+      [
+       -0.0167921,
+       -0.0136941
+      ],
+      [
+       -0.0167921,
+       -0.0167372
+      ],
+      [
+       -0.0167921,
+       -0.0197803
+      ],
+      [
+       -0.0167921,
+       -0.0228234
+      ],
+      [
+       -0.0167921,
+       -0.0258666
+      ],
+      [
+       -0.0161066,
+       -0.0265781
+      ],
+      [
+       -0.0154212,
+       -0.0272896
+      ],
+      [
+       -0.012851,
+       -0.0272896
+      ],
+      [
+       -0.0102808,
+       -0.0272896
+      ],
+      [
+       -0.0077106,
+       -0.0272896
+      ],
+      [
+       -0.0051404,
+       -0.0272896
+      ],
+      [
+       -0.0025702,
+       -0.0272896
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.1124,
+      0.0,
+      -0.01895
+     ],
+     "a": 0.018068,
+     "b": 0.032334,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.032334
+      ],
+      [
+       0.0027655,
+       -0.032334
+      ],
+      [
+       0.005531,
+       -0.032334
+      ],
+      [
+       0.0082965,
+       -0.032334
+      ],
+      [
+       0.011062,
+       -0.032334
+      ],
+      [
+       0.0138275,
+       -0.032334
+      ],
+      [
+       0.016593,
+       -0.032334
+      ],
+      [
+       0.0180681,
+       -0.0306479
+      ],
+      [
+       0.0180681,
+       -0.0270422
+      ],
+      [
+       0.0180681,
+       -0.0234366
+      ],
+      [
+       0.0180681,
+       -0.019831
+      ],
+      [
+       0.0180681,
+       -0.0162253
+      ],
+      [
+       0.0180681,
+       -0.0126197
+      ],
+      [
+       0.0180681,
+       -0.0090141
+      ],
+      [
+       0.0180681,
+       -0.0054084
+      ],
+      [
+       0.0180681,
+       -0.0018028
+      ],
+      [
+       0.0180681,
+       0.0018029
+      ],
+      [
+       0.0180681,
+       0.0054085
+      ],
+      [
+       0.0180681,
+       0.0090141
+      ],
+      [
+       0.0180681,
+       0.0126198
+      ],
+      [
+       0.0180681,
+       0.0162254
+      ],
+      [
+       0.0180681,
+       0.019831
+      ],
+      [
+       0.0180681,
+       0.0234367
+      ],
+      [
+       0.0180681,
+       0.0270423
+      ],
+      [
+       0.0180681,
+       0.0306479
+      ],
+      [
+       0.0173305,
+       0.031491
+      ],
+      [
+       0.016593,
+       0.032334
+      ],
+      [
+       0.0138275,
+       0.032334
+      ],
+      [
+       0.011062,
+       0.032334
+      ],
+      [
+       0.0082965,
+       0.032334
+      ],
+      [
+       0.005531,
+       0.032334
+      ],
+      [
+       0.0027655,
+       0.032334
+      ],
+      [
+       0.0,
+       0.032334
+      ],
+      [
+       -0.0027655,
+       0.032334
+      ],
+      [
+       -0.005531,
+       0.032334
+      ],
+      [
+       -0.0082965,
+       0.032334
+      ],
+      [
+       -0.011062,
+       0.032334
+      ],
+      [
+       -0.0138275,
+       0.032334
+      ],
+      [
+       -0.016593,
+       0.032334
+      ],
+      [
+       -0.0180681,
+       0.0306479
+      ],
+      [
+       -0.0180681,
+       0.0270423
+      ],
+      [
+       -0.0180681,
+       0.0234367
+      ],
+      [
+       -0.0180681,
+       0.019831
+      ],
+      [
+       -0.0180681,
+       0.0162254
+      ],
+      [
+       -0.0180681,
+       0.0126198
+      ],
+      [
+       -0.0180681,
+       0.0090141
+      ],
+      [
+       -0.0180681,
+       0.0054085
+      ],
+      [
+       -0.0180681,
+       0.0018029
+      ],
+      [
+       -0.0180681,
+       -0.0018028
+      ],
+      [
+       -0.0180681,
+       -0.0054084
+      ],
+      [
+       -0.0180681,
+       -0.0090141
+      ],
+      [
+       -0.0180681,
+       -0.0126197
+      ],
+      [
+       -0.0180681,
+       -0.0162253
+      ],
+      [
+       -0.0180681,
+       -0.019831
+      ],
+      [
+       -0.0180681,
+       -0.0234366
+      ],
+      [
+       -0.0180681,
+       -0.0270422
+      ],
+      [
+       -0.0180681,
+       -0.0306479
+      ],
+      [
+       -0.0173305,
+       -0.0314909
+      ],
+      [
+       -0.016593,
+       -0.032334
+      ],
+      [
+       -0.0138275,
+       -0.032334
+      ],
+      [
+       -0.011062,
+       -0.032334
+      ],
+      [
+       -0.0082965,
+       -0.032334
+      ],
+      [
+       -0.005531,
+       -0.032334
+      ],
+      [
+       -0.0027655,
+       -0.032334
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.1482,
+      0.0,
+      -0.018586
+     ],
+     "a": 0.018442,
+     "b": 0.034923,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.034923
+      ],
+      [
+       0.0028226,
+       -0.034923
+      ],
+      [
+       0.0056453,
+       -0.034923
+      ],
+      [
+       0.0084679,
+       -0.034923
+      ],
+      [
+       0.0112906,
+       -0.034923
+      ],
+      [
+       0.0141132,
+       -0.034923
+      ],
+      [
+       0.0169359,
+       -0.034923
+      ],
+      [
+       0.0184415,
+       -0.0331019
+      ],
+      [
+       0.0184415,
+       -0.0292076
+      ],
+      [
+       0.0184415,
+       -0.0253132
+      ],
+      [
+       0.0184415,
+       -0.0214189
+      ],
+      [
+       0.0184415,
+       -0.0175246
+      ],
+      [
+       0.0184415,
+       -0.0136302
+      ],
+      [
+       0.0184415,
+       -0.0097359
+      ],
+      [
+       0.0184415,
+       -0.0058416
+      ],
+      [
+       0.0184415,
+       -0.0019472
+      ],
+      [
+       0.0184415,
+       0.0019471
+      ],
+      [
+       0.0184415,
+       0.0058415
+      ],
+      [
+       0.0184415,
+       0.0097358
+      ],
+      [
+       0.0184415,
+       0.0136301
+      ],
+      [
+       0.0184415,
+       0.0175245
+      ],
+      [
+       0.0184415,
+       0.0214188
+      ],
+      [
+       0.0184415,
+       0.0253131
+      ],
+      [
+       0.0184415,
+       0.0292075
+      ],
+      [
+       0.0184415,
+       0.0331018
+      ],
+      [
+       0.0176887,
+       0.0340124
+      ],
+      [
+       0.0169359,
+       0.0349229
+      ],
+      [
+       0.0141132,
+       0.0349229
+      ],
+      [
+       0.0112906,
+       0.0349229
+      ],
+      [
+       0.0084679,
+       0.0349229
+      ],
+      [
+       0.0056453,
+       0.0349229
+      ],
+      [
+       0.0028226,
+       0.0349229
+      ],
+      [
+       0.0,
+       0.0349229
+      ],
+      [
+       -0.0028226,
+       0.0349229
+      ],
+      [
+       -0.0056453,
+       0.0349229
+      ],
+      [
+       -0.0084679,
+       0.0349229
+      ],
+      [
+       -0.0112906,
+       0.0349229
+      ],
+      [
+       -0.0141132,
+       0.0349229
+      ],
+      [
+       -0.0169359,
+       0.0349229
+      ],
+      [
+       -0.0184415,
+       0.0331018
+      ],
+      [
+       -0.0184415,
+       0.0292075
+      ],
+      [
+       -0.0184415,
+       0.0253131
+      ],
+      [
+       -0.0184415,
+       0.0214188
+      ],
+      [
+       -0.0184415,
+       0.0175245
+      ],
+      [
+       -0.0184415,
+       0.0136301
+      ],
+      [
+       -0.0184415,
+       0.0097358
+      ],
+      [
+       -0.0184415,
+       0.0058415
+      ],
+      [
+       -0.0184415,
+       0.0019471
+      ],
+      [
+       -0.0184415,
+       -0.0019472
+      ],
+      [
+       -0.0184415,
+       -0.0058416
+      ],
+      [
+       -0.0184415,
+       -0.0097359
+      ],
+      [
+       -0.0184415,
+       -0.0136302
+      ],
+      [
+       -0.0184415,
+       -0.0175246
+      ],
+      [
+       -0.0184415,
+       -0.0214189
+      ],
+      [
+       -0.0184415,
+       -0.0253132
+      ],
+      [
+       -0.0184415,
+       -0.0292076
+      ],
+      [
+       -0.0184415,
+       -0.0331019
+      ],
+      [
+       -0.0176887,
+       -0.0340125
+      ],
+      [
+       -0.0169359,
+       -0.034923
+      ],
+      [
+       -0.0141132,
+       -0.034923
+      ],
+      [
+       -0.0112906,
+       -0.034923
+      ],
+      [
+       -0.0084679,
+       -0.034923
+      ],
+      [
+       -0.0056453,
+       -0.034923
+      ],
+      [
+       -0.0028226,
+       -0.034923
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.182118,
+      0.0,
+      -0.017695
+     ],
+     "a": 0.018375,
+     "b": 0.035814,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.035814
+      ],
+      [
+       0.0028125,
+       -0.035814
+      ],
+      [
+       0.0056249,
+       -0.035814
+      ],
+      [
+       0.0084374,
+       -0.035814
+      ],
+      [
+       0.0112498,
+       -0.035814
+      ],
+      [
+       0.0140623,
+       -0.035814
+      ],
+      [
+       0.0168747,
+       -0.035814
+      ],
+      [
+       0.0183749,
+       -0.0339465
+      ],
+      [
+       0.0183749,
+       -0.0299528
+      ],
+      [
+       0.0183749,
+       -0.0259591
+      ],
+      [
+       0.0183749,
+       -0.0219654
+      ],
+      [
+       0.0183749,
+       -0.0179717
+      ],
+      [
+       0.0183749,
+       -0.013978
+      ],
+      [
+       0.0183749,
+       -0.0099843
+      ],
+      [
+       0.0183749,
+       -0.0059906
+      ],
+      [
+       0.0183749,
+       -0.0019969
+      ],
+      [
+       0.0183749,
+       0.0019969
+      ],
+      [
+       0.0183749,
+       0.0059906
+      ],
+      [
+       0.0183749,
+       0.0099843
+      ],
+      [
+       0.0183749,
+       0.013978
+      ],
+      [
+       0.0183749,
+       0.0179717
+      ],
+      [
+       0.0183749,
+       0.0219654
+      ],
+      [
+       0.0183749,
+       0.0259591
+      ],
+      [
+       0.0183749,
+       0.0299528
+      ],
+      [
+       0.0183749,
+       0.0339465
+      ],
+      [
+       0.0176248,
+       0.0348802
+      ],
+      [
+       0.0168747,
+       0.035814
+      ],
+      [
+       0.0140623,
+       0.035814
+      ],
+      [
+       0.0112498,
+       0.035814
+      ],
+      [
+       0.0084374,
+       0.035814
+      ],
+      [
+       0.0056249,
+       0.035814
+      ],
+      [
+       0.0028125,
+       0.035814
+      ],
+      [
+       0.0,
+       0.035814
+      ],
+      [
+       -0.0028125,
+       0.035814
+      ],
+      [
+       -0.0056249,
+       0.035814
+      ],
+      [
+       -0.0084374,
+       0.035814
+      ],
+      [
+       -0.0112498,
+       0.035814
+      ],
+      [
+       -0.0140623,
+       0.035814
+      ],
+      [
+       -0.0168747,
+       0.035814
+      ],
+      [
+       -0.0183749,
+       0.0339465
+      ],
+      [
+       -0.0183749,
+       0.0299528
+      ],
+      [
+       -0.0183749,
+       0.0259591
+      ],
+      [
+       -0.0183749,
+       0.0219654
+      ],
+      [
+       -0.0183749,
+       0.0179717
+      ],
+      [
+       -0.0183749,
+       0.013978
+      ],
+      [
+       -0.0183749,
+       0.0099843
+      ],
+      [
+       -0.0183749,
+       0.0059906
+      ],
+      [
+       -0.0183749,
+       0.0019969
+      ],
+      [
+       -0.0183749,
+       -0.0019969
+      ],
+      [
+       -0.0183749,
+       -0.0059906
+      ],
+      [
+       -0.0183749,
+       -0.0099843
+      ],
+      [
+       -0.0183749,
+       -0.013978
+      ],
+      [
+       -0.0183749,
+       -0.0179717
+      ],
+      [
+       -0.0183749,
+       -0.0219654
+      ],
+      [
+       -0.0183749,
+       -0.0259591
+      ],
+      [
+       -0.0183749,
+       -0.0299528
+      ],
+      [
+       -0.0183749,
+       -0.0339465
+      ],
+      [
+       -0.0176248,
+       -0.0348802
+      ],
+      [
+       -0.0168747,
+       -0.035814
+      ],
+      [
+       -0.0140623,
+       -0.035814
+      ],
+      [
+       -0.0112498,
+       -0.035814
+      ],
+      [
+       -0.0084374,
+       -0.035814
+      ],
+      [
+       -0.0056249,
+       -0.035814
+      ],
+      [
+       -0.0028125,
+       -0.035814
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.1834,
+      0.0,
+      -0.024172
+     ],
+     "a": 0.018374,
+     "b": 0.029337,
+     "n": 26.0603,
+     "contour": [
+      [
+       0.0,
+       -0.029337
+      ],
+      [
+       0.0028123,
+       -0.029337
+      ],
+      [
+       0.0056246,
+       -0.029337
+      ],
+      [
+       0.0084368,
+       -0.029337
+      ],
+      [
+       0.0112491,
+       -0.029337
+      ],
+      [
+       0.0140614,
+       -0.029337
+      ],
+      [
+       0.0168737,
+       -0.029337
+      ],
+      [
+       0.0183737,
+       -0.0278072
+      ],
+      [
+       0.0183737,
+       -0.0245358
+      ],
+      [
+       0.0183737,
+       -0.0212643
+      ],
+      [
+       0.0183737,
+       -0.0179929
+      ],
+      [
+       0.0183737,
+       -0.0147215
+      ],
+      [
+       0.0183737,
+       -0.01145
+      ],
+      [
+       0.0183737,
+       -0.0081786
+      ],
+      [
+       0.0183737,
+       -0.0049072
+      ],
+      [
+       0.0183737,
+       -0.0016357
+      ],
+      [
+       0.0183737,
+       0.0016357
+      ],
+      [
+       0.0183737,
+       0.0049072
+      ],
+      [
+       0.0183737,
+       0.0081786
+      ],
+      [
+       0.0183737,
+       0.01145
+      ],
+      [
+       0.0183737,
+       0.0147215
+      ],
+      [
+       0.0183737,
+       0.0179929
+      ],
+      [
+       0.0183737,
+       0.0212643
+      ],
+      [
+       0.0183737,
+       0.0245358
+      ],
+      [
+       0.0183737,
+       0.0278072
+      ],
+      [
+       0.0176237,
+       0.0285721
+      ],
+      [
+       0.0168737,
+       0.029337
+      ],
+      [
+       0.0140614,
+       0.029337
+      ],
+      [
+       0.0112491,
+       0.029337
+      ],
+      [
+       0.0084368,
+       0.029337
+      ],
+      [
+       0.0056246,
+       0.029337
+      ],
+      [
+       0.0028123,
+       0.029337
+      ],
+      [
+       0.0,
+       0.029337
+      ],
+      [
+       -0.0028123,
+       0.029337
+      ],
+      [
+       -0.0056246,
+       0.029337
+      ],
+      [
+       -0.0084368,
+       0.029337
+      ],
+      [
+       -0.0112491,
+       0.029337
+      ],
+      [
+       -0.0140614,
+       0.029337
+      ],
+      [
+       -0.0168737,
+       0.029337
+      ],
+      [
+       -0.0183737,
+       0.0278072
+      ],
+      [
+       -0.0183737,
+       0.0245358
+      ],
+      [
+       -0.0183737,
+       0.0212643
+      ],
+      [
+       -0.0183737,
+       0.0179929
+      ],
+      [
+       -0.0183737,
+       0.0147215
+      ],
+      [
+       -0.0183737,
+       0.01145
+      ],
+      [
+       -0.0183737,
+       0.0081786
+      ],
+      [
+       -0.0183737,
+       0.0049072
+      ],
+      [
+       -0.0183737,
+       0.0016357
+      ],
+      [
+       -0.0183737,
+       -0.0016357
+      ],
+      [
+       -0.0183737,
+       -0.0049072
+      ],
+      [
+       -0.0183737,
+       -0.0081786
+      ],
+      [
+       -0.0183737,
+       -0.01145
+      ],
+      [
+       -0.0183737,
+       -0.0147215
+      ],
+      [
+       -0.0183737,
+       -0.0179929
+      ],
+      [
+       -0.0183737,
+       -0.0212643
+      ],
+      [
+       -0.0183737,
+       -0.0245358
+      ],
+      [
+       -0.0183737,
+       -0.0278072
+      ],
+      [
+       -0.0176237,
+       -0.0285721
+      ],
+      [
+       -0.0168737,
+       -0.029337
+      ],
+      [
+       -0.0140614,
+       -0.029337
+      ],
+      [
+       -0.0112491,
+       -0.029337
+      ],
+      [
+       -0.0084368,
+       -0.029337
+      ],
+      [
+       -0.0056246,
+       -0.029337
+      ],
+      [
+       -0.0028123,
+       -0.029337
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.2958,
+      0.0,
+      -0.023203
+     ],
+     "a": 0.018373,
+     "b": 0.028368,
+     "n": 25.1939,
+     "contour": [
+      [
+       0.0,
+       -0.0283682
+      ],
+      [
+       0.0027972,
+       -0.0283682
+      ],
+      [
+       0.0055944,
+       -0.0283682
+      ],
+      [
+       0.0083916,
+       -0.0283682
+      ],
+      [
+       0.0111888,
+       -0.0283682
+      ],
+      [
+       0.0139861,
+       -0.0283682
+      ],
+      [
+       0.0167833,
+       -0.0283682
+      ],
+      [
+       0.0182648,
+       -0.0269165
+      ],
+      [
+       0.018373,
+       -0.0239228
+      ],
+      [
+       0.018373,
+       -0.0207676
+      ],
+      [
+       0.018373,
+       -0.0176124
+      ],
+      [
+       0.018373,
+       -0.0144572
+      ],
+      [
+       0.018373,
+       -0.011302
+      ],
+      [
+       0.018373,
+       -0.0081468
+      ],
+      [
+       0.018373,
+       -0.0049916
+      ],
+      [
+       0.018373,
+       -0.0018365
+      ],
+      [
+       0.018373,
+       0.0013187
+      ],
+      [
+       0.018373,
+       0.0044739
+      ],
+      [
+       0.018373,
+       0.0076291
+      ],
+      [
+       0.018373,
+       0.0107843
+      ],
+      [
+       0.018373,
+       0.0139395
+      ],
+      [
+       0.018373,
+       0.0170947
+      ],
+      [
+       0.018373,
+       0.0202499
+      ],
+      [
+       0.018373,
+       0.0234051
+      ],
+      [
+       0.018373,
+       0.0265603
+      ],
+      [
+       0.0176863,
+       0.0274964
+      ],
+      [
+       0.0168914,
+       0.0282709
+      ],
+      [
+       0.0142085,
+       0.0283682
+      ],
+      [
+       0.0113668,
+       0.0283682
+      ],
+      [
+       0.0085251,
+       0.0283682
+      ],
+      [
+       0.0056834,
+       0.0283682
+      ],
+      [
+       0.0028417,
+       0.0283682
+      ],
+      [
+       0.0,
+       0.0283682
+      ],
+      [
+       -0.0027972,
+       0.0283682
+      ],
+      [
+       -0.0055944,
+       0.0283682
+      ],
+      [
+       -0.0083916,
+       0.0283682
+      ],
+      [
+       -0.0111888,
+       0.0283682
+      ],
+      [
+       -0.0139861,
+       0.0283682
+      ],
+      [
+       -0.0167833,
+       0.0283682
+      ],
+      [
+       -0.0182648,
+       0.0269165
+      ],
+      [
+       -0.018373,
+       0.0239228
+      ],
+      [
+       -0.018373,
+       0.0207676
+      ],
+      [
+       -0.018373,
+       0.0176124
+      ],
+      [
+       -0.018373,
+       0.0144572
+      ],
+      [
+       -0.018373,
+       0.011302
+      ],
+      [
+       -0.018373,
+       0.0081468
+      ],
+      [
+       -0.018373,
+       0.0049916
+      ],
+      [
+       -0.018373,
+       0.0018365
+      ],
+      [
+       -0.018373,
+       -0.0013187
+      ],
+      [
+       -0.018373,
+       -0.0044739
+      ],
+      [
+       -0.018373,
+       -0.0076291
+      ],
+      [
+       -0.018373,
+       -0.0107843
+      ],
+      [
+       -0.018373,
+       -0.0139395
+      ],
+      [
+       -0.018373,
+       -0.0170947
+      ],
+      [
+       -0.018373,
+       -0.0202499
+      ],
+      [
+       -0.018373,
+       -0.0234051
+      ],
+      [
+       -0.018373,
+       -0.0265603
+      ],
+      [
+       -0.0176863,
+       -0.0274964
+      ],
+      [
+       -0.0168914,
+       -0.0282709
+      ],
+      [
+       -0.0142085,
+       -0.0283682
+      ],
+      [
+       -0.0113668,
+       -0.0283682
+      ],
+      [
+       -0.0085251,
+       -0.0283682
+      ],
+      [
+       -0.0056834,
+       -0.0283682
+      ],
+      [
+       -0.0028417,
+       -0.0283682
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.3921,
+      0.0,
+      -0.02048
+     ],
+     "a": 0.017488,
+     "b": 0.026195,
+     "n": 22.2757,
+     "contour": [
+      [
+       0.0,
+       -0.0261949
+      ],
+      [
+       0.0026145,
+       -0.0261949
+      ],
+      [
+       0.005229,
+       -0.0261949
+      ],
+      [
+       0.0078434,
+       -0.0261949
+      ],
+      [
+       0.0104579,
+       -0.0261949
+      ],
+      [
+       0.0130724,
+       -0.0261949
+      ],
+      [
+       0.0156869,
+       -0.0261949
+      ],
+      [
+       0.0170379,
+       -0.0249402
+      ],
+      [
+       0.0174877,
+       -0.0227038
+      ],
+      [
+       0.0174877,
+       -0.0198159
+      ],
+      [
+       0.0174877,
+       -0.0169279
+      ],
+      [
+       0.0174877,
+       -0.01404
+      ],
+      [
+       0.0174877,
+       -0.011152
+      ],
+      [
+       0.0174877,
+       -0.0082641
+      ],
+      [
+       0.0174877,
+       -0.0053761
+      ],
+      [
+       0.0174877,
+       -0.0024881
+      ],
+      [
+       0.0174877,
+       0.0003998
+      ],
+      [
+       0.0174877,
+       0.0032878
+      ],
+      [
+       0.0174877,
+       0.0061757
+      ],
+      [
+       0.0174877,
+       0.0090637
+      ],
+      [
+       0.0174877,
+       0.0119516
+      ],
+      [
+       0.0174877,
+       0.0148396
+      ],
+      [
+       0.0174877,
+       0.0177276
+      ],
+      [
+       0.0174877,
+       0.0206155
+      ],
+      [
+       0.0174877,
+       0.0235035
+      ],
+      [
+       0.0170371,
+       0.0249787
+      ],
+      [
+       0.0161367,
+       0.0258023
+      ],
+      [
+       0.0139973,
+       0.0261949
+      ],
+      [
+       0.0111978,
+       0.0261949
+      ],
+      [
+       0.0083984,
+       0.0261949
+      ],
+      [
+       0.0055989,
+       0.0261949
+      ],
+      [
+       0.0027995,
+       0.0261949
+      ],
+      [
+       0.0,
+       0.0261949
+      ],
+      [
+       -0.0026145,
+       0.0261949
+      ],
+      [
+       -0.005229,
+       0.0261949
+      ],
+      [
+       -0.0078434,
+       0.0261949
+      ],
+      [
+       -0.0104579,
+       0.0261949
+      ],
+      [
+       -0.0130724,
+       0.0261949
+      ],
+      [
+       -0.0156869,
+       0.0261949
+      ],
+      [
+       -0.0170379,
+       0.0249401
+      ],
+      [
+       -0.0174877,
+       0.0227038
+      ],
+      [
+       -0.0174877,
+       0.0198158
+      ],
+      [
+       -0.0174877,
+       0.0169278
+      ],
+      [
+       -0.0174877,
+       0.0140399
+      ],
+      [
+       -0.0174877,
+       0.0111519
+      ],
+      [
+       -0.0174877,
+       0.008264
+      ],
+      [
+       -0.0174877,
+       0.005376
+      ],
+      [
+       -0.0174877,
+       0.0024881
+      ],
+      [
+       -0.0174877,
+       -0.0003999
+      ],
+      [
+       -0.0174877,
+       -0.0032879
+      ],
+      [
+       -0.0174877,
+       -0.0061758
+      ],
+      [
+       -0.0174877,
+       -0.0090638
+      ],
+      [
+       -0.0174877,
+       -0.0119517
+      ],
+      [
+       -0.0174877,
+       -0.0148397
+      ],
+      [
+       -0.0174877,
+       -0.0177276
+      ],
+      [
+       -0.0174877,
+       -0.0206156
+      ],
+      [
+       -0.0174877,
+       -0.0235036
+      ],
+      [
+       -0.0170371,
+       -0.0249788
+      ],
+      [
+       -0.0161367,
+       -0.0258024
+      ],
+      [
+       -0.0139973,
+       -0.0261949
+      ],
+      [
+       -0.0111978,
+       -0.0261949
+      ],
+      [
+       -0.0083984,
+       -0.0261949
+      ],
+      [
+       -0.0055989,
+       -0.0261949
+      ],
+      [
+       -0.0027995,
+       -0.0261949
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.6935,
+      0.0,
+      -0.015464
+     ],
+     "a": 0.007641,
+     "b": 0.015551,
+     "n": 15.7978,
+     "contour": [
+      [
+       0.0,
+       -0.0155511
+      ],
+      [
+       0.0010959,
+       -0.0155511
+      ],
+      [
+       0.0021918,
+       -0.0155511
+      ],
+      [
+       0.0032878,
+       -0.0155511
+      ],
+      [
+       0.0043837,
+       -0.0155511
+      ],
+      [
+       0.0054796,
+       -0.0155511
+      ],
+      [
+       0.0065755,
+       -0.0155511
+      ],
+      [
+       0.0071085,
+       -0.0149192
+      ],
+      [
+       0.0076415,
+       -0.0142873
+      ],
+      [
+       0.0076415,
+       -0.0126064
+      ],
+      [
+       0.0076415,
+       -0.0109256
+      ],
+      [
+       0.0076415,
+       -0.0092447
+      ],
+      [
+       0.0076415,
+       -0.0075639
+      ],
+      [
+       0.0076415,
+       -0.005883
+      ],
+      [
+       0.0076415,
+       -0.0042021
+      ],
+      [
+       0.0076415,
+       -0.0025213
+      ],
+      [
+       0.0076415,
+       -0.0008404
+      ],
+      [
+       0.0076415,
+       0.0008404
+      ],
+      [
+       0.0076415,
+       0.0025213
+      ],
+      [
+       0.0076415,
+       0.0042022
+      ],
+      [
+       0.0076415,
+       0.005883
+      ],
+      [
+       0.0076415,
+       0.0075639
+      ],
+      [
+       0.0076415,
+       0.0092447
+      ],
+      [
+       0.0076415,
+       0.0109256
+      ],
+      [
+       0.0076415,
+       0.0126065
+      ],
+      [
+       0.0076415,
+       0.0142873
+      ],
+      [
+       0.0071085,
+       0.0149192
+      ],
+      [
+       0.0065755,
+       0.0155511
+      ],
+      [
+       0.0052604,
+       0.0155511
+      ],
+      [
+       0.0039453,
+       0.0155511
+      ],
+      [
+       0.0026302,
+       0.0155511
+      ],
+      [
+       0.0013151,
+       0.0155511
+      ],
+      [
+       0.0,
+       0.0155511
+      ],
+      [
+       -0.0010959,
+       0.0155511
+      ],
+      [
+       -0.0021918,
+       0.0155511
+      ],
+      [
+       -0.0032878,
+       0.0155511
+      ],
+      [
+       -0.0043837,
+       0.0155511
+      ],
+      [
+       -0.0054796,
+       0.0155511
+      ],
+      [
+       -0.0065755,
+       0.0155511
+      ],
+      [
+       -0.0071085,
+       0.0149192
+      ],
+      [
+       -0.0076415,
+       0.0142873
+      ],
+      [
+       -0.0076415,
+       0.0126065
+      ],
+      [
+       -0.0076415,
+       0.0109256
+      ],
+      [
+       -0.0076415,
+       0.0092447
+      ],
+      [
+       -0.0076415,
+       0.0075639
+      ],
+      [
+       -0.0076415,
+       0.005883
+      ],
+      [
+       -0.0076415,
+       0.0042022
+      ],
+      [
+       -0.0076415,
+       0.0025213
+      ],
+      [
+       -0.0076415,
+       0.0008404
+      ],
+      [
+       -0.0076415,
+       -0.0008404
+      ],
+      [
+       -0.0076415,
+       -0.0025213
+      ],
+      [
+       -0.0076415,
+       -0.0042021
+      ],
+      [
+       -0.0076415,
+       -0.005883
+      ],
+      [
+       -0.0076415,
+       -0.0075639
+      ],
+      [
+       -0.0076415,
+       -0.0092447
+      ],
+      [
+       -0.0076415,
+       -0.0109256
+      ],
+      [
+       -0.0076415,
+       -0.0126064
+      ],
+      [
+       -0.0076415,
+       -0.0142873
+      ],
+      [
+       -0.0071085,
+       -0.0149192
+      ],
+      [
+       -0.0065755,
+       -0.0155511
+      ],
+      [
+       -0.0052604,
+       -0.0155511
+      ],
+      [
+       -0.0039453,
+       -0.0155511
+      ],
+      [
+       -0.0026302,
+       -0.0155511
+      ],
+      [
+       -0.0013151,
+       -0.0155511
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.7543,
+      0.0,
+      -0.014377
+     ],
+     "a": 0.005373,
+     "b": 0.014377,
+     "n": 15.7978,
+     "contour": [
+      [
+       0.0,
+       -0.014377
+      ],
+      [
+       0.0007705,
+       -0.014377
+      ],
+      [
+       0.0015411,
+       -0.014377
+      ],
+      [
+       0.0023116,
+       -0.014377
+      ],
+      [
+       0.0030821,
+       -0.014377
+      ],
+      [
+       0.0038527,
+       -0.014377
+      ],
+      [
+       0.0046232,
+       -0.014377
+      ],
+      [
+       0.0049979,
+       -0.0137928
+      ],
+      [
+       0.0053727,
+       -0.0132086
+      ],
+      [
+       0.0053727,
+       -0.0116546
+      ],
+      [
+       0.0053727,
+       -0.0101007
+      ],
+      [
+       0.0053727,
+       -0.0085467
+      ],
+      [
+       0.0053727,
+       -0.0069928
+      ],
+      [
+       0.0053727,
+       -0.0054388
+      ],
+      [
+       0.0053727,
+       -0.0038849
+      ],
+      [
+       0.0053727,
+       -0.0023309
+      ],
+      [
+       0.0053727,
+       -0.000777
+      ],
+      [
+       0.0053727,
+       0.000777
+      ],
+      [
+       0.0053727,
+       0.0023309
+      ],
+      [
+       0.0053727,
+       0.0038849
+      ],
+      [
+       0.0053727,
+       0.0054388
+      ],
+      [
+       0.0053727,
+       0.0069928
+      ],
+      [
+       0.0053727,
+       0.0085468
+      ],
+      [
+       0.0053727,
+       0.0101007
+      ],
+      [
+       0.0053727,
+       0.0116547
+      ],
+      [
+       0.0053727,
+       0.0132086
+      ],
+      [
+       0.0049979,
+       0.0137928
+      ],
+      [
+       0.0046232,
+       0.014377
+      ],
+      [
+       0.0036986,
+       0.014377
+      ],
+      [
+       0.0027739,
+       0.014377
+      ],
+      [
+       0.0018493,
+       0.014377
+      ],
+      [
+       0.0009246,
+       0.014377
+      ],
+      [
+       0.0,
+       0.014377
+      ],
+      [
+       -0.0007705,
+       0.014377
+      ],
+      [
+       -0.0015411,
+       0.014377
+      ],
+      [
+       -0.0023116,
+       0.014377
+      ],
+      [
+       -0.0030821,
+       0.014377
+      ],
+      [
+       -0.0038527,
+       0.014377
+      ],
+      [
+       -0.0046232,
+       0.014377
+      ],
+      [
+       -0.0049979,
+       0.0137928
+      ],
+      [
+       -0.0053727,
+       0.0132086
+      ],
+      [
+       -0.0053727,
+       0.0116547
+      ],
+      [
+       -0.0053727,
+       0.0101007
+      ],
+      [
+       -0.0053727,
+       0.0085468
+      ],
+      [
+       -0.0053727,
+       0.0069928
+      ],
+      [
+       -0.0053727,
+       0.0054388
+      ],
+      [
+       -0.0053727,
+       0.0038849
+      ],
+      [
+       -0.0053727,
+       0.0023309
+      ],
+      [
+       -0.0053727,
+       0.000777
+      ],
+      [
+       -0.0053727,
+       -0.000777
+      ],
+      [
+       -0.0053727,
+       -0.0023309
+      ],
+      [
+       -0.0053727,
+       -0.0038849
+      ],
+      [
+       -0.0053727,
+       -0.0054388
+      ],
+      [
+       -0.0053727,
+       -0.0069928
+      ],
+      [
+       -0.0053727,
+       -0.0085467
+      ],
+      [
+       -0.0053727,
+       -0.0101007
+      ],
+      [
+       -0.0053727,
+       -0.0116546
+      ],
+      [
+       -0.0053727,
+       -0.0132086
+      ],
+      [
+       -0.0049979,
+       -0.0137928
+      ],
+      [
+       -0.0046232,
+       -0.014377
+      ],
+      [
+       -0.0036986,
+       -0.014377
+      ],
+      [
+       -0.0027739,
+       -0.014377
+      ],
+      [
+       -0.0018493,
+       -0.014377
+      ],
+      [
+       -0.0009246,
+       -0.014377
+      ]
+     ]
+    },
+    {
+     "xyz": [
+      0.803148,
+      0.0,
+      -0.013378
+     ],
+     "a": 0.00381,
+     "b": 0.013378,
+     "n": 15.7978,
+     "contour": [
+      [
+       0.0,
+       -0.0133775
+      ],
+      [
+       0.0005464,
+       -0.0133775
+      ],
+      [
+       0.0010928,
+       -0.0133775
+      ],
+      [
+       0.0016393,
+       -0.0133775
+      ],
+      [
+       0.0021857,
+       -0.0133775
+      ],
+      [
+       0.0027321,
+       -0.0133775
+      ],
+      [
+       0.0032785,
+       -0.0133775
+      ],
+      [
+       0.0035443,
+       -0.0128339
+      ],
+      [
+       0.00381,
+       -0.0122903
+      ],
+      [
+       0.00381,
+       -0.0108444
+      ],
+      [
+       0.00381,
+       -0.0093985
+      ],
+      [
+       0.00381,
+       -0.0079526
+      ],
+      [
+       0.00381,
+       -0.0065067
+      ],
+      [
+       0.00381,
+       -0.0050607
+      ],
+      [
+       0.00381,
+       -0.0036148
+      ],
+      [
+       0.00381,
+       -0.0021689
+      ],
+      [
+       0.00381,
+       -0.000723
+      ],
+      [
+       0.00381,
+       0.000723
+      ],
+      [
+       0.00381,
+       0.0021689
+      ],
+      [
+       0.00381,
+       0.0036148
+      ],
+      [
+       0.00381,
+       0.0050607
+      ],
+      [
+       0.00381,
+       0.0065066
+      ],
+      [
+       0.00381,
+       0.0079526
+      ],
+      [
+       0.00381,
+       0.0093985
+      ],
+      [
+       0.00381,
+       0.0108444
+      ],
+      [
+       0.00381,
+       0.0122903
+      ],
+      [
+       0.0035443,
+       0.0128339
+      ],
+      [
+       0.0032785,
+       0.0133775
+      ],
+      [
+       0.0026228,
+       0.0133775
+      ],
+      [
+       0.0019671,
+       0.0133775
+      ],
+      [
+       0.0013114,
+       0.0133775
+      ],
+      [
+       0.0006557,
+       0.0133775
+      ],
+      [
+       0.0,
+       0.0133775
+      ],
+      [
+       -0.0005464,
+       0.0133775
+      ],
+      [
+       -0.0010928,
+       0.0133775
+      ],
+      [
+       -0.0016393,
+       0.0133775
+      ],
+      [
+       -0.0021857,
+       0.0133775
+      ],
+      [
+       -0.0027321,
+       0.0133775
+      ],
+      [
+       -0.0032785,
+       0.0133775
+      ],
+      [
+       -0.0035443,
+       0.0128339
+      ],
+      [
+       -0.00381,
+       0.0122903
+      ],
+      [
+       -0.00381,
+       0.0108444
+      ],
+      [
+       -0.00381,
+       0.0093985
+      ],
+      [
+       -0.00381,
+       0.0079526
+      ],
+      [
+       -0.00381,
+       0.0065066
+      ],
+      [
+       -0.00381,
+       0.0050607
+      ],
+      [
+       -0.00381,
+       0.0036148
+      ],
+      [
+       -0.00381,
+       0.0021689
+      ],
+      [
+       -0.00381,
+       0.000723
+      ],
+      [
+       -0.00381,
+       -0.000723
+      ],
+      [
+       -0.00381,
+       -0.0021689
+      ],
+      [
+       -0.00381,
+       -0.0036148
+      ],
+      [
+       -0.00381,
+       -0.0050607
+      ],
+      [
+       -0.00381,
+       -0.0065067
+      ],
+      [
+       -0.00381,
+       -0.0079526
+      ],
+      [
+       -0.00381,
+       -0.0093985
+      ],
+      [
+       -0.00381,
+       -0.0108444
+      ],
+      [
+       -0.00381,
+       -0.0122903
+      ],
+      [
+       -0.0035443,
+       -0.0128339
+      ],
+      [
+       -0.0032785,
+       -0.0133775
+      ],
+      [
+       -0.0026228,
+       -0.0133775
+      ],
+      [
+       -0.0019671,
+       -0.0133775
+      ],
+      [
+       -0.0013114,
+       -0.0133775
+      ],
+      [
+       -0.0006557,
+       -0.0133775
+      ]
+     ]
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  }
+ },
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ]
+}

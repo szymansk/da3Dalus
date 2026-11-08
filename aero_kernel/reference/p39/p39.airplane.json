@@ -1,0 +1,4628 @@
+{
+ "name": "P39",
+ "wings": {
+  "main_wing": {
+   "name": "main_wing",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.614971,
+      0.0,
+      -0.14925
+     ],
+     "chord": 0.570484,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.614971,
+      0.13091,
+      -0.14925
+     ],
+     "chord": 0.570484,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7505,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7505,
+      "rel_chord_tip": 0.7507,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.614971,
+      0.132928,
+      -0.149015
+     ],
+     "chord": 0.570167,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7507,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7507,
+      "rel_chord_tip": 0.7517,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.615286,
+      0.134178,
+      -0.148868
+     ],
+     "chord": 0.568858,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7517,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7517,
+      "rel_chord_tip": 0.7625,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.630143,
+      0.291611,
+      -0.130481
+     ],
+     "chord": 0.524201,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7625,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7625,
+      "rel_chord_tip": 0.7625,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.630555,
+      0.292704,
+      -0.130353
+     ],
+     "chord": 0.523513,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7625,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7625,
+      "rel_chord_tip": 0.7629,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.630333,
+      0.295883,
+      -0.129982
+     ],
+     "chord": 0.523189,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7629,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7629,
+      "rel_chord_tip": 0.7731,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.641859,
+      0.41736,
+      -0.115795
+     ],
+     "chord": 0.48841,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7731,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7731,
+      "rel_chord_tip": 0.7729,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.642059,
+      0.422624,
+      -0.115181
+     ],
+     "chord": 0.487706,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7729,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7729,
+      "rel_chord_tip": 0.7737,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.642254,
+      0.423915,
+      -0.115029
+     ],
+     "chord": 0.486815,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.7737,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.7737,
+      "rel_chord_tip": 0.7962,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.662473,
+      0.642304,
+      -0.089524
+     ],
+     "chord": 0.424942,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.662854,
+      0.644827,
+      -0.089229
+     ],
+     "chord": 0.42418,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7533,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7533,
+      "rel_chord_tip": 0.7406,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.670055,
+      0.723685,
+      -0.080019
+     ],
+     "chord": 0.401718,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7406,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7406,
+      "rel_chord_tip": 0.6942,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.690941,
+      0.947469,
+      -0.053883
+     ],
+     "chord": 0.337956,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6942,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6942,
+      "rel_chord_tip": 0.6908,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.693845,
+      0.975082,
+      -0.050656
+     ],
+     "chord": 0.32791,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6908,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6908,
+      "rel_chord_tip": 0.6908,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.696602,
+      0.997331,
+      -0.048055
+     ],
+     "chord": 0.317865,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6908,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6908,
+      "rel_chord_tip": 0.6926,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.69921,
+      1.013025,
+      -0.046219
+     ],
+     "chord": 0.309033,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6926,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6926,
+      "rel_chord_tip": 0.692,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.700386,
+      1.014118,
+      -0.046091
+     ],
+     "chord": 0.307308,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.692,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.692,
+      "rel_chord_tip": 0.6935,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.69956,
+      1.015508,
+      -0.045929
+     ],
+     "chord": 0.307434,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6935,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6935,
+      "rel_chord_tip": 0.699,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.702608,
+      1.033486,
+      -0.043824
+     ],
+     "chord": 0.295844,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.699,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.699,
+      "rel_chord_tip": 0.7087,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.705964,
+      1.050471,
+      -0.041835
+     ],
+     "chord": 0.282555,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7087,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7087,
+      "rel_chord_tip": 0.7224,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.709408,
+      1.066463,
+      -0.03996
+     ],
+     "chord": 0.268247,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7224,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7224,
+      "rel_chord_tip": 0.7389,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.712503,
+      1.079376,
+      -0.038445
+     ],
+     "chord": 0.254794,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7389,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7389,
+      "rel_chord_tip": 0.7437,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.712789,
+      1.080568,
+      -0.038304
+     ],
+     "chord": 0.252456,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7437,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7437,
+      "rel_chord_tip": 0.7424,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.713023,
+      1.082047,
+      -0.038132
+     ],
+     "chord": 0.252222,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.713391,
+      1.08464,
+      -0.037829
+     ],
+     "chord": 0.251692,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.711626,
+      1.085832,
+      -0.037691
+     ],
+     "chord": 0.252654,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.720089,
+      1.099638,
+      -0.036066
+     ],
+     "chord": 0.230961,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.732104,
+      1.114935,
+      -0.034262
+     ],
+     "chord": 0.202097,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.74361,
+      1.126854,
+      -0.032853
+     ],
+     "chord": 0.174927,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.755901,
+      1.136985,
+      -0.031651
+     ],
+     "chord": 0.146526,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.767615,
+      1.144832,
+      -0.030717
+     ],
+     "chord": 0.119687,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.779203,
+      1.15099,
+      -0.02998
+     ],
+     "chord": 0.092632,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.792102,
+      1.155858,
+      -0.029391
+     ],
+     "chord": 0.06302,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.803349,
+      1.158539,
+      -0.02906
+     ],
+     "chord": 0.036818,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.813056,
+      1.159632,
+      -0.028917
+     ],
+     "chord": 0.014899,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.818945,
+      1.160005,
+      -0.028866
+     ],
+     "chord": 0.003559,
+     "twist": 1.953,
+     "airfoil": "./components/airfoils/p39_main_wing_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "horizontal_tail": {
+   "name": "horizontal_tail",
+   "surface_type": "horizontal_tail",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      1.678771,
+      0.0,
+      0.076172
+     ],
+     "chord": 0.224541,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat"
+    },
+    {
+     "xyz_le": [
+      1.678771,
+      0.030744,
+      0.076172
+     ],
+     "chord": 0.224566,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.8047,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.8047,
+      "rel_chord_tip": 0.8042,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.678771,
+      0.0329,
+      0.076172
+     ],
+     "chord": 0.224824,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.8042,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.8042,
+      "rel_chord_tip": 0.6835,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.678771,
+      0.05081,
+      0.076172
+     ],
+     "chord": 0.265722,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6835,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6835,
+      "rel_chord_tip": 0.6793,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.679475,
+      0.0514,
+      0.076172
+     ],
+     "chord": 0.266365,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6793,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6793,
+      "rel_chord_tip": 0.6039,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.683877,
+      0.0655,
+      0.076172
+     ],
+     "chord": 0.293407,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6039,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6039,
+      "rel_chord_tip": 0.6044,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.68476,
+      0.0682,
+      0.076172
+     ],
+     "chord": 0.291907,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6044,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6044,
+      "rel_chord_tip": 0.6024,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.68512,
+      0.0693,
+      0.076172
+     ],
+     "chord": 0.292362,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6024,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6024,
+      "rel_chord_tip": 0.5928,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.694473,
+      0.0979,
+      0.076172
+     ],
+     "chord": 0.283516,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5928,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5928,
+      "rel_chord_tip": 0.5085,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.762968,
+      0.3116,
+      0.076172
+     ],
+     "chord": 0.21502,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5085,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5085,
+      "rel_chord_tip": 0.4633,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.787632,
+      0.3886,
+      0.076172
+     ],
+     "chord": 0.190356,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4633,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4633,
+      "rel_chord_tip": 0.4582,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.792206,
+      0.3996,
+      0.076172
+     ],
+     "chord": 0.183594,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4582,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4582,
+      "rel_chord_tip": 0.4554,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.797436,
+      0.4102,
+      0.076172
+     ],
+     "chord": 0.174323,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4554,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4554,
+      "rel_chord_tip": 0.4543,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.803289,
+      0.42,
+      0.076172
+     ],
+     "chord": 0.162843,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4543,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4543,
+      "rel_chord_tip": 0.4532,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.804873,
+      0.422,
+      0.076172
+     ],
+     "chord": 0.159925,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4532,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4532,
+      "rel_chord_tip": 0.4466,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.80722,
+      0.4227,
+      0.076172
+     ],
+     "chord": 0.157112,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4466,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4466,
+      "rel_chord_tip": 0.4543,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.805641,
+      0.4236,
+      0.076172
+     ],
+     "chord": 0.15802,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4543,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4543,
+      "rel_chord_tip": 0.4553,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.814271,
+      0.4344,
+      0.076172
+     ],
+     "chord": 0.139789,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4553,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4553,
+      "rel_chord_tip": 0.4548,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.824017,
+      0.4437,
+      0.076172
+     ],
+     "chord": 0.119449,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4548,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4548,
+      "rel_chord_tip": 0.4545,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.834239,
+      0.4512,
+      0.076172
+     ],
+     "chord": 0.097797,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4545,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4545,
+      "rel_chord_tip": 0.4472,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.844778,
+      0.4568,
+      0.076172
+     ],
+     "chord": 0.076404,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4472,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4472,
+      "rel_chord_tip": 0.4195,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.856401,
+      0.4609,
+      0.076172
+     ],
+     "chord": 0.054187,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4195,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4195,
+      "rel_chord_tip": 0.335,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.86735,
+      0.4632,
+      0.076172
+     ],
+     "chord": 0.035486,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.335,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.335,
+      "rel_chord_tip": 0.1994,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.874349,
+      0.464068,
+      0.076172
+     ],
+     "chord": 0.024723,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat"
+    },
+    {
+     "xyz_le": [
+      1.884513,
+      0.4661,
+      0.076172
+     ],
+     "chord": 0.0001,
+     "twist": 0.379,
+     "airfoil": "./components/airfoils/naca0210.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "vertical_tail": {
+   "name": "vertical_tail",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      1.911348,
+      -0.0,
+      -0.037719
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.037319
+     ],
+     "chord": 0.003829,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.029319
+     ],
+     "chord": 0.038889,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.028719
+     ],
+     "chord": 0.042147,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.022219
+     ],
+     "chord": 0.067703,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.016619
+     ],
+     "chord": 0.085507,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.016119
+     ],
+     "chord": 0.089573,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.014919
+     ],
+     "chord": 0.090237,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.009119
+     ],
+     "chord": 0.104203,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      -0.002619
+     ],
+     "chord": 0.116531,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      0.007381
+     ],
+     "chord": 0.130779,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      0.016581
+     ],
+     "chord": 0.140462,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      0.026781
+     ],
+     "chord": 0.148373,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      0.038281
+     ],
+     "chord": 0.154686,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      0.048181
+     ],
+     "chord": 0.158496,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      0.059781
+     ],
+     "chord": 0.161544,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      0.073081
+     ],
+     "chord": 0.163452,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908937,
+      -0.0,
+      0.087681
+     ],
+     "chord": 0.164084,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908718,
+      -0.0,
+      0.102581
+     ],
+     "chord": 0.164049,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908302,
+      -0.0,
+      0.102997
+     ],
+     "chord": 0.164465,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.865884,
+      -0.0,
+      0.103505
+     ],
+     "chord": 0.206883,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.0,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.4966,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.684436,
+      -0.0,
+      0.112781
+     ],
+     "chord": 0.387823,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4966,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4966,
+      "rel_chord_tip": 0.4916,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.688992,
+      -0.0,
+      0.115081
+     ],
+     "chord": 0.383012,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4916,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4916,
+      "rel_chord_tip": 0.4892,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.691767,
+      -0.0,
+      0.118981
+     ],
+     "chord": 0.380087,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4892,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4892,
+      "rel_chord_tip": 0.4888,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.692326,
+      -0.0,
+      0.120081
+     ],
+     "chord": 0.379486,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4888,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4888,
+      "rel_chord_tip": 0.4868,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.69503,
+      -0.0,
+      0.124381
+     ],
+     "chord": 0.376467,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4868,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4868,
+      "rel_chord_tip": 0.4838,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.699196,
+      -0.0,
+      0.131381
+     ],
+     "chord": 0.371793,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4838,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4838,
+      "rel_chord_tip": 0.482,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.699751,
+      -0.0,
+      0.132481
+     ],
+     "chord": 0.372254,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.482,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.482,
+      "rel_chord_tip": 0.4805,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.701368,
+      -0.0,
+      0.135128
+     ],
+     "chord": 0.370637,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4805,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4805,
+      "rel_chord_tip": 0.4823,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.701589,
+      -0.0,
+      0.135681
+     ],
+     "chord": 0.368941,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4823,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4823,
+      "rel_chord_tip": 0.4819,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.702809,
+      -0.0,
+      0.137481
+     ],
+     "chord": 0.367091,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4819,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4819,
+      "rel_chord_tip": 0.4749,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.714766,
+      -0.0,
+      0.158081
+     ],
+     "chord": 0.352066,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4749,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4749,
+      "rel_chord_tip": 0.4709,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.721939,
+      -0.0,
+      0.170581
+     ],
+     "chord": 0.342699,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4709,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4709,
+      "rel_chord_tip": 0.4699,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.722439,
+      -0.0,
+      0.171581
+     ],
+     "chord": 0.342601,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4699,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4699,
+      "rel_chord_tip": 0.4685,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.722878,
+      -0.0,
+      0.172081
+     ],
+     "chord": 0.342777,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4685,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4685,
+      "rel_chord_tip": 0.4672,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.724279,
+      -0.0,
+      0.174752
+     ],
+     "chord": 0.341376,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4672,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4672,
+      "rel_chord_tip": 0.5029,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.724548,
+      -0.0,
+      0.175281
+     ],
+     "chord": 0.316723,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.5029,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.5029,
+      "rel_chord_tip": 0.5008,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.725974,
+      -0.0,
+      0.177381
+     ],
+     "chord": 0.31564,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.5008,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.5008,
+      "rel_chord_tip": 0.4861,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.730139,
+      -0.0,
+      0.184581
+     ],
+     "chord": 0.318244,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4861,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4861,
+      "rel_chord_tip": 0.4847,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.732363,
+      -0.0,
+      0.188381
+     ],
+     "chord": 0.315417,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4847,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4847,
+      "rel_chord_tip": 0.4828,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.74003,
+      -0.0,
+      0.201681
+     ],
+     "chord": 0.303777,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4828,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4828,
+      "rel_chord_tip": 0.4954,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.742533,
+      -0.0,
+      0.206181
+     ],
+     "chord": 0.291988,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4954,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4954,
+      "rel_chord_tip": 0.4942,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.743728,
+      -0.0,
+      0.208026
+     ],
+     "chord": 0.290685,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4942,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4942,
+      "rel_chord_tip": 0.4621,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.743982,
+      -0.0,
+      0.208381
+     ],
+     "chord": 0.310379,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4621,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4621,
+      "rel_chord_tip": 0.4605,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.745668,
+      -0.0,
+      0.211381
+     ],
+     "chord": 0.308546,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4605,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4605,
+      "rel_chord_tip": 0.4614,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.746229,
+      -0.0,
+      0.212481
+     ],
+     "chord": 0.30698,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4614,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4614,
+      "rel_chord_tip": 0.4587,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.75894,
+      -0.0,
+      0.234281
+     ],
+     "chord": 0.286221,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4587,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4587,
+      "rel_chord_tip": 0.4584,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.770913,
+      -0.0,
+      0.255016
+     ],
+     "chord": 0.265202,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4584,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4584,
+      "rel_chord_tip": 0.4611,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.782164,
+      -0.0,
+      0.274181
+     ],
+     "chord": 0.243752,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4611,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4611,
+      "rel_chord_tip": 0.4695,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.792768,
+      -0.0,
+      0.292681
+     ],
+     "chord": 0.221067,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4695,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4695,
+      "rel_chord_tip": 0.4723,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.794993,
+      -0.0,
+      0.296545
+     ],
+     "chord": 0.215925,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4723,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4723,
+      "rel_chord_tip": 0.4782,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.795261,
+      -0.0,
+      0.296881
+     ],
+     "chord": 0.212781,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4782,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4782,
+      "rel_chord_tip": 0.4761,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.797554,
+      -0.0,
+      0.300981
+     ],
+     "chord": 0.209833,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4761,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4761,
+      "rel_chord_tip": 0.4845,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.804583,
+      -0.0,
+      0.310781
+     ],
+     "chord": 0.193877,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4845,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4845,
+      "rel_chord_tip": 0.4923,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.812022,
+      -0.0,
+      0.319024
+     ],
+     "chord": 0.177518,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.4923,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.4923,
+      "rel_chord_tip": 0.5016,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.82033,
+      -0.0,
+      0.326781
+     ],
+     "chord": 0.159339,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.5016,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.5016,
+      "rel_chord_tip": 0.517,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.832732,
+      -0.0,
+      0.336081
+     ],
+     "chord": 0.132559,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.517,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.517,
+      "rel_chord_tip": 0.5268,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.840484,
+      -0.0,
+      0.340741
+     ],
+     "chord": 0.116332,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.5268,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.5268,
+      "rel_chord_tip": 0.5193,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.84311,
+      -0.0,
+      0.341081
+     ],
+     "chord": 0.113026,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.5193,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.5193,
+      "rel_chord_tip": 0.5336,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.84404,
+      -0.0,
+      0.342646
+     ],
+     "chord": 0.108585,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.5336,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.5336,
+      "rel_chord_tip": 0.5584,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.855978,
+      -0.0,
+      0.348107
+     ],
+     "chord": 0.083439,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.5584,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.5584,
+      "rel_chord_tip": 0.599,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.86817,
+      -0.0,
+      0.352171
+     ],
+     "chord": 0.058166,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.599,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.599,
+      "rel_chord_tip": 0.6547,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.86972,
+      -0.0,
+      0.352481
+     ],
+     "chord": 0.050901,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.6547,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.6547,
+      "rel_chord_tip": 0.6284,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.873568,
+      -0.0,
+      0.353314
+     ],
+     "chord": 0.047053,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.6284,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.6284,
+      "rel_chord_tip": 0.6676,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.87833,
+      -0.0,
+      0.354457
+     ],
+     "chord": 0.037338,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.6676,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.6676,
+      "rel_chord_tip": 0.7024,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.881448,
+      -0.0,
+      0.354781
+     ],
+     "chord": 0.031102,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat",
+     "control_surface": {
+      "name": "rud",
+      "hinge_point": 0.7024,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rud",
+      "role": "rudder",
+      "rel_chord_root": 0.7024,
+      "rel_chord_tip": 0.7829,
+      "servo_placement": "top",
+      "positive_deflection_deg": 25.0,
+      "negative_deflection_deg": 25.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.886112,
+      -0.0,
+      0.355381
+     ],
+     "chord": 0.022028,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat"
+    },
+    {
+     "xyz_le": [
+      1.90017,
+      -0.0,
+      0.355981
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/naca0210.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "fuselage": {
+   "name": "fuselage",
+   "x_secs": [
+    {
+     "xyz": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0025,
+      0.0,
+      0.0
+     ],
+     "a": 0.000993,
+     "b": 0.006858,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0181,
+      0.0,
+      0.0
+     ],
+     "a": 0.006858,
+     "b": 0.006858,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.019812,
+      0.0,
+      0.0
+     ],
+     "a": 0.006858,
+     "b": 0.006858,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0216,
+      0.0,
+      2.9e-05
+     ],
+     "a": 0.016156,
+     "b": 0.020047,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0227,
+      0.0,
+      0.000152
+     ],
+     "a": 0.020344,
+     "b": 0.021024,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0392,
+      0.0,
+      -1.1e-05
+     ],
+     "a": 0.032368,
+     "b": 0.032908,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0605,
+      0.0,
+      3e-06
+     ],
+     "a": 0.04549,
+     "b": 0.045956,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0846,
+      0.0,
+      6.5e-05
+     ],
+     "a": 0.058048,
+     "b": 0.058491,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1077,
+      0.0,
+      0.0
+     ],
+     "a": 0.068429,
+     "b": 0.068878,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.118,
+      0.0,
+      1.8e-05
+     ],
+     "a": 0.07247,
+     "b": 0.07288,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1195,
+      0.0,
+      -2.2e-05
+     ],
+     "a": 0.072927,
+     "b": 0.073444,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1215,
+      0.0,
+      -5.7e-05
+     ],
+     "a": 0.073809,
+     "b": 0.074409,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.152,
+      0.0,
+      -0.00252
+     ],
+     "a": 0.08054,
+     "b": 0.085945,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.184912,
+      0.0,
+      -0.004768
+     ],
+     "a": 0.086614,
+     "b": 0.096821,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1904,
+      0.0,
+      -0.005043
+     ],
+     "a": 0.088335,
+     "b": 0.09849,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1931,
+      0.0,
+      -0.005292
+     ],
+     "a": 0.08749,
+     "b": 0.099197,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2076,
+      0.0,
+      -0.006026
+     ],
+     "a": 0.089391,
+     "b": 0.103251,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2135,
+      0.0,
+      -0.006135
+     ],
+     "a": 0.090235,
+     "b": 0.104749,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2156,
+      0.0,
+      -0.006716
+     ],
+     "a": 0.090445,
+     "b": 0.105731,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2566,
+      0.0,
+      -0.009271
+     ],
+     "a": 0.094545,
+     "b": 0.116046,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2667,
+      0.0,
+      -0.009779
+     ],
+     "a": 0.095136,
+     "b": 0.118237,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2728,
+      0.0,
+      -0.009656
+     ],
+     "a": 0.093772,
+     "b": 0.118869,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2746,
+      0.0,
+      -0.011037
+     ],
+     "a": 0.093369,
+     "b": 0.11776,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2828,
+      0.0,
+      -0.010772
+     ],
+     "a": 0.093509,
+     "b": 0.118772,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3289,
+      0.0,
+      -0.01354
+     ],
+     "a": 0.096195,
+     "b": 0.12774,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3558,
+      0.0,
+      -0.015417
+     ],
+     "a": 0.097089,
+     "b": 0.132375,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3611,
+      0.0,
+      -0.01592
+     ],
+     "a": 0.097354,
+     "b": 0.133387,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3758,
+      0.0,
+      -0.016458
+     ],
+     "a": 0.097749,
+     "b": 0.135404,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.4212,
+      0.0,
+      -0.0193
+     ],
+     "a": 0.098835,
+     "b": 0.141443,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.4383,
+      0.0,
+      -0.020412
+     ],
+     "a": 0.099182,
+     "b": 0.14362,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.4996,
+      0.0,
+      -0.023853
+     ],
+     "a": 0.099447,
+     "b": 0.150091,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.525,
+      0.0,
+      -0.025078
+     ],
+     "a": 0.099568,
+     "b": 0.152332,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5274,
+      0.0,
+      -0.025308
+     ],
+     "a": 0.099568,
+     "b": 0.152754,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5291,
+      0.0,
+      -0.023946
+     ],
+     "a": 0.099568,
+     "b": 0.154257,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.545,
+      0.0,
+      -0.024511
+     ],
+     "a": 0.099441,
+     "b": 0.155476,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5486,
+      0.0,
+      -0.023666
+     ],
+     "a": 0.099441,
+     "b": 0.156667,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5536,
+      0.0,
+      -0.022257
+     ],
+     "a": 0.099441,
+     "b": 0.158845,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5552,
+      0.0,
+      -0.022212
+     ],
+     "a": 0.099441,
+     "b": 0.158953,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5757,
+      0.0,
+      -0.016326
+     ],
+     "a": 0.099441,
+     "b": 0.167462,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6001,
+      0.0,
+      -0.009967
+     ],
+     "a": 0.099314,
+     "b": 0.176681,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.63,
+      0.0,
+      -0.003243
+     ],
+     "a": 0.099187,
+     "b": 0.186769,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6391,
+      0.0,
+      -0.001179
+     ],
+     "a": 0.099187,
+     "b": 0.189774,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6414,
+      0.0,
+      -0.000342
+     ],
+     "a": 0.099187,
+     "b": 0.19074,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6444,
+      0.0,
+      6e-05
+     ],
+     "a": 0.099117,
+     "b": 0.191308,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6478,
+      0.0,
+      0.000231
+     ],
+     "a": 0.09906,
+     "b": 0.192007,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6645,
+      0.0,
+      0.002414
+     ],
+     "a": 0.098933,
+     "b": 0.195714,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6781,
+      0.0,
+      0.003299
+     ],
+     "a": 0.098933,
+     "b": 0.19811,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.7041,
+      0.0,
+      0.004127
+     ],
+     "a": 0.098933,
+     "b": 0.201105,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.7336,
+      0.0,
+      0.003641
+     ],
+     "a": 0.098792,
+     "b": 0.203285,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.738124,
+      0.0,
+      0.003827
+     ],
+     "a": 0.098679,
+     "b": 0.203522,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.74,
+      0.0,
+      0.004072
+     ],
+     "a": 0.098679,
+     "b": 0.203954,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.7444,
+      0.0,
+      0.00368
+     ],
+     "a": 0.098679,
+     "b": 0.204002,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.7477,
+      0.0,
+      0.00338
+     ],
+     "a": 0.098679,
+     "b": 0.203786,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.7817,
+      0.0,
+      0.001898
+     ],
+     "a": 0.098679,
+     "b": 0.20443,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.8052,
+      0.0,
+      0.00064
+     ],
+     "a": 0.098806,
+     "b": 0.204094,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.80772,
+      0.0,
+      0.000762
+     ],
+     "a": 0.098806,
+     "b": 0.20447,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.8337,
+      0.0,
+      -0.00138
+     ],
+     "a": 0.098933,
+     "b": 0.202786,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.8931,
+      0.0,
+      -0.008192
+     ],
+     "a": 0.099187,
+     "b": 0.196018,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.9389,
+      0.0,
+      -0.012472
+     ],
+     "a": 0.099441,
+     "b": 0.190286,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.9833,
+      0.0,
+      -0.015744
+     ],
+     "a": 0.099441,
+     "b": 0.1846,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.0095,
+      0.0,
+      -0.017221
+     ],
+     "a": 0.099187,
+     "b": 0.180949,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.0597,
+      0.0,
+      -0.018712
+     ],
+     "a": 0.098679,
+     "b": 0.173225,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.0931,
+      0.0,
+      -0.019176
+     ],
+     "a": 0.098187,
+     "b": 0.167448,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.0954,
+      0.0,
+      -0.018831
+     ],
+     "a": 0.098171,
+     "b": 0.167605,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.1026,
+      0.0,
+      -0.018662
+     ],
+     "a": 0.098171,
+     "b": 0.167142,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.1057,
+      0.0,
+      -0.018266
+     ],
+     "a": 0.09808,
+     "b": 0.16662,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.1093,
+      0.0,
+      -0.017788
+     ],
+     "a": 0.097917,
+     "b": 0.165995,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.1833,
+      0.0,
+      -0.013435
+     ],
+     "a": 0.096647,
+     "b": 0.158213,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.1963,
+      0.0,
+      -0.012899
+     ],
+     "a": 0.096242,
+     "b": 0.156902,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.2057,
+      0.0,
+      -0.012534
+     ],
+     "a": 0.095996,
+     "b": 0.155978,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.2077,
+      0.0,
+      -0.012158
+     ],
+     "a": 0.095846,
+     "b": 0.155482,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.2756,
+      0.0,
+      -0.009783
+     ],
+     "a": 0.093141,
+     "b": 0.147378,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.2976,
+      0.0,
+      -0.009312
+     ],
+     "a": 0.092041,
+     "b": 0.144866,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3016,
+      0.0,
+      -0.009584
+     ],
+     "a": 0.091841,
+     "b": 0.144069,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3033,
+      0.0,
+      -0.009712
+     ],
+     "a": 0.091691,
+     "b": 0.143704,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3049,
+      0.0,
+      -0.010511
+     ],
+     "a": 0.091531,
+     "b": 0.142845,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3117,
+      0.0,
+      -0.009875
+     ],
+     "a": 0.091082,
+     "b": 0.14184,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3685,
+      0.0,
+      -0.007401
+     ],
+     "a": 0.087088,
+     "b": 0.135356,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3979,
+      0.0,
+      -0.005795
+     ],
+     "a": 0.084517,
+     "b": 0.132381,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.4967,
+      0.0,
+      0.000502
+     ],
+     "a": 0.075336,
+     "b": 0.121407,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.5051,
+      0.0,
+      0.001117
+     ],
+     "a": 0.074807,
+     "b": 0.120549,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.5962,
+      0.0,
+      0.007092
+     ],
+     "a": 0.064941,
+     "b": 0.109748,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.6054,
+      0.0,
+      0.007702
+     ],
+     "a": 0.064057,
+     "b": 0.10863,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.6085,
+      0.0,
+      0.00814
+     ],
+     "a": 0.063711,
+     "b": 0.108079,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.6649,
+      0.0,
+      0.011926
+     ],
+     "a": 0.05748,
+     "b": 0.101104,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.6928,
+      0.0,
+      0.013979
+     ],
+     "a": 0.05403,
+     "b": 0.097799,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.7,
+      0.0,
+      0.014115
+     ],
+     "a": 0.053379,
+     "b": 0.097304,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.7042,
+      0.0,
+      0.014513
+     ],
+     "a": 0.053038,
+     "b": 0.096695,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.706,
+      0.0,
+      0.015108
+     ],
+     "a": 0.052678,
+     "b": 0.09601,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.7871,
+      0.0,
+      0.021268
+     ],
+     "a": 0.042549,
+     "b": 0.085795,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.8558,
+      0.0,
+      0.027068
+     ],
+     "a": 0.033894,
+     "b": 0.07656,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.8939,
+      0.0,
+      0.030228
+     ],
+     "a": 0.028376,
+     "b": 0.071495,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.901444,
+      0.0,
+      0.030857
+     ],
+     "a": 0.027813,
+     "b": 0.070489,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.9051,
+      0.0,
+      0.031313
+     ],
+     "a": 0.005572,
+     "b": 0.06985,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.906016,
+      0.0,
+      0.032778
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  }
+ },
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ]
+}

@@ -110,9 +110,48 @@ def kernel(monkeypatch: pytest.MonkeyPatch) -> StubKernel:
     return stub
 
 
+# The first six and the 28 plan models of #1372, by their fleet ids.
+FLEET_IDS = {
+    "bryan",
+    "jaguar",
+    "rv-7",
+    "chekker",
+    "wiesel",
+    "belemnitos",
+    "a6m2_zero",
+    "aeronca_champ",
+    "albatros_4",
+    "barracuda",
+    "bf109_e",
+    "d520_dewoitine",
+    "dardo",
+    "estrela",
+    "extra_300_ep",
+    "f3a_competicion",
+    "force_5",
+    "force_four",
+    "fw190_a8",
+    "gee_bee_r3",
+    "kastaway",
+    "miles_magister",
+    "mini_funtana",
+    "p36_hawk",
+    "p39",
+    "snoopy",
+    "sonas_40",
+    "spirit_100",
+    "sprite",
+    "super_trident",
+    "ultra_mini_stick",
+    "voodoo",
+    "windfreak",
+    "wristocrat",
+}
+
+
 def test_the_fleet_lists_every_reference_aircraft_with_its_values() -> None:
     fleet = {entry.id: entry for entry in canon_service.list_fleet()}
-    assert set(fleet) == {"bryan", "jaguar", "rv-7", "chekker", "wiesel", "belemnitos"}
+    assert set(fleet) == FLEET_IDS
     assert fleet["bryan"].name == "BRYAN"
     assert fleet["bryan"].mass_kg == pytest.approx(0.151)
     assert fleet["bryan"].flap_deflections == {}

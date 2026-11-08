@@ -1,0 +1,1569 @@
+{
+ "name": "WINDFREAK",
+ "wings": {
+  "main_wing": {
+   "name": "main_wing",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.250034,
+      0.0,
+      0.022523
+     ],
+     "chord": 0.28007,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249772,
+      0.0346,
+      0.022533
+     ],
+     "chord": 0.280312,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249767,
+      0.035047,
+      0.022314
+     ],
+     "chord": 0.40649,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6889,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6889,
+      "rel_chord_tip": 0.7538,
+      "servo_placement": "top",
+      "positive_deflection_deg": 6.0,
+      "negative_deflection_deg": 12.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.249768,
+      0.4074,
+      0.022484
+     ],
+     "chord": 0.371484,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7538,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7538,
+      "rel_chord_tip": 0.7623,
+      "servo_placement": "top",
+      "positive_deflection_deg": 6.0,
+      "negative_deflection_deg": 12.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.249257,
+      0.447551,
+      0.022502
+     ],
+     "chord": 0.368014,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7623,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7623,
+      "rel_chord_tip": 0.7618,
+      "servo_placement": "top",
+      "positive_deflection_deg": 6.0,
+      "negative_deflection_deg": 12.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.250251,
+      0.4488,
+      0.022505
+     ],
+     "chord": 0.366941,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7618,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7618,
+      "rel_chord_tip": 0.7836,
+      "servo_placement": "top",
+      "positive_deflection_deg": 6.0,
+      "negative_deflection_deg": 12.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.250024,
+      0.55762,
+      0.022554
+     ],
+     "chord": 0.357012,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.250024,
+      0.5609,
+      0.022556
+     ],
+     "chord": 0.356408,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.250024,
+      0.609519,
+      0.02257
+     ],
+     "chord": 0.356858,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.250024,
+      0.650419,
+      0.023283
+     ],
+     "chord": 0.356819,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249996,
+      0.691316,
+      0.024124
+     ],
+     "chord": 0.356807,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249942,
+      0.7322,
+      0.025476
+     ],
+     "chord": 0.356822,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249888,
+      0.773069,
+      0.027212
+     ],
+     "chord": 0.356837,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249834,
+      0.81392,
+      0.029331
+     ],
+     "chord": 0.356852,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.24978,
+      0.854749,
+      0.031834
+     ],
+     "chord": 0.356867,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249769,
+      0.895552,
+      0.03472
+     ],
+     "chord": 0.356839,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249769,
+      0.936259,
+      0.038757
+     ],
+     "chord": 0.356799,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249769,
+      0.976939,
+      0.04305
+     ],
+     "chord": 0.35676,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249768,
+      1.017591,
+      0.047598
+     ],
+     "chord": 0.356722,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249513,
+      1.058133,
+      0.05304
+     ],
+     "chord": 0.356938,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249513,
+      1.098641,
+      0.058739
+     ],
+     "chord": 0.356648,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249513,
+      1.139073,
+      0.064952
+     ],
+     "chord": 0.354859,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.249512,
+      1.166823,
+      0.0694
+     ],
+     "chord": 0.351623,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.250117,
+      1.179464,
+      0.071428
+     ],
+     "chord": 0.348945,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.253669,
+      1.207234,
+      0.076343
+     ],
+     "chord": 0.338545,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.256372,
+      1.219749,
+      0.078563
+     ],
+     "chord": 0.331537,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.263,
+      1.239832,
+      0.082462
+     ],
+     "chord": 0.315892,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.264088,
+      1.242341,
+      0.082465
+     ],
+     "chord": 0.313952,
+     "twist": 1.2,
+     "airfoil": "./components/airfoils/windfreak_main_wing_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "vertical_tail": {
+   "name": "vertical_tail",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.658719,
+      -0.0,
+      -0.003451
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.663681,
+      -0.0,
+      0.004549
+     ],
+     "chord": 0.06953,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.67356,
+      -0.0,
+      0.021349
+     ],
+     "chord": 0.190912,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.1688,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.623233,
+      -0.0,
+      0.023149
+     ],
+     "chord": 0.252691,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.1688,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.1688,
+      "rel_chord_tip": 0.2944,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.578562,
+      -0.0,
+      0.024671
+     ],
+     "chord": 0.298932,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.2944,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.2944,
+      "rel_chord_tip": 0.256,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.595572,
+      -0.0,
+      0.027649
+     ],
+     "chord": 0.282651,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.256,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.256,
+      "rel_chord_tip": 0.223,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.611028,
+      -0.0,
+      0.034149
+     ],
+     "chord": 0.268187,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.223,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.223,
+      "rel_chord_tip": 0.1853,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.630297,
+      -0.0,
+      0.047249
+     ],
+     "chord": 0.250683,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.1853,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.1853,
+      "rel_chord_tip": 0.1431,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.652505,
+      -0.0,
+      0.066949
+     ],
+     "chord": 0.23134,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.1431,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.1431,
+      "rel_chord_tip": 0.1023,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.675003,
+      -0.0,
+      0.091649
+     ],
+     "chord": 0.212215,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.1023,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.1023,
+      "rel_chord_tip": 0.0953,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.680178,
+      -0.0,
+      0.098913
+     ],
+     "chord": 0.207958,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0953,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0953,
+      "rel_chord_tip": 0.1118,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.676865,
+      -0.0,
+      0.100049
+     ],
+     "chord": 0.211415,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.1118,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.1118,
+      "rel_chord_tip": 0.1156,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.676865,
+      -0.0,
+      0.101881
+     ],
+     "chord": 0.211646,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.1156,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.1156,
+      "rel_chord_tip": 0.0891,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.683277,
+      -0.0,
+      0.102449
+     ],
+     "chord": 0.205336,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0891,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0891,
+      "rel_chord_tip": 0.0536,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.707535,
+      -0.0,
+      0.137849
+     ],
+     "chord": 0.186121,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0536,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0536,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.722537,
+      -0.0,
+      0.161449
+     ],
+     "chord": 0.174556,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.771088,
+      -0.0,
+      0.240849
+     ],
+     "chord": 0.136843,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.782619,
+      -0.0,
+      0.260349
+     ],
+     "chord": 0.128105,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.780492,
+      -0.0,
+      0.262849
+     ],
+     "chord": 0.130574,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.780664,
+      -0.0,
+      0.264226
+     ],
+     "chord": 0.130589,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.785741,
+      -0.0,
+      0.264749
+     ],
+     "chord": 0.125583,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.795551,
+      -0.0,
+      0.279549
+     ],
+     "chord": 0.117793,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.806981,
+      -0.0,
+      0.290649
+     ],
+     "chord": 0.107878,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.822104,
+      -0.0,
+      0.300249
+     ],
+     "chord": 0.094065,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.839912,
+      -0.0,
+      0.307549
+     ],
+     "chord": 0.077254,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.867871,
+      -0.0,
+      0.314549
+     ],
+     "chord": 0.05025,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.901336,
+      -0.0,
+      0.318682
+     ],
+     "chord": 0.017349,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.911063,
+      -0.0,
+      0.319194
+     ],
+     "chord": 0.006879,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_vertical_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "tip_plate": {
+   "name": "tip_plate",
+   "surface_type": "winglet",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.264099,
+      1.242344,
+      0.083493
+     ],
+     "chord": 0.313952,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.269842,
+      1.254344,
+      0.071493
+     ],
+     "chord": 0.305401,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.277434,
+      1.264844,
+      0.060993
+     ],
+     "chord": 0.298617,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.289485,
+      1.275344,
+      0.050494
+     ],
+     "chord": 0.290263,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.305258,
+      1.284444,
+      0.041394
+     ],
+     "chord": 0.280298,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.324818,
+      1.292444,
+      0.033394
+     ],
+     "chord": 0.268269,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.352558,
+      1.299483,
+      0.026355
+     ],
+     "chord": 0.250558,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.363906,
+      1.301244,
+      0.024594
+     ],
+     "chord": 0.241501,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.392522,
+      1.304085,
+      0.021753
+     ],
+     "chord": 0.212885,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.415968,
+      1.30562,
+      0.020218
+     ],
+     "chord": 0.096883,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.41781,
+      1.306131,
+      0.019707
+     ],
+     "chord": 0.091514,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/windfreak_tip_plate_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "fuselage": {
+   "name": "fuselage",
+   "x_secs": [
+    {
+     "xyz": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0021,
+      0.0,
+      0.000927
+     ],
+     "a": 0.003589,
+     "b": 0.003274,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.0049,
+      0.0,
+      0.001779
+     ],
+     "a": 0.005135,
+     "b": 0.006914,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.0106,
+      0.0,
+      0.000924
+     ],
+     "a": 0.006548,
+     "b": 0.008368,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.0314,
+      0.0,
+      0.002684
+     ],
+     "a": 0.009332,
+     "b": 0.015328,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.0669,
+      0.0,
+      0.005752
+     ],
+     "a": 0.012655,
+     "b": 0.02318,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.1108,
+      0.0,
+      0.008948
+     ],
+     "a": 0.015468,
+     "b": 0.029913,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.1539,
+      0.0,
+      0.010866
+     ],
+     "a": 0.01716,
+     "b": 0.034387,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.2071,
+      0.0,
+      0.0124
+     ],
+     "a": 0.01828,
+     "b": 0.037199,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.265,
+      0.0,
+      0.01355
+     ],
+     "a": 0.019175,
+     "b": 0.038094,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.3207,
+      0.0,
+      0.012994
+     ],
+     "a": 0.019302,
+     "b": 0.036771,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.3892,
+      0.0,
+      0.010909
+     ],
+     "a": 0.018535,
+     "b": 0.032811,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.4937,
+      0.0,
+      0.007031
+     ],
+     "a": 0.015274,
+     "b": 0.022881,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.5536,
+      0.0,
+      0.006647
+     ],
+     "a": 0.011888,
+     "b": 0.018408,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.6339,
+      0.0,
+      0.008598
+     ],
+     "a": 0.006825,
+     "b": 0.014223,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.6411,
+      0.0,
+      0.008261
+     ],
+     "a": 0.006392,
+     "b": 0.014319,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.6539,
+      0.0,
+      0.008333
+     ],
+     "a": 0.005603,
+     "b": 0.013821,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.661908,
+      0.0,
+      0.017286
+     ],
+     "a": 0.004985,
+     "b": 0.004634,
+     "n": 2.67
+    },
+    {
+     "xyz": [
+      0.66242,
+      0.0,
+      0.017866
+     ],
+     "a": 0.000301,
+     "b": 0.004054,
+     "n": 2.67
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  }
+ },
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ]
+}
