@@ -651,9 +651,12 @@ notice `fuselage_axis_straightened` (largest |Δz|, section index and x). Numeri
 `opt_body_axis_tolerance` = 1e-9 m in `config.yaml` (round-off margin, no engineering constant).
 Rejected: A (declare only), C (smoothing, unsourced window), D (flight calibration). The pitching moment
 is unaffected for the kernel (no quantity reads AeroBuildup's C_m since #1347; the neutral-point worlds
-do not use AeroBuildup). `aerobuildup-evaluation` names the rule in "Canopies and contours"; no status
+take no moment from AeroBuildup; the AVL world moves only through C_L at V_md). `aerobuildup-evaluation` names the rule in "Canopies and contours"; no status
 changed. What moved (regression goldens re-recorded, old values kept in comments): V_md / (L/D)max
 BRYAN 7.665 → 7.712 m/s / 9.61 → 9.74, JAGUAR 8.885 → 8.985 / 11.09 → 11.42, CHEKKER 8.896 → 9.739 /
 9.97 → 11.91 (α_md 1.32° → 0.04°), WIESEL 11.986 → 12.089 / 12.68 → 12.85, RV-7 9.942 → 9.952 /
 10.28 → 10.34, BELEMNITOS unchanged to 1e-4; V_S moves by at most 0.1 %; the AVL neutral-point world
 moves only through C_L,md (CHEKKER 0.20136 → 0.19972 m, the others ≤ 7e-5 m).
+Measured fuselage C_D change at α = 0 after the canopy merge: CHEKKER −0.0099, JAGUAR −0.0013, BRYAN
+−0.0008 (its issue step lay at the canopy, smoothed by the merge), WIESEL −0.0005, RV-7 −0.0003.
+**Rule `fuselage-axis-straightened` approved by the maintainer (2026-11-08)** in the corrected wording.
