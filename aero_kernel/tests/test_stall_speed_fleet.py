@@ -19,6 +19,7 @@ from aero_kernel.tests.formula_builders import OPT_SETTINGS, close
 from aero_kernel.tests.reference_fleet import (
     FleetMember,
     bryan_as_the_prototype,
+    convert_with_the_true_body_axes,
     flap_values,
     reference_document,
 )
@@ -37,21 +38,36 @@ SLUGS = (
 # Regression goldens at sea level, mass of the fleet member, ISA, AeroSandbox's S_ref of the main wing
 # (gh-1240; V_S and alpha_S did not move, the lift coefficients did), NeuralFoil model size xlarge.
 # Re-recorded for #1355 slice 2 (canopy merged); before: 5.2453741 m/s, C_L,max 1.2548391 at 13.1987303 deg.
-BRYAN_V_S = 5.2638270  # m/s
-BRYAN_CL_MAX, BRYAN_ALPHA_S = 1.2460566, 13.1984316
+BRYAN_V_S = 5.2683078  # m/s; #1358: was 5.2638270
+BRYAN_CL_MAX, BRYAN_ALPHA_S = 1.2439379, 13.2066858  # #1358: was 1.2460566, 13.1984316
 BRYAN_V_S_SMALL = 5.2894317  # m/s, the small model of the prototype
-JAGUAR_V_S = 6.2992129  # m/s
-JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 0.9985795, 9.9252911
-JAGUAR_CL_MIN = -0.7831582
+JAGUAR_V_S = 6.3006680  # m/s; #1358: was 6.2992129
+JAGUAR_CL_MAX, JAGUAR_ALPHA_S = 0.9981183, 9.9255623  # #1358: was 0.9985795, 9.9252911
+JAGUAR_CL_MIN = -0.7830840  # #1358: was -0.7831582
 # (V_S m/s, C_L,max, alpha_S deg, C_L,min) of the aircraft added by gh-1284; the takeoff and landing
 # speeds equal V_S where the airplane has no flap (BELEMNITOS).
-BELEMNITOS_GOLDEN = (4.4882110, 1.1141652, 9.5701434, -0.4784755)
-RV7_GOLDEN = (6.6001580, 1.2246480, 15.1183671, -0.8329524)
+BELEMNITOS_GOLDEN = (
+    4.4882670,
+    1.1141374,
+    9.5702527,
+    -0.4783872,
+)  # #1358: was 4.4882110, 1.1141652, 9.5701434, -0.4784755
+RV7_GOLDEN = (
+    6.6059421,
+    1.2225044,
+    15.1241024,
+    -0.8328040,
+)  # #1358: was 6.6001580, 1.2246480, 15.1183671, -0.8329524
 # (V_S m/s, C_L,max, alpha_S deg, C_L,min) of CHEKKER and WIESEL, whose fuselage sections with two
 # shape exponents are the equivalent symmetric ones (#1307). WIESEL has no inverted stall value
 # (the sweep finds no trough, like BRYAN's, see its test).
-CHEKKER_GOLDEN = (6.5538734, 1.2037652, 8.9155783, -0.5459634)
-WIESEL_GOLDEN = (8.1057323, 1.0843195, 11.8867507)
+CHEKKER_GOLDEN = (
+    6.5579930,
+    1.2022533,
+    8.9087036,
+    -0.5428340,
+)  # #1358: was 6.5538734, 1.2037652, 8.9155783, -0.5459634
+WIESEL_GOLDEN = (8.1096438, 1.0832737, 11.8862101)  # #1358: was 8.1057323, 1.0843195, 11.8867507
 
 
 def sea_level_air() -> AirState:
@@ -99,6 +115,7 @@ async def test_bryan_stalls_where_the_prototype_found_it_with_the_small_model(
     own (#1355).
     """
     monkeypatch.setattr(opti_module, "NEURALFOIL_MODEL_SIZE", "small")
+    convert_with_the_true_body_axes(monkeypatch)  # nor did it straighten the body axes (#1358)
     request = StallRequest(
         airplane=AirplaneGeometry.model_validate(bryan_as_the_prototype()),
         mass_kg=FleetMember.BRYAN.mass_kg,
@@ -113,9 +130,10 @@ async def test_bryan_stalls_where_the_prototype_found_it_with_the_small_model(
 
 
 async def test_bryan_regression_goldens_with_the_xlarge_model() -> None:
-    """xlarge, the size the kernel uses (maintainer 2026-10-22), the canopy merged (#1355): 5.2638
-    m/s, 0.5 % below the prototype, which the small model reproduces with the canopy a body of its
-    own (test above). C_L,max 1.246 at 13.2 deg."""
+    """xlarge, the size the kernel uses (maintainer 2026-10-22), the canopy merged (#1355) and the
+    body axes straight (#1358): 5.2683 m/s, 0.4 % below the prototype, which the small model
+    reproduces with the canopy a body of its own and the true body axes (test above). C_L,max 1.244
+    at 13.2 deg."""
     result = await stall_result(FleetMember.BRYAN)
     assert_goldens_are_pinned_to_their_tools(result)
     quantities = {q.slug: q for q in result.quantities}
@@ -214,8 +232,8 @@ async def test_belemnitos_regression_goldens() -> None:
 # RV-7 with the maintainer's guessed flaps (take-off 15 deg, landing 30 deg), regression of this build
 # (#1212, route A: the flap is the rotated contour behind the hinge, evaluated by NeuralFoil):
 # (V_S m/s, C_L,max, NeuralFoil's lowest analysis_confidence at the stall optimum).
-RV7_TAKEOFF = (6.3137959, 1.3382550, 0.8771531)
-RV7_LANDING = (6.2445456, 1.3681013, 0.4069260)
+RV7_TAKEOFF = (6.3187712, 1.3361484, 0.8772835)  # #1358: was 6.3137959, 1.3382550, 0.8771531
+RV7_LANDING = (6.2496714, 1.3658581, 0.4077777)  # #1358: was 6.2445456, 1.3681013, 0.4069260
 
 
 async def rv7_values(*slugs: str) -> dict[str, float | None]:
@@ -242,7 +260,7 @@ async def test_rv7_regression_goldens_and_the_flaps_computed_never_the_clean_air
     speed and carry the declared model range of the flap.
 
     Regression, not validation. The flap raises C_L,max (1.22 clean, 1.34 and 1.37) and lowers the
-    stall speed (6.60 clean, 6.31 and 6.24 m/s), the right direction for a flap. NeuralFoil's
+    stall speed (6.61 clean, 6.32 and 6.25 m/s), the right direction for a flap. NeuralFoil's
     confidence at the stall optimum falls with the deflection (0.88 at 15 deg, 0.41 at 30 deg) and is
     reported as a value in control_surface_fit_range_unknown (the threshold is a pending rule)."""
     result = await stall_result(FleetMember.RV7)

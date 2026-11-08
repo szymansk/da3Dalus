@@ -40,10 +40,10 @@ CG = {
     # the design CG of the canon (cg-for-target-margin, SM_target 0.10) in the AVL world, from the
     # kernel's centre-of-gravity-design; test_cg_for_target_margin... checks it. Never a hand-chosen
     # position (maintainer 2026-10-26).
-    FleetMember.RV7: 0.241165,
+    FleetMember.RV7: 0.241183,  # #1358: was 0.241165
     # CHEKKER and WIESEL likewise: the design CG of the AVL world (the geometry format has no CG)
-    FleetMember.CHEKKER: 0.18521216469928675,
-    FleetMember.WIESEL: 0.1800916813580844,
+    FleetMember.CHEKKER: 0.18356716469928674,  # #1358: was 0.18521216469928675
+    FleetMember.WIESEL: 0.1801546813580844,  # #1358: was 0.1800916813580844
     # BELEMNITOS (V-tail, #1208): the design CG of the AVL world at SM_target 0.10
     FleetMember.BELEMNITOS: 0.06122000890616699,
 }
@@ -62,11 +62,11 @@ WORLDS = ("textbook", "pappas", "avl")
 # 0.1181103705/0.1239713559 m; the eta = 0.9 values below moved from 0.1441142600/0.1233721388.
 GOLDEN_NP = {
     # #1355 slice 2 (canopy merged): the AVL world moved from 0.143839
-    FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.144211),
-    FleetMember.JAGUAR: (0.1180376743, 0.1238461117, 0.126467),
-    FleetMember.RV7: (0.2561507, 0.2581105, 0.259465),
-    FleetMember.CHEKKER: (0.1906369, 0.1960934, 0.20136),
-    FleetMember.WIESEL: (0.1919482, 0.2003031, 0.196357),
+    FleetMember.BRYAN: (0.1398843329, 0.1401811762, 0.144244),  # #1358: was 0.144211
+    FleetMember.JAGUAR: (0.1180376743, 0.1238461117, 0.126399),  # #1358: was 0.126467
+    FleetMember.RV7: (0.2561507, 0.2581105, 0.259483),  # #1358: was 0.259465
+    FleetMember.CHEKKER: (0.1906369, 0.1960934, 0.199715),  # #1358: was 0.20136
+    FleetMember.WIESEL: (0.1919482, 0.2003031, 0.19642),  # #1358: was 0.196357
     # V-tail (#1208): S_h,eff = sum S_i cos^2(nu_i) with the root carried to the centreline, the lift slope from the
     # developed panel aspect ratio;
     # recorded from the kernel (regression). The AVL mesh is declared not converged (1.27 % MAC).

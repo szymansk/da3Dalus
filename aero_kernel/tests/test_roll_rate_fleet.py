@@ -39,23 +39,23 @@ AB, AVL = "roll-rate=aerobuildup", "roll-rate=avl"
 # BRYAN re-recorded for #1355 slice 2 (canopy merged); before: p (490.14462, 410.51230), p_hat
 # (0.3431387, 0.28739), V_app 6.818986359246604 m/s, fit-range warning 0.6547296 / 18.692106.
 GOLDEN_P = {
-    FleetMember.BRYAN: (492.28133, 411.91345),
-    FleetMember.JAGUAR: (346.50673, 419.59114),
+    FleetMember.BRYAN: (492.67841, 412.24974),  # #1358: was 492.28133, 411.91345
+    FleetMember.JAGUAR: (346.58671, 419.68806),  # #1358: was 346.50673, 419.59114
     FleetMember.BELEMNITOS: (115.91897, 120.59319),
-    FleetMember.WIESEL: (338.54708, 340.28853),
+    FleetMember.WIESEL: (338.80362, 340.45274),  # #1358: was 338.54708, 340.28853
 }
 GOLDEN_P_HAT = {
-    FleetMember.BRYAN: (0.3434264, 0.28736),
+    FleetMember.BRYAN: (0.3434111, 0.28735),  # #1358: was 0.3434264, 0.28736
     FleetMember.JAGUAR: (0.2304946, 0.27911),
-    FleetMember.BELEMNITOS: (0.2599288, 0.27041),
-    FleetMember.WIESEL: (0.2564309, 0.25775),
+    FleetMember.BELEMNITOS: (0.2599278, 0.27041),  # #1358: was 0.2599288
+    FleetMember.WIESEL: (0.2565015, 0.25775),  # #1358: was 0.2564309
 }
 # V_app = 1.3 V_S (m/s) of the slice-3 stall golden path; the fleet has no flap, so V_S,landing = V_S.
 V_APP = {
-    FleetMember.BRYAN: 6.842975091879155,
-    FleetMember.JAGUAR: 8.188976805083124,
-    FleetMember.BELEMNITOS: 5.834674251667882,
-    FleetMember.WIESEL: 10.537451950170093,
+    FleetMember.BRYAN: 6.848800118673464,  # #1358: was 6.842975091879155
+    FleetMember.JAGUAR: 8.190868406494934,  # #1358: was 8.188976805083124
+    FleetMember.BELEMNITOS: 5.834747083646191,  # #1358: was 5.834674251667882
+    FleetMember.WIESEL: 10.542536936409958,  # #1358: was 10.537451950170093
 }
 HINGE_SEGMENTS = {
     FleetMember.BRYAN: 4,
@@ -223,10 +223,30 @@ def _detail(warning: KernelWarning, key: str) -> float:
 
 async def test_the_regression_values_of_the_fit_range_warning() -> None:
     expected = {
-        FleetMember.BRYAN: (0.6388560, "Hoehenleitwerk", 18.652788, "Tragflaeche"),
-        FleetMember.JAGUAR: (0.4667034, "Tragflaeche", 14.617064, "Tragflaeche"),
-        FleetMember.BELEMNITOS: (0.8018459, "V-Leitwerk", 16.349829, "Tragflaeche"),
-        FleetMember.WIESEL: (0.0277381, "main_wing", 15.675805, "main_wing"),
+        FleetMember.BRYAN: (
+            0.6387599,
+            "Hoehenleitwerk",
+            18.652788,
+            "Tragflaeche",
+        ),  # #1358: was 0.6388560
+        FleetMember.JAGUAR: (
+            0.4667657,
+            "Tragflaeche",
+            14.616630,
+            "Tragflaeche",
+        ),  # #1358: was 0.4667034, 14.617064
+        FleetMember.BELEMNITOS: (
+            0.8018011,
+            "V-Leitwerk",
+            16.350072,
+            "Tragflaeche",
+        ),  # #1358: was 0.8018459, 16.349829
+        FleetMember.WIESEL: (
+            0.02771595,
+            "main_wing",
+            15.676143,
+            "main_wing",
+        ),  # #1358: was 0.0277381, 15.675805
     }
     for member, (confidence, low_wing, alpha, high_wing) in expected.items():
         (fit,) = [
@@ -286,9 +306,9 @@ async def test_chekker_has_no_aileron_so_the_roll_rate_is_not_applicable() -> No
 # RV-7 on approach (#1212): the landing configuration, flaps at 30 deg (route A: the rotated contour),
 # V_app = 1.3 * 6.2445 m/s. Regression values of the AeroBuildup world; the AVL world (p_hat 0.2213,
 # beyond its range) is dropped from the interval and shown in its declaration.
-RV7_AB_P_DEG_S, RV7_AB_P_HAT = 226.38745, 0.1995581
-RV7_AVL_P_DEG_S, RV7_AVL_P_HAT = 251.05240, 0.2213
-RV7_ROLL_CONFIDENCE = 0.3927175
+RV7_AB_P_DEG_S, RV7_AB_P_HAT = 226.66359, 0.1996377  # #1358: was 226.38745, 0.1995581
+RV7_AVL_P_DEG_S, RV7_AVL_P_HAT = 251.22442, 0.2213  # #1358: was 251.05240
+RV7_ROLL_CONFIDENCE = 0.3921334  # #1358: was 0.3927175
 
 
 async def test_rv7_roll_on_approach_is_evaluated_on_the_landing_configuration() -> None:

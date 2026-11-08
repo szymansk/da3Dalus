@@ -5,6 +5,9 @@ This module re-exports it so the tests keep one import path.
 
 from typing import Any
 
+import pytest
+from aero_kernel.body_axis import AeroBuildupBodies
+from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.reference_fleet import (
     FLAP_DEFLECTIONS_DEG,
     REFERENCE_DIR,
@@ -22,6 +25,7 @@ __all__ = [
     "FleetMember",
     "aircraft_input",
     "bryan_as_the_prototype",
+    "convert_with_the_true_body_axes",
     "flap_values",
     "fleet_values",
     "read_selig_coordinates",
@@ -41,3 +45,20 @@ def bryan_as_the_prototype() -> dict[str, Any]:
         body.pop("role", None)
         body.pop("attached_to", None)
     return document
+
+
+def convert_with_the_true_body_axes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hand AeroBuildup the bodies with their true section centres, as the prototype did.
+
+    The prototype (ERGEBNISSE_STABILITAET.md) converted every body with its stepped centres; the
+    kernel straightens each body's axis for AeroBuildup (#1358). The tests that reproduce the
+    prototype's numbers run the worker in this process with the straightening switched off;
+    every other test sees the straight axes.
+    """
+    from aero_kernel.solver_bodies import solver_bodies
+    from aero_kernel.solvers import asb_airplane
+
+    def true_axes(airplane: AirplaneGeometry) -> AeroBuildupBodies:
+        return AeroBuildupBodies(solver_bodies(airplane), ())
+
+    monkeypatch.setattr(asb_airplane, "aerobuildup_bodies", true_axes)

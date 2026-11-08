@@ -135,6 +135,7 @@ class TestKernelWarning:
             "canopy_merged_into_fuselage": WarningSeverity.NOTICE,
             "canopy_merge_exponent_clamped": WarningSeverity.WARNING,
             "canopy_off_centre": WarningSeverity.WARNING,
+            "fuselage_axis_straightened": WarningSeverity.NOTICE,
             "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
         }
 

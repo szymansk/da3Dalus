@@ -22,6 +22,7 @@ from typing import cast
 
 from aero_kernel import geometry
 from aero_kernel.body_attachment import AttachedBody, attachment_defects
+from aero_kernel.body_axis import AxisStraightening, aerobuildup_bodies
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.fuselage_contour import (
@@ -724,6 +725,30 @@ def _canopy_notice(merge: CanopyMerge) -> KernelWarning:
     return _warning("canopy_merged_into_fuselage", "airplane", message, detail)
 
 
+def _axis_notice(found: AxisStraightening) -> KernelWarning:
+    """Declare that AeroBuildup sees a body on its straight axis (#1358, ADR 0020).
+
+    Read from the one producer of the AeroBuildup bodies (:func:`aerobuildup_bodies`, ADR 0022).
+    """
+    message = (
+        f"AeroBuildup sees the body {found.fuselage!r} with its {found.sections} section centres "
+        f"placed in height on the least-squares line through them (maintainer 2026-11-07): "
+        f"AeroBuildup takes each segment's axis from two consecutive centres, so a step of the "
+        f"centre would be a steeply inclined segment with crossflow drag at an angle of attack of "
+        f"0. The largest shift is {found.largest_shift:.6g} m, at section {found.section_index} "
+        f"(x = {found.x:.6g} m). Sections, wetted area and volume are unchanged; a real curvature "
+        "of the axis is lost. AVL and the stored geometry keep the true centres."
+    )
+    detail: dict[str, JsonValue] = {
+        "fuselage": found.fuselage,
+        "sections": found.sections,
+        "largest_shift_m": found.largest_shift,
+        "section_index": found.section_index,
+        "x_m": found.x,
+    }
+    return _warning("fuselage_axis_straightened", "airplane", message, detail)
+
+
 def _canopy_merge_warnings(airplane: geometry.AirplaneGeometry) -> list[KernelWarning]:
     """The declarations of the canopy merge: one notice per canopy, warnings for its caveats.
 
@@ -798,8 +823,9 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
         + _deflection_warnings(airplane.wings or {})
         + _fuselage_section_warnings(airplane.fuselages or {})
     )
-    if not errors:  # the merge reads an admissible geometry only
+    if not errors:  # the merge and the straight axis read an admissible geometry only
         warnings += _canopy_merge_warnings(airplane)
+        warnings += [_axis_notice(found) for found in aerobuildup_bodies(airplane).straightenings]
     logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))
 

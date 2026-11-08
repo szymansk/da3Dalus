@@ -638,3 +638,25 @@ named; a rename only, in its own change.
 **Done (2026-11-07):** renamed in the canon, `canon_model.json`, the aero_kernel (modules
 `aero_kernel/formulas/minimum_drag_speed.py`, `minimum_sink_speed.py`, `zero_lift_angle.py`) and the
 navigator; older entries of this file and ADR 0026 keep the names they were written with.
+
+**Straight body axis for AeroBuildup (maintainer 2026-11-07, #1358, option B).** AeroBuildup
+(AeroSandbox 4.2.9, `aero_buildup.py` 1104-1176, not patched) takes each fuselage segment's axis from
+two consecutive section centres, so a vertical step of the centre between close sections was a steeply
+inclined segment with Jorgensen crossflow drag at α = 0 (issue measurement: CHEKKER +0.0100 C_D, SNACK
++0.0098, BRYAN +0.0051, JAGUAR +0.0013, RV-7 +0.0004, BELEMNITOS 0). New tool rule
+`fuselage-axis-straightened`: for AeroBuildup only, after the canopy merge, the z of every section
+centre of a body becomes the unweighted least-squares line z(x) through all its centres; x, y, a, b, n,
+n_lower stay, AVL and the stored document keep the true centres. Declared per changed body by the
+notice `fuselage_axis_straightened` (largest |Δz|, section index and x). Numerical setting
+`opt_body_axis_tolerance` = 1e-9 m in `config.yaml` (round-off margin, no engineering constant).
+Rejected: A (declare only), C (smoothing, unsourced window), D (flight calibration). The pitching moment
+is unaffected for the kernel (no quantity reads AeroBuildup's C_m since #1347; the neutral-point worlds
+take no moment from AeroBuildup; the AVL world moves only through C_L at V_md). `aerobuildup-evaluation` names the rule in "Canopies and contours"; no status
+changed. What moved (regression goldens re-recorded, old values kept in comments): V_md / (L/D)max
+BRYAN 7.665 → 7.712 m/s / 9.61 → 9.74, JAGUAR 8.885 → 8.985 / 11.09 → 11.42, CHEKKER 8.896 → 9.739 /
+9.97 → 11.91 (α_md 1.32° → 0.04°), WIESEL 11.986 → 12.089 / 12.68 → 12.85, RV-7 9.942 → 9.952 /
+10.28 → 10.34, BELEMNITOS unchanged to 1e-4; V_S moves by at most 0.1 %; the AVL neutral-point world
+moves only through C_L,md (CHEKKER 0.20136 → 0.19972 m, the others ≤ 7e-5 m).
+Measured fuselage C_D change at α = 0 after the canopy merge: CHEKKER −0.0099, JAGUAR −0.0013, BRYAN
+−0.0008 (its issue step lay at the canopy, smoothed by the merge), WIESEL −0.0005, RV-7 −0.0003.
+**Rule `fuselage-axis-straightened` approved by the maintainer (2026-11-08)** in the corrected wording.
