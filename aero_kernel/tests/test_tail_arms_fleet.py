@@ -11,7 +11,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import AircraftInput, ComputeResult, QuantityStatus
 from aero_kernel.solvers.asb_airplane import AC_FRACTION, quarter_chord_mac_x, surface_properties
 from aero_kernel.tests.engine_builders import request
-from aero_kernel.tests.reference_fleet import FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import WITH_PITCH_TAIL, FleetMember, reference_document
 
 pytestmark = [pytest.mark.aero]
 
@@ -116,10 +116,11 @@ async def test_each_arm_is_asbs_quarter_chord_mac_less_the_design_cg_in_every_wo
         assert abs(l_v.interval.worlds[world] - (x_fin - x_cg)) < 1e-9, world
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", WITH_PITCH_TAIL)
 def test_the_tail_position_is_the_one_the_neutral_point_uses(member: FleetMember) -> None:
     """One authority (ADR 0022): x_le,MAC + 0.25 c_MAC of the planform values is the aerodynamic centre."""
-    plane, tail_key = key_of(member, pitch_type(member))
+    plane = AirplaneGeometry.model_validate(reference_document(member))
+    tail_key = member.tail_name
     surface = surface_properties(plane, tail_key)
     x_neutral_point_uses = surface.x_le_mac + AC_FRACTION * surface.c_mac
     assert abs(quarter_chord_mac_x(plane, tail_key) - x_neutral_point_uses) < 1e-12

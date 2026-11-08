@@ -1,0 +1,2112 @@
+{
+ "name": "D520_DEWOITINE",
+ "wings": {
+  "main_wing": {
+   "name": "main_wing",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.177579,
+      0.0,
+      -0.047472
+     ],
+     "chord": 0.174498,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.177805,
+      0.003194,
+      -0.047282
+     ],
+     "chord": 0.174012,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.178934,
+      0.014874,
+      -0.046587
+     ],
+     "chord": 0.171365,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.181114,
+      0.036736,
+      -0.045286
+     ],
+     "chord": 0.165884,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.1852,
+      0.077564,
+      -0.042856
+     ],
+     "chord": 0.155854,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.1852,
+      0.077757,
+      -0.042844
+     ],
+     "chord": 0.155665,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.8714,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.8714,
+      "rel_chord_tip": 0.872,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.185285,
+      0.078463,
+      -0.042802
+     ],
+     "chord": 0.155364,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.872,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.872,
+      "rel_chord_tip": 0.8712,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.185708,
+      0.082462,
+      -0.042564
+     ],
+     "chord": 0.154479,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.8712,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.8712,
+      "rel_chord_tip": 0.8769,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.208656,
+      0.313651,
+      -0.028802
+     ],
+     "chord": 0.096755,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.8769,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.8769,
+      "rel_chord_tip": 0.8868,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.209757,
+      0.324632,
+      -0.028147
+     ],
+     "chord": 0.093,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.8868,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.8868,
+      "rel_chord_tip": 0.9086,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.210857,
+      0.33592,
+      -0.027473
+     ],
+     "chord": 0.088118,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.9086,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.9086,
+      "rel_chord_tip": 0.9386,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.211789,
+      0.345,
+      -0.026929
+     ],
+     "chord": 0.083188,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.9386,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.9386,
+      "rel_chord_tip": 0.9574,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.212229,
+      0.349296,
+      -0.026867
+     ],
+     "chord": 0.080572,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.9574,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.9574,
+      "rel_chord_tip": 0.9613,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.212262,
+      0.349661,
+      -0.026861
+     ],
+     "chord": 0.080173,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.212402,
+      0.351195,
+      -0.02684
+     ],
+     "chord": 0.079339,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.212476,
+      0.352,
+      -0.026828
+     ],
+     "chord": 0.078759,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.213402,
+      0.356594,
+      -0.02671
+     ],
+     "chord": 0.074368,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.214123,
+      0.358893,
+      -0.02665
+     ],
+     "chord": 0.071449,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.21482,
+      0.36,
+      -0.02662
+     ],
+     "chord": 0.069635,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.217577,
+      0.364192,
+      -0.026676
+     ],
+     "chord": 0.061366,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.219329,
+      0.366,
+      -0.026699
+     ],
+     "chord": 0.056637,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.223214,
+      0.368882,
+      -0.026924
+     ],
+     "chord": 0.046086,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.225528,
+      0.37,
+      -0.02701
+     ],
+     "chord": 0.040453,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.230503,
+      0.371474,
+      -0.027407
+     ],
+     "chord": 0.029735,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.236899,
+      0.37258,
+      -0.027698
+     ],
+     "chord": 0.016187,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.243473,
+      0.372965,
+      -0.02779
+     ],
+     "chord": 0.004506,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.243545,
+      0.373024,
+      -0.027801
+     ],
+     "chord": 0.0001,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/d520_dewoitine_main_wing_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "horizontal_tail": {
+   "name": "horizontal_tail",
+   "surface_type": "horizontal_tail",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.525484,
+      0.0,
+      0.010837
+     ],
+     "chord": 0.073744,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.8083,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.8083,
+      "rel_chord_tip": 0.8073,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.525484,
+      0.014,
+      0.010837
+     ],
+     "chord": 0.07383,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.8073,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.8073,
+      "rel_chord_tip": 0.8029,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.525484,
+      0.014351,
+      0.010837
+     ],
+     "chord": 0.074235,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.8029,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.8029,
+      "rel_chord_tip": 0.7958,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.52695,
+      0.0146,
+      0.010837
+     ],
+     "chord": 0.073056,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7958,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7958,
+      "rel_chord_tip": 0.7564,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.530165,
+      0.017,
+      0.010837
+     ],
+     "chord": 0.072609,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7564,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7564,
+      "rel_chord_tip": 0.7149,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.532708,
+      0.0202,
+      0.010837
+     ],
+     "chord": 0.073267,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7149,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7149,
+      "rel_chord_tip": 0.6759,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.534444,
+      0.0242,
+      0.010837
+     ],
+     "chord": 0.074934,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6759,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6759,
+      "rel_chord_tip": 0.6288,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.536144,
+      0.0309,
+      0.010837
+     ],
+     "chord": 0.077836,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6288,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6288,
+      "rel_chord_tip": 0.6192,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.536626,
+      0.0328,
+      0.010837
+     ],
+     "chord": 0.078266,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6192,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6192,
+      "rel_chord_tip": 0.5561,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.560066,
+      0.1237,
+      0.010837
+     ],
+     "chord": 0.045001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5561,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5561,
+      "rel_chord_tip": 0.5558,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.561832,
+      0.1281,
+      0.010837
+     ],
+     "chord": 0.041846,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5558,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5558,
+      "rel_chord_tip": 0.5572,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.564481,
+      0.132,
+      0.010837
+     ],
+     "chord": 0.036983,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5572,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5572,
+      "rel_chord_tip": 0.5658,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.567722,
+      0.1352,
+      0.010837
+     ],
+     "chord": 0.030696,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5658,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5658,
+      "rel_chord_tip": 0.587,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.571443,
+      0.1376,
+      0.010837
+     ],
+     "chord": 0.023248,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.587,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.587,
+      "rel_chord_tip": 0.6205,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.573773,
+      0.138666,
+      0.010837
+     ],
+     "chord": 0.018238,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.577308,
+      0.1397,
+      0.010837
+     ],
+     "chord": 0.01024,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.580433,
+      0.140166,
+      0.010837
+     ],
+     "chord": 0.002794,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_horizontal_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "vertical_tail": {
+   "name": "vertical_tail",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.584623,
+      -0.0,
+      -0.018161
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.584618,
+      -0.0,
+      -0.010061
+     ],
+     "chord": 0.037615,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.584616,
+      -0.0,
+      -0.007461
+     ],
+     "chord": 0.04541,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.584614,
+      -0.0,
+      -0.005061
+     ],
+     "chord": 0.049579,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.584612,
+      -0.0,
+      -0.002161
+     ],
+     "chord": 0.052725,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.58461,
+      -0.0,
+      0.001639
+     ],
+     "chord": 0.055195,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.584607,
+      -0.0,
+      0.005639
+     ],
+     "chord": 0.0568,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.584602,
+      -0.0,
+      0.012339
+     ],
+     "chord": 0.058314,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.584601,
+      -0.0,
+      0.014378
+     ],
+     "chord": 0.058569,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.546647,
+      -0.0,
+      0.021339
+     ],
+     "chord": 0.096317,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.511752,
+      -0.0,
+      0.027739
+     ],
+     "chord": 0.130063,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.49149,
+      -0.0,
+      0.031539
+     ],
+     "chord": 0.149411,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.502708,
+      -0.0,
+      0.031792
+     ],
+     "chord": 0.138133,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.506893,
+      -0.0,
+      0.032539
+     ],
+     "chord": 0.133726,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.511281,
+      -0.0,
+      0.034239
+     ],
+     "chord": 0.128804,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.516198,
+      -0.0,
+      0.037439
+     ],
+     "chord": 0.122882,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.521557,
+      -0.0,
+      0.042239
+     ],
+     "chord": 0.115789,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.532753,
+      -0.0,
+      0.053639
+     ],
+     "chord": 0.099748,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.54484,
+      -0.0,
+      0.066439
+     ],
+     "chord": 0.08102,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.553905,
+      -0.0,
+      0.076039
+     ],
+     "chord": 0.066157,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.560705,
+      -0.0,
+      0.083239
+     ],
+     "chord": 0.054023,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.565564,
+      -0.0,
+      0.088239
+     ],
+     "chord": 0.044528,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.569887,
+      -0.0,
+      0.092139
+     ],
+     "chord": 0.035638,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.574622,
+      -0.0,
+      0.095139
+     ],
+     "chord": 0.025988,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.579832,
+      -0.0,
+      0.097039
+     ],
+     "chord": 0.015966,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.584373,
+      -0.0,
+      0.097839
+     ],
+     "chord": 0.007112,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.586868,
+      -0.0,
+      0.098002
+     ],
+     "chord": 0.00347,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/d520_dewoitine_vertical_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "fuselage": {
+   "name": "fuselage",
+   "x_secs": [
+    {
+     "xyz": [
+      0.000169,
+      0.0,
+      0.000635
+     ],
+     "a": 0.005673,
+     "b": 0.005207,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.003048,
+      0.0,
+      -0.000339
+     ],
+     "a": 0.005842,
+     "b": 0.00635,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.009483,
+      0.0,
+      -0.000254
+     ],
+     "a": 0.009186,
+     "b": 0.00961,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.018369,
+      0.0,
+      -1e-05
+     ],
+     "a": 0.012444,
+     "b": 0.013027,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.028448,
+      0.0,
+      8.5e-05
+     ],
+     "a": 0.015452,
+     "b": 0.01596,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.042164,
+      0.0,
+      -6.3e-05
+     ],
+     "a": 0.018754,
+     "b": 0.018986,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.043069,
+      0.0,
+      -7.7e-05
+     ],
+     "a": 0.018939,
+     "b": 0.019015,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.043569,
+      0.0,
+      0.0001
+     ],
+     "a": 0.019997,
+     "b": 0.019479,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.043969,
+      0.0,
+      -9.7e-05
+     ],
+     "a": 0.020882,
+     "b": 0.020613,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.045381,
+      0.0,
+      -0.000974
+     ],
+     "a": 0.022945,
+     "b": 0.022902,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.04572,
+      0.0,
+      -0.001037
+     ],
+     "a": 0.023495,
+     "b": 0.023347,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.048091,
+      0.0,
+      -0.001651
+     ],
+     "a": 0.025019,
+     "b": 0.025358,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.050631,
+      0.0,
+      -0.001968
+     ],
+     "a": 0.02595,
+     "b": 0.026648,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.052832,
+      0.0,
+      -0.002625
+     ],
+     "a": 0.026458,
+     "b": 0.027305,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.053069,
+      0.0,
+      -0.010143
+     ],
+     "a": 0.026518,
+     "b": 0.019922,
+     "n": 11.4952,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.053298,
+      0.0,
+      -0.010210902589285715
+     ],
+     "a": 0.026573900535714286,
+     "b": 0.019989902589285714,
+     "n": 11.3368,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.064269,
+      0.0,
+      -0.013464
+     ],
+     "a": 0.029252,
+     "b": 0.023243,
+     "n": 12.4752,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.071869,
+      0.0,
+      -0.015364
+     ],
+     "a": 0.030861,
+     "b": 0.025143,
+     "n": 13.1682,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.083269,
+      0.0,
+      -0.017753
+     ],
+     "a": 0.032543,
+     "b": 0.027532,
+     "n": 15.7314,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.094996,
+      0.0,
+      -0.019685
+     ],
+     "a": 0.033655,
+     "b": 0.029464,
+     "n": 18.0456,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.107569,
+      0.0,
+      -0.021167
+     ],
+     "a": 0.034332,
+     "b": 0.030946,
+     "n": 20.4664,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.118669,
+      0.0,
+      -0.022014
+     ],
+     "a": 0.034586,
+     "b": 0.031793,
+     "n": 21.7336,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.130387,
+      0.0,
+      -0.022479
+     ],
+     "a": 0.034502,
+     "b": 0.032258,
+     "n": 21.9969,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.145119,
+      0.0,
+      -0.022818
+     ],
+     "a": 0.034163,
+     "b": 0.032597,
+     "n": 22.4841,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.187283,
+      0.0,
+      -0.023199
+     ],
+     "a": 0.033232,
+     "b": 0.032977,
+     "n": 22.4658,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.188299,
+      0.0,
+      -0.023199
+     ],
+     "a": 0.033232,
+     "b": 0.032977,
+     "n": 22.2203,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.188569,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.033232,
+     "b": 0.03219,
+     "n": 21.8868,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.202692,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.032893,
+     "b": 0.03219,
+     "n": 22.1224,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.203369,
+      0.0,
+      -0.021865
+     ],
+     "a": 0.032808,
+     "b": 0.031644,
+     "n": 22.7121,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.207469,
+      0.0,
+      -0.021883
+     ],
+     "a": 0.032724,
+     "b": 0.031662,
+     "n": 22.6282,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.207869,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.032724,
+     "b": 0.03219,
+     "n": 22.7168,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.217593,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.032554,
+     "b": 0.03219,
+     "n": 21.9714,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.218169,
+      0.0,
+      -0.021984
+     ],
+     "a": 0.03247,
+     "b": 0.031763,
+     "n": 22.5804,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.273369,
+      0.0,
+      -0.022025
+     ],
+     "a": 0.031284,
+     "b": 0.031804,
+     "n": 16.9891,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.273981,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.0312,
+     "b": 0.03219,
+     "n": 17.4375,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.327169,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.029926,
+     "b": 0.03219,
+     "n": 12.9456,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.353399,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.028998,
+     "b": 0.03219,
+     "n": 11.1041,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.357039,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.028919479198767334,
+     "b": 0.03219,
+     "n": 10.716,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.357293,
+      0.0,
+      -0.02241
+     ],
+     "a": 0.028914,
+     "b": 0.03219,
+     "n": 10.7265,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.357569,
+      0.0,
+      -0.005943
+     ],
+     "a": 0.028845,
+     "b": 0.048657,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.378291,
+      0.0,
+      -0.006413
+     ],
+     "a": 0.027051,
+     "b": 0.048112,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.379307,
+      0.0,
+      -0.005715
+     ],
+     "a": 0.026966,
+     "b": 0.047329,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.416221,
+      0.0,
+      -0.004868
+     ],
+     "a": 0.023834,
+     "b": 0.043815,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.447969,
+      0.0,
+      -0.004032
+     ],
+     "a": 0.02104,
+     "b": 0.040017,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.479383,
+      0.0,
+      -0.002963
+     ],
+     "a": 0.01833,
+     "b": 0.035433,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.491469,
+      0.0,
+      -0.002186
+     ],
+     "a": 0.017314,
+     "b": 0.033739,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.516369,
+      0.0,
+      -0.002069
+     ],
+     "a": 0.015282,
+     "b": 0.028961,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.526469,
+      0.0,
+      -0.002106
+     ],
+     "a": 0.014357,
+     "b": 0.027146,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.526969,
+      0.0,
+      -0.00213
+     ],
+     "a": 0.014431,
+     "b": 0.027079,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.529769,
+      0.0,
+      -0.002028
+     ],
+     "a": 0.014055,
+     "b": 0.026462,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.582769,
+      0.0,
+      -0.001821
+     ],
+     "a": 0.009483,
+     "b": 0.016678,
+     "n": 3.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.584539,
+      0.0,
+      -0.001652
+     ],
+     "a": 0.009398,
+     "b": 0.016509,
+     "n": 3.0,
+     "n_lower": 2.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  },
+  "canopy": {
+   "name": "canopy",
+   "x_secs": [
+    {
+     "xyz": [
+      0.053298,
+      0.0,
+      0.008779
+     ],
+     "a": 0.024723,
+     "b": 0.016579,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.067959,
+      0.0,
+      0.008712
+     ],
+     "a": 0.028165,
+     "b": 0.017069,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.083798,
+      0.0,
+      0.008757
+     ],
+     "a": 0.030988,
+     "b": 0.017193,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.098798,
+      0.0,
+      0.008651
+     ],
+     "a": 0.032681,
+     "b": 0.017384,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.114498,
+      0.0,
+      0.008625
+     ],
+     "a": 0.033528,
+     "b": 0.017579,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.132038,
+      0.0,
+      0.008757
+     ],
+     "a": 0.033421,
+     "b": 0.017617,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.213898,
+      0.0,
+      0.008769
+     ],
+     "a": 0.031642,
+     "b": 0.017689,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.225698,
+      0.0,
+      0.008756
+     ],
+     "a": 0.031327,
+     "b": 0.017806,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.226359,
+      0.0,
+      0.008736
+     ],
+     "a": 0.031327,
+     "b": 0.018146,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.227203,
+      0.0,
+      0.008779
+     ],
+     "a": 0.031242,
+     "b": 0.017849,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.262259,
+      0.0,
+      0.008765
+     ],
+     "a": 0.030141,
+     "b": 0.018119,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.302659,
+      0.0,
+      0.008766
+     ],
+     "a": 0.028617,
+     "b": 0.019065,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.322398,
+      0.0,
+      0.008756
+     ],
+     "a": 0.027771,
+     "b": 0.035144,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.348698,
+      0.0,
+      0.008765
+     ],
+     "a": 0.0263,
+     "b": 0.034373,
+     "n": 2.25,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.357039,
+      0.0,
+      0.00878
+     ],
+     "a": 0.025739,
+     "b": 0.034104,
+     "n": 2.25,
+     "n_lower": 1.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  },
+  "radiator": {
+   "name": "radiator",
+   "x_secs": [
+    {
+     "xyz": [
+      0.273981,
+      0.0,
+      -0.062352
+     ],
+     "a": 0.000301,
+     "b": 0.008006,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.275081,
+      0.0,
+      -0.062869
+     ],
+     "a": 0.007285,
+     "b": 0.008523,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.276081,
+      0.0,
+      -0.062922
+     ],
+     "a": 0.013067,
+     "b": 0.008575,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.279181,
+      0.0,
+      -0.062908
+     ],
+     "a": 0.015,
+     "b": 0.008559,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.29519,
+      0.0,
+      -0.062717
+     ],
+     "a": 0.015,
+     "b": 0.008361,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.316696,
+      0.0,
+      -0.062045
+     ],
+     "a": 0.015,
+     "b": 0.007678,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.342581,
+      0.0,
+      -0.06066
+     ],
+     "a": 0.015,
+     "b": 0.00628,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.363581,
+      0.0,
+      -0.059064
+     ],
+     "a": 0.015,
+     "b": 0.004674,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.373581,
+      0.0,
+      -0.058165
+     ],
+     "a": 0.014891,
+     "b": 0.00377,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.374281,
+      0.0,
+      -0.058112
+     ],
+     "a": 0.014425,
+     "b": 0.003716,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.376418,
+      0.0,
+      -0.056193
+     ],
+     "a": 0.013,
+     "b": 0.001796,
+     "n": 4.0,
+     "n_lower": 3.0
+    },
+    {
+     "xyz": [
+      0.378418,
+      0.0,
+      -0.054398
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  }
+ },
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ]
+}

@@ -1,0 +1,1669 @@
+{
+ "name": "A6M2_ZERO",
+ "wings": {
+  "main_wing": {
+   "name": "main_wing",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.115561,
+      0.0,
+      -0.024011
+     ],
+     "chord": 0.174498,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.1159,
+      0.004184,
+      -0.023762
+     ],
+     "chord": 0.17382,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.123182,
+      0.077465,
+      -0.019406
+     ],
+     "chord": 0.155953,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.123182,
+      0.077842,
+      -0.019384
+     ],
+     "chord": 0.155575,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.8722,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.8722,
+      "rel_chord_tip": 0.8718,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.126399,
+      0.109908,
+      -0.017477
+     ],
+     "chord": 0.147674,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.8718,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.8718,
+      "rel_chord_tip": 0.876,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.14596,
+      0.307016,
+      -0.005759
+     ],
+     "chord": 0.098524,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.876,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.876,
+      "rel_chord_tip": 0.8796,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.147061,
+      0.317845,
+      -0.005115
+     ],
+     "chord": 0.095444,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.8796,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.8796,
+      "rel_chord_tip": 0.894,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.148162,
+      0.329159,
+      -0.004441
+     ],
+     "chord": 0.091204,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.894,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.894,
+      "rel_chord_tip": 0.9213,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.149262,
+      0.340147,
+      -0.003784
+     ],
+     "chord": 0.08593,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.9213,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.9213,
+      "rel_chord_tip": 0.9385,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.149771,
+      0.345,
+      -0.003494
+     ],
+     "chord": 0.08321,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.9385,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.9385,
+      "rel_chord_tip": 0.9576,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.15022,
+      0.349296,
+      -0.003398
+     ],
+     "chord": 0.080561,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.9576,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.9576,
+      "rel_chord_tip": 0.9614,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.150252,
+      0.349662,
+      -0.003389
+     ],
+     "chord": 0.080163,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.150397,
+      0.351296,
+      -0.003353
+     ],
+     "chord": 0.079283,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.151176,
+      0.356,
+      -0.003246
+     ],
+     "chord": 0.075079,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.152105,
+      0.358895,
+      -0.003229
+     ],
+     "chord": 0.07141,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.154203,
+      0.362395,
+      -0.003205
+     ],
+     "chord": 0.065292,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.155407,
+      0.364,
+      -0.003193
+     ],
+     "chord": 0.061855,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.15851,
+      0.366988,
+      -0.003384
+     ],
+     "chord": 0.053441,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.162194,
+      0.369383,
+      -0.003532
+     ],
+     "chord": 0.04365,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.163504,
+      0.37,
+      -0.00357
+     ],
+     "chord": 0.040483,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.168485,
+      0.371475,
+      -0.003974
+     ],
+     "chord": 0.029677,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.17492,
+      0.372616,
+      -0.004281
+     ],
+     "chord": 0.016341,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.182118,
+      0.373023,
+      -0.004376
+     ],
+     "chord": 0.0001,
+     "twist": 2.4,
+     "airfoil": "./components/airfoils/a6m2_zero_main_wing_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "horizontal_tail": {
+   "name": "horizontal_tail",
+   "surface_type": "horizontal_tail",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.436245,
+      0.0,
+      0.003471
+     ],
+     "chord": 0.083651,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.436373,
+      0.020704,
+      0.003471
+     ],
+     "chord": 0.083398,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.436457,
+      0.020955,
+      0.003471
+     ],
+     "chord": 0.083247,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7155,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7155,
+      "rel_chord_tip": 0.6856,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.467679,
+      0.110704,
+      0.003471
+     ],
+     "chord": 0.041336,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6856,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6856,
+      "rel_chord_tip": 0.6986,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.46941,
+      0.114904,
+      0.003471
+     ],
+     "chord": 0.038089,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.6986,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.6986,
+      "rel_chord_tip": 0.7394,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.471855,
+      0.119504,
+      0.003471
+     ],
+     "chord": 0.032681,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.7394,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.7394,
+      "rel_chord_tip": 0.8139,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.474429,
+      0.123204,
+      0.003471
+     ],
+     "chord": 0.026527,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.8139,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.8139,
+      "rel_chord_tip": 0.9815,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.477647,
+      0.126407,
+      0.003471
+     ],
+     "chord": 0.01872,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.9815,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.9815,
+      "rel_chord_tip": 1.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 15.0,
+      "negative_deflection_deg": 15.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.477921,
+      0.126568,
+      0.003471
+     ],
+     "chord": 0.018099,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.480711,
+      0.128204,
+      0.003471
+     ],
+     "chord": 0.011779,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.481868,
+      0.1287,
+      0.003471
+     ],
+     "chord": 0.009037,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.484914,
+      0.129304,
+      0.003471
+     ],
+     "chord": 0.002536,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.48738,
+      0.129371,
+      0.003471
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_horizontal_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "vertical_tail": {
+   "name": "vertical_tail",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.587832,
+      0.0,
+      -0.000373
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.571062,
+      0.0,
+      0.002727
+     ],
+     "chord": 0.013547,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.540009,
+      0.0,
+      0.008467
+     ],
+     "chord": 0.040677,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.501273,
+      0.0,
+      0.015627
+     ],
+     "chord": 0.075994,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.443756,
+      0.0,
+      0.026327
+     ],
+     "chord": 0.129588,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.449137,
+      0.0,
+      0.027327
+     ],
+     "chord": 0.123867,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.453445,
+      0.0,
+      0.029127
+     ],
+     "chord": 0.118948,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.457746,
+      0.0,
+      0.032027
+     ],
+     "chord": 0.113789,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.461632,
+      0.0,
+      0.035927
+     ],
+     "chord": 0.108676,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.486562,
+      0.0,
+      0.067527
+     ],
+     "chord": 0.07538,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.498582,
+      0.0,
+      0.082527
+     ],
+     "chord": 0.05964,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.504589,
+      0.0,
+      0.089127
+     ],
+     "chord": 0.051516,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.509704,
+      0.0,
+      0.094127
+     ],
+     "chord": 0.043681,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.514768,
+      0.0,
+      0.098227
+     ],
+     "chord": 0.035256,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.518839,
+      0.0,
+      0.100927
+     ],
+     "chord": 0.027758,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.523261,
+      0.0,
+      0.103127
+     ],
+     "chord": 0.019062,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.527518,
+      0.0,
+      0.104479
+     ],
+     "chord": 0.009734,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.530818,
+      0.0,
+      0.104902
+     ],
+     "chord": 0.001524,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/a6m2_zero_vertical_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "fuselage": {
+   "name": "fuselage",
+   "x_secs": [
+    {
+     "xyz": [
+      -4.2e-05,
+      0.0,
+      0.000926
+     ],
+     "a": 0.005503,
+     "b": 0.005329,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.002558,
+      0.0,
+      -3.3e-05
+     ],
+     "a": 0.005563,
+     "b": 0.006325,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.006858,
+      0.0,
+      2.4e-05
+     ],
+     "a": 0.007959,
+     "b": 0.008685,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.014859,
+      0.0,
+      0.000185
+     ],
+     "a": 0.011345,
+     "b": 0.011869,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.026374,
+      0.0,
+      0.000413
+     ],
+     "a": 0.014986,
+     "b": 0.015314,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.040158,
+      0.0,
+      0.000583
+     ],
+     "a": 0.018457,
+     "b": 0.018576,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.042658,
+      0.0,
+      0.000557
+     ],
+     "a": 0.018881,
+     "b": 0.01893,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.043307,
+      0.0,
+      0.000593
+     ],
+     "a": 0.018881,
+     "b": 0.018965,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.043558,
+      0.0,
+      0.000593
+     ],
+     "a": 0.031064,
+     "b": 0.018965,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.043815,
+      0.0,
+      0.000593
+     ],
+     "a": 0.03175,
+     "b": 0.018965,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.044058,
+      0.0,
+      0.001915
+     ],
+     "a": 0.032321,
+     "b": 0.029846,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.044323,
+      0.0,
+      0.000687
+     ],
+     "a": 0.032851,
+     "b": 0.031721,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.045758,
+      0.0,
+      0.000673
+     ],
+     "a": 0.034878,
+     "b": 0.034321,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.047758,
+      0.0,
+      0.000736
+     ],
+     "a": 0.036431,
+     "b": 0.036145,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.050358,
+      0.0,
+      0.00069
+     ],
+     "a": 0.037477,
+     "b": 0.037325,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.053298,
+      0.0,
+      0.000704
+     ],
+     "a": 0.037931,
+     "b": 0.037905,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.066058,
+      0.0,
+      0.000244
+     ],
+     "a": 0.038693,
+     "b": 0.039126,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.081458,
+      0.0,
+      0.000234
+     ],
+     "a": 0.03965,
+     "b": 0.040067,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.101958,
+      0.0,
+      0.000657
+     ],
+     "a": 0.040809,
+     "b": 0.040789,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.102912,
+      0.0,
+      0.000657
+     ],
+     "a": 0.040809,
+     "b": 0.040789,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.103158,
+      0.0,
+      0.0023
+     ],
+     "a": 0.038523,
+     "b": 0.038208,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.112958,
+      0.0,
+      0.002467
+     ],
+     "a": 0.038439,
+     "b": 0.03862,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.146858,
+      0.0,
+      0.003354
+     ],
+     "a": 0.0381,
+     "b": 0.040566,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.148358,
+      0.0,
+      0.003175
+     ],
+     "a": 0.0381,
+     "b": 0.040844,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.151058,
+      0.0,
+      0.003422
+     ],
+     "a": 0.038015,
+     "b": 0.040929,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.152458,
+      0.0,
+      0.003534
+     ],
+     "a": 0.038015,
+     "b": 0.040818,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.202058,
+      0.0,
+      0.002875
+     ],
+     "a": 0.036745,
+     "b": 0.040552,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.219858,
+      0.0,
+      0.002639
+     ],
+     "a": 0.036068,
+     "b": 0.040455,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.221958,
+      0.0,
+      0.001491
+     ],
+     "a": 0.035983,
+     "b": 0.041563,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.224558,
+      0.0,
+      0.001538
+     ],
+     "a": 0.035899,
+     "b": 0.041468,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.226758,
+      0.0,
+      0.002686
+     ],
+     "a": 0.035814,
+     "b": 0.040278,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.271458,
+      0.0,
+      0.002749
+     ],
+     "a": 0.033697,
+     "b": 0.03938,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.290703,
+      0.0,
+      0.00285
+     ],
+     "a": 0.032512,
+     "b": 0.038918,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.291058,
+      0.0,
+      0.00261
+     ],
+     "a": 0.032512,
+     "b": 0.039152,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.293582,
+      0.0,
+      0.002587
+     ],
+     "a": 0.032343,
+     "b": 0.039129,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.293958,
+      0.0,
+      0.002948
+     ],
+     "a": 0.032343,
+     "b": 0.038759,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.31424,
+      0.0,
+      0.003138
+     ],
+     "a": 0.031073,
+     "b": 0.038093,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.350058,
+      0.0,
+      0.002482
+     ],
+     "a": 0.028363,
+     "b": 0.035457,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.381158,
+      0.0,
+      0.001775
+     ],
+     "a": 0.025739,
+     "b": 0.032594,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.414858,
+      0.0,
+      0.000953
+     ],
+     "a": 0.022437,
+     "b": 0.02891,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.439378,
+      0.0,
+      0.000332
+     ],
+     "a": 0.019832,
+     "b": 0.026,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.444966,
+      0.0,
+      0.000474
+     ],
+     "a": 0.019222,
+     "b": 0.025561,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.489558,
+      0.0,
+      -0.00117
+     ],
+     "a": 0.014355,
+     "b": 0.018949,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.52506,
+      0.0,
+      -0.002144
+     ],
+     "a": 0.010329,
+     "b": 0.013351,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.526258,
+      0.0,
+      -0.002193
+     ],
+     "a": 0.009567,
+     "b": 0.013179,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.551658,
+      0.0,
+      -0.002743
+     ],
+     "a": 0.006767,
+     "b": 0.009026,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.587758,
+      0.0,
+      -0.003291
+     ],
+     "a": 0.001756,
+     "b": 0.00289,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.589915,
+      0.0,
+      -0.003707
+     ],
+     "a": 0.001439,
+     "b": 0.002123,
+     "n": 2.0,
+     "n_lower": 2.0
+    },
+    {
+     "xyz": [
+      0.592286,
+      0.0,
+      -0.003543
+     ],
+     "a": 0.001439,
+     "b": 0.001959,
+     "n": 2.0,
+     "n_lower": 2.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  },
+  "canopy": {
+   "name": "canopy",
+   "x_secs": [
+    {
+     "xyz": [
+      0.150224,
+      0.0,
+      0.044198
+     ],
+     "a": 0.0,
+     "b": 0.0002,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.156743,
+      0.0,
+      0.040889
+     ],
+     "a": 0.015113,
+     "b": 0.008263,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.159024,
+      0.0,
+      0.039674
+     ],
+     "a": 0.017381,
+     "b": 0.011142,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.160107,
+      0.0,
+      0.037881
+     ],
+     "a": 0.020236,
+     "b": 0.013724,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.163024,
+      0.0,
+      0.037318
+     ],
+     "a": 0.020924,
+     "b": 0.016415,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.176149,
+      0.0,
+      0.034994
+     ],
+     "a": 0.023368,
+     "b": 0.028083,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.180424,
+      0.0,
+      0.034174
+     ],
+     "a": 0.02413,
+     "b": 0.030638,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.185524,
+      0.0,
+      0.034006
+     ],
+     "a": 0.02413,
+     "b": 0.032034,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.194624,
+      0.0,
+      0.033786
+     ],
+     "a": 0.024045,
+     "b": 0.033373,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.205007,
+      0.0,
+      0.03366
+     ],
+     "a": 0.023791,
+     "b": 0.033735,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.213741,
+      0.0,
+      0.033463
+     ],
+     "a": 0.023622,
+     "b": 0.033508,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.228324,
+      0.0,
+      0.033389
+     ],
+     "a": 0.02311,
+     "b": 0.031421,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.253324,
+      0.0,
+      0.03352
+     ],
+     "a": 0.021844,
+     "b": 0.026304,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.270524,
+      0.0,
+      0.03388
+     ],
+     "a": 0.020679,
+     "b": 0.021686,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.283335,
+      0.0,
+      0.034356
+     ],
+     "a": 0.019473,
+     "b": 0.017292,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.291324,
+      0.0,
+      0.035431
+     ],
+     "a": 0.01771,
+     "b": 0.013553,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.297624,
+      0.0,
+      0.036984
+     ],
+     "a": 0.015253,
+     "b": 0.009615,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.301624,
+      0.0,
+      0.038336
+     ],
+     "a": 0.0127,
+     "b": 0.006826,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.304324,
+      0.0,
+      0.039456
+     ],
+     "a": 0.010112,
+     "b": 0.004631,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.306524,
+      0.0,
+      0.040532
+     ],
+     "a": 0.006723,
+     "b": 0.002665,
+     "n": 1.5,
+     "n_lower": 1.0
+    },
+    {
+     "xyz": [
+      0.307759,
+      0.0,
+      0.041198
+     ],
+     "a": 0.00309,
+     "b": 0.001479,
+     "n": 1.5,
+     "n_lower": 1.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  }
+ },
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ]
+}

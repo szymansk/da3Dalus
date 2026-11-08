@@ -12,7 +12,12 @@ from aero_kernel.solvers.avl_writer import (
     parse_roll_output,
 )
 from aero_kernel.tests.mesh_helpers import mesh_surfaces
-from aero_kernel.tests.reference_fleet import REFERENCE_DIR, FleetMember, reference_document
+from aero_kernel.tests.reference_fleet import (
+    MVP_FLEET,
+    REFERENCE_DIR,
+    FleetMember,
+    reference_document,
+)
 
 SNAPSHOTS = REFERENCE_DIR / "snapshots"
 
@@ -38,7 +43,7 @@ def written(member: FleetMember, *, roll: bool) -> str:
     )
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
+@pytest.mark.parametrize("member", MVP_FLEET)  # the snapshots are those of the first six
 def test_clean_mesh_and_file_unchanged(member: FleetMember) -> None:
     """The neutral-point file is the slice-4b one (commit 1ab1d5ef): no breaks, no controls, the
     reference point at the origin. Only its ``Sref Cref Bref`` line moved, to AeroSandbox's values (gh-1240)."""

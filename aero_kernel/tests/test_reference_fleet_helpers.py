@@ -7,6 +7,7 @@ from aero_kernel.reference_fleet import (
     flap_values,
     fleet_values,
 )
+from aero_kernel.tests.reference_fleet import MVP_FLEET, PLAN_BATCH, TAILLESS, WITH_PITCH_TAIL
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
@@ -14,10 +15,22 @@ def test_every_member_names_one_main_wing(member: FleetMember) -> None:
     assert member.main_wing_name == member.wing_name("main_wing")
 
 
-@pytest.mark.parametrize("member", list(FleetMember))
-def test_every_member_names_one_pitch_trimming_tail(member: FleetMember) -> None:
-    """A horizontal tail, or BELEMNITOS's V-tail."""
+@pytest.mark.parametrize("member", WITH_PITCH_TAIL)
+def test_every_member_with_a_tail_names_one_pitch_trimming_tail(member: FleetMember) -> None:
+    """A horizontal tail, or the V-tail of BELEMNITOS, ALBATROS_4 and BARRACUDA."""
     assert member.tail_name
+
+
+@pytest.mark.parametrize("member", TAILLESS)
+def test_a_flying_wing_has_no_pitch_trimming_tail(member: FleetMember) -> None:
+    with pytest.raises(ValueError, match="not enough values to unpack"):
+        _ = member.tail_name
+
+
+def test_the_fleet_is_the_first_six_and_the_plan_batch() -> None:
+    assert len(MVP_FLEET) == 6
+    assert len(PLAN_BATCH) == 28
+    assert set(MVP_FLEET) | set(PLAN_BATCH) == set(FleetMember)
 
 
 def test_only_rv7_takes_flap_deflections() -> None:

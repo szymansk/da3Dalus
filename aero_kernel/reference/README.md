@@ -42,6 +42,57 @@ made with `sqlite3 .backup` on 2026-10-25; `db/test.db` itself was not written. 
 unset fields are `null` in the export; the source is the export with every `null` field removed
 (the format says an absent field and a `null` are the same, and JAGUAR's source is written that way).
 
+### The plan batch (#1372)
+
+The 28 plan models of the maintainer's plugin batch 2026-11-05 (DB ids 99 to 126, reconstructed from
+real building plans) were exported the same way, on 2026-11-08, against a copy of `db/test.db` made
+with `sqlite3 .backup` (`db/test.db` was not written). By then the app states the `surface_type` of
+every wing (#1187) and the `role` of every body (#1355) itself, so the export carries both and the
+copies carry **no** addition: each copy is its source. As for WIESEL and RV-7, the export serves the
+spar dimensions in millimetres and `total_mass_kg` as `null` (#1147); the copies keep the spar fields
+verbatim (no solver reads them) and the tests pass the mass as a value. The masses were settled with
+the maintainer on 2026-11-07 and equal the DB's `aeroplanes.total_mass_kg` since then.
+
+| model | DB id | copy | SHA-256 of the raw export | SHA-256 of the source as canonical JSON | mass | source of the mass |
+|---|---|---|---|---|---|---|
+| A6M2_ZERO | 99 | `a6m2_zero/a6m2_zero.airplane.json` | `5ba48fc6f5ac1869f353fb76398e9efa360d8f8c3013ab045aaa0f24ef093f7e` | `68bff8aa9958e8ee5c0f936cc78576ac6a4a430d3746c9cb560bc37468832123` | 0.36 kg | DB value; the six 0.75 m warbirds share dimensions, equal mass accepted as consistent (maintainer) |
+| AERONCA_CHAMP | 100 | `aeronca_champ/aeronca_champ.airplane.json` | `3c974aa4baff4c0308d2c3022ce092fb1b96da9b8511650193fe9998eab927e9` | `fb26cd7b3b16b837bd6ad5e35c3b26cee78e3e90225e9329fa4d66f40d315fca` | 0.39 kg | RC parkflyer: median wing loading of comparable models of the RC-Network table x S (accepted by the maintainer) |
+| ALBATROS_4 | 101 | `albatros_4/albatros_4.airplane.json` | `95cefc65ec642040655daf1a433ec91225ceaae0cb5fc86e47aa4c01162bd395` | `c6e29d57f6d2c8ab1da3916323d29b0a725f2e8456811d34af6c52f338375026` | 5.0 kg | DB, unverified (from the plugin, not confirmed) |
+| BARRACUDA | 102 | `barracuda/barracuda.airplane.json` | `b313f595c8506583773ace37297779e6cb4394e4b32463ab74a4ac31efea49f1` | `6938594724c24320375b7bd388d99b3ae842159e5d2bc47c7a79f303bfe42d58` | 1.54 kg | slope glider: median wing loading of comparable models of the RC-Network table x S (accepted by the maintainer) |
+| BF109_E | 103 | `bf109_e/bf109_e.airplane.json` | `8ddf1b5dc2cef9decce99da5ba22a0d4dcf49818a117f7145f801d093bef33ac` | `a285c94a9f1ad455a949f2056dad1fdcc765fad42b0afd16d4a92e78e36bb886` | 0.36 kg | DB value; the six 0.75 m warbirds share dimensions, equal mass accepted as consistent (maintainer) |
+| D520_DEWOITINE | 104 | `d520_dewoitine/d520_dewoitine.airplane.json` | `297c6048bda161332b780d7d2b5fef0fdc02992a86012758030530f1af299072` | `6ade3b0b673d3501abf5f92d2155e1ddcfd8c94aaccec82f6a473086c9fd102f` | 0.36 kg | DB value; the six 0.75 m warbirds share dimensions, equal mass accepted as consistent (maintainer) |
+| DARDO | 105 | `dardo/dardo.airplane.json` | `f87d948c34ee09379b688d85994e0be0983e2e60f18ad7deb31c8e213423e6e6` | `17e4f522c175448470d843aea3c0039d6e7680ed6d729d2696f882831f206431` | 1.35 kg | DB, unverified (from the plugin, not confirmed) |
+| ESTRELA | 106 | `estrela/estrela.airplane.json` | `c7991271094d3dfde5162e8a7dea8bbd2d154c2a19a35b7907293ac3636d8321` | `f82a8550724dc81c91ac7c0c845cc13f427a584010b098e54631f918d3c03477` | 1.7 kg | plan, ~74 g/dm2, confirmed by the maintainer |
+| EXTRA_300_EP | 107 | `extra_300_ep/extra_300_ep.airplane.json` | `ceb5e536dcf7da253dacee7a0bdfe961916740f8c099a98da8c013160d694cc3` | `cda24eeb81ecc7c84ee8a5a8a8db63366fd5b9fde3ef4727ef1d5a3e55a79e85` | 0.75 kg | DB, unverified (from the plugin, not confirmed) |
+| F3A_COMPETICION | 108 | `f3a_competicion/f3a_competicion.airplane.json` | `68ad557be34a1d9fcba05bf6401436797a0ab3926140441dc25ce0830f0f6534` | `7c44d960180bc82cf87fc823a4950172ea23fb314e3951a9d8ec64b716a2e275` | 4.7 kg | DB, unverified (from the plugin, not confirmed); its ~70 g/dm2 was raised as a question and is not answered |
+| FORCE_5 | 109 | `force_5/force_5.airplane.json` | `bcc34f8323499b58acc34b19356f8786a0d25c1524173ee846a72f9a2e4b8324` | `5a4cda0c4023db7481a24381a21a8fc4e55b7416848d303018ac1f639cc6b0df` | 1.22 kg | DB, unverified (from the plugin, not confirmed) |
+| FORCE_FOUR | 110 | `force_four/force_four.airplane.json` | `c5c39e26e7458ec18911bf498d5270654717ca1a751907cd0defcc14ff8059c7` | `2bf10ca4b23c32b3564645415ad3d2dc9a53af3726643b8286ace55f8e052d0f` | 0.68 kg | DB, unverified (from the plugin, not confirmed) |
+| FW190_A8 | 111 | `fw190_a8/fw190_a8.airplane.json` | `fd17ce3660f925812f10b6e050461fce417c62104c6ce06a8bbe3be58fc450b4` | `1e14ba92cac62d4c5912d5b831e287b6e1d7b86aabf7515407a7644f8f902da9` | 0.35 kg | DB value; the six 0.75 m warbirds share dimensions, equal mass accepted as consistent (maintainer) |
+| GEE_BEE_R3 | 112 | `gee_bee_r3/gee_bee_r3.airplane.json` | `c766e53511183824cb8f83a81481d2ea1bbdc325265e4e6e2947244b1ca0f101` | `4d6fa0e7d4c1f1eae7d4d8a565f0c4419b9a7d08323fc602d3652c7ed396ce5f` | 12.0 kg | plan: estimated dry weight 26-27 lb (maintainer); fuel not added |
+| KASTAWAY | 113 | `kastaway/kastaway.airplane.json` | `9e32c61126ab46a55953affe863154b12d96d8268edce21ebc9ec9e07ae49e47` | `44f36fc31904967273527e86ad316b5c4820533cd16d4ce4acbd5e6cf3ac17d3` | 0.65 kg | RE glider: median wing loading of comparable models of the RC-Network table x S (accepted by the maintainer) |
+| MILES_MAGISTER | 114 | `miles_magister/miles_magister.airplane.json` | `564001bdb08899de04827380d62964b0cfd0b675a229cea612635185bd6e6740` | `8e5c45ee9484cb18244e7bf8ad4cb20afc1650956d2a68203ace8de733cce329` | 0.36 kg | DB value; the six 0.75 m warbirds share dimensions, equal mass accepted as consistent (maintainer) |
+| MINI_FUNTANA | 115 | `mini_funtana/mini_funtana.airplane.json` | `07c04dede17c578ff77b8ea63ff74be2d3edd0e6c446fd6e49080db1000bded2` | `0c1f02282c382b4b4b76abea1c30a195ada281e6a4656e12e6ec6b4d91462ed5` | 0.539 kg | DB, unverified (from the plugin, not confirmed) |
+| P36_HAWK | 116 | `p36_hawk/p36_hawk.airplane.json` | `f3cde7e17511d40df411220684084f210b813b5fdc46c087e664841fcd448f21` | `45b0854f9d56d8cb11e1664b8e10518061b7a7526ef5e3be87de1069ab7464b5` | 0.36 kg | DB value; the six 0.75 m warbirds share dimensions, equal mass accepted as consistent (maintainer) |
+| P39 | 117 | `p39/p39.airplane.json` | `0f0f8eae1682b2feaaf3a934267f6189a011f2b5d26c1450712fd0a43f657db5` | `bc099584d33f10b6f3d0c939d73ddc4dbd21de3afea8bb78ac97c434a72a594e` | 9.5 kg | median wing loading of comparable models of the RC-Network table x S (accepted by the maintainer) |
+| SNOOPY | 118 | `snoopy/snoopy.airplane.json` | `17255588bf298fe7a616ce648994e198aa33386c6ffb53c1ce593e221e14a7f3` | `c02bd4b1f6b082670d8fb08f62aae1fefee6564e868691ba4e3c6de85fece627` | 1.474 kg | DB, unverified (from the plugin, not confirmed) |
+| SONAS_40 | 119 | `sonas_40/sonas_40.airplane.json` | `7ae2641c148da17720cbd6430e43e7426c07de36207f4ad952e7e671890655f4` | `73a4af4ecf0ca96849a40d0d01c16459d76b9d6aca44fe03932f043c51e15842` | 2.1 kg | median wing loading of comparable models of the RC-Network table x S (accepted by the maintainer) |
+| SPIRIT_100 | 120 | `spirit_100/spirit_100.airplane.json` | `0dbabc165ddbd47031d063ca1b360ffe3813cda3db7c7297f7b6fa523c11f1b2` | `2a78862b02e9d495c4fd75c5c4207c7a7822ad096ec1041aa33adb9111731a37` | 1.26 kg | median wing loading of comparable models of the RC-Network table x S (accepted by the maintainer) |
+| SPRITE | 121 | `sprite/sprite.airplane.json` | `aa4ed847e6cf1de0a1acdd396a619c5083dbaa4d61bcffc48cba0458bb7c6911` | `93f4f22972e2379e129b88e5af90f79a6ca4d7f94a371c3eff600a21963512da` | 1.0 kg | basic RC aerobatic, 1.5 cc diesel (maintainer); median 53 g/dm2 of the 1.5 cc models of about 1 m of the RC-Network table (Bronco, Race Rat, Amateur II, Auster Aiglet, Amateur) x 19.0 dm2 |
+| SUPER_TRIDENT | 122 | `super_trident/super_trident.airplane.json` | `67df09772adfd25b13cc20c0b84b5cd9569965775ead13c2c68ac96d4dbafa03` | `58687c7004680f61099811430075d27a4e5d275d2386fbb95ad137274c26b6d0` | 1.05 kg | DB, unverified (from the plugin, not confirmed) |
+| ULTRA_MINI_STICK | 123 | `ultra_mini_stick/ultra_mini_stick.airplane.json` | `0713d43c3ecf23e2818e31f892a5cf66bf44143a9f435b0a51143b4e0e6a0b31` | `8fd656a65a27e34fbaacdea5c5bb7c29cb43749e53b523f2c362bc0670d0b057` | 0.35 kg | DB, unverified (from the plugin, not confirmed) |
+| VOODOO | 124 | `voodoo/voodoo.airplane.json` | `2bda5ead168160ec35664489677999876c6cb3303e3706f7b92408fada2690d5` | `b10bb0ef0b2b9b0290254e341f8c675062a5789f1e92c7851d31e025224c5945` | 1.16 kg | no weight in plan or article (A. Searl, Radio Modeller 7/1971, 69.5 in tailless slope glider, no motor); median 21.5 g/dm2 of the unpowered flying wings of the RC-Network comparison table (Slowing, Little Big Wing, Hot Shot, Chinook, Geier, Solo) x 54.1 dm2 |
+| WINDFREAK | 125 | `windfreak/windfreak.airplane.json` | `fe813b25fb2171b878c626f5d8ef70af1d7bd74bb4df872de591d434c98b4145` | `42ffcf810fd42b1f560db9b4920945772e3ea79fb0a15f348bc850df614feb31` | 2.6 kg | no weight on the plan; median 28.8 g/dm2 of the plank flying wings of the RC-Network table x 90.7 dm2 |
+| WRISTOCRAT | 126 | `wristocrat/wristocrat.airplane.json` | `7ab0dcb459db3b3ca6991d1e845ed3b4b9a7986b668a9e77efae0446d059e263` | `f51ea5f344750d13d4f216075c7abfe1b2a6656ca93326f67576c64680fa5fce` | 0.34 kg | DB, unverified (from the plugin, not confirmed) |
+
+The surface types are the DB's: a horizontal and a vertical tail, except ALBATROS_4 and BARRACUDA
+(`v_tail`, 37.5 and 45 deg from the horizontal, root to tip leading edge), the flying wings VOODOO and WINDFREAK (a main
+wing and a fin, no pitch surface) and WINDFREAK's `tip_plate` (`winglet`, the canted plate at the
+tip). The bodies named `canopy` (A6M2_ZERO, BF109_E, D520_DEWOITINE, EXTRA_300_EP, F3A_COMPETICION,
+FW190_A8, P36_HAWK), AERONCA_CHAMP's `equipment_box` and D520_DEWOITINE's `radiator` carry the
+role `fuselage` without attachment in the DB, so the solvers see them as bodies of their own (no
+canopy merge). Several vertical tails start with a zero chord at the root rib; that is the DB's
+geometry too.
+
 The DB's CHEKKER is not used: its fin has 48 ribs against the source's 12 and its wings and airfoil
 files carry other names; the source file is the better document.
 
@@ -56,12 +107,45 @@ are AeroSandbox's `include_centerline_distance` values of the main wing (`FleetM
 | BELEMNITOS | 1.499 m | 20.0 dm2 | 0.140 m | 27 N/m2 | 1.0e5 |
 | WIESEL | 0.915 m | 14.0 dm2 | 0.163 m | 44 N/m2 | 1.1e5 |
 | RV-7 | 0.820 m | 15.0 dm2 | 0.183 m | 33 N/m2 | 1.3e5 |
+| A6M2_ZERO | 0.747 m | 9.5 dm2 | 0.134 m | 37 N/m2 | 0.9e5 |
+| AERONCA_CHAMP | 0.906 m | 12.9 dm2 | 0.146 m | 30 N/m2 | 1.0e5 |
+| ALBATROS_4 | 4.065 m | 113.1 dm2 | 0.294 m | 43 N/m2 | 2.0e5 |
+| BARRACUDA | 2.457 m | 40.2 dm2 | 0.164 m | 38 N/m2 | 1.1e5 |
+| BF109_E | 0.749 m | 9.6 dm2 | 0.134 m | 37 N/m2 | 0.9e5 |
+| D520_DEWOITINE | 0.747 m | 9.5 dm2 | 0.134 m | 37 N/m2 | 0.9e5 |
+| DARDO | 1.928 m | 36.9 dm2 | 0.196 m | 36 N/m2 | 1.3e5 |
+| ESTRELA | 1.018 m | 23.2 dm2 | 0.227 m | 72 N/m2 | 1.6e5 |
+| EXTRA_300_EP | 1.041 m | 19.2 dm2 | 0.190 m | 38 N/m2 | 1.3e5 |
+| F3A_COMPETICION | 1.949 m | 67.6 dm2 | 0.373 m | 68 N/m2 | 2.6e5 |
+| FORCE_5 | 2.528 m | 57.2 dm2 | 0.230 m | 21 N/m2 | 1.6e5 |
+| FORCE_FOUR | 1.553 m | 18.0 dm2 | 0.118 m | 37 N/m2 | 0.8e5 |
+| FW190_A8 | 0.750 m | 9.6 dm2 | 0.134 m | 36 N/m2 | 0.9e5 |
+| GEE_BEE_R3 | 2.640 m | 128.7 dm2 | 0.517 m | 91 N/m2 | 3.5e5 |
+| KASTAWAY | 1.500 m | 24.4 dm2 | 0.167 m | 26 N/m2 | 1.1e5 |
+| MILES_MAGISTER | 0.749 m | 8.2 dm2 | 0.112 m | 43 N/m2 | 0.8e5 |
+| MINI_FUNTANA | 0.940 m | 21.0 dm2 | 0.228 m | 25 N/m2 | 1.6e5 |
+| P36_HAWK | 0.764 m | 9.5 dm2 | 0.133 m | 37 N/m2 | 0.9e5 |
+| P39 | 2.335 m | 100.6 dm2 | 0.459 m | 93 N/m2 | 3.1e5 |
+| SNOOPY | 3.202 m | 59.7 dm2 | 0.191 m | 24 N/m2 | 1.3e5 |
+| SONAS_40 | 1.417 m | 36.4 dm2 | 0.259 m | 57 N/m2 | 1.8e5 |
+| SPIRIT_100 | 2.554 m | 61.5 dm2 | 0.245 m | 20 N/m2 | 1.7e5 |
+| SPRITE | 0.991 m | 19.0 dm2 | 0.193 m | 52 N/m2 | 1.3e5 |
+| SUPER_TRIDENT | 2.533 m | 42.2 dm2 | 0.168 m | 24 N/m2 | 1.1e5 |
+| ULTRA_MINI_STICK | 0.831 m | 15.0 dm2 | 0.186 m | 23 N/m2 | 1.3e5 |
+| VOODOO | 1.764 m | 54.1 dm2 | 0.321 m | 21 N/m2 | 2.2e5 |
+| WINDFREAK | 2.493 m | 90.7 dm2 | 0.365 m | 28 N/m2 | 2.5e5 |
+| WRISTOCRAT | 1.456 m | 21.3 dm2 | 0.148 m | 16 N/m2 | 1.0e5 |
 
-All six are in the regime: a 0.5 to 1.5 m RC model at 5 to 20 m/s has a chord Reynolds number of
+The first six are in the regime: a 0.5 to 1.5 m RC model at 5 to 20 m/s has a chord Reynolds number of
 0.5e5 to 2.5e5 and a Mach number below 0.06. The RV-7 is an RC scale model (0.82 m span, MAC
 0.183 m), not the 7.0 m aeroplane the name suggests. Its tail chords (rudder tip 0.080 m,
 elevator tip 0.076 m) fall below the 7e4 bubble-sensitive line at 10 m/s, as BRYAN's do; the
 kernel says so in its warnings.
+
+The plan batch spans 0.75 to 4.1 m and 16 to 93 N/m2; its MAC Reynolds numbers at 10 m/s lie between
+0.8e5 and 3.5e5 (GEE_BEE_R3, MAC 0.517 m), and stay below 1e6 up to about 28 m/s for the largest MAC.
+At the C_L 1.4 stall estimate the horizontal tails of BF109_E, D520_DEWOITINE, FW190_A8 and
+WRISTOCRAT fall below 3e4 (`test_regime_fleet.py`).
 
 ## Additions to the JSON (the only differences from the source)
 
@@ -77,7 +161,8 @@ app-side migration is #1187.
 | WIESEL | `main_wing` -> `main_wing`, `horizontal_tail` -> `horizontal_tail`, `vertical_tail` -> `vertical_tail` | conventional; the main wing's tip curls up 11 mm over its last 25 mm of span, which is a rounded tip, not a winglet |
 | RV-7 | `main_wing` -> `main_wing`, `elevator` -> `horizontal_tail`, `rudder` -> `vertical_tail` | conventional; the DB names the surfaces after the moving part, so the name says "elevator" and "rudder" for the whole tail surface; each has two ribs |
 
-No aircraft of the fleet has a canard, twin fins or winglets.
+No aircraft of the first six has a canard, twin fins or winglets; of the plan batch, WINDFREAK has
+a winglet (see above).
 
 `role` and `attached_to` (format 7.6, #1355) on BRYAN's body `Haube`, inserted after `name`:
 `"role": "canopy"`, `"attached_to": "Rumpf"`. `Haube` is the canopy on `Rumpf` (its x range
@@ -85,8 +170,9 @@ No aircraft of the fleet has a canard, twin fins or winglets.
 half-width that of the fuselage). The marking is done by hand and explicitly, for slice 2 (the
 canopy merge, canon rule `canopy-merge`): since then the solvers see one merged body instead of
 the fuselage and the whole canopy, and BRYAN's goldens moved (before/after in the PR of #1355
-slice 2). No other aircraft of the fleet has a canopy body; every other body keeps the default
-role `fuselage` without attachment.
+slice 2). No other aircraft of the first six has a canopy body; every other body keeps the default
+role `fuselage` without attachment. The plan batch's canopies are bodies of role `fuselage` in the
+DB (see above); they are not marked.
 
 BELEMNITOS' source carries a top-level `quelle` ("e-Hawk_Segler.airplane.json (aiHawk), umgewandelt
 2026-10-13"), a provenance note for which the format has no field (the kernel rejects unknown
@@ -125,6 +211,86 @@ ribs the path `./components/airfoils/naca23013.5.dat`. The copy gives the root r
 | `rv7/naca23013.5.dat` | `54262966a988b6e3839e035a860e7030fd41b8a4a1bb554ca0a1e93d98baa882` |
 | `rv7/naca0015.dat` | `645e867c98ddbc808b315c0c0a672cf390aac23fe32112f83b560efb1b0e7bf9` |
 | `rv7/n12.dat` | `82c981d6576fe7793e6657774b2d12ed36c14ec69237a9b72e99dbdbf9d8ddc0` |
+| `a6m2_zero/a6m2_zero_main_wing_kulfan.dat` | `ef3def7c95da5cacac76714c3997e3e3c90ba4e1799057beb9386d2cd5228f3b` |
+| `a6m2_zero/a6m2_zero_horizontal_tail_kulfan.dat` | `59f3e2994f5edcd758e606735aaf560af8bc867c8a316c15da69374b7e42ae8e` |
+| `a6m2_zero/a6m2_zero_vertical_tail_kulfan.dat` | `52a2cf69950a36fe06879bc3d1f50c9450702994debb558bc24b9788bb4e399e` |
+| `aeronca_champ/aeronca_champ_main_wing_kulfan.dat` | `a04ad110eb8205f034f273a05e1049c552bd4a7e56d25c48cddcb14e7860697e` |
+| `aeronca_champ/aeronca_champ_horizontal_tail_kulfan.dat` | `c5e1bd2672b27fee18476eda3dc905e0f302021e46aae18967a0dbaa48314f72` |
+| `aeronca_champ/aeronca_champ_vertical_tail_kulfan.dat` | `ecddd48808e3027a34fd63aa5777bae6c7aa9e1806a90e55fcd6391513decbda` |
+| `albatros_4/sd7037.dat` | `58dc2b375e8c96c4b2ad7acd2968de9d69334ec80c656da10a022981e470784f` |
+| `albatros_4/albatros_4_v_tail_kulfan.dat` | `f2d83d6cb4907b688acafd5d1e9e7f569f49697effb18e0f64e395d6da1cad01` |
+| `barracuda/barracuda_main_wing_kulfan.dat` | `99daaf9a65e34c4aa416de90a42cd73e00a32ad367cc661f1f4f9467f8234b25` |
+| `barracuda/barracuda_v_tail_kulfan.dat` | `56737465686a728ac459688eaa652ee80f3d8807c516ac2ad42abb0804052aa1` |
+| `bf109_e/bf109_e_main_wing_kulfan.dat` | `5f4b6d902b4495b6ed1d5afa1cfbcec1d23d66d9269d657f709acf4dd78549a3` |
+| `bf109_e/bf109_e_horizontal_tail_kulfan.dat` | `d2ea328bc26738140d555155807f52d8cc25ce3f0093858f8f1e3b08d439bb7e` |
+| `bf109_e/bf109_e_vertical_tail_kulfan.dat` | `2edb28ddf0cb1894cf1879937f175957a63d9084c71a4983709aed3294149abe` |
+| `d520_dewoitine/d520_dewoitine_main_wing_kulfan.dat` | `48645ca42c612c0fd153c2d4aa02fd9d188b3b1b886ba48fee3adf9de246b85f` |
+| `d520_dewoitine/d520_dewoitine_horizontal_tail_kulfan.dat` | `235e3dce2f7e70458886081e3ec7f4f1a85e7360b04317149d890ace502ad08f` |
+| `d520_dewoitine/d520_dewoitine_vertical_tail_kulfan.dat` | `0a659002364927c8b720db9bc2d5038677391bef620a6d401307b63742d65c24` |
+| `dardo/naca2410.dat` | `3f523e19178b501a0a19b07871299277a2fd9f39e47d8f08ce955949ec3c5c2d` |
+| `dardo/naca0006.dat` | `b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d` |
+| `dardo/dardo_vertical_tail_kulfan.dat` | `f7b5444985f1257584f3e6300b01dcbba270ef367b62229299b7183c169f6f4c` |
+| `estrela/estrela_main_wing_kulfan.dat` | `354876e2c46083b09268fcd837a1d429dd40d91ecaec3a62515970c4fff4a125` |
+| `estrela/estrela_horizontal_tail_kulfan.dat` | `6c2eb133fb1255cc00eff99c179888d564b8e282a469bc48e3aba541cda7a86a` |
+| `estrela/estrela_vertical_tail_kulfan.dat` | `7a34c2eb2f6bf9a47f438009f2da843110ae2f155f390cc9589fe700243139ac` |
+| `extra_300_ep/extra_300_ep_main_wing_kulfan.dat` | `414a36af9620cfc9fa081fd0f07c5384cfaaafbfe7a578c65231de7d59efb88b` |
+| `extra_300_ep/extra_300_ep_horizontal_tail_kulfan.dat` | `a2d03425322374516e901410ee7ff833eea3f399cd93c6dc399bdaba85435fba` |
+| `extra_300_ep/extra_300_ep_vertical_tail_kulfan.dat` | `88031b4d388269ea9a114a58a268c99d2995334f961a95fe35fb840a00455c4f` |
+| `f3a_competicion/f3a_competicion_main_wing_kulfan.dat` | `a3e6a0e0ed3a36743d037731439bfb37f87f13ca23027e3fedafed91d852a1d2` |
+| `f3a_competicion/f3a_competicion_horizontal_tail_kulfan.dat` | `11560244f92b1b77ede210d9030c17a8ee29f957408595973678f63d83e3a8cf` |
+| `f3a_competicion/f3a_competicion_vertical_tail_kulfan.dat` | `4cfcbbd58657e5c6d3215c3aa51bb8d650326221b7f72db03698ed4b5dc458fe` |
+| `force_5/force_5_main_wing_kulfan.dat` | `9c4641c18aae7022ef8e3b3958d84b6732184825564cb43456f12bae8f9a3729` |
+| `force_5/force_5_horizontal_tail_kulfan.dat` | `8619716d5b5d5a977c149754d3d871785fde48180ba4dc8b3fc58365e99310e6` |
+| `force_5/force_5_vertical_tail_kulfan.dat` | `16f9d8279f1d519f6c604cb4182108d2ec081d274a983cc067d1dfb19ca6670c` |
+| `force_four/force_four_main_wing_kulfan.dat` | `fea8bc0d0afd08faf247b28dcacd57f4d808b30cf3d18a1337fae44c4bfb1bbd` |
+| `force_four/force_four_horizontal_tail_kulfan.dat` | `0cb52bf19c7e8989bd7ed7d75ee9b6028ce47bccff0830a4d702027c69373bcb` |
+| `force_four/bryan_platte.dat` | `d221c31868aa05d295488b2286f66352406fe6b8649084bc98fb8737bd414595` |
+| `fw190_a8/fw190_a8_main_wing_kulfan.dat` | `80a570b28d44422200b18855c77033a3a0d018091f6fc217ec24dceb0a96cb18` |
+| `fw190_a8/fw190_a8_horizontal_tail_kulfan.dat` | `1a684258caeac32caa56ef8c27fdff231349ab958f52ce8e5a9abbd8bc719476` |
+| `fw190_a8/fw190_a8_vertical_tail_kulfan.dat` | `6dbe0ff203b1b540e4b70dadff1b95f020eba3017a3193b4ea6c59e51a81f6e6` |
+| `gee_bee_r3/gee_bee_r3_main_wing_kulfan.dat` | `737ea33e71f217056f6d38db2e5e0872f3463bd9c7848c0eac671e9b12a5b84f` |
+| `gee_bee_r3/gee_bee_r3_horizontal_tail_kulfan.dat` | `547def8bcc18fb3e1f80eff92efd25f47d0d21ac61c0a5a435c0b2a843cb4409` |
+| `gee_bee_r3/gee_bee_r3_vertical_tail_kulfan.dat` | `52b984b883089760a823ffac2c37a26665ecf9af86d3d4066a6d11f7ea92038b` |
+| `kastaway/kastaway_main_wing_kulfan.dat` | `016c8743003ea2fefce2f831b4071de53d79b576588f956928b2c21093549ccc` |
+| `kastaway/kastaway_horizontal_tail_kulfan.dat` | `3f99d4fc4b51534f008928bf7c75e5b78ecf03947f71053379251adb2f536b00` |
+| `kastaway/kastaway_vertical_tail_kulfan.dat` | `a9acf1c0c67c6605a312eaa90313972cf45eb2a1b1089afc1c28ce65edf7063e` |
+| `miles_magister/miles_magister_main_wing_kulfan.dat` | `bbe7f91f9e0b6929ff7d27a2cd5f24c615e9d77bfc7087a9753a3642f34f4eef` |
+| `miles_magister/bryan_platte.dat` | `d221c31868aa05d295488b2286f66352406fe6b8649084bc98fb8737bd414595` |
+| `miles_magister/miles_magister_vertical_tail_kulfan.dat` | `f19a080a6a946da400db3bfc088c6f913e033d071af071fd71b15aa517788d67` |
+| `mini_funtana/mini_funtana_main_wing_kulfan.dat` | `5bcf54cb7549ee6521ecf9121d8804fbb73508dae6e60a409a13fe8d6ce19794` |
+| `mini_funtana/mini_funtana_horizontal_tail_kulfan.dat` | `c23a38823b551ac620ae10375974daec2f504cdf61963fe4be563c03c495f51f` |
+| `mini_funtana/bryan_platte.dat` | `d221c31868aa05d295488b2286f66352406fe6b8649084bc98fb8737bd414595` |
+| `p36_hawk/p36_hawk_main_wing_kulfan.dat` | `9dff6c273fddb0adb104ec7954c3a2a3f993549e7ca731ded8dfa48d52fce483` |
+| `p36_hawk/p36_hawk_horizontal_tail_kulfan.dat` | `3a90eab9ecfcd36c13c6c7945c284eda9c36557480fcfa292595e7ce16765867` |
+| `p36_hawk/bryan_platte.dat` | `d221c31868aa05d295488b2286f66352406fe6b8649084bc98fb8737bd414595` |
+| `p39/p39_main_wing_kulfan.dat` | `a607da7ce2b6c2f45c2ca4a5b33e22626302a75dc2f3d1b2afb9f30bf9ec0e5a` |
+| `p39/naca0210.dat` | `b2d9e2c90465517cfec859a5b6aceac28ce5cb22280f15aa51725bc6f56e7695` |
+| `snoopy/snoopy_main_wing_kulfan.dat` | `55d83bcc143f19334c8cd57eee403d2c818f5caf149ee0dd499ebf6d6f5e1cb9` |
+| `snoopy/naca0008.dat` | `e1fc6db22dd2d270076bc625274608aee674fae367f537d4f47019742c1ff276` |
+| `snoopy/snoopy_vertical_tail_kulfan.dat` | `0d230f5b0e6a376b521452708398557ed700d4348266c964582e50bfc444b9f7` |
+| `sonas_40/sonas_40_main_wing_kulfan.dat` | `9c4084c87f2b7df9a5062287701069329e6bcbe4f72f2d259ebbd547faa30a2a` |
+| `sonas_40/sonas_40_horizontal_tail_kulfan.dat` | `1c5b71c917763b81a078746f9328cc6cbb61c79f93140e9ffbf397eb9c8b065c` |
+| `sonas_40/sonas_40_vertical_tail_kulfan.dat` | `4c824abf832f736bd9d53108f3739f95ab60674eeb291af16a0395f750a15142` |
+| `spirit_100/spirit_100_main_wing_kulfan.dat` | `39a88d985a692acfe9b84cce5470ed8521bb737e6ecaee7fe5c4185f6c4301aa` |
+| `spirit_100/spirit_100_horizontal_tail_kulfan.dat` | `d134507b09ef64c97a38cbdfd682c4c27c82673cf55c173e546e17525ad3d045` |
+| `spirit_100/spirit_100_vertical_tail_kulfan.dat` | `6ac6d51b39a9842f37471f55e98f15337944af2c21216602a655bc8c95d999bc` |
+| `sprite/sprite_main_wing_kulfan.dat` | `e0767394202405d782f3848f6b590a40db0d719fd831ec11ca376e7fc4b5305c` |
+| `sprite/sprite_horizontal_tail_kulfan.dat` | `3b2fd6af37c100a79f0ca985fef53779a928d2b98353ee03ae29291aed32d39e` |
+| `sprite/sprite_vertical_tail_kulfan.dat` | `f222fe14f364432adcd10a9178ad62ce0267c5ad85d945d69c175df6d6c759a3` |
+| `super_trident/super_trident_main_wing_kulfan.dat` | `a545907391d544c56d71980b30a953b2e0f307d0baeab1b148defdb2fdd4093e` |
+| `super_trident/super_trident_horizontal_tail_kulfan.dat` | `9e980a193e51791966d02e04e48e3ffe7b5ca66414b43e186ea7099a99aac98d` |
+| `super_trident/super_trident_vertical_tail_kulfan.dat` | `91dcd89a35b7742486f28c08cbabb18c397ebeed6dd698c732f71e148637c4c9` |
+| `ultra_mini_stick/e168_15.dat` | `48f7e73386ab23a1e6b0e939e1dd02db5109851452dbe54e9270ce460031ba26` |
+| `ultra_mini_stick/ultra_mini_stick_horizontal_tail_kulfan.dat` | `31ba99893f126a27c0db01d9fc53b14df1c20c5f87785618df09cd78fcf8d63b` |
+| `ultra_mini_stick/ultra_mini_stick_vertical_tail_kulfan.dat` | `b3c696002c0058d9808fe5b73b53d9beb2ef2557dbb619549ba8ca1fdae06a05` |
+| `voodoo/voodoo_main_wing_kulfan.dat` | `5d8eb98e2d854f630e7eb2c1f1fa4aa63b8da42d53aae311c1c63ca28be00e9b` |
+| `voodoo/voodoo_vertical_tail_kulfan.dat` | `05a7348f12f0793b6aa9bb5292c80aeb4192f4111d6df7ddcfdf0504d334ec14` |
+| `windfreak/windfreak_main_wing_kulfan.dat` | `62915d86a07f05ee990e52e0aa7ae6e853a80b41789a3c2114cd8da51b72ce7f` |
+| `windfreak/windfreak_vertical_tail_kulfan.dat` | `201c0c7336bb29f14ae46cdd39041f9b5722d21a6dd04792d122ee7dc89718ac` |
+| `windfreak/windfreak_tip_plate_kulfan.dat` | `94a0e79400b95365a6bfc4ffb6278e48931916d3a136e4526c7613e987a09275` |
+| `wristocrat/wristocrat_main_wing_kulfan.dat` | `17668189add6b04dcb08b9689f6005b6d7bcf2a153b1393b8c0c8cf5f2901081` |
+| `wristocrat/wristocrat_horizontal_tail_kulfan.dat` | `7e1ed736e3cb914e6af2079157a3b1202260d47e600c570a3652a378b44a88d2` |
+| `wristocrat/wristocrat_vertical_tail_kulfan.dat` | `285c7673e2e8e19fad721c09abb99a26ae47ac2f9388c23bdc72ad56cca9993f` |
 
 BRYAN's sources are under `scripts/canon_checks/reference_fleet/bryan/`; JAGUAR's under
 `~/Downloads/da3dalus-import/modelle/jaguar/profile/` (the same files the source JSON names under
@@ -134,7 +300,9 @@ and `~/Downloads/da3dalus-import/belemnitos/profile/` (BELEMNITOS' `mh32.dat` di
 `components/airfoils/mh32.dat` in its name line, so the source's file is the copy; the other
 `belemnitos_vlw_*.dat` and the CHEKKER files equal those in `components/airfoils/`). WIESEL's
 and RV-7's come from `components/airfoils/` of the main checkout (the `wiesel_*_kulfan.dat` files are
-untracked there), which is where the DB's airfoil paths point.
+untracked there), which is where the DB's airfoil paths point. The plan batch's come from the same
+place (the plugin's `*_kulfan.dat` files and `e168_15.dat` are untracked there; `bryan_platte.dat`,
+`naca0006.dat`, `naca0008.dat`, `naca0210.dat`, `naca2410.dat` and `sd7037.dat` are tracked).
 
 ## Results recorded for the fleet (regression, not validated)
 
@@ -149,6 +317,7 @@ expected result:
 | RV-7 | clean stall, glide, sink, stall-break and the neutral point compute. The DB gives its flaps no deflection; the flap deflections are the maintainer's guess (take-off 15 deg, landing 30 deg, "guessed, maintainer 2026-10-26"), passed as caller parameters (`FLAP_DEFLECTIONS_DEG` in `reference_fleet.py`). Since #1212 the configured flaps reach AeroBuildup and AVL: `stall-speed-takeoff/-landing` (7.368 / 6.808 m/s, against 6.600 clean; AeroBuildup's flap shifts the lift curve but not C_L,max, so the flapped first peak is lower than the clean one) and the speeds from them are regression values, the roll rate on approach (landing configuration) is the AVL world's value with the AeroBuildup world declared `not_converged` (its flapped curve peaks at C_L 0.651 below the 0.681 the weight needs at V_app). Its export carries no mass, so there is no source mass to conflict with the 0.500 kg |
 | CHEKKER | 37 of the 48 fuselage sections of `Rumpf` have `n_lower != n`; the kernel takes each as the equivalent symmetric section of equal cross-section area (#1307) and declares it per section (`fuselage_section_equivalent`). Stall, glide, sink, stall-break, the neutral point and the tail arms compute (regression values in the test files). The AVL neutral-point mesh is declared not converged (`avl_mesh_not_converged`, 0.55 % MAC against the 0.5 % tolerance). The roll rate is `not_applicable` (no aileron) |
 | WIESEL | 46 of the 61 fuselage sections of `fuselage` have `n_lower != n`; as CHEKKER, with the same quantities computed and the AVL mesh converged. The inverted stall `inverted-max-lift-coefficient` is `not_converged` (the sweep has no trough, as for BRYAN). The roll rate is computed in the AeroBuildup world only (AVL's `p'b/2V` = 0.258 is beyond its range); NeuralFoil's lowest analysis confidence at the deflected strips is 0.028 (Re of the main wing from 170 to 1.1e5) |
+| plan batch (28, #1372) | one compute per aircraft in `test_plan_batch_fleet.py` (stall, glide, sink, neutral point, design CG, roll rate on approach and the lateral chain of `test_mvp_chain_fleet.py`, at SM_target 0.10 and an aileron deflection of 20 deg); the golden is the value, or `not_applicable`, or the error with its causes. Every aircraft gives V_S, V_md, (L/D)max and V_mp except AERONCA_CHAMP, whose stall is `not_converged` (the optimum lies on the alpha bound, 5 deg), so its approach quantities are `upstream_failed`. VOODOO and WINDFREAK (flying wings) have no neutral point (`unsupported_layout`: one main wing with one horizontal tail or V-tail) and everything after it fails upstream. ALBATROS_4, GEE_BEE_R3, P39 and SPIRIT_100 have flaps without a deflection, so the approach (landing configuration) is `upstream_failed` (`airplane-landing` `missing_input`). MINI_FUNTANA's AVL lateral runs give no derivatives and come back `internal` (bug #1373). The aircraft without an aileron have no roll rate (`not_applicable`); five declare the AVL neutral-point mesh as not converged (BARRACUDA, DARDO, FORCE_FOUR, SNOOPY, SPIRIT_100) |
 
 The static-margin goldens of the aircraft that compute use the design CG of the canon
 (`cg-for-target-margin`: x_cg = x_NP - SM_target c_MAC with SM_target = 0.10, the canon's start

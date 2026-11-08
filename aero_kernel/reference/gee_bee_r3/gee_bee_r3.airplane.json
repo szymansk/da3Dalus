@@ -1,0 +1,3756 @@
+{
+ "name": "GEE_BEE_R3",
+ "wings": {
+  "main_wing": {
+   "name": "main_wing",
+   "surface_type": "main_wing",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.6622,
+      0.0,
+      -0.083593
+     ],
+     "chord": 0.5794,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.662249,
+      0.1549,
+      -0.083593
+     ],
+     "chord": 0.579157,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.662558,
+      0.23878,
+      -0.083593
+     ],
+     "chord": 0.578178,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.686,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.686,
+      "rel_chord_tip": 0.6879,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.663107,
+      0.3457,
+      -0.083593
+     ],
+     "chord": 0.575818,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.6879,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.6879,
+      "rel_chord_tip": 0.6901,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.666454,
+      0.4503,
+      -0.083593
+     ],
+     "chord": 0.569085,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.6901,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.6901,
+      "rel_chord_tip": 0.6932,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.668633,
+      0.5184,
+      -0.083593
+     ],
+     "chord": 0.563435,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.6932,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.6932,
+      "rel_chord_tip": 0.6946,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.669604,
+      0.5415,
+      -0.083593
+     ],
+     "chord": 0.560859,
+     "twist": -0.096,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.6946,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.6946,
+      "rel_chord_tip": 0.6969,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.671897,
+      0.5795,
+      -0.083593
+     ],
+     "chord": 0.555739,
+     "twist": -0.254,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.6969,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "flap",
+      "role": "flap",
+      "rel_chord_root": 0.6969,
+      "rel_chord_tip": 0.6995,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 0.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.673746,
+      0.61014,
+      -0.083594
+     ],
+     "chord": 0.551061,
+     "twist": -0.3813,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.673961,
+      0.6137,
+      -0.083594
+     ],
+     "chord": 0.550518,
+     "twist": -0.3961,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7401,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7401,
+      "rel_chord_tip": 0.7214,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.676917,
+      0.6627,
+      -0.083594
+     ],
+     "chord": 0.54207,
+     "twist": -0.5998,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7214,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7214,
+      "rel_chord_tip": 0.7025,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.68024,
+      0.715,
+      -0.083594
+     ],
+     "chord": 0.531602,
+     "twist": -0.8172,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.7025,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.7025,
+      "rel_chord_tip": 0.6858,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.684285,
+      0.7598,
+      -0.083594
+     ],
+     "chord": 0.520728,
+     "twist": -1.0034,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6858,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6858,
+      "rel_chord_tip": 0.6741,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.687201,
+      0.7921,
+      -0.083594
+     ],
+     "chord": 0.512361,
+     "twist": -1.1377,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6741,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6741,
+      "rel_chord_tip": 0.6619,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.690333,
+      0.8268,
+      -0.083594
+     ],
+     "chord": 0.502673,
+     "twist": -1.2819,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6619,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6619,
+      "rel_chord_tip": 0.6502,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.69352,
+      0.8621,
+      -0.083594
+     ],
+     "chord": 0.491941,
+     "twist": -1.4287,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6502,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6502,
+      "rel_chord_tip": 0.6384,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.697886,
+      0.8983,
+      -0.083594
+     ],
+     "chord": 0.478723,
+     "twist": -1.5791,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6384,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6384,
+      "rel_chord_tip": 0.6273,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.702451,
+      0.9351,
+      -0.083595
+     ],
+     "chord": 0.463863,
+     "twist": -1.7321,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6273,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6273,
+      "rel_chord_tip": 0.6172,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.707103,
+      0.9726,
+      -0.083595
+     ],
+     "chord": 0.447275,
+     "twist": -1.888,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6172,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6172,
+      "rel_chord_tip": 0.6097,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.711148,
+      1.0038,
+      -0.083595
+     ],
+     "chord": 0.432164,
+     "twist": -2.0177,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.6097,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.6097,
+      "rel_chord_tip": 0.599,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.718722,
+      1.0492,
+      -0.083595
+     ],
+     "chord": 0.406458,
+     "twist": -2.2064,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.599,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.599,
+      "rel_chord_tip": 0.592,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.725261,
+      1.0884,
+      -0.083596
+     ],
+     "chord": 0.382091,
+     "twist": -2.3693,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.592,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.592,
+      "rel_chord_tip": 0.5894,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.729218,
+      1.1111,
+      -0.083596
+     ],
+     "chord": 0.366501,
+     "twist": -2.4637,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.5894,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.5894,
+      "rel_chord_tip": 0.5867,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.732962,
+      1.1273,
+      -0.083596
+     ],
+     "chord": 0.354249,
+     "twist": -2.531,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.5867,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.5867,
+      "rel_chord_tip": 0.5843,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.741515,
+      1.1643,
+      -0.083596
+     ],
+     "chord": 0.323745,
+     "twist": -2.6848,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.5843,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.5843,
+      "rel_chord_tip": 0.5868,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.747726,
+      1.1905,
+      -0.083596
+     ],
+     "chord": 0.299538,
+     "twist": -2.7937,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.5868,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.5868,
+      "rel_chord_tip": 0.5865,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.751254,
+      1.2002,
+      -0.083597
+     ],
+     "chord": 0.289127,
+     "twist": -2.834,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.5865,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.5865,
+      "rel_chord_tip": 0.5938,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.763183,
+      1.233,
+      -0.083597
+     ],
+     "chord": 0.250315,
+     "twist": -2.9704,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat",
+     "control_surface": {
+      "name": "ail",
+      "hinge_point": 0.5938,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "ail",
+      "role": "aileron",
+      "rel_chord_root": 0.5938,
+      "rel_chord_tip": 0.5974,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": false,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.765074,
+      1.2382,
+      -0.083597
+     ],
+     "chord": 0.243281,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.776257,
+      1.2627,
+      -0.083598
+     ],
+     "chord": 0.207647,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.778445,
+      1.267,
+      -0.083598
+     ],
+     "chord": 0.200116,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.793971,
+      1.2884,
+      -0.083598
+     ],
+     "chord": 0.157776,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.813442,
+      1.3051,
+      -0.083599
+     ],
+     "chord": 0.108983,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.817388,
+      1.307,
+      -0.083599
+     ],
+     "chord": 0.101396,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.835479,
+      1.3157,
+      -0.083599
+     ],
+     "chord": 0.057885,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.844432,
+      1.317217,
+      -0.083599
+     ],
+     "chord": 0.044492,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      0.860795,
+      1.31999,
+      -0.0836
+     ],
+     "chord": 0.0001,
+     "twist": -2.992,
+     "airfoil": "./components/airfoils/gee_bee_r3_main_wing_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "horizontal_tail": {
+   "name": "horizontal_tail",
+   "surface_type": "horizontal_tail",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      1.9368,
+      0.0,
+      0.077001
+     ],
+     "chord": 0.3479,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      1.936827,
+      0.0299,
+      0.077001
+     ],
+     "chord": 0.347863,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5162,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5162,
+      "rel_chord_tip": 0.516,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.937013,
+      0.052,
+      0.077001
+     ],
+     "chord": 0.34767,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.516,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.516,
+      "rel_chord_tip": 0.5132,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.939259,
+      0.0807,
+      0.077001
+     ],
+     "chord": 0.3452,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5132,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5132,
+      "rel_chord_tip": 0.5095,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.943048,
+      0.1145,
+      0.077001
+     ],
+     "chord": 0.340218,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5095,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5095,
+      "rel_chord_tip": 0.5045,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.948192,
+      0.15,
+      0.077001
+     ],
+     "chord": 0.333427,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.5045,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.5045,
+      "rel_chord_tip": 0.4986,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.954267,
+      0.1846,
+      0.077001
+     ],
+     "chord": 0.325203,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4986,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4986,
+      "rel_chord_tip": 0.4917,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.961026,
+      0.2167,
+      0.077001
+     ],
+     "chord": 0.31598,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4917,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4917,
+      "rel_chord_tip": 0.4839,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.968555,
+      0.2473,
+      0.077001
+     ],
+     "chord": 0.305541,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4839,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4839,
+      "rel_chord_tip": 0.4752,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.976617,
+      0.2757,
+      0.077001
+     ],
+     "chord": 0.294156,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4752,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4752,
+      "rel_chord_tip": 0.4651,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.985488,
+      0.3029,
+      0.077001
+     ],
+     "chord": 0.281453,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4651,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4651,
+      "rel_chord_tip": 0.454,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.99459,
+      0.3274,
+      0.077001
+     ],
+     "chord": 0.268281,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.454,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.454,
+      "rel_chord_tip": 0.4409,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.004742,
+      0.3514,
+      0.077001
+     ],
+     "chord": 0.25327,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4409,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4409,
+      "rel_chord_tip": 0.4256,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.015231,
+      0.3731,
+      0.077001
+     ],
+     "chord": 0.237692,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4256,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4256,
+      "rel_chord_tip": 0.4077,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.02612,
+      0.3929,
+      0.077001
+     ],
+     "chord": 0.221437,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.4077,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.4077,
+      "rel_chord_tip": 0.39,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.035652,
+      0.4082,
+      0.077001
+     ],
+     "chord": 0.207063,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.39,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.39,
+      "rel_chord_tip": 0.3726,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.043982,
+      0.4203,
+      0.077001
+     ],
+     "chord": 0.194382,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.3726,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.3726,
+      "rel_chord_tip": 0.3527,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.052325,
+      0.4313,
+      0.077001
+     ],
+     "chord": 0.181679,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.3527,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.3527,
+      "rel_chord_tip": 0.33,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.060601,
+      0.4412,
+      0.077001
+     ],
+     "chord": 0.169086,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.33,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.33,
+      "rel_chord_tip": 0.3053,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.068316,
+      0.4496,
+      0.077001
+     ],
+     "chord": 0.157483,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat",
+     "control_surface": {
+      "name": "elev",
+      "hinge_point": 0.3053,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "elev",
+      "role": "elevator",
+      "rel_chord_root": 0.3053,
+      "rel_chord_tip": 0.2825,
+      "servo_placement": "top",
+      "positive_deflection_deg": 20.0,
+      "negative_deflection_deg": 20.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.074531,
+      0.4559,
+      0.077
+     ],
+     "chord": 0.14823,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.085445,
+      0.4658,
+      0.077
+     ],
+     "chord": 0.13203,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.096285,
+      0.4744,
+      0.077
+     ],
+     "chord": 0.115122,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.107146,
+      0.4819,
+      0.077
+     ],
+     "chord": 0.097815,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.118714,
+      0.4886,
+      0.077
+     ],
+     "chord": 0.079296,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.128083,
+      0.4932,
+      0.077
+     ],
+     "chord": 0.063637,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.138934,
+      0.497577,
+      0.077
+     ],
+     "chord": 0.044761,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.146387,
+      0.5001,
+      0.077
+     ],
+     "chord": 0.030577,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.151012,
+      0.5015,
+      0.077
+     ],
+     "chord": 0.019019,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.155517,
+      0.502209,
+      0.077
+     ],
+     "chord": 0.005414,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.157059,
+      0.502272,
+      0.077
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_horizontal_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "vertical_tail": {
+   "name": "vertical_tail",
+   "surface_type": "vertical_tail",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      2.2298,
+      -0.0,
+      -0.1262
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -0.0,
+      -0.1244
+     ],
+     "chord": 0.037992,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -0.0,
+      -0.1161
+     ],
+     "chord": 0.06747,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -0.0,
+      -0.1081
+     ],
+     "chord": 0.092574,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -0.0,
+      -0.0994
+     ],
+     "chord": 0.117073,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -0.0,
+      -0.0899
+     ],
+     "chord": 0.141291,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -0.0,
+      -0.0797
+     ],
+     "chord": 0.165004,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      -0.0687
+     ],
+     "chord": 0.188448,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      -0.0569
+     ],
+     "chord": 0.211604,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      -0.0428
+     ],
+     "chord": 0.237179,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      -0.0316
+     ],
+     "chord": 0.254471,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      -0.0226
+     ],
+     "chord": 0.266807,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      -0.0114
+     ],
+     "chord": 0.28066,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0005
+     ],
+     "chord": 0.293615,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0114
+     ],
+     "chord": 0.304371,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.027289
+     ],
+     "chord": 0.318352,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0371
+     ],
+     "chord": 0.324151,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0458
+     ],
+     "chord": 0.328148,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0551
+     ],
+     "chord": 0.331253,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0647
+     ],
+     "chord": 0.333463,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0741
+     ],
+     "chord": 0.334595,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0821
+     ],
+     "chord": 0.334787,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0906
+     ],
+     "chord": 0.333897,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.0975
+     ],
+     "chord": 0.332477,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.1041
+     ],
+     "chord": 0.330469,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.2298,
+      -1e-06,
+      0.110441
+     ],
+     "chord": 0.327889,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.214837,
+      -1e-06,
+      0.1165
+     ],
+     "chord": 0.339718,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0829,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.200779,
+      -1e-06,
+      0.1223
+     ],
+     "chord": 0.350068,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.0829,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.0829,
+      "rel_chord_tip": 0.118,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.187418,
+      -1e-06,
+      0.1279
+     ],
+     "chord": 0.359067,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.118,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.118,
+      "rel_chord_tip": 0.1623,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.169787,
+      -1e-06,
+      0.1351
+     ],
+     "chord": 0.369874,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.1623,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.1623,
+      "rel_chord_tip": 0.2307,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.140608,
+      -1e-06,
+      0.1468
+     ],
+     "chord": 0.386592,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.2307,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.2307,
+      "rel_chord_tip": 0.3248,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.095546,
+      -1e-06,
+      0.1637
+     ],
+     "chord": 0.413395,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.3248,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.3248,
+      "rel_chord_tip": 0.4104,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.04909,
+      -1e-06,
+      0.1798
+     ],
+     "chord": 0.440342,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.4104,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.4104,
+      "rel_chord_tip": 0.4589,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.019599,
+      -1e-06,
+      0.1893
+     ],
+     "chord": 0.458032,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.4589,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.4589,
+      "rel_chord_tip": 0.4939,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.997212,
+      -1e-06,
+      0.1962
+     ],
+     "chord": 0.470966,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.4939,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.4939,
+      "rel_chord_tip": 0.5543,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.954469,
+      -1e-06,
+      0.2086
+     ],
+     "chord": 0.496722,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.5543,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.5543,
+      "rel_chord_tip": 0.6194,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.903177,
+      -1e-06,
+      0.2221
+     ],
+     "chord": 0.527312,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.6194,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.6194,
+      "rel_chord_tip": 0.632,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.8923,
+      -1e-06,
+      0.2248
+     ],
+     "chord": 0.533989,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.632,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.632,
+      "rel_chord_tip": 0.6361,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.908212,
+      -1e-06,
+      0.2326
+     ],
+     "chord": 0.505592,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.6361,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.6361,
+      "rel_chord_tip": 0.6529,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.945747,
+      -1e-06,
+      0.251
+     ],
+     "chord": 0.435034,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.6529,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.6529,
+      "rel_chord_tip": 0.6824,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      1.979814,
+      -1e-06,
+      0.2677
+     ],
+     "chord": 0.366336,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.6824,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.6824,
+      "rel_chord_tip": 0.7319,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.009801,
+      -1e-06,
+      0.2824
+     ],
+     "chord": 0.300567,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.7319,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.7319,
+      "rel_chord_tip": 0.8221,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.036932,
+      -1e-06,
+      0.2957
+     ],
+     "chord": 0.234607,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.8221,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.8221,
+      "rel_chord_tip": 0.861,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.044276,
+      -1e-06,
+      0.2993
+     ],
+     "chord": 0.215467,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat",
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.861,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "rudder",
+      "role": "rudder",
+      "rel_chord_root": 0.861,
+      "rel_chord_tip": 0.8815,
+      "servo_placement": "top",
+      "positive_deflection_deg": 30.0,
+      "negative_deflection_deg": 30.0,
+      "deflection_deg": 0.0,
+      "symmetric": true,
+      "mix_gain_primary": 1.0,
+      "mix_gain_secondary": 1.0,
+      "differential_ratio": 1.0
+     }
+    },
+    {
+     "xyz_le": [
+      2.046316,
+      -1e-06,
+      0.3003
+     ],
+     "chord": 0.208143,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.051022,
+      -1e-06,
+      0.3025
+     ],
+     "chord": 0.191814,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.130271,
+      -0.0,
+      0.3213
+     ],
+     "chord": 0.013229,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat"
+    },
+    {
+     "xyz_le": [
+      2.1328,
+      -0.0,
+      0.3219
+     ],
+     "chord": 0.0001,
+     "twist": 0.0,
+     "airfoil": "./components/airfoils/gee_bee_r3_vertical_tail_kulfan.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "fuselage": {
+   "name": "fuselage",
+   "x_secs": [
+    {
+     "xyz": [
+      0.196166,
+      0.0,
+      -0.02359
+     ],
+     "a": 0.107,
+     "b": 0.121348,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.196766,
+      0.0,
+      -0.023861
+     ],
+     "a": 0.10786,
+     "b": 0.122701,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2068,
+      0.0,
+      -0.026669
+     ],
+     "a": 0.122235,
+     "b": 0.132329,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.208566,
+      0.0,
+      -0.026811
+     ],
+     "a": 0.124483,
+     "b": 0.133212,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2212,
+      0.0,
+      -0.027807
+     ],
+     "a": 0.129421,
+     "b": 0.13927,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.239466,
+      0.0,
+      -0.02911
+     ],
+     "a": 0.135635,
+     "b": 0.147198,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.259166,
+      0.0,
+      -0.030326
+     ],
+     "a": 0.141036,
+     "b": 0.154968,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.269066,
+      0.0,
+      -0.030876
+     ],
+     "a": 0.143434,
+     "b": 0.158617,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2792,
+      0.0,
+      -0.031372
+     ],
+     "a": 0.156028,
+     "b": 0.162148,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.2904,
+      0.0,
+      -0.031837
+     ],
+     "a": 0.158106,
+     "b": 0.165869,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3115,
+      0.0,
+      -0.03261
+     ],
+     "a": 0.159194,
+     "b": 0.172248,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3311,
+      0.0,
+      -0.03316
+     ],
+     "a": 0.159208,
+     "b": 0.177523,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.351966,
+      0.0,
+      -0.033544
+     ],
+     "a": 0.158111,
+     "b": 0.182467,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3606,
+      0.0,
+      -0.033674
+     ],
+     "a": 0.157522,
+     "b": 0.184285,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.384366,
+      0.0,
+      -0.033653
+     ],
+     "a": 0.160561,
+     "b": 0.188911,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.4146,
+      0.0,
+      -0.033511
+     ],
+     "a": 0.164066,
+     "b": 0.193518,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.458166,
+      0.0,
+      -0.033331
+     ],
+     "a": 0.168439,
+     "b": 0.199026,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.4969,
+      0.0,
+      -0.032927
+     ],
+     "a": 0.171601,
+     "b": 0.203291,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5427,
+      0.0,
+      -0.032829
+     ],
+     "a": 0.174462,
+     "b": 0.206894,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.5777,
+      0.0,
+      -0.032333
+     ],
+     "a": 0.176024,
+     "b": 0.209223,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.589,
+      0.0,
+      -0.029892
+     ],
+     "a": 0.176261,
+     "b": 0.207462,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6068,
+      0.0,
+      -0.026119
+     ],
+     "a": 0.175143,
+     "b": 0.204758,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6155,
+      0.0,
+      -0.026283
+     ],
+     "a": 0.174826,
+     "b": 0.205445,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.6685,
+      0.0,
+      -0.027252
+     ],
+     "a": 0.175178,
+     "b": 0.2096,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.7017,
+      0.0,
+      -0.027238
+     ],
+     "a": 0.174898,
+     "b": 0.211582,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.75,
+      0.0,
+      -0.026898
+     ],
+     "a": 0.173726,
+     "b": 0.214045,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.808866,
+      0.0,
+      -0.025976
+     ],
+     "a": 0.171142,
+     "b": 0.214989,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.839166,
+      0.0,
+      -0.024972
+     ],
+     "a": 0.169289,
+     "b": 0.214945,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.8899,
+      0.0,
+      -0.022897
+     ],
+     "a": 0.165421,
+     "b": 0.21445,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.952766,
+      0.0,
+      -0.019338
+     ],
+     "a": 0.15995,
+     "b": 0.211911,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.9804,
+      0.0,
+      -0.017326
+     ],
+     "a": 0.157471,
+     "b": 0.210277,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.029866,
+      0.0,
+      -0.013376
+     ],
+     "a": 0.153022,
+     "b": 0.206937,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.0921,
+      0.0,
+      -0.007431
+     ],
+     "a": 0.147425,
+     "b": 0.200762,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.1224,
+      0.0,
+      -0.00396
+     ],
+     "a": 0.144576,
+     "b": 0.197181,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.1693,
+      0.0,
+      0.000938
+     ],
+     "a": 0.140105,
+     "b": 0.190468,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.2525,
+      0.0,
+      0.011169
+     ],
+     "a": 0.132145,
+     "b": 0.176678,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3117,
+      0.0,
+      0.017825
+     ],
+     "a": 0.126217,
+     "b": 0.167951,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.348966,
+      0.0,
+      0.032156
+     ],
+     "a": 0.122463,
+     "b": 0.173473,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3743,
+      0.0,
+      0.040777
+     ],
+     "a": 0.119911,
+     "b": 0.176367,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.3908,
+      0.0,
+      0.04598
+     ],
+     "a": 0.118248,
+     "b": 0.178097,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.4108,
+      0.0,
+      0.051802
+     ],
+     "a": 0.116194,
+     "b": 0.179726,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.4384,
+      0.0,
+      0.059012
+     ],
+     "a": 0.113292,
+     "b": 0.181502,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.4498,
+      0.0,
+      0.061737
+     ],
+     "a": 0.112082,
+     "b": 0.18212,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.48,
+      0.0,
+      0.068073
+     ],
+     "a": 0.108876,
+     "b": 0.182942,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.493866,
+      0.0,
+      0.070646
+     ],
+     "a": 0.107405,
+     "b": 0.183172,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.5123,
+      0.0,
+      0.073674
+     ],
+     "a": 0.105448,
+     "b": 0.183266,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.536666,
+      0.0,
+      0.077203
+     ],
+     "a": 0.102861,
+     "b": 0.182968,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.550366,
+      0.0,
+      0.078922
+     ],
+     "a": 0.101401,
+     "b": 0.182653,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.5884,
+      0.0,
+      0.082496
+     ],
+     "a": 0.097234,
+     "b": 0.18114,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.619466,
+      0.0,
+      0.084428
+     ],
+     "a": 0.093768,
+     "b": 0.179341,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.650366,
+      0.0,
+      0.085634
+     ],
+     "a": 0.090321,
+     "b": 0.177366,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.6785,
+      0.0,
+      0.08558
+     ],
+     "a": 0.087183,
+     "b": 0.175769,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.6964,
+      0.0,
+      0.085063
+     ],
+     "a": 0.085186,
+     "b": 0.174829,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.727966,
+      0.0,
+      0.08332
+     ],
+     "a": 0.081609,
+     "b": 0.173245,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.751966,
+      0.0,
+      0.081232
+     ],
+     "a": 0.078803,
+     "b": 0.172004,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.7807,
+      0.0,
+      0.077783
+     ],
+     "a": 0.075442,
+     "b": 0.170603,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.811,
+      0.0,
+      0.073332
+     ],
+     "a": 0.071898,
+     "b": 0.169187,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.8451,
+      0.0,
+      0.067331
+     ],
+     "a": 0.06791,
+     "b": 0.16807,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.8716,
+      0.0,
+      0.062081
+     ],
+     "a": 0.064795,
+     "b": 0.16751,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.9116,
+      0.0,
+      0.05309
+     ],
+     "a": 0.05992,
+     "b": 0.166813,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      1.9671,
+      0.0,
+      0.040743
+     ],
+     "a": 0.05313,
+     "b": 0.164321,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      2.0139,
+      0.0,
+      0.029606
+     ],
+     "a": 0.047401,
+     "b": 0.161496,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      2.0597,
+      0.0,
+      0.018076
+     ],
+     "a": 0.04162,
+     "b": 0.158099,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      2.0718,
+      0.0,
+      0.015058
+     ],
+     "a": 0.040074,
+     "b": 0.156962,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      2.1143,
+      0.0,
+      0.004805
+     ],
+     "a": 0.034645,
+     "b": 0.151968,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      2.1272,
+      0.0,
+      0.001648
+     ],
+     "a": 0.032997,
+     "b": 0.150234,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      2.15,
+      0.0,
+      -0.00156
+     ],
+     "a": 0.030085,
+     "b": 0.144705,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      2.2089,
+      0.0,
+      -0.009274
+     ],
+     "a": 0.022457,
+     "b": 0.128323,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      2.229778,
+      0.0,
+      -0.011577
+     ],
+     "a": 0.019715,
+     "b": 0.122027,
+     "n": 2.0
+    }
+   ],
+   "symmetric": false,
+   "role": "fuselage"
+  }
+ },
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ]
+}
