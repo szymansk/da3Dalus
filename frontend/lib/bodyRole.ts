@@ -1,12 +1,14 @@
 /**
- * Role and attachment of a fuselage body (gh-1355, geometry format 7.6).
+ * Role and attachment of a fuselage body (gh-1355, geometry format 7.6; spinner gh-1375, 7.7).
  *
  * What a body is (`role`) and the body it sits on (`attached_to`) are stated by the user or the
  * importer, never guessed from a name. The backend refuses an attachment to an unknown body, to
- * itself or in a cycle, a canopy without a parent, and a canopy outside its parent's x range.
+ * itself or in a cycle, a canopy without a parent, a canopy outside its parent's x range, a
+ * spinner without a parent or on a canopy or spinner, and a spinner that does not adjoin one end
+ * of its parent.
  */
 
-export type BodyRole = "fuselage" | "canopy" | "nacelle" | "fairing" | "pod" | "other";
+export type BodyRole = "fuselage" | "canopy" | "nacelle" | "fairing" | "pod" | "spinner" | "other";
 
 export const BODY_ROLES: readonly BodyRole[] = [
   "fuselage",
@@ -14,6 +16,7 @@ export const BODY_ROLES: readonly BodyRole[] = [
   "nacelle",
   "fairing",
   "pod",
+  "spinner",
   "other",
 ];
 
@@ -23,6 +26,7 @@ export const BODY_ROLE_LABELS: Record<BodyRole, string> = {
   nacelle: "Nacelle",
   fairing: "Fairing",
   pod: "Pod",
+  spinner: "Spinner",
   other: "Other",
 };
 
@@ -33,8 +37,20 @@ export const BODY_ROLE_ICONS: Record<BodyRole, string> = {
   nacelle: "◎", // bullseye
   fairing: "◖", // left half disc
   pod: "⬮", // vertical ellipse
+  spinner: "◁", // cone, tip ahead
   other: "○", // circle
 };
+
+/** The roles a body of which needs a parent, and the parent roles each of them is refused. */
+const REFUSED_PARENT_ROLES: Partial<Record<BodyRole, readonly BodyRole[]>> = {
+  canopy: ["canopy"],
+  spinner: ["canopy", "spinner"],
+};
+
+/** Whether a body of this role needs `attached_to` (a canopy, a spinner). */
+export function needsParent(role: BodyRole): boolean {
+  return role in REFUSED_PARENT_ROLES;
+}
 
 /** A canopy is drawn semi-transparent so the body it sits on shows through. */
 export const CANOPY_OPACITY = 0.35;
@@ -85,10 +101,20 @@ function closesCycle(name: string, parent: string, bodies: readonly BodyRelation
   return false;
 }
 
-/** The bodies `name` may be attached to: every other body whose chain does not lead back to it. */
-export function attachableBodies(name: string, bodies: readonly BodyRelation[]): string[] {
+/**
+ * The bodies `name` may be attached to: every other body whose chain does not lead back to it,
+ * and, given the body's role, whose role the backend accepts as its parent (no canopy under a
+ * canopy, no canopy or spinner under a spinner).
+ */
+export function attachableBodies(
+  name: string,
+  bodies: readonly BodyRelation[],
+  role?: BodyRole,
+): string[] {
+  const refused = (role && REFUSED_PARENT_ROLES[role]) || [];
   return bodies
     .filter((b) => b.name !== name && !closesCycle(name, b.name, bodies))
+    .filter((b) => !refused.includes(bodyRole(b)))
     .map((b) => b.name);
 }
 

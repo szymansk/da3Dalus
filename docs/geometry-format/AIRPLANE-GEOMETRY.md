@@ -484,12 +484,13 @@ guessed from its name (ADR 0020; maintainer, 2026-11-05):
 
 | | |
 |---|---|
-| `role` | `fuselage` · `canopy` · `nacelle` · `fairing` · `pod` · `other`; absent: `fuselage` |
+| `role` | `fuselage` · `canopy` · `nacelle` · `fairing` · `pod` · `spinner` · `other`; absent: `fuselage` |
 | `attached_to` | the **name** (the key under `fuselages`) of the body this one sits on; `null` or absent: none |
 
 `fuselage` is a main body; `canopy` the canopy or cabin hood on another body; `nacelle` an engine
 nacelle or cowling; `fairing` a wheel or strut fairing or a fillet; `pod` an external pod;
-`other` anything else. A document without these fields is unchanged: every body is a
+`spinner` the propeller spinner on the motor of another body (§7.7, gh-1375); `other` anything
+else. A document without these fields is unchanged: every body is a
 `fuselage` that sits on nothing.
 
 **Rules.** A violation is refused (HTTP 422 in the app, `invalid_input` in the aero kernel, canon
@@ -498,8 +499,8 @@ rule `body-attachment`), both with the path of the offending field:
 1. `attached_to`, when set, names **another existing body** of the same aircraft — not itself —
    and the chain of `attached_to` has **no cycle** (kernel code `invalid_body_attachment`, path
    `….attached_to`);
-2. a body of role **`canopy` has `attached_to`** (same code and path); for every other role it is
-   optional;
+2. a body of role **`canopy` has `attached_to`** (same code and path); so does a `spinner`
+   (§7.7); for every other role it is optional;
 3. a canopy's **x range** — from the smallest to the largest `xyz[0]` of its sections — lies
    **inside its parent's**, ends included, without tolerance (kernel code
    `canopy_outside_parent`, path `….x_secs[i].xyz[0]` of the section outside). The ranges are
@@ -564,6 +565,47 @@ delete them or attach them to another body first. Renaming is not possible throu
 an update keeps the name of its path — so no reference can dangle. A section edit of either body
 is checked against rule 3 as well. A `symmetric` body attached to a `symmetric` parent sits on the
 parent's mirror image in its mirrored copy (`attached_to` becomes `"<parent> (mirror)"`).
+
+### 7.7 Spinner (`role: spinner`, gh-1375)
+
+A propeller spinner is a purchased part on the motor, not part of the fuselage structure, so a
+plan import writes it as a body of its own (bauplan-digitalisierung 2.6.2): a construction tool
+must not build it, and puts the motor bulkhead at the spinner's back plate instead. It is
+recognised by its **role**, not by its name (maintainer decision 2026-11-06, ADR 0020).
+
+```json
+"fuselages": {
+  "fuselage": {"name": "fuselage", "role": "fuselage", "x_secs": [{"xyz": [0.0, 0, 0], ...}, ...]},
+  "spinner":  {"name": "spinner",  "role": "spinner", "attached_to": "fuselage",
+               "x_secs": [{"xyz": [-0.06, 0, 0], "a": 0, "b": 0, ...}, {"xyz": [0.0, 0, 0], ...}]}
+}
+```
+
+**Rules** (canon rule `body-attachment`, refused like §7.6 with the path of the offending field):
+
+4. a spinner **has `attached_to`**, naming the body that carries the motor — a fuselage or a
+   nacelle — and that body is **neither a canopy nor a spinner** (kernel code
+   `invalid_body_attachment`, path `….attached_to`);
+5. a spinner **adjoins one end** of its parent: a **tractor** spinner's largest `xyz[0]` equals its
+   parent's smallest, a **pusher** spinner's smallest equals its parent's largest — exactly,
+   without tolerance, as rule 3 (kernel code `spinner_not_adjoining_parent`, path
+   `….x_secs[i].xyz[0]` of the spinner section that should lie at the joint: its rearmost for a
+   spinner nearer the parent's front, its foremost otherwise). Compared only when both bodies
+   have at least `minimum-sections.min_sections` sections with finite positions.
+
+**In the solvers the spinner is part of its parent** (canon rule `spinner-merge`, draft). After
+the canopy merge (§7.6), the aero kernel merges every spinner, for the solvers only, into the body
+it is `attached_to` (as merged with its canopies); the stored document stays as written. The
+merged body is the spinner's sections strictly beyond the parent's end, in x order, followed
+(tractor) or preceded (pusher) by the parent's sections in their loft order. At the joint station
+the parent's end section becomes the envelope of it and the spinner's section there, refitted as
+in steps 3 and 4 of the canopy merge with the same settings; where the spinner does not show
+beyond the parent, the parent's section is kept verbatim. AVL and AeroBuildup both receive the
+merged body, so the body starts at the spinner tip and its wetted area includes the spinner;
+AeroBuildup then straightens its axis as for every body. A spinner on a nacelle merges into the
+nacelle. Every merged spinner is declared by the notice `spinner_merged_into_body` (spinner,
+parent, end `front` or `rear`, number of merged stations, the spinner's wetted area); a clamped
+refit exponent at the joint is the warning `spinner_merge_exponent_clamped`.
 
 ---
 

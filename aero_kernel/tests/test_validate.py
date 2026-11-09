@@ -1194,6 +1194,95 @@ class TestCanopyMerge:
         assert "canopy" in errors[0].message
 
 
+def _with_spinner(
+    document: dict[str, Any], x: tuple[float, float] = (-0.08, 0.0), **fields: Any
+) -> dict[str, Any]:
+    """Add a tractor spinner on the body ``Body`` (#1375): a point at the tip, the back plate."""
+    spinner: dict[str, Any] = {
+        "name": "Spinner",
+        "role": "spinner",
+        "attached_to": "Body",
+        "x_secs": [
+            {"xyz": [x[0], 0.0, 0.0], "a": 0.0, "b": 0.0, "n": 2.0},
+            {"xyz": [x[1], 0.0, 0.0], "a": 0.04, "b": 0.04, "n": 2.0},
+        ],
+    }
+    spinner.update(fields)
+    document["airplane"]["fuselages"]["Spinner"] = spinner
+    return document
+
+
+SPINNER = 'airplane.fuselages["Spinner"]'
+
+
+class TestSpinner:
+    """A spinner on the body that carries the motor (#1375, rules body-attachment, spinner-merge)."""
+
+    def test_a_tractor_spinner_is_admissible_and_its_merge_declared(self) -> None:
+        result = _result(_with_spinner(_document()))
+        assert result.errors == ()
+        (notice,) = [w for w in result.warnings if w.code == "spinner_merged_into_body"]
+        assert notice.severity is WarningSeverity.NOTICE
+        assert notice.origin == "airplane"
+        assert notice.detail["spinner"] == "Spinner"
+        assert notice.detail["parent"] == "Body"
+        assert notice.detail["end"] == "front"
+        assert notice.detail["merged_stations"] == 1
+        assert isinstance(notice.detail["spinner_wetted_area_m2"], float)
+        assert "Spinner" in notice.message
+        assert "Body" in notice.message
+
+    def test_a_pusher_spinner_is_declared_at_the_rear(self) -> None:
+        document = _with_spinner(_document(), x=(0.5, 0.58))
+        spinner = document["airplane"]["fuselages"]["Spinner"]["x_secs"]
+        spinner[0].update(a=0.04, b=0.04)
+        spinner[1].update(a=0.0, b=0.0)
+        (notice,) = [w for w in _result(document).warnings if w.code == "spinner_merged_into_body"]
+        assert notice.detail["end"] == "rear"
+
+    def test_a_spinner_without_parent_is_refused_at_attached_to(self) -> None:
+        errors = _validate(_with_spinner(_document(), attached_to=None))
+        assert _codes(errors) == ["invalid_body_attachment"]
+        assert _paths(errors) == [f"{SPINNER}.attached_to"]
+        assert errors[0].category is ErrorCategory.INVALID_INPUT
+
+    def test_a_spinner_on_a_canopy_is_refused_at_attached_to(self) -> None:
+        document = _with_spinner(_with_canopy(_document()), x=(0.0, 0.1), attached_to="Canopy")
+        errors = _validate(document)
+        assert _codes(errors) == ["invalid_body_attachment"]
+        assert _paths(errors) == [f"{SPINNER}.attached_to"]
+
+    def test_a_spinner_not_adjoining_its_parent_is_refused_at_the_section(self) -> None:
+        errors = _validate(_with_spinner(_document(), x=(-0.08, -0.01)))
+        assert _codes(errors) == ["spinner_not_adjoining_parent"]
+        assert _paths(errors) == [f"{SPINNER}.x_secs[1].xyz[0]"]
+        assert errors[0].category is ErrorCategory.INVALID_INPUT
+        assert "-0.01" in errors[0].message
+
+    def test_a_clamped_joint_exponent_is_a_warning(self) -> None:
+        document = _with_spinner(_document())
+        fuselages = document["airplane"]["fuselages"]
+        for x_sec in fuselages["Body"]["x_secs"]:
+            x_sec["n"] = 5000.0
+        fuselages["Spinner"]["x_secs"][1].update(a=0.05, b=0.07, n=5000.0)
+        (warning,) = [
+            w for w in _result(document).warnings if w.code == "spinner_merge_exponent_clamped"
+        ]
+        assert warning.severity is WarningSeverity.WARNING
+        assert warning.detail["spinner"] == "Spinner"
+        clamped = warning.detail["clamped_exponents"]
+        assert isinstance(clamped, int)
+        assert clamped > 0
+
+    def test_a_spinner_hidden_at_the_joint_has_no_clamp_warning(self) -> None:
+        codes = _codes_of_warnings(_result(_with_spinner(_document())))
+        assert "spinner_merge_exponent_clamped" not in codes
+
+    def test_an_invalid_spinner_gets_no_merge_declaration(self) -> None:
+        result = _result(_with_spinner(_document(), x=(-0.08, -0.01)))
+        assert "spinner_merged_into_body" not in _codes_of_warnings(result)
+
+
 def _with_kinked_axis(document: dict[str, Any]) -> dict[str, Any]:
     """Give the body ``Body`` a third section whose centre steps up by 0.03 m (#1358)."""
     sections = document["airplane"]["fuselages"]["Body"]["x_secs"]

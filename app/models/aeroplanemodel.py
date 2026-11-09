@@ -545,9 +545,10 @@ class FuselageModel(Base):
     # geometry with y → -y. Used for paired sub-fuselages like
     # landing-gear struts where OpenVSP stores only one side.
     symmetric = Column(Boolean, nullable=False, default=False, server_default="0")
-    # What the body is (gh-1355): fuselage | canopy | nacelle | fairing | pod | other, checked by
-    # ``BodyRole`` in the schema. Non-null with server default 'fuselage', so every row written
-    # before gh-1355 is a fuselage.
+    # What the body is (gh-1355, spinner gh-1375): fuselage | canopy | nacelle | fairing | pod |
+    # spinner | other, checked by ``BodyRole`` in the schema, not by the database (no check
+    # constraint, so a new role needs no migration). Non-null with server default 'fuselage', so
+    # every row written before gh-1355 is a fuselage.
     role = Column(String, nullable=False, default="fuselage", server_default="fuselage")
     # Name of the body of the same aeroplane this one sits on (gh-1355); NULL: on none. The
     # fuselage service keeps it pointing at an existing body (no dangling reference).

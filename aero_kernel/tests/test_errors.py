@@ -578,6 +578,7 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "inconsistent_fuselage_contours": ErrorCategory.INVALID_INPUT,
         "invalid_body_attachment": ErrorCategory.INVALID_INPUT,
         "canopy_outside_parent": ErrorCategory.INVALID_INPUT,
+        "spinner_not_adjoining_parent": ErrorCategory.INVALID_INPUT,
         "segment_on_last_section": ErrorCategory.INVALID_INPUT,
         "control_surface_without_device": ErrorCategory.INVALID_INPUT,
         "missing_surface_type": ErrorCategory.INVALID_INPUT,

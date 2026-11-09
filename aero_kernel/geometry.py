@@ -82,8 +82,9 @@ class _Frozen(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-# What a body is (format ch. 7.6, #1355): stated by the writer, never inferred from the name.
-BodyRole = Literal["fuselage", "canopy", "nacelle", "fairing", "pod", "other"]
+# What a body is (format ch. 7.6, #1355; spinner ch. 7.7, #1375): stated by the writer, never
+# inferred from the name.
+BodyRole = Literal["fuselage", "canopy", "nacelle", "fairing", "pod", "spinner", "other"]
 
 
 class FuselageXSecSuperEllipse(_Frozen):
@@ -117,10 +118,10 @@ class Fuselage(_Frozen):
         x_secs: Sections in loft order.
         symmetric: Whether the body is mirrored about y = 0 (paired sub-bodies only).
         role: What the body is (format ch. 7.6, #1355); stated by the writer, never inferred
-            from the name. The solvers see a canopy merged into the body it sits on
-            (:mod:`aero_kernel.solver_bodies`, #1355).
+            from the name. The solvers see a canopy and a spinner merged into the body it sits
+            on (:mod:`aero_kernel.solver_bodies`, #1355, #1375).
         attached_to: Name (key) of the body this one sits on; ``None`` if it sits on none. A
-            canopy has one (:mod:`aero_kernel.body_attachment`).
+            canopy and a spinner have one (:mod:`aero_kernel.body_attachment`).
         step_path: Path of the exported STEP surface geometry; kept verbatim, never read.
         solid_step_path: Path of the sewed solid STEP geometry; kept verbatim, never read.
     """

@@ -280,6 +280,26 @@ describe("Body roles in AeroplaneTree (gh-1355)", () => {
     expect(screen.getByLabelText("nacelle")).toBeDefined();
   });
 
+  it("lists a spinner under the body it sits on, with its own icon and chip (gh-1375)", () => {
+    const withSpinner = [...bodies, { name: "Spinner", role: "spinner" as const, attached_to: "Rumpf" }];
+    render(
+      <AeroplaneTree
+        aeroplaneId="aero-1"
+        wingNames={[]}
+        fuselageNames={["Spinner", "Haube", "Rumpf", "Gondel"]}
+        fuselageBodies={withSpinner}
+        aeroplaneName="eHawk"
+      />
+    );
+    const spinnerRow = screen.getByText("Spinner").closest('[role="treeitem"]') as HTMLElement;
+    const parentRow = screen.getByText("Rumpf").closest('[role="treeitem"]') as HTMLElement;
+    expect(Number.parseInt(spinnerRow.style.paddingLeft)).toBeGreaterThan(
+      Number.parseInt(parentRow.style.paddingLeft),
+    );
+    expect(screen.getByText("SPINNER")).toBeDefined();
+    expect(screen.getByLabelText("spinner")).toBeDefined();
+  });
+
   it("shows a body without loaded data as a fuselage", () => {
     render(
       <AeroplaneTree aeroplaneId="aero-1" wingNames={[]} fuselageNames={["X"]} aeroplaneName="eHawk" />

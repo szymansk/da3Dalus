@@ -4,6 +4,7 @@ import {
   BODY_ROLES,
   BODY_ROLE_LABELS,
   attachableBodies,
+  needsParent,
   type BodyRelation,
   type BodyRole,
 } from "@/lib/bodyRole";
@@ -13,8 +14,14 @@ const SELECT_CLASS =
 
 /**
  * Role and attachment of a fuselage body (gh-1355): what the body is and the body it sits on.
- * The parent list offers every other body of the aeroplane that does not sit on this one.
+ * The parent list offers every other body of the aeroplane that does not sit on this one and
+ * whose role the backend accepts as the parent of this role (gh-1375).
  */
+
+const PARENT_NOTES: Partial<Record<BodyRole, string>> = {
+  canopy: "A canopy needs the body it sits on.",
+  spinner: "A spinner needs the body that carries the motor.",
+};
 export function BodyRoleFields({
   name,
   role,
@@ -30,7 +37,7 @@ export function BodyRoleFields({
   onChange: (role: BodyRole, attachedTo: string | null) => void;
   idPrefix?: string;
 }>) {
-  const parents = attachableBodies(name, bodies);
+  const parents = attachableBodies(name, bodies, role);
   // a stored parent that is no longer offered (e.g. still loading) stays selectable
   const options = attachedTo && !parents.includes(attachedTo) ? [attachedTo, ...parents] : parents;
   const roleId = `${idPrefix}-role`;
@@ -74,9 +81,9 @@ export function BodyRoleFields({
           </select>
         </div>
       </div>
-      {role === "canopy" && attachedTo === null && (
+      {needsParent(role) && attachedTo === null && (
         <p role="note" className="text-[11px] text-amber-400">
-          A canopy needs the body it sits on.
+          {PARENT_NOTES[role]}
         </p>
       )}
     </div>
