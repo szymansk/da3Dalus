@@ -314,6 +314,14 @@ Sources:
   whose `xyz[1]` differs from its parent's, counted with its offset on both sides. Grid, bisection tolerance and
   bracket are numeric settings (`opt_body_merge_*` in `config.yaml`), reported among the solver settings of
   AeroBuildup and AVL. Declared only for an admissible input
+- the spinner merge (#1375, canon rule `spinner-merge`, draft, origin `airplane`, from validation): after the
+  canopy merge, every body of `role` `spinner` is merged into the body it is `attached_to` (as merged with its
+  canopies; `solver_bodies.merged_bodies`, the same one producer): the spinner's sections beyond the parent's
+  end, then (tractor) or before (pusher) the parent's, the joint station the canopy envelope of both, refitted
+  with the same settings. AVL and AeroBuildup see the full nose; the stored document is unchanged.
+  `spinner_merged_into_body` (`notice`, one per spinner; `detail`: `spinner`, `parent`, `end` (`front` or
+  `rear`), `merged_stations`, `spinner_wetted_area_m2`); `spinner_merge_exponent_clamped` (`warning`): a joint
+  exponent clamped to the bracket. Declared only for an admissible input
 - the straight body axis (#1358, canon rule `fuselage-axis-straightened`, origin `airplane`, from validation):
   AeroBuildup takes each segment's axis from two consecutive section centres, so a stepped centre would be a
   steeply inclined segment with Jorgensen crossflow drag at α = 0. For AeroBuildup only, after the canopy merge,
@@ -1417,7 +1425,8 @@ Validation` returns `errors` (`KernelError`s of category `invalid_input`, all of
 `airplane`, once per fuselage section with `n_lower` different from `n`, which the ASB conversion maps to the
 symmetric section of equal cross-section area, `superellipse.equivalent_exponent`, #1307; for an admissible
 input with canopies `canopy_merged_into_fuselage`, `canopy_merge_exponent_clamped` and `canopy_off_centre`, origin
-`airplane`, from `solver_bodies.merged_bodies`, #1355; `fuselage_axis_straightened`, origin `airplane`, from
+`airplane`, from `solver_bodies.merged_bodies`, #1355; with spinners `spinner_merged_into_body` and
+`spinner_merge_exponent_clamped`, origin `airplane`, from the same producer, #1375; `fuselage_axis_straightened`, origin `airplane`, from
 `body_axis.aerobuildup_bodies`, #1358). It needs no canon model but the kernel configuration's area tolerance; the checks
 of `values` slugs against the canon (`unknown_quantity`, `not_an_input`) are a second function added with
 the canon loader, not a stub now (ADR 0021). **A rule exists only for a field the kernel reads**;
@@ -1434,8 +1443,9 @@ one code, one test:
 | `duplicate_section` | two adjacent sections of a wing at one spanwise station: the same y and z of the leading edge (a section of zero span, NaN in AeroBuildup; #1342); `input_path` the second one |
 | `invalid_fuselage_contour` | a fuselage section's `contour` (format 7.1b, #1349: the full outline as a closed loop, the closing segment implicit) with fewer than `fuselage-contour.min_contour_points` (3) points, a repeated consecutive point (last to first included), two segments that cross or touch other than at a shared vertex, or a signed area ≤ 0 (not counter-clockwise with y right, z up); or a degenerate contour (a point, or all points exactly collinear) at a section other than the first or the last, where it would pinch the body (at the ends it is admissible and the polygon rules do not apply). `input_path` the point (`…contour[i]`) or the contour. Checked only on finite points (the walk reports the others). The kernel reads the contour for this check only; no solver reads it, and it is not compared with the a/b fit (the contour exists because the fit deviates; maintainer 2026-11-04) |
 | `inconsistent_fuselage_contours` | a fuselage in which some sections have a `contour` and others none, or the contours differ in point count (the loft joins point i to point i); one finding per section that differs from the first section with a contour, `input_path` its `contour` |
-| `invalid_body_attachment` | a body's `attached_to` (#1355, rule `body-attachment`) that names the body itself, a name that is not a body of the aircraft, or a body whose `attached_to` chain leads back to it (one finding per body in the cycle); or a body of `role` `canopy` without `attached_to`, or attached to another canopy. `input_path` the body's `attached_to`. The role is the writer's, never inferred from a name |
+| `invalid_body_attachment` | a body's `attached_to` (#1355, rule `body-attachment`) that names the body itself, a name that is not a body of the aircraft, or a body whose `attached_to` chain leads back to it (one finding per body in the cycle); or a body of `role` `canopy` without `attached_to`, or attached to another canopy; or a body of `role` `spinner` (#1375) without `attached_to`, or attached to a canopy or a spinner. `input_path` the body's `attached_to`. The role is the writer's, never inferred from a name |
 | `canopy_outside_parent` | a section of a `canopy` whose `xyz[0]` lies ahead of the first or behind the last `xyz[0]` of the body it is `attached_to` (ends included, no tolerance); compared only when both bodies have at least `minimum-sections.min_sections` sections with finite positions. `input_path` the section's `xyz[0]`. The solvers see each canopy merged into its parent (rule `canopy-merge`, #1355 slice 2) |
+| `spinner_not_adjoining_parent` | a `spinner` (#1375, rule `body-attachment`) that adjoins neither end of the body it is `attached_to`: neither its largest `xyz[0]` equals the parent's smallest (tractor) nor its smallest the parent's largest (pusher), exactly, no tolerance; compared only when both bodies have at least `minimum-sections.min_sections` sections with finite positions. `input_path` the `xyz[0]` of the spinner section that should lie at the joint (its rearmost when the spinner is nearer the parent's front, else its foremost). The solvers see each spinner merged into its parent (rule `spinner-merge`) |
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |

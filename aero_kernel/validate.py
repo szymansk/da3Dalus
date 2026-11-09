@@ -32,7 +32,7 @@ from aero_kernel.fuselage_contour import (
 from aero_kernel.geometry import Wing
 from aero_kernel.rules import Rules
 from aero_kernel.schema import AircraftInput, ComputeRequest, KernelWarning
-from aero_kernel.solver_bodies import CanopyMerge, merged_bodies
+from aero_kernel.solver_bodies import CanopyMerge, SolverBodies, SpinnerMerge, merged_bodies
 from aero_kernel.superellipse import equivalent_exponent
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -527,7 +527,11 @@ def _fuselage_findings(
 _ATTACHMENT_HINTS = {
     "invalid_body_attachment": (
         "Set attached_to to the name of another body of this aircraft, without a cycle; a canopy "
-        "needs one."
+        "and a spinner need one, a spinner on the body that carries the motor."
+    ),
+    "spinner_not_adjoining_parent": (
+        "Put the spinner's back plate at one end of the body it sits on: its last section at the "
+        "parent's first station (tractor) or its first section at the parent's last (pusher)."
     ),
     "canopy_outside_parent": (
         "Keep every section of the canopy within the x range of the body it sits on, or attach "
@@ -749,14 +753,57 @@ def _axis_notice(found: AxisStraightening) -> KernelWarning:
     return _warning("fuselage_axis_straightened", "airplane", message, detail)
 
 
-def _canopy_merge_warnings(airplane: geometry.AirplaneGeometry) -> list[KernelWarning]:
-    """The declarations of the canopy merge: one notice per canopy, warnings for its caveats.
+def _spinner_warnings(merge: SpinnerMerge) -> list[KernelWarning]:
+    """Declare that a spinner is merged into the body it sits on (#1375, ADR 0020)."""
+    where = "ahead of" if merge.end == "front" else "behind"
+    message = (
+        f"The spinner {merge.spinner!r} is merged into the body it sits on, {merge.parent!r}: the "
+        f"solvers see one body whose {merge.end} end is the spinner, {where} the parent, so the "
+        f"wetted area includes the spinner's {merge.spinner_wetted_area:.6g} m^2. "
+        f"{merge.merged_stations} stations come from the spinner, the joint enveloped as for a "
+        "canopy. The stored geometry is unchanged."
+    )
+    detail: dict[str, JsonValue] = {
+        "spinner": merge.spinner,
+        "parent": merge.parent,
+        "end": merge.end,
+        "merged_stations": merge.merged_stations,
+        "spinner_wetted_area_m2": merge.spinner_wetted_area,
+    }
+    warnings = [_warning("spinner_merged_into_body", "airplane", message, detail)]
+    if merge.clamped_exponents:
+        message = (
+            f"Merging the spinner {merge.spinner!r} into {merge.parent!r}: "
+            f"{merge.clamped_exponents} refitted exponents at the joint lie outside the search "
+            "bracket and are clamped to it, so the joint section's area differs from the "
+            "envelope's."
+        )
+        detail = {
+            "spinner": merge.spinner,
+            "parent": merge.parent,
+            "clamped_exponents": merge.clamped_exponents,
+        }
+        warnings.append(_warning("spinner_merge_exponent_clamped", "airplane", message, detail))
+    return warnings
+
+
+def _merge_warnings(airplane: geometry.AirplaneGeometry) -> list[KernelWarning]:
+    """The declarations of the canopy and the spinner merge, canopies first.
 
     Read from the one producer of the solver bodies (:func:`merged_bodies`, ADR 0022): the
     solvers see what is declared here.
     """
+    merged = merged_bodies(airplane)
+    warnings = _canopy_merge_warnings(merged)
+    for merge in merged.spinners:
+        warnings += _spinner_warnings(merge)
+    return warnings
+
+
+def _canopy_merge_warnings(merged: SolverBodies) -> list[KernelWarning]:
+    """The declarations of the canopy merge: one notice per canopy, warnings for its caveats."""
     warnings: list[KernelWarning] = []
-    for merge in merged_bodies(airplane).merges:
+    for merge in merged.merges:
         warnings.append(_canopy_notice(merge))
         if merge.clamped_exponents:
             message = (
@@ -824,7 +871,7 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
         + _fuselage_section_warnings(airplane.fuselages or {})
     )
     if not errors:  # the merge and the straight axis read an admissible geometry only
-        warnings += _canopy_merge_warnings(airplane)
+        warnings += _merge_warnings(airplane)
         warnings += [_axis_notice(found) for found in aerobuildup_bodies(airplane).straightenings]
     logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))

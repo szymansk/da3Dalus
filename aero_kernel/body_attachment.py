@@ -1,21 +1,25 @@
-"""The role of a body and the body it sits on (#1355, slice 1).
+"""The role of a body and the body it sits on (#1355, slice 1; spinner #1375).
 
 Every body under ``fuselages`` carries a ``role`` (``fuselage``, ``canopy``, ``nacelle``,
-``fairing``, ``pod``, ``other``) and optionally ``attached_to``, the name of the body it sits on.
-The role is stated by the writer, never inferred from a name (ADR 0020). The rules (canon rule
-``body-attachment``):
+``fairing``, ``pod``, ``spinner``, ``other``) and optionally ``attached_to``, the name of the body
+it sits on. The role is stated by the writer, never inferred from a name (ADR 0020). The rules
+(canon rule ``body-attachment``):
 
 1. ``attached_to``, when set, names another body of the same aircraft; the chain of
    ``attached_to`` has no cycle;
 2. a canopy has ``attached_to``, and its parent is no canopy (slice 2: the merge folds every
    canopy into one parent);
 3. a canopy's x range (the smallest to the largest ``xyz[0]`` of its sections) lies inside its
-   parent's, ends included.
+   parent's, ends included;
+4. a spinner has ``attached_to``, and its parent is neither a canopy nor a spinner (#1375);
+5. a spinner adjoins one end of its parent: tractor, its largest x equals the parent's smallest;
+   pusher, its smallest x equals the parent's largest. Exact, without tolerance.
 
-Rule 3 compares only bodies that have a loft, at least ``min_sections`` sections with finite
+Rules 3 and 5 compare only bodies that have a loft, at least ``min_sections`` sections with finite
 positions: a body with fewer is refused by ``too_few_sections``, a non-finite position by the walk
 over the numbers. These functions are pure and know no thresholds; the caller passes the canon's.
-The solvers see each canopy merged into its parent (:mod:`aero_kernel.solver_bodies`, slice 2).
+The solvers see each canopy and each spinner merged into its parent
+(:mod:`aero_kernel.solver_bodies`).
 """
 
 import math
@@ -24,7 +28,13 @@ from typing import Literal, NamedTuple
 
 __all__ = ["AttachedBody", "AttachmentDefect", "attachment_defects"]
 
-AttachmentCode = Literal["invalid_body_attachment", "canopy_outside_parent"]
+AttachmentCode = Literal[
+    "invalid_body_attachment", "canopy_outside_parent", "spinner_not_adjoining_parent"
+]
+
+# The roles that need a parent, and the roles their parent must not have.
+_NEEDS_PARENT = frozenset({"canopy", "spinner"})
+_FORBIDDEN_PARENT = {"canopy": frozenset({"canopy"}), "spinner": frozenset({"canopy", "spinner"})}
 
 
 class AttachedBody(NamedTuple):
@@ -46,7 +56,8 @@ class AttachmentDefect(NamedTuple):
 
     Attributes:
         body: Name of the offending body.
-        field: ``attached_to``, or ``x_secs`` for a canopy section outside its parent.
+        field: ``attached_to``, or ``x_secs`` for a canopy section outside its parent or a
+            spinner section that does not adjoin it.
         section: Index of the offending section (``x_secs`` only), else ``None``.
         code: The kernel error code.
         message: The reason, naming the bodies involved.
@@ -74,15 +85,16 @@ def _cycle(name: str, bodies: Mapping[str, AttachedBody]) -> list[str] | None:
 def _reference_defects(
     name: str, body: AttachedBody, bodies: Mapping[str, AttachedBody]
 ) -> list[AttachmentDefect]:
-    """Rules 1 and 2: the parent exists, is another body and not in a cycle; a canopy has one.
+    """Rules 1, 2 and 4: the parent exists, is another body and not in a cycle.
 
-    The parent of a canopy is no canopy.
+    A canopy and a spinner have a parent; a canopy's parent is no canopy, a spinner's neither a
+    canopy nor a spinner.
     """
     parent = body.attached_to
     if parent is None:
-        if body.role != "canopy":
+        if body.role not in _NEEDS_PARENT:
             return []
-        message = f"Body {name!r} is a canopy and needs attached_to: the body it sits on."
+        message = f"Body {name!r} is a {body.role} and needs attached_to: the body it sits on."
     elif parent == name:
         message = f"Body {name!r} is attached to itself."
     elif parent not in bodies:
@@ -91,6 +103,12 @@ def _reference_defects(
         message = (
             f"Canopy {name!r} is attached to {parent!r}, itself a canopy; a canopy sits on a body "
             "that is no canopy."
+        )
+    elif bodies[parent].role in _FORBIDDEN_PARENT.get(body.role, frozenset()):
+        message = (
+            f"Spinner {name!r} is attached to {parent!r}, a {bodies[parent].role}; a spinner sits "
+            "on the body that carries the motor (a fuselage or a nacelle), neither a canopy nor a "
+            "spinner."
         )
     else:
         cycle = _cycle(name, bodies)
@@ -130,6 +148,34 @@ def _range_defects(
     return defects
 
 
+def _spinner_defects(
+    name: str, body: AttachedBody, bodies: Mapping[str, AttachedBody], min_sections: int
+) -> list[AttachmentDefect]:
+    """Rule 5: a spinner adjoins its parent's front (tractor) or rear (pusher) end, exactly."""
+    parent_name = body.attached_to
+    if body.role != "spinner" or parent_name is None or parent_name == name:
+        return []
+    parent = bodies.get(parent_name)
+    if parent is None or not _has_loft(body, min_sections) or not _has_loft(parent, min_sections):
+        return []
+    start, end = min(parent.x), max(parent.x)
+    first, last = min(body.x), max(body.x)
+    if last == start or first == end:
+        return []
+    # the end the spinner is nearer to tells which section should lie at the joint
+    tractor = first + last < start + end
+    x = last if tractor else first
+    index = body.x.index(x)
+    message = (
+        f"Section {index} of spinner {name!r} lies at x = {x} m; a spinner adjoins one end of its "
+        f"parent {parent_name!r}: its last section at the parent's front x = {start} m (tractor) "
+        f"or its first section at the parent's rear x = {end} m (pusher)."
+    )
+    return [
+        AttachmentDefect(name, "x_secs", index, "spinner_not_adjoining_parent", message),
+    ]
+
+
 def attachment_defects(
     bodies: Mapping[str, AttachedBody], min_sections: int
 ) -> list[AttachmentDefect]:
@@ -147,4 +193,5 @@ def attachment_defects(
     for name, body in bodies.items():
         defects += _reference_defects(name, body, bodies)
         defects += _range_defects(name, body, bodies, min_sections)
+        defects += _spinner_defects(name, body, bodies, min_sections)
     return defects

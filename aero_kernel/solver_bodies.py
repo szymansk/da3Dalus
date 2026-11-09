@@ -1,4 +1,6 @@
-"""The bodies the solvers see: every canopy merged into the body it sits on (#1355, slice 2).
+"""The bodies the solvers see: every canopy and every spinner merged into its parent.
+
+Canopies #1355 (slice 2, rule ``canopy-merge``), spinners #1375 (rule ``spinner-merge``).
 
 A canopy (``role: canopy``) is modelled by its writer as a whole body whose lower part lies inside
 the body it sits on (``attached_to``). Handed to a solver as a body of its own, its hidden part
@@ -27,6 +29,15 @@ Per parent ``P`` with canopies ``C1 ... Ck``:
    search bracket is clamped to it and declared.
 5. Several canopies on one parent fold into the same envelope.
 
+**Spinners** (``role: spinner``, #1375) are merged after the canopies, each into the body it sits
+on (as merged with its canopies), so the solvers see the full nose and the wetted area includes
+the spinner. A spinner adjoins one end of its parent (canon rule ``body-attachment``): tractor, its
+largest x is the parent's smallest; pusher, its smallest x the parent's largest. The merged body is
+the spinner's sections strictly beyond that end, in x order, before (tractor) or after (pusher) the
+parent's sections in the parent's loft order. At the joint the parent's end section is the envelope
+of it and the spinner's section there, refitted as in steps 3 and 4 with the same settings; a
+spinner that does not show beyond the parent there keeps the parent's section verbatim.
+
 The stored document is never changed and the measured ``contour`` is never read (a merged section
 has none). :func:`merged_bodies` is the one producer (ADR 0022): the AeroSandbox conversion, the
 AVL bodies and the validation's declarations all read it.
@@ -36,7 +47,7 @@ import logging
 import math
 from collections.abc import Mapping, Sequence
 from itertools import pairwise
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 import numpy as np
 from aero_kernel.config import config
@@ -49,6 +60,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "CanopyMerge",
     "SolverBodies",
+    "SpinnerMerge",
     "merged_bodies",
     "outline_perimeter",
     "solver_bodies",
@@ -93,17 +105,40 @@ class CanopyMerge(NamedTuple):
     off_centre: float
 
 
+class SpinnerMerge(NamedTuple):
+    """What the merge of one spinner into its parent did; the content of its declaration.
+
+    Attributes:
+        spinner: Key of the spinner.
+        parent: Key of the body it sits on.
+        end: ``front`` (tractor, ahead of the parent) or ``rear`` (pusher, behind it).
+        merged_stations: Stations the spinner adds or refits: its sections beyond the parent's
+            end, plus the joint where it shows beyond the parent.
+        spinner_wetted_area: Wetted area of the spinner alone, m^2.
+        clamped_exponents: Refitted exponents at the joint clamped to the search bracket.
+    """
+
+    spinner: str
+    parent: str
+    end: Literal["front", "rear"]
+    merged_stations: int
+    spinner_wetted_area: float
+    clamped_exponents: int
+
+
 class SolverBodies(NamedTuple):
     """The bodies the solvers see and what the merge did.
 
     Attributes:
-        bodies: Every body that is not a canopy, in document order; a parent of canopies as its
-            merged body.
+        bodies: Every body that is neither a canopy nor a spinner, in document order; a parent
+            of canopies or spinners as its merged body.
         merges: One entry per canopy, in document order.
+        spinners: One entry per spinner, in document order.
     """
 
     bodies: tuple[Fuselage, ...]
     merges: tuple[CanopyMerge, ...]
+    spinners: tuple[SpinnerMerge, ...] = ()
 
 
 class _Settings(NamedTuple):
@@ -412,38 +447,28 @@ def _off_centre(canopy: Fuselage, parent: Fuselage) -> float:
     return max(offsets, default=0.0)
 
 
-def merged_bodies(airplane: AirplaneGeometry) -> SolverBodies:
-    """The bodies the solvers see, with what the merge did (#1355; ADR 0022, the one producer).
-
-    Expects a validated document: every canopy has ``attached_to`` naming another body that is not
-    a canopy, within whose x range it lies (canon rule ``body-attachment``).
-
-    Args:
-        airplane: The validated geometry document.
-
-    Returns:
-        Every body but the canopies in document order, a parent of canopies as its merged body,
-        and one :class:`CanopyMerge` per canopy.
-    """
-    fuselages = airplane.fuselages or {}
+def _merge_canopies(
+    fuselages: Mapping[str, Fuselage],
+) -> tuple[dict[str, Fuselage], list[CanopyMerge]]:
+    """Every body but the canopies by key, each parent of canopies merged (steps 1 to 5)."""
     by_parent: dict[str, dict[str, Fuselage]] = {}
     for key, body in fuselages.items():
         if body.role == "canopy" and body.attached_to is not None:
             by_parent.setdefault(body.attached_to, {})[key] = body
     if not by_parent:
-        return SolverBodies(tuple(fuselages.values()), ())
+        return dict(fuselages), []
     settings = _settings()
-    bodies: list[Fuselage] = []
+    bodies: dict[str, Fuselage] = {}
     merges: list[CanopyMerge] = []
     for key, body in fuselages.items():
         if body.role == "canopy" and body.attached_to is not None:
             continue
         canopies = by_parent.get(key)
         if not canopies:
-            bodies.append(body)
+            bodies[key] = body
             continue
         merge = _merge_parent(body, canopies, settings)
-        bodies.append(merge.body)
+        bodies[key] = merge.body
         added = wetted_area(merge.body.x_secs, settings.points)
         added -= wetted_area(body.x_secs, settings.points)
         for canopy_key, canopy in canopies.items():
@@ -470,7 +495,90 @@ def merged_bodies(airplane: AirplaneGeometry) -> SolverBodies:
         )
     order = {key: index for index, key in enumerate(fuselages)}
     merges.sort(key=lambda m: order[m.canopy])
-    return SolverBodies(tuple(bodies), tuple(merges))
+    return bodies, merges
+
+
+def _join_spinner(
+    body: Fuselage, spinner: Fuselage, front: bool, settings: _Settings
+) -> tuple[Fuselage, int, int]:
+    """Join a spinner to one end of a body; the merged body, its spinner stations and clamps.
+
+    ``front``: the spinner lies ahead of the body (tractor), else behind it (pusher).
+    """
+    ascending = _x(body.x_secs[0]) <= _x(body.x_secs[-1])
+    ordered = list(body.x_secs if ascending else reversed(body.x_secs))  # in x order
+    end = 0 if front else -1
+    joint_x = _x(ordered[end])
+    beyond = sorted(
+        (s for s in spinner.x_secs if (_x(s) < joint_x if front else _x(s) > joint_x)), key=_x
+    )
+    stations, clamped = len(beyond), 0
+    at_joint = _section_at(spinner.x_secs, joint_x)
+    if at_joint is not None and _shows(at_joint):
+        fit = _refit(ordered[end], {spinner.name: at_joint}, settings)
+        if fit is not None:
+            ordered[end] = fit.section
+            stations += 1
+            clamped = fit.clamped
+    merged = [*beyond, *ordered] if front else [*ordered, *beyond]
+    if not ascending:
+        merged.reverse()
+    return body.model_copy(update={"x_secs": tuple(merged)}), stations, clamped
+
+
+def _merge_spinners(
+    fuselages: Mapping[str, Fuselage], bodies: dict[str, Fuselage]
+) -> tuple[dict[str, Fuselage], list[SpinnerMerge]]:
+    """Merge every spinner into its parent as merged with its canopies (#1375).
+
+    The end is decided against the stored parent, whose x range the canopy merge keeps.
+    """
+    spinners = {
+        key: (body.attached_to, body)
+        for key, body in fuselages.items()
+        if body.role == "spinner" and body.attached_to is not None and body.attached_to in bodies
+    }
+    if not spinners:
+        return bodies, []
+    settings = _settings()
+    merges: list[SpinnerMerge] = []
+    for key, (parent_key, spinner) in spinners.items():
+        parent_x = [_x(s) for s in fuselages[parent_key].x_secs]
+        front = max(_x(s) for s in spinner.x_secs) <= min(parent_x)
+        joined, stations, clamped = _join_spinner(bodies[parent_key], spinner, front, settings)
+        bodies[parent_key] = joined
+        merges.append(
+            SpinnerMerge(
+                spinner=key,
+                parent=parent_key,
+                end="front" if front else "rear",
+                merged_stations=stations,
+                spinner_wetted_area=wetted_area(spinner.x_secs, settings.points),
+                clamped_exponents=clamped,
+            )
+        )
+        logger.debug("merged spinner %s into %s (%d stations)", key, parent_key, stations)
+    return {k: b for k, b in bodies.items() if k not in spinners}, merges
+
+
+def merged_bodies(airplane: AirplaneGeometry) -> SolverBodies:
+    """The bodies the solvers see, with what the merge did (#1355, #1375; ADR 0022, one producer).
+
+    Expects a validated document: every canopy has ``attached_to`` naming another body that is not
+    a canopy, within whose x range it lies; every spinner has ``attached_to`` naming a body that is
+    neither a canopy nor a spinner, one of whose ends it adjoins (canon rule ``body-attachment``).
+
+    Args:
+        airplane: The validated geometry document.
+
+    Returns:
+        Every body but the canopies and spinners in document order, a parent as its merged body,
+        one :class:`CanopyMerge` per canopy and one :class:`SpinnerMerge` per spinner.
+    """
+    fuselages = airplane.fuselages or {}
+    bodies, canopies = _merge_canopies(fuselages)
+    bodies, spinners = _merge_spinners(fuselages, bodies)
+    return SolverBodies(tuple(bodies.values()), tuple(canopies), tuple(spinners))
 
 
 def solver_bodies(airplane: AirplaneGeometry) -> tuple[Fuselage, ...]:

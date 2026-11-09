@@ -393,15 +393,15 @@
           "default": false
         },
         "role": {
-          "enum": ["fuselage", "canopy", "nacelle", "fairing", "pod", "other"],
+          "enum": ["fuselage", "canopy", "nacelle", "fairing", "pod", "spinner", "other"],
           "default": "fuselage",
-          "description": "What the body is (gh-1355, AIRPLANE-GEOMETRY.md \u00a77.6), stated by the writer and never inferred from the name. 'fuselage': a main body. 'canopy': the canopy or cabin hood on another body; needs attached_to (a body that is no canopy), and its x range (smallest to largest xyz[0] of its sections) lies within its parent's, ends included. Convention: a and the top edge are the real canopy, xyz[2] lies at the joint height on the parent, n_lower = 1 so the lower half lies inside the parent; with a contour (\u00a77.1b, a full closed loop) the writer may describe just the visible part. 'nacelle': engine nacelle or cowling. 'fairing': wheel or strut fairing, fillet. 'pod': an external pod. 'other': anything else. The aero kernel merges a canopy into its parent for the solvers, so only its visible part counts (gh-1355 slice 2).",
-          "examples": ["fuselage", "canopy"]
+          "description": "What the body is (gh-1355, AIRPLANE-GEOMETRY.md \u00a77.6), stated by the writer and never inferred from the name. 'fuselage': a main body. 'canopy': the canopy or cabin hood on another body; needs attached_to (a body that is no canopy), and its x range (smallest to largest xyz[0] of its sections) lies within its parent's, ends included. Convention: a and the top edge are the real canopy, xyz[2] lies at the joint height on the parent, n_lower = 1 so the lower half lies inside the parent; with a contour (\u00a77.1b, a full closed loop) the writer may describe just the visible part. 'nacelle': engine nacelle or cowling. 'fairing': wheel or strut fairing, fillet. 'pod': an external pod. 'spinner' (gh-1375, \u00a77.7): the propeller spinner on the motor of another body; needs attached_to (a body that is neither a canopy nor a spinner, e.g. the fuselage or a nacelle), and adjoins one end of it: tractor, its largest xyz[0] equals the parent's smallest; pusher, its smallest equals the parent's largest (exact). 'other': anything else. The aero kernel merges a canopy into its parent for the solvers, so only its visible part counts (gh-1355 slice 2), and a spinner into its parent, so the solvers see the full nose (gh-1375).",
+          "examples": ["fuselage", "canopy", "spinner"]
         },
         "attached_to": {
           "type": ["string", "null"],
           "default": null,
-          "description": "Name (the key under fuselages) of the body this one sits on (gh-1355). Must name another body of the same aeroplane, and the chain of attached_to must not form a cycle. Required for role 'canopy', optional for every other role. Null: the body sits on no other body.",
+          "description": "Name (the key under fuselages) of the body this one sits on (gh-1355). Must name another body of the same aeroplane, and the chain of attached_to must not form a cycle. Required for roles 'canopy' and 'spinner', optional for every other role. Null: the body sits on no other body.",
           "examples": [null, "fuselage"]
         },
         "step_path": {

@@ -163,6 +163,16 @@ describe("Fuselage body form (gh-1355)", () => {
     expect(screen.getByText(/422 needs attached_to/)).toBeInTheDocument();
   });
 
+  it("notes that a spinner needs the body that carries the motor (gh-1375)", () => {
+    render(<Harness />);
+    fireEvent.change(screen.getByLabelText("Role"), { target: { value: "spinner" } });
+    expect(
+      screen.getByText("A spinner needs the body that carries the motor."),
+    ).toBeInTheDocument();
+    const parent = screen.getByLabelText("Attached to") as HTMLSelectElement;
+    expect(Array.from(parent.options).map((o) => o.textContent)).toEqual(["(none)", "Rumpf"]);
+  });
+
   it("resets the fields on cancel", () => {
     render(<Harness />);
     fireEvent.change(screen.getByLabelText("Role"), { target: { value: "pod" } });

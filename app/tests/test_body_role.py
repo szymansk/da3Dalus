@@ -38,6 +38,16 @@ def canopy(x0: float = 0.2, x1: float = 0.5, attached_to: str | None = "Rumpf") 
     }
 
 
+def spinner(x0: float = -0.1, x1: float = 0.0, attached_to: str | None = "Rumpf") -> dict:
+    """A tractor spinner (gh-1375): its back plate at the parent's first station."""
+    return {
+        "name": "Spinner",
+        "role": "spinner",
+        "attached_to": attached_to,
+        "x_secs": [section(x0), section(x1)],
+    }
+
+
 # --------------------------------------------------------------------------- schema
 
 
@@ -49,7 +59,7 @@ class TestSchema:
 
     def test_every_role_of_the_format_is_accepted(self):
         roles = {r.value for r in schemas.BodyRole}
-        assert roles == {"fuselage", "canopy", "nacelle", "fairing", "pod", "other"}
+        assert roles == {"fuselage", "canopy", "nacelle", "fairing", "pod", "spinner", "other"}
 
     def test_an_unknown_role_is_refused(self):
         payload = body("Rumpf", role="cockpit")
@@ -284,3 +294,72 @@ def test_the_aeroplane_schema_carries_both_fields(client_and_db):
     assert schema.fuselages["Haube"].role == schemas.BodyRole.CANOPY
     assert schema.fuselages["Haube"].attached_to == "Rumpf"
     assert schema.fuselages["Rumpf"].role == schemas.BodyRole.FUSELAGE
+
+
+# --------------------------------------------------------------------------- spinner (gh-1375)
+
+
+def test_a_spinner_round_trip_keeps_role_and_attached_to(client_and_db):
+    client, _ = client_and_db
+    plane_id = _with_fuselage(client)
+    assert _put(client, plane_id, spinner()).status_code == 201
+    got = client.get(f"/aeroplanes/{plane_id}/fuselages/Spinner").json()
+    assert (got["role"], got["attached_to"]) == ("spinner", "Rumpf")
+    assert [xs["xyz"][0] for xs in got["x_secs"]] == [-0.1, 0.0]
+
+
+def test_a_pusher_spinner_is_accepted(client_and_db):
+    client, _ = client_and_db
+    plane_id = _with_fuselage(client)
+    assert _put(client, plane_id, spinner(1.0, 1.1)).status_code == 201
+
+
+def test_a_spinner_without_parent_is_a_422(client_and_db):
+    client, _ = client_and_db
+    plane_id = _with_fuselage(client)
+    response = _put(client, plane_id, spinner(attached_to=None))
+    assert response.status_code == 422
+    assert 'fuselages["Spinner"].attached_to' in response.json()["detail"]
+    assert "is a spinner and needs attached_to" in response.json()["detail"]
+    assert client.get(f"/aeroplanes/{plane_id}/fuselages").json() == ["Rumpf"]
+
+
+def test_a_spinner_on_a_canopy_is_a_422(client_and_db):
+    client, _ = client_and_db
+    plane_id = _with_fuselage(client)
+    assert _put(client, plane_id, canopy()).status_code == 201
+    response = _put(client, plane_id, spinner(0.1, 0.2, attached_to="Haube"))
+    assert response.status_code == 422
+    assert 'fuselages["Spinner"].attached_to' in response.json()["detail"]
+    assert "'Haube', a canopy" in response.json()["detail"]
+
+
+def test_a_spinner_on_a_spinner_is_a_422(client_and_db):
+    client, _ = client_and_db
+    plane_id = _with_fuselage(client)
+    assert _put(client, plane_id, spinner()).status_code == 201
+    cap = {**spinner(-0.2, -0.1, attached_to="Spinner"), "name": "Cap"}
+    response = _put(client, plane_id, cap)
+    assert response.status_code == 422
+    assert 'fuselages["Cap"].attached_to' in response.json()["detail"]
+    assert "'Spinner', a spinner" in response.json()["detail"]
+
+
+def test_a_spinner_not_adjoining_its_parent_is_a_422_at_the_section(client_and_db):
+    client, _ = client_and_db
+    plane_id = _with_fuselage(client)
+    response = _put(client, plane_id, spinner(-0.1, -0.02))
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert 'fuselages["Spinner"].x_secs[1].xyz[0]' in detail
+    assert "adjoins one end of its parent 'Rumpf'" in detail
+
+
+def test_moving_the_parent_nose_away_from_its_spinner_is_a_422(client_and_db):
+    client, _ = client_and_db
+    plane_id = _with_fuselage(client)
+    assert _put(client, plane_id, spinner()).status_code == 201
+    url = f"/aeroplanes/{plane_id}/fuselages/Rumpf"
+    response = client.post(url, json=body("Rumpf", 0.05, 1.0))
+    assert response.status_code == 422
+    assert "spinner 'Spinner'" in response.json()["detail"]

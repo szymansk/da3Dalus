@@ -175,7 +175,8 @@ describe("buildFuselageTraces of a canopy (gh-1355)", () => {
   });
 
   it("draws every other body opaque", () => {
-    for (const role of ["fuselage", "nacelle", undefined] as const) {
+    // gh-1375: a spinner is drawn as a body of its own, opaque
+    for (const role of ["fuselage", "nacelle", "spinner", undefined] as const) {
       const traces = buildFuselageTraces({ name: "f", role, x_secs: [ROUND, ROUND] }, "#fff");
       expect(traces.every((t) => t.opacity === undefined)).toBe(true);
     }

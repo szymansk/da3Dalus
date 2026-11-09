@@ -235,3 +235,111 @@ def test_the_perimeter_of_a_circle_and_a_diamond() -> None:
 def test_the_wetted_area_of_a_cylinder_is_perimeter_times_length() -> None:
     sections = [FuselageXSecSuperEllipse.model_validate(section(x, 0.1, 0.1)) for x in (0.0, 2.0)]
     assert math.isclose(wetted_area(sections), 2.0 * math.pi * 0.1 * 2.0, rel_tol=1e-6)
+
+
+# --- spinner merge (#1375, rule spinner-merge) ---
+
+
+def spinner(
+    x: tuple[float, ...] = (-0.1, -0.05, 0.0),
+    radius: tuple[float, ...] = (0.0, 0.025, 0.03),
+    attached_to: str = "Rumpf",
+    z: float = 0.0,
+) -> dict[str, Any]:
+    """A spinner of circular sections: tip, middle, back plate (tractor by default)."""
+    return body(
+        [section(x_i, r, r, z=z) for x_i, r in zip(x, radius, strict=True)],
+        "spinner",
+        attached_to,
+    )
+
+
+def test_a_tractor_spinner_is_prepended_to_its_parent() -> None:
+    """The spinner's stations ahead of the parent, then the parent's; no body of its own."""
+    plane = airplane(Rumpf=fuselage_box(), Spinner=spinner())
+    result = merged_bodies(plane)
+    (found,) = result.bodies
+    assert found.name == "Rumpf"
+    assert [s.xyz[0] for s in found.x_secs] == [-0.1, -0.05, 0.0, 0.5, 1.0]
+    stored = plane.fuselages or {}
+    assert found.x_secs[:2] == stored["Spinner"].x_secs[:2]
+    # the back plate (r 0.03) lies inside the parent's nose (0.05 x 0.04): the parent's section
+    assert found.x_secs[2:] == stored["Rumpf"].x_secs
+    (merge,) = result.spinners
+    assert (merge.spinner, merge.parent, merge.end) == ("Spinner", "Rumpf", "front")
+    assert merge.merged_stations == 2
+    assert math.isclose(merge.spinner_wetted_area, wetted_area(stored["Spinner"].x_secs))
+    assert merge.clamped_exponents == 0
+
+
+def test_the_stored_document_is_unchanged() -> None:
+    plane = airplane(Rumpf=fuselage_box(), Spinner=spinner())
+    before = plane.model_dump()
+    merged_bodies(plane)
+    assert plane.model_dump() == before
+
+
+def test_a_pusher_spinner_is_appended_to_its_parent() -> None:
+    plane = airplane(Rumpf=fuselage_box(), Spinner=spinner((1.0, 1.05, 1.1), (0.03, 0.025, 0.0)))
+    (found,) = solver_bodies(plane)
+    assert [s.xyz[0] for s in found.x_secs] == [0.0, 0.5, 1.0, 1.05, 1.1]
+    (merge,) = merged_bodies(plane).spinners
+    assert merge.end == "rear"
+    assert merge.merged_stations == 2
+
+
+def test_a_spinner_wider_than_the_parent_end_is_enveloped_at_the_joint() -> None:
+    """At the joint the larger outline counts: the spinner's back plate over a pointed tail."""
+    parent = body([section(0.0, 0.05, 0.04), section(1.0, 0.0, 0.0)])
+    plane = airplane(Rumpf=parent, Spinner=spinner((1.0, 1.1), (0.03, 0.0)))
+    (found,) = solver_bodies(plane)
+    assert [s.xyz[0] for s in found.x_secs] == [0.0, 1.0, 1.1]
+    joint = found.x_secs[1]
+    assert math.isclose(joint.a, 0.03, rel_tol=1e-6)
+    assert math.isclose(joint.b, 0.03, rel_tol=1e-12)
+    assert math.isclose(area(joint), math.pi * 0.03**2, rel_tol=1e-3)
+    (merge,) = merged_bodies(plane).spinners
+    assert merge.merged_stations == 2  # the tip and the refitted joint
+
+
+def test_the_joint_envelope_covers_both_outlines() -> None:
+    """A back plate taller than the parent's nose: the envelope spans both."""
+    plane = airplane(Rumpf=fuselage_box(), Spinner=spinner(radius=(0.0, 0.04, 0.045)))
+    (found,) = solver_bodies(plane)
+    joint = found.x_secs[2]
+    assert joint.xyz[0] == 0.0
+    assert math.isclose(joint.b, 0.045, rel_tol=1e-12)
+    assert math.isclose(joint.a, 0.05, rel_tol=1e-6)
+    assert area(joint) > math.pi * 0.05 * 0.04
+
+
+def test_a_descending_parent_gets_the_spinner_at_its_front_end() -> None:
+    """Loft order from tail to nose: the spinner goes after the parent's last section."""
+    parent = body([section(1.0, 0.05, 0.04), section(0.0, 0.05, 0.04)])
+    (found,) = solver_bodies(airplane(Rumpf=parent, Spinner=spinner()))
+    assert [s.xyz[0] for s in found.x_secs] == [1.0, 0.0, -0.05, -0.1]
+
+
+def test_a_spinner_on_a_nacelle_merges_into_the_nacelle() -> None:
+    nacelle = body([section(0.2, 0.02, 0.02, y=0.3), section(0.5, 0.02, 0.02, y=0.3)], "nacelle")
+    tip = body([section(0.1, 0.0, 0.0, y=0.3), section(0.2, 0.015, 0.015, y=0.3)], "spinner")
+    tip["attached_to"] = "Gondel"
+    plane = airplane(Rumpf=fuselage_box(), Gondel=nacelle, Spinner=tip)
+    bodies = solver_bodies(plane)
+    assert [b.name for b in bodies] == ["Rumpf", "Gondel"]
+    assert [s.xyz[0] for s in bodies[1].x_secs] == [0.1, 0.2, 0.5]
+    assert bodies[0] == (plane.fuselages or {})["Rumpf"]
+
+
+def test_the_spinner_merges_after_the_canopy_merge() -> None:
+    plane = airplane(Rumpf=fuselage_box(), Haube=canopy(), Spinner=spinner())
+    result = merged_bodies(plane)
+    (found,) = result.bodies
+    assert [s.xyz[0] for s in found.x_secs] == [-0.1, -0.05, 0.0, 0.3, 0.4, 0.5, 0.6, 1.0]
+    assert [m.canopy for m in result.merges] == ["Haube"]
+    assert [m.spinner for m in result.spinners] == ["Spinner"]
+
+
+def test_an_airplane_without_spinners_reports_no_spinner_merge() -> None:
+    assert merged_bodies(airplane(Rumpf=fuselage_box(), Haube=canopy())).spinners == ()
+    assert merged_bodies(airplane(Rumpf=fuselage_box())).spinners == ()

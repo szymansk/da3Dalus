@@ -740,7 +740,8 @@ function buildBodySectionNodes(params: BuildTreeDataParams, fn: string, level: n
 
 function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): void {
   const bodies = params.fuselageBodies ?? [];
-  // gh-1355: a body is listed under the body it is attached to (a canopy under its fuselage)
+  // gh-1355: a body is listed under the body it is attached to (a canopy under its fuselage,
+  // gh-1375: a spinner under the body that carries the motor)
   for (const { name: fn, depth } of bodyTreeOrder(params.fuselageNames, bodies)) {
     const node = buildBodyNode(params, fn, depth, bodyRole(bodies.find((b) => b.name === fn)));
     treeData.push(node);

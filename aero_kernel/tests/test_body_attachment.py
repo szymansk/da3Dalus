@@ -140,3 +140,115 @@ def test_a_canopy_on_a_canopy_is_refused() -> None:
 def test_a_nacelle_on_a_canopy_is_admissible() -> None:
     bodies = {"fuselage": _body(), "canopy": _canopy(), "light": _body(attached_to="canopy")}
     assert attachment_defects(bodies, MIN_SECTIONS) == []
+
+
+def _spinner(
+    x: tuple[float, ...] = (-0.1, 0.0), attached_to: str | None = "fuselage"
+) -> AttachedBody:
+    return _body(x, role="spinner", attached_to=attached_to)
+
+
+def test_a_tractor_spinner_at_the_front_of_its_fuselage_is_admissible() -> None:
+    """#1375: the spinner's last section is the parent's first station."""
+    bodies = {"fuselage": _body(), "spinner": _spinner()}
+    assert attachment_defects(bodies, MIN_SECTIONS) == []
+
+
+def test_a_pusher_spinner_at_the_rear_of_its_fuselage_is_admissible() -> None:
+    bodies = {"fuselage": _body(), "spinner": _spinner((1.0, 1.1))}
+    assert attachment_defects(bodies, MIN_SECTIONS) == []
+
+
+def test_a_spinner_on_a_nacelle_is_admissible() -> None:
+    bodies = {
+        "fuselage": _body(),
+        "nacelle": _body((0.3, 0.6), role="nacelle"),
+        "spinner": _spinner((0.2, 0.3), attached_to="nacelle"),
+    }
+    assert attachment_defects(bodies, MIN_SECTIONS) == []
+
+
+def test_a_spinner_without_parent_is_refused() -> None:
+    defects = attachment_defects(
+        {"fuselage": _body(), "spinner": _spinner(attached_to=None)}, MIN_SECTIONS
+    )
+    assert [(d.body, d.field, d.code) for d in defects] == [
+        ("spinner", "attached_to", "invalid_body_attachment")
+    ]
+    assert "spinner" in defects[0].message
+
+
+def test_a_spinner_on_a_canopy_is_refused() -> None:
+    bodies = {
+        "fuselage": _body(),
+        "canopy": _canopy(),
+        "spinner": _spinner((0.1, 0.2), attached_to="canopy"),
+    }
+    defects = attachment_defects(bodies, MIN_SECTIONS)
+    assert [(d.body, d.field, d.code) for d in defects] == [
+        ("spinner", "attached_to", "invalid_body_attachment")
+    ]
+    assert "'canopy', a canopy" in defects[0].message
+
+
+def test_a_spinner_on_a_spinner_is_refused() -> None:
+    bodies = {
+        "fuselage": _body(),
+        "spinner": _spinner(),
+        "cap": _spinner((-0.2, -0.1), attached_to="spinner"),
+    }
+    defects = attachment_defects(bodies, MIN_SECTIONS)
+    assert [(d.body, d.field, d.code) for d in defects] == [
+        ("cap", "attached_to", "invalid_body_attachment")
+    ]
+    assert "'spinner', a spinner" in defects[0].message
+
+
+def test_a_canopy_on_a_spinner_is_admissible_by_the_spinner_rules() -> None:
+    """The spinner rules restrict the spinner's parent, not who sits on a spinner."""
+    bodies = {"fuselage": _body(), "spinner": _spinner(), "canopy": _canopy((-0.1, 0.0), "spinner")}
+    assert attachment_defects(bodies, MIN_SECTIONS) == []
+
+
+def test_a_spinner_short_of_the_front_is_refused_at_its_last_section() -> None:
+    """Exact comparison: a gap of 1 mm is no joint."""
+    bodies = {"fuselage": _body(), "spinner": _spinner((-0.1, -0.001))}
+    defects = attachment_defects(bodies, MIN_SECTIONS)
+    assert [(d.body, d.field, d.section, d.code) for d in defects] == [
+        ("spinner", "x_secs", 1, "spinner_not_adjoining_parent")
+    ]
+    assert "x = -0.001 m" in defects[0].message
+    assert "'fuselage'" in defects[0].message
+
+
+def test_a_spinner_overlapping_the_front_is_refused() -> None:
+    bodies = {"fuselage": _body(), "spinner": _spinner((-0.1, 0.05))}
+    defects = attachment_defects(bodies, MIN_SECTIONS)
+    assert [(d.section, d.code) for d in defects] == [(1, "spinner_not_adjoining_parent")]
+
+
+def test_a_pusher_spinner_overlapping_the_rear_is_refused_at_its_first_section() -> None:
+    bodies = {"fuselage": _body(), "spinner": _spinner((0.95, 1.1))}
+    defects = attachment_defects(bodies, MIN_SECTIONS)
+    assert [(d.section, d.code) for d in defects] == [(0, "spinner_not_adjoining_parent")]
+
+
+def test_a_spinner_in_the_middle_of_its_parent_is_refused() -> None:
+    bodies = {"fuselage": _body(), "spinner": _spinner((0.4, 0.5))}
+    defects = attachment_defects(bodies, MIN_SECTIONS)
+    assert [d.code for d in defects] == ["spinner_not_adjoining_parent"]
+
+
+def test_the_spinner_position_is_not_compared_for_too_few_sections() -> None:
+    bodies = {"fuselage": _body((0.0,)), "spinner": _spinner((0.4, 0.5))}
+    assert attachment_defects(bodies, MIN_SECTIONS) == []
+
+
+def test_the_spinner_position_is_not_compared_for_non_finite_positions() -> None:
+    bodies = {"fuselage": _body(), "spinner": _spinner((math.nan, 0.5))}
+    assert attachment_defects(bodies, MIN_SECTIONS) == []
+
+
+def test_the_spinner_position_is_not_compared_against_a_missing_parent() -> None:
+    defects = attachment_defects({"spinner": _spinner((0.4, 0.5))}, MIN_SECTIONS)
+    assert [d.code for d in defects] == ["invalid_body_attachment"]
