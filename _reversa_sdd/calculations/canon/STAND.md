@@ -660,3 +660,7 @@ moves only through C_L,md (CHEKKER 0.20136 → 0.19972 m, the others ≤ 7e-5 m)
 Measured fuselage C_D change at α = 0 after the canopy merge: CHEKKER −0.0099, JAGUAR −0.0013, BRYAN
 −0.0008 (its issue step lay at the canopy, smoothed by the merge), WIESEL −0.0005, RV-7 −0.0003.
 **Rule `fuselage-axis-straightened` approved by the maintainer (2026-11-08)** in the corrected wording.
+
+**Formula `aspect-ratio` approved by the maintainer (2026-11-10)**, `AR = b_ref^2 / S_ref` from the approved
+`airplane-geometry`, with two text corrections (Sadraey's caveat stated as a warning against the MAC as c_bar;
+the sentence on the app's 7.0 fallback removed). The computation is unchanged. 34 of 64 formulas are approved.
