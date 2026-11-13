@@ -61,7 +61,9 @@ async def test_the_avl_world_beyond_its_range_is_dropped_and_declared(p_hat: flo
     assert warning.world == AVL_WORLD
     assert warning.detail["limit"] == 0.1
     assert warning.detail["p_hat"] == p_hat
-    assert close(warning.detail["p_deg_s"], math.degrees(p_hat * 2.0 * V_CRUISE / B_REF), 1e-12)
+    p_deg_s = warning.detail["p_deg_s"]
+    assert isinstance(p_deg_s, float)
+    assert close(p_deg_s, math.degrees(p_hat * 2.0 * V_CRUISE / B_REF), 1e-12)
 
 
 async def test_the_avl_world_at_the_limit_stays_in_the_interval() -> None:
