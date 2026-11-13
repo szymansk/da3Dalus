@@ -57,7 +57,7 @@ Sources write the n = 1 case and introduce n separately; the combined n*m*g/(q*S
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | `aero_kernel/formulas/lift_coefficient_required.py` | EXACT | 🟢 |  |
-| [[gravity_g]] | EXACT | 🟢 |  |
+| [[cl_target]] | EXACT | 🟢 | the relation as written; `g` is the literal 9.81, not the canon's [[gravity]] |
 
 ## Approval
 

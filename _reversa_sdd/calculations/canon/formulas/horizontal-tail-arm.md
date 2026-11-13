@@ -18,6 +18,9 @@ tags:
 tex: l_{H,CG} = x_{h,25} - x_{cg,design}
 inputs: {airplane: airplane, x_cg: centre-of-gravity-design}
 outputs: {l_h_cg: horizontal-tail-arm}
+applications:
+  - id: with_horizontal_tail
+    when: has_horizontal_tail
 ---
 
 # Horizontal tail arm from the design CG

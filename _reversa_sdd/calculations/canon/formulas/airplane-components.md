@@ -39,6 +39,8 @@ outputs:
 ```
 m_bat, Q_bat, C_rate, U_cell, K_v, I_0, R_m, eta_mot, P_mot,max, D_prop := components of the airplane
                                               (U_cell = battery.cell_voltage_v, eta_mot = brushless_motor.efficiency_pct / 100)
+m_bat     := battery.mass_g / 1000           (catalogue mass in g -> kg)
+D_prop    := propeller.diameter_in * 0.0254  (catalogue diameter in inches -> m)
 U_bat     := cells * U_cell                  (cells from the pack; U_cell = cell-voltage-nominal)
 E_bat     := Q_bat / 1000 * U_bat            (Ah times the nominal pack voltage; U_bat = cells * U_cell)
 I_bat,max := C_rate * Q_bat / 1000           (continuous current allowed, A)
@@ -57,6 +59,8 @@ changes the mass, the thrust and with them everything downstream. The graph now 
 **No drive-train efficiency and no specific energy are read** (maintainer, 2026-10-25, #1235). `propulsive-efficiency` is deleted (ADR 0021): flight time and range come from the part-load chain [[motor-propeller-part-load]], not from one assumed constant. `battery-specific-energy` is a design assumption of [[battery-mass-from-capacity]] only. The nameplate static thrust is gone
 (2026-10-02): it names neither voltage nor propeller; static thrust is computed instead.
 
+**Unit conversions of the read.** The catalogue stores the battery mass in grams (`mass_g`) and the propeller diameter in inches (`diameter_in`); [[battery-mass]] is in kg and [[propeller-diameter]] in m, so the read converts: `m_bat = mass_g / 1000`, `D_prop = diameter_in · 0.0254`.
+
 **Battery as the catalogue holds it** (maintainer, 2026-10-25, #1235). The charge is read in mAh ([[battery-charge-capacity]], field `capacity_mah`), the continuous C-rate as [[battery-c-rate]] (field `c_rate`; burst ratings are not modelled). Derived: the pack energy [[battery-capacity]] `= Q_bat/1000 · U_bat` in Wh (nominal cell voltage [[cell-voltage-nominal]], default 3.7 V) and the allowed continuous current [[battery-current-allowed]] `= C_rate · Q_bat/1000` in A, both as values for the evaluation (A10).
 
 **Motor and battery for the torque balance** (added 2026-10-01): `K_v`, `I_0` and `R_m` of the fitted motor, `U_bat` from the cell count and the nominal cell voltage [[cell-voltage-nominal]] (read from the battery, #1245). `R_m` and some `I_0` are missing from the catalogue (#1149), so both are **optional** outputs — an absent value is returned as absent, never filled in: `R_m` absent → route A, never estimated (`Q-PT-6`); `R_m` is the manufacturer's winding resistance (`rm_ohm`) only, ESC and cable are not in it, so the voltage loss is slightly under-estimated (maintainer, 2026-10-25, #1251); `I_0` absent → the torque balance runs with `I_0 = 0` (BR-PT15). Both are declared by a `notice` (ADR 0020); route B is taken only where the manufacturer publishes `R_m`.
@@ -67,7 +71,7 @@ changes the mass, the thrust and with them everything downstream. The graph now 
 
 **Source.** 🟡 PARTIAL. 🟢 for the meaning of `K_v`, `I_0`, `R_m`: Drela, three-parameter DC motor model (`motor1` §1.1, §1.1.1, §1.1.2; measurement protocol §2). The values themselves are catalogue data (manufacturer figures via the committed import snapshot), not derived. 🔴 NO SOURCE FOUND for the battery quantities: catalogue values with no cited calibration; the nominal cell voltage is the sourced LiPo value (default of [[cell-voltage-nominal]]), not a measured pack voltage.
 
-**Validity in the RC/UAV regime (ADR 0028).** Regime-independent as a read: the entry copies catalogue values and computes nothing. The data are point measurements, valid near the conditions they were measured at. In Drela's three-parameter model `R_m` rises with winding temperature, so a cold catalogue value under-predicts the voltage drop under load; `I_0` depends on shaft speed and is meaningful only when measured near the operating rpm; the model breaks down at very high current (Drela `motor1` §1.1). Battery capacity and voltage depend on discharge rate and temperature [no source]: the rated mAh holds at the manufacturer's test rate, the nominal cell voltage is a mid-discharge value, and the pack energy derived from the two inherits both.
+**Validity in the RC/UAV regime (ADR 0028).** Regime-independent as a read: the entry copies catalogue values; it computes only the unit conversions and the three derivations of the canonical form (`U_bat`, `E_bat`, `I_bat,max`). The data are point measurements, valid near the conditions they were measured at. In Drela's three-parameter model `R_m` rises with winding temperature, so a cold catalogue value under-predicts the voltage drop under load; `I_0` depends on shaft speed and is meaningful only when measured near the operating rpm; the model breaks down at very high current (Drela `motor1` §1.1). Battery capacity and voltage depend on discharge rate and temperature [no source]: the rated mAh holds at the manufacturer's test rate, the nominal cell voltage is a mid-discharge value, and the pack energy derived from the two inherits both.
 
 **Ist ≠ Soll (#1235).** Ist: the app reads the capacity in Wh and applies one drive-train efficiency of about 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions) in `app/services/endurance_service.py`. Soll: the app **must follow** this entry and the part-load chain and drop that constant (#1238).
 

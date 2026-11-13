@@ -22,6 +22,8 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   n_lim: limit-load-factor
   k_v: motor-voltage-constant
   i_0: motor-no-load-current
@@ -48,7 +50,7 @@ subject to:   L(V, alpha) = n * m * g
               1 <= n <= n_lim
 ```
 
-**Produces** [[min-sustained-turn-radius]] · [[min-sustained-turn-radius-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[min-sustained-turn-radius]] · [[min-sustained-turn-radius-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: an optimisation problem**, the same shape as the extremal closures and the climb. Variables: airspeed `V`, angle of attack `alpha`, load factor `n`, propeller speed `n_prop`. A **sustained** turn: level, at constant speed, so thrust equals drag; the drag comes from AeroBuildup at the turn's `alpha`, so the induced drag of the higher lift is in it. Thrust and rpm as in the climb ([[motor-propeller-equilibrium]], route declared per `Q-PT-6`).
 
@@ -63,7 +65,7 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 
 **Why not a bank angle as input.** A turn at a pilot-chosen bank angle says something about the pilot's choice, not about the aircraft. The stall speed in such a turn is the [[stall-speed]] problem with the load factor bound — one authority — which replaces `V_S,turn = V_S·sqrt(n)`: the shortcut assumes the straight-flight `C_L,max`, while the problem evaluates it at the turn's own Reynolds number. Both `turn-load-factor` and `stall-speed-in-turn` were deleted on 2026-10-01.
 
-**Not here: the instantaneous turn.** Pulling beyond the sustained limit trades speed or height for a tighter turn, bounded by stall and structure. Its key number, the corner speed `V* = V_S·sqrt(n_lim)` — above it a full elevator input can break the aircraft — belongs to the flight envelope (§3.10, dive) and is noted there.
+**Not here: the instantaneous turn.** Pulling beyond the sustained limit trades speed or height for a tighter turn, bounded by stall and structure. Its key number, the corner speed — above it a full elevator input can break the aircraft — is [[maneuvering-speed]], which computes it as an optimisation and keeps the short form `V_S·sqrt(n_lim)` only as its Probe.
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
 

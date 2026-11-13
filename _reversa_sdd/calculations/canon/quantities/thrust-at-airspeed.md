@@ -14,9 +14,10 @@ type: scalar
 
 # Thrust at airspeed · `T(V)`
 
-The thrust a chosen propeller actually delivers at the speed currently flown — not the
-bench number. Propeller thrust falls with airspeed, because motor and propeller are
-roughly constant-power devices at high throttle. Evaluated at the given flight-speed; the
+The **full-throttle** thrust the fitted motor and propeller deliver at the speed currently
+flown — not the bench number. It falls with airspeed because the advance ratio rises and the
+thrust coefficient `C_T(J)` falls with it, at the rpm of the torque balance
+([[motor-propeller-equilibrium]], which does not assume constant power). Evaluated at the given flight-speed; the
 optimisers embed the same relation over their own V (`embeds:`).
 
 **Unit.** `N`

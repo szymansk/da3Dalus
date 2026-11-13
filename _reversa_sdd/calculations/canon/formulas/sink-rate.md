@@ -39,7 +39,7 @@ w_sink = V * C_D,par / C_L
 > 🔴 **An assumption of this entry is broken in the code.** *(Ist ≠ Soll: the canon now states the
 > limit as the precondition `small_glide_angle` below; this block records only that the app departs from it.)*
 >
-> app/services/analysis_service.py:514-515 applies the small-glide-angle form across the ENTIRE sweep, including the low-CL / high-speed end of every curve. At the characteristic points this is harmless (L/D ~ 10-20 => gamma ~ 3-6°, error < 0.5%). At the fast end of an RC polar L/D falls to order 2-5, i.e. gamma = 11-27°, where w = V*CD/CL overstates the true V*sin(gamma) by the dropped cos(gamma) factor (2% at L/D=5, ~12% at L/D=2) and V itself is overstated because line 514 sets L = W rather than W cos(gamma). Consequence: the right-hand tail of the plotted speed polar is optimistically steep, and the validity limit is stated nowhere in the code or the response schema.
+> app/services/analysis_service.py:514-515 applies the small-glide-angle form across the ENTIRE sweep, including the low-CL / high-speed end of every curve. At the characteristic points this is harmless (L/D ~ 10-20 => gamma ~ 3-6°, error < 0.5%). At the fast end of an RC polar L/D falls to order 2-5, i.e. gamma = 11-27°, where w = V*CD/CL overstates the true V*sin(gamma) by the dropped cos(gamma) factor (2% at L/D=5, ~12% at L/D=2) and V itself is overstated because line 514 sets L = W rather than W cos(gamma). Consequence: the right-hand tail of the plotted speed polar is pessimistically steep (the sink rate is overstated), and the validity limit is stated nowhere in the code or the response schema.
 
 **Evaluated by.** None — direct elementwise evaluation over the sampled drag polar (numpy). The argmin/argmax that pick V_min_sink and V_best_glide from w and CL/CD (analysis_service.py:521-523) are exhaustive grid searches, but those belong to the minimum-sink-speed / minimum-drag-speed entries, not to this one.
 
@@ -59,14 +59,14 @@ w_sink = V * C_D,par / C_L
 The sourced relation is the glide-angle one, tan(gamma) = C_D/C_L, from which w = V*sin(gamma). The proposal's w = V*C_D/C_L is its small-angle form (sin ~ tan), correctly labelled as such in the skeleton.
 ```
 
-**Validity in the RC/UAV regime (ADR 0028).** The small-angle step is benign for RC gliders (E = 10-20 gives gamma = 3-6 deg, error under 0.5%) but not for draggy powered models: at E = 5 the error is ~2%, at E = 3 it is ~5%, and 3-6 is a realistic E for a sport RC model at low Re. Second-order point: the exact steady glide has L = W*cos(gamma), so V itself is slightly overstated by the level-flight lift balance at low E. Both errors push sink rate the same way (optimistic). Acceptable with a stated E floor; below E ~ 5 report the trigonometric form. The floor is stated as
+**Validity in the RC/UAV regime (ADR 0028).** The small-angle step is benign for RC gliders (E = 10-20 gives gamma = 3-6 deg, error under 0.5%) but not for draggy powered models: at E = 5 the error is ~2%, at E = 3 it is ~5%, and 3-6 is a realistic E for a sport RC model at low Re. Second-order point: the exact steady glide has L = W*cos(gamma), so V itself is slightly overstated by the level-flight lift balance at low E. Both errors push sink rate the same way (pessimistic: the sink rate is overstated). Acceptable with a stated E floor; below E ~ 5 report the trigonometric form. The floor is stated as
 the precondition `small_glide_angle` below.
 
 ## Preconditions on the bindings
 
 **`small_glide_angle` — the glide angle must be small (on `cd`, with `cl`; warning).** The canonical
 form is the small-glide-angle form of the steady glide, valid only where `gamma = atan(C_D/C_L)` is
-small. It drops two factors, both of which make the sink rate optimistic:
+small. It drops two factors, both of which make the sink rate pessimistic (overstated):
 
 - `sin(gamma)` is replaced by `tan(gamma)`, overstating `w_sink` by `1/cos(gamma) - 1`;
 - the lift balance behind the bound `V` is `L = W` instead of `L = W * cos(gamma)`, overstating `V`

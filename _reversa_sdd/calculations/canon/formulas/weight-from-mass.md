@@ -45,10 +45,11 @@ Scholz and Sadraey almost always carry the mass form m*g inline rather than a se
 
 **Validity in the RC/UAV regime (ADR 0028).** Exact at any scale. The two literals differ by 0.15%, which is far below every other uncertainty in this chain (C_L,max at model Reynolds number is uncertain by 30-45%, see stall-speed). So the 9.81 / 9.80665 split is an ADR 0022 single-authority defect, not an accuracy defect - do not justify it as a precision improvement. Scholz's own choice is 9.81.
 
-## Implementations (4)
+## Implementations (5)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/weight_from_mass.py` | EXACT | 🟢 |  |
 | [[fe_weight]] | EXACT | 🟢 |  |
 | [[weight-force-n]] | EXACT | 🟢 |  |
 | [[weight-n]] | EXACT | 🟢 |  |

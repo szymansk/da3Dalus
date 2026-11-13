@@ -47,9 +47,9 @@ dimensional checker, which is a worse trade than one extra line.
 > Definitional: C_T is *defined* as T/(rho*n^2*D^4), so the relation is the definition read backwards, and the content sits entirely in C_T(J). The advance ratio J = V/(nD) is standard propeller notation. The C_T(J) table is **computed by APC** (PER3 files, header "AIRFOIL AERO DATA GENERATED USING: POLAR DIAGRAMS", `app/tests/fixtures/apc_props/PER3_7x4.dat:3-6`), not measured in a wind tunnel and not modelled by this app: 454 APC propellers, 300 187 sample points over 45 RPM blocks each, J from 0 to about 1.17, no null coefficients.
 
 **Why this entry exists.** The canon reached thrust at speed only through
-[[mean-thrust-derate]], a blanket factor on static thrust whose factor has no entry, no
-unit and no source — the one symbol the dimensional check reports as unregistered. This
-relation replaces the guess with a measurement.
+`mean-thrust-derate` (deleted 2026-10-02, see [[static-thrust-to-weight]]), a blanket factor
+on static thrust that had no entry, no unit and no source. This relation replaces the guess
+with the coefficient table computed for the fitted propeller (APC PER3 — computed, not measured).
 
 **Validity in the RC/UAV regime (ADR 0028).** This is the *right* scale for it: the tables are APC model
 propellers. Two limits are real. The coefficient is clamped at zero past the zero-thrust

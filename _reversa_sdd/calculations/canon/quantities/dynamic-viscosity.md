@@ -22,4 +22,4 @@ at sea level). With [[air-density]] and the speed it forms the Reynolds number `
 
 **Produced by.** [[air-density-isa]]
 
-**Used by.** [[aerobuildup-evaluation]] · [[endurance-and-range-optimum]] · [[mass-envelope]] · [[minimum-drag-speed]] · [[minimum-sink-speed]] · [[roll-rate]] · [[stall-speed]] · [[zero-lift-angle]]
+**Used by.** [[aerobuildup-evaluation]] · [[aileron-deflection-required]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[butterfly-approach]] · [[cruise-target-performance]] · [[dive-speed]] · [[endurance-and-range]] · [[endurance-and-range-optimum]] · [[maneuvering-speed]] · [[mass-envelope]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed]] · [[minimum-sink-speed]] · [[motor-propeller-part-load]] · [[parabolic-polar-fit]] · [[roll-rate]] · [[roll-rate-cruise-target]] · [[stall-speed]] · [[zero-lift-angle]]

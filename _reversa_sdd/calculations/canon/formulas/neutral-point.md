@@ -47,9 +47,10 @@ is therefore the **interval** spanned by three accepted methods, each a self-con
 carried through the whole downstream chain (A11 rule 4). One entry, one producer (ADR 0022, ADR 0027).
 
 - **Textbook world:** the barycentre form is the exact form of `h_n = h_ac + eta*V̄_H*(a_h/a)*(1 - de/da)`
-  with `K = eta*(a_h/a)*(1 - de/da)`, lift slopes `a = 2 pi AR/(AR+2)`, downwash `de/da = 2 a_w/(pi AR_w)`
+  with `K = eta*(a_h/a_w)*(1 - de/da)`, surface lift slopes `a_w`, `a_h` `= 2 pi AR/(AR+2)`, downwash `de/da = 2 a_w/(pi AR_w)`;
+  the `a` in `h_n` is the lift slope of the whole airplane, `a = a_w*(1 + K*S_h/S_w)`, and only with it is the barycentre exact
   (**derived from** Sadraey Eq. 6.67, §6.7.12 — the barycentre is a rearrangement, not the printed form);
-  `eta` is the input [[tail-efficiency]] (`eta_h`, default **0.65**, `basis: sourced`; Lennon, *Basics of
+  `eta` is the input [[tail-efficiency]] (`eta_h`, default **0.65**, `basis: start`; Lennon, *Basics of
   R/C Model Aircraft Design* Ch. 7/8, conventional tail near the wing wake 0.65; Sadraey Eq. 6.28 §6.2.1 gives
   0.85–0.95 conventional and 1 for a T-tail, full-scale; maintainer decision 2026-10-24, #1205). It is **not
   checked at RC Reynolds number (ADR 0028)**: the wing wake is thicker at low Re, unquantified. Pappas and AVL

@@ -66,7 +66,7 @@ subject to:               L(V, alpha) = n * m * g
 
 **On failure.** argmax always returns an index, so a point is always emitted and a boundary maximum is indistinguishable from an interior one - SpeedPolarCurve (aeroanalysisschema.py:589 ff.) carries no bracketing or quality field. Curves come back empty (V=[], v_best_glide=None) only for s_ref<=0, rho<=0, no positive CL, or m<=0 (:493-512), with no explanation attached. Any exception in the glue is swallowed at :667-669 and the entire speed_polar is returned as null. No DesignWarning anywhere in the file - undeclared, ADR 0020.
 
-**Shape: a route.** This is one of several ways to the same quantity. The canon does not choose between them — it requires that they **agree**.
+**Shape: a route.** The quantity is reached two ways: this optimisation, which is its producer and authority ("Autorität" above), and the closed form ([[minimum-drag-speed-closed-form]]), which stays as the Probe. The canon requires that they **agree** where the polar is parabolic.
 
 **Test that follows.** Both routes claim the same quantity by different means; they must agree. Where they do not, the polar is not parabolic — which is a statement about the aircraft, not a defect.
 
@@ -99,12 +99,13 @@ right Reynolds number for each sample; the optimisation does both at once and en
 Re ≈ 100 000 is not parabolic — which is the argument for solving the problem on the real
 polar instead of a closed form.
 
-## Implementations (2)
+## Implementations (3)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| [[i-best-glide]] | EXACT | 🟢 |  |
-| [[v-best-glide]] | EXACT | 🟢 |  |
+| `aero_kernel/formulas/minimum_drag_speed.py` | EXACT | 🟢 | the OPT adapter (`ctx.solvers.opti.best_glide`) brackets the first C_L peak and minimises the kernel's drag subject to the lift balance, in the bound ISA air state |
+| [[i-best-glide]] | DEVIATES | 🟢 | Ist: argmax of `C_L/C_D` over a sampled polar computed at one fixed speed (the broken assumption above), not this optimisation |
+| [[v-best-glide]] | DEVIATES | 🟢 | Ist: the speed read at that argmax index of the fixed-Re sampled polar |
 
 ## Approval
 

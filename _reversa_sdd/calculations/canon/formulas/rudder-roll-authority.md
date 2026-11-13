@@ -84,4 +84,4 @@ neutral point's limits through the arms.
 > the evaluation) as a canon quantity — the canon computes, the evaluation judges (A10) — at both V_md and V_mp from
 > the approved [[vertical-tail-volume]] and [[spiral-parameter]]; in the evaluation V_mp governs (circling, as for the
 > spiral of a rudder-only aircraft). Applies when `has_no_aileron`; one value per neutral-point world (A11).
-> Inherits the strip-theory Γ_eq limitation. No kernel implementation yet.
+> Inherits the strip-theory Γ_eq limitation. Kernel: `aero_kernel/formulas/rudder_roll_authority.py`.

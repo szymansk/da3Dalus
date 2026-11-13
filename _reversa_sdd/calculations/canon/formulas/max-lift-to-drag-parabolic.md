@@ -35,7 +35,7 @@ E_max,probe = 0.5 * sqrt(pi * e_osw * AR / C_D0)
 
 **Source.** 🟢 SOURCED
 
-> Anderson, Fundamentals of Aerodynamics 6e, §6.7.2, derived by setting d(C_L/C_D)/dC_L = 0: (L/D)_max = 0.5*sqrt(pi*e*AR/C_D,0). Independently Scholz, Flugzeugentwurf, 05_PreliminarySizing §5.7, Eq. 5.39, identical form. Sadraey (via Scholz aspect-ratio page §5.6) writes the equivalent (L/D)_max = 1/(2*sqrt(K*C_D0)) with K = 1/(pi*e*AR).
+> Anderson, Fundamentals of Aerodynamics 6e, §6.7.2, derived by setting d(C_L/C_D)/dC_L = 0: (L/D)_max = 0.5*sqrt(pi*e*AR/C_D,0). Scholz, Flugzeugentwurf, 05_PreliminarySizing §5.7, gives the same maximum as E_max = k_E*sqrt(A/(S_wet/S_W)) with k_E = 0.5*sqrt(pi*e/c_f) (Eq. 5.36–5.37), i.e. this form with C_D,0 = c_f*S_wet/S_W; his Eq. 5.39 is the companion C_L,md = pi*A*e/(2*E_max), not this formula. Sadraey (via Scholz aspect-ratio page §5.6) writes the equivalent (L/D)_max = 1/(2*sqrt(K*C_D0)) with K = 1/(pi*e*AR).
 
 **The source writes it as**
 

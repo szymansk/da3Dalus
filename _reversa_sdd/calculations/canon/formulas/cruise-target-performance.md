@@ -20,6 +20,8 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   e_bat: battery-capacity
   v_cruise_target: cruise-speed-target
   components: components
@@ -49,7 +51,7 @@ t_cruise = 3600 * E_bat / P_bat
 R_cruise = V_cruise,target * t_cruise
 ```
 
-**Produces** [[endurance-at-cruise-target]] · [[range-at-cruise-target]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[battery-capacity]] · [[cruise-speed-target]] · [[components]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[endurance-at-cruise-target]] · [[range-at-cruise-target]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[battery-capacity]] · [[cruise-speed-target]] · [[components]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: a procedure — the part-load chain at a named speed.** At the target speed the battery power
 comes from [[motor-propeller-part-load]] (level-flight `α` from `L = m·g`, drag from the solver — ADR 0026

@@ -16,7 +16,7 @@ data: component:brushless_motor.max_power_w
 
 # Motor power rating · `P_mot,max`
 
-The power the manufacturer rates the fitted motor for — 🟡 INFERRED as electrical power: whether a catalogue rating is electrical or shaft power is open (STAND §10, E1; [[motor-efficiency]]). Where only currents are published, `max_current · U_bat` (BR-PT14), which is electrical. The ceiling of route A in [[motor-propeller-equilibrium]].
+The power the manufacturer rates the fitted motor for — 🟡 INFERRED as electrical power: whether a catalogue rating is electrical or shaft power is open (STAND §10, E1; [[motor-efficiency]]). [[airplane-components]] reads the catalogue field `max_power_w` and derives nothing from currents; the app's `max_current · U_bat` (BR-PT14) is not part of the canon. The ceiling of route A in [[motor-propeller-equilibrium]].
 
 **Unit.** `W`
 

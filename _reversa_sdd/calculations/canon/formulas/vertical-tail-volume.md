@@ -27,7 +27,7 @@ applications:
 **Canonical form**
 
 ```
-S_V := Wing.area(type="planform", include_centerline_distance=False)   # ASB, the one vertical_tail/v_tail surface; V-tail: times sin^2(nu)
+S_V := Wing.area(type="planform", include_centerline_distance=False)   # ASB, the one vertical_tail/v_tail surface; V-tail: sum_i S_i*sin^2(nu_i) per panel, root extension included
 V̄_V = S_V * l_V_CG / (S_ref * b_ref)
 ```
 
@@ -45,7 +45,7 @@ over the neutral-point worlds, so `V̄_V` is one value per world (A11); the form
 
 **Kind: a law.** A geometric ratio, deterministic and independent of any solver. It is the robust anchor
 next to the AVL derivatives (K27): RC practice and preliminary design size the fin with it, not with
-`C_nβ` (Sadraey §6.7.1; Drela, desrules Eq. 7).
+`C_nβ` (Sadraey §6.8.2, Eq. 6.74; Drela, desrules Eq. 7).
 
 **Precondition.** The aircraft has a fin or a V-tail behind the wing. For a tailless aircraft (winglets,
 centre fin on the wing) the lever is not a tail arm and the value is not computed — not computed

@@ -51,7 +51,7 @@ inertial relief), pitch untrimmed — see [[spanwise-loads]]. `n_break` scales e
 changes with α, so the moment at `n_break·g` is not exactly `n_break` times the 1 g moment; on an
 untwisted wing in attached flow it is.
 
-**Replaces** `n_neg = −0.4 · n_lim` (deleted 2026-10-01, maintainer). That ratio came from FAR 23.337 (normal category; 0.5 aerobatic) — a statement about how often a certified aircraft is loaded downward, not about what it holds (ADR 0023). An aerobatic model flies inverted as much as upright; a trainer rarely. How much downward load a model sees is a question of its character and belongs to the evaluation, not to this core.
+**Replaces** `n_neg = −0.4 · n_lim` (deleted 2026-10-01, maintainer). That ratio came from FAR 23.337 (normal category; 0.5 aerobatic) — a statement about how often a certified aircraft is loaded downward, not about what it holds (ADR 0028). An aerobatic model flies inverted as much as upright; a trainer rarely. How much downward load a model sees is a question of its character and belongs to the evaluation, not to this core.
 
 **Scope, by decision.** The spar only. **Attachments are ignored** — rubber bands, wing bolts, joiners and their fixings (maintainer, 2026-10-01). Strength only, no stiffness (BR-W18). `n_break` is the number RC practice reasons in and the only one verifiable on a bench: invert the wing, support at the joiner, load to `n_break · m · g` (BR-W17, `wing-design/spar-sizing/requirements.md`).
 

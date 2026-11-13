@@ -21,6 +21,9 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
+  b_ref: wing-span
   v_cruise_target: cruise-speed-target
   delta_a: aileron-deflection
 outputs: {p: roll-rate-cruise}
@@ -47,12 +50,16 @@ worlds: [aerobuildup, avl]
 **Canonical form**
 
 ```
-solve for alpha, p at V_cruise,target (steady roll, at the given aileron deflection):   L = m * g,   C_roll(V, alpha, delta_a, p) = 0
+solve for alpha, p_rad at V_cruise,target (steady roll, at the given aileron deflection; p_rad in rad/s):   L = m * g,   C_roll(V, alpha, delta_a, p_rad) = 0
+p = (180/pi) * p_rad                                          # p in deg/s
+world avl:  excluded when |p_hat| > 0.10,   p_hat = p_rad * b_ref / (2 * V_cruise,target)
 ```
 
-**Produces** [[roll-rate-cruise]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed-target]] · [[aileron-deflection]]
+**Produces** [[roll-rate-cruise]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[wing-span]] · [[cruise-speed-target]] · [[aileron-deflection]]
 
 **Kind: a procedure**, the same steady roll as [[roll-rate]], evaluated at `V_cruise,target`.
+The roll rate is solved in rad/s and reported in deg/s; the AVL world's `pb/2V` for the 0.10 rule is
+formed from the rad/s value with [[wing-span]].
 **Only when a cruise-speed target is given** (maintainer, 2026-10-02). Without one, the approach
 check and the dimensionless roll rate `p·b/2V` of [[roll-rate]] remain — for an RC model without
 a cruise requirement the latter is the character statement, since it hardly depends on speed.

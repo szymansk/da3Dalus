@@ -16,7 +16,7 @@ figure: aspect-ratio
 
 # Aspect ratio · `AR`
 
-Ratio of span squared to reference area; also read directly from the aircraft dict with a 7.0 literal fallback.
+Ratio of span squared to reference area of the main wing, `b_ref²/S_ref`.
 
 **Unit.** `1`
 

@@ -21,6 +21,8 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   ar: aspect-ratio
   cl_max: max-lift-coefficient
 outputs: {cd0: zero-lift-drag-coefficient, e_osw: oswald-efficiency}
@@ -36,7 +38,7 @@ points i: the solver polar along level flight (L = m * g, each point at its own 
           C_L,i in [ max(0.1, 0.1 * C_L,max),  0.85 * C_L,max ]
 ```
 
-**Produces** [[zero-lift-drag-coefficient]] · [[oswald-efficiency]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[aspect-ratio]] · [[max-lift-coefficient]]
+**Produces** [[zero-lift-drag-coefficient]] · [[oswald-efficiency]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[aspect-ratio]] · [[max-lift-coefficient]]
 
 **Kind: a fit — a least-squares parabola over the operating `C_L` window** (window from
 BR-16). `C_D0` is the fitted zero-lift parasite drag and `e` the Oswald factor in

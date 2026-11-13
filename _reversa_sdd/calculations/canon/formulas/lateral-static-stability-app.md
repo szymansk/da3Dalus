@@ -59,7 +59,7 @@ unstable (Drela, desrules). The bands belong to the evaluation (A10).
 
 **The approach point binds the landing configuration (maintainer decision 2026-10-27, #1277: "Gerne auch Seitenstabilität bei approach").** `V_app = k · V_S,LDG` comes from the landing configuration ([[approach-speed]]), so the derivatives at that speed are those of the same airplane: `airplane-landing`, the flaps at `flap-deflection-landing` ([[airplane-configuration]]), as for the approach roll of [[roll-rate]] (#1212) — one state, one computation. Without flaps `airplane-landing` is the airplane itself. The AVL run holds the flaps with the symmetric `flap` control of the roll (linear in the deflection, `avl_flap_linearised`, no separation); the moment reference stays the design CG of the clean airplane.
 
-**Two points.** Evaluated at `V_md` and on approach, because `C_lβ` and `C_lr` grow with `C_L`
+**Three points.** Evaluated at `V_md`, on approach and at `V_mp` ([[lateral-static-stability-mp]], #1309), because `C_lβ` and `C_lr` grow with `C_L`
 and `C_nβ` can fall at high angle of attack.
 
 **Values, not verdicts (A10).** The RC bands — dihedral 2–7° by wing position and control,
@@ -107,6 +107,6 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 > implausible fuselage share of C_nβ. Declared: not validated (below chord Re 7·10⁴ especially), the
 > fuselage share of C_nβ uncertain, statics only (Dutch roll and roll time constant need inertias). Open:
 > the Etkin & Reid equation number for the spiral approximation (🟡). Stage 2 (inputs mapped to our data)
-> is open while the app has no centre-of-gravity field (#1209); the CG is the quantity [[centre-of-gravity-design]] (produced by the formula cg-for-target-margin), never an app input. The implementation checklist item holds
-> vacuously: there is no aero_kernel formula yet.
+> is open while the app has no centre-of-gravity field (#1209); the CG is the quantity [[centre-of-gravity-design]] (produced by the formula cg-for-target-margin), never an app input. Kernel:
+> `aero_kernel/formulas/lateral_static_stability_app.py`.
 > Input rebound (maintainer 2026-10-25): the CG is cg-for-target-margin's, never an app input.

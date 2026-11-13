@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:6a0efc8a4157971dd65e00e4d1ad5a5b202da6aa914364cba7b482eb93293b76",
+  "content_hash": "sha256:0a0d964f4be45c6487c1af1ee1b53e213da4e450514d42aabf673cc12484125e",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -332,9 +332,12 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
+                "b_ref": "calc:wing-span",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_target": "calc:roll-rate-target-cruise",
                 "rho": "calc:air-density",
                 "v": "calc:cruise-speed-target"
@@ -351,9 +354,12 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane-landing",
+                "b_ref": "calc:wing-span",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_target": "calc:roll-rate-target-approach",
                 "rho": "calc:air-density",
                 "v": "calc:approach-speed"
@@ -373,9 +379,12 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
+            "b_ref": "calc:wing-span",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_target": null,
             "rho": "calc:air-density",
             "v": null
@@ -649,6 +658,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -657,6 +667,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
@@ -686,6 +697,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -694,6 +706,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
@@ -721,6 +734,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -729,6 +743,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
@@ -758,6 +773,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -766,6 +782,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
@@ -793,12 +810,14 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane-landing",
                 "delta_a_crow": "calc:crow-aileron-deflection",
                 "delta_f_crow": "calc:crow-flap-deflection",
                 "delta_f_ldg": "calc:flap-deflection-landing",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "rho": "calc:air-density",
                 "v_app": "calc:approach-speed"
               },
@@ -818,12 +837,14 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": null,
             "delta_a_crow": "calc:crow-aileron-deflection",
             "delta_f_crow": "calc:crow-flap-deflection",
             "delta_f_ldg": "calc:flap-deflection-landing",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "rho": "calc:air-density",
             "v_app": "calc:approach-speed"
           },
@@ -1020,6 +1041,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -1029,6 +1051,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
@@ -1059,6 +1082,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -1068,6 +1092,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
@@ -1096,6 +1121,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -1104,6 +1130,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
@@ -1132,6 +1159,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -1140,6 +1168,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
@@ -1238,6 +1267,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -1247,6 +1277,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
@@ -1276,6 +1307,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -1285,6 +1317,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
@@ -1396,11 +1429,11 @@
                 "x_cg": "calc:centre-of-gravity-design"
               },
               "given": null,
-              "id": "default",
+              "id": "with_horizontal_tail",
               "produce": {
                 "l_h_cg": "calc:horizontal-tail-arm"
               },
-              "when": null
+              "when": "has_horizontal_tail"
             }
           ],
           "cost": "instant",
@@ -1733,9 +1766,11 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_lim": "calc:limit-load-factor",
                 "rho": "calc:air-density"
               },
@@ -1752,9 +1787,11 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "n_lim": "calc:limit-load-factor",
             "rho": "calc:air-density"
           },
@@ -1881,6 +1918,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -1889,6 +1927,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
@@ -1917,6 +1956,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -1925,6 +1965,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
@@ -2023,6 +2064,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -2031,6 +2073,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_lim": "calc:limit-load-factor",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
@@ -2061,6 +2104,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -2069,6 +2113,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "n_lim": "calc:limit-load-factor",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
@@ -2132,6 +2177,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -2140,6 +2186,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_lim": "calc:limit-load-factor",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
@@ -2170,6 +2217,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -2178,6 +2226,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "n_lim": "calc:limit-load-factor",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
@@ -2407,6 +2456,7 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
@@ -2415,6 +2465,7 @@
                 "i_0": "calc:motor-no-load-current",
                 "k_v": "calc:motor-voltage-constant",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
@@ -2447,6 +2498,7 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -2455,6 +2507,7 @@
             "i_0": "calc:motor-no-load-current",
             "k_v": "calc:motor-voltage-constant",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
@@ -2539,11 +2592,13 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "ar": "calc:aspect-ratio",
                 "cl_max": "calc:max-lift-coefficient",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "rho": "calc:air-density"
               },
               "given": null,
@@ -2560,11 +2615,13 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "ar": "calc:aspect-ratio",
             "cl_max": "calc:max-lift-coefficient",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "rho": "calc:air-density"
           },
           "kind": "fit",
@@ -2673,10 +2730,13 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
+                "b_ref": "calc:wing-span",
                 "delta_a": "calc:aileron-deflection",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "rho": "calc:air-density",
                 "v_cruise_target": "calc:cruise-speed-target"
               },
@@ -2695,10 +2755,13 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
+            "b_ref": "calc:wing-span",
             "delta_a": "calc:aileron-deflection",
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "rho": "calc:air-density",
             "v_cruise_target": "calc:cruise-speed-target"
           },
@@ -3286,7 +3349,6 @@
           "applications": [
             {
               "bind": {
-                "airplane": "calc:airplane",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
                 "eta_mot": "calc:motor-efficiency",
@@ -3321,7 +3383,6 @@
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
-            "airplane": "calc:airplane",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
             "eta_mot": "calc:motor-efficiency",
@@ -4503,7 +4564,7 @@
           "discipline": "lateral",
           "group": null,
           "module": null,
-          "point": null,
+          "point": "minimum-sink",
           "positive": null,
           "role": "output",
           "stage": "stability-structure",

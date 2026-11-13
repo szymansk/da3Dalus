@@ -21,6 +21,8 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   e_bat: battery-capacity
   v_mp: minimum-sink-speed
   v_md: minimum-drag-speed
@@ -47,7 +49,7 @@ t_est = 3600 * E_bat / P_bat(V_mp)            R_est = V_md * t(V_md) = 3600 * E_
 P_bat(V) := battery-power of motor-propeller-part-load at V   (thrust = drag, level flight)
 ```
 
-**Produces** [[endurance-estimate]] · [[range-estimate]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[battery-capacity]] · [[minimum-sink-speed]] · [[minimum-drag-speed]] · [[components]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[endurance-estimate]] · [[range-estimate]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[battery-capacity]] · [[minimum-sink-speed]] · [[minimum-drag-speed]] · [[components]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: a procedure — the part-load chain at two named speeds.** The battery power comes from [[motor-propeller-part-load]] (thrust = drag, motor model, propeller table) at `V_mp`, the speed of least *aerodynamic* power, and at `V_md`, the speed of least drag; endurance is the rated energy over that power, `t = 3600·E_bat/P_bat`, and the range `R = V·t`. There is **no assumed drive-train efficiency** (maintainer, 2026-10-25, #1235).
 

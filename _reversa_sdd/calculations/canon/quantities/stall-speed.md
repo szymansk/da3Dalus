@@ -14,7 +14,7 @@ type: scalar
 
 # Stall speed · `V_S`
 
-Minimum flyable speed, the lift-balance speed at C_L,max; V_S1 clean, V_S0 landing configuration, V_S,TO takeoff configuration.
+Minimum flyable speed of the clean airplane at load factor 1, the lift-balance speed at C_L,max (application `clean` of [[stall-speed]]). The take-off and landing configurations have their own quantities, [[stall-speed-takeoff]] and [[stall-speed-landing]].
 
 **Unit.** `m/s`
 

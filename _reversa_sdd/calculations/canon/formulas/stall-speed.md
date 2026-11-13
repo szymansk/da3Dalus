@@ -113,7 +113,7 @@ quantity nobody reads (architect, 2026-10-14).
 
 **Verified** on a 1.5 kg trainer (NACA 2412, 1.4 m span): optimiser 8.4888 m/s at
 alpha = 15.8°, C_L = 1.191; fixed-point iteration 8.4891 m/s after three sweeps —
-0.004 % apart. A fleet comparison is outstanding before approval of the method.
+0.004 % apart. The fleet comparison is the aero_kernel run of #1202 (BRYAN, JAGUAR; see Approval).
 
 **Configuration bindings** (take-off, landing) are the same problem with the configured
 aircraft inside the constraint — the flap is in the geometry, not a factor on C_L,max.
@@ -222,10 +222,11 @@ can never fire is inert (ADR 0021). The Ist finding below is what the binding re
 
 **Direction.** The V-n envelope is always a sea-level result, silently.
 
-## Implementations (7)
+## Implementations (8)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/stall_speed.py` | EXACT | 🟢 | one function for all four applications; the sweep, IPOPT and the re-sweep run in the OPT adapter (`ctx.solvers.opti.stall`, K32) in the bound air state |
 | [[fe_v_stall]] | EXACT | 🟢 |  |
 | [[v-stall]] | EXACT | 🟢 |  |
 | [[vs_clean]] | DEVIATES | 🟢 | Cold-start branch abandons the lift balance entirely: V_S1 = max(3.0, V_cruise / min_speed |

@@ -15,7 +15,7 @@ type: scalar
 
 # Air density · `rho`
 
-Density at the flight altitude; either the ISA model evaluated at an altitude or the bare sea-level literal 1.225.
+Density at the flight altitude: the ISA model evaluated at [[altitude]] (1.225 kg/m³ at the default altitude 0 m).
 
 **Unit.** `kg/m^3`
 
