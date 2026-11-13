@@ -12,6 +12,7 @@ import pathlib
 import sys
 
 import pytest
+import yaml
 
 SCRIPTS = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
@@ -75,7 +76,7 @@ def _formula(slug, produces, inputs_line, front):
         "**Canonical form**",
         "",
         "```",
-        "v = a * b",
+        "v = a + b",
         "```",
         "",
         "**Produces** "
@@ -503,3 +504,109 @@ def test_the_procedural_pattern_decides_before_the_dimensions_are_compared(tmp_p
     verdicts = {f["slug"]: verdict for verdict, f, *_ in rows}
     decided = ("where", "solve", "table", "maximize", "maximise", "minimise")
     assert {verdicts[slug] for slug in decided} == {"PROCEDURAL"}
+
+
+# --- dimensional check per statement, through the formula's bindings (#1379) -------------------
+
+
+def _statement_canon(tmp_path, form, inputs, outputs, units):
+    """A canon with one formula `f` and one quantity per (slug, symbol, unit) triple."""
+    root = tmp_path / "canon"
+    (root / "formulas").mkdir(parents=True)
+    (root / "quantities").mkdir()
+    (root / "README.md").write_text(README, encoding="utf-8")
+    for slug, symbol, unit in units:
+        (root / "quantities" / f"{slug}.md").write_text(
+            f'---\ncanon: {slug}\nsymbol: "{symbol}"\nunit: "{unit}"\n---\n\n# {slug}\n',
+            encoding="utf-8",
+        )
+    front = yaml.safe_dump({"canon": "f", "inputs": inputs, "outputs": outputs})
+    (root / "formulas" / "f.md").write_text(
+        f"---\n{front}---\n\n# f\n\n**Canonical form**\n\n```\n{form}\n```\n", encoding="utf-8"
+    )
+    return check_canon.load_canon(root)
+
+
+ROLL_UNITS = [
+    ("roll-rate", "p", "deg/s"),
+    ("roll-helix", "p_hat", "1"),
+    ("wing-span", "b_ref", "m"),
+    ("approach-speed", "V_app", "m/s"),
+]
+ROLL_IN = {"b_ref": "wing-span", "v_app": "approach-speed"}
+ROLL_OUT = {"p": "roll-rate", "p_hat": "roll-helix"}
+
+
+def _verdicts(canon):
+    return [(s.text, s.verdict) for s in check_canon.check_statements(canon)]
+
+
+def test_a_statement_of_a_procedural_form_is_checked(tmp_path):
+    """The second line of a `solve for` form is a statement like any other (review finding W4)."""
+    form = "solve for alpha, p:   L(V, alpha) = m * g\nevaluated at V = V_app;   p_hat = p * b_ref / (2 * V_app)"
+    canon = _statement_canon(tmp_path, form, ROLL_IN, ROLL_OUT, ROLL_UNITS)
+    assert ("p_hat = p * b_ref / (2 * V_app)", "ANGLE") in _verdicts(canon)
+
+
+def test_a_visible_conversion_settles_the_angle(tmp_path):
+    form = "p_hat = (pi/180) * p * b_ref / (2 * V_app)"
+    canon = _statement_canon(tmp_path, form, ROLL_IN, ROLL_OUT, ROLL_UNITS)
+    assert _verdicts(canon) == [(form, "OK")]
+
+
+def test_radians_count_as_dimensionless(tmp_path):
+    units = [("gain", "kappa", "rad"), ("c-l-r", "C_l_r", "1/rad"), ("c-l-b", "C_l_beta", "1/rad")]
+    form = "kappa      = -C_l_r / C_l_beta        # rad"
+    canon = _statement_canon(
+        tmp_path, form, {"c_l_r": "c-l-r", "c_l_beta": "c-l-b"}, {"kappa": "gain"}, units
+    )
+    assert _verdicts(canon) == [("kappa = -C_l_r / C_l_beta", "OK")]
+
+
+def test_a_wrong_dimension_is_a_mismatch(tmp_path):
+    form = "subject to:   p = b_ref * V_app"
+    canon = _statement_canon(tmp_path, form, ROLL_IN, ROLL_OUT, ROLL_UNITS)
+    assert _verdicts(canon) == [("p = b_ref * V_app", "MISMATCH")]
+
+
+def test_the_binding_decides_between_two_quantities_with_one_symbol(tmp_path):
+    """`w` is the sink rate here because the formula binds it, whatever the register lists first."""
+    units = [
+        ("a-weight", "w", "N"),
+        ("sink-rate", "w", "m/s"),
+        ("speed", "V", "m/s"),
+        ("angle", "g_sin", "1"),
+    ]
+    form = "w = V * g_sin"
+    canon = _statement_canon(
+        tmp_path, form, {"v": "speed", "g_sin": "angle"}, {"w": "sink-rate"}, units
+    )
+    assert _verdicts(canon) == [(form, "OK")]
+
+
+def test_case_is_kept_for_a_single_letter(tmp_path):
+    """`Q` is not the dynamic pressure `q`: unknown, so the statement defines it."""
+    units = [("dynamic-pressure", "q", "Pa"), ("speed", "V", "m/s"), ("power", "P", "W")]
+    form = "Q = P / V\nP = Q * V"
+    canon = _statement_canon(tmp_path, form, {"v": "speed"}, {"p": "power"}, units)
+    assert _verdicts(canon) == [("Q = P / V", "DEFINES"), ("P = Q * V", "OK")]
+
+
+def test_what_cannot_be_read_is_not_judged(tmp_path):
+    form = "g_0 = 9.81\np = unknown_thing * b_ref\nt = crossing of p with b_ref\nn >= 1,  p := solver(b_ref)"
+    canon = _statement_canon(tmp_path, form, ROLL_IN, ROLL_OUT, ROLL_UNITS)
+    assert [v for _, v in _verdicts(canon)] == ["CONSTANT", "UNKNOWN_SYMBOL", "UNPARSEABLE"]
+
+
+def test_a_statement_finding_fails_the_run(tmp_path, capsys):
+    form = "p = b_ref * V_app"
+    canon = _statement_canon(tmp_path, form, ROLL_IN, ROLL_OUT, ROLL_UNITS)
+    assert check_canon.print_statements(check_canon.check_statements(canon)) == 1
+    assert "f [MISMATCH] p = b_ref * V_app" in capsys.readouterr().out
+
+
+def test_the_real_canon_has_no_statement_finding():
+    canon = check_canon.load_canon(REAL_CANON)
+    rows = check_canon.check_statements(canon)
+    assert [(r.formula, r.text) for r in rows if r.verdict in check_canon.STATEMENT_ERRORS] == []
+    assert sum(r.verdict == "OK" for r in rows) >= 50

@@ -439,6 +439,247 @@ def check_authoring(canon: Canon) -> list[Finding]:
     return findings
 
 
+# --- dimensional check per statement, through the formula's bindings (#1379) -------------------
+
+#: a `name(args)` call that is not a mathematical function is a quantity taken at a point:
+#: `L(V, alpha)` has the dimension of `L`
+_MATH_CALLS = (
+    "sqrt",
+    "cbrt",
+    "sin",
+    "cos",
+    "tan",
+    "exp",
+    "log",
+    "atan",
+    "asin",
+    "max",
+    "min",
+    "abs",
+)
+_POINT_CALL = re.compile(r"\b([A-Za-z_][A-Za-z0-9_,]*)\(([^()=]*)\)")
+#: a plain `=`: never `:=`, `>=`, `<=`, `==`
+_EQUALS = re.compile(r"(?<![:<>=!])=(?!=)")
+#: an explicit conversion between degrees and radians
+_ANGLE_CONVERSION = re.compile(r"180\s*/\s*pi|pi\s*/\s*180")
+_NUMBER = re.compile(r"^[-+]?\d+(\.\d+)?(e[-+]?\d+)?$", re.I)
+_ANGLE_SLOT = 7  # index of ANG in dimensions.BASES
+#: verdicts of the statement check that fail the run
+STATEMENT_ERRORS = ("MISMATCH", "ANGLE", "ADDS_UNLIKE")
+
+
+@dataclasses.dataclass(frozen=True)
+class Statement:
+    """One `lhs = rhs` statement of a canonical form and what the check made of it.
+
+    Verdicts: `OK`; `DEFINES` (the left side is a name the register does not know, so the
+    statement defines it for the rest of the form); `CONSTANT` (one side is a number: nothing to
+    balance); `MISMATCH`, `ANGLE`, `ADDS_UNLIKE` (findings); `UNKNOWN_SYMBOL`, `UNPARSEABLE` (not
+    judged).
+    """
+
+    formula: str
+    text: str
+    verdict: str
+    detail: str = ""
+
+
+def _key(symbol: str) -> str:
+    """A symbol without its punctuation, case kept: `C_L,max` -> `CLmax`."""
+    return re.sub(r"[^A-Za-z0-9]", "", symbol or "")
+
+
+def _statements(form: str) -> list[str]:
+    """The `lhs = rhs` statements of a canonical form: every line segment with exactly one plain
+    `=`, without its label, its comment, its citation and a parenthesis around the whole."""
+    out: list[str] = []
+    for raw in form.splitlines():
+        line = raw.split(" # ")[0]
+        line = re.sub(r"\[[^\]]*\]", " ", line)
+        line = re.sub(r"\s*(?<![:<>=!])=(?!=)\s*", " = ", line)  # aligned `name    = expr`
+        for seg in re.split(r"\s{2,}|;\s+", line):
+            seg = re.sub(
+                r"^[^=()]*?:\s+", "", seg.strip()
+            )  # "subject to:", "route B:", "world avl:"
+            seg = seg.strip().rstrip(",").strip()
+            if seg.startswith("(") and seg.endswith(")") and seg.count("(") == 1:
+                seg = seg[1:-1].strip()
+            if len(_EQUALS.findall(seg)) == 1 and seg.count("(") == seg.count(")"):
+                out.append(seg)
+    return out
+
+
+def _collapse_point_calls(expr: str) -> str:
+    """`L(V, alpha)` -> `L`; mathematical functions keep their arguments."""
+    previous = None
+    while previous != expr:
+        previous = expr
+        expr = _POINT_CALL.sub(
+            lambda m: m.group(0) if m.group(1) in _MATH_CALLS else m.group(1), expr
+        )
+    return expr
+
+
+def _parse_side(side: str) -> ast.expr:
+    side = re.sub(r"\|([^|]+)\|", r"abs(\1)", side)
+    side = _collapse_point_calls(side).replace("'", "prime")
+    return ast.parse(prepare(side), mode="eval").body
+
+
+@dataclasses.dataclass
+class _Symbols:
+    """The symbols one formula may use, and the declared unit behind each.
+
+    A name resolves through the formula's own bindings first (parameter name, or the symbol of a
+    bound quantity), then through the register. Case is kept: `Q` is not `q`. A name of more than
+    one letter may also match without regard to case and with a trailing qualifier dropped.
+    """
+
+    local: dict[str, tuple[Dim, str]]
+    register: dict[str, tuple[Dim, str]]
+
+    def resolve(self, name: str) -> tuple[Dim, str] | None:
+        key = _key(name)
+        for table in (self.local, self.register):
+            if key in table:
+                return table[key]
+        if len(key) < 2:
+            return None
+        for table in (self.local, self.register):
+            folded = {k.lower(): v for k, v in table.items() if len(k) > 1}
+            cand = key.lower()
+            for _ in range(3):
+                if cand in folded:
+                    return folded[cand]
+                cut = next(
+                    (
+                        cand[: -len(q)]
+                        for q in QUALIFIERS
+                        if cand.endswith(q) and len(cand) > len(q) + 1
+                    ),
+                    None,
+                )
+                if cut is None:
+                    break
+                cand = cut
+        return None
+
+
+def _register_symbols(canon: Canon) -> dict[str, tuple[Dim, str]]:
+    table: dict[str, tuple[Dim, str]] = {}
+    for slug, q in canon.quantities.items():
+        unit = q.front.get("unit")
+        d = parse_unit(str(unit)) if unit is not None else None
+        if d is None:
+            continue
+        for name in (q.front.get("symbol"), slug):
+            key = _key(str(name)) if name else ""
+            if key and key not in MATH_CONSTANTS:
+                table.setdefault(key, (d, str(unit)))
+    return table
+
+
+def _formula_symbols(e: Entry, canon: Canon) -> dict[str, tuple[Dim, str]]:
+    """Parameter names and bound symbols of one formula, over all its applications."""
+    mappings = [e.front.get("inputs"), e.front.get("outputs")]
+    applications = e.front.get("applications")
+    for app in applications if isinstance(applications, list) else []:
+        if isinstance(app, dict):
+            mappings += [app.get("bind"), app.get("produce")]
+    table: dict[str, tuple[Dim, str]] = {}
+    for mapping in mappings:
+        for param, slug in (mapping or {}).items() if isinstance(mapping, dict) else ():
+            q = canon.quantities.get(slug) if isinstance(slug, str) else None
+            unit = q.front.get("unit") if q is not None else None
+            d = parse_unit(str(unit)) if unit is not None else None
+            if q is None or d is None:
+                continue
+            for name in (param, q.front.get("symbol")):
+                key = _key(str(name)) if name else ""
+                if key and key not in MATH_CONSTANTS:
+                    table.setdefault(key, (d, str(unit)))
+    return table
+
+
+def _judge(lhs: str, rhs: str, text: str, symbols: _Symbols) -> tuple[str, str]:
+    if _NUMBER.match(lhs.strip()) or _NUMBER.match(rhs.strip()):
+        return "CONSTANT", ""
+    try:
+        trees = (_parse_side(lhs), _parse_side(rhs))
+    except SyntaxError:
+        return "UNPARSEABLE", ""
+    names = {n.id for tree in trees for n in ast.walk(tree) if isinstance(n, ast.Name)}
+    names -= set(_MATH_CALLS) | MATH_CONSTANTS
+    resolved = {n: symbols.resolve(n) for n in names}
+    unknown = sorted(n for n, r in resolved.items() if r is None)
+    left_name = trees[0].id if isinstance(trees[0], ast.Name) else None
+    table = {norm(n): r[0] for n, r in resolved.items() if r is not None}
+    table.update(dict.fromkeys(MATH_CONSTANTS, ONE))
+    if len(table) < len({n for n, r in resolved.items() if r is not None}) + len(MATH_CONSTANTS):
+        return "UNPARSEABLE", "two symbols of the statement differ only in case"
+    sink: set[str] = set()
+    try:
+        if unknown == [left_name]:
+            right = dim_of(trees[1], table, sink)
+            if right is None:
+                return "UNPARSEABLE", ""
+            symbols.local[_key(left_name)] = (right, "")
+            return "DEFINES", ""
+        if unknown:
+            return "UNKNOWN_SYMBOL", ", ".join(unknown)
+        left, right = dim_of(trees[0], table, sink), dim_of(trees[1], table, sink)
+    except ValueError as exc:
+        return "ADDS_UNLIKE", str(exc)
+    if left is None or right is None:
+        return "UNPARSEABLE", ""
+    differ = [a - b for a, b in zip(left.e, right.e, strict=True)]
+    if any(abs(x) > 1e-9 for i, x in enumerate(differ) if i != _ANGLE_SLOT):
+        return "MISMATCH", f"{left}  =  {right}"
+    units = [r[1] for r in resolved.values() if r is not None]
+    degrees = any(re.search(r"deg|°", u) for u in units)
+    radians = any(re.search(r"\brad\b", u) for u in units)
+    angle_differs = abs(differ[_ANGLE_SLOT]) > 1e-9
+    if degrees and (angle_differs or radians) and not _ANGLE_CONVERSION.search(text):
+        return "ANGLE", "a quantity in degrees meets radians and the statement converts nothing"
+    return "OK", ""
+
+
+def check_statements(canon: Canon) -> list[Statement]:
+    """Check every `lhs = rhs` statement of every canonical form for its dimension, and for a
+    quantity in degrees that meets radians without a visible conversion (`180/pi`, `pi/180`).
+
+    Symbols resolve through the formula's own bindings first. A name the register does not know
+    is defined by the first statement that has it alone on the left. A statement that does not
+    parse, or that uses an unknown symbol, is reported as such and judged no further.
+    """
+    register = _register_symbols(canon)
+    rows: list[Statement] = []
+    for slug, e in canon.formulas.items():
+        m = re.search(r"\*\*Canonical form\*\*\s*\n+```[a-z]*\n(.*?)\n```", e.body, re.S)
+        if not m:
+            continue
+        symbols = _Symbols(local=_formula_symbols(e, canon), register=register)
+        for text in _statements(m.group(1)):
+            lhs, rhs = _EQUALS.split(text)
+            verdict, detail = _judge(lhs, rhs, text, symbols)
+            rows.append(Statement(slug, text, verdict, detail))
+    return rows
+
+
+def print_statements(rows: list[Statement]) -> int:
+    """Print the per-statement findings; return the number that fail the run."""
+    tally: dict[str, int] = {}
+    for r in rows:
+        tally[r.verdict] = tally.get(r.verdict, 0) + 1
+    print("\ndimensional check over", len(rows), "statements of the canonical forms:", tally)
+    failing = [r for r in rows if r.verdict in STATEMENT_ERRORS]
+    for r in failing:
+        print(f"    {r.formula} [{r.verdict}] {r.text}")
+        if r.detail:
+            print(f"         {r.detail}")
+    return len(failing)
+
+
 def cli(argv: list[str]) -> int:
     target = pathlib.Path(argv[0]) if argv else DEFAULT_CANON
     if target.suffix == ".json":
@@ -446,6 +687,7 @@ def cli(argv: list[str]) -> int:
         return 0
     print_dimensional(dimensional_rows(build_canon_json(target)))
     canon = load_canon(target)
+    statement_errors = print_statements(check_statements(canon))
     findings = check_authoring(canon)
     print(
         f"authoring check over {len(canon.formulas)} formulas and "
@@ -453,7 +695,7 @@ def cli(argv: list[str]) -> int:
     )
     for f in findings:
         print(f"    {f.entry} [{f.field}] {f.message}")
-    return 1 if findings else 0
+    return 1 if findings or statement_errors else 0
 
 
 if __name__ == "__main__":
