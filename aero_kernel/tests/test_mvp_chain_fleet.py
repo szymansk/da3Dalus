@@ -11,6 +11,7 @@ approach speed of ``lateral-static-stability-app``. CHEKKER and WIESEL compute s
 """
 
 import math
+from typing import cast
 
 import pytest
 from aero_kernel import compute
@@ -581,11 +582,32 @@ GOLDEN = {
     },
 }
 
-# The turn sideslip applies only without ailerons: CHEKKER is the one aileron-free member of the fleet.
+# The turn sideslip applies only without ailerons. Which members have a roll device is read from the
+# reference documents themselves (#1383): the fleet grows, a named list goes stale.
 TURN_SIDESLIP = ("turn-sideslip", "turn-sideslip-gain")
 # The rudder roll authority has the same applicability (`has_no_aileron`).
 WITHOUT_AILERON_ONLY = (*TURN_SIDESLIP, "rudder-roll-authority-md", "rudder-roll-authority-mp")
-WITHOUT_TURN_SIDESLIP = tuple(m for m in FleetMember if m is not FleetMember.CHEKKER)
+ROLL_ROLES = frozenset({"aileron", "flaperon", "elevon"})
+
+
+def _device_roles(node: object) -> set[str]:
+    """Every ``role`` named anywhere in a geometry document."""
+    if isinstance(node, dict):
+        document = cast("dict[str, object]", node)
+        role = document.get("role")
+        found = {role} if isinstance(role, str) else set[str]()
+        return found.union(*(_device_roles(value) for value in document.values()))
+    if isinstance(node, list):
+        return set[str]().union(*(_device_roles(item) for item in cast("list[object]", node)))
+    return set()
+
+
+def _has_roll_device(member: FleetMember) -> bool:
+    return bool(_device_roles(reference_document(member)) & ROLL_ROLES)
+
+
+WITHOUT_TURN_SIDESLIP = tuple(m for m in FleetMember if _has_roll_device(m))
+RUDDER_ONLY = tuple(m for m in FleetMember if not _has_roll_device(m))
 # The approach point of RV-7 binds the landing configuration, which needs the landing flap deflection.
 RV7_NEEDS_LANDING_DEFLECTION = tuple(s for s in SLUGS if s.endswith("-app"))
 
@@ -666,6 +688,27 @@ async def test_with_ailerons_the_turn_sideslip_and_rudder_roll_authority_are_not
     for slug in WITHOUT_AILERON_ONLY:
         assert by_slug[slug].status is QuantityStatus.NOT_APPLICABLE, slug
         assert by_slug[slug].interval is None
+
+
+def test_the_fleet_has_members_with_and_without_a_roll_device() -> None:
+    assert FleetMember.CHEKKER in RUDDER_ONLY
+    assert FleetMember.BRYAN in WITHOUT_TURN_SIDESLIP
+    assert len(WITHOUT_TURN_SIDESLIP) + len(RUDDER_ONLY) == len(FleetMember)
+
+
+@pytest.mark.parametrize("member", RUDDER_ONLY)
+@pytest.mark.asyncio
+async def test_without_a_roll_device_the_turn_sideslip_and_rudder_roll_authority_apply(
+    member: FleetMember,
+) -> None:
+    """The turn sideslip applies; the rudder roll authority applies exactly where its input
+    vertical-tail-volume does (BARRACUDA and VOODOO have none)."""
+    by_slug = {q.slug: q for q in (await run(member)).quantities}
+    for slug in TURN_SIDESLIP:
+        assert by_slug[slug].status is not QuantityStatus.NOT_APPLICABLE, slug
+    no_fin_volume = by_slug["vertical-tail-volume"].status is QuantityStatus.NOT_APPLICABLE
+    for slug in ("rudder-roll-authority-md", "rudder-roll-authority-mp"):
+        assert (by_slug[slug].status is QuantityStatus.NOT_APPLICABLE) is no_fin_volume, slug
 
 
 @pytest.mark.asyncio
