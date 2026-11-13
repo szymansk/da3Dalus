@@ -1,11 +1,17 @@
 """Checks for the calculation canon: dimensions and authoring.
 
-Two checks, both authoring aids for the canon document (`_reversa_sdd/calculations/canon/`):
+Three checks, all authoring aids for the canon document (`_reversa_sdd/calculations/canon/`):
 
 **Dimensional.** Parses each canonical form, substitutes the declared unit of every symbol
 from the quantity register, and evaluates the dimension of the right-hand side. Reports a
 formula whose result does not match its declared output quantity, or which adds two
 quantities of unlike dimension. Informational; it does not fail the run.
+
+**Dimensional, per statement (#1379).** Reads every line of every canonical form, also the
+multi-line procedures and optimisation problems the first check leaves out, and checks each
+statement `lhs = rhs` it can parse. Symbols resolve through the formula's own bindings first.
+A dimension that does not balance, or a quantity in degrees that meets radians without a
+visible conversion (`180/pi`, `pi/180`), fails the run; what it cannot read is counted.
 
 **Authoring.** Cross-checks the front matter against the prose the importer never reads
 (`python -m aero_kernel.importer` owns every structural rule, #1174): the "Produces … from"
