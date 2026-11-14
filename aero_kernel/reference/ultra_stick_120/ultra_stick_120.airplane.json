@@ -20,7 +20,7 @@
           ],
           "chord": 0.405732,
           "twist": 0.0,
-          "airfoil": "./naca0015.dat"
+          "airfoil": "./ultra_stick_120_main_wing_kulfan.dat"
         },
         {
           "xyz_le": [
@@ -30,7 +30,7 @@
           ],
           "chord": 0.405732,
           "twist": 0.0,
-          "airfoil": "./naca0015.dat",
+          "airfoil": "./ultra_stick_120_main_wing_kulfan.dat",
           "control_surface": {
             "name": "aileron",
             "hinge_point": 0.8877,
@@ -54,7 +54,7 @@
           ],
           "chord": 0.405732,
           "twist": 0.0,
-          "airfoil": "./naca0015.dat"
+          "airfoil": "./ultra_stick_120_main_wing_kulfan.dat"
         },
         {
           "xyz_le": [
@@ -64,7 +64,7 @@
           ],
           "chord": 0.405732,
           "twist": 0.0,
-          "airfoil": "./naca0015.dat"
+          "airfoil": "./ultra_stick_120_main_wing_kulfan.dat"
         }
       ]
     },
