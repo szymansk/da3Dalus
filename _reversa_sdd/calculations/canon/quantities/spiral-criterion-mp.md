@@ -12,7 +12,7 @@ tags:
 type: scalar
 ---
 
-# Spiral criterion at the minimum-drag speed · `E_spiral,mp`
+# Spiral criterion at the minimum-sink speed · `E_spiral,mp`
 
 `C_lβ·C_nr − C_nβ·C_lr`; positive means a stable spiral — the aircraft levels itself from a bank.
 

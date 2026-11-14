@@ -22,6 +22,8 @@ inputs:
   g: gravity
   n_lim: limit-load-factor
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
 outputs: {v_a: maneuvering-speed}
 ---
 
@@ -34,13 +36,13 @@ minimize over V, alpha:   V
 subject to:               L(V, alpha) = n_lim * m * g
 ```
 
-**Produces** [[maneuvering-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[limit-load-factor]] · [[air-density]]
+**Produces** [[maneuvering-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[limit-load-factor]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]]
 
 **Kind: an optimisation problem — the [[stall-speed]] problem bound at `n = n_lim`.** The smallest speed at which the wing can carry the limit load: below it a full pull stalls the wing before the structure reaches `n_lim`; above it a full elevator input can overstress the aircraft. RC practice knows it under this name with the rule "above V_A pull out gently" (RC-Network, *Manövergeschwindigkeit*, *Abfangen*).
 
 **One authority.** The textbook form `V_A = V_S · sqrt(n_lim)` (FAR 23.335(c)) is this problem with the straight-flight `C_L,max`; the problem evaluates `C_L,max` at the Reynolds number of `V_A` itself — the same reason `stall-speed-in-turn` was deleted. It stays as the Probe: plugging the optimum's `C_L` into the closed form must return the same speed.
 
-**It is only as good as `n_lim`.** The limit load factor is a user input (default 10 g, a convention, maintainer 2026-10-25; formerly 3); real models carry 6–19 g measured (spar sizing). A mission table will replace the single default (#1242). The statement reads: "above V_A, a full pull exceeds the load the user declared".
+**It is only as good as `n_lim`.** The limit load factor is a user input (default 10 g, a convention, maintainer 2026-10-25; formerly 3); real models carry 6–19 g measured (spar sizing). `defaults.yaml` records the value with `basis: start`: a start value. A mission table will replace the single default (#1242). The statement reads: "above V_A, a full pull exceeds the load the user declared".
 
 **Source.** 🟢 Sadraey Eq. 4.30 for the relation. FAR 23.335(c) for the definition — **definition, not verified**: no expert confirmed the citation (maintainer 2026-10-25); the lift balance as in [[stall-speed]] (Sadraey Eq. 4.30).
 
@@ -67,3 +69,4 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > Sadraey Eq. 4.30; the FAR 23.335(c) citation is recorded as a definition not verified. `n_lim` defaults to
 > 10 g (convention, `defaults.yaml`); a mission table with the structure-mass consequence will replace it
 > (#1242). The implementation checklist item holds vacuously: there is no aero_kernel formula yet.
+> (`defaults.yaml` records the value with `basis: start`: a start value.)

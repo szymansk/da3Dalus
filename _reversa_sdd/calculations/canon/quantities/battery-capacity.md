@@ -17,9 +17,9 @@ data:
   - default:cell-voltage-nominal
 ---
 
-# Usable battery capacity · `E_bat`
+# Battery capacity (rated pack energy) · `E_bat`
 
-Usable pack energy, derived: `E_bat = Q_bat / 1000 · U_bat` — the rated charge [[battery-charge-capacity]] (mAh, as the catalogue stores it) in Ah times the nominal pack voltage [[battery-voltage]] (cells × 3.7 V). Nothing is read in Wh (maintainer, 2026-10-25, #1235). 0 means 'not configured'.
+Rated pack energy — the full nominal energy; a usable fraction is not modelled —, derived: `E_bat = Q_bat / 1000 · U_bat` — the rated charge [[battery-charge-capacity]] (mAh, as the catalogue stores it) in Ah times the nominal pack voltage [[battery-voltage]] (cells × `U_cell`, [[cell-voltage-nominal]]). Nothing is read in Wh (maintainer, 2026-10-25, #1235). 0 means 'not configured'.
 
 **Unit.** `Wh`
 

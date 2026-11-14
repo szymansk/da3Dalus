@@ -17,7 +17,7 @@ data: component:battery.c_rate
 
 # Continuous discharge rate · `C_rate`
 
-Continuous C-rate of the pack as the manufacturer publishes it (field `c_rate`; maintainer, 2026-10-25, #1235). A burst rating is not modelled. With it [[airplane-components]] derives the allowed continuous current [[battery-current-allowed]] = `C_rate · Q_bat`.
+Continuous C-rate of the pack as the manufacturer publishes it (field `c_rate`; maintainer, 2026-10-25, #1235). A burst rating is not modelled. With it [[airplane-components]] derives the allowed continuous current [[battery-current-allowed]] = `C_rate · Q_bat / 1000` (`Q_bat` in mAh).
 
 **Unit.** `1/h`
 

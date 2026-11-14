@@ -16,7 +16,7 @@ figure: tail-arms
 
 # Vertical tail volume · `V̄_V`
 
-Effective fin area times tail arm `l_V,CG` (design CG to the quarter-chord MAC of the fin) over wing area times span; for a V-tail the fin share is `S·sin²ν`.
+Effective fin area times tail arm `l_V,CG` (design CG to the quarter-chord MAC of the fin) over wing area times span; for a V-tail the fin area is its fin share `sum_i S_i·sin²ν_i` over the panels `i`, each with its own angle, the root extension to the centreline included. **An interval** over the neutral-point worlds, because the arm is one (A11).
 
 **Unit.** `1`
 

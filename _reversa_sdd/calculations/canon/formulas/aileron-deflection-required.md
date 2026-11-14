@@ -17,12 +17,15 @@ tags:
   - shape/law
   - kind/procedure
   - status/approved
-tex: \delta_{a,req}:\; L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_{a,req},\,p_{target}\big) = 0
+tex: \delta_{a,req}:\; L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_{a,req},\,p_{target}\big) = 0, \quad \hat p_{target} = \frac{\pi}{180}\,\frac{p_{target}\,b_{ref}}{2\,V}
 inputs:
   airplane: airplane
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
+  b_ref: wing-span
   v: null
   p_target: null
 outputs: {delta_a_req: null}
@@ -51,7 +54,7 @@ worlds: [aerobuildup, avl]
 > can flip "target met" (A9), so A11 rule 5 makes it an interval. ASB's VLM models no control deflection
 > and is not a world.
 
-**AVL world, valid only for `|pb/2V| ≤ 0.10` (decision (b) (maintainer, 2026-10-25, #1243): "a würde das Intervall verfälschen und dann ist nicht klar, welche Grenze belastbar ist", finding #1181).** AVL is linear in δ by construction (`Avl/src/amake.f:1184-1187`, "linearize about zero deflection"), and its primer gives `−0.10 < pb/2V < 0.10` as the practical limit for roll rates, beyond which results "should be interpreted with caution" (`Avl/avl_doc.txt:121-141`). The BRYAN AVL value `pb/2V = 0.276` lies outside it. **Decision (b):** the check is on the roll-rate target: the AVL world solves `δ_a,req` for the target `p_target`, so it is excluded when `|p_target·b/2V|` at that application's speed exceeds 0.10. The AeroBuildup world is unaffected (its own maximum is still `target_above_method_maximum`). No kernel implementation exists yet (0 implementations); the rule is binding for it. Inside the range the interval spans both worlds; outside it the quantity is the AeroBuildup world alone, and the AVL world is not used — its value is not part of the interval. The exclusion is declared, never silent (ADR 0020, ADR 0027 point 8): the warning `world_outside_validity` names the world and carries the AVL value and the limit. The range is exactly the stated one: `|pb/2V| = 0.10` is inside. If AeroBuildup fails, the quantity is an error as before (a failed world is never dropped).
+**AVL world, valid only for `|pb/2V| ≤ 0.10` (decision (b) (maintainer, 2026-10-25, #1243): "a würde das Intervall verfälschen und dann ist nicht klar, welche Grenze belastbar ist", finding #1181).** AVL is linear in δ by construction (`Avl/src/amake.f:1184-1187`, "linearize about zero deflection"), and its primer gives `−0.10 < pb/2V < 0.10` as the practical limit for roll rates, beyond which results "should be interpreted with caution" (`Avl/avl_doc.txt:121-141`). The BRYAN AVL value `pb/2V = 0.276` lies outside it. **Decision (b):** the check is on the roll-rate target: the AVL world solves `δ_a,req` for the target `p_target`, so it is excluded when `|p_hat,target| = |(π/180)·p_target·b_ref/(2·V)|` at that application's speed exceeds 0.10 — the target is given in deg/s and is converted to rad/s before it is made nondimensional with [[wing-span]]. The AeroBuildup world is unaffected (its own maximum is still `target_above_method_maximum`). No kernel implementation exists yet (0 implementations); the rule is binding for it. Inside the range the interval spans both worlds; outside it the quantity is the AeroBuildup world alone, and the AVL world is not used — its value is not part of the interval. The exclusion is declared, never silent (ADR 0020, ADR 0027 point 8): the warning `world_outside_validity` names the world and carries the AVL value and the limit. The range is exactly the stated one: `|pb/2V| = 0.10` is inside. If AeroBuildup fails, the quantity is an error as before (a failed world is never dropped).
 
 **Canonical form**
 
@@ -61,10 +64,11 @@ evaluated at V = V_cruise,target (when given) and at V = V_app, for each roll-ra
 world aerobuildup:  search delta_a upward from 0 until p(delta_a) stops increasing; a target above that maximum
                     has no solution in this world (target_above_method_maximum, with the maximum roll rate and
                     its delta_a); never a clipped angle
-world avl:          linear in delta; delta_a,req solved directly
+world avl:          linear in delta; delta_a,req solved directly; excluded when |p_hat,target| > 0.10,
+                    p_hat,target = (pi/180) * p_target * b_ref / (2 * V)      # p_target in deg/s, converted to rad/s
 ```
 
-**Produces** [[aileron-deflection-required-cruise]] · [[aileron-deflection-required-approach]]  ·  **from** [[airplane]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed-target]] · [[approach-speed]] · [[roll-rate-target-cruise]] · [[roll-rate-target-approach]]
+**Produces** [[aileron-deflection-required-cruise]] · [[aileron-deflection-required-approach]]  ·  **from** [[airplane]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[wing-span]] · [[cruise-speed-target]] · [[approach-speed]] · [[roll-rate-target-cruise]] · [[roll-rate-target-approach]]
 
 **The approach application binds the landing configuration (maintainer decision 2026-10-26, #1212: "v_app mit Klappen").** `V_app = k · V_S,LDG` comes from the landing configuration, so `δ_a,req` at that speed is solved on `airplane-landing` — the flaps at `flap-deflection-landing` ([[airplane-configuration]]) — not on the clean `airplane`; the cruise application stays on the clean airplane. For a flaperon the landing deflection is the symmetric bias and `δ_a` is applied antisymmetrically on top; the details and the declared caveats are those of [[roll-rate]]. Without flaps `airplane-landing` is the airplane itself. (Binding change only; the entry's status is unchanged.)
 

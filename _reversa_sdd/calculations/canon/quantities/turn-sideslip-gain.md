@@ -14,7 +14,7 @@ type: scalar
 
 # Sideslip per unit yaw rate in the turn · `kappa`
 
-`kappa = -C_l_r / C_l_beta`, both derivatives from AVL at the minimum-sink speed: the sideslip angle (rad) that cancels one unit of non-dimensional yaw rate by roll balance. Drela's "approximately 1" up to 3π/8 ≈ 1.18 (elliptic strip theory) is the textbook range; the canon reports the AVL value of the aircraft.
+`kappa = -C_l_r / C_l_beta`, both derivatives from AVL at the minimum-sink speed: the sideslip angle (rad) that cancels one unit of non-dimensional yaw rate by roll balance. In Drela's form the gain is `C_L/(a·Γ)` times a prefactor of "approximately 1" up to 3π/8 ≈ 1.18 (elliptic strip theory); that range is the prefactor's, not that of `kappa`. The canon reports the AVL value of the aircraft.
 
 **Unit.** `1` (`1/rad ÷ 1/rad`; the product `kappa·r̂` is an angle in rad).
 

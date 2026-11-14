@@ -97,13 +97,14 @@ right Reynolds number for each sample; the optimisation does both at once and en
 Re ≈ 100 000 is not parabolic — which is the argument for solving the problem on the real
 polar instead of a closed form.
 
-## Implementations (3)
+## Implementations (4)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| [[i-min-sink]] | EXACT | 🟢 |  |
-| [[v-min-sink]] | EXACT | 🟢 |  |
-| [[w-min]] | EXACT | 🟢 |  |
+| `aero_kernel/formulas/minimum_sink_speed.py` | EXACT | 🟢 | the OPT adapter (`ctx.solvers.opti.min_sink`) brackets the first C_L peak and minimises the sink power `D·V` with the kernel's drag subject to the lift balance, in the bound ISA air state; the stall-limited optimum carries `minimum_sink_stall_limited` |
+| [[i-min-sink]] | DEVIATES | 🟢 | Ist: argmin of `V·C_D/C_L` over a sampled polar computed at one fixed speed (the broken assumption above), not this optimisation |
+| [[v-min-sink]] | DEVIATES | 🟢 | Ist: the speed read at that argmin index of the fixed-Re sampled polar |
+| [[w-min]] | DEVIATES | 🟢 | Ist: the sink rate at that argmin index; the minimum sink rate is not an output of this entry |
 
 ## Approval
 

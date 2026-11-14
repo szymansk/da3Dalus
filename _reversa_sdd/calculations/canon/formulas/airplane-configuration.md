@@ -77,8 +77,8 @@ The limitation was first noted in ANFORDERUNGEN.md, § "Rollwirkung gegen die ge
 above are **adopted on the maintainer's authority** (statement 2026-10-02, confirmed 2026-10-24).
 
 **Validity in the RC/UAV regime (ADR 0028).** Regime-independent as a construction step. The tool limit
-is the one declared above: AeroBuildup's τ·δ shift without flap separation over-predicts the flap at large
-deflections; landing settings of RC models lie above the unverified 15–25° range.
+is the one declared above: the flap is a deflected contour evaluated by NeuralFoil inside AeroBuildup (#1212), with no
+flap separation model, and NeuralFoil's confidence falls with the deflection; this is declared by `flap_confidence_low` and, above 30°, by `flap_deflection_beyond_validity`.
 
 ## Implementations (1)
 

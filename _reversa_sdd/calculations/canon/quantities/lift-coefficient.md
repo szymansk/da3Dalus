@@ -15,7 +15,7 @@ type: scalar
 
 # Lift coefficient · `C_L`
 
-Non-dimensional lift, either produced by the AeroBuildup sweep or demanded by the level-flight balance.
+Non-dimensional lift demanded by the lift balance at the speed and load factor of the operating point, `n·m·g/(q·S_ref)`.
 
 **Unit.** `1`
 

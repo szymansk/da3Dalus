@@ -15,7 +15,7 @@ type: scalar
 
 # Wing loading · `W/S`
 
-Weight per reference area; produced independently in three places (flight envelope, field length, mission KPI) with two different values of g.
+Weight per reference area, `m·g/S_ref`.
 
 **Unit.** `N/m^2`
 

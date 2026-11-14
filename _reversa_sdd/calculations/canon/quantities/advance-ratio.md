@@ -15,7 +15,7 @@ type: scalar
 # Advance ratio · `J`
 
 How far the propeller advances per revolution, relative to its diameter: `J = V/(n·D)`.
-The axis the measured propeller tables are indexed by, and the reason thrust falls with
+The axis the propeller tables (APC's computed PER3 data) are indexed by, and the reason thrust falls with
 airspeed — as `J` rises the blade's angle of attack drops and the thrust coefficient slides
 toward zero.
 

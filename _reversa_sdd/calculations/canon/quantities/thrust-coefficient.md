@@ -14,7 +14,7 @@ type: scalar
 
 # Thrust coefficient · `C_T`
 
-Non-dimensional propeller thrust, `T/(rho n^2 D^4)`. Read from the measured table against advance ratio, not modelled.
+Non-dimensional propeller thrust, `T/(rho n^2 D^4)`. Read from the propeller's table against advance ratio (APC's computed PER3 data, not a measurement); not modelled by the canon.
 
 **Unit.** `1`
 

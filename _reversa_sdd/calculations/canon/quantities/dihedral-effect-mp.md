@@ -7,12 +7,13 @@ role: output
 tags:
   - canon/quantity
   - discipline/lateral
+  - point/minimum-sink
   - stage/stability-structure
   - role/output
 type: scalar
 ---
 
-# Dihedral effect at the minimum-drag speed · `C_l_beta,mp`
+# Dihedral effect at the minimum-sink speed · `C_l_beta,mp`
 
 Rolling-moment derivative with sideslip; negative rights the aircraft from a bank.
 

@@ -18,9 +18,6 @@ Speed at which the steady-glide sink rate is lowest; physically also the best-en
 
 **Unit.** `m/s`
 
-> ⚠️ **2 formulas produce this one quantity.** That is the shape ADR 0022
-> forbids unless one is derived from the others. Resolve during approval.
-
 **Produced by.** [[minimum-sink-speed]]
 
 **Used by.** [[endurance-and-range]] · [[lateral-static-stability-mp]] · [[spiral-parameter]] · [[zero-lift-angle]]

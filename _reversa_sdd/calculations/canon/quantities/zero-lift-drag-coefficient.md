@@ -20,9 +20,6 @@ Zero-lift parasite drag coefficient of the parabola fitted to the solver polar o
 **Unit.** `1`
 
 
-> ⚠️ **2 formulas produce this one quantity.** That is the shape ADR 0022
-> forbids unless one is derived from the others. Resolve during approval.
-
 **Produced by.** [[parabolic-polar-fit]]
 
 **Used by.** [[drag-polar]] · [[max-lift-to-drag-parabolic]] · [[minimum-drag-speed-closed-form]]

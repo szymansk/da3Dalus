@@ -53,7 +53,7 @@ The formula itself is a law (Sadraey Eq. 4.80, an algebraic consequence of the p
 Identical to the proposal once W/S is factored (Sadraey writes 2W/(rho*S) grouped, the proposal writes 2*(W/S)/rho). Sadraey introduces it as the speed for maximum rate of climb of a JET; the same quantity is the minimum-drag speed for any aircraft.
 ```
 
-**Validity in the RC/UAV regime (ADR 0028).** Valid at RC scale as an algebraic consequence of the parabolic polar, with the same caveat as max-lift-to-drag-parabolic: at Re 5e4-3e5 the polar is offset-parabolic, so C_D0 and k must be fitted over the C_L range of interest, not anchored at C_L = 0 (see zero-lift-drag-from-sweep). Do not let this closed form and the argmax-of-polar route both be authoritative - ADR 0022.
+**Validity in the RC/UAV regime (ADR 0028).** Valid at RC scale as an algebraic consequence of the parabolic polar, with the same caveat as max-lift-to-drag-parabolic: at Re 5e4-3e5 the polar is offset-parabolic, so C_D0 and k must be fitted over the C_L range of interest, not anchored at C_L = 0 (see [[parabolic-polar-fit]], which fits over the operating C_L window). Do not let this closed form and the argmax-of-polar route both be authoritative - ADR 0022.
 
 ## Implementations (1)
 
@@ -73,7 +73,7 @@ Identical to the proposal once W/S is factored (Sadraey writes 2W/(rho*S) groupe
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
 **Own output since 2026-10-02.** As the Probe it must not produce `V_md` itself: it did, and
-with `C_D0` and `e` now bound to the cruise point (ADR 0004) that closed a loop
+with `C_D0` and `e` then bound to the cruise point (ADR 0004; since ADR 0026 they come from [[parabolic-polar-fit]]) that closed a loop
 `V_md → V_cruise → e → k → V_md`. Its value is `V_md,probe`, compared with the
 optimisation's `V_md`; a mismatch beyond the parabola's known error at low Reynolds number
 is reported, not substituted.

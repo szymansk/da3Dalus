@@ -39,15 +39,15 @@ C_D,par = C_D0 + k * C_L^2
 
 > Anderson, Fundamentals of Aerodynamics 6e, §6.7.2, writes the polar as C_D = C_D,0 + r*C_L^2 with C_D,0 the zero-lift (parasite) drag coefficient. Scholz (Flugzeugentwurf) and Sadraey (§4.3) use the same parabolic form with k = 1/(pi*A*e).
 
-**Why this entry exists.** Three formulas in this canon consume a drag coefficient —
-[[lift-to-drag-ratio]], [[sink-rate]] and [[stall-break]] — and until this entry
+**Why this entry exists.** One formula in this canon consumes the parabola's drag coefficient —
+[[sink-rate]] ([[lift-to-drag-ratio]] takes the solver's forces) — and until this entry
 none produced one. The relation was present exactly once, **inlined** inside
-[[power-required-electrical]], where the other three cannot reach it. A producer hidden
-inside a consumer is not a missing law; it is an unfactored one.
+`power-required-electrical` (deleted 2026-10-02, replaced by [[endurance-and-range]]), where no other
+entry could reach it. A producer hidden inside a consumer is not a missing law; it is an unfactored one.
 
 **Validity in the RC/UAV regime (ADR 0028).** The parabolic form is a **model**, not an identity, and at model
 Reynolds numbers it is weaker than the textbooks assume. Both `C_D0` and `k` vary with
-Reynolds number (see [[reynolds-scheduled-polar]]), so the polar is a *family* of curves
+Reynolds number (each point of the solver polar carries its own, see [[parabolic-polar-fit]]), so the polar is a *family* of curves
 indexed by speed, not one curve. Treating `C_D0` and `k` as constants across the speed
 range is the same assumption that made the closed-form minimum-drag speed a Probe rather
 than an authority.
@@ -60,8 +60,7 @@ the swept value is the authority and the parabolic form is the model. Their diff
 a **test** of how well the parabolic model fits at this scale (A7), and it is the same
 check that gave 2.9 % median and 33 % worst case on the stall.
 
-The solver sweep has no canon entry of its own — it is a `procedure`, and writing it up is
-outstanding.
+The solver evaluation has its own canon entry: [[aerobuildup-evaluation]].
 
 ## Implementations (0)
 

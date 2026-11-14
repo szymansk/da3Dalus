@@ -54,7 +54,7 @@ The time to double is what Sadraey limits (§12.3.3, Tab. 12.15, class I: ≥ 12
 level 2, ≥ 4 s level 3); the sign alone is not a requirement — most aircraft are mildly spirally
 unstable (Drela, desrules). The bands belong to the evaluation (A10).
 
-**Two points.** Evaluated at `V_md` and on approach, because `C_lβ` and `C_lr` grow with `C_L`
+**Three points.** Evaluated at `V_md`, on approach and at `V_mp` ([[lateral-static-stability-mp]], #1309), because `C_lβ` and `C_lr` grow with `C_L`
 and `C_nβ` can fall at high angle of attack.
 
 **Values, not verdicts (A10).** The RC bands — dihedral 2–7° by wing position and control,
@@ -113,3 +113,4 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 > is open while the app has no centre-of-gravity field (#1209); the CG is the quantity [[centre-of-gravity-design]] (produced by the formula cg-for-target-margin), never an app input. The implementation checklist item holds
 > vacuously: there is no aero_kernel formula yet.
 > Input rebound (maintainer 2026-10-25): the CG is cg-for-target-margin's, never an app input.
+> (The kernel implementation was added after the approval: `aero_kernel/formulas/lateral_static_stability_md.py`.)

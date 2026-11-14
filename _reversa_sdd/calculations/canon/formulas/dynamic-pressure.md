@@ -37,12 +37,13 @@ q = 0.5 * rho * V^2
 
 > Anderson, Fundamentals of Aerodynamics 6e, §1.5 "Aerodynamic Forces and Moments": q_inf = 0.5*rho_inf*V_inf^2, introduced as the quantity that scales all force coefficients. Also Scholz 05_PreliminarySizing §5.6.2 (Eq. 5.30 context).
 
-**Validity in the RC/UAV regime (ADR 0028).** Exact. Incompressible form; valid for M < ~0.3, which every 0.5-15 kg RC/UAV airframe satisfies with a wide margin (except propeller tips, which are outside this chain). No qualification needed.
+**Validity in the RC/UAV regime (ADR 0028).** Exact. Incompressible form; valid for M < ~0.3, the Mach limit of the RC/UAV regime (ADR 0028: chord Re 3·10⁴–1·10⁶, Mach ≤ 0.3), which the airframe satisfies with a wide margin (except propeller tips, which are outside this chain). No qualification needed.
 
-## Implementations (1)
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
+| `aero_kernel/formulas/dynamic_pressure.py` | EXACT | 🟢 |  |
 | [[q_dynamic_pressure]] | EXACT | 🟢 |  |
 
 ## Approval

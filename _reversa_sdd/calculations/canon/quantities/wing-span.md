@@ -26,4 +26,4 @@ The call: `main_wing.span(type="yz", include_centerline_distance=True)`, both ar
 
 **Produced by.** [[airplane-geometry]]
 
-**Used by.** [[aspect-ratio]] · [[mean-geometric-chord]] · [[roll-rate]] · [[spiral-parameter]] · [[turn-sideslip]] · [[vertical-tail-volume]]
+**Used by.** [[aileron-deflection-required]] · [[aspect-ratio]] · [[mean-geometric-chord]] · [[roll-rate]] · [[roll-rate-cruise-target]] · [[spiral-parameter]] · [[turn-sideslip]] · [[vertical-tail-volume]]

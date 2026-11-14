@@ -21,6 +21,8 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   v_app: approach-speed
   delta_f_ldg: flap-deflection-landing
   delta_f_crow: crow-flap-deflection
@@ -52,7 +54,7 @@ for the crow mix s in [0, 1], starting from the landing configuration (s = 0):
   s_max     : V_S0(s_max) = V_app                    (stall reaches the approach speed flown without crow)
 ```
 
-**Produces** [[butterfly-stall-speed-curve]] · [[butterfly-approach-speed-curve]] · [[butterfly-glide-angle-curve]] · [[butterfly-max-mix]]  ·  **from** [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[approach-speed]] · [[flap-deflection-landing]] · [[crow-flap-deflection]] · [[crow-aileron-deflection]]
+**Produces** [[butterfly-stall-speed-curve]] · [[butterfly-approach-speed-curve]] · [[butterfly-glide-angle-curve]] · [[butterfly-max-mix]]  ·  **from** [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[approach-speed]] · [[flap-deflection-landing]] · [[crow-flap-deflection]] · [[crow-aileron-deflection]]
 
 **Base configuration (maintainer, 2026-10-15, E2).** `s = 0` is the landing configuration
 ([[airplane-landing]]); the crow angles are absolute end deflections: the flaps run from
@@ -69,8 +71,9 @@ from it (maintainer, 2026-10-02):
 - **b) the pilot holds the speed and mixes in on short final** — the typical case and the
   original question: `s_max`, the largest mix at which the stall speed has not yet reached
   the approach speed flown without crow. Between `s = 0` and `s_max` the reserve shrinks from
-  `k_S` to 1; the curve shows it. If `V_S0(s)` does not rise with `s` — the raised ailerons can
-  delay the outboard stall — there is no `s_max`: *"fully mixable"*.
+  `k_S` to 1; the curve shows it. If `V_S0(s)` does not reach `V_app` up to `s = 1` — because it
+  does not rise with `s` (the raised ailerons can delay the outboard stall), or rises without
+  reaching the approach speed — there is no `s_max`: *"fully mixable"*.
 
 **Exists only if the geometry has camber flaps and ailerons** (as A3 for the flap
 configurations): crow needs both.

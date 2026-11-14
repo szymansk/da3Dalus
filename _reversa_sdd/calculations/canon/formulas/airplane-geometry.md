@@ -88,7 +88,7 @@ would leave every number computed from them standing after a geometry edit.
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/airplane_geometry.py` | EXACT | 🟢 | the values are ASB's own, measured by the GEO adapter (`aero_kernel/solvers/geometry.py`) on the wing `aero_kernel/solvers/asb_airplane.py` builds; `area()` excludes the centreline gap while `b_ref` includes it (declared above) |
+| `aero_kernel/formulas/airplane_geometry.py` | EXACT | 🟢 | the values are ASB's own, measured by the GEO adapter (`aero_kernel/solvers/geometry.py`) on the wing `aero_kernel/solvers/asb_airplane.py` builds; `S_ref` and `b_ref` both include the centreline gap (`include_centerline_distance=True`, declared above) |
 
 ## Approval
 

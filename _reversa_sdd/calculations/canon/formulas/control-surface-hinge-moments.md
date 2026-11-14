@@ -86,7 +86,7 @@ reported in that sense.
 
 | role | deflection applied | dual-role surfaces in this role |
 |---|---|---|
-| aileron | antisymmetric: right `+δ_a`, left `−δ_a` (as [[aileron-deflection]] defines, ±δ_a) | elevon, flaperon — antisymmetric |
+| aileron | antisymmetric: right `−δ_a` (trailing edge up), left `+δ_a` (trailing edge down) — a positive δ_a commands a roll to the right, as [[aileron-deflection]] defines (±δ_a) | elevon, flaperon — antisymmetric |
 | elevator | symmetric: both sides `+δ_e` | elevon, ruddervator — symmetric |
 | rudder | every fin `+δ_r` | ruddervator — antisymmetric |
 | flap | symmetric: both sides `+δ_f` | flaperon — symmetric |
@@ -115,7 +115,7 @@ AVL surface (`avl_doc:615-625`), i.e. **tip → root** on a left half. The left 
 oriented so that `+δ` has the same physical sense as on the right — the mirror image of the right
 side's sense, for aileron, elevator and flap trailing edge down (`+` rotation about the hinge vector by
 the right-hand rule, `avl_doc:752-753`). Each side's `H` is reported in that sense, and the deflection
-sign table above refers to it (aileron: the left half gets `−δ_a`, i.e. trailing edge up). This
+sign table above refers to it (aileron, for a positive δ_a: the right half gets `−δ_a`, i.e. trailing edge up, the left half `+δ_a`, trailing edge down). This
 AVL model differs on purpose from [[spanwise-loads]], which requires `YDUPLICATE` with the sections
 root → tip so that `VM` integrates from the tip; the two procedures build separate AVL inputs.
 
@@ -140,7 +140,7 @@ own area and mean chord, `C_h = C_h0 + C_hα·α + C_hδ·δ` (Sadraey §12.7.1,
 `C_hinge` is the same moment referred to `S_ref·c_ref`; `H` is identical.
 
 **Validity in the RC/UAV regime (ADR 0028), declared (ADR 0020).** Inviscid, steady, attached flow,
-linear in δ (`amake.f:1173-1177`). Missing: boundary-layer displacement over the hinge (Anderson §17.2),
+linear in δ (`amake.f:1184-1187`). Missing: boundary-layer displacement over the hinge (Anderson §17.2),
 the real trailing-edge Kutta condition (§4.5), gap flow [no source in Anderson], separation behind
 hinge or trailing edge (§1.10.2, §4.13) and laminar bubbles (§20.3.2). In attached flow the magnitude
 is typically **over-estimated** [no source] — an upper estimate; under separation, at large deflection

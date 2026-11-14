@@ -12,7 +12,7 @@ tags:
 type: scalar
 ---
 
-# Weathercock stability at the minimum-drag speed · `C_n_beta,mp`
+# Weathercock stability at the minimum-sink speed · `C_n_beta,mp`
 
 Yawing-moment derivative with sideslip; positive turns the nose into the relative wind.
 

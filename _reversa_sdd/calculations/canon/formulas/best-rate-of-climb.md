@@ -15,13 +15,15 @@ tags:
   - shape/law
   - kind/optimization
   - status/draft
-tex: \begin{aligned}\mathit{ROC}_{max} = \max_{V,\,\alpha,\,\gamma,\,n_{prop}}\; & V\sin\gamma \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma \\ & T(V,n_{prop}) - D(V,\alpha) \ge m\,g\sin\gamma \\ & Q_m(n_{prop}) = Q_p(V,n_{prop})\end{aligned}
+tex: \begin{aligned}\mathit{ROC}_{max} = \max_{V,\,\alpha,\,\gamma,\,n_{prop}}\; & V\sin\gamma \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma \\ & T(V,n_{prop}) - D(V,\alpha) \ge m\,g\sin\gamma \\ & Q_m(n_{prop}) = Q_p(V,n_{prop}) \\ & 0 \le \gamma \le \pi/2\end{aligned}
 inputs:
   airplane: airplane
   components: components
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   k_v: motor-voltage-constant
   i_0: motor-no-load-current
   r_m: motor-circuit-resistance
@@ -44,15 +46,17 @@ maximize over V, alpha, gamma, n_prop:   V * sin(gamma)
 subject to:   L(V, alpha) = m * g * cos(gamma)
               T(V, n_prop) - D(V, alpha) >= m * g * sin(gamma)
               motor-propeller torque balance at (V, n_prop)
+              0 <= gamma <= pi/2
+gamma in radians inside sin and cos; where it is reported, it is converted to degrees, (180/pi) * gamma
 ```
 
-**Produces** [[best-rate-of-climb-speed]] · [[max-rate-of-climb]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[best-rate-of-climb-speed]] · [[max-rate-of-climb]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
-**Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n² · D⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
+**Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n_prop² · D_prop⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
 
 **Exact steady climb, not the small-angle form.** Sadraey writes `ROC = (T·V − D·V) / W` with `L = W` (Eq. 4.77–4.78, §4.3.5; the propeller form `(η_P·P − D·V)/W` is Eq. 4.84, §4.3.5.2). That holds for shallow climbs only. A model with a high thrust-to-weight ratio climbs steeply, and with `T > W` vertically. Stating both force balances along and across the path costs one variable and keeps the result right at every angle; at `gamma = 90°` the lift constraint gives `L = 0`, which is the honest answer.
 
-**Termination.** Approval asks for **no bound active at the optimum** — with one declared exception: `gamma` at its 90° bound means the aircraft climbs vertically at that speed. Any other active bound, and a failed solve, return no value (ADR 0020).
+**Termination.** The bound `0 ≤ γ ≤ π/2` is part of the problem: without it every upright climb `γ` has a mirrored inverted twin `γ' = π − γ` in `(π/2, π]` — the same `sin γ`, `cos γ' = −cos γ`, hence `L = −m·g·cos γ` — which is feasible with the same objective value `V·sin γ`, so the optimum would not be unique. `γ` is in radians inside `sin` and `cos`; this entry outputs no angle, and where `γ` is reported it is converted to degrees. Approval asks for **no bound active at the optimum** — with one declared exception: `gamma` at its 90° bound means the aircraft climbs vertically at that speed. Any other active bound, and a failed solve, return no value (ADR 0020).
 
 **The current is a verdict, not a constraint.** The optimum yields the motor current. Above the motor's, the controller's or the battery's limit the drive is overloaded at full throttle — reported, not optimised away.
 

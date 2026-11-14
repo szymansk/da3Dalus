@@ -16,7 +16,7 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-tex: L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_a,\,p\big) = 0
+tex: L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_a,\,p_{rad}\big) = 0, \quad \hat p = \frac{p_{rad}\,b_{ref}}{2\,V_{app}}, \quad p = \frac{180}{\pi}\,p_{rad}
 inputs:
   airplane: airplane
   m: aircraft-mass
@@ -59,13 +59,13 @@ worlds: [aerobuildup, avl]
 **Canonical form**
 
 ```
-solve for alpha, p (steady roll at V, at the given aileron deflection):   L(V, alpha) = m * g,   C_roll(V, alpha, delta_a, p) = 0
-evaluated at V = V_app;   p_hat = p * b_ref / (2 * V_app)
+solve for alpha, p_rad (steady roll at V, at the given aileron deflection; p_rad in rad/s):   L(V, alpha) = m * g,   C_roll(V, alpha, delta_a, p_rad) = 0
+evaluated at V = V_app;   p_hat = p_rad * b_ref / (2 * V_app);   p = (180/pi) * p_rad     # p in deg/s
 ```
 
 **Produces** [[roll-rate-approach]] · [[roll-rate-nondimensional-approach]]  ·  **from** [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[approach-speed]] · [[wing-span]] · [[aileron-deflection]]
 
-**Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. One symmetric aileron angle ±δ_a; an up/down differential is not modelled (out of the MVP, maintainer 2026-10-01).
+**Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. One symmetric aileron angle ±δ_a; an up/down differential is not modelled (out of the MVP, maintainer 2026-10-01). The roll rate is solved in rad/s: `p_hat` is formed from that value, and `p` is reported in deg/s (factor `180/π`).
 
 **Decided (maintainer, 2026-10-14):** every control device is an angle; the stops are never referenced — the canon finds which deflection a wanted roll rate needs (supersedes the 2026-10-01 statement that throws are construction parameters).
 
@@ -87,7 +87,7 @@ evaluated at V = V_app;   p_hat = p * b_ref / (2 * V_app)
 
 **2026-10-02:** evaluated on approach only; the cruise value moved to
 [[roll-rate-cruise-target]] and exists only when a cruise-speed target is given. New output
-`p_hat_max = p·b/2V` — nearly independent of speed, the RC character statement without a reference
+`p_hat = p·b_ref/(2·V_app)` ([[roll-rate-nondimensional-approach]], `p` in rad/s) — nearly independent of speed, the RC character statement without a reference
 speed.
 
 ## Implementations (1)

@@ -759,6 +759,8 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   v_app: approach-speed
   delta_f_ldg: flap-deflection-landing
   delta_f_crow: crow-flap-deflection
@@ -866,6 +868,8 @@ inputs:
   m: aircraft-mass
   g: gravity
   rho: air-density
+  mu: dynamic-viscosity
+  a: speed-of-sound
   ar: aspect-ratio
   cl_max: max-lift-coefficient
 outputs: {cd0: zero-lift-drag-coefficient, e_osw: oswald-efficiency}

@@ -49,11 +49,11 @@ width       = alpha_break - alpha_S
 
 **Assumptions.** (1) The polar runs far enough past the peak to bracket the crossing ([[polar-stall]] is swept past the first peak for this purpose). (2) The α spacing resolves the post-peak fall; **this is checked, not assumed** (resolution check below). (3) The polar is the one at the stall Reynolds number — `alpha_break` is only meaningful for the Reynolds number the polar was computed at.
 
-**Resolution check** (maintainer, 2026-10-24: raise the resolution, never loosen a threshold). The crossing is computed a second time from a sweep at **half the published step** (0.125°), from α_S to the end of the range, at the same airplane and at the flow conditions the polar was computed at (speed `V_S`, density, viscosity and speed of sound, carried by the polar value itself) — which is why the entry takes `airplane` besides the polar, and why its tool is the OPT adapter (one more AeroBuildup sweep). The two angles are compared against **one published step, 0.25°**. Basis: linear interpolation between samples cannot be trusted below the sample spacing, so a finer sweep that moves the break by more than one published step shows the grid, not the polar, resolves the value. The tolerance is fixed from the sweep's own step before any measurement; it is a convention, not a sourced number — none exists for a computed polar (adopted by the maintainer, 2026-10-25). A difference above it is a `DesignWarning` of severity *defect* (`stall_break_resolution`) carrying both angles; the value of the published sweep stands.
+**Resolution check** (maintainer, 2026-10-24: raise the resolution, never loosen a threshold). The crossing is computed a second time from a sweep at **half the published step** (0.125°), from α_S to the end of the range, at the same airplane and at the flow conditions the polar was computed at (speed `V_S`, density, viscosity and speed of sound, carried by the polar value itself) — which is why the entry takes `airplane` besides the polar, and why its tool is the OPT adapter (one more AeroBuildup sweep). The two angles are compared against **one published step, 0.25°**. Basis: linear interpolation between samples cannot be trusted below the sample spacing, so a finer sweep that moves the break by more than one published step shows the grid, not the polar, resolves the value. The tolerance is fixed from the sweep's own step before any measurement; it is a convention, not a sourced number — none exists for a computed polar (adopted by the maintainer, 2026-10-25). A difference above it is a `DesignWarning` of severity `warning` (`stall_break_resolution`) carrying both angles; the value of the published sweep stands.
 
 **Convergence.** None: a single pass with no iteration; the only tolerance is that of the resolution check.
 
-**On failure.** If the polar never falls to `(1 - f) * C_L,max` past `alpha_S` (the event is not bracketed), there is **no value**: the kernel returns a `not_converged` error (an error carries no warning, ARCHITECTURE §8.1) and runs no further sweep. If the sweep at half the step does not bracket the break that the published sweep found, the result is likewise a `not_converged` error. The last sample and the peak sample are never substituted (ADR 0020). On the success path, a resolution check that fails (difference above one published step) is the `DesignWarning` of severity *defect* `stall_break_resolution`, with both angles.
+**On failure.** If the polar never falls to `(1 - f) * C_L,max` past `alpha_S` (the event is not bracketed), there is **no value**: the kernel returns a `not_converged` error (an error carries no warning, ARCHITECTURE §8.1) and runs no further sweep. If the sweep at half the step does not bracket the break that the published sweep found, the result is likewise a `not_converged` error. The last sample and the peak sample are never substituted (ADR 0020). On the success path, a resolution check that fails (difference above one published step) is the `DesignWarning` of severity `warning` `stall_break_resolution`, with both angles.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -69,9 +69,13 @@ Anderson describes the break qualitatively and distinguishes stall types rather 
 
 **Validity in the RC/UAV regime (ADR 0028).** Valid **only at the stall Reynolds number**: the post-peak shape of the lift curve changes strongly with Re in the RC range (chord Re 3·10^4 – 1·10^6). Below Re 7·10^4 the laminar separation bubble dominates the section and the confidence in the result is reduced; the value is still computed and the Re is reported with it. Limitations: AeroBuildup does not model three-dimensional separation, so the break is a feature of the section data carried through the wing-level build-up, not a predicted flight stall; the quantity is wing-level only — **tip stall is a separate, later quantity** and is not covered by this entry.
 
-## Implementations (0)
+## Implementations (1)
 
-Legacy implementations: none. Kernel: `aero_kernel/formulas/stall_break.py` (#1226).
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/stall_break.py` | EXACT | 🟢 | the first crossing of `(1 − f)·C_L,max` past `alpha_S`, linearly interpolated on the published sweep, and the resolution check at half the step with the tolerance of one published step (`stall_break_resolution`, severity `warning`); `not_converged` when either sweep does not bracket the break (#1226) |
+
+Legacy implementations: none.
 
 ## Approval
 

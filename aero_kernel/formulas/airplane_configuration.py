@@ -15,8 +15,8 @@ async def airplane_configuration(x: Inputs, ctx: Context) -> dict[str, AirplaneG
     """The airplane in its take-off or landing configuration.
 
     Four cases (canon table): without flaps and without a deflection the airplane itself, no
-    warning (the canon's own definition, not a fallback); without flaps but with a deflection the
-    airplane itself and the ``deflection_without_flap`` warning (a supplied value is not used);
+    declaration (the canon's own definition, not a fallback); without flaps but with a deflection the
+    airplane itself and the ``notice`` ``deflection_without_flap`` (a supplied value is not used);
     with flaps and a deflection every flap device set to it exactly, also beyond the stop; with
     flaps and no deflection no value.
 

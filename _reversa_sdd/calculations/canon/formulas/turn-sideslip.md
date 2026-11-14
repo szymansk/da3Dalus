@@ -83,8 +83,8 @@ at the tightest expected turn radius `R`. Eq. 11 is the **band**; the relation f
    derivatives: `C_l_beta * beta + C_l_r * r_hat = 0`, so `beta = kappa * r_hat` with `kappa = -C_l_r / C_l_beta`
    (maintainer decision 2026-10-27, option (a)). Both derivatives are AVL at `V_mp` for every layout (K27):
    `C_l_beta` is [[dihedral-effect-mp]], `C_l_r` is [[roll-due-to-yaw-rate-mp]], both outputs of
-   [[lateral-static-stability-mp]]. Drela's `kappa` is about 1 (the `≃`) up to `3π/8 ≈ 1.18` (elliptic strip theory);
-   the canon reports the AVL value and does not assume one. `kappa` is an output as well.
+   [[lateral-static-stability-mp]]. In Drela's form the gain is `C_L/(a·Γ)` times a prefactor of about 1 (the `≃`) up to `3π/8 ≈ 1.18` (elliptic strip
+   theory) — that range is the prefactor's, not that of `kappa` itself; the canon reports the AVL value and does not assume one. `kappa` is an output as well.
 
 **Assumptions.**
 - **Roll balance only.** The yaw balance of the sideslipping aircraft (fin, weathercock stability, rudder) is not
@@ -94,8 +94,8 @@ at the tightest expected turn radius `R`. Eq. 11 is the **band**; the relation f
 - **No viscous effects.** AVL is inviscid and attached; the drag the sideslip costs (fuselage broadside) is Drela's
   reason for the limit and is not computed.
 - **Linear, steady.** Small angles, derivatives at the trim of `V_mp`; the turn itself is quasi-steady (no angular
-  accelerations). The changed `C_L` and speed along the 45 deg turn are not re-evaluated in AVL: the derivatives
-  stay those at `V_mp`.
+  accelerations). The changed speed along the 45 deg turn (`C_L` is held, step 4) is not re-evaluated in AVL: the
+  derivatives stay those at `V_mp`.
 - **The band 5...15 deg is Drela's** ("difficult to estimate", "for most aircraft"). It belongs to the evaluation
   (A10), rule `turn-sideslip` in `drela.yaml`; the canon outputs the value only.
 
@@ -113,7 +113,7 @@ for `kappa` = 1: `beta_turn` = 0.1001 rad = 5.74 deg.
 p. 6-8 (the mechanism, the unnumbered `beta_turn` relation, Eq. 11 for the band); the coordinated-turn kinematics
 (`r = g sin(phi) / V`, steps 1-3) and the 45 deg worst case are **derived here**, not printed — Drela's printed `sin(phi)`
 is superseded (🟡, step 2); `kappa` from AVL (K27, `reference_fleet/urmodell/ERGEBNISSE.md` B3, B8), maintainer decision
-2026-10-27, #1275. Draft: adopts nothing until the maintainer approves.
+2026-10-27, #1275.
 
 **Validity in the RC/UAV regime (ADR 0028).** The kinematics and the roll balance are scale-free (Mach ≤ 0.3 needs no
 correction, Anderson §1.10.3). The limit is the single tool: AVL is inviscid and attached with no stall, so at `V_mp`
@@ -145,3 +145,4 @@ and it belongs to the evaluation.
 > β = κ·r̂_max with κ = −C_l,r/C_l,β, both from AVL at V_mp (decision 2026-10-27: one producer, K27). Assumptions
 > declared: roll balance only, fuselage crude in AVL, inviscid. Applies when `has_no_aileron`; C_l,β < 0 required.
 > No kernel implementation yet.
+> (The kernel implementation was added after the approval: `aero_kernel/formulas/turn_sideslip.py`.)

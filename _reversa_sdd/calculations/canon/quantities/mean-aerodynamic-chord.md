@@ -16,7 +16,7 @@ figure: mean-aerodynamic-chord
 
 # Mean aerodynamic chord · `c_MAC`
 
-Chord used to form the Reynolds number for the speed-scheduled polar lookup.
+Reference chord of the main wing: the length the static margin, the design CG and the horizontal tail volume are referred to.
 
 What is measured: ASB 4.2.9, `geometry/wing.py`, `Wing.mean_aerodynamic_chord` (line 468; "the generalized methodology" of https://core.ac.uk/download/pdf/79175663.pdf). For each lofted section between two stations it takes the trapezoid's MAC length `(2/3)·c_inner·(1 + λ + λ²)/(1 + λ)` with `λ = c_outer/c_inner`, and then the mean of these lengths weighted by the sectional planform areas `area(_sectional=True)`. Those areas are measured along the panels in the y-z plane and do not include the centreline gap: ASB has no flag here, so the area and the span beside it carry the gap explicitly (see wing-reference-area) and this value does not.
 

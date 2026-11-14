@@ -16,7 +16,7 @@ positive: true
 
 # Gravitational acceleration · `g`
 
-Constant converting mass to weight; the chain carries two literal values, 9.81 (flight envelope, analysis, field length, matching chart, mission KPI) and 9.80665 (endurance), i.e. two authorities for one constant.
+Constant converting mass to weight. The canon value is standard gravity, 9.80665 m/s² (`defaults.yaml`, basis `standard`: CGPM 1901 / U.S. Standard Atmosphere 1976), the one authority for every formula.
 
 **Unit.** `m/s^2`
 

@@ -16,7 +16,7 @@ data: component:brushless_motor.kv_rpm_per_volt
 
 # Motor voltage constant · `K_v`
 
-Speed constant of the brushless motor fitted to the airplane, from the parts catalogue (41/41 motors carry it).
+Speed constant of the brushless motor fitted to the airplane, from the parts catalogue (42/42 motors carry it).
 
 **Unit.** `rpm/V`
 

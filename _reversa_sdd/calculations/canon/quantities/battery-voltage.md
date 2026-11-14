@@ -18,7 +18,7 @@ data:
 
 # Battery voltage · `U_bat`
 
-Pack voltage at the motor controller: cell count × [[cell-voltage-nominal]] (default 3.7 V, the LiPo value; the caller overrides it for another chemistry). Sag under load is not modelled; the value is the nominal one and is declared as such.
+Pack voltage at the motor controller: cell count × [[cell-voltage-nominal]] (read from the battery; its fallback chain — the chemistry's value, else the default 3.7 V of LiPo — is stated there). Sag under load is not modelled; the value is the nominal one and is declared as such.
 
 **Unit.** `V`
 

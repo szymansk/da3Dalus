@@ -43,8 +43,8 @@ One relation, three applications: `V = k_S · V_S,cfg` with the stall speed of t
 **Produces** [[approach-speed]] · [[touchdown-speed]] · [[takeoff-speed]]  ·  **from** [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[approach-speed-margin-target]] · [[touchdown-speed-margin-target]] · [[takeoff-speed-margin-target]]
 
 **Kind: a law — a definition.** The named speeds are defined as a margin over the stall speed of the
-matching configuration; the margins `k_S` are sourced targets in `defaults.yaml` (approach 1.3, touchdown
-1.1 — Lennon Ch. 20, CS 25.125 as the lower bound). Not an approximation of another relation: the
+matching configuration; the margins `k_S` are sourced targets in `defaults.yaml` (approach 1.3 — Lennon
+Ch. 20, CS 25.125 as the lower bound; touchdown 1.1 — Sadraey §4.3.2 and §9.3.10). Not an approximation of another relation: the
 approach speed *is* `k_S · V_S0` by definition (reclassified from rating/approximation, maintainer
 2026-10-25).
 
@@ -122,6 +122,7 @@ operating point, which has been computed since 2026-10-01 (§3.10).
 > `V = k_S · V_S,cfg` with the sourced defaults approach 1.3, touchdown 1.1, take-off 1.1
 > (`defaults.yaml`, overridable targets). The shape stays an approximation and the RC caution above stands:
 > at model Reynolds number the 1.3 is a lower bound.
+> (The classification in this note is superseded by the confirmation of 2026-10-25 below: kind and shape are `law`.)
 
 > **Approval confirmed** (maintainer, 2026-10-25) after a classification cleanup only: kind and shape `law`
 > (a definition, not a rating or an approximation), dimensional check `balances`, a stale V_x/V_y remark

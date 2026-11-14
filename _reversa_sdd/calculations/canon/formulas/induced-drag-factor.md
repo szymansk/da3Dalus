@@ -40,7 +40,7 @@ k = 1 / (pi * e_osw * AR)
 **The source writes it as**
 
 ```
-Anderson §6.7.2 draws a distinction the app must not lose: the SPAN efficiency e in C_D,i = C_L^2/(pi*e*AR) is 0.9-1.0 for a clean wing, whereas the OSWALD factor e_tilde = 1/(1 + r*pi*e*AR) in the total-airplane polar is 0.70-0.85 and additionally absorbs the lift-dependent part of parasite drag (C_D,e = C_D,0 + r*C_L^2). They are different numbers; Anderson says so explicitly.
+Anderson §6.7.2 draws a distinction the app must not lose: the SPAN efficiency e in C_D,i = C_L^2/(pi*e*AR) is 0.9-1.0 for a clean wing, whereas the OSWALD factor e_tilde = e/(1 + r*pi*e*AR) in the total-airplane polar is 0.70-0.85 and additionally absorbs the lift-dependent part of parasite drag (C_D,e = C_D,0 + r*C_L^2). They are different numbers; Anderson says so explicitly.
 ```
 
 **Validity in the RC/UAV regime (ADR 0028).** Prandtl lifting-line: valid for moderate-to-high AR unswept wings, which covers RC well. The RC-specific weakness is the constant-e assumption: at Re 5e4-3e5 the lift-dependent parasite term r*C_L^2 is LARGER than at transport scale (laminar separation bubble drag rises steeply outside the drag bucket), so a single e fitted over the whole polar is a worse approximation for a model than for an airliner. The 0.8 literal fallback is an Oswald-band number (Anderson's 0.70-0.85) being used where a span efficiency may be meant - state which one it is.
