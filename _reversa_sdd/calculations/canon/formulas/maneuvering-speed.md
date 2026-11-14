@@ -67,6 +67,6 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > **Approved** (maintainer, 2026-10-25): V_A is this optimisation — the stall-speed problem bound at
 > `n = n_lim`, `C_L,max` at the Reynolds number of V_A — not the shortcut `V_S·sqrt(n_lim)`. The relation is
 > Sadraey Eq. 4.30; the FAR 23.335(c) citation is recorded as a definition not verified. `n_lim` defaults to
-> 10 g (start value, `basis: start` in `defaults.yaml`); a mission table with the structure-mass consequence will replace it
+> 10 g (convention, `defaults.yaml`); a mission table with the structure-mass consequence will replace it
 > (#1242). The implementation checklist item holds vacuously: there is no aero_kernel formula yet.
 > (`defaults.yaml` records the value with `basis: start`: a start value.)
