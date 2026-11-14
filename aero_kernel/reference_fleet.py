@@ -206,6 +206,11 @@ class FleetMember(Enum):
         3.70,  # gross weight, AIAA 2020-0780 Table 1
         (0.3764702506313111, 1.5878121072598528, 0.23709999999999998),
     )
+    ULTRA_STICK_120 = (
+        "ultra_stick_120/ultra_stick_120.airplane.json",
+        8.95,  # 19.72 lbf, FASER Table 2 (NTRS 20060022541)
+        (0.7834962056768875, 1.9310683053761784, 0.4057319999999999),
+    )
 
     def __init__(
         self, relative_path: str, mass_kg: float, asb_reference: tuple[float, float, float]

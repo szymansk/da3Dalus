@@ -1,0 +1,265 @@
+{
+  "name": "ULTRA_STICK_120",
+  "xyz_ref": [
+    0.302006,
+    0.0,
+    0.071415
+  ],
+  "wings": {
+    "main_wing": {
+      "name": "main_wing",
+      "surface_type": "main_wing",
+      "symmetric": true,
+      "design_model": "asb",
+      "x_secs": [
+        {
+          "xyz_le": [
+            0.193802,
+            0.0,
+            0.12319
+          ],
+          "chord": 0.405732,
+          "twist": 0.0,
+          "airfoil": "./naca0015.dat"
+        },
+        {
+          "xyz_le": [
+            0.193802,
+            0.4826,
+            0.13589
+          ],
+          "chord": 0.405732,
+          "twist": 0.0,
+          "airfoil": "./naca0015.dat",
+          "control_surface": {
+            "name": "aileron",
+            "hinge_point": 0.8877,
+            "symmetric": false,
+            "deflection": 0.0
+          },
+          "trailing_edge_device": {
+            "name": "aileron",
+            "role": "aileron",
+            "rel_chord_root": 0.8877,
+            "rel_chord_tip": 0.8877,
+            "deflection_deg": 0.0,
+            "symmetric": false
+          }
+        },
+        {
+          "xyz_le": [
+            0.193802,
+            0.9398,
+            0.147922
+          ],
+          "chord": 0.405732,
+          "twist": 0.0,
+          "airfoil": "./naca0015.dat"
+        },
+        {
+          "xyz_le": [
+            0.193802,
+            0.9652,
+            0.14859
+          ],
+          "chord": 0.405732,
+          "twist": 0.0,
+          "airfoil": "./naca0015.dat"
+        }
+      ]
+    },
+    "horizontal_tail": {
+      "name": "horizontal_tail",
+      "surface_type": "horizontal_tail",
+      "symmetric": true,
+      "design_model": "asb",
+      "x_secs": [
+        {
+          "xyz_le": [
+            1.120648,
+            0.0,
+            0.005334
+          ],
+          "chord": 0.28575,
+          "twist": 0.0,
+          "airfoil": "./naca0006.dat",
+          "control_surface": {
+            "name": "elevator",
+            "hinge_point": 0.6667,
+            "symmetric": true,
+            "deflection": 0.0
+          },
+          "trailing_edge_device": {
+            "name": "elevator",
+            "role": "elevator",
+            "rel_chord_root": 0.6667,
+            "rel_chord_tip": 0.6157,
+            "deflection_deg": 0.0,
+            "symmetric": true
+          }
+        },
+        {
+          "xyz_le": [
+            1.158527,
+            0.365125,
+            0.005334
+          ],
+          "chord": 0.247871,
+          "twist": 0.0,
+          "airfoil": "./naca0006.dat"
+        }
+      ]
+    },
+    "vertical_tail": {
+      "name": "vertical_tail",
+      "surface_type": "vertical_tail",
+      "symmetric": false,
+      "design_model": "asb",
+      "x_secs": [
+        {
+          "xyz_le": [
+            0.989764,
+            0.0,
+            0.005334
+          ],
+          "chord": 0.492015,
+          "twist": 0.0,
+          "airfoil": "./naca0006.dat",
+          "control_surface": {
+            "name": "rudder",
+            "hinge_point": 0.6713,
+            "symmetric": true,
+            "deflection": 0.0
+          },
+          "trailing_edge_device": {
+            "name": "rudder",
+            "role": "rudder",
+            "rel_chord_root": 0.6713,
+            "rel_chord_tip": 0.4953,
+            "deflection_deg": 0.0,
+            "symmetric": true
+          }
+        },
+        {
+          "xyz_le": [
+            1.248616,
+            0.0,
+            0.205994
+          ],
+          "chord": 0.144204,
+          "twist": 0.0,
+          "airfoil": "./naca0006.dat"
+        }
+      ]
+    }
+  },
+  "fuselages": {
+    "fuselage": {
+      "name": "fuselage",
+      "x_secs": [
+        {
+          "xyz": [
+            0.0,
+            0.0,
+            0.05588
+          ],
+          "a": 0.06032,
+          "b": 0.05588,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.042418,
+            0.0,
+            0.058674
+          ],
+          "a": 0.06032,
+          "b": 0.058674,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.193802,
+            0.0,
+            0.0635
+          ],
+          "a": 0.06032,
+          "b": 0.0635,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.553974,
+            0.0,
+            0.065278
+          ],
+          "a": 0.06032,
+          "b": 0.065278,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.652018,
+            0.0,
+            0.058674
+          ],
+          "a": 0.054225,
+          "b": 0.058674,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.753618,
+            0.0,
+            0.051308
+          ],
+          "a": 0.04791,
+          "b": 0.051308,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.855218,
+            0.0,
+            0.04445
+          ],
+          "a": 0.041594,
+          "b": 0.04445,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.956818,
+            0.0,
+            0.037592
+          ],
+          "a": 0.035278,
+          "b": 0.037592,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            1.058418,
+            0.0,
+            0.030734
+          ],
+          "a": 0.028963,
+          "b": 0.030734,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            1.320038,
+            0.0,
+            0.013335
+          ],
+          "a": 0.0127,
+          "b": 0.013335,
+          "n": 4.0
+        }
+      ],
+      "symmetric": false,
+      "role": "fuselage"
+    }
+  }
+}

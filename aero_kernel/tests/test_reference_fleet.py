@@ -59,6 +59,7 @@ SOURCE_CANONICAL_SHA256 = {
     # The validation aircraft of #1388 has no source file: its source is the generator
     # scripts/canon_checks/reference_fleet/avistar_elite/build_document.py (README).
     FleetMember.AVISTAR_ELITE: "14bbbf2fef893b850f31fc67041ea76df3b5a898c34f6acf8fc014b5ad118593",
+    FleetMember.ULTRA_STICK_120: "ff3d0523a6b829e178ba2548c1c2a4f30d018d6b51a15b1dec8475cc7ff38cd3",
 }
 AIRFOIL_SHA256 = {
     "bryan/bryan_profil.dat": "75fc1827fb3059c6525464032b3a9c95f48c1205ef513750fd34532ebb69eb62",
@@ -169,6 +170,8 @@ AIRFOIL_SHA256 = {
     # AVISTAR of the UIUC Airfoil Database and the repository's NACA 0006 (README, #1388).
     "avistar_elite/avistar.dat": "b71d63826ada136382d26bb4df7954cefce0b2f49ca5910c16c13d6ddb48dce5",
     "avistar_elite/naca0006.dat": "b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d",
+    "ultra_stick_120/naca0015.dat": "645e867c98ddbc808b315c0c0a672cf390aac23fe32112f83b560efb1b0e7bf9",
+    "ultra_stick_120/naca0006.dat": "b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d",
 }
 CONVENTIONAL = {
     "Tragflaeche": "main_wing",
@@ -231,18 +234,28 @@ def test_a_copy_without_its_additions_is_the_source(member: FleetMember) -> None
     assert canonical_sha256(document) == SOURCE_CANONICAL_SHA256[member]
 
 
-def test_the_avistar_copy_is_what_its_generator_builds() -> None:
-    """The validation aircraft's source is a script that names the origin of every number."""
+GENERATED = {
+    FleetMember.AVISTAR_ELITE: "avistar_elite",
+    FleetMember.ULTRA_STICK_120: "ultra_stick_120",
+}
+
+
+@pytest.mark.parametrize("member", list(GENERATED))
+def test_a_validation_copy_is_what_its_generator_builds(member: FleetMember) -> None:
+    """A validation aircraft's source is a script that names the origin of every number."""
+    folder = GENERATED[member]
     path = (
         REFERENCE_DIR.parents[1]
-        / "scripts/canon_checks/reference_fleet/avistar_elite/build_document.py"
+        / "scripts/canon_checks/reference_fleet"
+        / folder
+        / "build_document.py"
     )
-    spec = importlib.util.spec_from_file_location("build_avistar_elite", path)
+    spec = importlib.util.spec_from_file_location(f"build_{folder}", path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert module.document() == json.loads(FleetMember.AVISTAR_ELITE.json_path.read_text())
+    assert module.document() == json.loads(member.json_path.read_text())
 
 
 @pytest.mark.parametrize(("name", "digest"), sorted(AIRFOIL_SHA256.items()))
