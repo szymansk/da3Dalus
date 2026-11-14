@@ -1,6 +1,7 @@
 """The reference fleet copies equal their sources except for the recorded additions."""
 
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 
@@ -55,6 +56,9 @@ SOURCE_CANONICAL_SHA256 = {
     FleetMember.VOODOO: "b10bb0ef0b2b9b0290254e341f8c675062a5789f1e92c7851d31e025224c5945",
     FleetMember.WINDFREAK: "42ffcf810fd42b1f560db9b4920945772e3ea79fb0a15f348bc850df614feb31",
     FleetMember.WRISTOCRAT: "f51ea5f344750d13d4f216075c7abfe1b2a6656ca93326f67576c64680fa5fce",
+    # The validation aircraft of #1388 has no source file: its source is the generator
+    # scripts/canon_checks/reference_fleet/avistar_elite/build_document.py (README).
+    FleetMember.AVISTAR_ELITE: "f09c30fc970e25dc180ab0f0524f1daddee21057967c25f54b74708ef3c48b61",
 }
 AIRFOIL_SHA256 = {
     "bryan/bryan_profil.dat": "75fc1827fb3059c6525464032b3a9c95f48c1205ef513750fd34532ebb69eb62",
@@ -162,6 +166,9 @@ AIRFOIL_SHA256 = {
     "wristocrat/wristocrat_main_wing_kulfan.dat": "17668189add6b04dcb08b9689f6005b6d7bcf2a153b1393b8c0c8cf5f2901081",
     "wristocrat/wristocrat_horizontal_tail_kulfan.dat": "7e1ed736e3cb914e6af2079157a3b1202260d47e600c570a3652a378b44a88d2",
     "wristocrat/wristocrat_vertical_tail_kulfan.dat": "285c7673e2e8e19fad721c09abb99a26ae47ac2f9388c23bdc72ad56cca9993f",
+    # AVISTAR of the UIUC Airfoil Database and the repository's NACA 0006 (README, #1388).
+    "avistar_elite/avistar.dat": "b71d63826ada136382d26bb4df7954cefce0b2f49ca5910c16c13d6ddb48dce5",
+    "avistar_elite/naca0006.dat": "b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d",
 }
 CONVENTIONAL = {
     "Tragflaeche": "main_wing",
@@ -222,6 +229,20 @@ def test_a_copy_without_its_additions_is_the_source(member: FleetMember) -> None
         assert root["airfoil"] == RV7_ROOT_AIRFOIL[1]
         root["airfoil"] = RV7_ROOT_AIRFOIL[0]
     assert canonical_sha256(document) == SOURCE_CANONICAL_SHA256[member]
+
+
+def test_the_avistar_copy_is_what_its_generator_builds() -> None:
+    """The validation aircraft's source is a script that names the origin of every number."""
+    path = (
+        REFERENCE_DIR.parents[1]
+        / "scripts/canon_checks/reference_fleet/avistar_elite/build_document.py"
+    )
+    spec = importlib.util.spec_from_file_location("build_avistar_elite", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.document() == json.loads(FleetMember.AVISTAR_ELITE.json_path.read_text())
 
 
 @pytest.mark.parametrize(("name", "digest"), sorted(AIRFOIL_SHA256.items()))

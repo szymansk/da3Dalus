@@ -25,6 +25,7 @@ __all__ = [
     "PLAN_BATCH",
     "REFERENCE_DIR",
     "TAILLESS",
+    "VALIDATION",
     "WITH_PITCH_TAIL",
     "FleetMember",
     "aircraft_input",
@@ -47,7 +48,11 @@ MVP_FLEET = (
     FleetMember.WIESEL,
     FleetMember.RV7,
 )
-PLAN_BATCH = tuple(member for member in FleetMember if member not in MVP_FLEET)
+# Aircraft with published measurements (#1388): geometry from a paper, not from the app or a plan.
+VALIDATION = (FleetMember.AVISTAR_ELITE,)
+PLAN_BATCH = tuple(
+    member for member in FleetMember if member not in MVP_FLEET and member not in VALIDATION
+)
 # The flying wings of the batch: a main wing and a fin, no surface that trims the pitch.
 TAILLESS = (FleetMember.VOODOO, FleetMember.WINDFREAK)
 WITH_PITCH_TAIL = tuple(member for member in FleetMember if member not in TAILLESS)

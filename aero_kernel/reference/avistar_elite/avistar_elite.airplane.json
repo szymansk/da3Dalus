@@ -1,0 +1,291 @@
+{
+  "name": "AVISTAR_ELITE",
+  "xyz_ref": [
+    0.4644,
+    0.0,
+    0.0
+  ],
+  "wings": {
+    "main_wing": {
+      "name": "main_wing",
+      "surface_type": "main_wing",
+      "symmetric": true,
+      "design_model": "asb",
+      "x_secs": [
+        {
+          "xyz_le": [
+            0.3804,
+            0.0,
+            0.0955
+          ],
+          "chord": 0.2371,
+          "twist": 3.58,
+          "airfoil": "./avistar.dat"
+        },
+        {
+          "xyz_le": [
+            0.3804,
+            0.399951,
+            0.101783
+          ],
+          "chord": 0.2371,
+          "twist": 3.58,
+          "airfoil": "./avistar.dat",
+          "control_surface": {
+            "name": "aileron",
+            "hinge_point": 0.8271,
+            "symmetric": false,
+            "deflection": 0.0
+          },
+          "trailing_edge_device": {
+            "name": "aileron",
+            "role": "aileron",
+            "rel_chord_root": 0.8271,
+            "rel_chord_tip": 0.8271,
+            "positive_deflection_deg": 16.0,
+            "negative_deflection_deg": 16.0,
+            "deflection_deg": 0.0,
+            "symmetric": false
+          }
+        },
+        {
+          "xyz_le": [
+            0.3804,
+            0.769905,
+            0.107595
+          ],
+          "chord": 0.2371,
+          "twist": 3.58,
+          "airfoil": "./avistar.dat"
+        },
+        {
+          "xyz_le": [
+            0.3804,
+            0.793652,
+            0.107968
+          ],
+          "chord": 0.2371,
+          "twist": 3.58,
+          "airfoil": "./avistar.dat"
+        }
+      ]
+    },
+    "horizontal_tail": {
+      "name": "horizontal_tail",
+      "surface_type": "horizontal_tail",
+      "symmetric": true,
+      "design_model": "asb",
+      "x_secs": [
+        {
+          "xyz_le": [
+            1.16,
+            0.0,
+            -0.00204
+          ],
+          "chord": 0.21,
+          "twist": 2.36,
+          "airfoil": "./naca0006.dat",
+          "control_surface": {
+            "name": "elevator",
+            "hinge_point": 0.7619,
+            "symmetric": true,
+            "deflection": 0.0
+          },
+          "trailing_edge_device": {
+            "name": "elevator",
+            "role": "elevator",
+            "rel_chord_root": 0.7619,
+            "rel_chord_tip": 0.5455,
+            "positive_deflection_deg": 17.0,
+            "negative_deflection_deg": 17.0,
+            "deflection_deg": 0.0,
+            "symmetric": true
+          }
+        },
+        {
+          "xyz_le": [
+            1.26,
+            0.291,
+            -0.00204
+          ],
+          "chord": 0.11,
+          "twist": 2.36,
+          "airfoil": "./naca0006.dat"
+        }
+      ]
+    },
+    "vertical_tail": {
+      "name": "vertical_tail",
+      "surface_type": "vertical_tail",
+      "symmetric": false,
+      "design_model": "asb",
+      "x_secs": [
+        {
+          "xyz_le": [
+            1.065,
+            0.0,
+            0.01796
+          ],
+          "chord": 0.273,
+          "twist": 0.0,
+          "airfoil": "./naca0006.dat",
+          "control_surface": {
+            "name": "rudder",
+            "hinge_point": 0.7875,
+            "symmetric": true,
+            "deflection": 0.0
+          },
+          "trailing_edge_device": {
+            "name": "rudder",
+            "role": "rudder",
+            "rel_chord_root": 0.7875,
+            "rel_chord_tip": 0.3958,
+            "positive_deflection_deg": 22.0,
+            "negative_deflection_deg": 22.0,
+            "deflection_deg": 0.0,
+            "symmetric": true
+          }
+        },
+        {
+          "xyz_le": [
+            1.293,
+            0.0,
+            0.21796
+          ],
+          "chord": 0.096,
+          "twist": 0.0,
+          "airfoil": "./naca0006.dat"
+        }
+      ]
+    }
+  },
+  "fuselages": {
+    "fuselage": {
+      "name": "fuselage",
+      "x_secs": [
+        {
+          "xyz": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "a": 0.0,
+          "b": 0.0,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.08,
+            0.0,
+            -0.01
+          ],
+          "a": 0.03,
+          "b": 0.025,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.16,
+            0.0,
+            -0.015
+          ],
+          "a": 0.045,
+          "b": 0.05,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.255,
+            0.0,
+            -0.021
+          ],
+          "a": 0.049,
+          "b": 0.061,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.38,
+            0.0,
+            0.0015
+          ],
+          "a": 0.053,
+          "b": 0.0935,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.45,
+            0.0,
+            0.002
+          ],
+          "a": 0.054,
+          "b": 0.093,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.617,
+            0.0,
+            -0.001
+          ],
+          "a": 0.052,
+          "b": 0.081,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.73,
+            0.0,
+            -0.0125
+          ],
+          "a": 0.048,
+          "b": 0.0625,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            0.8,
+            0.0,
+            -0.015
+          ],
+          "a": 0.045,
+          "b": 0.057,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            1.0,
+            0.0,
+            -0.015
+          ],
+          "a": 0.033,
+          "b": 0.043,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            1.15,
+            0.0,
+            -0.0115
+          ],
+          "a": 0.021,
+          "b": 0.0335,
+          "n": 4.0
+        },
+        {
+          "xyz": [
+            1.32,
+            0.0,
+            -0.015
+          ],
+          "a": 0.008,
+          "b": 0.02,
+          "n": 4.0
+        }
+      ],
+      "symmetric": false,
+      "role": "fuselage"
+    }
+  }
+}
