@@ -9,9 +9,11 @@ quantities of unlike dimension. Informational; it does not fail the run.
 
 **Dimensional, per statement (#1379).** Reads every line of every canonical form, also the
 multi-line procedures and optimisation problems the first check leaves out, and checks each
-statement `lhs = rhs` it can parse. Symbols resolve through the formula's own bindings first.
-A dimension that does not balance, or a quantity in degrees that meets radians without a
-visible conversion (`180/pi`, `pi/180`), fails the run; what it cannot read is counted.
+statement `lhs = rhs` it can read. Symbols resolve through the formula's own bindings first.
+A dimension that does not balance, a sum of unlike quantities, a quantity in degrees that meets
+radians without a visible conversion (`180/pi`, `pi/180`), or millimetres that meet metres
+without one, fails the run. What the check cannot read reliably it never judges: such a
+statement is counted as unparseable or as using an unknown symbol.
 
 **Authoring.** Cross-checks the front matter against the prose the importer never reads
 (`python -m aero_kernel.importer` owns every structural rule, #1174): the "Produces … from"
@@ -28,15 +30,17 @@ from __future__ import annotations
 import ast
 import dataclasses
 import json
+import math
 import pathlib
 import re
 import sys
+import unicodedata
 
 import yaml
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from canon_to_json import build as build_canon_json  # noqa: E402
-from dimensions import ONE, Dim, parse_unit  # noqa: E402
+from dimensions import BASES, ONE, Dim, parse_unit  # noqa: E402
 
 DEFAULT_CANON = pathlib.Path("_reversa_sdd/calculations/canon")
 
@@ -76,6 +80,14 @@ QUALIFIERS = (
     "op",
     "turn",
 )
+
+
+#: how many trailing qualifiers a symbol may carry: `C_L,max,clean,cfg`
+_QUALIFIER_DEPTH = 3
+#: two exponents, or two length scales, closer than this are the same
+_TOLERANCE = 1e-9
+#: a name of fewer letters matches only as it stands, case kept: `Q` is not `q`
+_SHORTEST_FOLDED_NAME = 2
 
 
 def norm(sym: str) -> str:
@@ -118,7 +130,7 @@ def lookup(name, table):
     k = norm(name)
     if k in table:
         return table[k]
-    for _ in range(3):
+    for _ in range(_QUALIFIER_DEPTH):
         for q in QUALIFIERS:
             if k.endswith(q) and len(k) > len(q):
                 cand = k[: -len(q)]
@@ -229,7 +241,7 @@ def dimensional_rows(data):
         if status == "OK" and want is not None:
             if not d.same_dim(want):
                 verdict = "MISMATCH"
-            elif abs(d.scale / want.scale - 1.0) > 1e-9:
+            elif abs(d.scale / want.scale - 1.0) > _TOLERANCE:
                 verdict = "SCALE"
             else:
                 verdict = "BALANCES"
@@ -447,31 +459,55 @@ def check_authoring(canon: Canon) -> list[Finding]:
 
 # --- dimensional check per statement, through the formula's bindings (#1379) -------------------
 
-#: a `name(args)` call that is not a mathematical function is a quantity taken at a point:
-#: `L(V, alpha)` has the dimension of `L`
-_MATH_CALLS = (
-    "sqrt",
-    "cbrt",
-    "sin",
-    "cos",
-    "tan",
-    "exp",
-    "log",
-    "atan",
-    "asin",
-    "max",
-    "min",
-    "abs",
-)
-_POINT_CALL = re.compile(r"\b([A-Za-z_][A-Za-z0-9_,]*)\(([^()=]*)\)")
+#: the mathematical functions a statement may call, by what they ask of their argument
+_ROOTS = FUNCS
+_TRIGONOMETRIC = ("sin", "cos", "tan")
+_OF_A_PURE_NUMBER = ("exp", "log", "atan", "asin")
+_OVER_LIKE_ARGUMENTS = ("max", "min")
+_ABSOLUTE = "abs"
+_MATH_CALLS = (*_ROOTS, *_TRIGONOMETRIC, *_OF_A_PURE_NUMBER, *_OVER_LIKE_ARGUMENTS, _ABSOLUTE)
+#: other spellings a canonical form uses for a function above
+_CALL_ALIASES = {"ln": "log"}
+#: the only named number of the statement check; every other name is a quantity (`tau` and
+#: `euler` are ordinary names here)
+_NAMED_NUMBERS = {"pi": math.pi}
 #: a plain `=`: never `:=`, `>=`, `<=`, `==`
 _EQUALS = re.compile(r"(?<![:<>=!])=(?!=)")
 #: an explicit conversion between degrees and radians
 _ANGLE_CONVERSION = re.compile(r"180\s*/\s*pi|pi\s*/\s*180")
-_NUMBER = re.compile(r"^[-+]?\d+(\.\d+)?(e[-+]?\d+)?$", re.I)
-_ANGLE_SLOT = 7  # index of ANG in dimensions.BASES
+#: an explicit conversion between length scales: a power of ten other than one
+_SCALE_CONVERSION = re.compile(
+    r"(?<![\w.])(?:10+(?:\.0*)?|0?\.0*1|1(?:\.0*)?e[-+]?\d+)(?![\w.])", re.I
+)
+_ANGLE_SLOT = BASES.index("ANG")
 #: verdicts of the statement check that fail the run
-STATEMENT_ERRORS = ("MISMATCH", "ANGLE", "ADDS_UNLIKE")
+STATEMENT_ERRORS = ("MISMATCH", "ANGLE", "ADDS_UNLIKE", "SCALE")
+#: marks of a unit in degrees / in radians, and what a defined name carries of them
+_IN_DEGREES = re.compile(r"deg|°")
+_IN_RADIANS = re.compile(r"\brad\b")
+_DEGREES, _RADIANS, _NO_ANGLE_UNIT = "deg", "rad", ""
+
+_NUMBER_TOKEN = re.compile(r"(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?")
+_OPERATOR_SPELLINGS = {"·": "*", "×": "*", "−": "-"}
+_OPENING = {"(": ")", "[": "]"}
+_CLOSING = tuple(_OPENING.values())
+_ALL_OPENING, _ALL_CLOSING = "([{", ")]}"
+#: the comment that ends a line: a `#` that stands alone (`(#1208)` is none)
+_COMMENT = re.compile(r"(?:^|\s)#(?:\s|$)")
+#: a group in square brackets at the end of a line, set off by a blank
+_TRAILING_BRACKET = re.compile(r"(?<=\S)\s+\[([^\[\]]*)\]$")
+#: what separates two statements on one line: two blanks or more, or a semicolon
+_SEPARATOR = re.compile(r";\s+|;$|\s{2,}")
+#: an operator left dangling at the start or the end of a piece: the piece is no statement of
+#: its own (`->` is no operator)
+_OPENS_WITH_OPERATOR = re.compile(r"^(?:[+*/^=)\]·×−]|-(?!>))")
+_ENDS_WITH_OPERATOR = re.compile(r"[-+*/^=(\[·×−]$")
+#: a relation that is no plain `=`
+_ASSIGNMENT = re.compile(r":=")
+_RELATION = re.compile(r":=|[<>]")
+#: a label before a statement: "subject to:", "route B:", "world avl:"
+_LABEL = re.compile(r"^[^=()]*?:\s+")
+_LABEL_END, _LIST_END = ":", ","
 
 
 @dataclasses.dataclass(frozen=True)
@@ -480,8 +516,8 @@ class Statement:
 
     Verdicts: `OK`; `DEFINES` (the left side is a name the register does not know, so the
     statement defines it for the rest of the form); `CONSTANT` (one side is a number: nothing to
-    balance); `MISMATCH`, `ANGLE`, `ADDS_UNLIKE` (findings); `UNKNOWN_SYMBOL`, `UNPARSEABLE` (not
-    judged).
+    balance); `MISMATCH`, `ANGLE`, `ADDS_UNLIKE`, `SCALE` (findings); `UNKNOWN_SYMBOL`,
+    `UNPARSEABLE` (not judged).
     """
 
     formula: str
@@ -490,103 +526,512 @@ class Statement:
     detail: str = ""
 
 
+class _Unreadable(Exception):
+    """The statement is not in a form the check reads reliably: it is not judged."""
+
+
+class _Finding(Exception):
+    """The statement is wrong in itself, whatever stands on its other side."""
+
+    def __init__(self, verdict: str, detail: str):
+        super().__init__(detail)
+        self.verdict = verdict
+        self.detail = detail
+
+
 def _key(symbol: str) -> str:
     """A symbol without its punctuation, case kept: `C_L,max` -> `CLmax`."""
     return re.sub(r"[^A-Za-z0-9]", "", symbol or "")
 
 
-def _statements(form: str) -> list[str]:
-    """The `lhs = rhs` statements of a canonical form: every line segment with exactly one plain
-    `=`, without its label, its comment, its citation and a parenthesis around the whole."""
+def _name_key(name: str) -> str:
+    """The key of a name in a statement: `K_v'` -> `Kvprime`."""
+    return _key(name.replace("'", "prime"))
+
+
+# -- the statements of a canonical form --
+
+
+def _depth_zero(text: str) -> list[bool]:
+    """For every character, whether it stands outside all parentheses, brackets and braces."""
+    depth, flags = 0, []
+    for ch in text:
+        if ch in _ALL_CLOSING:
+            depth -= 1
+        flags.append(depth <= 0)
+        if ch in _ALL_OPENING:
+            depth += 1
+    return flags
+
+
+def _left_open(text: str) -> bool:
+    """Whether a parenthesis, bracket or brace of the text is still open at its end."""
+    return sum(ch in _ALL_OPENING for ch in text) > sum(ch in _ALL_CLOSING for ch in text)
+
+
+def _assigns(text: str) -> bool:
+    """Whether a `:=` stands outside all parentheses: an assignment, no statement to balance."""
+    outside = _depth_zero(text)
+    return any(outside[m.start()] for m in _ASSIGNMENT.finditer(text))
+
+
+def _wrapped(text: str) -> bool:
+    """Whether one pair of parentheses encloses the whole text."""
+    if not (text.startswith("(") and text.endswith(")")):
+        return False
+    return not any(_depth_zero(text)[1:-1])
+
+
+def _reads_as_expression(text: str) -> bool:
+    try:
+        _Parser(text).expression_to_the_end()
+    except _Unreadable:
+        return False
+    return True
+
+
+def _without_comment_and_citation(line: str) -> str:
+    """A line without its `# comment` and without a trailing `[citation]`. A trailing bracket
+    that reads as an expression (`[1 + V]`) is no citation and stays."""
+    line = _COMMENT.split(line, maxsplit=1)[0].rstrip()
+    while (m := _TRAILING_BRACKET.search(line)) and not _reads_as_expression(m.group(1)):
+        line = line[: m.start()]
+    return line
+
+
+def _logical_lines(form: str) -> list[str]:
+    """The lines of a form, a line joined to the one before while that one has an open
+    parenthesis, or while an operator dangles between the two and the line states nothing of its
+    own (no `=`, no other relation)."""
     out: list[str] = []
     for raw in form.splitlines():
-        line = raw.split(" # ")[0]
-        line = re.sub(r"\[[^\]]*\]", " ", line)
-        line = re.sub(r"\s*(?<![:<>=!])=(?!=)\s*", " = ", line)  # aligned `name    = expr`
-        for seg in re.split(r"\s{2,}|;\s+", line):
-            seg = re.sub(
-                r"^[^=()]*?:\s+", "", seg.strip()
-            )  # "subject to:", "route B:", "world avl:"
-            seg = seg.strip().rstrip(",").strip()
-            if seg.startswith("(") and seg.endswith(")") and seg.count("(") == 1:
-                seg = seg[1:-1].strip()
-            if len(_EQUALS.findall(seg)) == 1 and seg.count("(") == seg.count(")"):
-                out.append(seg)
+        line = _without_comment_and_citation(raw).strip()
+        if not line:
+            continue
+        dangling = out and (_ENDS_WITH_OPERATOR.search(out[-1]) or _OPENS_WITH_OPERATOR.match(line))
+        states = _EQUALS.search(line) or _RELATION.search(line)
+        if out and (_left_open(out[-1]) or (dangling and not states)):
+            out[-1] = f"{out[-1]} {line}"
+        else:
+            out.append(line)
     return out
 
 
-def _collapse_point_calls(expr: str) -> str:
-    """`L(V, alpha)` -> `L`; mathematical functions keep their arguments."""
-    previous = None
-    while previous != expr:
-        previous = expr
-        expr = _POINT_CALL.sub(
-            lambda m: m.group(0) if m.group(1) in _MATH_CALLS else m.group(1), expr
+@dataclasses.dataclass
+class _Piece:
+    """A part of a line between two separators. `kind`: `statement` (has a plain `=`), `loose`
+    (text of no recognised kind: it may belong to the statement beside it), or `aside` (a label,
+    another relation, a remark: it belongs to no statement). `detached`: a semicolon stands
+    before it."""
+
+    text: str
+    kind: str
+    detached: bool
+
+
+def _split(line: str) -> list[tuple[str, bool]]:
+    """Cut a line at its separators outside all parentheses; rejoin where an operator dangles
+    at the cut, so that no statement is cut in two. Each part with whether a semicolon stands
+    before it."""
+    outside = _depth_zero(line)
+    parts: list[tuple[str, bool]] = []
+    start, detached = 0, False
+    for m in _SEPARATOR.finditer(line):
+        if not outside[m.start()]:
+            continue
+        parts.append((line[start : m.start()], detached))
+        start, detached = m.end(), m.group().startswith(";")
+    parts.append((line[start:], detached))
+    joined: list[tuple[str, bool]] = []
+    for text, cut_by_semicolon in parts:
+        text = text.strip()
+        if not text:
+            continue
+        dangling = joined and (
+            _ENDS_WITH_OPERATOR.search(joined[-1][0]) or _OPENS_WITH_OPERATOR.match(text)
         )
-    return expr
+        if dangling and not cut_by_semicolon:
+            joined[-1] = (f"{joined[-1][0]} {text}", joined[-1][1])
+        else:
+            joined.append((text, cut_by_semicolon))
+    return joined
 
 
-def _parse_side(side: str) -> ast.expr:
-    side = re.sub(r"\|([^|]+)\|", r"abs(\1)", side)
-    side = _collapse_point_calls(side).replace("'", "prime")
-    return ast.parse(prepare(side), mode="eval").body
+def _pieces(line: str) -> list[_Piece]:
+    pieces: list[_Piece] = []
+
+    def label_ends_here() -> None:
+        """What stands loose before a label colon is part of the label."""
+        for p in reversed(pieces):
+            if p.kind != "loose":
+                break
+            p.kind = "aside"
+
+    for text, detached in _split(line):
+        text = text.rstrip(_LIST_END).strip()
+        if text.startswith(_LABEL_END + " "):  # `s_max     : V_S0(s_max) = V_app`
+            label_ends_here()
+            text = text[1:].strip()
+        if _assigns(text):
+            kind = "aside"
+        elif _EQUALS.search(text):
+            kind = "statement"
+        elif text.endswith(_LABEL_END):
+            label_ends_here()
+            kind = "aside"
+        elif _RELATION.search(text) or (_wrapped(text) and not _reads_as_expression(text)):
+            kind = "aside"
+        else:
+            kind = "loose"
+        if text:
+            pieces.append(_Piece(text, kind, detached))
+    return pieces
+
+
+def _line_statements(line: str) -> list[str]:
+    pieces = _pieces(line)
+    out: list[str] = []
+    for i, piece in enumerate(pieces):
+        if piece.kind != "statement":
+            continue
+        text = piece.text
+        before = pieces[i - 1] if i else None
+        after = pieces[i + 1] if i + 1 < len(pieces) else None
+        # loose text beside a statement may be a part of it: the two are read together, and
+        # what cannot be read together is unparseable
+        if before is not None and before.kind == "loose" and not piece.detached:
+            text = f"{before.text} {text}"
+        if after is not None and after.kind == "loose" and not after.detached:
+            text = f"{text} {after.text}"
+        if _wrapped(text):  # `(V = V_app)`: a line of its own inside the parentheses
+            out += _line_statements(text[1:-1].strip())
+            continue
+        text = _LABEL.sub("", text)
+        out.append(re.sub(r"\s+", " ", _EQUALS.sub(" = ", text)).strip())
+    return out
+
+
+def _statements(form: str) -> list[str]:
+    """The statements of a canonical form: every piece of a line with a plain `=`.
+
+    Dropped: a `# comment`; a trailing `[citation]`; a label that ends in a colon; a piece with
+    another relation (`:=`, `>=`); a parenthesised remark set off by two blanks. A citation or a
+    remark is only what does not read as an expression: `[1 + V]` and `(m)` stay in the
+    statement. A line is cut in several statements at two blanks or a semicolon, never where an
+    operator dangles at the cut; text of no recognised kind beside a statement stays with it. A
+    piece with more than one `=` is returned as it stands, for the caller to report.
+    """
+    return [s for line in _logical_lines(form) for s in _line_statements(line)]
+
+
+# -- reading one side of a statement --
+
+
+@dataclasses.dataclass(frozen=True)
+class _Number:
+    value: float
+
+
+@dataclasses.dataclass(frozen=True)
+class _Name:
+    name: str
+
+
+@dataclasses.dataclass(frozen=True)
+class _Negation:
+    operand: object
+
+
+@dataclasses.dataclass(frozen=True)
+class _Operation:
+    op: str
+    left: object
+    right: object
+
+
+@dataclasses.dataclass(frozen=True)
+class _Call:
+    function: str
+    arguments: tuple
+
+
+@dataclasses.dataclass(frozen=True)
+class _Token:
+    kind: str  # "number", "name", or the character itself
+    text: str
+    spaced: bool  # a blank stands before it
+
+
+def _is_name_character(ch: str) -> bool:
+    """Letters and digits of any script, the underscore, and combining marks (`V̄`)."""
+    return ch.isalnum() or ch == "_" or unicodedata.category(ch).startswith("M")
+
+
+def _tokens(text: str) -> list[_Token]:
+    out: list[_Token] = []
+    i, spaced = 0, False
+    while i < len(text):
+        ch = _OPERATOR_SPELLINGS.get(text[i], text[i])
+        if ch.isspace():
+            i, spaced = i + 1, True
+            continue
+        number = _NUMBER_TOKEN.match(text, i) if ch.isascii() else None
+        if number:
+            out.append(_Token("number", number.group(), spaced))
+            i = number.end()
+        elif ch.isalpha() or ch == "_":
+            end = i
+            while end < len(text) and (
+                _is_name_character(text[end])
+                # `C_L,max`: a comma inside a name has no blank after it
+                or (text[end] == "," and end + 1 < len(text) and _is_name_character(text[end + 1]))
+            ):
+                end += 1
+            while end < len(text) and text[end] == "'":
+                end += 1
+            out.append(_Token("name", text[i:end], spaced))
+            i = end
+        elif text.startswith("**", i):
+            out.append(_Token("^", "**", spaced))
+            i += 2
+        elif ch in "+-*/^,|" or ch in _OPENING or ch in _CLOSING:
+            out.append(_Token(ch, ch, spaced))
+            i += 1
+        else:
+            raise _Unreadable(f"unexpected character {text[i]!r}")
+        spaced = False
+    return out
+
+
+class _Parser:
+    """Reads one side of a statement into a tree.
+
+    Products are written with `*`; a number directly before a name or a parenthesis (`2W`,
+    `2(x)`) and two adjacent groups (`(a)(b)`) multiply too. Two terms separated by a blank only
+    are not read as a product: that is prose as often as it is a product. `name(a, b)` with a
+    plain list of names and numbers is the quantity `name` taken at a point; any other
+    parenthesis directly after a name is unreadable.
+    """
+
+    def __init__(self, text: str):
+        self.tokens = _tokens(text)
+        self.at = 0
+        #: per open group: whether its commas separate the arguments of `max` / `min`
+        self.groups: list[bool] = []
+
+    def peek(self) -> _Token | None:
+        return self.tokens[self.at] if self.at < len(self.tokens) else None
+
+    def take(self, kind: str | None = None) -> _Token:
+        token = self.peek()
+        if token is None or (kind is not None and token.kind != kind):
+            raise _Unreadable(f"expected {kind or 'a term'}")
+        self.at += 1
+        return token
+
+    def expression_to_the_end(self):
+        tree = self.sum()
+        if self.peek() is not None:
+            raise _Unreadable(f"unexpected {self.peek().text!r}")
+        return tree
+
+    def sum(self):
+        left = self.product()
+        while (token := self.peek()) is not None and token.kind in "+-":
+            self.take()
+            left = _Operation(token.kind, left, self.product())
+        return left
+
+    def product(self):
+        left = self.signed()
+        while (token := self.peek()) is not None:
+            if token.kind in "*/":
+                self.take()
+                left = _Operation(token.kind, left, self.signed())
+            elif self._multiplies_unwritten(token):
+                left = _Operation("*", left, self.signed())
+            elif token.kind in ("number", "name") or token.kind in _OPENING:
+                raise _Unreadable("two terms with no operator between them")
+            else:
+                break
+        return left
+
+    def _multiplies_unwritten(self, token: _Token) -> bool:
+        before = self.tokens[self.at - 1]
+        if token.spaced:
+            return False
+        if before.kind == "number":
+            return token.kind == "name" or token.kind in _OPENING
+        return before.kind in _CLOSING and token.kind in _OPENING
+
+    def signed(self):
+        token = self.peek()
+        if token is not None and token.kind in "+-":
+            self.take()
+            operand = self.signed()
+            return _Negation(operand) if token.kind == "-" else operand
+        return self.power()
+
+    def power(self):
+        base = self.primary()
+        token = self.peek()
+        if token is not None and token.kind == "^":
+            self.take()
+            return _Operation("^", base, self.signed())
+        return base
+
+    def primary(self):
+        token = self.take()
+        if token.kind == "number":
+            return _Number(float(token.text))
+        if token.kind in _OPENING:
+            return self.group(token, variadic=False)[0]
+        if token.kind == "|":
+            inner = self.sum()
+            self.take("|")
+            return _Call(_ABSOLUTE, (inner,))
+        if token.kind != "name":
+            raise _Unreadable(f"unexpected {token.text!r}")
+        function = _CALL_ALIASES.get(token.text, token.text)
+        following = self.peek()
+        called = following is not None and following.kind in _OPENING and not following.spaced
+        if function in _MATH_CALLS:
+            if not called or following.kind != "(":
+                raise _Unreadable(f"{token.text} without its argument")
+            arguments = self.group(self.take(), variadic=function in _OVER_LIKE_ARGUMENTS)
+            return _Call(function, tuple(arguments))
+        if called:
+            self.point(self.take())
+        elif "," in token.text and self.groups and self.groups[-1]:
+            # `min(V_app,b_ref)`: one name with a qualifier, or two arguments?
+            raise _Unreadable(f"{token.text!r} in an argument list: a name or two arguments?")
+        return _Name(token.text)
+
+    def group(self, opening: _Token, variadic: bool) -> list:
+        """The expressions between `opening` and its closing bracket, separated by commas when
+        `variadic`."""
+        self.groups.append(variadic)
+        items = [self.sum()]
+        while variadic and self.peek() is not None and self.peek().kind == ",":
+            self.take()
+            items.append(self.sum())
+        self.take(_OPENING[opening.kind])
+        self.groups.pop()
+        return items
+
+    def point(self, opening: _Token) -> None:
+        """Skip the `(V, alpha)` of a quantity taken at a point."""
+        if opening.kind != "(":
+            raise _Unreadable("an index in brackets")
+        while (token := self.take()).kind != ")":
+            if token.kind not in ("name", "number", ","):
+                raise _Unreadable("a name before a parenthesis that holds no plain list of names")
+
+
+def _names(tree) -> set[str]:
+    if isinstance(tree, _Name):
+        return set() if tree.name in _NAMED_NUMBERS else {tree.name}
+    if isinstance(tree, _Negation):
+        return _names(tree.operand)
+    if isinstance(tree, _Operation):
+        return _names(tree.left) | _names(tree.right)
+    if isinstance(tree, _Call):
+        return set().union(*map(_names, tree.arguments))
+    return set()
+
+
+# -- the symbols of one formula --
+
+
+def _folded(table: dict[str, tuple[Dim, str]]) -> dict[str, tuple[Dim, str] | None]:
+    """A table for the match without regard to case: names of more than one letter, in lower
+    case; `None` where two names that differ only in case stand for different units."""
+    out: dict[str, tuple[Dim, str] | None] = {}
+    for key, value in table.items():
+        if len(key) < _SHORTEST_FOLDED_NAME:
+            continue
+        low = key.lower()
+        out[low] = value if out.get(low, value) == value else None
+    return out
 
 
 @dataclasses.dataclass
 class _Symbols:
     """The symbols one formula may use, and the declared unit behind each.
 
-    A name resolves through the formula's own bindings first (parameter name, or the symbol of a
-    bound quantity), then through the register. Case is kept: `Q` is not `q`. A name of more than
-    one letter may also match without regard to case and with a trailing qualifier dropped.
+    A name is looked up as it stands in the formula's own bindings (parameter name, or the symbol
+    of a bound quantity), then there without regard to case, then in the register in the same
+    two ways. A name the four do not know is tried again without its last qualifier (`_max`,
+    `,clean`), as long as a separator stands before the qualifier: `psi` is never `P_s`. A single
+    letter matches only as it stands: `Q` is not `q`. A name with a letter outside ASCII is never
+    known: the tables hold ASCII names only.
     """
 
     local: dict[str, tuple[Dim, str]]
     register: dict[str, tuple[Dim, str]]
+    register_folded: dict[str, tuple[Dim, str] | None]
 
     def resolve(self, name: str) -> tuple[Dim, str] | None:
-        key = _key(name)
-        for table in (self.local, self.register):
-            if key in table:
-                return table[key]
-        if len(key) < 2:
-            return None
-        for table in (self.local, self.register):
-            folded = {k.lower(): v for k, v in table.items() if len(k) > 1}
-            cand = key.lower()
-            for _ in range(3):
-                if cand in folded:
-                    return folded[cand]
-                cut = next(
-                    (
-                        cand[: -len(q)]
-                        for q in QUALIFIERS
-                        if cand.endswith(q) and len(cand) > len(q) + 1
-                    ),
-                    None,
-                )
-                if cut is None:
-                    break
-                cand = cut
+        segments = [s for s in re.split(r"[_,]", name.replace("'", "prime")) if s]
+        local_folded = _folded(self.local)
+        for dropped in range(_QUALIFIER_DEPTH + 1):
+            kept = segments[: len(segments) - dropped]
+            key = "".join(kept)
+            if dropped and (
+                len(key) < _SHORTEST_FOLDED_NAME or segments[-dropped].lower() not in QUALIFIERS
+            ):
+                break
+            if not key:
+                break
+            for exact, folded in (
+                (self.local, local_folded),
+                (self.register, self.register_folded),
+            ):
+                if key in exact:
+                    return exact[key]
+                if folded.get(key.lower()) is not None:
+                    return folded[key.lower()]
         return None
+
+
+def _symbol_keys(*names) -> list[str]:
+    """The keys under which a quantity is stored; a name with a letter outside ASCII, an empty
+    key and a named number give none."""
+    keys = []
+    for name in names:
+        key = _key(str(name)) if name and str(name).isascii() else ""
+        if key and key not in _NAMED_NUMBERS:
+            keys.append(key)
+    return keys
+
+
+def _declared(canon: Canon, slug) -> tuple[Dim, str, object] | None:
+    """Dimension, unit and symbol of a quantity, or None when it has no readable unit."""
+    q = canon.quantities.get(slug) if isinstance(slug, str) else None
+    unit = q.front.get("unit") if q is not None else None
+    d = parse_unit(str(unit)) if unit is not None else None
+    return None if d is None else (d, str(unit), q.front.get("symbol"))
 
 
 def _register_symbols(canon: Canon) -> dict[str, tuple[Dim, str]]:
     table: dict[str, tuple[Dim, str]] = {}
-    for slug, q in canon.quantities.items():
-        unit = q.front.get("unit")
-        d = parse_unit(str(unit)) if unit is not None else None
-        if d is None:
+    for slug in canon.quantities:
+        declared = _declared(canon, slug)
+        if declared is None:
             continue
-        for name in (q.front.get("symbol"), slug):
-            key = _key(str(name)) if name else ""
-            if key and key not in MATH_CONSTANTS:
-                table.setdefault(key, (d, str(unit)))
+        d, unit, symbol = declared
+        for key in _symbol_keys(symbol, slug):
+            table.setdefault(key, (d, unit))
     return table
 
 
 def _formula_symbols(e: Entry, canon: Canon) -> dict[str, tuple[Dim, str]]:
-    """Parameter names and bound symbols of one formula, over all its applications."""
+    """Parameter names and bound symbols of one formula, over all its applications.
+
+    Parameter names are written in lower case. A one-letter parameter therefore also stands for
+    the capital the symbol of its quantity begins with: `p` bound to `P_shaft` is the `P` of the
+    form.
+    """
     mappings = [e.front.get("inputs"), e.front.get("outputs")]
     applications = e.front.get("applications")
     for app in applications if isinstance(applications, list) else []:
@@ -595,79 +1040,213 @@ def _formula_symbols(e: Entry, canon: Canon) -> dict[str, tuple[Dim, str]]:
     table: dict[str, tuple[Dim, str]] = {}
     for mapping in mappings:
         for param, slug in (mapping or {}).items() if isinstance(mapping, dict) else ():
-            q = canon.quantities.get(slug) if isinstance(slug, str) else None
-            unit = q.front.get("unit") if q is not None else None
-            d = parse_unit(str(unit)) if unit is not None else None
-            if q is None or d is None:
+            declared = _declared(canon, slug)
+            if declared is None:
                 continue
-            for name in (param, q.front.get("symbol")):
-                key = _key(str(name)) if name else ""
-                if key and key not in MATH_CONSTANTS:
-                    table.setdefault(key, (d, str(unit)))
+            d, unit, symbol = declared
+            keys = _symbol_keys(param, symbol)
+            initial = str(symbol or "")[:1]
+            if (
+                len(str(param)) < _SHORTEST_FOLDED_NAME
+                and initial.lower() == str(param).lower()
+                and _symbol_keys(initial)
+            ):
+                keys.append(initial)
+            for key in keys:
+                table.setdefault(key, (d, unit))
     return table
 
 
+# -- judging a statement --
+
+
+def _differs(a: float, b: float = 0.0) -> bool:
+    return abs(a - b) > _TOLERANCE
+
+
+def _like(a: Dim, b: Dim) -> bool:
+    """The same dimension, the angle left aside: radians count as dimensionless."""
+    return not any(
+        _differs(x, y) for i, (x, y) in enumerate(zip(a.e, b.e, strict=True)) if i != _ANGLE_SLOT
+    )
+
+
+def _same_scale(a: Dim, b: Dim) -> bool:
+    return not _differs(a.scale / b.scale, 1.0)
+
+
+@dataclasses.dataclass
+class _Reading:
+    """Evaluates the tree of one side: its dimension, and its value where it is a pure number."""
+
+    resolved: dict[str, tuple[Dim, str]]
+    degrees_in_function: bool = False
+    scales_mixed: bool = False
+
+    def in_degrees(self, tree) -> bool:
+        return any(_IN_DEGREES.search(self.resolved[n][1]) for n in _names(tree))
+
+    def of(self, tree) -> tuple[Dim, float | None]:
+        if isinstance(tree, _Number):
+            return ONE, tree.value
+        if isinstance(tree, _Name):
+            if tree.name in _NAMED_NUMBERS:
+                return ONE, _NAMED_NUMBERS[tree.name]
+            return self.resolved[tree.name][0], None
+        if isinstance(tree, _Negation):
+            d, value = self.of(tree.operand)
+            return d, None if value is None else -value
+        if isinstance(tree, _Call):
+            return self.call(tree), None
+        return self.operation(tree)
+
+    def operation(self, tree: _Operation) -> tuple[Dim, float | None]:
+        (left, a), (right, b) = self.of(tree.left), self.of(tree.right)
+        both = a is not None and b is not None
+        if tree.op == "*":
+            return left * right, a * b if both else None
+        if tree.op == "/":
+            return left / right, a / b if both else None
+        if tree.op == "^":
+            if b is None:
+                raise _Unreadable("an exponent that is no number")
+            value = a**b if both else None
+            if isinstance(value, complex):
+                raise ArithmeticError("root of a negative number")
+            return left**b, value
+        self.alike(left, right, f"adds {left} to {right}")
+        angle = (
+            left if _differs(left.e[_ANGLE_SLOT]) or not _differs(right.e[_ANGLE_SLOT]) else right
+        )
+        return angle, (a + b if tree.op == "+" else a - b) if both else None
+
+    def alike(self, a: Dim, b: Dim, detail: str) -> None:
+        if not _like(a, b):
+            raise _Finding("ADDS_UNLIKE", detail)
+        if not _same_scale(a, b):
+            self.scales_mixed = True
+
+    def call(self, tree: _Call) -> Dim:
+        fn = tree.function
+        dims = [self.of(a)[0] for a in tree.arguments]
+        if fn in _OVER_LIKE_ARGUMENTS:
+            for d in dims[1:]:
+                self.alike(dims[0], d, f"{fn} of {dims[0]} and {d}")
+            return dims[0]
+        (d,) = dims  # the parser gives every other function exactly one argument
+        if fn == _ABSOLUTE:
+            return d
+        if fn in _ROOTS:
+            return d ** _ROOTS[fn]
+        if not _like(d, ONE):
+            raise _Finding("MISMATCH", f"{fn} of {d}")
+        if not _same_scale(d, ONE):
+            self.scales_mixed = True
+        if fn in _TRIGONOMETRIC and _differs(d.e[_ANGLE_SLOT]) and self.in_degrees(tree):
+            self.degrees_in_function = True
+        return ONE
+
+
+def _is_number(tree) -> bool:
+    return isinstance(tree.operand if isinstance(tree, _Negation) else tree, _Number)
+
+
 def _judge(lhs: str, rhs: str, text: str, symbols: _Symbols) -> tuple[str, str]:
-    if _NUMBER.match(lhs.strip()) or _NUMBER.match(rhs.strip()):
-        return "CONSTANT", ""
     try:
-        trees = (_parse_side(lhs), _parse_side(rhs))
-    except SyntaxError:
-        return "UNPARSEABLE", ""
-    names = {n.id for tree in trees for n in ast.walk(tree) if isinstance(n, ast.Name)}
-    names -= set(_MATH_CALLS) | MATH_CONSTANTS
-    resolved = {n: symbols.resolve(n) for n in names}
-    unknown = sorted(n for n, r in resolved.items() if r is None)
-    left_name = trees[0].id if isinstance(trees[0], ast.Name) else None
-    table = {norm(n): r[0] for n, r in resolved.items() if r is not None}
-    table.update(dict.fromkeys(MATH_CONSTANTS, ONE))
-    if len(table) < len({n for n, r in resolved.items() if r is not None}) + len(MATH_CONSTANTS):
-        return "UNPARSEABLE", "two symbols of the statement differ only in case"
-    sink: set[str] = set()
-    try:
-        if unknown == [left_name]:
-            right = dim_of(trees[1], table, sink)
-            if right is None:
-                return "UNPARSEABLE", ""
-            symbols.local[_key(left_name)] = (right, "")
-            return "DEFINES", ""
+        return _judge_read(lhs, rhs, text, symbols)
+    except _Finding as finding:
+        return finding.verdict, finding.detail
+    except _Unreadable as exc:
+        return "UNPARSEABLE", str(exc)
+    except ArithmeticError as exc:  # an exponent the arithmetic cannot carry
+        return "UNPARSEABLE", f"arithmetic: {exc}"
+
+
+def _judge_read(lhs: str, rhs: str, text: str, symbols: _Symbols) -> tuple[str, str]:
+    left_tree, right_tree = (_Parser(side).expression_to_the_end() for side in (lhs, rhs))
+    names = _names(left_tree) | _names(right_tree)
+    resolved = {n: r for n in names if (r := symbols.resolve(n)) is not None}
+    unknown = sorted(names - set(resolved))
+    reading = _Reading(resolved)
+    converts_angle = bool(_ANGLE_CONVERSION.search(text))
+    angle = "a quantity in degrees meets radians and the statement converts nothing"
+
+    numbers = [t for t in (left_tree, right_tree) if _is_number(t)]
+    if numbers:
+        other = right_tree if numbers[0] is left_tree else left_tree
+        if isinstance(other, _Name | _Number):  # `g_0 = 9.81`
+            return "CONSTANT", ""
         if unknown:
             return "UNKNOWN_SYMBOL", ", ".join(unknown)
-        left, right = dim_of(trees[0], table, sink), dim_of(trees[1], table, sink)
-    except ValueError as exc:
-        return "ADDS_UNLIKE", str(exc)
-    if left is None or right is None:
-        return "UNPARSEABLE", ""
-    differ = [a - b for a, b in zip(left.e, right.e, strict=True)]
-    if any(abs(x) > 1e-9 for i, x in enumerate(differ) if i != _ANGLE_SLOT):
+        reading.of(other)  # nothing to balance, but the side must be sound in itself
+        if reading.degrees_in_function and not converts_angle:
+            return "ANGLE", angle
+        return "CONSTANT", ""
+
+    units = [unit for _, unit in resolved.values()]
+    degrees = any(_IN_DEGREES.search(u) for u in units)
+    radians = any(_IN_RADIANS.search(u) for u in units)
+    defined = left_tree.name if isinstance(left_tree, _Name) else None
+    if defined is not None and unknown == [defined] and defined.isascii() and _name_key(defined):
+        right, _ = reading.of(right_tree)
+        if reading.degrees_in_function and not converts_angle:
+            return "ANGLE", angle
+        if converts_angle:
+            unit = _NO_ANGLE_UNIT  # converted, in a direction the check does not read
+        else:
+            unit = _DEGREES if degrees else _RADIANS if radians else _NO_ANGLE_UNIT
+        symbols.local[_name_key(defined)] = (right, unit)
+        return "DEFINES", ""
+    if unknown:
+        return "UNKNOWN_SYMBOL", ", ".join(unknown)
+    (left, _), (right, _) = reading.of(left_tree), reading.of(right_tree)
+    if not _like(left, right):
         return "MISMATCH", f"{left}  =  {right}"
-    units = [r[1] for r in resolved.values() if r is not None]
-    degrees = any(re.search(r"deg|°", u) for u in units)
-    radians = any(re.search(r"\brad\b", u) for u in units)
-    angle_differs = abs(differ[_ANGLE_SLOT]) > 1e-9
-    if degrees and (angle_differs or radians) and not _ANGLE_CONVERSION.search(text):
-        return "ANGLE", "a quantity in degrees meets radians and the statement converts nothing"
+    angle_differs = _differs(left.e[_ANGLE_SLOT], right.e[_ANGLE_SLOT])
+    if not converts_angle and (
+        reading.degrees_in_function or (degrees and (angle_differs or radians))
+    ):
+        return "ANGLE", angle
+    if (reading.scales_mixed or not _same_scale(left, right)) and not _SCALE_CONVERSION.search(
+        text
+    ):
+        return "SCALE", "two length scales (mm, m) meet and the statement converts nothing"
     return "OK", ""
 
 
 def check_statements(canon: Canon) -> list[Statement]:
-    """Check every `lhs = rhs` statement of every canonical form for its dimension, and for a
-    quantity in degrees that meets radians without a visible conversion (`180/pi`, `pi/180`).
+    """Check every `lhs = rhs` statement of every canonical form for its dimension.
+
+    Findings: a dimension that does not balance (`MISMATCH`, also a function such as `sin` or
+    `exp` of a quantity that is not dimensionless); a sum, `max` or `min` over unlike quantities
+    (`ADDS_UNLIKE`); a quantity in degrees that meets radians, or stands inside `sin`, `cos`,
+    `tan`, without a visible conversion (`ANGLE`); millimetres that meet metres without a visible
+    power of ten (`SCALE`).
 
     Symbols resolve through the formula's own bindings first. A name the register does not know
-    is defined by the first statement that has it alone on the left. A statement that does not
-    parse, or that uses an unknown symbol, is reported as such and judged no further.
+    is defined by the first statement that has it alone on the left, and keeps the degrees of
+    that statement's right side. What the check cannot read reliably is never judged: a statement
+    that does not parse, has more than one `=`, or uses an unknown symbol is reported as such.
+
+    Known limit: any `180/pi` or `pi/180` in the text of a statement settles `ANGLE`, whatever
+    its direction and whatever it multiplies; likewise any power of ten settles `SCALE`. The
+    check sees that a conversion is written, not that it is the right one.
     """
     register = _register_symbols(canon)
+    register_folded = _folded(register)
     rows: list[Statement] = []
     for slug, e in canon.formulas.items():
         m = re.search(r"\*\*Canonical form\*\*\s*\n+```[a-z]*\n(.*?)\n```", e.body, re.S)
         if not m:
             continue
-        symbols = _Symbols(local=_formula_symbols(e, canon), register=register)
+        symbols = _Symbols(_formula_symbols(e, canon), register, register_folded)
         for text in _statements(m.group(1)):
-            lhs, rhs = _EQUALS.split(text)
-            verdict, detail = _judge(lhs, rhs, text, symbols)
+            try:
+                lhs, rhs = _EQUALS.split(text)
+            except ValueError:
+                verdict, detail = "UNPARSEABLE", "more than one '=' in one statement"
+            else:
+                verdict, detail = _judge(lhs, rhs, text, symbols)
             rows.append(Statement(slug, text, verdict, detail))
     return rows
 
