@@ -146,6 +146,7 @@ FLEET_IDS = {
     "voodoo",
     "windfreak",
     "wristocrat",
+    "avistar_elite",
 }
 
 
