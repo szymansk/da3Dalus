@@ -6,7 +6,8 @@ import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.schema import ComputeRequest, ComputeResult, QuantityStatus
+from aero_kernel.schema import ComputeRequest, ComputeResult, KernelWarning, QuantityStatus
+from aero_kernel.solvers.opti import Stall
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.stall_stubs import StubOpti
 from aero_kernel.tests.test_stall_speed_engine import MASS, RHO, aircraft
@@ -60,3 +61,19 @@ async def test_an_optimiser_that_does_not_converge_gives_no_value() -> None:
     assert quantity.value is None
     assert quantity.error is not None
     assert quantity.error.category is ErrorCategory.NOT_CONVERGED
+
+
+async def test_the_regime_warnings_of_the_optimiser_arrive_on_the_manoeuvring_speed() -> None:
+    class Warned(StubOpti):
+        async def stall(self, *args: object) -> Stall:  # type: ignore[override]  # stub forwards
+            stall = await super().stall(*args)  # type: ignore[arg-type]
+            warning = KernelWarning.of("reynolds_bubble_sensitive", "Re is low", detail={"re": 6e4})
+            return Stall(solution=stall.solution, warnings=(warning,))
+
+    result, _ = await run("maneuvering-speed", stub=Warned())
+    quantity = result.quantities[0]
+    assert quantity.status is QuantityStatus.OK, result
+    # beside the notice that the default limit load factor was used
+    assert ("reynolds_bubble_sensitive", "maneuvering-speed", {"re": 6e4}) in [
+        (w.code, w.origin, w.detail) for w in quantity.warnings
+    ]

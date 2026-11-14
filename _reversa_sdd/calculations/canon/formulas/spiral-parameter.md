@@ -118,5 +118,6 @@ adopted on the maintainer's authority (2026-10-26, #1309).
 > printed** (Sadraey Eq. 5.35 per strip; constant section lift slope, sweep and induced coupling neglected →
 > outboard panels over-weighted); source PARTIAL, adopted on the maintainer's authority; to be cross-checked
 > against AVL C_lβ on a polyhedral fleet member. The root-to-tip-line rule is rejected as wrong. Arm from the
-> design CG (approved [[vertical-tail-arm]]); one value per neutral-point world (A11). Kernel:
-> `aero_kernel/formulas/spiral_parameter.py` (#1274).
+> design CG (approved [[vertical-tail-arm]]); one value per neutral-point world (A11). No kernel
+> implementation yet (#1274).
+> (The kernel implementation was added after the approval: `aero_kernel/formulas/spiral_parameter.py`.)
