@@ -71,18 +71,19 @@ The kernel's coefficients refer to its own wing area, 0.7833 m2 (the full planfo
 
 | quantity | kernel | [S] | [S] on the kernel's area | [F] Figure 2a |
 |---|---|---|---|---|
-| neutral point behind the leading edge | 0.148 to 0.179 m (three method worlds) | 0.136 to 0.143 m | | |
-| lift curve slope | 4.79 per rad (minimum sink), 5.02 (best glide) | 4.42 | 4.34 | about 4.0 to 4.1 |
-| maximum lift coefficient | 1.30 at 21.0 deg | 1.007 at 12.5 deg | 0.99 | about 0.89 at 12 deg, 0.94 at 15 deg |
-| stall speed at 8.95 kg | 11.9 m/s | 13.6 m/s from 1.007 | | 14.1 m/s from 0.94 |
-| best lift-to-drag ratio | 16.9, no landing gear, engine or propeller | 11.1, complete aircraft | | |
-| C_n,beta | 0.028 to 0.049 per rad over the operating points | 0.053 at 0 deg | | |
-| C_l,beta | -0.067 to -0.133 per rad over the operating points | -0.044 at 0 deg | | |
+| neutral point behind the leading edge | 0.148 to 0.178 m (three method worlds) | 0.136 to 0.143 m | | |
+| lift curve slope | 5.18 per rad (minimum sink), 5.26 (best glide) | 4.42 | 4.34 | about 4.0 to 4.1 |
+| maximum lift coefficient | 1.38 at 20.5 deg | 1.007 at 12.5 deg | 0.99 | about 0.89 at 12 deg, 0.94 at 15 deg |
+| stall speed at 8.95 kg | 11.5 m/s | 13.6 m/s from 1.007 | | 14.1 m/s from 0.94 |
+| best lift-to-drag ratio | 15.9, no landing gear, engine or propeller | 11.1, complete aircraft | | |
+| C_n,beta | 0.029 to 0.052 per rad over the operating points | 0.053 at 0 deg | | |
+| C_l,beta | -0.073 to -0.140 per rad over the operating points | -0.044 at 0 deg | | |
 
-Not converged on this aircraft: `stall-break` (the lift maximum at 21 deg leaves no room for the
+Not converged on this aircraft: `stall-break` (the lift maximum at 20.5 deg leaves no room for the
 break below the sweep's 25 deg) and the inverted maximum lift (the sweep ends at -15 deg).
 
-The largest difference is the maximum lift: the kernel is 30 to 40 % above the measurements and
-puts the stall 6 to 9 deg later. Two things stand between the numbers and are not separated here:
-the stand-in section (NACA 0015 instead of the kit's, whose thickest point lies further forward)
-and the kernel's own prediction of the stall.
+The largest difference is the lift: the kernel's maximum is 40 to 50 % above the measurements, its
+stall 5 to 8 deg later, and its lift curve slope about 20 % steeper. The wing section is not the
+cause: with NACA 0015 as a stand-in (#1392) the kernel gave 1.30 at 21 deg and 4.79 per rad; with
+the section fitted to the plan (#1394) the difference grew. For comparison, lifting-line theory
+gives 2 pi / (1 + 2 / AR) = 4.42 per rad for the wing alone at AR = 4.76.
