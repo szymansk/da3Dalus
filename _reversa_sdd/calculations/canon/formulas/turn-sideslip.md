@@ -144,4 +144,5 @@ and it belongs to the evaluation.
 > kinematics (Drela's printed sin φ superseded, 🟡 inferred intent; decision 2026-10-26), and the roll balance
 > β = κ·r̂_max with κ = −C_l,r/C_l,β, both from AVL at V_mp (decision 2026-10-27: one producer, K27). Assumptions
 > declared: roll balance only, fuselage crude in AVL, inviscid. Applies when `has_no_aileron`; C_l,β < 0 required.
-> Kernel: `aero_kernel/formulas/turn_sideslip.py`.
+> No kernel implementation yet.
+> (The kernel implementation was added after the approval: `aero_kernel/formulas/turn_sideslip.py`.)

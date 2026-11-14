@@ -201,6 +201,11 @@ class FleetMember(Enum):
         0.34,  # DB, unverified (plugin)
         (0.21277910716807166, 1.4556142295425263, 0.14754900416659267),
     )
+    AVISTAR_ELITE = (
+        "avistar_elite/avistar_elite.airplane.json",
+        3.70,  # gross weight, AIAA 2020-0780 Table 1
+        (0.3764702506313111, 1.5878121072598528, 0.23709999999999998),
+    )
 
     def __init__(
         self, relative_path: str, mass_kg: float, asb_reference: tuple[float, float, float]

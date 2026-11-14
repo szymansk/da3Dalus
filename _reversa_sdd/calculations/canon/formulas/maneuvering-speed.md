@@ -42,7 +42,7 @@ subject to:               L(V, alpha) = n_lim * m * g
 
 **One authority.** The textbook form `V_A = V_S · sqrt(n_lim)` (FAR 23.335(c)) is this problem with the straight-flight `C_L,max`; the problem evaluates `C_L,max` at the Reynolds number of `V_A` itself — the same reason `stall-speed-in-turn` was deleted. It stays as the Probe: plugging the optimum's `C_L` into the closed form must return the same speed.
 
-**It is only as good as `n_lim`.** The limit load factor is a user input (default 10 g, a start value — `basis: start` in `defaults.yaml` — maintainer 2026-10-25; formerly 3); real models carry 6–19 g measured (spar sizing). A mission table will replace the single default (#1242). The statement reads: "above V_A, a full pull exceeds the load the user declared".
+**It is only as good as `n_lim`.** The limit load factor is a user input (default 10 g, a convention, maintainer 2026-10-25; formerly 3); real models carry 6–19 g measured (spar sizing). `defaults.yaml` records the value with `basis: start`: a start value. A mission table will replace the single default (#1242). The statement reads: "above V_A, a full pull exceeds the load the user declared".
 
 **Source.** 🟢 Sadraey Eq. 4.30 for the relation. FAR 23.335(c) for the definition — **definition, not verified**: no expert confirmed the citation (maintainer 2026-10-25); the lift balance as in [[stall-speed]] (Sadraey Eq. 4.30).
 
@@ -71,5 +71,6 @@ No register node is mapped to this entry.
 > **Approved** (maintainer, 2026-10-25): V_A is this optimisation — the stall-speed problem bound at
 > `n = n_lim`, `C_L,max` at the Reynolds number of V_A — not the shortcut `V_S·sqrt(n_lim)`. The relation is
 > Sadraey Eq. 4.30; the FAR 23.335(c) citation is recorded as a definition not verified. `n_lim` defaults to
-> 10 g (start value, `basis: start` in `defaults.yaml`); a mission table with the structure-mass consequence will replace it
-> (#1242). Kernel: `aero_kernel/formulas/maneuvering_speed.py` (#1381).
+> 10 g (convention, `defaults.yaml`); a mission table with the structure-mass consequence will replace it
+> (#1242). The implementation checklist item holds vacuously: there is no aero_kernel formula yet.
+> (`defaults.yaml` records the value with `basis: start`: a start value.)
