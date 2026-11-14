@@ -108,7 +108,7 @@ the generator builds.
 | | AVISTAR_ELITE |
 |---|---|
 | copy | `avistar_elite/avistar_elite.airplane.json` |
-| SHA-256 of the copy as canonical JSON | `f09c30fc970e25dc180ab0f0524f1daddee21057967c25f54b74708ef3c48b61` |
+| SHA-256 of the copy as canonical JSON | `14bbbf2fef893b850f31fc67041ea76df3b5a898c34f6acf8fc014b5ad118593` |
 | mass | 3.70 kg, gross weight of [P] Table 1 (3.07 kg empty + 0.63 kg battery) |
 | reference point | `xyz_ref` (0.4644, 0, 0) m: the manual's balance point, see the assumptions |
 
@@ -120,29 +120,32 @@ Planes, Avistar Elite instruction manual GPMA1005
 
 Published and taken as is:
 
-- Wing, horizontal and vertical stabiliser: leading-edge position, incidence, span station, chord,
-  offset and dihedral of [P] Table 4, measured on a 3D scan (x towards the tail, y towards the right
-  wing, z up, the same axes as the format). The fin's "y span pos" is the height above its root.
+- Wing, horizontal and vertical stabiliser: leading-edge position, span station, chord, offset and
+  dihedral of [P] Table 4, measured on a 3D scan (x towards the tail, y towards the right wing, z
+  up, the same axes as the format); the incidence of the wing and of the horizontal stabiliser. The
+  fin's "y span pos" is the height above its root.
 - Wing airfoil AVISTAR ([P]: verified against the UIUC Airfoil Database; the file is that
   database's `avistar.dat`).
-- Control-surface chords from [M]: each throw is given as a length at the trailing edge and an
-  angle, so chord = throw / sin(angle): aileron 41 mm, elevator 50 mm, rudder 58 mm. The stops are
-  the manual's high rates (16, 17 and 22 deg).
+- Control-surface chords from [M] p. 29: each throw is given as a length at the trailing edge,
+  measured at the widest part of the surface, and an angle, so chord = throw / sin(angle): aileron
+  50 mm, elevator 41 mm, rudder 58 mm. The stops are the manual's high rates (17, 16 and 22 deg).
 
 Assumptions, because no source publishes the value:
 
 | value | assumed | why it matters |
 |---|---|---|
 | aileron span | from 400 mm to 770 mm of the 793.75 mm half span | the roll rate |
+| control-surface chord along the span | the chord at the widest part ([M]) over the whole span | roll rate, control power |
+| fin incidence | 0 deg; [P] Table 4 prints 2.36 deg in the fin's row, the stabiliser's value, taken as a copying slip | side force at zero sideslip |
 | flaps | not modelled: every published test flew with 0 deg ([P] section V); span and throw are unpublished | none for the published tests |
 | tail airfoils | NACA 0006 for both stabilisers ([P] Figure 8 only plots the thin symmetric sections, which vary from root to tip) | tail lift slope and drag, weakly |
 | fuselage | twelve sections read off [P] Figures 4 and 5 (about +-5 mm), superellipse exponent 4 | drag, the body's share of the neutral point |
-| centre of gravity | the manual's balance point, 84 mm behind the leading edge ([M]); [P] does not publish the tested aircraft's | the measured static margin |
+| centre of gravity | the manual's balance point, 84 mm behind the leading edge ([M]), at z = 0 of the scan; [P] does not publish the tested aircraft's and no source gives a height | the measured static margin |
 | landing gear, propeller, spinner | not modelled | drag |
 
-The wing area of the document is 37.6 dm2 (2 x 793.75 mm x 237.1 mm, the scan); [P] Table 1 and the
-manual state 43.3 dm2 and an aspect ratio of 6.62, which the scanned planform does not reproduce
-(1.5875 m span and 0.2371 m chord give 6.70). The scan is used; the difference is unexplained.
+The wing area of the document is 37.6 dm2 (2 x 793.75 mm x 237.1 mm, the scan). [P] Table 1 gives
+an aspect ratio of 6.62, which with its 1.59 m span means 38.2 dm2, close to the scan (6.70); the
+43.3 dm2 that [P] Table 1 and [M] state fit neither. The scan is used.
 
 Regime (ADR 0028), chord Reynolds number 3e4 to 1e6 at ISA sea level, Mach <= 0.3. The numbers
 are AeroSandbox's `include_centerline_distance` values of the main wing (`FleetMember.asb_reference`):

@@ -41,15 +41,17 @@ WING_CHORD_MM = 237.10
 WING_HALF_SPAN_MM = 793.75
 WING_DIHEDRAL_DEG = 0.9
 
-# Control surfaces of the wing. Chord: [M] gives each throw as a length at the trailing edge and
-# an angle (aileron 8 mm at 11 deg, 11 mm at 16 deg), so chord = throw / sin(angle) = 41 mm.
+# Control surfaces. Chord: [M] p. 29 gives each throw as a length at the trailing edge, measured at
+# the widest part of the surface, and an angle, so chord = throw / sin(angle). Aileron: 10 mm at
+# 11 deg and 14 mm at 17 deg, 48 to 52 mm.
+# ASSUMPTION: every control surface has that chord over its whole span.
 # ASSUMPTION: the aileron runs from mid half-span to just inside the tip; no source publishes its
 # span. The flaps inboard of it are not modelled: every published test flew with 0 deg of flap
 # ([P] section V) and neither their span nor their throw is published.
-AILERON_CHORD_MM = 41.0
+AILERON_CHORD_MM = 50.0
 AILERON_START_MM = 400.0
 AILERON_END_MM = 770.0
-AILERON_STOP_DEG = 16.0  # [M] high rate
+AILERON_STOP_DEG = 17.0  # [M] high rate
 
 # --- Horizontal stabiliser, [P] Table 4 --------------------------------------------------------
 HTAIL_LE_X_MM = 1160.0
@@ -59,8 +61,8 @@ HTAIL_ROOT_CHORD_MM = 210.0
 HTAIL_TIP_Y_MM = 291.0
 HTAIL_TIP_CHORD_MM = 110.0
 HTAIL_TIP_OFFSET_MM = 100.0
-ELEVATOR_CHORD_MM = 50.0  # [M]: 10 mm at 11 deg and 14 mm at 17 deg, 48 to 52 mm
-ELEVATOR_STOP_DEG = 17.0  # [M] high rate
+ELEVATOR_CHORD_MM = 41.0  # [M]: 8 mm at 11 deg and 11 mm at 16 deg, 40 to 42 mm
+ELEVATOR_STOP_DEG = 16.0  # [M] high rate
 
 # --- Vertical stabiliser, [P] Table 4 ("y span pos" is the height above the root) ---------------
 VTAIL_LE_X_MM = 1160.0
@@ -70,11 +72,15 @@ VTAIL_ROOT_OFFSET_MM = -95.0
 VTAIL_TIP_HEIGHT_MM = 200.0
 VTAIL_TIP_CHORD_MM = 96.0
 VTAIL_TIP_OFFSET_MM = 133.0
+# ASSUMPTION: the fin has no incidence. Table 4 prints 2.36 deg in the fin's row, the stabiliser's
+# value; a fin set 2.36 deg to the plane of symmetry is taken as a copying slip of the table.
+VTAIL_INCIDENCE_DEG = 0.0
 RUDDER_CHORD_MM = 58.0  # [M]: 13 mm at 13 deg and 22 mm at 22 deg
 RUDDER_STOP_DEG = 22.0  # [M] high rate
 
 # --- Balance point, [M]: 84 mm behind the leading edge at the fuselage side ---------------------
 # ASSUMPTION: the tested aircraft balances there ([P] does not publish its centre of gravity).
+# ASSUMPTION: the reference point lies on the x axis of the scan (z = 0); no source gives its height.
 CG_BEHIND_LE_MM = 84.0
 
 # --- Fuselage: read off [P] Figures 4 and 5 (about +-5 mm) ---------------------------------------
@@ -133,8 +139,7 @@ def section(x_mm: float, y_mm: float, z_mm: float, chord_mm: float, twist: float
 def wing() -> Any:
     """The rectangular main wing with its aileron segment."""
     hinge = 1.0 - AILERON_CHORD_MM / WING_CHORD_MM
-    rise = math.sin(math.radians(WING_DIHEDRAL_DEG))
-    run = math.cos(math.radians(WING_DIHEDRAL_DEG))
+    rise = math.tan(math.radians(WING_DIHEDRAL_DEG))  # "y span pos" is a y coordinate
     stations = (0.0, AILERON_START_MM, AILERON_END_MM, WING_HALF_SPAN_MM)
     devices = ({}, device("aileron", "aileron", hinge, hinge, AILERON_STOP_DEG), {}, {})
     return {
@@ -145,7 +150,7 @@ def wing() -> Any:
         "x_secs": [
             section(
                 WING_LE_X_MM,
-                s * run,
+                s,
                 WING_LE_Z_MM + s * rise,
                 WING_CHORD_MM,
                 WING_INCIDENCE_DEG,
@@ -192,7 +197,7 @@ def vertical_tail() -> Any:
         0.0,
         VTAIL_LE_Z_MM,
         VTAIL_ROOT_CHORD_MM,
-        0.0,
+        VTAIL_INCIDENCE_DEG,
         TAIL_AIRFOIL,
     ) | device(
         "rudder",
@@ -206,7 +211,7 @@ def vertical_tail() -> Any:
         0.0,
         VTAIL_LE_Z_MM + VTAIL_TIP_HEIGHT_MM,
         VTAIL_TIP_CHORD_MM,
-        0.0,
+        VTAIL_INCIDENCE_DEG,
         TAIL_AIRFOIL,
     )
     return {

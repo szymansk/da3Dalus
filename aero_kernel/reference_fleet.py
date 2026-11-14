@@ -204,7 +204,7 @@ class FleetMember(Enum):
     AVISTAR_ELITE = (
         "avistar_elite/avistar_elite.airplane.json",
         3.70,  # gross weight, AIAA 2020-0780 Table 1
-        (0.3764237807973971, 1.5876161147085497, 0.23709999999999998),
+        (0.3764702506313111, 1.5878121072598528, 0.23709999999999998),
     )
 
     def __init__(

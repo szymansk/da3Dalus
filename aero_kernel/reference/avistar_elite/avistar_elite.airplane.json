@@ -25,25 +25,25 @@
         {
           "xyz_le": [
             0.3804,
-            0.399951,
-            0.101783
+            0.4,
+            0.101784
           ],
           "chord": 0.2371,
           "twist": 3.58,
           "airfoil": "./avistar.dat",
           "control_surface": {
             "name": "aileron",
-            "hinge_point": 0.8271,
+            "hinge_point": 0.7891,
             "symmetric": false,
             "deflection": 0.0
           },
           "trailing_edge_device": {
             "name": "aileron",
             "role": "aileron",
-            "rel_chord_root": 0.8271,
-            "rel_chord_tip": 0.8271,
-            "positive_deflection_deg": 16.0,
-            "negative_deflection_deg": 16.0,
+            "rel_chord_root": 0.7891,
+            "rel_chord_tip": 0.7891,
+            "positive_deflection_deg": 17.0,
+            "negative_deflection_deg": 17.0,
             "deflection_deg": 0.0,
             "symmetric": false
           }
@@ -51,8 +51,8 @@
         {
           "xyz_le": [
             0.3804,
-            0.769905,
-            0.107595
+            0.77,
+            0.107596
           ],
           "chord": 0.2371,
           "twist": 3.58,
@@ -61,8 +61,8 @@
         {
           "xyz_le": [
             0.3804,
-            0.793652,
-            0.107968
+            0.79375,
+            0.107969
           ],
           "chord": 0.2371,
           "twist": 3.58,
@@ -87,17 +87,17 @@
           "airfoil": "./naca0006.dat",
           "control_surface": {
             "name": "elevator",
-            "hinge_point": 0.7619,
+            "hinge_point": 0.8048,
             "symmetric": true,
             "deflection": 0.0
           },
           "trailing_edge_device": {
             "name": "elevator",
             "role": "elevator",
-            "rel_chord_root": 0.7619,
-            "rel_chord_tip": 0.5455,
-            "positive_deflection_deg": 17.0,
-            "negative_deflection_deg": 17.0,
+            "rel_chord_root": 0.8048,
+            "rel_chord_tip": 0.6273,
+            "positive_deflection_deg": 16.0,
+            "negative_deflection_deg": 16.0,
             "deflection_deg": 0.0,
             "symmetric": true
           }

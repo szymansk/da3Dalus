@@ -58,7 +58,7 @@ SOURCE_CANONICAL_SHA256 = {
     FleetMember.WRISTOCRAT: "f51ea5f344750d13d4f216075c7abfe1b2a6656ca93326f67576c64680fa5fce",
     # The validation aircraft of #1388 has no source file: its source is the generator
     # scripts/canon_checks/reference_fleet/avistar_elite/build_document.py (README).
-    FleetMember.AVISTAR_ELITE: "f09c30fc970e25dc180ab0f0524f1daddee21057967c25f54b74708ef3c48b61",
+    FleetMember.AVISTAR_ELITE: "14bbbf2fef893b850f31fc67041ea76df3b5a898c34f6acf8fc014b5ad118593",
 }
 AIRFOIL_SHA256 = {
     "bryan/bryan_profil.dat": "75fc1827fb3059c6525464032b3a9c95f48c1205ef513750fd34532ebb69eb62",
