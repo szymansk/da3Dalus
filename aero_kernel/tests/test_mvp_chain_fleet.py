@@ -701,8 +701,9 @@ def test_the_fleet_has_members_with_and_without_a_roll_device() -> None:
 async def test_without_a_roll_device_the_turn_sideslip_and_rudder_roll_authority_apply(
     member: FleetMember,
 ) -> None:
-    """The turn sideslip applies; the rudder roll authority applies exactly where its input
-    vertical-tail-volume does (BARRACUDA and VOODOO have none)."""
+    """The turn sideslip applies, even where it then fails upstream (the flying wings have no
+    neutral point yet); the rudder roll authority applies exactly where its input
+    vertical-tail-volume does (BARRACUDA and VOODOO have none). Values are pinned by the goldens."""
     by_slug = {q.slug: q for q in (await run(member)).quantities}
     for slug in TURN_SIDESLIP:
         assert by_slug[slug].status is not QuantityStatus.NOT_APPLICABLE, slug
