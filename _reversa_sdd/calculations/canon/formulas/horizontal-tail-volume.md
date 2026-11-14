@@ -95,3 +95,4 @@ Inherits the neutral point's limits through the arm (fuselage not modelled → C
 > `Wing.area(type="planform", include_centerline_distance=True)` of the one horizontal_tail surface — the gross
 > planform through the fuselage, the same convention as the reference wing (#1262). One value per neutral-point
 > world (A11). V-tail: S_H = Σ S_i·cos²ν_i per panel (maintainer decision 2026-10-27, #1208).
+> (The citation "Sadraey §6.4" in this note is superseded by §6.2.1, Eq. 6.24, as given under **Source** above.)
