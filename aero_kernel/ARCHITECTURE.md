@@ -940,7 +940,7 @@ caller's responsibility.
       surface whose sections fold back along y as `unsupported_configuration`, as the AVL mesh already did.
     - *Validity of the AVL world (#1243).* AVL is linear in δ and its primer gives `|pb/2V| <= 0.10` as the
       practical limit. Outside it (`ROLL_RATE_LIMIT`, tested with `>`: 0.10 itself is inside) the `roll-rate`
-      formula declares `world_outside_validity` in the `avl` world (`detail`: `p_hat`, `p_deg_s`, `limit`) and
+      formula (and `roll-rate-cruise-target`, which shares `steady_roll_rate`, #1382) declares `world_outside_validity` in the `avl` world (`detail`: `p_hat`, `p_deg_s`, `limit`) and
       the interval is the AeroBuildup world alone (ch. 8.13). The adapter's own `warning` warning
       `avl_roll_rate_beyond_range` stays: it is the tool's statement, the exclusion is the canon's decision.
     - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
@@ -1875,7 +1875,7 @@ model (part of `IMPORT_REPORT.md`).
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
-| `roll-rate-cruise-target` | procedure | OPT | law | 5 → 1 | 1 | – | A11 | seconds | later |
+| `roll-rate-cruise-target` | procedure | OPT | law | 9 → 1 | 1 | – | A11 | seconds | later · implemented (#1382) |
 | `roll-rate` | procedure | OPT | law | 5 → 2 | 1 | – | A11 | seconds | core chain |
 | `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
 | `mean-geometric-chord` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
