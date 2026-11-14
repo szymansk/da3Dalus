@@ -52,7 +52,7 @@ subject to:               L(V, alpha) = n_lim * m * g
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/maneuvering_speed.py` | EXACT | 🟢 | the OPT adapter (`ctx.solvers.opti.stall`) solves the stall problem with `n = n_lim` in the bound ISA air state; `v_a` is its optimum speed (#1381) |
+| `aero_kernel/formulas/maneuvering_speed.py` | DEVIATES | 🟢 | the OPT adapter (`ctx.solvers.opti.stall`) solves the stall problem with `n = n_lim` in the bound ISA air state; `v_a` is its optimum speed (#1381). **Deviation:** the Probe named above and the first-peak check that [[stall-speed]] runs on its outputs are not run here — the entry declares no postcondition and its only output is `v_a` (#1390) |
 
 No register node is mapped to this entry.
 
@@ -73,4 +73,5 @@ No register node is mapped to this entry.
 > Sadraey Eq. 4.30; the FAR 23.335(c) citation is recorded as a definition not verified. `n_lim` defaults to
 > 10 g (convention, `defaults.yaml`); a mission table with the structure-mass consequence will replace it
 > (#1242). The implementation checklist item holds vacuously: there is no aero_kernel formula yet.
-> (`defaults.yaml` records the value with `basis: start`: a start value.)
+> (`defaults.yaml` records the value with `basis: start`: a start value. The kernel implementation was added
+> after the approval: `aero_kernel/formulas/maneuvering_speed.py`, #1381.)

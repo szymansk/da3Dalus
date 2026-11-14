@@ -108,7 +108,7 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 > **Approved** (maintainer, 2026-10-26): the approved AVL procedure of [[lateral-static-stability-md]] and
 > [[lateral-static-stability-app]] at a third operating point, V_mp — the circling condition, where C_L is about
 > √3 times that at V_md (decision #1309: the spiral while thermalling governs rudder-only aircraft). Same
-> outputs (C_lβ, C_nβ, spiral criterion, doubling time; C_lr added 2026-10-27, #1275), AVL with the fuselage as BODY, moment reference at the
+> outputs (C_lβ, C_nβ, spiral criterion, doubling time), AVL with the fuselage as BODY, moment reference at the
 > design CG; same declared limits (inviscid, crude body, not validated below chord Re 7·10⁴; Etkin & Reid
 > spiral-root equation number still 🟡). Bands belong to the evaluation (A10). No kernel implementation yet.
 > (The output C_lr was added on 2026-10-27, #1275. The kernel implementation was added after the approval: `aero_kernel/formulas/lateral_static_stability_mp.py`.)

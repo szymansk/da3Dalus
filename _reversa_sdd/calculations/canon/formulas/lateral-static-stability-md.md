@@ -110,7 +110,7 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 > implausible fuselage share of C_nβ. Declared: not validated (below chord Re 7·10⁴ especially), the
 > fuselage share of C_nβ uncertain, statics only (Dutch roll and roll time constant need inertias). Open:
 > the Etkin & Reid equation number for the spiral approximation (🟡). Stage 2 (inputs mapped to our data)
-> is open while the app has no centre-of-gravity field (#1209); the CG is the quantity [[centre-of-gravity-design]] (produced by the formula cg-for-target-margin), never an app input. Kernel:
-> `aero_kernel/formulas/lateral_static_stability_md.py`.
+> is open while the app has no centre-of-gravity field (#1209); the CG is the quantity [[centre-of-gravity-design]] (produced by the formula cg-for-target-margin), never an app input. The implementation checklist item holds
+> vacuously: there is no aero_kernel formula yet.
 > Input rebound (maintainer 2026-10-25): the CG is cg-for-target-margin's, never an app input.
 > (The kernel implementation was added after the approval: `aero_kernel/formulas/lateral_static_stability_md.py`.)
