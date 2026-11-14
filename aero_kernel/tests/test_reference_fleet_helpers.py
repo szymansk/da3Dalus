@@ -36,7 +36,7 @@ def test_a_flying_wing_has_no_pitch_trimming_tail(member: FleetMember) -> None:
 def test_the_fleet_is_the_first_six_the_plan_batch_and_the_validation_aircraft() -> None:
     assert len(MVP_FLEET) == 6
     assert len(PLAN_BATCH) == 28
-    assert VALIDATION == (FleetMember.AVISTAR_ELITE,)
+    assert VALIDATION == (FleetMember.AVISTAR_ELITE, FleetMember.ULTRA_STICK_120)
     assert set(MVP_FLEET) | set(PLAN_BATCH) | set(VALIDATION) == set(FleetMember)
     assert len(MVP_FLEET) + len(PLAN_BATCH) + len(VALIDATION) == len(FleetMember)
 

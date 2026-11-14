@@ -147,6 +147,7 @@ FLEET_IDS = {
     "windfreak",
     "wristocrat",
     "avistar_elite",
+    "ultra_stick_120",
 }
 
 

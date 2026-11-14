@@ -96,13 +96,13 @@ geometry too.
 The DB's CHEKKER is not used: its fin has 48 ribs against the source's 12 and its wings and airfoil
 files carry other names; the source file is the better document.
 
-### The validation aircraft (#1388)
+### The validation aircraft (#1388, #1392)
 
-AVISTAR_ELITE is the Great Planes Avistar Elite of the UAVDB project, the one aircraft of the fleet
-with published measurements (see `avistar_elite/MEASUREMENTS.md`). It exists neither in the app DB
+AVISTAR_ELITE is the Great Planes Avistar Elite of the UAVDB project, one of the two aircraft of the
+fleet with published measurements (see `avistar_elite/MEASUREMENTS.md`). It exists neither in the app DB
 nor as a plan: its source is the generator
 `scripts/canon_checks/reference_fleet/avistar_elite/build_document.py`, which names the origin of
-every number, and `test_the_avistar_copy_is_what_its_generator_builds` checks that the copy is what
+every number, and `test_a_validation_copy_is_what_its_generator_builds` checks that the copy is what
 the generator builds.
 
 | | AVISTAR_ELITE |
@@ -147,6 +147,65 @@ The wing area of the document is 37.6 dm2 (2 x 793.75 mm x 237.1 mm, the scan). 
 an aspect ratio of 6.62, which with its 1.59 m span means 38.2 dm2, close to the scan (6.70); the
 43.3 dm2 that [P] Table 1 and [M] state fit neither. The scan is used.
 
+ULTRA_STICK_120 is the Hangar 9 Ultra Stick 120, the kit NASA Langley flew as FASER and tested in a
+wind tunnel "with the same aircraft used for flight testing" ([F]), and the University of Minnesota
+flies as a research aircraft (see
+`ultra_stick_120/MEASUREMENTS.md`). Its source is the generator
+`scripts/canon_checks/reference_fleet/ultra_stick_120/build_document.py`.
+
+| | ULTRA_STICK_120 |
+|---|---|
+| copy | `ultra_stick_120/ultra_stick_120.airplane.json` |
+| SHA-256 of the copy as canonical JSON | `974cfcf48c13d5686e3ebc436afb095735d63ebfc196755f5c45c9ebb026ce77` |
+| mass | 8.95 kg (19.72 lbf, [F] Table 2) |
+| reference point | `xyz_ref` (0.3020, 0, 0.0714) m: [F] Table 2, a quarter of the 1.42 ft chord behind the leading edge, 0.165 of it above the bottom of the fuselage |
+| origin | x from the kit firewall aft, z from the flat bottom of the fuselage up |
+
+Sources: **[A]** Jim Feldmann, "Ultra Stick LW - A Modified Hangar 9 Ultra Stick", RCM February
+2002, pp. 100-114 (the table of dimensions on p. 101; the conversion to a low wing leaves wing,
+stabiliser and elevator "just as they come"); **[L]** RCM plan no. 1307 of that article (Outerzone
+oz13447, https://outerzone.co.uk/plan_details.asp?ID=13447), a side view at full size, measured on
+the bitmap at 72 points per inch and checked on the plan's own scale bar; **[F]** Owens, Cox,
+Morelli, "Development of a Low-Cost Sub-Scale Aircraft for Flight Research: The FASER Project", NASA
+NTRS 20060022541 (2006), Tables 1 and 2. Plan and article are not copied into the repository.
+
+Published, or measured on the plan:
+
+- [A]: wing span 76 in, wing area 1214 in2, symmetrical section; stabiliser span 28-3/4 in, chord with elevator 11-1/4 in, area 302 in2, flat section.
+- [L]: the outline of the kit fuselage (flat bottom, sloping top, 52.0 in from the firewall to the fin
+  post; [F] gives 4.31 ft), the positions of wing and stabiliser, the outline of fin and rudder with
+  the hinge line, the wing's thickness (2.54 in) and the place where the aileron starts (14.2 in
+  behind the leading edge). All incidences are zero ("0-0" on the plan, 0 deg in [F]).
+- [F]: mass, centre of gravity, the greatest width of the fuselage (0.3958 ft), dihedral 0.7 deg.
+
+An independent check: the University of Minnesota (Jaeger et al., AIAA 2026-4164, Table 2) gives for
+its Ultra Stick 120 the leading edges of wing, stabiliser and fin 0.666 ft, 3.708 ft and 3.375 ft
+behind the firewall and tail areas of 2.06 ft2 and 0.718 ft2. The plan gives 0.636 ft, 3.677 ft and
+3.364 ft (the fin where its leading edge meets the top of the fuselage), and [A] 2.10 ft2 for the
+stabiliser. The whole outline of fin and rudder on the plan measures 0.70 ft2; the part above the
+top of the fuselage, which is what the document models, 0.56 ft2.
+
+Assumptions:
+
+| value | assumed | why it matters |
+|---|---|---|
+| wing planform | constant chord = area / span = 15.97 in. [A] says "slight taper" and an average chord of 16-3/4 in, which with 76 in is 1273 in2, not its own 1214 in2; [F] gives taper ratio 1, 8.28 ft2 and 6.29 ft (a mean of 15.8 in) and a mean geometric chord of 1.42 ft | area, aspect ratio, every coefficient |
+| dihedral | 0.7 deg from [F]; [A] gives 1 in at each tip, which is 1.5 deg | dihedral effect |
+| wing section | NACA 0015; the drawn section is 15.9 % thick with its thickest point at about 21 % of the chord, not 30 % | maximum lift, stall angle |
+| aileron | from 19 in to 37 in of the 38 in half span; the kit has an inboard flap and an outboard aileron of unpublished spans | roll rate |
+| flaps | not modelled | none at 0 deg |
+| stabiliser planform | straight taper with an unswept trailing edge, tip chord 9.76 in from span, root chord and area | tail lift slope, weakly |
+| elevator | a third of the root chord, constant | control power |
+| tail sections | NACA 0006 for the flat plates (0.5 in thick on [L]) | tail lift slope and drag, weakly |
+| fin | [L] shows the converted aircraft, whose fin was cut to stand on the stabiliser. On the kit it stands on the sloping top of the fuselage: the dashed "Original shape of fin" has a lower edge with the slope of that top. The document places the outline accordingly (1.31 in higher than drawn) and models it from the top of the fuselage up; the part of the rudder below, behind the end of the body, is not modelled | side force, weathercock stability |
+| fuselage width | the greatest width of [F] from the firewall to the wing's hinge line, narrowing in a straight line to 1 in at the fin post; superellipse exponent 4 | drag, the body's share of the neutral point |
+| deflection stops | none: [A] gives throws as lengths only | none |
+| engine, landing gear, propeller | not modelled | drag |
+| same kit | that NASA's and Minnesota's aircraft are the kit of [A] and [L]; the positions above agree within 0.4 in | everything |
+
+With exponent 10 for the box-shaped body and its open front face the kernel's best-glide optimisation
+returned NaN; exponent 4 is used and the cause is not investigated here.
+
 Regime (ADR 0028), chord Reynolds number 3e4 to 1e6 at ISA sea level, Mach <= 0.3. The numbers
 are AeroSandbox's `include_centerline_distance` values of the main wing (`FleetMember.asb_reference`):
 
@@ -187,6 +246,7 @@ are AeroSandbox's `include_centerline_distance` values of the main wing (`FleetM
 | WINDFREAK | 2.493 m | 90.7 dm2 | 0.365 m | 28 N/m2 | 2.5e5 |
 | WRISTOCRAT | 1.456 m | 21.3 dm2 | 0.148 m | 16 N/m2 | 1.0e5 |
 | AVISTAR_ELITE | 1.588 m | 37.6 dm2 | 0.237 m | 96 N/m2 | 1.6e5 |
+| ULTRA_STICK_120 | 1.931 m | 78.3 dm2 | 0.406 m | 112 N/m2 | 2.8e5 |
 
 The first six are in the regime: a 0.5 to 1.5 m RC model at 5 to 20 m/s has a chord Reynolds number of
 0.5e5 to 2.5e5 and a Mach number below 0.06. The RV-7 is an RC scale model (0.82 m span, MAC
@@ -345,6 +405,8 @@ ribs the path `./components/airfoils/naca23013.5.dat`. The copy gives the root r
 | `wristocrat/wristocrat_vertical_tail_kulfan.dat` | `285c7673e2e8e19fad721c09abb99a26ae47ac2f9388c23bdc72ad56cca9993f` |
 | `avistar_elite/avistar.dat` | `b71d63826ada136382d26bb4df7954cefce0b2f49ca5910c16c13d6ddb48dce5` |
 | `avistar_elite/naca0006.dat` | `b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d` |
+| `ultra_stick_120/naca0015.dat` | `645e867c98ddbc808b315c0c0a672cf390aac23fe32112f83b560efb1b0e7bf9` |
+| `ultra_stick_120/naca0006.dat` | `b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d` |
 
 BRYAN's sources are under `scripts/canon_checks/reference_fleet/bryan/`; JAGUAR's under
 `~/Downloads/da3dalus-import/modelle/jaguar/profile/` (the same files the source JSON names under
@@ -358,7 +420,8 @@ untracked there), which is where the DB's airfoil paths point. The plan batch's 
 place (the plugin's `*_kulfan.dat` files and `e168_15.dat` are untracked there; `bryan_platte.dat`,
 `naca0006.dat`, `naca0008.dat`, `naca0210.dat`, `naca2410.dat` and `sd7037.dat` are tracked). AVISTAR_ELITE's
 `avistar.dat` is https://m-selig.ae.illinois.edu/ads/coord/avistar.dat (UIUC Airfoil Database,
-fetched 2026-11-14) and its `naca0006.dat` is `components/airfoils/naca0006.dat`.
+fetched 2026-11-14) and its `naca0006.dat` is `components/airfoils/naca0006.dat`. ULTRA_STICK_120's two files are
+`components/airfoils/naca0015.dat` and `naca0006.dat`.
 
 ## Results recorded for the fleet (regression, not validated)
 

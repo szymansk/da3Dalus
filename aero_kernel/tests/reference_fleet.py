@@ -48,8 +48,9 @@ MVP_FLEET = (
     FleetMember.WIESEL,
     FleetMember.RV7,
 )
-# Aircraft with published measurements (#1388): geometry from a paper, not from the app or a plan.
-VALIDATION = (FleetMember.AVISTAR_ELITE,)
+# Aircraft with published measurements (#1388, #1392): geometry from published sources, not from
+# the app.
+VALIDATION = (FleetMember.AVISTAR_ELITE, FleetMember.ULTRA_STICK_120)
 PLAN_BATCH = tuple(
     member for member in FleetMember if member not in MVP_FLEET and member not in VALIDATION
 )
