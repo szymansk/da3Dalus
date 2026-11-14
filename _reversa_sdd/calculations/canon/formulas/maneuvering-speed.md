@@ -48,9 +48,13 @@ subject to:               L(V, alpha) = n_lim * m * g
 
 **Validity in the RC/UAV regime (ADR 0028).** The relation is regime-independent: it is the [[stall-speed]] lift balance bound at `n = n_lim`, and the dynamic pressure behind it is exact below M ≈ 0.3 (Anderson §1.10.3). What bites at model scale is `C_L,max`: section `c_l,max` depends strongly on the Reynolds number while the lift slope does not (Anderson §4.3); Lennon (*Basics of R/C Model Aircraft Design*, Ch. 1–3) documents NACA 0012 `C_L,max` falling from 1.55 to 0.83 at low model Rn. The problem evaluates `C_L,max` at the Reynolds number of `V_A` itself, so it carries this effect as far as the polar does; near `C_L ≈ 1` at `Re_c ≈ 8·10⁴`, where a laminar separation bubble forms, NeuralFoil flags its prediction as low-confidence (Sharpe 2024 §7.2.4). `V_A` is exactly as meaningful as the user's `n_lim`: Sadraey's `n_max = 1.5–2` for remote-controlled models (§10.4.1) is not a measured load, and model loads have been measured at 6–19 g [no source: maintainer measurement].
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/maneuvering_speed.py` | DEVIATES | 🟢 | the OPT adapter (`ctx.solvers.opti.stall`) solves the stall problem with `n = n_lim` in the bound ISA air state; `v_a` is its optimum speed (#1381). **Deviation:** the Probe named above and the first-peak check that [[stall-speed]] runs on its outputs are not run here — the entry declares no postcondition and its only output is `v_a` (#1390) |
+
+No register node is mapped to this entry.
 
 ## Approval
 
@@ -69,4 +73,5 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > Sadraey Eq. 4.30; the FAR 23.335(c) citation is recorded as a definition not verified. `n_lim` defaults to
 > 10 g (convention, `defaults.yaml`); a mission table with the structure-mass consequence will replace it
 > (#1242). The implementation checklist item holds vacuously: there is no aero_kernel formula yet.
-> (`defaults.yaml` records the value with `basis: start`: a start value.)
+> (`defaults.yaml` records the value with `basis: start`: a start value. The kernel implementation was added
+> after the approval: `aero_kernel/formulas/maneuvering_speed.py`, #1381.)

@@ -1870,7 +1870,7 @@ model (part of `IMPORT_REPORT.md`).
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
 | `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | core chain · implemented (#1334) |
-| `maneuvering-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
+| `maneuvering-speed` | optimization | OPT | law | 7 → 1 | 1 | – | – | seconds | later · implemented (#1381) |
 | `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
