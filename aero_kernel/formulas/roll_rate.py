@@ -15,7 +15,7 @@ from aero_kernel.formulas.flap_validity import warn_flap_validity
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
 
-__all__ = ["roll_rate"]
+__all__ = ["roll_rate", "steady_roll_rate"]
 
 # Sadraey, Aircraft Design (2013) §12.4.3: beyond about 20-25 deg of aileron deflection the flow
 # separates over the aileron and its effectiveness drops; recommendation |delta_A,max| <= 25 deg.
@@ -65,22 +65,67 @@ def exclude_avl_beyond_range(ctx: Context, p_hat: float, p_deg_s: float) -> None
         )
 
 
-@formula("roll-rate")
-async def roll_rate(x: Inputs, ctx: Context) -> dict[str, float]:
-    """The roll rate of the airplane at the aileron deflection ``delta_a``, in the world of ``ctx.world``.
+async def steady_roll_rate(x: Inputs, ctx: Context, speed: float) -> float:
+    """The steady roll rate at ``speed`` and the aileron deflection ``delta_a``, in the world of ``ctx.world``.
+
+    Shared by ``roll-rate`` (at the approach speed) and ``roll-rate-cruise-target`` (at the
+    cruise-speed target); both canon entries define the same steady roll.
 
     - ``aerobuildup``: IPOPT over AeroBuildup for the angle of attack and the roll rate at
       ``L = m g`` and zero stability-axis rolling moment.
-    - ``avl``: the vortex lattice at the lift coefficient ``m g / (1/2 rho V_app^2 S_ref)`` with the
-      kernel's ``S_ref``, ``r rm 0`` and the ailerons driven at ``delta_a``.
-
-    The nondimensional rate is ``p b / 2V`` with the bound ``b_ref`` and ``V_app`` in both worlds.
+    - ``avl``: the vortex lattice at the lift coefficient ``m g / (1/2 rho V^2 S_ref)`` with the
+      kernel's ``S_ref``, ``r rm 0`` and the ailerons driven at ``delta_a``; AVL's ``p b / 2V``
+      becomes a rate with the bound ``b_ref``, and beyond AVL's stated range the world declares
+      itself outside its validity.
 
     Args:
         x: ``airplane`` the geometry, ``m`` the mass in kg, ``g`` the gravity in m/s^2, the ISA air
-            state ``rho`` in kg/m^3, ``mu`` in Pa s, ``a`` in m/s, ``v_app`` the approach speed in
-            m/s, ``b_ref`` the span in m and ``delta_a`` the aileron deflection in degrees
-            (positive = roll to the right).
+            state ``rho`` in kg/m^3, ``mu`` in Pa s, ``a`` in m/s, ``b_ref`` the span in m and
+            ``delta_a`` the aileron deflection in degrees (positive = roll to the right).
+        ctx: The formula context; ``ctx.world`` is the world, ``ctx.solvers`` the adapters.
+        speed: The flight speed in m/s.
+
+    Returns:
+        The roll rate in rad/s, positive for a roll to the right.
+
+    Raises:
+        TypeError: If a number is not a number or ``ctx.world`` is not one of the two worlds.
+        FormulaError: From the adapter, unchanged.
+    """
+    airplane = airplane_of(x)
+    delta, span = number(x, "delta_a"), number(x, "b_ref")
+    warn_deflection_beyond_reference(ctx, delta)
+    world = ctx.world
+    if world == "aerobuildup":
+        steady = await ctx.solvers.opti.steady_roll(
+            airplane, number(x, "m"), number(x, "g"), air_state(x), speed, delta
+        )
+        forward_warnings(ctx, steady.warnings)
+        warn_flap_validity(ctx, airplane, steady.confidence)
+        return steady.p_rad_s
+    if world == "avl":
+        dynamic_pressure = 0.5 * number(x, "rho") * speed**2
+        reference = await ctx.solvers.geometry.main_wing_reference(airplane)
+        cl = number(x, "m") * number(x, "g") / (dynamic_pressure * reference.s_ref)
+        found = await ctx.solvers.avl.steady_roll(airplane, cl, delta)
+        forward_warnings(ctx, found.warnings)
+        warn_flap_validity(ctx, airplane, None)
+        rate = found.p_hat * 2.0 * speed / span
+        exclude_avl_beyond_range(ctx, found.p_hat, math.degrees(rate))
+        return rate
+    msg = f"the steady roll has no world {world!r}"
+    raise TypeError(msg)
+
+
+@formula("roll-rate")
+async def roll_rate(x: Inputs, ctx: Context) -> dict[str, float]:
+    """The roll rate of the airplane at the aileron deflection ``delta_a``, at the approach speed.
+
+    The steady roll of :func:`steady_roll_rate` in the world of ``ctx.world``. The nondimensional
+    rate is ``p b / 2V`` with the bound ``b_ref`` and ``V_app`` in both worlds.
+
+    Args:
+        x: The inputs of :func:`steady_roll_rate` and ``v_app`` the approach speed in m/s.
         ctx: The formula context; ``ctx.world`` is the world, ``ctx.solvers`` the adapters.
 
     Returns:
@@ -90,27 +135,6 @@ async def roll_rate(x: Inputs, ctx: Context) -> dict[str, float]:
         TypeError: If a number is not a number or ``ctx.world`` is not a world of this formula.
         FormulaError: From the adapter, unchanged.
     """
-    airplane = airplane_of(x)
-    delta, speed, span = number(x, "delta_a"), number(x, "v_app"), number(x, "b_ref")
-    warn_deflection_beyond_reference(ctx, delta)
-    world = ctx.world
-    if world == "aerobuildup":
-        steady = await ctx.solvers.opti.steady_roll(
-            airplane, number(x, "m"), number(x, "g"), air_state(x), speed, delta
-        )
-        forward_warnings(ctx, steady.warnings)
-        warn_flap_validity(ctx, airplane, steady.confidence)
-        rate = steady.p_rad_s
-    elif world == "avl":
-        dynamic_pressure = 0.5 * number(x, "rho") * speed**2
-        reference = await ctx.solvers.geometry.main_wing_reference(airplane)
-        cl = number(x, "m") * number(x, "g") / (dynamic_pressure * reference.s_ref)
-        found = await ctx.solvers.avl.steady_roll(airplane, cl, delta)
-        forward_warnings(ctx, found.warnings)
-        warn_flap_validity(ctx, airplane, None)
-        rate = found.p_hat * 2.0 * speed / span
-        exclude_avl_beyond_range(ctx, found.p_hat, math.degrees(rate))
-    else:
-        msg = f"roll-rate has no world {world!r}"
-        raise TypeError(msg)
+    speed, span = number(x, "v_app"), number(x, "b_ref")
+    rate = await steady_roll_rate(x, ctx, speed)
     return {"p": math.degrees(rate), "p_hat": rate * span / (2.0 * speed)}

@@ -44,6 +44,7 @@ IMPLEMENTED = {
     "calc:static-margin",
     "calc:speed-from-stall-margin",
     "calc:roll-rate",
+    "calc:roll-rate-cruise-target",
     "calc:cg-for-target-margin",
     "calc:horizontal-tail-arm",
     "calc:horizontal-tail-volume",

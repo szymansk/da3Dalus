@@ -70,9 +70,13 @@ a cruise requirement the latter is the character statement, since it hardly depe
 
 **Validity in the RC/UAV regime (ADR 0028).** The same steady roll as [[roll-rate]], with the same qualification: the balance is scale-free in `pb/2V` (Sadraey §12.3.3, §12.4.2), and Mach ≤ 0.3 needs no correction (Anderson §1.10.3). At the cruise-speed target the chord Re is higher than on approach, so the low-Re separation argument (Anderson §20.3.2) bites less. Neither world models aileron separation, and the large-δ loss Sadraey gives beyond about 20–25° (§12.4.3) is unchecked at model Re [no source]. Declared limitation (finding #1181, decided (b)): the AVL world is linear in δ and used only for `−0.10 ≤ pb/2V ≤ 0.10` (`avl_doc.txt:121-141`); beyond it the interval is the AeroBuildup world alone, with the AVL value in the `world_outside_validity` warning (BRYAN 0.276 lies beyond). Aileron differential and adverse yaw are not modelled (out of the MVP).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/roll_rate_cruise_target.py` | EXACT | 🟢 | the steady roll of [[roll-rate]] (shared function `steady_roll_rate`) on the clean airplane at `V_cruise,target`, in both worlds; the AVL world beyond `\|pb/2V\| = 0.10` declares `world_outside_validity` and leaves the interval (#1382) |
+
+No register node is mapped to this entry.
 
 ## Approval
 
