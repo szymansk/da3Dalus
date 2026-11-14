@@ -147,15 +147,16 @@ The wing area of the document is 37.6 dm2 (2 x 793.75 mm x 237.1 mm, the scan). 
 an aspect ratio of 6.62, which with its 1.59 m span means 38.2 dm2, close to the scan (6.70); the
 43.3 dm2 that [P] Table 1 and [M] state fit neither. The scan is used.
 
-ULTRA_STICK_120 is the Hangar 9 Ultra Stick 120, the kit NASA Langley flew and tested at full scale
-in its 12-foot tunnel as FASER and the University of Minnesota flies as a research aircraft (see
+ULTRA_STICK_120 is the Hangar 9 Ultra Stick 120, the kit NASA Langley flew as FASER and tested in a
+wind tunnel "with the same aircraft used for flight testing" ([F]), and the University of Minnesota
+flies as a research aircraft (see
 `ultra_stick_120/MEASUREMENTS.md`). Its source is the generator
 `scripts/canon_checks/reference_fleet/ultra_stick_120/build_document.py`.
 
 | | ULTRA_STICK_120 |
 |---|---|
 | copy | `ultra_stick_120/ultra_stick_120.airplane.json` |
-| SHA-256 of the copy as canonical JSON | `ff3d0523a6b829e178ba2548c1c2a4f30d018d6b51a15b1dec8475cc7ff38cd3` |
+| SHA-256 of the copy as canonical JSON | `974cfcf48c13d5686e3ebc436afb095735d63ebfc196755f5c45c9ebb026ce77` |
 | mass | 8.95 kg (19.72 lbf, [F] Table 2) |
 | reference point | `xyz_ref` (0.3020, 0, 0.0714) m: [F] Table 2, a quarter of the 1.42 ft chord behind the leading edge, 0.165 of it above the bottom of the fuselage |
 | origin | x from the kit firewall aft, z from the flat bottom of the fuselage up |
@@ -170,36 +171,37 @@ NTRS 20060022541 (2006), Tables 1 and 2. Plan and article are not copied into th
 
 Published, or measured on the plan:
 
-- [A]: wing span 76 in, wing area 1214 in2, symmetrical section, dihedral 1 in at each tip;
-  stabiliser span 28-3/4 in, chord with elevator 11-1/4 in, area 302 in2, flat section.
+- [A]: wing span 76 in, wing area 1214 in2, symmetrical section; stabiliser span 28-3/4 in, chord with elevator 11-1/4 in, area 302 in2, flat section.
 - [L]: the outline of the kit fuselage (flat bottom, sloping top, 52.0 in from the firewall to the fin
   post; [F] gives 4.31 ft), the positions of wing and stabiliser, the outline of fin and rudder with
   the hinge line, the wing's thickness (2.54 in) and the place where the aileron starts (14.2 in
   behind the leading edge). All incidences are zero ("0-0" on the plan, 0 deg in [F]).
-- [F]: mass, centre of gravity, the greatest width of the fuselage (0.3958 ft).
+- [F]: mass, centre of gravity, the greatest width of the fuselage (0.3958 ft), dihedral 0.7 deg.
 
 An independent check: the University of Minnesota (Jaeger et al., AIAA 2026-4164, Table 2) gives for
 its Ultra Stick 120 the leading edges of wing, stabiliser and fin 0.666 ft, 3.708 ft and 3.375 ft
 behind the firewall and tail areas of 2.06 ft2 and 0.718 ft2. The plan gives 0.636 ft, 3.677 ft and
-3.25 ft (the fin at the stabiliser plane), [A] 2.10 ft2 for the stabiliser, and fin with rudder
-measure 0.69 ft2 from the stabiliser plane up on the plan.
+3.364 ft (the fin where its leading edge meets the top of the fuselage), and [A] 2.10 ft2 for the
+stabiliser. The whole outline of fin and rudder on the plan measures 0.70 ft2; the part above the
+top of the fuselage, which is what the document models, 0.56 ft2.
 
 Assumptions:
 
 | value | assumed | why it matters |
 |---|---|---|
 | wing planform | constant chord = area / span = 15.97 in. [A] says "slight taper" and an average chord of 16-3/4 in, which with 76 in is 1273 in2, not its own 1214 in2; [F] gives taper ratio 1, 8.28 ft2 and 6.29 ft (a mean of 15.8 in) and a mean geometric chord of 1.42 ft | area, aspect ratio, every coefficient |
-| wing section | NACA 0015; the drawn section is 15.9 % thick with its thickest point at 22 % of the chord, not 30 % | maximum lift, stall angle |
+| dihedral | 0.7 deg from [F]; [A] gives 1 in at each tip, which is 1.5 deg | dihedral effect |
+| wing section | NACA 0015; the drawn section is 15.9 % thick with its thickest point at about 21 % of the chord, not 30 % | maximum lift, stall angle |
 | aileron | from 19 in to 37 in of the 38 in half span; the kit has an inboard flap and an outboard aileron of unpublished spans | roll rate |
 | flaps | not modelled | none at 0 deg |
 | stabiliser planform | straight taper with an unswept trailing edge, tip chord 9.76 in from span, root chord and area | tail lift slope, weakly |
 | elevator | a third of the root chord, constant | control power |
 | tail sections | NACA 0006 for the flat plates (0.5 in thick on [L]) | tail lift slope and drag, weakly |
-| fin | from the stabiliser plane to its top as outlined on [L]; its lowest inch lies beside the aft fuselage | side force, weathercock stability |
+| fin | [L] shows the converted aircraft, whose fin was cut to stand on the stabiliser. On the kit it stands on the sloping top of the fuselage: the dashed "Original shape of fin" has a lower edge with the slope of that top. The document places the outline accordingly (1.31 in higher than drawn) and models it from the top of the fuselage up; the part of the rudder below, behind the end of the body, is not modelled | side force, weathercock stability |
 | fuselage width | the greatest width of [F] from the firewall to the wing's hinge line, narrowing in a straight line to 1 in at the fin post; superellipse exponent 4 | drag, the body's share of the neutral point |
 | deflection stops | none: [A] gives throws as lengths only | none |
 | engine, landing gear, propeller | not modelled | drag |
-| same kit | that NASA's and Minnesota's aircraft are the kit of [A] and [L]; the positions above agree within 0.4 in (the fin within 1.5 in) | everything |
+| same kit | that NASA's and Minnesota's aircraft are the kit of [A] and [L]; the positions above agree within 0.4 in | everything |
 
 With exponent 10 for the box-shaped body and its open front face the kernel's best-glide optimisation
 returned NaN; exponent 4 is used and the cause is not investigated here.

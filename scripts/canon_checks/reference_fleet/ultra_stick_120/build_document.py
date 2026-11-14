@@ -26,6 +26,7 @@ bottom here).
 """
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -55,12 +56,21 @@ SHEET_RUDDER_HINGE_X = 62.30  # the fin post, 62.16 to 62.45
 # (height above the stabiliser plane, sheet x).
 SHEET_FIN_LE = ((1.01, 50.60), (7.01, 58.34))
 SHEET_RUDDER_TE = ((1.01, 68.22), (7.01, 65.56))
-FIN_TIP_HEIGHT_IN = 7.90  # the flat top of the fin above the stabiliser plane
+FIN_TIP_HEIGHT_IN = 8.37  # the flat top of the fin (sheet y = 7.645) above the stabiliser plane
+# The plan shows the converted aircraft, whose fin was cut to stand on the stabiliser. On the kit it
+# stands on the sloping top of the fuselage: the dashed "Original shape of fin" has a lower edge
+# with the slope of that top (0.137 against 0.136), 0.47 in beyond the stabiliser plane at the fin
+# post, where the upright fuselage is 1.05 in deep. So the plan's stabiliser plane is, for the
+# kit's fin, a line 1.05 + 0.47 = 1.52 in above the flat bottom.
+FIN_DATUM_ABOVE_BOTTOM_IN = 1.52
+# The fin is modelled from where its leading edge meets the fuselage top (sheet x = 50.73); the
+# part of the rudder below that, behind the end of the body, is not.
+FIN_ROOT_HEIGHT_IN = 1.09
 # The sloping edge of the kit fuselage (its top when upright), as (sheet x, sheet y).
 SHEET_FUSELAGE_TOP = (
     (10.33, 20.20),
     (12.00, 20.42),
-    (17.96, 20.80),
+    (17.96, 20.95),
     (32.14, 20.94),
     (36.00, 20.42),
     (40.00, 19.84),
@@ -77,10 +87,12 @@ WING_AREA_IN2 = 1214.0  # [A]
 # average chord of 16-3/4 in, which with 76 in is 1273 in2, not its own 1214 in2; [F] gives taper
 # ratio 1 and 8.28 ft2 with 6.29 ft, a mean of 15.8 in. Area and span are used.
 WING_CHORD_IN = WING_AREA_IN2 / WING_SPAN_IN
-WING_TIP_RISE_IN = 1.0  # [A] "dihedral, each tip: 1 inch"
-# The section drawn on [L] is 2.54 in thick at its thickest (x = 21), 15.9 % of the chord, and
-# symmetrical ([A]). ASSUMPTION: NACA 0015 stands in for the kit's section, whose thickest point
-# lies further forward (22 % of the chord against 30 %).
+# [F] Table 1: 0.7 deg, on the aircraft that was in the tunnel. [A] gives "1 inch at each tip",
+# which is 1.5 deg; the kit's instructions let "the angle of the root ribs determine" it.
+WING_DIHEDRAL_DEG = 0.7
+# The section drawn on [L] is 2.54 in thick at its thickest (x = 20.5 to 22), 15.9 % of the chord,
+# and symmetrical ([A]). ASSUMPTION: NACA 0015 stands in for the kit's section, whose thickest
+# point lies further forward (about 21 % of the chord against 30 %).
 WING_THICKNESS_IN = 2.54
 # ASSUMPTION: the aileron spans the outer half of each wing. The kit wing has an inboard flap and
 # an outboard aileron of unpublished spans; the flaps are not modelled (no published deflection).
@@ -173,7 +185,7 @@ def wing() -> Any:
             section(
                 aft(SHEET_WING_LE_X),
                 s * INCH,
-                up(SHEET_WING_CHORD_LINE_Y) + s / half_span * WING_TIP_RISE_IN * INCH,
+                up(SHEET_WING_CHORD_LINE_Y) + s * INCH * math.tan(math.radians(WING_DIHEDRAL_DEG)),
                 WING_CHORD_IN,
                 WING_AIRFOIL,
             )
@@ -212,14 +224,14 @@ def horizontal_tail() -> Any:
 
 
 def vertical_tail() -> Any:
-    """Fin and rudder from the stabiliser plane to the fin's top, as outlined on [L]."""
+    """Fin and rudder from the top of the fuselage to the fin's top, as outlined on [L]."""
     ribs = []
-    for height in (0.0, FIN_TIP_HEIGHT_IN):
+    for height in (FIN_ROOT_HEIGHT_IN, FIN_TIP_HEIGHT_IN):
         leading, trailing = at_height(SHEET_FIN_LE, height), at_height(SHEET_RUDDER_TE, height)
         rib = section(
             aft(leading),
             0.0,
-            up(SHEET_STAB_PLANE_Y) + height * INCH,
+            (FIN_DATUM_ABOVE_BOTTOM_IN + height) * INCH,
             trailing - leading,
             TAIL_AIRFOIL,
         )

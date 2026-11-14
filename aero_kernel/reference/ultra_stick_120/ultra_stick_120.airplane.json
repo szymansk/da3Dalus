@@ -26,7 +26,7 @@
           "xyz_le": [
             0.193802,
             0.4826,
-            0.13589
+            0.129086
           ],
           "chord": 0.405732,
           "twist": 0.0,
@@ -50,7 +50,7 @@
           "xyz_le": [
             0.193802,
             0.9398,
-            0.147922
+            0.134672
           ],
           "chord": 0.405732,
           "twist": 0.0,
@@ -60,7 +60,7 @@
           "xyz_le": [
             0.193802,
             0.9652,
-            0.14859
+            0.134983
           ],
           "chord": 0.405732,
           "twist": 0.0,
@@ -118,35 +118,35 @@
       "x_secs": [
         {
           "xyz_le": [
-            0.989764,
+            1.025479,
             0.0,
-            0.005334
+            0.066294
           ],
-          "chord": 0.492015,
+          "chord": 0.444026,
           "twist": 0.0,
           "airfoil": "./naca0006.dat",
           "control_surface": {
             "name": "rudder",
-            "hinge_point": 0.6713,
+            "hinge_point": 0.6634,
             "symmetric": true,
             "deflection": 0.0
           },
           "trailing_edge_device": {
             "name": "rudder",
             "role": "rudder",
-            "rel_chord_root": 0.6713,
-            "rel_chord_tip": 0.4953,
+            "rel_chord_root": 0.6634,
+            "rel_chord_tip": 0.4536,
             "deflection_deg": 0.0,
             "symmetric": true
           }
         },
         {
           "xyz_le": [
-            1.248616,
+            1.264016,
             0.0,
-            0.205994
+            0.251206
           ],
-          "chord": 0.144204,
+          "chord": 0.123512,
           "twist": 0.0,
           "airfoil": "./naca0006.dat"
         }
@@ -181,10 +181,10 @@
           "xyz": [
             0.193802,
             0.0,
-            0.0635
+            0.065405
           ],
           "a": 0.06032,
-          "b": 0.0635,
+          "b": 0.065405,
           "n": 4.0
         },
         {
