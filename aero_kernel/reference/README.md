@@ -96,6 +96,57 @@ geometry too.
 The DB's CHEKKER is not used: its fin has 48 ribs against the source's 12 and its wings and airfoil
 files carry other names; the source file is the better document.
 
+### The validation aircraft (#1388)
+
+AVISTAR_ELITE is the Great Planes Avistar Elite of the UAVDB project, the one aircraft of the fleet
+with published measurements (see `avistar_elite/MEASUREMENTS.md`). It exists neither in the app DB
+nor as a plan: its source is the generator
+`scripts/canon_checks/reference_fleet/avistar_elite/build_document.py`, which names the origin of
+every number, and `test_the_avistar_copy_is_what_its_generator_builds` checks that the copy is what
+the generator builds.
+
+| | AVISTAR_ELITE |
+|---|---|
+| copy | `avistar_elite/avistar_elite.airplane.json` |
+| SHA-256 of the copy as canonical JSON | `14bbbf2fef893b850f31fc67041ea76df3b5a898c34f6acf8fc014b5ad118593` |
+| mass | 3.70 kg, gross weight of [P] Table 1 (3.07 kg empty + 0.63 kg battery) |
+| reference point | `xyz_ref` (0.4644, 0, 0) m: the manual's balance point, see the assumptions |
+
+Sources: **[P]** Dantsker, Caccamo, Vahora, Mancuso, "Flight & Ground Testing Data Set for an
+Unmanned Aircraft: Great Planes Avistar Elite", AIAA 2020-0780
+(https://cs-people.bu.edu/rmancuso/files/papers/UAVDB_Avistar_AIAAScitech20.pdf); **[M]** Great
+Planes, Avistar Elite instruction manual GPMA1005
+(http://manuals.hobbico.com/gpm/gpma1005-manual.pdf).
+
+Published and taken as is:
+
+- Wing, horizontal and vertical stabiliser: leading-edge position, span station, chord, offset and
+  dihedral of [P] Table 4, measured on a 3D scan (x towards the tail, y towards the right wing, z
+  up, the same axes as the format); the incidence of the wing and of the horizontal stabiliser. The
+  fin's "y span pos" is the height above its root.
+- Wing airfoil AVISTAR ([P]: verified against the UIUC Airfoil Database; the file is that
+  database's `avistar.dat`).
+- Control-surface chords from [M] p. 29: each throw is given as a length at the trailing edge,
+  measured at the widest part of the surface, and an angle, so chord = throw / sin(angle): aileron
+  50 mm, elevator 41 mm, rudder 58 mm. The stops are the manual's high rates (17, 16 and 22 deg).
+
+Assumptions, because no source publishes the value:
+
+| value | assumed | why it matters |
+|---|---|---|
+| aileron span | from 400 mm to 770 mm of the 793.75 mm half span | the roll rate |
+| control-surface chord along the span | the chord at the widest part ([M]) over the whole span | roll rate, control power |
+| fin incidence | 0 deg; [P] Table 4 prints 2.36 deg in the fin's row, the stabiliser's value, taken as a copying slip | side force at zero sideslip |
+| flaps | not modelled: every published test flew with 0 deg ([P] section V); span and throw are unpublished | none for the published tests |
+| tail airfoils | NACA 0006 for both stabilisers ([P] Figure 8 only plots the thin symmetric sections, which vary from root to tip) | tail lift slope and drag, weakly |
+| fuselage | twelve sections read off [P] Figures 4 and 5 (about +-5 mm), superellipse exponent 4 | drag, the body's share of the neutral point |
+| centre of gravity | the manual's balance point, 84 mm behind the leading edge ([M]), at z = 0 of the scan; [P] does not publish the tested aircraft's and no source gives a height | the measured static margin |
+| landing gear, propeller, spinner | not modelled | drag |
+
+The wing area of the document is 37.6 dm2 (2 x 793.75 mm x 237.1 mm, the scan). [P] Table 1 gives
+an aspect ratio of 6.62, which with its 1.59 m span means 38.2 dm2, close to the scan (6.70); the
+43.3 dm2 that [P] Table 1 and [M] state fit neither. The scan is used.
+
 Regime (ADR 0028), chord Reynolds number 3e4 to 1e6 at ISA sea level, Mach <= 0.3. The numbers
 are AeroSandbox's `include_centerline_distance` values of the main wing (`FleetMember.asb_reference`):
 
@@ -135,6 +186,7 @@ are AeroSandbox's `include_centerline_distance` values of the main wing (`FleetM
 | VOODOO | 1.764 m | 54.1 dm2 | 0.321 m | 21 N/m2 | 2.2e5 |
 | WINDFREAK | 2.493 m | 90.7 dm2 | 0.365 m | 28 N/m2 | 2.5e5 |
 | WRISTOCRAT | 1.456 m | 21.3 dm2 | 0.148 m | 16 N/m2 | 1.0e5 |
+| AVISTAR_ELITE | 1.588 m | 37.6 dm2 | 0.237 m | 96 N/m2 | 1.6e5 |
 
 The first six are in the regime: a 0.5 to 1.5 m RC model at 5 to 20 m/s has a chord Reynolds number of
 0.5e5 to 2.5e5 and a Mach number below 0.06. The RV-7 is an RC scale model (0.82 m span, MAC
@@ -291,6 +343,8 @@ ribs the path `./components/airfoils/naca23013.5.dat`. The copy gives the root r
 | `wristocrat/wristocrat_main_wing_kulfan.dat` | `17668189add6b04dcb08b9689f6005b6d7bcf2a153b1393b8c0c8cf5f2901081` |
 | `wristocrat/wristocrat_horizontal_tail_kulfan.dat` | `7e1ed736e3cb914e6af2079157a3b1202260d47e600c570a3652a378b44a88d2` |
 | `wristocrat/wristocrat_vertical_tail_kulfan.dat` | `285c7673e2e8e19fad721c09abb99a26ae47ac2f9388c23bdc72ad56cca9993f` |
+| `avistar_elite/avistar.dat` | `b71d63826ada136382d26bb4df7954cefce0b2f49ca5910c16c13d6ddb48dce5` |
+| `avistar_elite/naca0006.dat` | `b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d` |
 
 BRYAN's sources are under `scripts/canon_checks/reference_fleet/bryan/`; JAGUAR's under
 `~/Downloads/da3dalus-import/modelle/jaguar/profile/` (the same files the source JSON names under
@@ -302,7 +356,9 @@ and `~/Downloads/da3dalus-import/belemnitos/profile/` (BELEMNITOS' `mh32.dat` di
 and RV-7's come from `components/airfoils/` of the main checkout (the `wiesel_*_kulfan.dat` files are
 untracked there), which is where the DB's airfoil paths point. The plan batch's come from the same
 place (the plugin's `*_kulfan.dat` files and `e168_15.dat` are untracked there; `bryan_platte.dat`,
-`naca0006.dat`, `naca0008.dat`, `naca0210.dat`, `naca2410.dat` and `sd7037.dat` are tracked).
+`naca0006.dat`, `naca0008.dat`, `naca0210.dat`, `naca2410.dat` and `sd7037.dat` are tracked). AVISTAR_ELITE's
+`avistar.dat` is https://m-selig.ae.illinois.edu/ads/coord/avistar.dat (UIUC Airfoil Database,
+fetched 2026-11-14) and its `naca0006.dat` is `components/airfoils/naca0006.dat`.
 
 ## Results recorded for the fleet (regression, not validated)
 

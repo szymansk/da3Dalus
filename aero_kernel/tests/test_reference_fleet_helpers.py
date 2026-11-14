@@ -7,7 +7,13 @@ from aero_kernel.reference_fleet import (
     flap_values,
     fleet_values,
 )
-from aero_kernel.tests.reference_fleet import MVP_FLEET, PLAN_BATCH, TAILLESS, WITH_PITCH_TAIL
+from aero_kernel.tests.reference_fleet import (
+    MVP_FLEET,
+    PLAN_BATCH,
+    TAILLESS,
+    VALIDATION,
+    WITH_PITCH_TAIL,
+)
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
@@ -27,10 +33,12 @@ def test_a_flying_wing_has_no_pitch_trimming_tail(member: FleetMember) -> None:
         _ = member.tail_name
 
 
-def test_the_fleet_is_the_first_six_and_the_plan_batch() -> None:
+def test_the_fleet_is_the_first_six_the_plan_batch_and_the_validation_aircraft() -> None:
     assert len(MVP_FLEET) == 6
     assert len(PLAN_BATCH) == 28
-    assert set(MVP_FLEET) | set(PLAN_BATCH) == set(FleetMember)
+    assert VALIDATION == (FleetMember.AVISTAR_ELITE,)
+    assert set(MVP_FLEET) | set(PLAN_BATCH) | set(VALIDATION) == set(FleetMember)
+    assert len(MVP_FLEET) + len(PLAN_BATCH) + len(VALIDATION) == len(FleetMember)
 
 
 def test_only_rv7_takes_flap_deflections() -> None:

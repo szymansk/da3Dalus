@@ -113,3 +113,4 @@ per quantity (ADR 0022). Why (`reference_fleet/urmodell/ERGEBNISSE.md` B3, B8):
 > is open while the app has no centre-of-gravity field (#1209); the CG is the quantity [[centre-of-gravity-design]] (produced by the formula cg-for-target-margin), never an app input. Kernel:
 > `aero_kernel/formulas/lateral_static_stability_md.py`.
 > Input rebound (maintainer 2026-10-25): the CG is cg-for-target-margin's, never an app input.
+> (The kernel implementation was added after the approval: `aero_kernel/formulas/lateral_static_stability_md.py`.)
