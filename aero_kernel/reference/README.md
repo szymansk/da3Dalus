@@ -156,7 +156,7 @@ flies as a research aircraft (see
 | | ULTRA_STICK_120 |
 |---|---|
 | copy | `ultra_stick_120/ultra_stick_120.airplane.json` |
-| SHA-256 of the copy as canonical JSON | `974cfcf48c13d5686e3ebc436afb095735d63ebfc196755f5c45c9ebb026ce77` |
+| SHA-256 of the copy as canonical JSON | `e4847237485baaddcabd9303040c3630243db5bab893513dddde68d11656afe4` |
 | mass | 8.95 kg (19.72 lbf, [F] Table 2) |
 | reference point | `xyz_ref` (0.3020, 0, 0.0714) m: [F] Table 2, a quarter of the 1.42 ft chord behind the leading edge, 0.165 of it above the bottom of the fuselage |
 | origin | x from the kit firewall aft, z from the flat bottom of the fuselage up |
@@ -174,8 +174,10 @@ Published, or measured on the plan:
 - [A]: wing span 76 in, wing area 1214 in2, symmetrical section; stabiliser span 28-3/4 in, chord with elevator 11-1/4 in, area 302 in2, flat section.
 - [L]: the outline of the kit fuselage (flat bottom, sloping top, 52.0 in from the firewall to the fin
   post; [F] gives 4.31 ft), the positions of wing and stabiliser, the outline of fin and rudder with
-  the hinge line, the wing's thickness (2.54 in) and the place where the aileron starts (14.2 in
-  behind the leading edge). All incidences are zero ("0-0" on the plan, 0 deg in [F]).
+  the hinge line, the place where the aileron starts (14.2 in behind the leading edge) and the
+  outline of the wing section: its half thickness was read every 0.2 in and a Kulfan airfoil with
+  eight weights per side fitted to it (`fit_wing_section.py`; the fit lies within 0.03 in of the
+  readings, 0.006 in root mean square; 15.95 % thick at 22 % of the chord). All incidences are zero ("0-0" on the plan, 0 deg in [F]).
 - [F]: mass, centre of gravity, the greatest width of the fuselage (0.3958 ft), dihedral 0.7 deg.
 
 An independent check: the University of Minnesota (Jaeger et al., AIAA 2026-4164, Table 2) gives for
@@ -191,7 +193,7 @@ Assumptions:
 |---|---|---|
 | wing planform | constant chord = area / span = 15.97 in. [A] says "slight taper" and an average chord of 16-3/4 in, which with 76 in is 1273 in2, not its own 1214 in2; [F] gives taper ratio 1, 8.28 ft2 and 6.29 ft (a mean of 15.8 in) and a mean geometric chord of 1.42 ft | area, aspect ratio, every coefficient |
 | dihedral | 0.7 deg from [F]; [A] gives 1 in at each tip, which is 1.5 deg | dihedral effect |
-| wing section | NACA 0015; the drawn section is 15.9 % thick with its thickest point at about 21 % of the chord, not 30 % | maximum lift, stall angle |
+| wing section behind the hinge line | the plan draws the section from the leading edge to the hinge line (14.2 in); the aileron is taken as a slab tapering in a straight line to a sharp trailing edge at the chord | camber and thickness of the last 11 % of the chord |
 | aileron | from 19 in to 37 in of the 38 in half span; the kit has an inboard flap and an outboard aileron of unpublished spans | roll rate |
 | flaps | not modelled | none at 0 deg |
 | stabiliser planform | straight taper with an unswept trailing edge, tip chord 9.76 in from span, root chord and area | tail lift slope, weakly |
@@ -405,7 +407,7 @@ ribs the path `./components/airfoils/naca23013.5.dat`. The copy gives the root r
 | `wristocrat/wristocrat_vertical_tail_kulfan.dat` | `285c7673e2e8e19fad721c09abb99a26ae47ac2f9388c23bdc72ad56cca9993f` |
 | `avistar_elite/avistar.dat` | `b71d63826ada136382d26bb4df7954cefce0b2f49ca5910c16c13d6ddb48dce5` |
 | `avistar_elite/naca0006.dat` | `b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d` |
-| `ultra_stick_120/naca0015.dat` | `645e867c98ddbc808b315c0c0a672cf390aac23fe32112f83b560efb1b0e7bf9` |
+| `ultra_stick_120/ultra_stick_120_main_wing_kulfan.dat` | `37a644fc0248bcddcb4ee4ad0fec76c2837c6fca6ddcd10e7edc926fbee26c47` |
 | `ultra_stick_120/naca0006.dat` | `b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d` |
 
 BRYAN's sources are under `scripts/canon_checks/reference_fleet/bryan/`; JAGUAR's under
@@ -420,8 +422,10 @@ untracked there), which is where the DB's airfoil paths point. The plan batch's 
 place (the plugin's `*_kulfan.dat` files and `e168_15.dat` are untracked there; `bryan_platte.dat`,
 `naca0006.dat`, `naca0008.dat`, `naca0210.dat`, `naca2410.dat` and `sd7037.dat` are tracked). AVISTAR_ELITE's
 `avistar.dat` is https://m-selig.ae.illinois.edu/ads/coord/avistar.dat (UIUC Airfoil Database,
-fetched 2026-11-14) and its `naca0006.dat` is `components/airfoils/naca0006.dat`. ULTRA_STICK_120's two files are
-`components/airfoils/naca0015.dat` and `naca0006.dat`.
+fetched 2026-11-14) and its `naca0006.dat` is `components/airfoils/naca0006.dat`. ULTRA_STICK_120's
+`ultra_stick_120_main_wing_kulfan.dat` is written by
+`scripts/canon_checks/reference_fleet/ultra_stick_120/fit_wing_section.py` (not a copy: a Kulfan fit
+to the section drawn on the plan) and its `naca0006.dat` is `components/airfoils/naca0006.dat`.
 
 ## Results recorded for the fleet (regression, not validated)
 

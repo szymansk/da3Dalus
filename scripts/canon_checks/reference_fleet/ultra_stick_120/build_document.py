@@ -40,7 +40,7 @@ OUTPUT = (
 
 INCH = 0.0254
 FOOT = 0.3048
-WING_AIRFOIL = "./naca0015.dat"  # ASSUMPTION, see WING_THICKNESS_IN
+WING_AIRFOIL = "./ultra_stick_120_main_wing_kulfan.dat"  # fitted to [L], fit_wing_section.py
 TAIL_AIRFOIL = "./naca0006.dat"  # ASSUMPTION: [A] "stab airfoil section: flat", 0.5 in thick on [L]
 
 # --- Sheet coordinates of [L], inches ----------------------------------------------------------
@@ -91,8 +91,7 @@ WING_CHORD_IN = WING_AREA_IN2 / WING_SPAN_IN
 # which is 1.5 deg; the kit's instructions let "the angle of the root ribs determine" it.
 WING_DIHEDRAL_DEG = 0.7
 # The section drawn on [L] is 2.54 in thick at its thickest (x = 20.5 to 22), 15.9 % of the chord,
-# and symmetrical ([A]). ASSUMPTION: NACA 0015 stands in for the kit's section, whose thickest
-# point lies further forward (about 21 % of the chord against 30 %).
+# and symmetrical ([A]); ``fit_wing_section.py`` fits a Kulfan airfoil to its outline.
 WING_THICKNESS_IN = 2.54
 # ASSUMPTION: the aileron spans the outer half of each wing. The kit wing has an inboard flap and
 # an outboard aileron of unpublished spans; the flaps are not modelled (no published deflection).

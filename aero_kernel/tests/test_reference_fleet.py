@@ -59,7 +59,7 @@ SOURCE_CANONICAL_SHA256 = {
     # The validation aircraft of #1388 has no source file: its source is the generator
     # scripts/canon_checks/reference_fleet/avistar_elite/build_document.py (README).
     FleetMember.AVISTAR_ELITE: "14bbbf2fef893b850f31fc67041ea76df3b5a898c34f6acf8fc014b5ad118593",
-    FleetMember.ULTRA_STICK_120: "974cfcf48c13d5686e3ebc436afb095735d63ebfc196755f5c45c9ebb026ce77",
+    FleetMember.ULTRA_STICK_120: "e4847237485baaddcabd9303040c3630243db5bab893513dddde68d11656afe4",
 }
 AIRFOIL_SHA256 = {
     "bryan/bryan_profil.dat": "75fc1827fb3059c6525464032b3a9c95f48c1205ef513750fd34532ebb69eb62",
@@ -170,7 +170,7 @@ AIRFOIL_SHA256 = {
     # AVISTAR of the UIUC Airfoil Database and the repository's NACA 0006 (README, #1388).
     "avistar_elite/avistar.dat": "b71d63826ada136382d26bb4df7954cefce0b2f49ca5910c16c13d6ddb48dce5",
     "avistar_elite/naca0006.dat": "b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d",
-    "ultra_stick_120/naca0015.dat": "645e867c98ddbc808b315c0c0a672cf390aac23fe32112f83b560efb1b0e7bf9",
+    "ultra_stick_120/ultra_stick_120_main_wing_kulfan.dat": "37a644fc0248bcddcb4ee4ad0fec76c2837c6fca6ddcd10e7edc926fbee26c47",
     "ultra_stick_120/naca0006.dat": "b4393d8fc137a5915778896ba5111c7672afd12c84058d62361f79e4a645cd4d",
 }
 CONVENTIONAL = {
