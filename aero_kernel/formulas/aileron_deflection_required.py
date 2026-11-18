@@ -75,6 +75,11 @@ def _above_maximum(best: _Point, target_rad_s: float, world_note: str) -> Formul
     )
 
 
+def _is_zero(value: float) -> bool:
+    """Whether a rate is zero to the kernel's zero-span tolerance (``opt_zero_span``)."""
+    return math.isclose(value, 0.0, rel_tol=0.0, abs_tol=config().opt_zero_span.value)
+
+
 def _reached(rate: float, target: float, tolerance: float) -> bool:
     return abs(rate - target) <= tolerance * target
 
@@ -138,7 +143,7 @@ async def _search_aerobuildup(x: Inputs, ctx: Context, speed: float, target: flo
 
 async def _solve_aerobuildup(x: Inputs, ctx: Context, speed: float, target: float) -> float:
     """The command of the AeroBuildup world for a signed target (rad/s)."""
-    if target == 0.0:
+    if _is_zero(target):
         return 0.0
     point = await _search_aerobuildup(x, ctx, speed, abs(target))
     _forward(ctx, point)
@@ -147,13 +152,13 @@ async def _solve_aerobuildup(x: Inputs, ctx: Context, speed: float, target: floa
 
 async def _solve_avl(x: Inputs, ctx: Context, speed: float, target: float) -> float:
     """The command of the AVL world: linear in the command, from one run at the reference command."""
-    if target == 0.0:
+    if _is_zero(target):
         return 0.0
     reference = config().avl_roll_reference_deflection.value
     point = await _evaluate(x, ctx, speed, reference)
     span = number(x, "b_ref")
     p_hat_reference = point.rate * span / (2.0 * speed)
-    if p_hat_reference == 0.0:
+    if _is_zero(p_hat_reference):
         raise _above_maximum(point, target, "AVL world")
     p_hat_target = target * span / (2.0 * speed)
     delta = reference * p_hat_target / p_hat_reference
