@@ -147,6 +147,61 @@ def _along(point: ChainPoint, axis: int) -> float:
     return point.y if axis == 1 else point.z
 
 
+def _refusal(
+    category: ErrorCategory, code: str, message: str, hint: str, wing: Wing, point: ChainPoint
+) -> FormulaError:
+    """A refusal of a device of the airplane, with the wing and the device in ``detail``."""
+    return FormulaError(
+        category,
+        code,
+        message,
+        hint,
+        detail={"wing": wing.name, "device": _device_name(point)},
+        parameter="airplane",
+    )
+
+
+def _check_device(wing: Wing, point: ChainPoint, axis: int) -> tuple[float, float]:
+    """The hinge positions of the device at a chain point, after the rules a hinge moment needs.
+
+    Raises:
+        FormulaError: As :func:`_runs`.
+    """
+    device = point.device
+    assert device is not None  # callers pass a point with a device
+    label = f"the device {_device_name(point)!r} (role {device.role}) of the wing {wing.name!r}"
+    if device.hinge_start is None or device.hinge_end is None:
+        raise _refusal(
+            ErrorCategory.INVALID_INPUT,
+            "missing_hinge",
+            f"{label} has no hinge position",
+            "give rel_chord_root; the tool's default hinge is never used",
+            wing,
+            point,
+        )
+    hinges = (device.hinge_start, device.hinge_end)
+    if not all(0.0 < h < 1.0 for h in hinges):
+        raise _refusal(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "hinge_outside_chord",
+            f"the hinge of {label} is at {hinges[0]:g} / {hinges[1]:g} of the chord",
+            "a hinge moment needs a hinge strictly inside the chord: at the leading edge the "
+            "whole section turns, at the trailing edge nothing does",
+            wing,
+            point,
+        )
+    if axis == 1 and not wing.symmetric:
+        raise _refusal(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "hinge_device_on_unmirrored_surface",
+            f"{label} sits on an unmirrored wing",
+            "a control surface on a surface that spreads sideways is supported on a mirrored one only",
+            wing,
+            point,
+        )
+    return hinges
+
+
 def _runs(wing: Wing, chain: Sequence[ChainPoint], axis: int, roles: frozenset[str]) -> list[_Run]:
     """The runs of the chain's segments whose device acts in ``roles``, in oriented order.
 
@@ -163,41 +218,12 @@ def _runs(wing: Wing, chain: Sequence[ChainPoint], axis: int, roles: frozenset[s
         if device is None or device.role not in roles:
             last = None
             continue
-        if device.hinge_start is None or device.hinge_end is None:
-            raise FormulaError(
-                ErrorCategory.INVALID_INPUT,
-                "missing_hinge",
-                f"the device {_device_name(start)!r} of the wing {wing.name!r} has no hinge position",
-                "give rel_chord_root; the tool's default hinge is never used",
-                detail={"wing": wing.name, "device": _device_name(start)},
-                parameter="airplane",
-            )
-        if not all(0.0 < h < 1.0 for h in (device.hinge_start, device.hinge_end)):
-            raise FormulaError(
-                ErrorCategory.UNSUPPORTED_CONFIGURATION,
-                "hinge_outside_chord",
-                f"the hinge of the device {_device_name(start)!r} of the wing {wing.name!r} is at "
-                f"{device.hinge_start:g} / {device.hinge_end:g} of the chord",
-                "a hinge moment needs a hinge strictly inside the chord: at the leading edge the "
-                "whole section turns, at the trailing edge nothing does",
-                detail={"wing": wing.name, "device": _device_name(start)},
-                parameter="airplane",
-            )
-        if axis == 1 and not wing.symmetric:
-            raise FormulaError(
-                ErrorCategory.UNSUPPORTED_CONFIGURATION,
-                "hinge_device_on_unmirrored_surface",
-                f"the device {_device_name(start)!r} (role {device.role}) sits on the unmirrored "
-                f"wing {wing.name!r}",
-                "a control surface on a surface that spreads sideways is supported on a mirrored one only",
-                detail={"wing": wing.name, "device": _device_name(start), "role": device.role},
-                parameter="airplane",
-            )
+        hinge_start, hinge_end = _check_device(wing, start, axis)
         span = _Span(
             start=_along(start, axis),
             end=_along(end, axis),
-            x_start=start.x + device.hinge_start * start.chord,
-            x_end=end.x + device.hinge_end * end.chord,
+            x_start=start.x + hinge_start * start.chord,
+            x_end=end.x + hinge_end * end.chord,
         )
         identity = (_device_name(start), device.role)
         if last == identity:
