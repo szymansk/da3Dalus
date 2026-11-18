@@ -62,9 +62,13 @@ check that gave 2.9 % median and 33 % worst case on the stall.
 
 The solver evaluation has its own canon entry: [[aerobuildup-evaluation]].
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/drag_polar.py` | EXACT | 🟢 | `C_D,par = C_D0 + k C_L²`, no solver, no caveat (#1401) |
+
+No register node is mapped to this entry.
 
 ## Approval
 

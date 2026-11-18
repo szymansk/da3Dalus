@@ -80,6 +80,13 @@ opt_peak_tolerance:
   basis: numerical
   source: "float noise between two samples of one sweep"
 
+opt_level_lift_tolerance:
+  value: 0.000001
+  unit: "1"
+  guards: "Parabolic polar fit: the relative difference between the lift AeroBuildup returns at a level-flight point and the weight m g, at which the angle of attack of that point is accepted (the angle is refined by secant steps from the sweep's linear interpolation)."
+  basis: numerical
+  source: "the lift balance of every other optimisation of the kernel is solved by IPOPT to its default tolerance of 1e-8 on the scaled constraint (opt_probe_tolerance, 1e-6 leaves two decades); a fit point whose lift misses the weight by one part in a million moves its C_L by the same fraction, far below the scatter of the polar"
+
 opt_zero_span:
   value: 1.0e-15
   unit: "1"

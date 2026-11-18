@@ -18,7 +18,7 @@ tags:
 inputs: {v: flight-speed, cl: lift-coefficient, cd: drag-coefficient-parabolic}
 outputs: {w_sink: sink-rate}
 preconditions:
-  - {id: small_glide_angle, parameter: cd, on_violation: warning}
+  - {id: lift_coefficient_positive, parameter: cl, on_violation: error}
 ---
 
 # Steady-glide sink rate
@@ -37,7 +37,7 @@ w_sink = V * C_D,par / C_L
 ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. A single vectorised product: `w = v * (cd_pos / cl_pos)` (app/services/analysis_service.py:515), with V from `v = np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_pos))` (line 514). Closed form evaluated elementwise over the polar; no method involved.
 
 > 🔴 **An assumption of this entry is broken in the code.** *(Ist ≠ Soll: the canon now states the
-> limit as the precondition `small_glide_angle` below; this block records only that the app departs from it.)*
+> limit as the validity condition `small_glide_angle` below; this block records only that the app departs from it.)*
 >
 > app/services/analysis_service.py:514-515 applies the small-glide-angle form across the ENTIRE sweep, including the low-CL / high-speed end of every curve. At the characteristic points this is harmless (L/D ~ 10-20 => gamma ~ 3-6°, error < 0.5%). At the fast end of an RC polar L/D falls to order 2-5, i.e. gamma = 11-27°, where w = V*CD/CL overstates the true V*sin(gamma) by the dropped cos(gamma) factor (2% at L/D=5, ~12% at L/D=2) and V itself is overstated because line 514 sets L = W rather than W cos(gamma). Consequence: the right-hand tail of the plotted speed polar is pessimistically steep (the sink rate is overstated), and the validity limit is stated nowhere in the code or the response schema.
 
@@ -60,9 +60,15 @@ The sourced relation is the glide-angle one, tan(gamma) = C_D/C_L, from which w 
 ```
 
 **Validity in the RC/UAV regime (ADR 0028).** The small-angle step is benign for RC gliders (E = 10-20 gives gamma = 3-6 deg, error under 0.5%) but not for draggy powered models: at E = 5 the error is ~2%, at E = 3 it is ~5%, and 3-6 is a realistic E for a sport RC model at low Re. Second-order point: the exact steady glide has L = W*cos(gamma), so V itself is slightly overstated by the level-flight lift balance at low E. Both errors push sink rate the same way (pessimistic: the sink rate is overstated). Acceptable with a stated E floor; below E ~ 5 report the trigonometric form. The floor is stated as
-the precondition `small_glide_angle` below.
+the validity condition `small_glide_angle` below.
 
 ## Preconditions on the bindings
+
+**`lift_coefficient_positive` — the lift coefficient must be greater than zero (on `cl`; error).** The relation divides by `C_L`; at `C_L ≤ 0` there is no steady glide and `tan(γ) = C_D / C_L` has no meaning. The violation is an **error** at this formula (ADR 0020); nothing is substituted. The bound is physical, not a tuned threshold.
+
+## Validity condition `small_glide_angle` (a warning of the formula)
+
+*Corrected 2026-11-18 (#1401).* A precondition check receives the bound inputs only (ARCHITECTURE §8.12), and this limit needs a threshold, which a canon rule parameter holds and a check cannot read. The entry therefore states it the way [[roll-rate]] states the AVL range: the **formula declares it** (warning `small_glide_angle`, severity `warning`), with the floor as the parameter `min_glide_ratio` of the rule `small-glide-angle` (`rules.yaml`; an overridable rule parameter, so it appears in `provenance.rules_used`).
 
 **`small_glide_angle` — the glide angle must be small (on `cd`, with `cl`; warning).** The canonical
 form is the small-glide-angle form of the steady glide, valid only where `gamma = atan(C_D/C_L)` is
@@ -79,8 +85,8 @@ small. It drops two factors, both of which make the sink rate pessimistic (overs
 | 3 | 18.4° | 5.4 % | 2.7 % |
 | 2 | 26.6° | 11.8 % | 5.7 % |
 
-The precondition is violated when `C_L/C_D` falls below the floor stated under **Validity**
-(E ~ 5, the entry's draft value — fixed at approval); a violated point is reported, not dropped, and
+The condition is violated when `C_L/C_D` falls below the floor stated under **Validity**
+(E ~ 5, the entry's draft value — fixed at approval; it is the value of `min_glide_ratio`); a violated point is reported, not dropped, and
 the trigonometric form `w_sink = V * sin(gamma)` with `L = W * cos(gamma)` is what holds there. The
 numbers above are exact evaluations of the two dropped factors, not estimates.
 
@@ -89,11 +95,12 @@ the parabola, that drag is the kernel's ([[aerobuildup-evaluation]], `D_profile 
 parabola `C_D,par` is fitted to the same drag ([[parabolic-polar-fit]]). The minimum sink speed itself is
 [[minimum-sink-speed]]'s.
 
-## Implementations (1)
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | [[speed-polar-w]] | EXACT | 🟢 |  |
+| `aero_kernel/formulas/sink_rate.py` | EXACT | 🟢 | `w_sink = V C_D,par / C_L`; the warning `small_glide_angle` is the formula's own (rule `small-glide-angle`, `min_glide_ratio`), the precondition `lift_coefficient_positive` the registered check of the same module (#1401) |
 
 ## Approval
 

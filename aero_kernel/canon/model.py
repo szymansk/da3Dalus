@@ -664,6 +664,7 @@ class KernelConfig(BaseModel):
     opt_probe_tolerance: ConfigValue
     opt_peak_tolerance: ConfigValue
     opt_zero_span: ConfigValue
+    opt_level_lift_tolerance: ConfigValue
     opt_active_bound_fraction: ConfigValue
     opt_alpha_margin_deg: ConfigValue
     opt_hinge_floor: ConfigValue

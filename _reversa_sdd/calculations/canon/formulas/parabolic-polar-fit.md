@@ -68,9 +68,30 @@ the four fleet aircraft of the #1346 measurement (level-flight sweep, this entry
 +11.5 … +15.7 % (BRYAN 0.665 → 0.769, WIESEL 0.542 → 0.611, CHEKKER 0.621 → 0.711, BELEMNITOS 0.501 → 0.559), `C_D0`
 unchanged. Still a display value, not a Trefftz-plane span efficiency.
 
-## Implementations (0)
+**Method, window and rejection (#1401).** The points are `fit_points` values of `C_L` equally spaced over the
+window `[max(window_cl_floor, window_lower_fraction · C_L,max), window_upper_fraction · C_L,max]`; each is flown
+at the speed where `L = m g` (`V = sqrt(2 m g / (ρ S_ref C_L))`), at the angle of attack where AeroBuildup's lift
+equals the weight at that speed, on the branch before the first `C_L` peak. The fit is ordinary least squares of
+`C_D` on `C_L²` (intercept `C_D0`, slope `k`), `e = 1/(π AR k)`. The window, the point count and the bound on `e`
+are the parameters of the rule `parabolic-polar-fit` (`rules.yaml`); the window is BR-16's. **Resolution goes up,
+thresholds never move:** `fit_points` is the lever for a poor fit, and no threshold on the residual exists. **The
+fit is not refused for being poor:** every fit declares its residual (RMS and largest deviation of the solver's
+`C_D` from the parabola, `C_L` and speed range; notice `polar_fit_residual`). **A fit that is not physically
+meaningful is declared and returned, never replaced:** a slope `k ≤ 0` (so `e ≤ 0`), a `C_D0 ≤ 0`, or an `e`
+above `max_oswald` (1, Anderson §5.3.3) gives the warning `polar_fit_nonphysical` of severity `error` with the
+fitted numbers in its `detail`; the formulas that divide by them ([[induced-drag-factor]], the probes) refuse a
+non-positive `e` by their own preconditions. The only refusals of the fit itself are an empty window, a level
+that the airplane does not reach before its first `C_L` peak, a point whose lift does not settle on the weight,
+a solver drag at or below zero, and a slope of exactly zero (no finite `e`): each is a `FormulaError`, never a
+value. The kernel's drag is declared as everywhere (`induced_drag_viscous_factor_removed`).
 
-None in aero_kernel yet; no register node is mapped to this entry.
+## Implementations (1)
+
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/parabolic_polar_fit.py` | EXACT | 🟢 | least-squares parabola over `fit_points` level-flight points of the solver polar (OPT adapter `level_polar`, one AeroBuildup sweep and secant refinement per point, #1401); the nonphysical-fit declaration and the residual notice are the formula's own |
+
+No register node is mapped to this entry.
 
 ## Approval
 

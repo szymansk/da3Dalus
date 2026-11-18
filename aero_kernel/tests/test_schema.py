@@ -139,6 +139,9 @@ class TestKernelWarning:
             "spinner_merge_exponent_clamped": WarningSeverity.WARNING,
             "fuselage_axis_straightened": WarningSeverity.NOTICE,
             "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
+            "small_glide_angle": WarningSeverity.WARNING,
+            "polar_fit_residual": WarningSeverity.NOTICE,
+            "polar_fit_nonphysical": WarningSeverity.ERROR,
         }
 
     def test_carries_world_and_json_detail(self) -> None:

@@ -727,7 +727,7 @@ output: sink-rate
 inputs: {v: flight-speed, cl: lift-coefficient, cd: drag-coefficient-parabolic}
 outputs: {w_sink: sink-rate}
 preconditions:
-  - {id: small_glide_angle, parameter: cd, on_violation: warning}
+  - {id: lift_coefficient_positive, parameter: cl, on_violation: error}
 ```
 
 A **procedure** with declared uncertainty (`neutral-point`):
