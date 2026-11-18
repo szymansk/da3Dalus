@@ -590,6 +590,8 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "unsupported_layout": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "roll_device_on_unmirrored_surface": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "flap_on_unmirrored_surface": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "hinge_device_on_unmirrored_surface": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "duplicate_surface_key": ErrorCategory.INVALID_INPUT,
         "flap_deflections_differ": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "hinge_line_discontinuous": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "avl_array_limit": ErrorCategory.UNSUPPORTED_CONFIGURATION,

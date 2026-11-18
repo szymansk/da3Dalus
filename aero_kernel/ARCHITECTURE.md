@@ -256,7 +256,9 @@ nothing failed. The category enum holds only the eight rows above.
   (`invalid_input`) — a driven roll device or a deflected flap without `rel_chord_root`, the tool's default hinge is never used;
   `flap_deflections_differ` — deflected flaps at different angles reach AVL, which holds them as one control variable;
   `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
-  value per section; `detail`: wing key, y).
+  value per section; `detail`: wing key, y); `hinge_device_on_unmirrored_surface` — a control surface sits on
+  a wing that spreads sideways and is not mirrored (the hinge-moment procedure, #1399); `duplicate_surface_key`
+  (`invalid_input`) — two control surfaces have the same key `<wing>.<device>[_left|_right]`.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `warning` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
@@ -368,12 +370,14 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
   (`not_applicable`: `condition_not_met`, `not_given` or `depends_on_not_applicable`, ch. 8.5; `skipped`: `long_run_not_included` or
   `depends_on_skipped`; `error`: see `error`)
-- `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13), exactly one when `ok`, neither
-  otherwise. `value` is a float in the quantity's canon unit, or a structured value of the quantity's `type`
-  (ch. 8.12). **v1 returns floats only**; the union widens with the first non-scalar formula, no placeholder
-  type before that (ADR 0021). The `per_control_surface` value (keyed by surface and application, with
-  `application` then `None`) and the handling of duplicate surface keys are specified with the first such
-  formula implementation (ch. 8.5). Numbers are **strict and finite**: `value`, the interval bounds and world
+- `value`, `interval {min, max, worlds{assignment: value}}` (ch. 8.13) **or** `surfaces`, exactly one when `ok`,
+  none otherwise. `value` is a float in the quantity's canon unit. `surfaces` is the value of a
+  `per_control_surface` quantity (`hinge-moment`, #1399): per surface key
+  `<wing>.<device>[_left|_right]`, per application id, a float in the canon unit; the union of the entries of
+  the applicable applications, a surface acting in two roles carries two entries. Its `application` field
+  lists the ids of the applications that contributed, joined by `, `. A request for it resolves to **all**
+  its producing applications (`Resolved.producers`); `value` is not defined for it, and nothing reads it
+  (ch. 8.5). The other non-scalar types (curve, ...) are still refused as `non_scalar_result`. Numbers are **strict and finite**: `value`, the interval bounds and world
   values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf. The same holds inside every free JSON field
   (`detail` of errors and warnings, `solver_settings`): a non-finite number anywhere in the tree is
   rejected — one shared recursive check in `errors.py` — because JSON would silently turn it into `null`
@@ -597,8 +601,19 @@ quantity.
   formula — one tool, one unit — and is the union of the applicable applications' entries; two formulas
   never produce it (ADR 0022). Such a quantity is bound by no application, so no value edge ever has to
   choose a producer: `graph._index_producers` admits the same exception, and a read of a quantity with
-  several producers is a `GraphModelError`. Resolving a requested quantity to all its producers, their
-  closures and the engine's union come with the first `per_control_surface` formula implementation.
+  several producers is a `GraphModelError`. A request resolves it to **all** its producers
+  (`Resolved.producers`, one subtree over their closures, #1399). **The union** (`engine._surfaces_result`):
+  the entries of the applications that are `ok` are merged per surface key, each under its application id;
+  an application that is `not_applicable` adds nothing; a failed application makes the quantity an `error`
+  (the first by the row of the status order, then by application id) and a `skipped` one makes it `skipped`,
+  because a union that silently lacked a role would be narrower than the caller asked for; when no
+  application applies the quantity is `not_applicable` (`condition_not_met`). The own time of the producers
+  is counted as that of one node (the longest for the lower bound, the sum for the upper one). The node
+  cache stores a per-surface output as a JSON object, like any output. **Duplicate surface keys** are
+  refused by the AVL mesh before any run: `invalid_input` / `duplicate_surface_key` (ch. 8.1), the key being
+  `<wing>.<device>[_left|_right]` with the device name derived like the geometry format derives it (name,
+  else label, else role). **An application names its role to the formula by a constant** (`role`: 1 aileron,
+  2 elevator, 3 rudder, 4 flap), because a formula never sees its application.
 - An application has at most two kinds of condition; without either it exists always:
   - `when`: one term of the closed vocabulary over facts of the aircraft geometry (`has_vertical_tail`,
     `has_aileron`, …). The canon `README.md` defines the vocabulary; each term is implemented once in
@@ -928,6 +943,28 @@ caller's responsibility.
     `avl-binary` and `aerosandbox`. The AVL world adds no regime warning: those come with the
     minimum-drag speed and are inherited. The reference value for BRYAN under these conditions is in
     `scripts/sim_export/crrcsim/AVL_CONVERGENCE.md`.
+  - **The hinge moments** (`avl.hinge_moments`, `avl_hinge.hinge_mesh`, #1399; canon
+    `control-surface-hinge-moments`). One AVL run per role (aileron, elevator, rudder, flap) at the lift
+    coefficient `n m g / (q S_ref)`, no pitch trim, only the surfaces of the role deflected. AVL's `HM`
+    sums every surface that shares a control name, and the image of a `YDUPLICATE` surface keeps the control
+    index (`amake.f:812-822`), so the model differs from the roll's: **every half of every wing is its own
+    explicit `SURFACE`** (a left half runs tip to root, `avl_doc.txt:615-625`), every surface acting in the
+    role is **its own control at gain 1** under an internal name `c01`, `c02`, ... that never leaves the
+    adapter (ADR 0019), and each half carrying a control is split at its hinge line into a front and an aft
+    surface of one `COMPONENT` (Drela's rule 3), the aft one carrying the control, hinge at its own leading
+    edge. A *surface* is a run of adjacent segments of one wing with a device of one name and role; the ends
+    of a run are stations (sine-to-tip on the main wing, the main wing's stations inside the span on a
+    horizontal tail, the strip width of the main wing elsewhere). Every wing is meshed, so the downwash of the
+    wing at the tail and the sidewash at the fin act. **Signs:** the control value is the role's command with
+    the sign of its side (aileron: right −, left +; elevator and flap: both +; rudder: right/unmirrored +,
+    left −: a rudder command to the right, trailing edge towards +y on a fin, right panel down and left up
+    on a V-tail), and `HM` is positive for a positive deflection of that surface (trailing edge down on a
+    surface that spreads in y, towards +y on one that stands up; the hinge vector of the image of a mirrored
+    fin is −z). The moment is `q S_ref c_ref Chinge`, with the `S_ref`, `c_ref` the AVL file carries (AVL
+    prints `Chinge` with four significant digits). Declared: `hinge_moment_inviscid_estimate` and
+    `hinge_moment_pitch_untrimmed` (`notice`), and the Reynolds and Mach warnings of ADR 0028 per surface and
+    device (`regime_by_surface`). **No refinement run**: the approved canon entry asks for none; the mesh
+    sensitivity is measured by an aero test, not declared at run time.
   - **The steady roll** (`opti.steady_roll`, `avl.steady_roll`, #1211). Both worlds solve the same roll: rotation
     about the stability x axis through the airplane's reference point, the stability-axis rolling moment zero,
     positive to the right.
@@ -1693,8 +1730,7 @@ Every error propagates the same way, `missing_input` included: the quantity that
 directly gets `missing_input`, its dependents `upstream_failed` with the cause in `detail.causes`. A
 predecessor counts only if the node actually reads it; an unused output of a multi-output formula does not
 propagate. `Subtree.propagate` is the one home of rows 2, 4 and 7; the engine applies the order. How the
-statuses of several producers of one `per_control_surface` quantity combine is specified with the first
-such formula implementation (ch. 8.5).
+statuses of several producers of one `per_control_surface` quantity combine is specified in ch. 8.5 (the union).
 
 ### 8.14 Logging
 

@@ -367,13 +367,19 @@ def test_reading_a_quantity_with_several_producers_is_a_model_error() -> None:
         CanonGraph(model)
 
 
-def test_the_packaged_model_returns_a_per_control_surface_request_as_non_scalar() -> None:
-    """hinge-moment is produced by several applications; v1 answers before it looks at a producer."""
+def test_the_packaged_model_resolves_a_per_control_surface_request_to_every_application() -> None:
+    """hinge-moment is the union of the applications of one formula: all of them are in the subtree."""
     from aero_kernel.canon.load import load_canon_model
 
     subtree = CanonGraph(load_canon_model()).subtree(["hinge-moment"])
-    assert [(error.code, error.category) for error in subtree.errors] == [
-        ("non_scalar_result", ErrorCategory.NOT_IMPLEMENTED)
+    assert subtree.errors == ()
+    (resolved,) = subtree.requested
+    assert [p.application for p in resolved.producers] == [
+        "aileron",
+        "elevator_up",
+        "elevator_down",
+        "rudder",
+        "flap_takeoff",
+        "flap_landing",
     ]
-    assert subtree.requested == ()
-    assert subtree.nodes == ()
+    assert set(resolved.producers) <= {node.id for node in subtree.nodes}

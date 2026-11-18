@@ -22,26 +22,29 @@ inputs:
   n_load: load-factor
   rho: air-density
   v: flight-speed
+  mu: dynamic-viscosity
+  a: speed-of-sound
   delta: null
+  role: null
 outputs: {h: hinge-moment}
 applications:
   - id: aileron
-    bind: {delta: aileron-deflection}
+    bind: {delta: aileron-deflection, role: {const: 1, source: "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"}}
     when: has_aileron
   - id: elevator_up
-    bind: {delta: elevator-deflection-up}
+    bind: {delta: elevator-deflection-up, role: {const: 2, source: "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"}}
     when: has_elevator
   - id: elevator_down
-    bind: {delta: elevator-deflection-down}
+    bind: {delta: elevator-deflection-down, role: {const: 2, source: "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"}}
     when: has_elevator
   - id: rudder
-    bind: {delta: rudder-deflection}
+    bind: {delta: rudder-deflection, role: {const: 3, source: "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"}}
     when: has_rudder
   - id: flap_takeoff
-    bind: {delta: flap-deflection-takeoff}
+    bind: {delta: flap-deflection-takeoff, role: {const: 4, source: "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"}}
     when: has_flap
   - id: flap_landing
-    bind: {delta: flap-deflection-landing}
+    bind: {delta: flap-deflection-landing, role: {const: 4, source: "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"}}
     when: has_flap
 ---
 
@@ -59,7 +62,7 @@ for each applicable application (role r, deflection delta = the role's input):
 hinge-moment = { s: { application id: H } }  — the union over the applicable applications
             (positive: aerodynamic moment in the +deflection sense, right-hand rule about the hinge vector)
 ```
-**Produces** [[hinge-moment]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]] · [[flight-speed]] · [[aileron-deflection]] · [[elevator-deflection-up]] · [[elevator-deflection-down]] · [[rudder-deflection]] · [[flap-deflection-takeoff]] · [[flap-deflection-landing]]
+**Produces** [[hinge-moment]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[flight-speed]] · [[aileron-deflection]] · [[elevator-deflection-up]] · [[elevator-deflection-down]] · [[rudder-deflection]] · [[flap-deflection-takeoff]] · [[flap-deflection-landing]]
 
 **Kind: a procedure — one AVL solution per role, read at every hinge.** Maintainer decisions
 2026-10-19 (#1174): the construction side sizes servos from it. The output is **one quantity with one
@@ -90,6 +93,13 @@ reported in that sense.
 | elevator | symmetric: both sides `+δ_e` | elevon, ruddervator — symmetric |
 | rudder | every fin `+δ_r` | ruddervator — antisymmetric |
 | flap | symmetric: both sides `+δ_f` | flaperon — symmetric |
+
+*Remark (implementation, #1399).* The rows above fix no sense for a positive rudder command. The kernel takes
+`+δ_r` as a rudder to the right (yaw to the right): on a fin the trailing edge towards +y of the AVL frame, on
+a V-tail the right panel trailing edge down and the left one up, on a mirrored fin pair the stored fin towards
++y and its image towards +y as well. Each side's `H` is reported in the sense of a positive deflection of that
+side: trailing edge down on a surface that spreads in y, trailing edge towards +y on one that stands up (the
+image of a mirrored fin: towards −y). Maintainer decision pending, see the decision file `hinge-moments-rudder-sense`.
 
 **Surface keys.** The output key of a surface is `<wing>.<device>[_left|_right]` (maintainer,
 2026-10-19): the wing's name, which is required and unique; the device's `name` from the geometry —
@@ -154,9 +164,16 @@ that adds friction, linkage geometry and the evaluation's margins.
 (`avl_doc.txt:752-753`, `aero.f:411-420`, `amake.f:545-549`) for `HM`. 🔴 No source for the servo
 sizing point — that is the evaluation's (A10).
 
-## Implementations (0)
+**Application constants and the regime inputs (implementation, #1399).** An application names its role to the
+formula by the constant `role` (1 aileron, 2 elevator, 3 rudder, 4 flap): a formula never sees its application,
+and `elevator_up` and `elevator_down` differ only in the deflection they bind. The air state `μ` and `a` are
+inputs so that the regime of ADR 0028 (chord Reynolds number, Mach number) is declared per surface and device
+as the other AVL-based formulas' inputs declare it; they enter no moment.
 
-None in aero_kernel yet; no register node is mapped to this entry.
+## Implementations (1)
+
+`aero_kernel/formulas/control_surface_hinge_moments.py` — AVL, one run per role on a mesh that models every
+half of every wing explicitly (`aero_kernel/solvers/avl_hinge.py`). One implementation, six applications.
 
 ## Approval
 

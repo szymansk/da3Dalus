@@ -8,7 +8,7 @@ caller puts beside the geometry file (nothing here touches the disk).
 """
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from aero_kernel.config import config
 from aero_kernel.solvers.avl_body import MeshBody
@@ -22,18 +22,21 @@ from pydantic import BaseModel, ConfigDict
 
 __all__ = [
     "AvlOutput",
+    "HingeOutput",
     "LateralOutput",
     "RollOutput",
     "airfoil_file",
     "airfoil_file_name",
     "avl_commands",
     "avl_geometry",
+    "avl_hinge_commands",
     "avl_lateral_commands",
     "avl_roll_commands",
     "body_file_name",
     "control_order",
     "parse_avl_output",
     "parse_flap_echo",
+    "parse_hinge_output",
     "parse_lateral_output",
     "parse_roll_output",
 ]
@@ -56,6 +59,8 @@ CONTROL_NAME = ROLL_CONTROL
 SGN_DUP = ROLL_SGN_DUP
 
 _NUMBER = r"(-?\d+\.\d*(?:[EeDd][-+]?\d+)?)"
+# A value of AVL's ``G12.4`` format: with or without a decimal point before the exponent.
+_SIGNED = r"([-+]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][-+]?\d+)?)"
 
 
 class RollOutput(BaseModel):
@@ -109,6 +114,23 @@ class LateralOutput(BaseModel):
     c_n_p: float
     c_l_r: float
     c_n_r: float
+
+
+class HingeOutput(BaseModel):
+    """What the kernel reads from a hinge-moment AVL run.
+
+    Attributes:
+        cl: The total lift coefficient AVL trimmed to.
+        controls: The deflection AVL echoes per control name, in degrees.
+        moments: ``Chinge`` per control name: the hinge moment referred to ``S_ref * c_ref``, positive
+            in the sense of a positive deflection (``avl_doc.txt:752-753``).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    cl: float
+    controls: dict[str, float]
+    moments: dict[str, float]
 
 
 class AvlOutput(BaseModel):
@@ -226,7 +248,8 @@ def avl_geometry(
                 lines += [
                     "CONTROL",
                     f"{control.name} {control.gain!r} {control.x_hinge!r} "
-                    f"0.0 0.0 0.0 {control.sgn_dup}",
+                    f"{control.hinge_vector[0]!r} {control.hinge_vector[1]!r} "
+                    f"{control.hinge_vector[2]!r} {control.sgn_dup}",
                 ]
     for index, body in enumerate(bodies):
         lines += [
@@ -328,6 +351,30 @@ def avl_roll_commands(
     )
 
 
+def avl_hinge_commands(
+    cl: float, core_ratio: float, values: Mapping[str, float], *, order: Sequence[str]
+) -> str:
+    """The OPER dialogue of a hinge-moment run: ``C_L`` constraint, every control driven, run, ``HM``.
+
+    The pitching moment is not constrained: the angle of attack comes from the lift alone, and only
+    the controls of the role are deflected (canon ``control-surface-hinge-moments``).
+
+    Args:
+        cl: The lift coefficient.
+        core_ratio: The vortex core ratio.
+        values: The deflection of each control in degrees, by control name.
+        order: The control names in AVL's numbering (:func:`control_order`).
+
+    Returns:
+        The command text.
+
+    Raises:
+        KeyError: If a control of ``order`` has no value (a defect of the caller).
+    """
+    driven = "".join(f"d{index} d{index} {values[name]!r}\n" for index, name in enumerate(order, 1))
+    return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\n{driven}x\nhm\n\n\nquit\n"
+
+
 def _first(text: str, key: str) -> float | None:
     """The first ``key = number`` in the output (AVL also prints derived ratios later)."""
     found = re.search(rf"\b{re.escape(key)}\s*=\s*{_NUMBER}", text)
@@ -372,6 +419,33 @@ def parse_flap_echo(text: str) -> float | None:
     """The flap control deflection AVL echoes in degrees, or ``None`` if the output has none."""
     echo = re.search(rf"^\s*{re.escape(FLAP_CONTROL)}\s*=\s*{_NUMBER}", text, re.MULTILINE)
     return None if echo is None else float(echo.group(1))
+
+
+def parse_hinge_output(text: str, names: Sequence[str]) -> HingeOutput | None:
+    """Read ``CLtot``, the echoed controls and the ``Chinge`` table from a hinge-moment run.
+
+    Args:
+        text: The output.
+        names: The control names the run declared.
+
+    Returns:
+        The values, or ``None`` if the lift coefficient, the hinge table or a control is missing
+        (the run did not complete).
+    """
+    cl = _first(text, "CLtot")
+    table = text.partition("Control Hinge Moments")[2]
+    if cl is None or not table:
+        return None
+    controls: dict[str, float] = {}
+    moments: dict[str, float] = {}
+    for name in names:
+        echo = re.search(rf"^\s*{re.escape(name)}\s*=\s*{_NUMBER}", text, re.MULTILINE)
+        row = re.search(rf"^\s*{re.escape(name)}\s+{_SIGNED}\s*$", table, re.MULTILINE)
+        if echo is None or row is None:
+            return None
+        controls[name] = float(echo.group(1))
+        moments[name] = float(row.group(1).replace("D", "E").replace("d", "e"))
+    return HingeOutput(cl=cl, controls=controls, moments=moments)
 
 
 def parse_roll_output(text: str, roll_index: int = 1) -> RollOutput | None:

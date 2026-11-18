@@ -20,6 +20,7 @@ class ChainDevice(BaseModel):
 
     Attributes:
         name: The device's name.
+        label: Its display name, the name when none is given (as the geometry format derives it).
         role: Its standardised role.
         hinge_start: Hinge position (fraction of chord) at the start of the oriented segment.
         hinge_end: Hinge position at the end of the oriented segment; the root hinge's where the
@@ -32,6 +33,7 @@ class ChainDevice(BaseModel):
 
     name: str | None
     role: str
+    label: str | None = None
     hinge_start: float | None
     hinge_end: float | None
     deflection_deg: float | None = None
@@ -134,6 +136,7 @@ def _device(wing: Wing, first: int, second: int) -> ChainDevice | None:
     reversed_ = first > second
     return ChainDevice(
         name=device.name,
+        label=device.label,
         role=device.role,
         hinge_start=tip if reversed_ else root,
         hinge_end=root if reversed_ else tip,

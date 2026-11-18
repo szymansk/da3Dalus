@@ -46,6 +46,7 @@ IMPLEMENTED = {
     "calc:roll-rate",
     "calc:roll-rate-cruise-target",
     "calc:cg-for-target-margin",
+    "calc:control-surface-hinge-moments",
     "calc:horizontal-tail-arm",
     "calc:horizontal-tail-volume",
     "calc:vertical-tail-arm",

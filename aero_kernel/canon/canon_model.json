@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:0a0d964f4be45c6487c1af1ee1b53e213da4e450514d42aabf673cc12484125e",
+  "content_hash": "sha256:0a49a875eef61d17fd1192e8958fc16b62dc3fdab393dd520aa55c1b84aedf8a",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -911,12 +911,18 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:aileron-deflection",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 1.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -928,12 +934,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:elevator-deflection-up",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 2.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -945,12 +957,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:elevator-deflection-down",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 2.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -962,12 +980,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:rudder-deflection",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 3.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -979,12 +1003,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:flap-deflection-takeoff",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 4.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -996,12 +1026,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:flap-deflection-landing",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 4.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -1017,12 +1053,15 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "delta": null,
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "n_load": "calc:load-factor",
             "rho": "calc:air-density",
+            "role": null,
             "v": "calc:flight-speed"
           },
           "kind": "procedure",
