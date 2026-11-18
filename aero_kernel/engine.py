@@ -50,6 +50,7 @@ from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
     ComputeResult,
+    Curve,
     DefaultUsed,
     Interval,
     KernelWarning,
@@ -948,10 +949,12 @@ class _Call:
     def _check_outputs(self, node: Node, formula: Formula, returned: Mapping[str, object]) -> None:
         """Require exactly the output parameters, and a value of its type for each carried output.
 
-        The key of an output whose type v1 cannot carry (curve, ...) must be present, but its value
-        is neither carried nor type-checked: the engine discards it, and whoever reads it is
+        The key of an output whose type v1 cannot carry (curve pair, ...) must be present, but its
+        value is neither carried nor type-checked: the engine discards it, and whoever reads it is
         ``not_implemented`` (``unsupported_value_type``). The type check for each such type arrives
-        with the unit that adds it to ``Value`` (the polar did with ``stall-break``).
+        with the unit that adds it to ``Value`` (the polar did with ``stall-break``). A curve is
+        type-checked (``spanwise-loads``) but still not carried: the curve results are decision
+        ``spanwise-loads-curve-result``.
 
         Raises:
             ValueError: If the formula returned other parameters than the canon declares.
@@ -975,6 +978,9 @@ class _Call:
                 raise TypeError(msg)
             if quantity.type == "polar" and not isinstance(value, Polar):
                 msg = f"output {produce.parameter} is not a polar"
+                raise TypeError(msg)
+            if quantity.type == "curve" and not isinstance(value, Curve):
+                msg = f"output {produce.parameter} is not a curve"
                 raise TypeError(msg)
 
     # --- results ---------------------------------------------------------------------------

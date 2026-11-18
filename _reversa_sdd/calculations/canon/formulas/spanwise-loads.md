@@ -98,9 +98,13 @@ has no source; Anderson qualitative). Mach ≤ 0.3: no correction
 Scholz Wing Design §7.3 (load distribution `L′ = c·C_l` for structural sizing); AVL user guide and
 source (`aoutput.f:267` ff., `getvm.f:21-118`).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/spanwise_loads.py` | EXACT | 🟢 | one AVL run (`aero_kernel/solvers/avl.py`, `spanwise_loads`) on the declared mesh (10 chordwise, 24 spanwise strips, core ratio 0.25 — the neutral point's), `C_L = n·m·g / (q·S_ref)` with the kernel's `S_ref`, controls undeflected (a deflected device is refused), then `FS` and `VM` read for the first surface only (the right half, written root → tip, left half by `YDUPLICATE`); the adapter returns the rows per `q` and the formula scales them. The root row is at `y = 0`, so the root-row moment is already the centreline moment (see the remark below). Declared as `spanwise_loads_scope` (`notice`). The three outputs are `curve` values the engine type-checks and does not yet carry to a caller (open maintainer decision, #1398) (#1398) |
+
+No register node is mapped to this entry.
 
 ## Approval
 
@@ -121,3 +125,15 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > The design load case — does the spar hold `n_lim` — is `spar-break-load-factor` (n_break against n_lim
 > in the evaluation, A10); a direct evaluation at `n = n_lim` is #1139. The implementation checklist item
 > holds vacuously: there is no aero_kernel formula yet.
+
+Implementation remark (#1398). **The root row is the centreline.** The mesh puts the root station of a
+mirrored main wing at `y = 0` (`avl_mesh._root`: a root stored off the centreline is carried to it), so
+`VM`'s root row is the moment about the centreline and the term `V(y_root)·y_root` of the canonical form
+is zero for every wing the kernel meshes; the adapter checks that the table starts at `y = 0` and treats
+anything else as a defect. A main wing that is not mirrored is refused (`unsupported_configuration`):
+the form speaks of one half of a symmetric load. **Not in the implementation:** a regime warning (the
+inputs carry no `μ` and no `a`, so the chord Reynolds and Mach numbers of the operating point cannot be
+formed; open maintainer decision, #1398) and a refined-mesh check (the mesh is the neutral
+point's, from the BRYAN study; measured agreement with an independent vortex lattice is in the
+evidence sheet).
+

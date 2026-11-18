@@ -26,6 +26,7 @@ __all__ = [
     "AirplaneGeometry",
     "ComputeRequest",
     "ComputeResult",
+    "Curve",
     "DefaultUsed",
     "Interval",
     "KernelError",
@@ -101,6 +102,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "spinner_merge_exponent_clamped": WarningSeverity.WARNING,
     "fuselage_axis_straightened": WarningSeverity.NOTICE,
     "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
+    "spanwise_loads_scope": WarningSeverity.NOTICE,
 }
 
 
@@ -618,6 +620,35 @@ class Polar(BaseModel):
             raise ValueError(msg)
         if any(b <= a for a, b in zip(self.alpha_deg, self.alpha_deg[1:], strict=False)):
             msg = "alpha_deg must be strictly rising"
+            raise ValueError(msg)
+        return self
+
+
+class Curve(BaseModel):
+    """A quantity of type ``curve`` (canon README): one value per point of a swept variable.
+
+    The unit of the swept variable and of the values are the canon's, carried by the quantity; the
+    kernel returns SI (m, N, N m ...). Two curves of one formula may have different grids (the
+    strip centres of a load, the stations of its integral).
+
+    Attributes:
+        x: The swept variable, strictly rising.
+        y: The value at each point of ``x``.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    x: tuple[FiniteFloat, ...] = Field(min_length=2)
+    y: tuple[FiniteFloat, ...]
+
+    @model_validator(mode="after")
+    def _check_series(self) -> Self:
+        """Require one value per point and a strictly rising swept variable."""
+        if len(self.x) != len(self.y):
+            msg = "x and y must have the same length"
+            raise ValueError(msg)
+        if any(b <= a for a, b in zip(self.x, self.x[1:], strict=False)):
+            msg = "x must be strictly rising"
             raise ValueError(msg)
         return self
 

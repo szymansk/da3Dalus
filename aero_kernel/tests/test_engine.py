@@ -605,6 +605,23 @@ async def test_a_requested_polar_is_not_a_result_and_its_scalar_sibling_is_produ
     assert calls == ["called"]
 
 
+async def test_a_curve_output_is_type_checked_and_its_scalar_sibling_is_produced() -> None:
+    result = await run("curve-sib-q", "curve-sib-s")
+    curve, scalar = result.quantities
+    assert curve.error is not None
+    assert curve.error.code == "non_scalar_result"
+    assert (scalar.status, scalar.value) == (QuantityStatus.OK, 5.0)
+
+
+async def test_a_curve_output_that_is_not_a_curve_is_internal() -> None:
+    async def a_float(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        return {"c": 1.0, "s": 5.0}
+
+    quantity = await first("curve-sib-s", overrides={"curve-sibling": a_float})
+    assert quantity.error is not None
+    assert quantity.error.category is ErrorCategory.INTERNAL
+
+
 async def test_a_missing_polar_key_is_internal() -> None:
     async def no_polar(x: Inputs, ctx: Context) -> Mapping[str, object]:
         return {"s": 5.0}

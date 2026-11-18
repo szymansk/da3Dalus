@@ -39,19 +39,23 @@ from aero_kernel.solvers.avl_writer import (
     BODY_SPACING,
     CHORD_SPACING,
     GEOMETRY_FILE,
+    LOADS_FILES,
     AvlOutput,
+    LoadsOutput,
     RollOutput,
     airfoil_file,
     airfoil_file_name,
     avl_commands,
     avl_geometry,
     avl_lateral_commands,
+    avl_loads_commands,
     avl_roll_commands,
     body_file_name,
     control_order,
     parse_avl_output,
     parse_flap_echo,
     parse_lateral_output,
+    parse_loads_output,
     parse_roll_output,
 )
 from aero_kernel.solvers.base import SolverAdapter
@@ -65,7 +69,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["AvlAdapter", "AvlLateral", "AvlNeutralPoint", "AvlRoll", "Contour"]
+__all__ = ["AvlAdapter", "AvlLateral", "AvlLoads", "AvlNeutralPoint", "AvlRoll", "Contour"]
 
 # Mesh and vortex core, from the BRYAN mesh study (scripts/sim_export/crrcsim/AVL_CONVERGENCE.md):
 # aligned strips 10 chordwise / 24 spanwise converge to 0.3 % MAC against the next finer level;
@@ -140,6 +144,30 @@ class AvlRoll(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     p_hat: float
+    warnings: tuple[KernelWarning, ...] = ()
+
+
+class AvlLoads(BaseModel):
+    """The spanwise loads of the right half of the main wing at one lift coefficient, per ``q``.
+
+    Normalised by the dynamic pressure so the caller scales them to its operating point.
+
+    Attributes:
+        y_strip: The strip positions in m from the centreline, root to tip.
+        c_cl: ``c * c_cl`` per strip in m (normal force per unit span divided by ``q``).
+        y_station: ``Y`` in m of the shear and bending rows: the root, every strip, the tip.
+        shear: ``Vz / q`` in m^2 per row.
+        moment: ``Mx / q`` in m^3 per row; the first row is about the surface root, not the centreline.
+        warnings: Tool validity warnings, without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    y_strip: tuple[float, ...]
+    c_cl: tuple[float, ...]
+    y_station: tuple[float, ...]
+    shear: tuple[float, ...]
+    moment: tuple[float, ...]
     warnings: tuple[KernelWarning, ...] = ()
 
 
@@ -405,6 +433,28 @@ class AvlAdapter(SolverAdapter):
         """One AVL run on one mesh; returns the output text.
 
         Raises:
+            FormulaError: As :meth:`_execute_collecting`.
+            RuntimeError: As :meth:`_execute_collecting`.
+        """
+        stdout, _ = await self._execute_collecting(
+            surfaces, contours, mesh, commands, reference, (), xyz_ref, bodies
+        )
+        return stdout
+
+    async def _execute_collecting(
+        self,
+        surfaces: tuple[MeshSurface, ...],
+        contours: tuple[Contour, ...],
+        mesh: tuple[int, int],
+        commands: str,
+        reference: MainWingProperties,
+        collect: tuple[str, ...],
+        xyz_ref: tuple[float, float, float] = _ORIGIN,
+        bodies: tuple[MeshBody, ...] = (),
+    ) -> tuple[str, dict[str, str]]:
+        """One AVL run on one mesh; returns the output text and the named output files.
+
+        Raises:
             FormulaError: ``tool_unavailable``; ``unsupported_configuration`` (``avl_array_limit``)
                 if the mesh overflows AVL's vortex array.
             RuntimeError: If AVL exits with an error (a defect of ours).
@@ -466,7 +516,11 @@ class AvlAdapter(SolverAdapter):
         try:
             async with asyncio.timeout(AVL_MAX_RUN_S):
                 run = await self.runtime.run_process(
-                    files, commands, executable=avl_path(), args=(GEOMETRY_FILE,)
+                    files,
+                    commands,
+                    executable=avl_path(),
+                    args=(GEOMETRY_FILE,),
+                    collect=collect,
                 )
         except TimeoutError as error:
             raise ToolRunTimeoutError("the vortex lattice run", AVL_MAX_RUN_S) from error
@@ -482,7 +536,9 @@ class AvlAdapter(SolverAdapter):
             msg = f"the vortex lattice run did not complete (exit {run.returncode})"
             logger.error(_FAILED_RUN_LOG, msg, run.stdout[-500:])
             raise RuntimeError(msg)
-        return run.stdout
+        return run.stdout, {
+            name: text.decode("utf-8", "replace") for name, text in run.files.items()
+        }
 
     async def _run(
         self,
@@ -652,6 +708,80 @@ class AvlAdapter(SolverAdapter):
                     )
                 )
         return AvlNeutralPoint(x_np=first.x_np, warnings=tuple(warnings))
+
+    async def spanwise_loads(self, airplane: AirplaneGeometry, cl: float) -> AvlLoads:
+        """Find the loads of the main wing's right half at a lift coefficient (canon ``spanwise-loads``).
+
+        One run on the declared mesh with the controls undeflected and the pitch not trimmed: AVL
+        solves the angle of attack for the total ``C_L`` of the airplane and writes its strip forces
+        (``FS``) and the shear force and bending moment integrated from the tip (``VM``). The main
+        wing is the first surface, written root to tip with its left half as ``YDUPLICATE``, which
+        is what makes ``VM`` integrate from the tip; only the first surface is read.
+
+        Args:
+            airplane: The validated geometry, devices at rest, with one symmetric main wing.
+            cl: The lift coefficient of the operating point (negative for a downward load).
+
+        Returns:
+            The strip forces and the shear and bending rows per ``q``, and the adapter's warnings.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``unsupported_configuration`` for a deflected
+                geometry state, a main wing that is not mirrored, or a mesh that overflows AVL's
+                array.
+            RuntimeError: If AVL fails or misses the lift coefficient (a defect, ``internal``).
+        """
+        self.require_available()
+        refuse_deflected_devices(airplane, "AVL", flaps_supported=False)
+        reference = main_wing_properties(airplane)
+        numbers: dict[Airfoil, int] = {}
+
+        def number(airfoil: Airfoil) -> int:
+            return numbers.setdefault(airfoil, len(numbers))
+
+        surfaces = mesh_surfaces(airplane, N_SPAN, number, join_tolerance_m=self.join_tolerance_m())
+        if not surfaces[0].symmetric:
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "unsupported_configuration",
+                "the spanwise loads are those of one half of a mirrored main wing, and the main "
+                "wing is not mirrored",
+                "the load is symmetric because the controls are undeflected; an unmirrored main "
+                "wing has two different halves",
+            )
+        contours = await self._contours(tuple(numbers))
+        stdout, files = await self._execute_collecting(
+            surfaces,
+            contours,
+            (N_CHORD, N_SPAN),
+            avl_loads_commands(cl, CORE_RATIO),
+            reference,
+            LOADS_FILES,
+        )
+        strips, shear_moment = (files.get(name, "") for name in LOADS_FILES)
+        output = parse_loads_output(strips, shear_moment, reference.b_ref, reference.s_ref)
+        if output is None:
+            msg = "the vortex lattice run did not complete (no strip forces in the output)"
+            logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])
+            raise RuntimeError(msg)
+        return self._loads_checked(output, cl)
+
+    @staticmethod
+    def _loads_checked(output: LoadsOutput, cl: float) -> AvlLoads:
+        """The loads, once the run is known to have trimmed to the requested lift coefficient."""
+        if abs(output.cl - cl) > config().avl_cl_tolerance.value:
+            msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
+            raise RuntimeError(msg)
+        if output.y_station[0] != 0.0:  # the root of a mirrored wing is printed as 0.0000
+            msg = f"the shear and bending table starts at y = {output.y_station[0]} m, not the centreline"
+            raise RuntimeError(msg)
+        return AvlLoads(
+            y_strip=output.y_strip,
+            c_cl=output.c_cl,
+            y_station=output.y_station,
+            shear=output.shear,
+            moment=output.moment,
+        )
 
     async def steady_roll(
         self, airplane: AirplaneGeometry, cl: float, delta_a_deg: float

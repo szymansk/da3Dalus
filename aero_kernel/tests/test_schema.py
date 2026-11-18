@@ -6,6 +6,7 @@ from aero_kernel.errors import ErrorCategory, format_world_assignment, parse_wor
 from aero_kernel.schema import (
     WARNING_CATALOGUE,
     ComputeResult,
+    Curve,
     DefaultUsed,
     Interval,
     KernelError,
@@ -139,6 +140,7 @@ class TestKernelWarning:
             "spinner_merge_exponent_clamped": WarningSeverity.WARNING,
             "fuselage_axis_straightened": WarningSeverity.NOTICE,
             "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
+            "spanwise_loads_scope": WarningSeverity.NOTICE,
         }
 
     def test_carries_world_and_json_detail(self) -> None:
@@ -616,6 +618,27 @@ class TestFiniteFloats:
             DefaultUsed(slug="gravity", value=bad, unit="m/s^2", source="ISO")
 
 
+class TestCurve:
+    def test_holds_one_value_per_point(self) -> None:
+        curve = Curve(x=(0.0, 0.5, 1.0), y=(3.0, 2.0, 0.0))
+        assert curve.y[1] == 2.0
+
+    def test_rejects_series_of_different_length(self) -> None:
+        with pytest.raises(ValidationError, match="same length"):
+            Curve(x=(0.0, 1.0), y=(1.0,))
+
+    @pytest.mark.parametrize("x", [(0.0, 0.0), (1.0, 0.5)])
+    def test_rejects_a_swept_variable_that_does_not_rise(self, x: tuple[float, float]) -> None:
+        with pytest.raises(ValidationError, match="strictly rising"):
+            Curve(x=x, y=(1.0, 2.0))
+
+    def test_rejects_a_single_point_and_non_finite_values(self) -> None:
+        with pytest.raises(ValidationError):
+            Curve(x=(0.0,), y=(1.0,))
+        with pytest.raises(ValidationError):
+            Curve(x=(0.0, 1.0), y=(1.0, float("nan")))
+
+
 def test_all_pins_the_public_names() -> None:
     assert sorted(schema.__all__) == sorted(
         [
@@ -623,6 +646,7 @@ def test_all_pins_the_public_names() -> None:
             "AirplaneGeometry",
             "ComputeRequest",
             "ComputeResult",
+            "Curve",
             "DefaultUsed",
             "Interval",
             "KernelError",

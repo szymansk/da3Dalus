@@ -6,7 +6,7 @@ from typing import Any
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import KernelWarning
-from aero_kernel.solvers.avl import AvlAdapter, AvlLateral, AvlNeutralPoint, AvlRoll
+from aero_kernel.solvers.avl import AvlAdapter, AvlLateral, AvlLoads, AvlNeutralPoint, AvlRoll
 
 # Hand fixture: main wing half span 0.7 m, chord 0.2 m, leading edge x = 0.05 m (S = 0.28 m^2,
 # AR = 7, c_MAC = 0.2 m, x_ac = 0.10 m); tail half span 0.2 m, chord 0.1 m, leading edge x = 0.60 m
@@ -60,6 +60,23 @@ class StubAvl(AvlAdapter):
         )
         self.lateral_calls: list[tuple[AirplaneGeometry, float, float]] = []
         self.lateral_failure: Exception | None = None
+        # a half wing of two strips: the loads per q of AVL's rows (root, strip centres, tip)
+        self.loads = AvlLoads(
+            y_strip=(0.175, 0.525),
+            c_cl=(0.14, 0.10),
+            y_station=(0.0, 0.175, 0.525, 0.7),
+            shear=(0.05, 0.04, 0.01, 0.0),
+            moment=(0.012, 0.009, 0.001, 0.0),
+        )
+        self.loads_calls: list[tuple[AirplaneGeometry, float]] = []
+        self.loads_failure: Exception | None = None
+
+    async def spanwise_loads(self, airplane: AirplaneGeometry, cl: float) -> AvlLoads:
+        """Answer the canned loads without AVL, and record the call."""
+        self.loads_calls.append((airplane, cl))
+        if self.loads_failure is not None:
+            raise self.loads_failure
+        return self.loads.model_copy(update={"warnings": self.canned_warnings})
 
     async def neutral_point(self, airplane: AirplaneGeometry, cl: float) -> AvlNeutralPoint:
         """Answer without AVL."""

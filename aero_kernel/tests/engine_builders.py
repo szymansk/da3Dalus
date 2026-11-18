@@ -12,7 +12,7 @@ from aero_kernel.graph import CanonGraph
 from aero_kernel.registry import Registry
 from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime
-from aero_kernel.schema import AircraftInput, ComputeRequest, Polar
+from aero_kernel.schema import AircraftInput, ComputeRequest, Curve, Polar
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
@@ -122,6 +122,8 @@ def fixture_model() -> CanonModel:
         "polar-q": quantity("derived", type="polar"),
         "pair-q": quantity("input", type="curve_pair"),
         "polar-scalar-q": quantity("output"),
+        "curve-sib-q": quantity("derived", type="curve"),
+        "curve-sib-s": quantity("output"),
         "polar-read-q": quantity("output"),
         "na-when-q": quantity("output"),
         "long-after-long-q": quantity("output"),
@@ -185,6 +187,7 @@ def fixture_model() -> CanonModel:
         "dep-twin": formula({"w": "weight"}, {"a": "dep-twin-a", "b": "dep-twin-b"}),
         "polar-twin": formula({"m": "aircraft-mass"}, {"pol": "polar-q", "s": "polar-scalar-q"}),
         "polar-reader": formula({"pol": "polar-q"}, {"r": "polar-read-q"}),
+        "curve-sibling": formula({"m": "aircraft-mass"}, {"c": "curve-sib-q", "s": "curve-sib-s"}),
         "na-when": formula({"p": "roll-q"}, {"r": "na-when-q"}, when="has_aileron"),
         "long-after-long": formula({"l": "long-q"}, {"r": "long-after-long-q"}, cost="minutes"),
         "long-needs-t": formula(
@@ -356,6 +359,13 @@ async def _polar_twin(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"pol": A_POLAR, "s": 5.0}
 
 
+A_CURVE = Curve(x=(0.0, 1.0), y=(2.0, 3.0))
+
+
+async def _curve_sibling(x: Inputs, ctx: Context) -> Mapping[str, object]:
+    return {"c": A_CURVE, "s": 5.0}
+
+
 async def _unexposed(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"r": 1.0, "u": 99.0}
 
@@ -400,6 +410,7 @@ STANDARD: Mapping[str, Impl] = {
     "dep-twin": _pair,
     "polar-twin": _polar_twin,
     "polar-reader": _one,
+    "curve-sibling": _curve_sibling,
     "na-when": _one,
     "long-after-long": _one,
     "long-needs-t": _one,

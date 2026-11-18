@@ -838,6 +838,7 @@ caller's responsibility.
     and becomes `internal`. Tested with a stub solver.
   - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **The lateral chain (#1277).** The static-margin probe and its warnings (`aerobuildup_no_downwash`, `static_margin_probe_disagrees`, `static_margin_probe_sign_disagrees`) are deleted (maintainer 2026-11-05, #1347; reasons in the canon's `STAND.md`). `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
+  - **Spanwise loads (#1398).** `spanwise_loads_scope` (`notice`, on every result of `spanwise-loads`): the loads are those of the right half of the main wing from one AVL solution at `L = n m g`, aerodynamic load only (no inertial relief), pitch untrimmed, controls undeflected, normal force only. The three outputs are `curve` values: the engine type-checks them (`schema.Curve`: strictly rising `x`, one `y` per point, finite) and still does not carry them to a caller (a request for one is `non_scalar_result`); how a curve reaches a result is an open maintainer decision.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
     the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
     `|p·b/2V| > 0.10`, the documented range of the primer (`warning`). AeroBuildup with a deflected
@@ -1874,7 +1875,7 @@ model (part of `IMPORT_REPORT.md`).
 | `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
-| `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
+| `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1398) |
 | `roll-rate-cruise-target` | procedure | OPT | law | 9 → 1 | 1 | – | A11 | seconds | later · implemented (#1382) |
 | `roll-rate` | procedure | OPT | law | 5 → 2 | 1 | – | A11 | seconds | core chain |
 | `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
@@ -1889,6 +1890,7 @@ model (part of `IMPORT_REPORT.md`).
 | `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe |
 | `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe |
 | `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
+| `spanwise-loads` | procedure | AVL | law | 6 → 3 | 1 | – | – | seconds | later · implemented (#1398) |
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
 | `spiral-parameter` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
