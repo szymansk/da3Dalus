@@ -660,6 +660,10 @@ class KernelConfig(BaseModel):
     avl_roll_print_floor: ConfigValue
     avl_roll_moment_tolerance: ConfigValue
     avl_control_echo_tolerance: ConfigValue
+    avl_roll_reference_deflection: ConfigValue
+    opt_roll_search_step: ConfigValue
+    opt_roll_search_limit: ConfigValue
+    opt_roll_target_tolerance: ConfigValue
     avl_cl_tolerance: ConfigValue
     opt_probe_tolerance: ConfigValue
     opt_peak_tolerance: ConfigValue

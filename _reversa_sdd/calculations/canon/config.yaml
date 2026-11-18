@@ -163,3 +163,31 @@ opt_body_axis_tolerance:
   guards: "Straight body axis for AeroBuildup (#1358): the largest vertical distance of a body's section centre from the least-squares line through all its centres up to which the centres count as already on a line, so the body is handed over unchanged and nothing is declared."
   basis: numerical
   source: "a margin over the floating-point round-off of the least-squares fit on coordinates of metres (about 1e-16 m per metre of body); a nanometre is far below any coordinate a geometry document states, so every real step of the axis is straightened and declared"
+
+avl_roll_reference_deflection:
+  value: 5.0
+  unit: deg
+  guards: "Required aileron deflection: the one aileron command at which AVL's roll is run; AVL is linear in the deflection (amake.f:1184-1187), so the deflection a target needs is the target scaled by this run."
+  basis: numerical
+  source: "any value gives the same answer in a linear model; 5 deg keeps p'b/2V of the fleet's ailerons (0.07 at BRYAN) inside AVL's range of 0.10 (avl_doc.txt:121-141) and well above its five-decimal print"
+
+opt_roll_search_step:
+  value: 5.0
+  unit: deg
+  guards: "Required aileron deflection, AeroBuildup world: the step of the upward search of the command; the maximum roll rate is reported at the resolution of this step."
+  basis: numerical
+  source: "a search resolution, no physical claim: fine enough to resolve the saturation of the fleet's ailerons (p(delta) flattens between 20 and 40 deg), coarse enough that a 20 deg target needs four solves"
+
+opt_roll_search_limit:
+  value: 90.0
+  unit: deg
+  guards: "Required aileron deflection, AeroBuildup world: the command at which the upward search ends without having found the target or the maximum (not_converged)."
+  basis: numerical
+  source: "termination of the search only: tau * delta is an angle shift of a plain flap and has no meaning beyond a right angle; the canon sets no range for a deflection (D6, 2026-10-14)"
+
+opt_roll_target_tolerance:
+  value: 0.0001
+  unit: "1"
+  guards: "Required aileron deflection, AeroBuildup world: the relative difference between the roll rate at the returned deflection and the target at which the search stops."
+  basis: numerical
+  source: "two decades above IPOPT's convergence tolerance of 1e-8 on the scaled constraint (see opt_probe_tolerance), and far below the 23 % spread between the worlds"

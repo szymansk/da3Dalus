@@ -45,6 +45,7 @@ IMPLEMENTED = {
     "calc:speed-from-stall-margin",
     "calc:roll-rate",
     "calc:roll-rate-cruise-target",
+    "calc:aileron-deflection-required",
     "calc:cg-for-target-margin",
     "calc:horizontal-tail-arm",
     "calc:horizontal-tail-volume",
@@ -129,6 +130,9 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_body_merge_exponent_min": 0.1,
     "opt_body_merge_exponent_max": 1000.0,
     "opt_body_axis_tolerance_m": 1e-9,
+    "opt_roll_search_step_deg": 5.0,
+    "opt_roll_search_limit_deg": 90.0,
+    "opt_roll_target_tolerance": 1e-4,
 }
 
 
