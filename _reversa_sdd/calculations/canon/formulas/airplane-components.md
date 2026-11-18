@@ -79,6 +79,13 @@ changes the mass, the thrust and with them everything downstream. The graph now 
 
 None in aero_kernel yet; no register node is mapped to this entry.
 
+Remark (gh-1397, undated): the kernel has neither the `components` input contract nor a way for a
+formula to return an *absent* output; this entry needs both (`R_m`, `I_0` and other catalogue
+values are optional outputs, `Q-PT-6`, BR-PT15). Neither is settled by a recorded decision, so the
+entry stays without an implementation until the maintainer decides (decision files
+`airplane-components-absent-outputs` and `airplane-components-components-contract`, gh-1397). The
+chemistry-to-cell-voltage table above has no home in `defaults.yaml` either (one value per slug).
+
 ## Approval
 
 - [x] **Source** — citation real, or absence stated and adopted on the maintainer's authority
