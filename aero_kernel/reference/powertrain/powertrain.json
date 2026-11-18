@@ -1,0 +1,138 @@
+{
+  "about": "Published component data for the airplane-components tests (gh-1397). Only values a manufacturer or a paper publishes, in the catalogue's field names and units. A field that is not published is absent here and in the Components built from it; nothing is estimated, and no resistance is derived from Kv and Io. See README.md in this folder.",
+  "retrieved": "2026-11-18",
+  "motors": {
+    "tmotor_at2814_kv900": {
+      "name": "T-Motor AT2814 Long Shaft KV900",
+      "page": "https://store.tmotor.com/product/at2814-long-shaft-fixed-wing-motor.html",
+      "fields": {
+        "kv_rpm_per_volt": 900.0,
+        "rm_ohm": 0.082,
+        "io_no_load_a": 1.2,
+        "max_power_w": 650.0
+      },
+      "published_wording": {
+        "kv_rpm_per_volt": "KV900",
+        "rm_ohm": "Internal Resistance 82mΩ",
+        "io_no_load_a": "Idle Current(10V) 1.2A",
+        "max_power_w": "Max Power (180S) 650W"
+      },
+      "conventions": {
+        "rm_ohm": "the page does not say whether the resistance is phase-to-phase or per phase",
+        "io_no_load_a": "measured at 10 V (the label)",
+        "max_power_w": "180 s rating, electrical power not stated"
+      },
+      "not_published": ["efficiency_pct"],
+      "other_variants_on_the_page": "KV1050: 35 mOhm, 1.5 A @ 10 V, 700 W; KV1200: 26 mOhm, 1.8 A @ 10 V, 800 W"
+    },
+    "axi_4120_14": {
+      "name": "Model Motors AXI 4120/14 (the motor of the Avistar Elite)",
+      "page": "https://file.espritmodel.com/documents/pdf/axi-4120-14.pdf",
+      "fields": {
+        "kv_rpm_per_volt": 660.0,
+        "rm_ohm": 0.041,
+        "io_no_load_a": 2.0,
+        "efficiency_pct": 85.0
+      },
+      "published_wording": {
+        "kv_rpm_per_volt": "RPM per Volt 660 RPM/V",
+        "rm_ohm": "Internal resistance 41m",
+        "io_no_load_a": "No load current 2A",
+        "efficiency_pct": "Max. Efficiency 85%"
+      },
+      "conventions": {
+        "rm_ohm": "unit written as 'm' in the table, read as milliohm (a resistance of 41 ohm is not possible for this motor); phase-to-phase or per phase not stated",
+        "io_no_load_a": "the voltage is not stated",
+        "efficiency_pct": "the table's 'Max. Efficiency' (peak), not an efficiency at the maximum power"
+      },
+      "not_published": ["max_power_w"],
+      "notes": "Distributor's table of the AXi 41xx series (Esprit Model); it does not say which generation (original or V2) it describes. The Avistar paper names 'Model Motors AXI 4120/14 Outrunner' without a generation. A V2 listing on aerobertics.be (not reachable on 2026-11-18, page returned 404) was reported by a search result as 660 RPM/V, 41 mohm, 1.9 A, which would differ in Io."
+    },
+    "scorpion_sii_2215_1400kv": {
+      "name": "Scorpion SII-2215-1400KV",
+      "page": "https://scorpionsystem.com/catalog/aeroplane/motors_1/s-22_v2/SII-2215-1400KV",
+      "fields": {
+        "kv_rpm_per_volt": 1400.0,
+        "rm_ohm": 0.095,
+        "io_no_load_a": 0.95
+      },
+      "published_wording": {
+        "kv_rpm_per_volt": "1400 RPM / Volt",
+        "rm_ohm": "Motor Resistance (Rm): 0.095 Ohms",
+        "io_no_load_a": "No-Load Current (Io/10V): 0.95 Amps"
+      },
+      "conventions": {
+        "rm_ohm": "the page does not say whether phase-to-phase or per phase",
+        "io_no_load_a": "measured at 10 V (the label)"
+      },
+      "not_published": ["max_power_w", "efficiency_pct"],
+      "notes": "The page publishes 'Max Continuous Power: 518 Watts', a continuous rating; the catalogue field max_power_w is a different rating and is not filled from it."
+    },
+    "scorpion_a_3017_600kv": {
+      "name": "Scorpion A-3017-600kv",
+      "page": "https://www.scorpionsystem.com/catalog/aeroplane/a_series/a_30_series/a_3017_600/",
+      "fields": {
+        "kv_rpm_per_volt": 600.0,
+        "rm_ohm": 0.05,
+        "io_no_load_a": 0.99
+      },
+      "published_wording": {
+        "kv_rpm_per_volt": "600 RPM / Volt",
+        "rm_ohm": "Internal resistance (phase-to-phase): 50 mΩ",
+        "io_no_load_a": "No-load current (at 15V): 0.99 Amps"
+      },
+      "conventions": {
+        "rm_ohm": "phase-to-phase (stated)",
+        "io_no_load_a": "measured at 15 V (stated)"
+      },
+      "not_published": ["max_power_w", "efficiency_pct"],
+      "notes": "Max continuous power 555 W is published and not used (different rating)."
+    }
+  },
+  "batteries": {
+    "thunder_power_prolitex_4s_6000": {
+      "name": "Thunder Power ProLiteX 25c 4S 14.8 V 6 Ah (the flight pack of the Avistar Elite)",
+      "page": "Dantsker, Caccamo, Vahora, Mancuso, AIAA 2020-0780, Table 2, https://cs-people.bu.edu/rmancuso/files/papers/UAVDB_Avistar_AIAAScitech20.pdf",
+      "fields": {
+        "capacity_mah": 6000.0,
+        "cells": 4.0,
+        "c_rate": 25.0,
+        "cell_voltage_v": 3.7
+      },
+      "published_wording": {
+        "capacity_mah": "Thunder Power ProLiteX 25c 4S 14.8 V 6 Ah lithium polymer battery",
+        "cells": "4S",
+        "c_rate": "25c (the product label; a continuous rating is not stated)",
+        "cell_voltage_v": "14.8 V for 4S: 14.8 V / 4 cells = 3.7 V (the nameplate pack voltage divided by the cell count; the paper gives no per-cell value)"
+      },
+      "not_published": ["mass_g"],
+      "notes": "Table 1 of the paper gives 'Batteries 1.39 lb (0.63 kg)' for all batteries of the aircraft (flight pack, receiver battery, instrumentation battery), so the pack's own mass is not published there and is left absent."
+    }
+  },
+  "propellers": {
+    "apc_13x8e": {
+      "name": "Landing Products APC 13x8E (the propeller of the Avistar Elite)",
+      "page": "Dantsker et al., AIAA 2020-0780, Table 2",
+      "fields": {
+        "diameter_in": 13.0
+      },
+      "published_wording": {
+        "diameter_in": "APC 13x8E (APC names a propeller diameter x pitch in inches)"
+      }
+    }
+  },
+  "sets": {
+    "avistar_elite_drive_train": {
+      "motor": "axi_4120_14",
+      "battery": "thunder_power_prolitex_4s_6000",
+      "propeller": "apc_13x8e",
+      "meaning": "The drive train the Avistar Elite flew with (aero_kernel/reference/avistar_elite). Not complete for airplane-components: max_power_w and the pack mass are not published."
+    },
+    "tmotor_at2814_with_the_avistar_pack": {
+      "motor": "tmotor_at2814_kv900",
+      "battery": "thunder_power_prolitex_4s_6000",
+      "propeller": "apc_13x8e",
+      "meaning": "A combination of published parts, not an aircraft. Rm, Io and max power are published; efficiency_pct and the pack mass are not."
+    }
+  }
+}

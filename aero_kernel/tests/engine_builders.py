@@ -87,6 +87,7 @@ def fixture_model() -> CanonModel:
         "target-t": quantity("target"),
         "curve-q": quantity("output", type="curve"),
         "components": quantity("input", type="components"),
+        "curve-in": quantity("input", type="curve"),
         "air-density": quantity("input", unit="kg/m^3", positive=True),
         "margin-target": quantity("target"),
         "density-q": quantity("output"),
@@ -133,6 +134,7 @@ def fixture_model() -> CanonModel:
         "unexposed-q": quantity("output"),
         "curve-read-q": quantity("output"),
         "needs-components-q": quantity("output"),
+        "needs-curve-q": quantity("output"),
         "long-after-weight-q": quantity("output"),
         "na-twin-a": quantity("output"),
         "na-twin-b": quantity("output"),
@@ -177,6 +179,7 @@ def fixture_model() -> CanonModel:
         "needs-components": formula(
             {"m": "aircraft-mass", "c": "components"}, {"r": "needs-components-q"}
         ),
+        "needs-curve": formula({"m": "aircraft-mass", "c": "curve-in"}, {"r": "needs-curve-q"}),
         "long-after-weight": formula({"w": "weight"}, {"r": "long-after-weight-q"}, cost="minutes"),
         "na-twin": formula({"p": "roll-q"}, {"a": "na-twin-a", "b": "na-twin-b"}),
         "long-twin": formula(
@@ -222,9 +225,9 @@ def fixture_model() -> CanonModel:
             {"r": "two-givens-q"},
             given=["calc:target-t", "calc:target-u"],
         ),
-        "two-uncarried": formula({"c": "curve-q", "k": "components"}, {"r": "two-uncarried-q"}),
+        "two-uncarried": formula({"c": "curve-q", "k": "curve-in"}, {"r": "two-uncarried-q"}),
         "three-uncarried": formula(
-            {"c": "curve-q", "k": "components", "q": "pair-q"}, {"r": "three-uncarried-q"}
+            {"c": "curve-q", "k": "curve-in", "q": "pair-q"}, {"r": "three-uncarried-q"}
         ),
         "density-user": formula({"rho": "air-density"}, {"r": "density-q"}),
         "margin-user": formula({"k": "margin-target"}, {"r": "margin-q"}),
@@ -394,6 +397,7 @@ STANDARD: Mapping[str, Impl] = {
     "given-only": _given,
     "curve-reader": _one,
     "needs-components": _one,
+    "needs-curve": _one,
     "long-after-weight": _one,
     "na-twin": _pair,
     "long-twin": _pair,

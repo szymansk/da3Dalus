@@ -24,6 +24,7 @@ from aero_kernel import geometry
 from aero_kernel.body_attachment import AttachedBody, attachment_defects
 from aero_kernel.body_axis import AxisStraightening, aerobuildup_bodies
 from aero_kernel.canon.model import CanonModel
+from aero_kernel.components import Components
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.fuselage_contour import (
     contour_defect,
@@ -182,6 +183,78 @@ def _above_maximum(
     return [
         _finding("value_above_maximum", path, message, f"Give {slug} a value <= {maximum}.", value)
     ]
+
+
+# The numbers of the components that must be > 0, per part (catalogue field names), and the one that
+# may be 0: an ideal motor has no no-load current.
+_POSITIVE_COMPONENT_FIELDS: dict[str, tuple[tuple[str, str], ...]] = {
+    "motor": (
+        ("kv_rpm_per_volt", "rpm/V"),
+        ("max_power_w", "W"),
+        ("rm_ohm", "ohm"),
+        ("efficiency_pct", "%"),
+    ),
+    "battery": (
+        ("capacity_mah", "mAh"),
+        ("cells", ""),
+        ("mass_g", "g"),
+        ("c_rate", "1/h"),
+        ("cell_voltage_v", "V"),
+    ),
+    "propeller": (("diameter_in", "in"),),
+}
+_EFFICIENCY_PCT_MAX = 100.0
+
+
+def _component_findings(components: Components | None) -> list[KernelError]:
+    """Report what is inadmissible in the pushed components (ARCHITECTURE ch. 8.11).
+
+    A non-finite number, a number <= 0 where the catalogue field is a positive quantity
+    (``io_no_load_a`` may be 0), and an efficiency above 100 %. An absent field is no finding:
+    absence survives the push (ch. 8.11, "Components", rule 3).
+    """
+    if components is None:
+        return []
+    errors = _non_finite(components, "components")
+    for part, fields in _POSITIVE_COMPONENT_FIELDS.items():
+        body = getattr(components, part)
+        if body is None:
+            continue
+        for name, unit in fields:
+            value = getattr(body, name)
+            if value is None:
+                continue
+            path = f"components.{part}.{name}"
+            errors += _not_positive(
+                value,
+                path,
+                "non_positive_value",
+                f"Value of {name}",
+                unit,
+                f"Give {name} a value > 0.",
+            )
+    if components.motor is not None:
+        current = components.motor.io_no_load_a
+        if current is not None:
+            errors += _not_positive(
+                current,
+                "components.motor.io_no_load_a",
+                "non_positive_value",
+                "Value of io_no_load_a",
+                "A",
+                "Give io_no_load_a a value >= 0.",
+                allow_zero=True,
+            )
+        efficiency = components.motor.efficiency_pct
+        if efficiency is not None:
+            errors += _above_maximum(
+                efficiency,
+                _EFFICIENCY_PCT_MAX,
+                "components.motor.efficiency_pct",
+                "efficiency_pct",
+                "%",
+            )
+    return errors
 
 
 _NACA = re.compile(r"naca(?P<digits>[0-9]{4})", re.IGNORECASE)
@@ -863,6 +936,7 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
     errors += _wing_findings(airplane.wings or {}, rules)
     errors += _fuselage_findings(airplane.fuselages or {}, rules)
     errors += _attachment_findings(airplane.fuselages or {}, rules)
+    errors += _component_findings(aircraft.components)
     for slug in sorted(aircraft.values):
         errors += _non_finite(aircraft.values[slug], _values_path(slug))
     warnings = (
@@ -961,6 +1035,15 @@ def validate_values(values: Mapping[str, float], model: CanonModel) -> tuple[Ker
                     path,
                     f"`{slug}` is given as AircraftInput.airplane, not in values.",
                     f"Remove `{slug}` from the values and pass the geometry as the airplane.",
+                )
+            )
+        elif quantity.type == "components":
+            errors.append(
+                _finding(
+                    "not_an_input",
+                    path,
+                    f"`{slug}` is given as AircraftInput.components, not in values.",
+                    f"Remove `{slug}` from the values and push the parts as the components.",
                 )
             )
         elif quantity.type != "scalar":

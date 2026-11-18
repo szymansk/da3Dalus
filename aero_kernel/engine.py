@@ -19,6 +19,7 @@ from aero_kernel.build import Build
 from aero_kernel.cache import Entry, Lease, NodeCache, cache_key
 from aero_kernel.canon.model import Check, ConstBinding, Default, Formula
 from aero_kernel.canonical import spell_non_finite
+from aero_kernel.components import Components
 from aero_kernel.context import Context, Inputs, Solvers, Value
 from aero_kernel.devices import devices_at_rest
 from aero_kernel.errors import (
@@ -176,7 +177,7 @@ def _unit_of(build: Build, slug: str) -> str | None:
 
 
 # The quantity types a value of v1 can carry between nodes (``Value``).
-_CARRIED_TYPES = frozenset({"scalar", "airplane", "polar"})
+_CARRIED_TYPES = frozenset({"scalar", "airplane", "polar", "components"})
 
 # The output types the cache stores (ch. 8.4): they round-trip through JSON bit for bit. Not the
 # airplane: a parsed geometry holds metres in the format's millimetre fields and by design does not
@@ -188,7 +189,7 @@ _CACHED_TYPES = frozenset({"scalar", "polar"})
 
 def _key_value(value: Value | None) -> JsonValue:
     """The JSON form of a direct input value in the cache key (ch. 8.4)."""
-    if isinstance(value, AirplaneGeometry | Polar):
+    if isinstance(value, AirplaneGeometry | Polar | Components):
         return spell_non_finite(value.model_dump(mode="json"))
     return value
 
@@ -892,6 +893,8 @@ class _Call:
         quantity = self.build.model.quantity(slug)
         if quantity is not None and quantity.type == "airplane":
             return self.airplane_at_rest
+        if quantity is not None and quantity.type == "components":
+            return self.aircraft.components
         return self.values.get(slug) if quantity is not None and quantity.type == "scalar" else None
 
     def _missing_input(
@@ -906,6 +909,9 @@ class _Call:
         """
         shown = [display_slug(slug) for slug in missing]
         verb = "was" if len(shown) == 1 else "were"
+        first = self.build.model.quantity(missing[0])
+        if first is not None and first.type == "components":
+            return self._missing_components(node, quantity, formula_slug, shown[0])
         return KernelError(
             code="missing_input",
             category=ErrorCategory.INVALID_INPUT,
@@ -918,6 +924,23 @@ class _Call:
             hint=f"Supply {join_names([f'`{n}`' for n in shown])} in `values`."
             + self._geometry_mass_hint(shown),
             detail={"inputs": list[JsonValue](shown)},
+        )
+
+    @staticmethod
+    def _missing_components(
+        node: Node, quantity: str, formula_slug: str, shown: str
+    ) -> KernelError:
+        """The ``missing_input`` error of a node whose fitted components were not pushed."""
+        return KernelError(
+            code="missing_input",
+            category=ErrorCategory.INVALID_INPUT,
+            quantity=quantity,
+            formula=formula_slug,
+            application=node.id.application,
+            input_path="components",
+            message=f"`{quantity}` needs `{shown}`, which was not supplied.",
+            hint="Push the fitted motor, battery and propeller as AircraftInput.components.",
+            detail={"inputs": [shown]},
         )
 
     def _geometry_mass_hint(self, shown: Sequence[str]) -> str:
@@ -941,7 +964,9 @@ class _Call:
         if quantity is None or quantity.role not in ("input", "target"):
             return None
         # an input of another type is a kernel gap before any formula runs (row 3)
-        return "airplane" if quantity.type == "airplane" else f"values.{display_slug(binding)}"
+        if quantity.type in ("airplane", "components"):
+            return quantity.type
+        return f"values.{display_slug(binding)}"
 
     # --- outputs ---------------------------------------------------------------------------
 
