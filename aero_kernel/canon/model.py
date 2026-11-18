@@ -675,6 +675,7 @@ class KernelConfig(BaseModel):
     opt_body_merge_exponent_max: ConfigValue
     opt_body_axis_tolerance: ConfigValue
     avl_contour_margin: ConfigValue
+    butterfly_mix_steps: ConfigValue
 
 
 class Namespace(BaseModel):

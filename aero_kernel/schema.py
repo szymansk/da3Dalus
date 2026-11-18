@@ -26,6 +26,7 @@ __all__ = [
     "AirplaneGeometry",
     "ComputeRequest",
     "ComputeResult",
+    "Curve",
     "DefaultUsed",
     "Interval",
     "KernelError",
@@ -37,6 +38,7 @@ __all__ = [
     "Reason",
     "ReasonCode",
     "RuleUsed",
+    "StallCurve",
     "TimeBounds",
     "Timing",
     "WarningSeverity",
@@ -618,6 +620,56 @@ class Polar(BaseModel):
             raise ValueError(msg)
         if any(b <= a for a, b in zip(self.alpha_deg, self.alpha_deg[1:], strict=False)):
             msg = "alpha_deg must be strictly rising"
+            raise ValueError(msg)
+        return self
+
+
+class Curve(BaseModel):
+    """A sampled function of one variable (ch. 8.12): the canon type ``curve``.
+
+    Attributes:
+        x: The variable, strictly rising.
+        y: The value at each sample.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    x: tuple[FiniteFloat, ...] = Field(min_length=2)
+    y: tuple[FiniteFloat, ...]
+
+    @model_validator(mode="after")
+    def _check_series(self) -> Self:
+        """Require equally long series and a strictly rising variable."""
+        if len(self.x) != len(self.y):
+            msg = "x and y must have the same length"
+            raise ValueError(msg)
+        if any(b <= a for a, b in zip(self.x, self.x[1:], strict=False)):
+            msg = "x must be strictly rising"
+            raise ValueError(msg)
+        return self
+
+
+class StallCurve(Curve):
+    """A stall speed over a swept variable, with the sweep each point was solved on (ch. 8.12).
+
+    The postcondition ``optimum_at_first_cl_peak`` is checked at every point, so the curve carries
+    what the check reads: the stall angle, the lift coefficient and the sweep of each point.
+
+    Attributes:
+        alpha_s: The stall angle of each point in degrees.
+        cl_max: The lift coefficient at each stall.
+        polars: The sweep at each point's stall speed, with ``alpha_s`` among its samples.
+    """
+
+    alpha_s: tuple[FiniteFloat, ...]
+    cl_max: tuple[FiniteFloat, ...]
+    polars: tuple[Polar, ...]
+
+    @model_validator(mode="after")
+    def _check_points(self) -> Self:
+        """Require one stall angle, coefficient and sweep per point."""
+        if not len(self.alpha_s) == len(self.cl_max) == len(self.polars) == len(self.x):
+            msg = "alpha_s, cl_max and polars must have one entry per point"
             raise ValueError(msg)
         return self
 

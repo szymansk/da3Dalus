@@ -14,7 +14,7 @@ from typing import Literal, TypeVar
 
 from aero_kernel.canon.model import DEFAULT_NAMESPACE, CanonModel, Check, Formula
 from aero_kernel.errors import IDENTIFIER_REGEX, NAMESPACE_REGEX, SLUG_REGEX
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +38,15 @@ class CheckResult(BaseModel):
     Attributes:
         state: ``held``, ``violated`` or ``unchecked``.
         message: What was found, for the warning or error the engine builds.
+        detail: Structured values the warning or error carries beside the check's id (where it
+            failed, e.g. the mix of a curve).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     state: Literal["held", "violated", "unchecked"]
     message: str = Field(min_length=1)
+    detail: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 # Loosely typed until the engine unit defines ``Context`` and tightens this alias (ch. 8.12).

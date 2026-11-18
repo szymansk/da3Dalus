@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:0a0d964f4be45c6487c1af1ee1b53e213da4e450514d42aabf673cc12484125e",
+  "content_hash": "sha256:a5a4cdf021cb658310a39f256bfa49f39dd39e2c7f14bd75adadbc56918ea84f",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -59,6 +59,13 @@
           "source": "maintainer, #1211 D8: fixed before any measurement; the agreement asked of the independent template reference",
           "unit": "1",
           "value": 0.01
+        },
+        "butterfly_mix_steps": {
+          "basis": "numerical",
+          "guards": "Butterfly: the crow mix s in [0, 1] is sampled in this many equal steps (one more sample than steps, both ends included); each sample is one stall solve and one glide read. s_max is interpolated linearly between the two samples that bracket it.",
+          "source": "resolution of a sampled curve, not a physical quantity: a tenth of full crow is the finest setting a flap knob or mixer is set by hand; the interpolation error of s_max is measured in the evidence of butterfly-approach",
+          "unit": "1",
+          "value": 10.0
         },
         "opt_active_bound_fraction": {
           "basis": "numerical",

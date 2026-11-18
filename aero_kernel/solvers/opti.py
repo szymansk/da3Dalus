@@ -61,7 +61,7 @@ from aero_kernel.solvers.roll_math import (
     control_effectiveness,
     stability_rolling_moment,
 )
-from aero_kernel.solvers.stall_math import first_extremum_from_zero
+from aero_kernel.solvers.stall_math import crossing_below_peak, first_extremum_from_zero
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 logger = logging.getLogger(__name__)
@@ -75,6 +75,9 @@ __all__ = [
     "Evaluation",
     "EvaluationRequest",
     "Forces",
+    "GlidePoint",
+    "GlidePointSolution",
+    "GlideRequest",
     "MinSink",
     "MinSinkSolution",
     "OptiAdapter",
@@ -92,6 +95,7 @@ __all__ = [
     "best_glide_worker",
     "device_spans",
     "evaluation_worker",
+    "glide_point_worker",
     "induced_drag_notice",
     "min_sink_worker",
     "stall_worker",
@@ -1436,6 +1440,109 @@ def evaluation_worker(request: EvaluationRequest) -> WorkerOutcome[Forces]:
     return WorkerOutcome(value=Forces(lift_n=lift, drag_n=drag), diagnostics=diagnostics)
 
 
+class GlideRequest(BaseModel):
+    """What the worker needs for the steady glide at one speed; plain data, picklable.
+
+    Attributes:
+        airplane: The geometry as evaluated (devices as configured).
+        mass_kg: Aircraft mass in kg, > 0.
+        gravity: Gravity in m/s^2, > 0.
+        air: The air state.
+        v_ms: True airspeed in m/s, > 0.
+        k_e_d0: The viscous factor the kernel takes out of AeroBuildup's induced drag.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    mass_kg: float
+    gravity: float
+    air: AirState
+    v_ms: float
+    k_e_d0: float
+
+
+class GlidePointSolution(BaseModel):
+    """The steady glide at one speed: the angle of attack that carries the weight, and its drag.
+
+    Attributes:
+        alpha_deg: The angle of attack on the pre-stall branch with ``L = m g``, degrees.
+        cl: The lift coefficient there, ``m g / (q S_ref)``.
+        cd: The kernel's drag coefficient there (the sweep's, interpolated).
+        glide_angle_deg: ``atan(C_D / C_L)`` in degrees: the glide angle without thrust.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    alpha_deg: float
+    cl: float
+    cd: float
+    glide_angle_deg: float
+
+
+class GlidePoint(BaseModel):
+    """A glide point and the caveats of its speed.
+
+    Attributes:
+        solution: The glide at the speed.
+        warnings: Flap and regime warnings (ADR 0020, ADR 0028), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    solution: GlidePointSolution
+    warnings: tuple[KernelWarning, ...]
+
+
+def glide_point_worker(request: GlideRequest) -> WorkerOutcome[GlidePointSolution]:
+    """Read the steady glide at ``request.v_ms`` off one AeroBuildup sweep in the pool worker.
+
+    The sweep over the standard angles runs at the given speed (so at its Reynolds number); the
+    angle with ``L = m g`` is interpolated linearly between the two samples of the pre-stall branch
+    that bracket ``C_L = m g / (q S_ref)``, and the drag with it. No iteration: the sweep is the
+    solution to the resolution of its 0.25 deg step.
+
+    Args:
+        request: The airplane, mass, air state and speed.
+
+    Returns:
+        The glide, with the worker's diagnostics.
+
+    Raises:
+        FormulaError: ``not_converged`` if the sweep has no C_L peak, or the speed is below the
+            stall speed of the sweep (``C_L`` needed above the peak).
+    """
+    started = time.perf_counter()
+    airplane = to_asb_airplane(request.airplane)
+    polar = sweep_polar(
+        airplane, request.air, request.v_ms, _grid(), NEURALFOIL_MODEL_SIZE, request.k_e_d0
+    )
+    dynamic_pressure = 0.5 * request.air.density * request.v_ms**2
+    needed = request.mass_kg * request.gravity / (dynamic_pressure * float(airplane.s_ref))
+    peak = first_extremum_from_zero(polar.alpha_deg, polar.cl, upright=True)
+    found = None if peak is None else crossing_below_peak(polar.alpha_deg, polar.cl, peak, needed)
+    if found is None:
+        raise _not_converged(
+            f"the lift coefficient {needed:.4g} needed at {request.v_ms:.4g} m/s is not reached "
+            "below the first C_L peak of the sweep",
+            "the speed is below the stall speed of this configuration: give a higher speed",
+            v_ms=request.v_ms,
+            cl_needed=needed,
+        )
+    k, share = found
+    alpha = polar.alpha_deg[k] + share * (polar.alpha_deg[k + 1] - polar.alpha_deg[k])
+    drag = polar.cd[k] + share * (polar.cd[k + 1] - polar.cd[k])
+    solution = GlidePointSolution(
+        alpha_deg=alpha,
+        cl=needed,
+        cd=drag,
+        glide_angle_deg=math.degrees(math.atan2(drag, needed)),
+    )
+    return WorkerOutcome(
+        value=solution, diagnostics=WorkerDiagnostics(duration_s=time.perf_counter() - started)
+    )
+
+
 class ZeroLiftRequest(BaseModel):
     """What the worker needs for the zero-lift root at one speed; plain data, picklable.
 
@@ -1955,6 +2062,58 @@ class OptiAdapter(SolverAdapter):
             forces.drag_n,
         )
         return Evaluation(forces=forces, warnings=tuple(warnings))
+
+    async def glide_point(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+    ) -> GlidePoint:
+        """The steady glide at a given speed: ``L = m g`` on the pre-stall branch (canon ``butterfly-approach``).
+
+        Args:
+            airplane: The geometry with its devices as they are to be evaluated.
+            mass_kg: Mass in kg, > 0.
+            gravity: Gravity in m/s^2, > 0.
+            air: The air state.
+            v_ms: True airspeed in m/s, > 0.
+
+        Returns:
+            The glide angle with its angle of attack and coefficients, and the caveats of the
+            speed: flaps, the regime at V, and the kernel's drag.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``invalid_input`` for an inadmissible mass, gravity
+                or speed; ``unsupported_configuration`` for a deflected control device other than a
+                flap; ``not_converged`` as :func:`glide_point_worker`.
+        """
+        flaps = self._point_flaps(airplane, v_ms)
+        for name, value in (("m", mass_kg), ("g", gravity)):
+            if not _admissible(value, positive=True):
+                raise _invalid(f"{name} = {value} is not admissible", f"give a valid {name}", name)
+        request = GlideRequest(
+            airplane=airplane,
+            mass_kg=mass_kg,
+            gravity=gravity,
+            air=air,
+            v_ms=v_ms,
+            k_e_d0=self._k_e_d0(),
+        )
+        solution = await self.runtime.run_cpu(glide_point_worker, request)
+        warnings = [
+            *_flap_warnings(flaps),
+            *await self._regime_warnings(airplane, v_ms, air),
+            induced_drag_notice(request.k_e_d0),
+        ]
+        logger.debug(
+            "glide at %.4f m/s: alpha %.2f deg, glide angle %.3f deg",
+            v_ms,
+            solution.alpha_deg,
+            solution.glide_angle_deg,
+        )
+        return GlidePoint(solution=solution, warnings=tuple(warnings))
 
     async def zero_lift(self, airplane: AirplaneGeometry, air: AirState, v_ms: float) -> ZeroLift:
         """The root of ``C_L(V, alpha)`` and ``dC_L/dalpha`` there (canon ``zero-lift-angle``).
