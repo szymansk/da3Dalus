@@ -152,8 +152,9 @@ def _runs(wing: Wing, chain: Sequence[ChainPoint], axis: int, roles: frozenset[s
 
     Raises:
         FormulaError: ``invalid_input`` (``missing_hinge``) for a device without a hinge position;
-            ``unsupported_configuration`` (``hinge_device_on_unmirrored_surface``) for a device on
-            an unmirrored surface that spreads in y.
+            ``unsupported_configuration`` (``hinge_outside_chord``) for a hinge at or beyond an edge
+            of the chord, (``hinge_device_on_unmirrored_surface``) for a device on an unmirrored
+            surface that spreads in y.
     """
     runs: list[_Run] = []
     last: tuple[str, str] | None = None
@@ -168,6 +169,17 @@ def _runs(wing: Wing, chain: Sequence[ChainPoint], axis: int, roles: frozenset[s
                 "missing_hinge",
                 f"the device {_device_name(start)!r} of the wing {wing.name!r} has no hinge position",
                 "give rel_chord_root; the tool's default hinge is never used",
+                detail={"wing": wing.name, "device": _device_name(start)},
+                parameter="airplane",
+            )
+        if not all(0.0 < h < 1.0 for h in (device.hinge_start, device.hinge_end)):
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "hinge_outside_chord",
+                f"the hinge of the device {_device_name(start)!r} of the wing {wing.name!r} is at "
+                f"{device.hinge_start:g} / {device.hinge_end:g} of the chord",
+                "a hinge moment needs a hinge strictly inside the chord: at the leading edge the "
+                "whole section turns, at the trailing edge nothing does",
                 detail={"wing": wing.name, "device": _device_name(start)},
                 parameter="airplane",
             )

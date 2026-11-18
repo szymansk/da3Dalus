@@ -228,6 +228,14 @@ def test_a_device_without_a_hinge_is_refused() -> None:
     assert raised.value.code == "missing_hinge"
 
 
+@pytest.mark.parametrize("root", [0.0, 1.0, -0.1, 1.2])
+def test_a_hinge_at_or_beyond_an_edge_of_the_chord_is_refused(root: float) -> None:
+    plane = conventional(main={1: device("aileron", "aileron", root)})
+    with pytest.raises(FormulaError) as raised:
+        mesh_of(plane, "aileron")
+    assert raised.value.code == "hinge_outside_chord"
+
+
 def test_a_device_on_an_unmirrored_wing_that_spreads_sideways_is_refused() -> None:
     wings = {
         "Main": wing_document(

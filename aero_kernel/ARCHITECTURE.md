@@ -258,7 +258,9 @@ nothing failed. The category enum holds only the eight rows above.
   `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
   value per section; `detail`: wing key, y); `hinge_device_on_unmirrored_surface` — a control surface sits on
   a wing that spreads sideways and is not mirrored (the hinge-moment procedure, #1399); `duplicate_surface_key`
-  (`invalid_input`) — two control surfaces have the same key `<wing>.<device>[_left|_right]`.
+  (`invalid_input`) — two control surfaces have the same key `<wing>.<device>[_left|_right]`;
+  `hinge_outside_chord` — a hinge at or beyond an edge of the chord (at the leading edge the whole
+  section would turn, at the trailing edge nothing), where no hinge moment is defined.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `warning` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its

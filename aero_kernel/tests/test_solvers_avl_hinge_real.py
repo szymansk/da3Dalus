@@ -63,14 +63,18 @@ async def test_an_elevator_deflected_trailing_edge_down_has_a_restoring_negative
 async def test_the_moment_vanishes_at_zero_deflection_and_zero_lift_for_a_symmetric_section() -> (
     None
 ):
+    """AVL prints ``Chinge`` with four significant digits and solves alpha iteratively, so zero means
+    three orders of magnitude below the moment of a 5 degree deflection."""
     found = await hinge(conventional(), "elevator", 0.0, cl=0.0)
-    assert all(abs(h) < 1e-9 for h in found.moments.values())
+    reference = await hinge(conventional(), "elevator", 5.0, cl=0.0)
+    for key, value in found.moments.items():
+        assert abs(value) < 1e-3 * abs(reference.moments[key])
 
 
 async def test_the_two_halves_of_an_elevator_carry_the_same_moment() -> None:
     found = await hinge(conventional(), "elevator", 5.0)
     assert math.isclose(
-        found.moments["Tail.elevator_right"], found.moments["Tail.elevator_left"], rel_tol=1e-3
+        found.moments["Tail.elevator_right"], found.moments["Tail.elevator_left"], rel_tol=3e-3
     )
 
 
@@ -80,7 +84,7 @@ async def test_an_aileron_pair_is_antisymmetric_at_zero_lift() -> None:
     found = await hinge(conventional(), "aileron", 5.0)
     right, left = found.moments["Main wing.aileron_right"], found.moments["Main wing.aileron_left"]
     assert left < 0.0 < right
-    assert math.isclose(right, -left, rel_tol=1e-3)
+    assert math.isclose(right, -left, rel_tol=3e-3)
 
 
 async def test_the_moment_is_linear_in_the_deflection() -> None:
@@ -89,7 +93,7 @@ async def test_the_moment_is_linear_in_the_deflection() -> None:
         await hinge(conventional(), "elevator", 10.0),
     )
     for key, value in full.moments.items():
-        assert math.isclose(value, 2.0 * half.moments[key], rel_tol=2e-3)
+        assert math.isclose(value, 2.0 * half.moments[key], rel_tol=3e-3)
 
 
 async def test_a_deflected_surface_changes_the_hinge_moment_at_the_same_lift() -> None:

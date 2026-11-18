@@ -99,7 +99,7 @@ reported in that sense.
 a V-tail the right panel trailing edge down and the left one up, on a mirrored fin pair the stored fin towards
 +y and its image towards +y as well. Each side's `H` is reported in the sense of a positive deflection of that
 side: trailing edge down on a surface that spreads in y, trailing edge towards +y on one that stands up (the
-image of a mirrored fin: towards −y). Maintainer decision pending, see the decision file `hinge-moments-rudder-sense`.
+image of a mirrored fin: towards −y). The sense is an open decision for the maintainer (#1399); the other way costs one sign.
 
 **Surface keys.** The output key of a surface is `<wing>.<device>[_left|_right]` (maintainer,
 2026-10-19): the wing's name, which is required and unique; the device's `name` from the geometry —
