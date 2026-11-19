@@ -3,10 +3,15 @@
 import math
 from typing import Any
 
+from aero_kernel.build import shipped_build
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import KernelWarning
-from aero_kernel.solvers.avl import AvlAdapter, AvlLateral, AvlNeutralPoint, AvlRoll
+from aero_kernel.solvers.air import AirState
+from aero_kernel.solvers.avl import AvlAdapter, AvlHinge, AvlLateral, AvlNeutralPoint, AvlRoll
+from aero_kernel.solvers.avl_hinge import hinge_mesh
 
 # Hand fixture: main wing half span 0.7 m, chord 0.2 m, leading edge x = 0.05 m (S = 0.28 m^2,
 # AR = 7, c_MAC = 0.2 m, x_ac = 0.10 m); tail half span 0.2 m, chord 0.1 m, leading edge x = 0.60 m
@@ -60,6 +65,9 @@ class StubAvl(AvlAdapter):
         )
         self.lateral_calls: list[tuple[AirplaneGeometry, float, float]] = []
         self.lateral_failure: Exception | None = None
+        self.hinge_calls: list[dict[str, Any]] = []
+        self.hinge_failure: Exception | None = None
+        self.hinge_answer: dict[str, float] | None = None  # replaces the derived moments
 
     async def neutral_point(self, airplane: AirplaneGeometry, cl: float) -> AvlNeutralPoint:
         """Answer without AVL."""
@@ -85,3 +93,37 @@ class StubAvl(AvlAdapter):
         if self.lateral_failure is not None:
             raise self.lateral_failure
         return self.lateral.model_copy(update={"warnings": self.canned_warnings})
+
+    async def hinge_moments(
+        self,
+        airplane: AirplaneGeometry,
+        *,
+        cl: float,
+        role: str,
+        delta_deg: float,
+        speed_ms: float,
+        air: AirState,
+    ) -> AvlHinge:
+        """Answer the hinge moments without AVL: 1e-3 N*m per degree, signed by the side, and record the call."""
+        self.hinge_calls.append(
+            {"airplane": airplane, "cl": cl, "role": role, "delta": delta_deg, "speed": speed_ms}
+        )
+        if self.hinge_failure is not None:
+            raise self.hinge_failure
+        join = Rules(shipped_build().model).value("hinge-line-continuity", "join_tolerance")
+        mesh = hinge_mesh(
+            airplane, role, 4, lambda _airfoil: 0, join_tolerance_m=join, split_n_chord=(2, 2)
+        )
+        if not mesh.controls and self.hinge_answer is None:
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "no_control_in_role",
+                "no control surface acts in the role",
+                "the stub follows the adapter",
+            )
+        return AvlHinge(
+            moments=self.hinge_answer
+            if self.hinge_answer is not None
+            else {c.key: 1e-3 * c.sign * delta_deg for c in mesh.controls},
+            warnings=self.canned_warnings,
+        )

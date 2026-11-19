@@ -21,6 +21,7 @@ from aero_kernel.canon.model import (
     WhenTerm,
 )
 from aero_kernel.devices import CROW_AILERON_ROLES, CROW_FLAP_ROLES
+from aero_kernel.devices import FLAP_ROLES as DEVICE_FLAP_ROLES
 from aero_kernel.errors import (
     ErrorCategory,
     KernelError,
@@ -38,7 +39,10 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "AILERON_ROLES",
+    "ELEVATOR_ROLES",
+    "FLAP_ROLES",
     "PENDING_WHEN_TERMS",
+    "RUDDER_ROLES",
     "CanonGraph",
     "Edge",
     "GraphModelError",
@@ -149,7 +153,10 @@ class Resolved(BaseModel):
         slug: Qualified slug of the quantity.
         requested: The request's exact spelling of the slug; results and errors echo it.
         quantity: The quantity's canon entry.
-        producer: The node whose application produces it.
+        producer: The node whose application produces it; the first one for a quantity with
+            several producers.
+        producers: Every node that produces it: one, except for a ``per_control_surface``
+            quantity, which is the union of its applications.
     """
 
     model_config = _FROZEN
@@ -158,6 +165,7 @@ class Resolved(BaseModel):
     requested: str
     quantity: Quantity
     producer: NodeId
+    producers: tuple[NodeId, ...]
 
 
 class Edge(BaseModel):
@@ -271,6 +279,21 @@ class Subtree(BaseModel):
                 return resolved.producer
         raise KeyError(slug)
 
+    def producers_of(self, slug: str) -> tuple[NodeId, ...]:
+        """Return every node that produces a requested quantity (several for a per-surface value).
+
+        Args:
+            slug: Bare or qualified slug of a quantity in ``requested``.
+
+        Raises:
+            KeyError: If the quantity was not requested (or was rejected).
+        """
+        qualified = qualify(slug)
+        for resolved in self.requested:
+            if resolved.slug == qualified:
+                return resolved.producers
+        raise KeyError(slug)
+
     def long_run_nodes(self) -> tuple[NodeId, ...]:
         """Return the nodes of cost class ``minutes``, in order (ch. 8.7).
 
@@ -358,7 +381,7 @@ class Subtree(BaseModel):
         Raises:
             KeyError: If the quantity was not requested.
         """
-        needed = self._closure(self.producer_of(slug))
+        needed = self._closure_of(self.producers_of(slug))
         return tuple(node.id for node in self.nodes if node.id in needed)
 
     def uncertain_formulas(self, slug: str) -> tuple[str, ...]:
@@ -376,7 +399,7 @@ class Subtree(BaseModel):
         Raises:
             KeyError: If the quantity was not requested.
         """
-        return self._uncertain_in(self._closure(self.producer_of(slug)))
+        return self._uncertain_in(self._closure_of(self.producers_of(slug)))
 
     def world_assignments(self, slug: str) -> tuple[dict[str, str], ...]:
         """Return the Cartesian product of the worlds of a quantity's uncertain formulas (A11).
@@ -447,6 +470,13 @@ class Subtree(BaseModel):
         if not formulas:
             return None
         return format_world_assignment({formula: assignment[formula] for formula in formulas})
+
+    def _closure_of(self, roots: Sequence[NodeId]) -> set[NodeId]:
+        """The nodes and everything they read, transitively."""
+        found: set[NodeId] = set()
+        for root in roots:
+            found |= self._closure(root)
+        return found
 
     def _closure(self, root: NodeId) -> set[NodeId]:
         """The node and everything it reads, transitively."""
@@ -583,6 +613,14 @@ class CanonGraph:
                 msg = f"{produce.quantity} has two producers: {_label(other)} and {_label(node.id)}"
                 raise GraphModelError(msg)
         self._shared = frozenset(shared)
+        self._all_producers = {
+            slug: tuple(
+                node.id
+                for node in self._nodes.values()
+                if any(p.quantity == slug for p in node.produces)
+            )
+            for slug in shared
+        }
         return producers
 
     def _check_world_slugs(self) -> None:
@@ -641,7 +679,7 @@ class CanonGraph:
                 errors.append(resolved)
             else:
                 requested.append(resolved)
-        edges = self._edges_back_from([r.producer for r in requested])
+        edges = self._edges_back_from([p for r in requested for p in r.producers])
         layers = _layers(edges)
         leaves = {
             read.quantity
@@ -700,7 +738,7 @@ class CanonGraph:
         Returns:
             The resolved quantity, or the per-quantity error the request earns: ``unknown_quantity``,
             ``not_requestable`` for an input or target, ``non_scalar_result`` for a quantity that
-            is not a scalar (v1).
+            is neither a scalar nor a per-control-surface value (v1).
 
         """
         qualified = _try_qualify(slug)
@@ -721,7 +759,7 @@ class CanonGraph:
                 f"`{slug}` is a {quantity.role}: it is supplied, not computed.",
                 "Pass it in `values` and request a derived or output quantity.",
             )
-        if quantity.type != "scalar":
+        if quantity.type not in ("scalar", "per_control_surface"):
             return _request_error(
                 slug,
                 "non_scalar_result",
@@ -731,7 +769,13 @@ class CanonGraph:
             )
         # every computed quantity has a producer: the constructor checked it
         producer = self._producers[qualified]
-        return Resolved(slug=qualified, requested=slug, quantity=quantity, producer=producer)
+        return Resolved(
+            slug=qualified,
+            requested=slug,
+            quantity=quantity,
+            producer=producer,
+            producers=self._all_producers.get(qualified, (producer,)),
+        )
 
 
 def _try_qualify(slug: str) -> str | None:
@@ -815,12 +859,12 @@ PENDING_WHEN_TERMS: Mapping[str, str] = {}
 _HORIZONTAL_TAIL_TYPES = frozenset({"horizontal_tail", "v_tail"})
 AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
 # The hinge-moment terms: a device that has a hinge and acts in that role (a stabilator has none).
-_ELEVATOR_ROLES = frozenset({"elevator", "elevon", "ruddervator"})
-_FLAP_ROLES = frozenset({"flap", "flaperon"})
+ELEVATOR_ROLES = frozenset({"elevator", "elevon", "ruddervator"})
+FLAP_ROLES = DEVICE_FLAP_ROLES
 # A butterfly layout (D10) needs a flap and a distinct aileron or elevon; a flaperon is neither.
 _BUTTERFLY_FLAP_ROLES = CROW_FLAP_ROLES
 _BUTTERFLY_AILERON_ROLES = CROW_AILERON_ROLES
-_RUDDER_ROLES = frozenset({"rudder", "ruddervator"})
+RUDDER_ROLES = frozenset({"rudder", "ruddervator"})
 
 
 def _roles(wing: Wing) -> list[str]:
@@ -860,7 +904,7 @@ def _has_vertical_tail(wings: dict[str, Wing]) -> bool:
     root = ribbed[main_name].x_secs[0]
     trailing_edge_x = root.xyz_le[0] + root.chord
     return any(
-        (not wing.symmetric or _RUDDER_ROLES & set(_roles(wing)))
+        (not wing.symmetric or RUDDER_ROLES & set(_roles(wing)))
         and wing.x_secs[0].xyz_le[0] >= trailing_edge_x
         for name, wing in ribbed.items()
         if name != main_name
@@ -889,13 +933,13 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
     has_aileron = any(role in AILERON_ROLES for _, role in devices)
     return WhenFacts(
         has_aileron=has_aileron,
-        has_elevator=any(role in _ELEVATOR_ROLES for _, role in devices),
-        has_flap=any(role in _FLAP_ROLES for _, role in devices),
+        has_elevator=any(role in ELEVATOR_ROLES for _, role in devices),
+        has_flap=any(role in FLAP_ROLES for _, role in devices),
         has_horizontal_tail=any(
             wing.surface_type in _HORIZONTAL_TAIL_TYPES for wing in wings.values()
         ),
         has_no_aileron=not has_aileron,
-        has_rudder=any(role in _RUDDER_ROLES for _, role in devices),
+        has_rudder=any(role in RUDDER_ROLES for _, role in devices),
         has_separate_flap_and_aileron=any(
             flap_role in _BUTTERFLY_FLAP_ROLES
             and aileron_role in _BUTTERFLY_AILERON_ROLES
