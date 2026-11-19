@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:ce9a68d6aedafe945cb98e933810c9fbf02d00e380951f21dff8724d929f39d1",
+  "content_hash": "sha256:843b88b5cc3f673bfaa2729792ad4594367461164c7f65a20a96a9aa9be5b27e",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -223,8 +223,8 @@
         },
         "powered_climb_scan_floor": {
           "basis": "numerical",
-          "guards": "Powered performance at full throttle (best-rate-of-climb, best-angle-of-climb): the lowest start of the climb scan as a fraction of the clean stall speed, used where the thrust at no airspeed is close to or above the weight (the climb can be steep or vertical and needs little or no lift, so it has no stall speed of its own). Elsewhere the scan starts at the stall speed at the steepest angle the thrust holds, v_s (1 - (T_0/mg)^2)^(1/4). Declared with the answer (powered_limit_declared, limit scan_floor).",
-          "source": "chosen by the implementer, no source: a climb at the angle gamma carries m g cos(gamma), so it flies down to v_s sqrt(cos gamma), which is zero for a vertical climb; the speeds the climb can reach below the stall speed are bounded by what the solver adapter can evaluate (the sweep shows no lift peak at the lowest Reynolds numbers, 2 m/s on the Avistar Elite, gh-1419); half the stall speed (a quarter of the dynamic pressure, half the Reynolds number) is below every climb optimum measured on the reference fleet (best-angle speed 10.0 m/s against the stall speed 11.4 m/s on the Avistar Elite) and above the speeds where the sweep fails",
+          "guards": "Powered performance at full throttle (best-rate-of-climb, best-angle-of-climb): the start of the climb scan as a fraction of the clean stall speed, used where the stall speed at the steepest angle the thrust holds is below it or the static thrust is unknown (the climb can be steep or vertical and needs little or no lift, so it has no stall speed of its own). Elsewhere the scan starts at v_s (1 - (T_0/mg)^2)^(1/4). Declared with the answer (powered_limit_declared, limit scan_floor).",
+          "source": "chosen by the implementer, no source; a declared implementer's choice that awaits the maintainer's decision. What it rests on: a climb at the angle gamma carries m g cos(gamma) and can be flown down to v_s sqrt(cos gamma), which is zero for a vertical climb, so physics gives no lower bound there; the number is a compromise between the speeds below the stall speed that a climb can fly and the speeds at which the solver adapter's angle sweep still shows a lift peak. Measured on the 36 reference airframes with the Avistar drive train (gh-1419): the floor binds only where the static thrust is above 0.97 of the weight (29 of the 35 airframes with a stall speed), and there the optimum is not at the floor; the best angle of climb is vertical, reported at the upper edge of the vertical speed range (v/v_s 1.4 to 7.8 on the 28 that compute), and the best rate of climb is at v/v_s 1.6 to 7.8. The airframes with a non-vertical best angle, which the floor does not touch, have v_opt/v_s between 0.88 (Avistar Elite) and 1.27 (6 airframes, median 1.12). So 0.5 is below every measured optimum but is not derived from them, and it is not tied to a Reynolds number: one of the 35 airframes (MILES_MAGISTER, floor start 3.5 m/s) ends not_converged because the sweep shows no lift peak at that start (open decision of the maintainer, PR of gh-1419)",
           "unit": "1",
           "value": 0.5
         },
