@@ -59,6 +59,7 @@ from aero_kernel.solvers.roll_math import (
     alpha_for_lift_coefficient,
     body_rates,
     control_effectiveness,
+    enclosing_sample,
     stability_rolling_moment,
 )
 from aero_kernel.solvers.stall_math import first_extremum_from_zero
@@ -115,7 +116,7 @@ ALPHA_MAX_DEG = 25.0
 # Sample spacing of the sweep (the prototype's 0.25 deg, scripts/canon_checks/*).
 ALPHA_STEP_DEG = 0.25
 # The ``limit`` detail of the not_converged failure of a state whose lift the wing cannot carry before its
-# first lift peak (the lift curve does not reach it below the peak, or the secant settles beyond the peak):
+# first lift peak (the lift curve does not reach it below the peak, nor does the curve's own maximum):
 # the wing limit, a bound of a search and not a defect. A sweep without a peak and a zero-lift angle outside
 # the sweep are not marked: they are solver or domain failures.
 WING_LIFT_LIMIT = "wing_lift"
@@ -1517,51 +1518,181 @@ class LevelFlight(BaseModel):
     warnings: tuple[KernelWarning, ...]
 
 
-def _level_alpha(sweep: LiftCurve, level: float, speed: float) -> tuple[float, float]:
-    """The angle on the pre-stall branch at which the sweep at ``speed`` reaches ``level``, and the first peak's.
+@dataclass(frozen=True)
+class _LevelStart:
+    """Where the search for a level-flight angle starts, and the samples that enclose its root.
+
+    Attributes:
+        alpha: The linear interpolation of the sweep between the two enclosing samples, in degrees.
+        low: The sample angle below the root (its lift is at most the target), in degrees.
+        high: The sample angle above the root (its lift is at least the target), in degrees; never
+            beyond the sweep's first C_L peak.
+    """
+
+    alpha: float
+    low: float
+    high: float
+
+
+# The golden-section ratio (sqrt(5) - 1) / 2: each step of the maximum search keeps this fraction of
+# the interval (Kiefer 1953); a mathematical constant, not a tuning value.
+GOLDEN_RATIO_INVERSE = (math.sqrt(5.0) - 1.0) / 2.0
+
+
+def _wing_limit(level: float, speed: float, what: str) -> FormulaError:
+    """``not_converged`` with ``limit`` = ``wing_lift``: the wing cannot carry the lift of ``level`` at ``speed``."""
+    return _not_converged(
+        f"the airplane does not reach C_L = {level:.4g} below its first C_L peak at "
+        f"{speed:.3f} m/s{what}",
+        "the level-flight point lies beyond the stall of the airplane at its own Reynolds "
+        "number; check mass, wing area and the fit window",
+        cl=level,
+        v_ms=speed,
+        limit=WING_LIFT_LIMIT,
+    )
+
+
+def _sampled_peak_cl(sweep: LiftCurve, peak: int) -> float:
+    """The vertex of the parabola through the three samples around the first peak: its C_L.
+
+    A peak sample is not lower than its predecessor and higher than its successor, so the second
+    difference (the curvature) is negative and the division is defined.
+    """
+    before, here, after = sweep.cl[peak - 1], sweep.cl[peak], sweep.cl[peak + 1]
+    return here - (after - before) ** 2 / (8.0 * (before - 2.0 * here + after))
+
+
+def _peak_resolution(sweep: LiftCurve, peak: int, tolerance_cl: float) -> float:
+    """The angle width in degrees below which a window around the first peak cannot change the maximum by ``tolerance_cl``.
+
+    Near its maximum the curve is a parabola: ``C_L = C_max - (k / 2) (alpha - alpha_max)^2`` with
+    ``k = |C_L(alpha - h) - 2 C_L(alpha) + C_L(alpha + h)| / h^2`` from the three samples at the peak
+    (``h`` the sweep step). A point within ``w`` of the maximum is lower by at most ``k w^2 / 2``, so
+    a window of width ``w = sqrt(tolerance_cl / k)`` keeps the best point within ``tolerance_cl / 2``
+    of the maximum.
+    """
+    second_difference = abs(sweep.cl[peak - 1] - 2.0 * sweep.cl[peak] + sweep.cl[peak + 1])
+    return ALPHA_STEP_DEG * math.sqrt(tolerance_cl / second_difference)
+
+
+def _lift_maximum(
+    asb_airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    request: LevelPolarRequest,
+    speed: float,
+    window: tuple[float, float],
+    resolution: float,
+    level: float,
+) -> tuple[float, float]:
+    """The angle and the lift in N of the lift maximum of AeroBuildup inside ``window`` (golden section).
+
+    The window is the two sweep steps around the sampled first peak, where the curve has one maximum.
+    The search ends when the window is narrower than ``resolution`` (:func:`_peak_resolution`), the
+    width below which it cannot change the maximum by more than half the lift tolerance.
 
     Raises:
-        FormulaError: ``not_converged`` if the lift curve has no peak or does not reach ``level``.
+        FormulaError: ``not_converged`` if AeroBuildup returns a lift that is not a finite number.
+    """
+    air, k_e_d0 = request.air, request.k_e_d0
+
+    def lift_at(alpha: float) -> float:
+        lift = evaluate_forces(asb_airplane, air, speed, alpha, NEURALFOIL_MODEL_SIZE, k_e_d0)[0]
+        if not math.isfinite(lift):
+            raise _level_failed(level, speed, f"is not a finite number at {alpha:.3f} deg")
+        return lift
+
+    low, high = window
+    inner_low = high - GOLDEN_RATIO_INVERSE * (high - low)
+    inner_high = low + GOLDEN_RATIO_INVERSE * (high - low)
+    lift_low, lift_high = lift_at(inner_low), lift_at(inner_high)
+    while high - low > resolution:
+        if lift_low < lift_high:
+            low, inner_low, lift_low = inner_low, inner_high, lift_high
+            inner_high = low + GOLDEN_RATIO_INVERSE * (high - low)
+            lift_high = lift_at(inner_high)
+        else:
+            high, inner_high, lift_high = inner_high, inner_low, lift_low
+            inner_low = high - GOLDEN_RATIO_INVERSE * (high - low)
+            lift_low = lift_at(inner_low)
+    return (inner_low, lift_low) if lift_low >= lift_high else (inner_high, lift_high)
+
+
+def _start_at_the_peak(
+    asb_airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    request: LevelPolarRequest,
+    sweep: LiftCurve,
+    peak: int,
+    speed: float,
+    lift_target: float,
+    level: float,
+) -> _LevelStart:
+    """The start for a lift above the sampled first peak: the wing limit, or the bracket up to the true peak.
+
+    The sweep's samples can lie a little below the curve's own maximum, so a lift above the highest
+    sample may still be reachable. The parabola through the samples around the peak says whether it
+    can be (no evaluation otherwise); then the maximum is located and the lift decides. A lift is
+    reached if it is at most the maximum plus the lift tolerance (the tolerance that accepts any
+    point): within the tolerance of the maximum the point is the maximum itself, below it the root
+    lies between the sample before the peak and the maximum.
+
+    Raises:
+        FormulaError: ``not_converged`` with ``limit`` = ``wing_lift`` if the lift is above the maximum
+            by more than the tolerance.
+    """
+    tolerance = request.lift_tolerance * request.mass_kg * request.gravity
+    tolerance_cl = tolerance * level / lift_target
+    if level - tolerance_cl > _sampled_peak_cl(sweep, peak):
+        raise _wing_limit(level, speed, "")
+    window = (sweep.alpha_deg[peak - 1], sweep.alpha_deg[peak + 1])
+    resolution = _peak_resolution(sweep, peak, tolerance_cl)
+    top_alpha, top_lift = _lift_maximum(asb_airplane, request, speed, window, resolution, level)
+    if lift_target - top_lift > tolerance:
+        raise _wing_limit(level, speed, "")
+    low = sweep.alpha_deg[peak - 1]
+    at_the_maximum = lift_target - top_lift >= -tolerance
+    return _LevelStart(
+        alpha=top_alpha if at_the_maximum else 0.5 * (low + top_alpha), low=low, high=top_alpha
+    )
+
+
+def _level_start(
+    asb_airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    request: LevelPolarRequest,
+    sweep: LiftCurve,
+    speed: float,
+    lift_target: float,
+    level: float,
+) -> _LevelStart:
+    """The start on the pre-stall branch at which the sweep at ``speed`` reaches ``level``, and its bracket.
+
+    Raises:
+        FormulaError: ``not_converged`` if the lift curve has no peak, has no zero crossing below it
+            (``level`` 0), or cannot reach ``level`` (detail ``limit`` = ``wing_lift``).
     """
     peak = _bracket(sweep, upright=True)
-    found = alpha_for_lift_coefficient(sweep.alpha_deg, sweep.cl, peak, level)
-    if found is None:
-        if level <= 0.0:
-            raise _not_converged(
-                f"the zero-lift angle of the lift curve at {speed:.3f} m/s is not inside the sweep "
-                f"{ALPHA_MIN_DEG}..{ALPHA_MAX_DEG} deg below its first C_L peak",
-                "the lift curve has no zero crossing before its first peak (a very low Reynolds number or "
-                "an airfoil outside the sampled angles); this is not a stall",
-                cl=level,
-                v_ms=speed,
-            )
+    pair = enclosing_sample(sweep.cl, peak, level)
+    if pair is not None:
+        low, high = sweep.alpha_deg[pair - 1], sweep.alpha_deg[pair]
+        found = alpha_for_lift_coefficient(sweep.alpha_deg, sweep.cl, peak, level)
+        return _LevelStart(alpha=low if found is None else found, low=low, high=high)
+    if level <= 0.0:
         raise _not_converged(
-            f"the airplane does not reach C_L = {level:.4g} below its first C_L peak at "
-            f"{speed:.3f} m/s",
-            "the level-flight point lies beyond the stall of the airplane at its own Reynolds "
-            "number; check mass, wing area and the fit window",
+            f"the zero-lift angle of the lift curve at {speed:.3f} m/s is not inside the sweep "
+            f"{ALPHA_MIN_DEG}..{ALPHA_MAX_DEG} deg below its first C_L peak",
+            "the lift curve has no zero crossing before its first peak (a very low Reynolds number or "
+            "an airfoil outside the sampled angles); this is not a stall",
             cl=level,
             v_ms=speed,
-            limit=WING_LIFT_LIMIT,
         )
-    return found, sweep.alpha_deg[peak]
+    return _start_at_the_peak(asb_airplane, request, sweep, peak, speed, lift_target, level)
 
 
-def _level_failed(
-    level: float, speed: float, what: str, *, wing_limit: bool = False
-) -> FormulaError:
-    """``not_converged`` for the level-flight point ``level`` flown at ``speed``.
-
-    ``wing_limit`` marks a point beyond the stall (detail ``limit`` = ``wing_lift``), as a lift
-    curve that does not reach the level does.
-    """
-    detail: dict[str, float | str] = {"cl": level, "v_ms": speed}
-    if wing_limit:
-        detail["limit"] = WING_LIFT_LIMIT
+def _level_failed(level: float, speed: float, what: str) -> FormulaError:
+    """``not_converged`` for the level-flight point ``level`` flown at ``speed``."""
     return _not_converged(
         f"the lift of the level-flight point C_L = {level:.4g} {what}",
         "AeroBuildup's lift is not smooth at this point; check the airplane and the fit window",
-        **detail,
+        cl=level,
+        v_ms=speed,
     )
 
 
@@ -1587,45 +1718,59 @@ def _lift_point(
 
     The angle of attack is the one at which the lift equals the target at that speed, found by
     secant steps from the linear interpolation of one alpha sweep on the branch before the first
-    ``C_L`` peak. The tolerance is relative to the weight ``m g`` (the target of level flight; also
-    the scale where the target is zero).
+    ``C_L`` peak. The two sweep samples that enclose the root bound the search (:func:`_next_alpha`),
+    so it cannot leave that branch: the outcome is the root before the peak or, if the sweep does not
+    reach the target, the wing limit, never a function of where the secant happens to stop. The
+    tolerance is relative to the weight ``m g`` (the target of level flight; also the scale where
+    the target is zero).
 
     Raises:
-        FormulaError: ``not_converged`` if the lift curve does not reach the target (detail
-            ``limit`` = ``wing_lift``) or the secant does not settle within ``opt_level_max_steps``
-            or settles beyond the sweep's first C_L peak.
+        FormulaError: ``not_converged`` if the sampled lift curve does not reach the target (detail
+            ``limit`` = ``wing_lift``), or the search does not settle within ``opt_level_max_steps``.
     """
     air, weight = request.air, request.mass_kg * request.gravity
     area = float(asb_airplane.s_ref)
     dynamic_pressure = 0.5 * air.density * speed * speed
     sweep = sweep_lift(asb_airplane, air, speed, _grid(), NEURALFOIL_MODEL_SIZE)
-    alpha, peak_alpha = _level_alpha(sweep, level, speed)
+    start = _level_start(asb_airplane, request, sweep, speed, lift_target, level)
+    alpha, low, high = start.alpha, start.low, start.high
     max_steps = int(config().opt_level_max_steps.value)
     previous: tuple[float, float] | None = None
     for _step in range(max_steps):
         lift, drag = evaluate_forces(
             asb_airplane, air, speed, alpha, NEURALFOIL_MODEL_SIZE, request.k_e_d0
         )
+        if not math.isfinite(lift):
+            raise _level_failed(level, speed, f"is not a finite number at {alpha:.3f} deg")
         miss = lift - lift_target
         if abs(miss) <= request.lift_tolerance * weight:
-            if alpha > peak_alpha:
-                raise _level_failed(
-                    level,
-                    speed,
-                    f"settled at {alpha:.2f} deg, beyond the first C_L peak at {peak_alpha:.2f} deg "
-                    "of the sweep, so not on the branch before the stall",
-                    wing_limit=True,
-                )
             return alpha, lift / (dynamic_pressure * area), drag / (dynamic_pressure * area)
+        if miss < 0.0:
+            low = alpha
+        else:
+            high = alpha
         if previous is None:
             slope = dynamic_pressure * area * _local_slope(sweep, alpha)
         else:
             slope = (lift - previous[1]) / (alpha - previous[0])
-        if math.isclose(slope, 0.0, abs_tol=config().opt_zero_span.value):
-            raise _level_failed(level, speed, "has no lift slope in the angle of attack")
         previous = (alpha, lift)
-        alpha -= miss / slope
+        alpha = _next_alpha(alpha, miss, slope, low, high)
     raise _level_failed(level, speed, f"did not reach the weight within {max_steps} steps")
+
+
+def _next_alpha(alpha: float, miss: float, slope: float, low: float, high: float) -> float:
+    """The next angle of the level-flight search: the secant step, or the middle of the bracket.
+
+    The root lies between ``low`` and ``high`` (the lift is below the target at ``low``, above it at
+    ``high``, both on the branch before the first C_L peak). A secant step that leaves the open
+    bracket, or whose slope is zero, is replaced by the middle of the bracket, so the iterate never
+    crosses the peak onto the branch after the stall, whatever the slope near the peak.
+    """
+    if not math.isclose(slope, 0.0, abs_tol=config().opt_zero_span.value):
+        step = alpha - miss / slope
+        if low < step < high:
+            return step
+    return 0.5 * (low + high)
 
 
 def _level_point(

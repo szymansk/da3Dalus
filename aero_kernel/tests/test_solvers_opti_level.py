@@ -280,11 +280,12 @@ async def test_the_polar_needs_equally_long_series_of_at_least_three_points() ->
         LevelPolar(v_ms=(1.0, 2.0), alpha_deg=(1.0, 2.0), cl=(0.1, 0.2), cd=(0.03, 0.03))
 
 
-async def test_a_point_that_settles_beyond_the_first_peak_is_not_converged(
+async def test_an_evaluation_that_disagrees_with_the_sweep_does_not_leave_the_branch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The sweep reaches C_L = 0.8 near 7 deg, but the evaluation's lift is linear and weak, so the
-    secant settles at 24.7 deg, past the sweep's first peak at 23 deg: not on the pre-stall branch."""
+    """The sweep reaches C_L = 0.8 near 7 deg, but the evaluation's lift is linear and weak: the search
+    stays inside the two samples that enclose the root (the branch before the first peak) and, since the
+    evaluation never reaches the weight there, ends as a plain failure, not as the wing limit."""
     installed(monkeypatch)
     weight = MASS * GRAVITY
 
@@ -298,4 +299,5 @@ async def test_a_point_that_settles_beyond_the_first_peak_is_not_converged(
     with pytest.raises(FormulaError) as raised:
         opti_module.level_polar_worker(request((0.4, 0.6, 0.8)))
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
-    assert "first C_L peak" in raised.value.message
+    assert "did not reach the weight" in raised.value.message
+    assert "limit" not in raised.value.detail
