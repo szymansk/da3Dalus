@@ -273,6 +273,7 @@ def test_a_default_on_a_non_scalar_quantity_is_rejected() -> None:
         "unit": "1",
         "role": "input",
         "type": "curve",
+        "abscissa": "gravity",
     }
     with pytest.raises(ValidationError, match="scalar"):
         build(with_defaults(namespaces, shape=GRAVITY_DEFAULT | {"unit": "1"}))

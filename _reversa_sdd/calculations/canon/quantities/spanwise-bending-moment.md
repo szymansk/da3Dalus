@@ -10,6 +10,7 @@ tags:
   - point/free
   - role/output
 type: curve
+abscissa: wing-station
 figure: spanwise-loads
 ---
 

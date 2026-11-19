@@ -144,6 +144,7 @@ CODE_CATALOGUE: Mapping[str, ErrorCategory] = {
     "postcondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "continuous_uncertainty": ErrorCategory.NOT_IMPLEMENTED,
     "non_scalar_result": ErrorCategory.NOT_IMPLEMENTED,
+    "uncertain_curve": ErrorCategory.NOT_IMPLEMENTED,
     "unsupported_value_type": ErrorCategory.NOT_IMPLEMENTED,
 }
 

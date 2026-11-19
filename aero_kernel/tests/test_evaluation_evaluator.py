@@ -11,7 +11,7 @@ from aero_kernel.evaluation.rules import Severity, shipped_rule_table
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.graph import WhenFacts
 from aero_kernel.reference_fleet import FleetMember, reference_document
-from aero_kernel.schema import ComputeResult, QuantityResult, QuantityStatus
+from aero_kernel.schema import ComputeResult, CurveResult, QuantityResult, QuantityStatus
 from aero_kernel.tests.evaluation_builders import (
     facts,
     not_applicable,
@@ -101,6 +101,20 @@ def test_a_value_per_control_surface_is_not_judged_by_a_band() -> None:
     verdict = judge(result_of(per_surface))
     assert verdict.status is RuleStatus.NOT_AVAILABLE
     assert "per control surface" in verdict.explanation
+
+
+def test_a_curve_is_not_judged_by_a_band() -> None:
+    curve = QuantityResult(
+        slug=SM,
+        unit="1",
+        status=QuantityStatus.OK,
+        curve=CurveResult(x=(0.0, 1.0), y=(0.1, 0.2), x_quantity="crow-mix", x_unit="1"),
+        tool="OPT",
+        application="crow",
+    )
+    verdict = judge(result_of(curve))
+    assert verdict.status is RuleStatus.NOT_AVAILABLE
+    assert "is a curve" in verdict.explanation
 
 
 def test_a_planned_quantity_is_not_available_and_names_its_ticket() -> None:

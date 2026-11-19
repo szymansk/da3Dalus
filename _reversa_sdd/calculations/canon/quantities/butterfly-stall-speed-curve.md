@@ -10,6 +10,7 @@ tags:
   - point/approach
   - role/output
 type: curve
+abscissa: crow-mix
 ---
 
 # Stall speed over the crow mix · `V_S0(s)`

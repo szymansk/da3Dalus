@@ -122,6 +122,7 @@ def test_other_non_scalar_input_is_not_a_number() -> None:
         "unit": "1",
         "role": "input",
         "type": "curve",
+        "abscissa": "gravity",
     }
     (error,) = validate_values({"grid": 1.0}, CanonModel.model_validate(with_hash(namespaces)))
     assert error.code == "not_an_input"
