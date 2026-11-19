@@ -80,7 +80,7 @@ gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is 
 
 No register node is mapped to this entry.
 
-**Implementation note (gh-1414).** Measured on the closed-form airplane of the tests and on the Avistar Elite: the best angle of climb is the steepest at the lowest speed at which the wing still carries `m g cos gamma`, so the optimum lies on the stall corner as a rule, not an exception. It is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see the decision file `climb-optimum-on-the-stall-corner`.
+**Implementation note (gh-1414).** The optimum of the angle of climb lies on, or within 1 % of, the stall corner: on a closed-form airplane with a thrust-to-weight ratio near 1 the steepest angle is flown at the lowest speed at which the wing still carries `m g cos gamma`; on the Avistar Elite (AXI 4120/14 on 4S, APC 13x8E) `V_x` is 10.0 m/s at 40.6 deg, below the level-flight stall speed of 11.4 m/s because a steep path needs less lift, at `C_L` 1.19 against 1.22 at the stall. A corner optimum is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see the decision file `climb-optimum-on-the-stall-corner` (the entry's Termination text asks for no value there; the sibling decision of #1268 for `minimum-sink-speed` returns the boundary value with a notice).
 
 ## Approval
 

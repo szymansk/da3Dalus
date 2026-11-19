@@ -23,10 +23,19 @@ from aero_kernel.registry import formula
 __all__ = ["dive_speed"]
 
 
-async def _surplus(flight: PoweredFlight, v: float) -> float:
-    """The drag at zero lift minus the weight and the thrust at full throttle at ``v`` (N)."""
-    drag = await flight.required_drag(v, VERTICAL_FLIGHT)
-    return drag - flight.weight - flight.thrust(v)
+async def _surplus(flight: PoweredFlight, v: float) -> float | None:
+    """The drag at zero lift minus the weight and the thrust at full throttle at ``v`` (N).
+
+    ``None`` where the lift curve has no zero-lift point before its first peak at this speed (a very low
+    Reynolds number): the speed is skipped, the dive does not end there.
+    """
+    drag = await flight.drag(v, VERTICAL_FLIGHT)
+    return None if drag is None else drag - flight.weight - flight.thrust(v)
+
+
+async def _bracketed_surplus(flight: PoweredFlight, v: float) -> float:
+    """The surplus at a speed inside a bracket, where the zero-lift point must exist."""
+    return await flight.required_drag(v, VERTICAL_FLIGHT) - flight.weight - flight.thrust(v)
 
 
 def _not_reached(at_start: bool) -> FormulaError:
@@ -68,11 +77,16 @@ async def dive_speed(x: Inputs, ctx: Context) -> dict[str, float]:
     previous: tuple[float, float] | None = None
     for v in scan_speeds():
         surplus = await _surplus(flight, v)
+        if surplus is None:
+            continue
         if surplus > 0.0:
             if previous is None:
                 break
             v_d = await illinois_root(
-                lambda speed: _surplus(flight, speed), previous, (v, surplus), flight.weight
+                lambda speed: _bracketed_surplus(flight, speed),
+                previous,
+                (v, surplus),
+                flight.weight,
             )
             await flight.answer(v_d, VERTICAL_FLIGHT)
             return {"v_d": v_d}

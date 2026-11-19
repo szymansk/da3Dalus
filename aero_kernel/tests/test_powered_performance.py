@@ -111,6 +111,17 @@ async def test_the_dive_speed_balances_zero_lift_drag_against_weight_plus_thrust
     assert [w.code for w in ctx.warnings].count("powertrain_route_winding_resistance") == 1
 
 
+async def test_speeds_without_a_zero_lift_point_are_skipped_by_the_dive_scan() -> None:
+    cd0 = 0.3
+    opti = pb.PolarOpti(cd0=cd0, zero_lift_floor=9.0)
+    got = await dive_speed(pb.bound_inputs("dive-speed"), pb.context("dive-speed", opti))
+    same = await dive_speed(
+        pb.bound_inputs("dive-speed"), pb.context("dive-speed", pb.PolarOpti(cd0=cd0))
+    )
+    assert close(got["v_d"], same["v_d"], 1e-9)
+    assert min(v for v, n in opti.evaluations if n == 0.0) < 9.0  # the skipped speeds were tried
+
+
 async def test_a_dive_that_runs_past_the_propeller_table_is_the_declared_table_failure() -> None:
     ctx = pb.context("dive-speed", pb.PolarOpti(cd0=0.03))
     with pytest.raises(FormulaError) as caught:

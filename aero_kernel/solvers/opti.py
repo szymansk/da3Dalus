@@ -114,7 +114,8 @@ ALPHA_MIN_DEG = -15.0
 ALPHA_MAX_DEG = 25.0
 # Sample spacing of the sweep (the prototype's 0.25 deg, scripts/canon_checks/*).
 ALPHA_STEP_DEG = 0.25
-# The ``limit`` detail of the not_converged failure of a point the wing cannot carry (before its stall).
+# The ``limit`` detail of the not_converged failure of a state with no point on the branch before the
+# stall: the lift curve has no first peak in the sweep, does not reach the lift, or settles beyond the peak.
 WING_LIFT_LIMIT = "wing_lift"
 # The lift coefficient assumed to choose the speed of the first bracketing sweep. It only fixes the
 # Reynolds number at which the C_L extremum is first located; the sweep is repeated once at the speed
@@ -459,6 +460,7 @@ def _bracket(polar: LiftCurve, upright: bool) -> int:
             "the airplane does not stall inside the sampled angles of attack",
             alpha_min_deg=ALPHA_MIN_DEG,
             alpha_max_deg=ALPHA_MAX_DEG,
+            limit=WING_LIFT_LIMIT,
         )
     return index
 
@@ -1535,13 +1537,21 @@ def _level_alpha(sweep: LiftCurve, level: float, speed: float) -> tuple[float, f
     return found, sweep.alpha_deg[peak]
 
 
-def _level_failed(level: float, speed: float, what: str) -> FormulaError:
-    """``not_converged`` for the level-flight point ``level`` flown at ``speed``."""
+def _level_failed(
+    level: float, speed: float, what: str, *, wing_limit: bool = False
+) -> FormulaError:
+    """``not_converged`` for the level-flight point ``level`` flown at ``speed``.
+
+    ``wing_limit`` marks a point beyond the stall (detail ``limit`` = ``wing_lift``), as a lift
+    curve that does not reach the level does.
+    """
+    detail: dict[str, float | str] = {"cl": level, "v_ms": speed}
+    if wing_limit:
+        detail["limit"] = WING_LIFT_LIMIT
     return _not_converged(
         f"the lift of the level-flight point C_L = {level:.4g} {what}",
         "AeroBuildup's lift is not smooth at this point; check the airplane and the fit window",
-        cl=level,
-        v_ms=speed,
+        **detail,
     )
 
 
@@ -1594,6 +1604,7 @@ def _lift_point(
                     speed,
                     f"settled at {alpha:.2f} deg, beyond the first C_L peak at {peak_alpha:.2f} deg "
                     "of the sweep, so not on the branch before the stall",
+                    wing_limit=True,
                 )
             return alpha, lift / (dynamic_pressure * area), drag / (dynamic_pressure * area)
         if previous is None:

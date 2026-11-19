@@ -170,3 +170,21 @@ async def test_the_wing_limit_is_named_in_the_failure_detail(
         level_point_worker(point_request(slow))
     assert caught.value.detail is not None
     assert caught.value.detail["limit"] == "wing_lift"
+
+
+async def test_a_point_that_settles_beyond_the_first_peak_is_the_wing_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The secant ends past the sweep's first C_L peak: not on the branch before the stall, so the wing limit."""
+    installed(monkeypatch)
+
+    def settled_past_the_peak(_sweep: object, _level: float, _speed: float) -> tuple[float, float]:
+        return 10.0, 8.0
+
+    monkeypatch.setattr(opti_module, "_level_alpha", settled_past_the_peak)
+    level = stand_in_cl(10.0)  # the lift at the (wrong) angle equals the weight at this speed
+    speed = math.sqrt(2.0 * MASS * GRAVITY / (AIR.density * AREA * level))
+    with pytest.raises(FormulaError) as caught:
+        level_point_worker(point_request(speed))
+    assert caught.value.detail["limit"] == "wing_lift"
+    assert "beyond the first C_L peak" in caught.value.message

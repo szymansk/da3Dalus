@@ -34,15 +34,19 @@ KV, I0, RM, U_BAT = 900.0, 1.2, 0.082, 14.8
 
 
 class PolarOpti(StubOpti):
-    """``level_flight_point`` of a parabolic polar on the area ``AREA``; the wing limit is ``CL_MAX``."""
+    """``level_flight_point`` of a parabolic polar on the area ``AREA``; the wing limit is ``CL_MAX``.
+
+    Below ``zero_lift_floor`` the zero-lift point does not exist (the adapter's low-Reynolds-number case).
+    """
 
     def __init__(
         self,
         cd0: float = CD0,
         warnings: tuple[KernelWarning, ...] = (),
+        zero_lift_floor: float = 0.0,
     ) -> None:
         super().__init__()
-        self.cd0, self.warnings = cd0, warnings
+        self.cd0, self.warnings, self.zero_lift_floor = cd0, warnings, zero_lift_floor
         self.evaluations: list[tuple[float, float]] = []
 
     async def level_flight_point(
@@ -57,7 +61,7 @@ class PolarOpti(StubOpti):
         self.evaluations.append((v_ms, n_load))
         q_s = 0.5 * air.density * v_ms**2 * AREA
         cl = n_load * mass_kg * gravity / q_s
-        if cl > CL_MAX:
+        if cl > CL_MAX or (n_load == 0.0 and v_ms < self.zero_lift_floor):
             raise FormulaError(
                 ErrorCategory.NOT_CONVERGED,
                 "not_converged",
