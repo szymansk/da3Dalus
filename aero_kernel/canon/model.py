@@ -684,6 +684,8 @@ class KernelConfig(BaseModel):
     avl_contour_margin: ConfigValue
     butterfly_mix_steps: ConfigValue
     powertrain_balance_tolerance: ConfigValue
+    endurance_speed_ratio: ConfigValue
+    endurance_speed_tolerance: ConfigValue
 
     @model_validator(mode="after")
     def _check_mix_steps(self) -> Self:

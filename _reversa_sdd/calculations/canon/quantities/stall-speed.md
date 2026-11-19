@@ -8,6 +8,7 @@ tags:
   - canon/quantity
   - discipline/aerodynamics
   - point/stall
+  - stage/operating-points
   - role/output
 type: scalar
 ---
@@ -19,3 +20,5 @@ Minimum flyable speed of the clean airplane at load factor 1, the lift-balance s
 **Unit.** `m/s`
 
 **Produced by.** [[stall-speed]]
+
+**Used by.** [[endurance-and-range-optimum]]

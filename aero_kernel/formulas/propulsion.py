@@ -7,28 +7,34 @@ type. The result types of the relations live here so that the formulas need not 
 
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from itertools import pairwise
 from typing import Protocol, cast
 
 from aero_kernel.components import Components
 from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import FormulaError
-from aero_kernel.formulas.values import number
+from aero_kernel.formulas.values import air_state, airplane_of, number
+from aero_kernel.solvers.opti import LevelFlightPoint
 
 __all__ = [
     "RPM_PER_HZ",
     "Balance",
     "Coefficients",
     "GridPoint",
+    "PartLoad",
     "advance_ratio_of",
     "balance_tolerance",
     "bisect_root",
+    "covered_pairs",
     "current_at_speed",
     "current_for_torque",
     "equilibrium_of",
+    "level_flight_at",
     "motor_torque",
     "optional",
+    "part_load_of",
     "propeller_torque",
     "scan_grid",
     "table_lookup_of",
@@ -41,6 +47,7 @@ _ADVANCE_RATIO = "calc:advance-ratio-from-speed.default"
 _TABLE_LOOKUP = "calc:propeller-table-lookup.default"
 _THRUST = "calc:thrust-at-airspeed-from-coefficient.default"
 _EQUILIBRIUM = "calc:motor-propeller-equilibrium.default"
+_PART_LOAD = "calc:motor-propeller-part-load.default"
 
 
 @dataclass(frozen=True)
@@ -67,6 +74,43 @@ class Balance:
 
     n_prop: float
     q_m: float
+
+
+@dataclass(frozen=True)
+class PartLoad:
+    """The part-load point of level flight at one speed.
+
+    Attributes:
+        n_pl: Propeller speed in 1/s.
+        i_bat: Battery current in A.
+        p_bat: Battery power in W.
+        r_t: Thrust demand ratio, the drag over the full-throttle thrust (1).
+    """
+
+    n_pl: float
+    i_bat: float
+    p_bat: float
+    r_t: float
+
+
+class PartLoadRelation(Protocol):
+    """The signature of the ``motor-propeller-part-load`` relation: the drive train at a given drag."""
+
+    def __call__(
+        self,
+        ctx: Context,
+        components: Components,
+        v: float,
+        rho: float,
+        k_v: float,
+        i_0: float,
+        r_m: float,
+        u_bat: float,
+        d_prop: float,
+        drag: float,
+    ) -> PartLoad:
+        """Solve the part-load point at the airspeed ``v`` against the drag ``drag`` in N."""
+        ...
 
 
 class EquilibriumRelation(Protocol):
@@ -111,6 +155,35 @@ def equilibrium_of(ctx: Context) -> EquilibriumRelation:
     return cast("EquilibriumRelation", ctx.embedded(_EQUILIBRIUM))
 
 
+def part_load_of(ctx: Context) -> PartLoadRelation:
+    """The embedded ``motor-propeller-part-load`` relation."""
+    return cast("PartLoadRelation", ctx.embedded(_PART_LOAD))
+
+
+async def level_flight_at(x: Inputs, ctx: Context, v: float) -> LevelFlightPoint:
+    """The level-flight point at the speed ``v``: the kernel's one lift-equals-weight solve.
+
+    ``OptiAdapter.level_flight_point`` (the machinery of the level-flight polar: an alpha sweep plus
+    secant steps bounded by the first lift peak, tolerance and step limit ``opt_level_*`` in
+    ``config.yaml``). The caveats stay in the result: the caller forwards those of the answer only.
+
+    Args:
+        x: ``airplane``, ``m`` in kg, ``g`` in m/s^2, ``rho`` in kg/m^3, ``mu`` in Pa s, ``a`` in m/s.
+        ctx: The formula context that holds the solver adapters.
+        v: The speed in m/s.
+
+    Returns:
+        The point (angle, drag, lift) and its caveats.
+
+    Raises:
+        FormulaError: ``not_converged`` from the adapter if the weight is not carried before the
+            first lift peak at this speed.
+    """
+    return await ctx.solvers.opti.level_flight_point(
+        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), v
+    )
+
+
 def balance_tolerance() -> float:
     """The relative interval width at which the balance searches stop (``config.yaml``)."""
     return config().powertrain_balance_tolerance.value
@@ -153,21 +226,60 @@ def terminal_voltage(current: float, r_m: float, n_prop: float, k_v: float) -> f
 
 @dataclass(frozen=True)
 class GridPoint:
-    """The residual and the power coefficient at one grid speed; ``None`` where uncovered.
+    """The residual and the power coefficient at one search speed; ``None`` where uncovered.
 
     Attributes:
-        n: The grid speed in 1/s.
+        n: The speed in 1/s.
         residual: The residual of the balance there, or ``None`` if the table does not cover it.
         c_p: The power coefficient there, or ``None`` if the table does not cover it.
+        edge: Whether the point is a coverage edge found between a covered and an uncovered grid
+            speed (gh-1417), not a grid speed of the table.
+        gap_before: Whether the stretch from the previous point to this one is not covered: the
+            lookup at a grid speed checks that block's advance-ratio range only, so a covered grid
+            speed can have an uncovered interior next to it (the neighbour block's range ends sooner).
     """
 
     n: float
     residual: float | None
     c_p: float | None
+    edge: bool = False
+    gap_before: bool = False
+
+
+def _coverage_edge(
+    state: Callable[[float], tuple[float, float]], covered: float, uncovered: float
+) -> GridPoint | None:
+    """The covered speed nearest the uncovered one, by bisection on coverage; ``None`` if there is none.
+
+    Between two neighbouring table speeds one end is covered and the other is not. The advance ratio
+    ``J = V / (n D)`` falls with the speed, so the covered speeds are those from an edge on (or up to
+    one); the edge is located to the relative width ``powertrain_balance_tolerance``. If the covered
+    end is itself the nearest covered speed (the interpolated table covers nothing between), the edge
+    is that end and nothing is added.
+    """
+    tolerance = balance_tolerance()
+    while abs(covered - uncovered) > tolerance * max(covered, uncovered):
+        middle = 0.5 * (covered + uncovered)
+        try:
+            state(middle)
+        except FormulaError as error:
+            if error.code != "outside_propeller_table":
+                raise
+            uncovered = middle
+        else:
+            covered = middle
+    residual, c_p = state(covered)
+    return GridPoint(covered, residual, c_p, edge=True)
 
 
 def scan_grid(state: Callable[[float], tuple[float, float]], grid: list[float]) -> list[GridPoint]:
-    """The (residual, ``C_P``) at the grid speeds; a point the table does not cover is kept as such."""
+    """The (residual, ``C_P``) at the grid speeds, plus the coverage edges between them.
+
+    A speed the table does not cover is kept as such. Where a covered and an uncovered grid speed
+    are neighbours, the edge of the coverage between them is located and added as a covered point
+    (gh-1417), so that a balance between the edge and the covered speed is found: the table does
+    contain it. The points are in increasing speed.
+    """
     found: list[GridPoint] = []
     for n in grid:
         try:
@@ -178,7 +290,73 @@ def scan_grid(state: Callable[[float], tuple[float, float]], grid: list[float]) 
             found.append(GridPoint(n, None, None))
         else:
             found.append(GridPoint(n, residual, c_p))
-    return found
+    return _with_edges(state, found)
+
+
+def _is_covered(state: Callable[[float], tuple[float, float]], n: float) -> bool:
+    """Whether the table covers the speed ``n`` (the lookup does not raise)."""
+    try:
+        state(n)
+    except FormulaError as error:
+        if error.code != "outside_propeller_table":
+            raise
+        return False
+    return True
+
+
+def _between(
+    state: Callable[[float], tuple[float, float]], low: GridPoint, high: GridPoint
+) -> tuple[list[GridPoint], bool]:
+    """The coverage edge to insert between two neighbouring points, and whether ``high`` has a gap.
+
+    Covered speeds within a pair are those from an edge on (the advance ratio falls with the speed).
+    An uncovered ``low`` with a covered ``high`` gets the edge. A covered ``low`` is probed just
+    inside the pair: if that is uncovered the interior starts at an edge (the neighbour block's range
+    ends sooner), and the stretch up to it is a gap; a covered ``low`` with an uncovered ``high`` gets
+    the edge the other way round.
+    """
+    if low.residual is None:
+        if high.residual is None:
+            return [], False
+        edge = _coverage_edge(state, high.n, low.n)
+        return ([edge] if edge is not None and edge.n != high.n else []), False
+    probe = low.n * (1.0 + balance_tolerance())
+    if _is_covered(state, probe):
+        if high.residual is not None:
+            return [], False
+        edge = _coverage_edge(state, probe, high.n)
+        return ([edge] if edge is not None and edge.n != probe else []), False
+    if high.residual is None:
+        return [], True  # nothing in the pair is covered
+    edge = _coverage_edge(state, high.n, probe)
+    if edge is None or edge.n == high.n:
+        return [], True
+    return [replace(edge, gap_before=True)], False
+
+
+def _with_edges(
+    state: Callable[[float], tuple[float, float]], points: list[GridPoint]
+) -> list[GridPoint]:
+    """The points with the coverage edge inserted where a pair needs one, gaps marked (gh-1417)."""
+    extended: list[GridPoint] = [points[0]]
+    for low, high in pairwise(points):
+        inserted, gap = _between(state, low, high)
+        extended.extend(inserted)
+        extended.append(replace(high, gap_before=True) if gap else high)
+    return extended
+
+
+def covered_pairs(points: list[GridPoint]) -> list[tuple[GridPoint, GridPoint]]:
+    """The neighbouring pairs whose both ends are covered and whose stretch between them is covered.
+
+    Only these can be bisected: a pair across a gap would evaluate an uncovered midpoint. The pairs
+    are in increasing speed.
+    """
+    return [
+        (low, high)
+        for low, high in pairwise(points)
+        if low.residual is not None and high.residual is not None and not high.gap_before
+    ]
 
 
 def bisect_root(

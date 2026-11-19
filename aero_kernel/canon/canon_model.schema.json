@@ -632,6 +632,12 @@
         "butterfly_mix_steps": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "endurance_speed_ratio": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "endurance_speed_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_active_bound_fraction": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -723,7 +729,9 @@
         "opt_body_axis_tolerance",
         "avl_contour_margin",
         "butterfly_mix_steps",
-        "powertrain_balance_tolerance"
+        "powertrain_balance_tolerance",
+        "endurance_speed_ratio",
+        "endurance_speed_tolerance"
       ],
       "title": "KernelConfig",
       "type": "object"

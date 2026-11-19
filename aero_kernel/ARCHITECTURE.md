@@ -248,7 +248,7 @@ nothing failed. The category enum holds only the eight rows above.
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
-- **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, or no balance found on the rpm grid points the table covers; never extrapolated, `detail`: the point and the range, gh-1411); `propeller_windmilling` — the propeller is driven by the airstream (negative `C_P` on the covered points) and the torque balance of a driven propeller has no solution (gh-1411); `no_thrust_at_full_throttle` — the drive train gives no thrust at full throttle, so the thrust demand ratio is undefined (gh-1411); `unsupported_layout` — the neutral point
+- **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, or no balance found on the rpm grid points the table covers; never extrapolated, `detail`: the point and the range, gh-1411); `propeller_windmilling` — the propeller is driven by the airstream (negative `C_P` on the covered points) and the torque balance of a driven propeller has no solution (gh-1411); `no_thrust_at_full_throttle` — the drive train gives no thrust at full throttle, so the thrust demand ratio is undefined (gh-1411); `no_level_flight_speed` — no scan speed of `endurance-and-range-optimum` lies inside the domain (level flight at full throttle or less, on the propeller table; `detail`: the stall speed, the Mach-limit speed and the outcome per speed, gh-1415); `non_positive_battery_power` — the drive train draws no power at a speed, so no flight time follows (gh-1415); `unsupported_layout` — the neutral point
   is defined for one `main_wing` with one `horizontal_tail` or `v_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
   declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
@@ -356,7 +356,7 @@ Sources:
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5); route B of the drive train, `powertrain_route_winding_resistance` (`notice`, `detail.route`, gh-1411): the manufacturer's winding resistance balances the torque, ESC and cable resistance are not in it, the nominal pack voltage is used
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
-- active bounds in the optimiser
+- active bounds in the optimiser: `optimum_at_domain_bound` (`warning`, gh-1415): the greatest endurance or range lies on a bound of the speed domain — the stall speed, the lowest speed the level-flight solve converges at, the Mach limit of the regime, or the last speed the drive train holds (`full_throttle`) or the propeller table covers (`propeller_table`); `detail`: `objective`, `bound`, `edge_v_ms`, `v_ms`
 
 The A11 "not validated" marker is the field `QuantityResult.validated`, not a warning.
 
@@ -1661,7 +1661,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   **raw relation function** and the **context itself records** each distinct item it hands out
   (`Context.embedded_requests`; the engine does not record); an item the formula does not embed is a
   `KeyError` (a defect of the formula). The embedding tests assert that the recorded items equal the entry's
-  `embeds`. The embedder passes **all** of the relation's inputs (the constants and bindings of the
+  `embeds`. The engine hands out the relations of the formula's `embeds_closure`, not only the direct embeds (gh-1415: an embedder of `motor-propeller-part-load` is handed the relations that one reaches through the same context), so the recorded requests of such an embedder equal its closure. The embedder passes **all** of the relation's inputs (the constants and bindings of the
   embedded application are not applied by the handle: the default applications of the propulsion
   relations have none), and a relation that reaches another relation takes the context as its first
   parameter and goes through `ctx.embedded` too (`equilibrium`). The embedders never import a relation
