@@ -64,6 +64,7 @@ def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareD
             "spare_origin": [v * _MM_TO_M for v in spare.spare_origin]
             if spare.spare_origin is not None
             else None,
+            "section": spare.section.scaled(_MM_TO_M) if spare.section is not None else None,
         }
     )
 
@@ -86,6 +87,7 @@ def _convert_spare_to_mm(spare: schemas.SpareDetailSchema) -> schemas.SpareDetai
             "spare_origin": [v * _M_TO_MM for v in spare.spare_origin]
             if spare.spare_origin is not None
             else None,
+            "section": spare.section.scaled(_M_TO_MM) if spare.section is not None else None,
         }
     )
 

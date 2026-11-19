@@ -1,0 +1,90 @@
+[
+  {
+    "manufacturer": "USDA Forest Products Laboratory",
+    "name": "Birch, yellow (Betula alleghaniensis)",
+    "component_type": "material",
+    "source_url": "https://research.fs.usda.gov/treesearch/62200",
+    "source_version": "FPL-GTR-282 (2021), Wood Handbook",
+    "specs": {
+      "bending_strength_mpa": 114.0,
+      "bending_strength_basis": "mean (Table 5-3 values are the estimated average clear wood property of the species)",
+      "bending_strength_source": "Wood Handbook FPL-GTR-282 (2021), Table 5-3a, 'Birch / Yellow', 12% moisture content, modulus of rupture 114,000 kPa, specific gravity 0.62 (PDF p. 120, printed p. 5-4)"
+    }
+  },
+  {
+    "manufacturer": "USDA Forest Products Laboratory",
+    "name": "Birch, sweet (Betula lenta)",
+    "component_type": "material",
+    "source_url": "https://research.fs.usda.gov/treesearch/62200",
+    "source_version": "FPL-GTR-282 (2021), Wood Handbook",
+    "specs": {
+      "bending_strength_mpa": 117.0,
+      "bending_strength_basis": "mean (Table 5-3 values are the estimated average clear wood property of the species)",
+      "bending_strength_source": "Wood Handbook FPL-GTR-282 (2021), Table 5-3a, 'Birch / Sweet', 12% moisture content, modulus of rupture 117,000 kPa, specific gravity 0.65 (PDF p. 120, printed p. 5-4)"
+    }
+  },
+  {
+    "manufacturer": "USDA Forest Products Laboratory",
+    "name": "Birch, paper (Betula papyrifera)",
+    "component_type": "material",
+    "source_url": "https://research.fs.usda.gov/treesearch/62200",
+    "source_version": "FPL-GTR-282 (2021), Wood Handbook",
+    "specs": {
+      "bending_strength_mpa": 85.0,
+      "bending_strength_basis": "mean (Table 5-3 values are the estimated average clear wood property of the species)",
+      "bending_strength_source": "Wood Handbook FPL-GTR-282 (2021), Table 5-3a, 'Birch / Paper', 12% moisture content, modulus of rupture 85,000 kPa, specific gravity 0.55 (PDF p. 120, printed p. 5-4)"
+    }
+  },
+  {
+    "manufacturer": "USDA Forest Products Laboratory",
+    "name": "Balsa (Ochroma pyramidale)",
+    "component_type": "material",
+    "source_url": "https://research.fs.usda.gov/treesearch/62200",
+    "source_version": "FPL-GTR-282 (2021), Wood Handbook",
+    "specs": {
+      "bending_strength_mpa": 21.6,
+      "bending_strength_basis": "reported test result from the world literature; the handbook states Table 5-5 values may not represent average species characteristics because of inadequate sampling",
+      "bending_strength_source": "Wood Handbook FPL-GTR-282 (2021), Table 5-5a, 'Balsa (Ochroma pyramidale)', 12% moisture content, modulus of rupture 21,600 kPa (PDF p. 134, printed p. 5-18)"
+    }
+  },
+  {
+    "manufacturer": "USDA Forest Products Laboratory",
+    "name": "Obeche (Triplochiton scleroxylon)",
+    "component_type": "material",
+    "source_url": "https://research.fs.usda.gov/treesearch/62200",
+    "source_version": "FPL-GTR-282 (2021), Wood Handbook",
+    "specs": {
+      "bending_strength_mpa": 51.0,
+      "bending_strength_basis": "reported test result from the world literature; the handbook states Table 5-5 values may not represent average species characteristics because of inadequate sampling",
+      "bending_strength_source": "Wood Handbook FPL-GTR-282 (2021), Table 5-5a, 'Obeche (Triplochiton scleroxylon)', 12% moisture content, modulus of rupture 51,000 kPa (PDF p. 135, printed p. 5-19)"
+    }
+  },
+  {
+    "manufacturer": "Goodwinds",
+    "name": "Carbon rod, pultruded, over 0.156 in (Goodwinds)",
+    "component_type": "material",
+    "source_url": "https://www.aircraftspruce.com/catalog/pdf/Goodwinds%20RodsTubes%20Specs.pdf",
+    "source_version": "Goodwinds Rods & Tubes specifications (Aircraft Spruce catalog PDF), retrieved 2026-11-19",
+    "specs": {
+      "bending_strength_mpa": 1830.0,
+      "bending_strength_basis": "minimum (the data sheet's table is headed 'Minimum Properties')",
+      "bending_strength_source": "Goodwinds Rods & Tubes specifications, table 'Minimum Properties - Carbon Rods > .156\"': Flexural Strength 265 ksi / 1.83 GPa, fibre volume 62%, matrix bisphenol epoxy vinyl ester; test method not stated. The same values are printed in the TAP Plastics data sheet 'Pultruded Carbon Rods & Tubes' (.240\" carbon rod)",
+      "fiber_orientation": "UD",
+      "density_kg_m3": 1500.0
+    }
+  },
+  {
+    "manufacturer": "Goodwinds",
+    "name": "Carbon tube, pultruded (Goodwinds)",
+    "component_type": "material",
+    "source_url": "https://www.aircraftspruce.com/catalog/pdf/Goodwinds%20RodsTubes%20Specs.pdf",
+    "source_version": "Goodwinds Rods & Tubes specifications (Aircraft Spruce catalog PDF), retrieved 2026-11-19",
+    "specs": {
+      "bending_strength_mpa": 1370.0,
+      "bending_strength_basis": "minimum (the data sheet's table is headed 'Minimum Properties')",
+      "bending_strength_source": "Goodwinds Rods & Tubes specifications, table 'Carbon tube - Minimum Properties': Flexural Strength 200 ksi / 1.37 GPa, fibre volume 60%, matrix bisphenol epoxy vinyl ester; test method not stated. The same values are printed in the TAP Plastics data sheet 'Pultruded Carbon Rods & Tubes' (carbon tube)",
+      "fiber_orientation": "UD",
+      "density_kg_m3": 1500.0
+    }
+  }
+]

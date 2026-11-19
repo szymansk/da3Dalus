@@ -379,6 +379,39 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
                 "min": 0.0,
                 "description": "E for future deflection checks (GPa).",
             },
+            # gh-1428: the PUBLISHED breaking strength in bending, as the source states it.
+            # No safety, resistance or knock-down factor is folded in (unlike
+            # allowable_bending_stress_mpa, which already carries a safety factor and is never
+            # given to the kernel as a strength). Entered only through a committed snapshot.
+            {
+                "name": "bending_strength_mpa",
+                "label": "Published Bending Strength",
+                "type": "number",
+                "unit": "MPa",
+                "required": False,
+                "min": 0.0,
+                "description": (
+                    "Breaking strength in bending exactly as a handbook or data sheet publishes "
+                    "it (no safety factor)."
+                ),
+            },
+            {
+                "name": "bending_strength_basis",
+                "label": "Strength Basis",
+                "type": "string",
+                "required": False,
+                "description": (
+                    "What the published strength is, as the source states it: mean, minimum, "
+                    "characteristic, or the source's own wording."
+                ),
+            },
+            {
+                "name": "bending_strength_source",
+                "label": "Strength Source",
+                "type": "string",
+                "required": False,
+                "description": "Document, table, page and condition the strength is cited from.",
+            },
         ],
     },
     {

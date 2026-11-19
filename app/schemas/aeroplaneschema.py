@@ -1,6 +1,6 @@
 import math
 from enum import Enum
-from typing import Literal, Optional, OrderedDict
+from typing import Annotated, Literal, Optional, OrderedDict
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
@@ -297,6 +297,70 @@ class TurbulatorDetailSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class _SparSectionBase(BaseModel):
+    """Base of the spar cross-sections (geometry format version 3, gh-1428).
+
+    Every dimension is in the unit of its context: metres in the API and the airplane document,
+    millimetres in the database (gh-402). ``scaled`` converts between the two.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    def scaled(self, factor: float):
+        """The same section with every dimension multiplied by ``factor``."""
+        return self.model_copy(
+            update={
+                name: getattr(self, name) * factor
+                for name in type(self).model_fields
+                if name != "shape"
+            }
+        )
+
+
+class RodSparSection(_SparSectionBase):
+    shape: Literal["rod"]
+    diameter: float = Field(..., gt=0.0, description="Diameter")
+
+
+class TubeSparSection(_SparSectionBase):
+    shape: Literal["tube"]
+    outer_diameter: float = Field(..., gt=0.0, description="Outer diameter")
+    wall_thickness: float = Field(
+        ..., gt=0.0, description="Wall thickness; the inner diameter is outer - 2 * wall"
+    )
+
+    @model_validator(mode="after")
+    def _wall_inside_radius(self):
+        if self.wall_thickness >= self.outer_diameter / 2.0:
+            raise ValueError("wall_thickness must be smaller than half the outer_diameter")
+        return self
+
+
+class RectangularSparSection(_SparSectionBase):
+    shape: Literal["rectangular"]
+    width: float = Field(..., gt=0.0, description="Extent across the chord")
+    height: float = Field(..., gt=0.0, description="Extent in the airfoil thickness direction")
+
+
+class CappedSparSection(_SparSectionBase):
+    shape: Literal["capped"]
+    width: float = Field(..., gt=0.0, description="Flange width across the chord")
+    height: float = Field(..., gt=0.0, description="Outer height over both flanges")
+    flange_thickness: float = Field(..., gt=0.0, description="Thickness of one flange")
+
+    @model_validator(mode="after")
+    def _flanges_leave_a_gap(self):
+        if self.flange_thickness >= self.height / 2.0:
+            raise ValueError("flange_thickness must be smaller than half the height")
+        return self
+
+
+SparSectionSchema = Annotated[
+    RodSparSection | TubeSparSection | RectangularSparSection | CappedSparSection,
+    Field(discriminator="shape"),
+]
+
+
 class SpareDetailSchema(BaseModel):
     spare_support_dimension_width: float = Field(..., description="Spar support width in meters")
     spare_support_dimension_height: float = Field(..., description="Spar support height in meters")
@@ -312,6 +376,17 @@ class SpareDetailSchema(BaseModel):
     )
     spare_vector: Optional[list[float]] = Field(None, description="Spar direction vector [x, y, z]")
     spare_origin: Optional[list[float]] = Field(None, description="Spar origin [x, y, z] in meters")
+    section: Optional[SparSectionSchema] = Field(
+        None,
+        description=(
+            "Cross-section of the spar itself (geometry format v3), tagged by shape, in meters. "
+            "The smallest section the spar has within this segment. Independent of the pocket."
+        ),
+    )
+    material: Optional[str] = Field(
+        None,
+        description="Name of the material component whose published bending strength applies",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
