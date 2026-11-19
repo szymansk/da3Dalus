@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:a5e8aa02faabeb6282822b6738e9efe2318cb4d7a50c417e03b47975ac2f1694",
+  "content_hash": "sha256:889dbcdd6e2de934311fc01212dba45fc29cc5ee00d9cb52949dad44c8c3d7ea",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -860,6 +860,10 @@
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "mu": "calc:dynamic-viscosity",
+                "n_load": {
+                  "const": 1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
+                },
                 "rho": "calc:air-density",
                 "v_app": "calc:approach-speed"
               },
@@ -887,6 +891,7 @@
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
             "mu": "calc:dynamic-viscosity",
+            "n_load": null,
             "rho": "calc:air-density",
             "v_app": "calc:approach-speed"
           },
@@ -906,7 +911,20 @@
               "parameter": "v_s0_curve"
             }
           ],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "approach_speed_positive",
+              "on_violation": "error",
+              "parameter": "v_app"
+            },
+            {
+              "applications": null,
+              "id": "crow_aileron_not_negative",
+              "on_violation": "error",
+              "parameter": "delta_a_crow"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [],

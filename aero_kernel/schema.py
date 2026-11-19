@@ -629,18 +629,19 @@ class Curve(BaseModel):
     """A sampled function of one variable (ch. 8.12): the canon type ``curve``.
 
     Attributes:
-        x: The variable, strictly rising.
+        x: The variable, strictly rising; empty where the curve has no point (a glide angle
+            that does not exist).
         y: The value at each sample.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    x: tuple[FiniteFloat, ...] = Field(min_length=2)
+    x: tuple[FiniteFloat, ...]
     y: tuple[FiniteFloat, ...]
 
     @model_validator(mode="after")
     def _check_series(self) -> Self:
-        """Require equally long series and a strictly rising variable."""
+        """Require equally long series and a strictly rising variable (empty: no point)."""
         if len(self.x) != len(self.y):
             msg = "x and y must have the same length"
             raise ValueError(msg)

@@ -14,7 +14,7 @@ def test_a_curve_holds_equally_long_series_over_a_rising_variable() -> None:
 
 @pytest.mark.parametrize(
     "change",
-    [{"y": (1.0, 2.0)}, {"x": (0.0, 0.0, 1.0)}, {"x": (0.0, 1.0, 0.5)}, {"x": (0.0,), "y": (1.0,)}],
+    [{"y": (1.0, 2.0)}, {"x": (0.0, 0.0, 1.0)}, {"x": (0.0, 1.0, 0.5)}],
 )
 def test_a_curve_refuses_unequal_or_unordered_series(change: dict[str, object]) -> None:
     fields: dict[str, object] = {"x": (0.0, 0.5, 1.0), "y": (1.0, 2.0, 3.0)}
@@ -38,3 +38,7 @@ def test_a_stall_curve_refuses_a_missing_sweep() -> None:
         StallCurve(
             x=(0.0, 1.0), y=(8.0, 9.0), alpha_s=(12.0, 11.0), cl_max=(1.2, 1.0), polars=(POLAR,)
         )
+
+
+def test_an_empty_curve_is_a_curve_without_points() -> None:
+    assert Curve(x=(), y=()).x == ()

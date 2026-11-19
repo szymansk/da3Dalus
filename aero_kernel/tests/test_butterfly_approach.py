@@ -10,10 +10,13 @@ from typing import Any
 import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.context import Context
+from aero_kernel.devices import with_flaps_at
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.butterfly_approach import (
+    approach_speed_positive,
     butterfly_approach,
+    crow_aileron_not_negative,
     optimum_at_first_cl_peak,
 )
 from aero_kernel.geometry import AirplaneGeometry
@@ -21,6 +24,7 @@ from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
     Curve,
+    KernelWarning,
     Polar,
     QuantityStatus,
     StallCurve,
@@ -100,6 +104,7 @@ class CrowStub(StubOpti):
         super().__init__()
         self.stall_airplanes: list[AirplaneGeometry] = []
         self.glide_speeds: list[float] = []
+        self.n_loads: list[float] = []
 
     async def stall(
         self,
@@ -110,6 +115,7 @@ class CrowStub(StubOpti):
         air: AirState,
     ) -> Stall:
         self.stall_airplanes.append(airplane)
+        self.n_loads.append(n_load)
         return Stall(solution=stall_of(airplane, mass_kg, gravity, air), warnings=())
 
     async def glide_point(
@@ -127,12 +133,11 @@ class CrowStub(StubOpti):
 def inputs(**change: object) -> dict[str, object]:
     landing = 30.0
     airplane = AirplaneGeometry.model_validate(document())
-    from aero_kernel.devices import with_flaps_at
-
     base: dict[str, object] = {
         "airplane": with_flaps_at(airplane, landing),
         "m": MASS,
         "g": GRAVITY,
+        "n_load": 1.0,
         "rho": RHO,
         "mu": AIR.dynamic_viscosity,
         "a": AIR.speed_of_sound,
@@ -146,8 +151,6 @@ def inputs(**change: object) -> dict[str, object]:
 
 def v_stall_landing() -> float:
     flapped = AirplaneGeometry.model_validate(document())
-    from aero_kernel.devices import with_flaps_at
-
     return stall_of(with_flaps_at(flapped, 30.0), MASS, GRAVITY, AIR).v_s
 
 
@@ -237,20 +240,140 @@ async def test_an_approach_speed_at_or_below_the_landing_stall_speed_has_the_lar
     assert out["s_max"] == 0.0
 
 
-@pytest.mark.parametrize(
-    ("name", "value"),
-    [("delta_a_crow", -5.0), ("v_app", 0.0), ("v_app", -3.0)],
-)
-async def test_an_inadmissible_input_is_refused_before_any_solve(name: str, value: float) -> None:
+async def test_the_preconditions_hold_for_a_crow_approach() -> None:
+    x = inputs()
+    assert approach_speed_positive(x).state == "held"
+    assert crow_aileron_not_negative(x).state == "held"
+
+
+@pytest.mark.parametrize("v_app", [0.0, -3.0])
+async def test_an_approach_speed_not_above_zero_violates_its_precondition(v_app: float) -> None:
+    assert approach_speed_positive(inputs(v_app=v_app)).state == "violated"
+
+
+async def test_a_negative_crow_aileron_angle_violates_its_precondition() -> None:
+    result = crow_aileron_not_negative(inputs(delta_a_crow=-5.0))
+    assert result.state == "violated"
+    assert "raised" in result.message
+
+
+async def test_the_engine_refuses_a_negative_crow_aileron_angle_before_any_solve() -> None:
     stub = CrowStub()
+    result = await engine({"crow-aileron-deflection": -5.0}, stub=stub)
+    quantity = result.quantities[0]
+    assert quantity.status is QuantityStatus.ERROR
+    assert quantity.error is not None
+    assert quantity.error.code == "precondition_violated"
+    assert quantity.error.detail == {"precondition": "crow_aileron_not_negative"}
+    assert not any(device_angles(a)[1] != 0.0 for a in stub.stall_airplanes)
+
+
+async def test_the_stall_problem_is_the_level_one_bound_by_the_canon() -> None:
+    stub = CrowStub()
+    await engine({"approach-speed-margin-target": 1.05}, stub=stub)
+    assert set(stub.n_loads) == {1.0}
+
+
+async def test_a_mix_on_another_branch_is_named_even_when_the_stall_never_reaches_the_approach_speed() -> (
+    None
+):
+    class OffPeak(CrowStub):
+        async def stall(self, airplane: AirplaneGeometry, *args: Any) -> Stall:  # type: ignore[override]
+            stall = await super().stall(airplane, *args)
+            if abs(device_angles(airplane)[1] + 20.0) < 1e-9:
+                flat = Polar(
+                    alpha_deg=stall.solution.polar.alpha_deg,
+                    cl=tuple(0.5 for _ in stall.solution.polar.cl),
+                    cd=stall.solution.polar.cd,
+                )
+                return Stall(
+                    solution=stall.solution.model_copy(update={"polar": flat}), warnings=()
+                )
+            return stall
+
     with pytest.raises(FormulaError) as raised:
-        await run(stub, **{name: value})
-    assert raised.value.category is ErrorCategory.INVALID_INPUT
-    assert raised.value.parameter == name
-    assert stub.stall_airplanes == []
+        await run(OffPeak(), v_app=1.3 * v_stall_landing())
+    error = raised.value
+    assert error.code == "postcondition_violated"
+    assert error.detail == {"postcondition": "optimum_at_first_cl_peak", "mix": 0.5}
 
 
-async def test_the_flap_validity_is_declared_at_full_crow() -> None:
+async def test_an_approach_speed_below_the_landing_stall_gives_zero_without_reading_a_glide() -> (
+    None
+):
+    class Refusing(CrowStub):
+        async def glide_point(self, *args: Any) -> GlidePoint:  # type: ignore[override]
+            self.glide_speeds.append(args[-1])
+            raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "below the stall", "h")
+
+    stub = Refusing()
+    out = await run(stub, v_app=0.9 * v_stall_landing())
+    assert out["s_max"] == 0.0
+    assert stub.glide_speeds == []
+    assert out["gamma_curve"].x == ()
+    assert len(out["v_app_curve"].x) == 11
+
+
+def fit_warning(flap: float, aileron: float, confidence: float) -> KernelWarning:
+    return KernelWarning.of(
+        "control_surface_fit_range_unknown",
+        "fit range unknown",
+        detail={
+            "flaps": [
+                {"wing": "Main", "device": "F", "deflection_deg": flap},
+                {"wing": "Main", "device": "A", "deflection_deg": aileron},
+            ],
+            "devices": [{"wing": "Main", "device": "F", "mean_confidence": confidence}],
+            "min_confidence": confidence,
+        },
+    )
+
+
+class Noisy(CrowStub):
+    """Regime messages that embed the Reynolds number of each speed, fit-range caveats per mix."""
+
+    async def stall(self, airplane: AirplaneGeometry, *args: Any) -> Stall:  # type: ignore[override]
+        stall = await super().stall(airplane, *args)
+        flap, aileron = device_angles(airplane)
+        warnings = (
+            KernelWarning.of(
+                "reynolds_bubble_sensitive", f"Re {stall.solution.v_s * 1e4:.0f}", detail={}
+            ),
+            fit_warning(flap, aileron, 1.0 - flap / 100.0),
+        )
+        return Stall(solution=stall.solution, warnings=warnings)
+
+
+async def test_the_forwarded_caveats_are_the_reference_solves_and_the_worst_case_of_the_sweep() -> (
+    None
+):
+    stub = Noisy()
+    context_ = context(stub)
+    await butterfly_approach(inputs(), context_)  # type: ignore[arg-type]
+    regime = [w for w in context_.warnings if w.code == "reynolds_bubble_sensitive"]
+    assert len(regime) <= 2  # the landing stall and the bracketing sample, not one per mix
+    (fit,) = [w for w in context_.warnings if w.code == "control_surface_fit_range_unknown"]
+    flaps = {f["device"]: f["deflection_deg"] for f in fit.detail["flaps"]}  # type: ignore[index, union-attr]
+    assert flaps == {"F": 60.0, "A": -40.0}  # the largest deflection of each device
+    assert fit.detail["min_confidence"] == pytest.approx(0.4)  # type: ignore[attr-defined]
+
+
+async def test_the_validity_follows_the_largest_deflection_not_full_crow() -> None:
+    """A crow flap below the landing flap: the landing flap, at s = 0, is the one declared."""
+    stub = CrowStub()
+    context_ = context(stub)
+    await butterfly_approach(
+        inputs(
+            airplane=with_flaps_at(AirplaneGeometry.model_validate(document()), 60.0),
+            delta_f_ldg=60.0,
+            delta_f_crow=20.0,
+        ),  # type: ignore[arg-type]
+        context_,
+    )  # type: ignore[arg-type]
+    assert "flap_deflection_beyond_validity" in {w.code for w in context_.warnings}
+
+
+async def test_the_flap_validity_is_declared_above_the_limit() -> None:
     """A crow flap above the flap-validity limit gives the declaration, the value is still computed."""
     stub = CrowStub()
     context_ = context(stub)

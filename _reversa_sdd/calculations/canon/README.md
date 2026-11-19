@@ -758,6 +758,7 @@ inputs:
   airplane: null
   m: aircraft-mass
   g: gravity
+  n_load: null
   rho: air-density
   mu: dynamic-viscosity
   a: speed-of-sound
@@ -772,8 +773,11 @@ outputs:
   s_max: butterfly-max-mix
 applications:
   - id: crow
-    bind: {airplane: airplane-landing}
+    bind: {airplane: airplane-landing, n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
     when: has_separate_flap_and_aileron
+preconditions:
+  - {id: approach_speed_positive, parameter: v_app, on_violation: error}
+  - {id: crow_aileron_not_negative, parameter: delta_a_crow, on_violation: error}
 postconditions:
   - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
 ```

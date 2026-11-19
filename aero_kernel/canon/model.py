@@ -682,6 +682,15 @@ class KernelConfig(BaseModel):
     avl_contour_margin: ConfigValue
     butterfly_mix_steps: ConfigValue
 
+    @model_validator(mode="after")
+    def _check_mix_steps(self) -> Self:
+        """Require the crow mix to be sampled in a whole number of steps, at least one."""
+        steps = self.butterfly_mix_steps.value
+        if steps < 1.0 or steps != round(steps):
+            msg = "butterfly_mix_steps must be a whole number of at least 1"
+            raise ValueError(msg)
+        return self
+
 
 class Namespace(BaseModel):
     """One canon of the model: its quantities, formulas and defaults, keyed by bare slug.
