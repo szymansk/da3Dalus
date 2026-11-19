@@ -684,6 +684,13 @@ class KernelConfig(BaseModel):
     avl_contour_margin: ConfigValue
     butterfly_mix_steps: ConfigValue
     powertrain_balance_tolerance: ConfigValue
+    powered_speed_scan_start: ConfigValue
+    powered_speed_scan_step: ConfigValue
+    powered_speed_scan_limit: ConfigValue
+    powered_root_tolerance: ConfigValue
+    powered_optimum_tolerance: ConfigValue
+    powered_load_factor_tolerance: ConfigValue
+    powered_search_max_steps: ConfigValue
     endurance_speed_ratio: ConfigValue
     endurance_speed_tolerance: ConfigValue
 

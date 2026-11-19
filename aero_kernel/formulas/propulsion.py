@@ -18,7 +18,10 @@ from aero_kernel.errors import FormulaError
 from aero_kernel.formulas.values import air_state, airplane_of, number
 from aero_kernel.solvers.opti import LevelFlightPoint
 
+LEVEL_FLIGHT = 1.0  # the load factor of level flight: L = W (definition of n = L / W)
+
 __all__ = [
+    "LEVEL_FLIGHT",
     "RPM_PER_HZ",
     "Balance",
     "Coefficients",
@@ -31,6 +34,7 @@ __all__ = [
     "current_at_speed",
     "current_for_torque",
     "equilibrium_of",
+    "full_throttle_thrust",
     "level_flight_at",
     "motor_torque",
     "optional",
@@ -155,6 +159,34 @@ def equilibrium_of(ctx: Context) -> EquilibriumRelation:
     return cast("EquilibriumRelation", ctx.embedded(_EQUILIBRIUM))
 
 
+def full_throttle_thrust(
+    ctx: Context,
+    components: Components,
+    v: float,
+    rho: float,
+    k_v: float,
+    i_0: float | None,
+    r_m: float | None,
+    u_bat: float,
+    d_prop: float,
+) -> float:
+    """The thrust in N the drive train gives at full throttle at the airspeed ``v``.
+
+    The one composition of the four embedded relations: the torque balance of the motor and the
+    propeller at ``v`` (``motor-propeller-equilibrium``), the advance ratio there, the table's thrust
+    coefficient and the thrust from it. ``static-thrust-to-weight`` (``v = 0``),
+    ``motor-propeller-part-load`` and the powered-performance formulas call it (ADR 0022).
+
+    Raises:
+        FormulaError: The failures of the relations, unchanged (``missing_input`` for an absent
+            ``r_m`` or ``i_0``; ``outside_propeller_table``; ``propeller_windmilling``).
+    """
+    balance = equilibrium_of(ctx)(ctx, components, v, rho, k_v, i_0, r_m, u_bat, d_prop)
+    j = advance_ratio_of(ctx)(v, balance.n_prop, d_prop)
+    c_t = table_lookup_of(ctx)(components, j, balance.n_prop).c_t
+    return thrust_of(ctx)(c_t, rho, balance.n_prop, d_prop)
+
+
 def part_load_of(ctx: Context) -> PartLoadRelation:
     """The embedded ``motor-propeller-part-load`` relation."""
     return cast("PartLoadRelation", ctx.embedded(_PART_LOAD))
@@ -180,7 +212,7 @@ async def level_flight_at(x: Inputs, ctx: Context, v: float) -> LevelFlightPoint
             first lift peak at this speed.
     """
     return await ctx.solvers.opti.level_flight_point(
-        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), v
+        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), v, LEVEL_FLIGHT
     )
 
 

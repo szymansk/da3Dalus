@@ -248,7 +248,7 @@ nothing failed. The category enum holds only the eight rows above.
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
-- **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, or no balance found on the rpm grid points the table covers; never extrapolated, `detail`: the point and the range, gh-1411); `propeller_windmilling` — the propeller is driven by the airstream (negative `C_P` on the covered points) and the torque balance of a driven propeller has no solution (gh-1411); `no_thrust_at_full_throttle` — the drive train gives no thrust at full throttle, so the thrust demand ratio is undefined (gh-1411); `no_level_flight_speed` — no scan speed of `endurance-and-range-optimum` lies inside the domain (level flight at full throttle or less, on the propeller table; `detail`: the stall speed, the Mach-limit speed and the outcome per speed, gh-1415); `non_positive_battery_power` — the drive train draws no power at a speed, so no flight time follows (gh-1415); `unsupported_layout` — the neutral point
+- **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, or no balance found on the rpm grid points the table covers; never extrapolated, `detail`: the point and the range, gh-1411); `propeller_windmilling` — the propeller is driven by the airstream (negative `C_P` on the covered points) and the torque balance of a driven propeller has no solution (gh-1411); `no_thrust_at_full_throttle` — the drive train gives no thrust at full throttle, so the thrust demand ratio is undefined (gh-1411); `no_feasible_speed` — the airplane cannot fly the state of a powered-performance formula at any speed at full throttle: the thrust is below the drag, the wing cannot carry the lift, or the propeller table ends before any speed is feasible (the message says which; gh-1414); `no_level_flight_speed` — no scan speed of `endurance-and-range-optimum` lies inside the domain (level flight at full throttle or less, on the propeller table; `detail`: the stall speed, the Mach-limit speed and the outcome per speed, gh-1415); `non_positive_battery_power` — the drive train draws no power at a speed, so no flight time follows (gh-1415); `unsupported_layout` — the neutral point
   is defined for one `main_wing` with one `horizontal_tail` or `v_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
   declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
@@ -919,6 +919,25 @@ caller's responsibility.
     D_induced`. Every value that carries the correction — the evaluation, best glide, minimum sink, the level-flight polar — gets the
     `notice` `induced_drag_viscous_factor_removed` (ch. 8.2), once per
     evaluation, with `k_e_d0` and `induced_drag_share_removed` (`1 − k_e,D0`) in `detail`.
+  - **Implementation note, powered performance at full throttle (#1414).** The six formulas `max-level-speed`,
+    `dive-speed`, `best-rate-of-climb`, `best-angle-of-climb`, `max-sustained-turn-rate` and
+    `min-sustained-turn-radius` share `formulas/powered_flight.py` (ADR 0022): the thrust at full throttle is
+    `propulsion.full_throttle_thrust` (the composition of the four embedded relations, also used by
+    `static-thrust-to-weight` and `motor-propeller-part-load`), the drag at a lift `n m g` is
+    `OptiAdapter.level_flight_point(..., n_load)` (the one lift-equals-weight solve, now with the load factor:
+    level flight 1, a turn `n`, a climb `cos(gamma)`, a vertical dive 0; a wing that cannot carry the lift before
+    its first C_L peak is `not_converged` with `detail.limit = "wing_lift"`, which the formulas read as the wing
+    limit, a bound and not an error). The entries pose IPOPT problems; the motor-propeller balance is a bisection on
+    the propeller table and cannot enter one, so `alpha` and `n_prop` are eliminated by the two solves and the
+    rest is a one-dimensional search over the speed: an upward scan (`powered_speed_scan_*`), Illinois regula
+    falsi for roots and golden section for maxima (`powered_*` in `config.yaml`). Warnings of the iterates are not
+    forwarded, those of the answer's evaluation are. A bound the optimum lies on is declared with the `notice`
+    `powered_limit_declared` (`detail.limit`: `gamma_90_deg`, `wing`, `thrust`, `structure`); speeds the upward scan
+    skips below the first speed with a value are declared by the `notice` `powered_speeds_skipped` (count, range, reason).
+    An evaluation is a value or an `Unflyable` (`wing`, `thrust`, `table`); only the adapter's `limit = wing_lift` failure
+    is the wing, every other failure (a sweep without a peak, a zero-lift angle outside the sweep) is raised. The end of
+    the propeller table is a bound of the search: an interior optimum is returned, one on the edge is
+    `outside_propeller_table`, not an extrapolation.
   - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
     polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
     `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the
@@ -1966,12 +1985,12 @@ model (part of `IMPORT_REPORT.md`).
 | `airplane-geometry` | procedure | GEO | law | 1 → 3 | 1 | – | – | instant | core chain |
 | `aspect-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `battery-mass-from-capacity` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1411) |
-| `best-angle-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | later |
-| `best-rate-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | later |
+| `best-angle-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
+| `best-rate-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
 | `butterfly-approach` | optimization | OPT | law | 10 → 4 | 1 | – | – | seconds | later · implemented (#1402) |
 | `cg-for-target-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `cruise-target-performance` | procedure | OPT | law | 14 → 2 | 1 | – | – | seconds | later |
-| `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
+| `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
 | `drag-polar` | law | APP | approximation | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `dynamic-pressure` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `endurance-and-range` | procedure | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
@@ -1983,14 +2002,14 @@ model (part of `IMPORT_REPORT.md`).
 | `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | core chain · implemented (#1334) |
 | `maneuvering-speed` | optimization | OPT | law | 7 → 1 | 1 | – | – | seconds | later · implemented (#1381) |
 | `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
-| `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
+| `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe · implemented for complete data, route B (#1414) |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `roll-rate-cruise-target` | procedure | OPT | law | 9 → 1 | 1 | – | A11 | seconds | later · implemented (#1382) |
 | `roll-rate` | procedure | OPT | law | 5 → 2 | 1 | – | A11 | seconds | core chain |
-| `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
+| `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
 | `mean-geometric-chord` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
-| `min-sustained-turn-radius` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
+| `min-sustained-turn-radius` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
 | `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `minimum-drag-speed` | optimization | OPT | route | 5 → 2 | 1 | – | – | seconds | core chain |
 | `minimum-sink-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | core chain |

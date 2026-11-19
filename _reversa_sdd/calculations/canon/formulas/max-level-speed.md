@@ -64,9 +64,17 @@ subject to:   L(V, alpha) = m * g
 
 **Multi-start.** The problem has a spurious branch below the stall, where the polar's post-stall drag rise also satisfies `T ≥ D`; on BRYAN one start converged there (5.9 m/s at α = 16.7°). Solve from several starting speeds and keep the largest feasible `V` with no stall-side bound active.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/max_level_speed.py` | DEVIATES | 🟢 | the highest root of `T_full(V) - D(V)` (upward scan of the speed from 2 m/s in 2 m/s steps, Illinois regula falsi), the drag from the level-flight point (`n = 1`) before the stall, so the spurious post-stall branch of the entry's multi-start rule cannot occur. If the thrust is still above the drag where the table ends, the value is `outside_propeller_table`; if it is never above the drag, `no_feasible_speed`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** Warnings forwarded: those of the answer's level-flight point (flap, Reynolds, Mach and the drag notice of the adapter) and the route notice; those of the search iterates are not. New error code `no_feasible_speed` (`unsupported_configuration`): the thrust is below the drag at every speed the wing can fly (or the propeller table covers).
+
+**Implementation remark on method and assumptions (#1414).** Solved as the largest `V` with `T - D >= 0`: an upward scan of the speed to the end of the evaluable range (the scan limit, or the end of the propeller table, which is a bound of the search) keeps the *last* positive-to-negative change of `T - D`, refined by Illinois regula falsi. Assumptions: features of `T - D` no narrower than the scan step (2 m/s, `powered_speed_scan_step`; a dip and recovery inside one step can be missed); the thrust still above the drag where the table ends is the declared failure `outside_propeller_table` (the optimum is on the bound), not a value. Speeds the wing cannot fly are skipped and declared by the notice `powered_speeds_skipped`.
 
 ## Approval
 

@@ -58,6 +58,8 @@ gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is 
 
 **Termination.** The bound `0 ≤ γ ≤ π/2` is part of the problem: without it the inverted solution `γ = π` (`L = −m·g`, `T ≥ D`) would be feasible and larger than any upright climb angle; `sin` and `cos` are periodic, so without the bound the problem is unbounded in `γ` and has no maximum. `γ` is in radians inside `sin` and `cos` and is converted to degrees for the output. Approval asks for **no bound active at the optimum** — with one declared exception: `gamma` at its 90° bound means the aircraft climbs vertically at that speed. Any other active bound, and a failed solve, return no value (ADR 0020).
 
+**Remark on Termination (#1414).** An optimum on the stall corner is returned together with the notice `powered_limit_declared` (`limit` `wing`) instead of being withheld; reasons as in `best-rate-of-climb`: the best angle of climb sits on or within 1 % of the stall corner on every airplane measured (closed-form airplane at 3.4 and 6.0 kg; Avistar Elite `V_x` 10.0 m/s at 40.6 deg with `C_L` 1.19 against 1.22 at the stall).
+
 **The current is a verdict, not a constraint.** The optimum yields the motor current. Above the motor's, the controller's or the battery's limit the drive is overloaded at full throttle — reported, not optimised away.
 
 **Model fidelity is declared** (`Q-PT-6`): which route of the torque balance ran, and that the battery voltage is nominal.
@@ -72,9 +74,17 @@ gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is 
 
 **When the answer is vertical, `V_x` is not unique.** With thrust above weight the climb angle reaches 90° over a whole speed range (BRYAN: from about 3 m/s — hanging on the propeller). Then the result is "climbs vertically", with the range if wanted, and no single `V_x`.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/best_angle_of_climb.py` | DEVIATES | 🟢 | per speed the steepest steady climb angle (as `best-rate-of-climb`), then the maximum of `gamma` over the speed. The vertical case returns `gamma = 90 deg` at the upper edge of the speed range in which the climb is vertical (the entry: no single `V_x`), declared by the notice `powered_limit_declared`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** The optimum of the angle of climb lies on, or within 1 % of, the stall corner: on a closed-form airplane with a thrust-to-weight ratio near 1 the steepest angle is flown at the lowest speed at which the wing still carries `m g cos gamma`; on the Avistar Elite (AXI 4120/14 on 4S, APC 13x8E) `V_x` is 10.0 m/s at 40.6 deg, below the level-flight stall speed of 11.4 m/s because a steep path needs less lift, at `C_L` 1.19 against 1.22 at the stall. A corner optimum is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see #1414 (the entry's Termination text asks for no value there; see the remark on Termination).
+
+**Implementation remark on method and assumptions (#1414).** As `best-rate-of-climb`, with the angle itself as the objective. Assumptions: one maximum of the angle over the speed; one root of the excess over the angles the wing can carry; features no narrower than the scan step (2 m/s).
 
 ## Approval
 

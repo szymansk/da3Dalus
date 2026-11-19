@@ -58,6 +58,8 @@ gamma in radians inside sin and cos; where it is reported, it is converted to de
 
 **Termination.** The bound `0 ≤ γ ≤ π/2` is part of the problem: without it every upright climb `γ` has a mirrored inverted twin `γ' = π − γ` in `(π/2, π]` — the same `sin γ`, `cos γ' = −cos γ`, hence `L = −m·g·cos γ` — which is feasible with the same objective value `V·sin γ`, so the optimum would not be unique. `γ` is in radians inside `sin` and `cos`; this entry outputs no angle, and where `γ` is reported it is converted to degrees. Approval asks for **no bound active at the optimum** — with one declared exception: `gamma` at its 90° bound means the aircraft climbs vertically at that speed. Any other active bound, and a failed solve, return no value (ADR 0020).
 
+**Remark on Termination (#1414).** An optimum on the stall corner (the wing cannot carry the lift of a slower speed) is returned together with the notice `powered_limit_declared` (`limit` `wing`; detail: speed, `C_L`, climb angle, `cos gamma`, the lowest evaluated level-flight speed) instead of being withheld. Reason: for the best angle of climb the optimum measured on the closed-form test airplane (3.4 kg and 6.0 kg) and on the Avistar Elite (`V_x` 10.0 m/s, `C_L` 1.19 against 1.22 at the stall, below the level-flight stall speed of 11.4 m/s) lies on or within 1 % of the stall corner, so withholding it would leave the question without an answer for the airplanes tried; the sibling decision of #1268 for `minimum-sink-speed` returns the boundary value with a notice, and the sustained-turn entries name the wing limit as a declared bound with a value. The maintainer may restore the text above (no value) by raising `not_converged` where `Optimum.on_wing_limit` is set.
+
 **The current is a verdict, not a constraint.** The optimum yields the motor current. Above the motor's, the controller's or the battery's limit the drive is overloaded at full throttle — reported, not optimised away.
 
 **Model fidelity is declared** (`Q-PT-6`): which route of the torque balance ran, and that the battery voltage is nominal.
@@ -70,9 +72,17 @@ gamma in radians inside sin and cos; where it is reported, it is converted to de
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/best_rate_of_climb.py` | DEVIATES | 🟢 | per speed the steepest steady climb angle (root of `T - D(V, cos gamma) - m g sin gamma` on the angles the wing can carry, vertical where the excess at 90 deg is not negative), then the maximum of `V sin gamma` over the speed (scan and golden section). **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** The optimum at the stall corner is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see #1414 (the entry's Termination text asks for no value there; see the remark on Termination).
+
+**Implementation remark on method and assumptions (#1414).** Solved per speed for the largest climb angle (root of `T - D(V, cos gamma) - m g sin gamma`, Illinois), then the maximum of `V sin gamma` over the speed (scan, golden section). Assumptions: one maximum of the rate over the speed; one root of the excess over the angles the wing can carry; features no narrower than the scan step (2 m/s). The end of the propeller table is a bound of the scan: an interior optimum is returned, one on the table edge is `outside_propeller_table`.
 
 ## Approval
 

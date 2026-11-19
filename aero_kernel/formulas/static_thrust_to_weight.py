@@ -9,13 +9,7 @@ by the canon (``aircraft-mass`` and ``gravity`` are ``positive: true``).
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.motor_propeller_equilibrium import declare_route
 from aero_kernel.formulas.propeller_table_lookup import components_of
-from aero_kernel.formulas.propulsion import (
-    advance_ratio_of,
-    equilibrium_of,
-    optional,
-    table_lookup_of,
-    thrust_of,
-)
+from aero_kernel.formulas.propulsion import full_throttle_thrust, optional
 from aero_kernel.formulas.values import number
 from aero_kernel.registry import formula
 
@@ -41,21 +35,16 @@ async def static_thrust_to_weight(x: Inputs, ctx: Context) -> dict[str, float]:
         TypeError: If ``components`` is not the components document.
         FormulaError: The failures of the embedded relations, unchanged.
     """
-    components = components_of(x)
-    rho, d_prop = number(x, "rho"), number(x, "d_prop")
-    balance = equilibrium_of(ctx)(
+    t_static = full_throttle_thrust(
         ctx,
-        components,
+        components_of(x),
         _STATIC_SPEED_MS,
-        rho,
+        number(x, "rho"),
         number(x, "k_v"),
         optional(x, "i_0"),
         optional(x, "r_m"),
         number(x, "u_bat"),
-        d_prop,
+        number(x, "d_prop"),
     )
-    j = advance_ratio_of(ctx)(_STATIC_SPEED_MS, balance.n_prop, d_prop)
-    c_t = table_lookup_of(ctx)(components, j, balance.n_prop).c_t
-    t_static = thrust_of(ctx)(c_t, rho, balance.n_prop, d_prop)
     declare_route(ctx)
     return {"t0_w": t_static / number(x, "w")}

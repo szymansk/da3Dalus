@@ -124,8 +124,15 @@ class CrowStub(StubOpti):
         return Stall(solution=stall_of(airplane, mass_kg, gravity, air), warnings=())
 
     async def level_flight_point(
-        self, airplane: AirplaneGeometry, mass_kg: float, gravity: float, air: AirState, v_ms: float
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+        n_load: float,
     ) -> LevelFlightPoint:
+        assert math.isclose(n_load, 1.0)  # level flight
         self.glide_speeds.append(v_ms)
         area = stand_in_main_wing_properties(airplane).s_ref
         cl = 2.0 * mass_kg * gravity / (air.density * v_ms**2 * area)
@@ -312,8 +319,16 @@ async def test_an_approach_speed_below_the_landing_stall_gives_zero_without_read
     None
 ):
     class Refusing(CrowStub):
-        async def level_flight_point(self, *args: Any) -> LevelFlightPoint:  # type: ignore[override]
-            self.glide_speeds.append(args[-1])
+        async def level_flight_point(
+            self,
+            airplane: AirplaneGeometry,
+            mass_kg: float,
+            gravity: float,
+            air: AirState,
+            v_ms: float,
+            n_load: float,
+        ) -> LevelFlightPoint:
+            self.glide_speeds.append(v_ms)
             raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "below the stall", "h")
 
     stub = Refusing()

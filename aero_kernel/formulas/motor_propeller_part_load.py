@@ -31,7 +31,7 @@ from aero_kernel.formulas.propulsion import (
     bisect_root,
     covered_pairs,
     current_for_torque,
-    equilibrium_of,
+    full_throttle_thrust,
     level_flight_at,
     optional,
     part_load_of,
@@ -145,14 +145,12 @@ def part_load(
         FormulaError: ``outside_propeller_table``; ``no_thrust_at_full_throttle``; the failures of
             the embedded relations.
     """
-    advance, lookup, thrust = advance_ratio_of(ctx), table_lookup_of(ctx), thrust_of(ctx)
+    advance, lookup = advance_ratio_of(ctx), table_lookup_of(ctx)
     n_pl = solve_part_load_speed(ctx, components, v, rho, d_prop, drag)
     c_p = lookup(components, advance(v, n_pl, d_prop), n_pl).c_p
     current = current_for_torque(propeller_torque(c_p, rho, n_pl, d_prop), i_0, k_v)
     p_bat = terminal_voltage(current, r_m, n_pl, k_v) * current
-    balance = equilibrium_of(ctx)(ctx, components, v, rho, k_v, i_0, r_m, u_bat, d_prop)
-    c_t_full = lookup(components, advance(v, balance.n_prop, d_prop), balance.n_prop).c_t
-    t_full = thrust(c_t_full, rho, balance.n_prop, d_prop)
+    t_full = full_throttle_thrust(ctx, components, v, rho, k_v, i_0, r_m, u_bat, d_prop)
     if not t_full > 0.0:
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,

@@ -36,6 +36,8 @@ outputs: {r_min: min-sustained-turn-radius, v_r: min-sustained-turn-radius-speed
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: limit_load_factor_above_one, parameter: n_lim, on_violation: error}
 ---
 
 # Tightest sustained turn at full throttle
@@ -73,9 +75,17 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 
 **Validity in the RC/UAV regime (ADR 0028).** The kinematics are exact, with the load factor as the vector sum of weight and centrifugal force (Lennon, Ch. 21). The tightest sustained turn is flown slowly and at high `C_L`, so it sits at the lowest chord Reynolds number of manoeuvring flight — often in the bubble-sensitive band below 7·10⁴, where section C_L,max falls sharply (Lennon Ch. 1–3, see [[stall-speed]]). There the transition location sets the result: Anderson §20.3.2 shows laminar separation on both surfaces at Re_c = 10⁵ disappearing when the flow is turbulent. AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴, C_L 1.0 (Sharpe 2024 §7.2.4). Thrust at that low speed comes from the propeller table near static conditions, with its Re₀.₇₅ ≈ 15–100 k and rpm-block limits. Propeller slipstream over the wing is not modelled [no source].
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/min_sustained_turn_radius.py` | DEVIATES | 🟢 | as `max-sustained-turn-rate` with the objective `V^2 / (g sqrt(n^2 - 1))` minimised over the speed; the limit that binds is declared by the notice `powered_limit_declared`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** The optimum lies at the corner where the thrust limit meets the wing limit when the lift maximum binds; the notice names the limit the search met first.
+
+**Implementation remark on method and assumptions (#1414).** As `max-sustained-turn-rate` with the objective `-r`; the same assumptions and the same precondition `limit_load_factor_above_one` on `n_lim`.
 
 ## Approval
 

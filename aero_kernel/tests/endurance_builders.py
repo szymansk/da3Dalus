@@ -6,6 +6,7 @@ the separately written plain-Python model of ``powertrain_reference`` (published
 T-Motor AT2814 KV900 on 14.8 V, rho = 1.225 kg/m^3).
 """
 
+import math
 from typing import Any
 
 from aero_kernel.build import shipped_build
@@ -55,8 +56,15 @@ class SpeedOpti(StubOpti):
         return self.a * v**2 + self.b / v**2
 
     async def level_flight_point(
-        self, airplane: AirplaneGeometry, mass_kg: float, gravity: float, air: AirState, v_ms: float
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+        n_load: float,
     ) -> LevelFlightPoint:
+        assert math.isclose(n_load, 1.0)  # level flight
         self.speeds.append(v_ms)
         if v_ms < self.min_speed:
             raise FormulaError(

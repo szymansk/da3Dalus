@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:20474ecac722609e7016989fe4c5b378b58397ced40a5a2d0942cfa959df34e3",
+  "content_hash": "sha256:016ec5d4c99a567950f64038c080c8ea1c42e24a50129df971cb7c437307e38c",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -220,6 +220,55 @@
           "source": "a margin over floating-point noise of C_L, which is of order 1",
           "unit": "1",
           "value": 1e-15
+        },
+        "powered_load_factor_tolerance": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle, sustained turn: the relative width of the interval of the load factor at which the bisection of the highest feasible load factor at one airspeed stops.",
+          "source": "the outer search over the speed resolves the speed to 1e-4 of the scan step; the objective at one speed carries the load factor to the first power (omega = g sqrt(n^2 - 1) / V), so a staircase of relative width d in n makes a staircase of about d in the objective; 1e-6 is two orders below the 1e-4 of the outer search, so the objective is smooth at the resolution of the speed search",
+          "unit": "1",
+          "value": 1e-06
+        },
+        "powered_optimum_tolerance": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the width of the interval, relative to the scan step of the airspeed, at which the golden-section search of an optimum over the airspeed stops.",
+          "source": "an optimum is flat: the objective differs from its maximum by the square of the distance, so a speed known to 1e-4 of the scan step (0.2 mm/s at 2 m/s) gives the value to far below the accuracy of the drag; a numerical resolution, no domain threshold",
+          "unit": "1",
+          "value": 0.0001
+        },
+        "powered_root_tolerance": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the force residual, relative to the weight m g, at which a root search (Illinois regula falsi) accepts its root.",
+          "source": "at the accuracy of the points the root is made of: each drag comes from a level-flight point whose lift matches its target to opt_level_lift_tolerance (1e-6 of m g), and a force residual below that is noise of the evaluation, not information; one order above it (1e-5 of m g) lets a search terminate on a noisy evaluation, and still places a root of a thrust or drag of a few newtons to about 1e-4 N",
+          "unit": "1",
+          "value": 1e-05
+        },
+        "powered_search_max_steps": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the number of steps after which a root search or a golden-section search ends without having reached its tolerance (not_converged). Termination only.",
+          "source": "termination only: Illinois regula falsi converges superlinearly on a smooth bracketed root and the golden section shrinks the interval by 0.618 per step, so 60 steps reach 1e-12 of the interval; the limit is never reached on a smooth curve and bounds a non-smooth one",
+          "unit": "1",
+          "value": 60.0
+        },
+        "powered_speed_scan_limit": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the speed at which the upward scan ends without a bracket (not_converged). Termination only.",
+          "source": "termination of the scan only: about Mach 0.44, beyond the Mach 0.3 where the incompressible solver stops being exact (Anderson sec. 1.10.3), so every value below it is reported with the Mach notice of the solver adapter and none is cut off by this limit in the RC and UAV regime",
+          "unit": "m/s",
+          "value": 150.0
+        },
+        "powered_speed_scan_start": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle (max-level-speed, dive-speed, the climbs, the sustained turns): the first speed of the upward scan that brackets a root or an optimum. Below the stall the wing cannot carry the weight, so the points under the stall speed are skipped, not evaluated further.",
+          "source": "a search start, no physical claim: below the level-flight stall speed of the aircraft this was run on (Avistar Elite 11.4 m/s); the points below the stall are skipped and the skipped range is declared in the result",
+          "unit": "m/s",
+          "value": 2.0
+        },
+        "powered_speed_scan_step": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the step of the upward scan of the airspeed. An optimum or a root is bracketed to this resolution and then refined; two features of the curve closer together than the step can be missed (the entries assume one maximum).",
+          "source": "a search resolution, no physical claim: the thrust and drag curves of the reference fleet vary on a scale of several m/s (the best-rate-of-climb speed of the Avistar lies within a step of 2 m/s of its neighbours), and a finer scan costs one AeroBuildup point per step",
+          "unit": "m/s",
+          "value": 2.0
         },
         "powertrain_balance_tolerance": {
           "basis": "numerical",
@@ -2278,7 +2327,14 @@
             "v_omega": "calc:max-sustained-turn-rate-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "limit_load_factor_above_one",
+              "on_violation": "error",
+              "parameter": "n_lim"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -2391,7 +2447,14 @@
             "v_r": "calc:min-sustained-turn-radius-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "limit_load_factor_above_one",
+              "on_violation": "error",
+              "parameter": "n_lim"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [

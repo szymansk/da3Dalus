@@ -145,6 +145,8 @@ class TestKernelWarning:
             "polar_fit_nonphysical": WarningSeverity.ERROR,
             "hinge_moment_inviscid_estimate": WarningSeverity.NOTICE,
             "hinge_moment_pitch_untrimmed": WarningSeverity.NOTICE,
+            "powered_limit_declared": WarningSeverity.NOTICE,
+            "powered_speeds_skipped": WarningSeverity.NOTICE,
             "optimum_at_domain_bound": WarningSeverity.WARNING,
         }
 
