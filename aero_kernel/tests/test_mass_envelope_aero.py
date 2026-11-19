@@ -5,7 +5,7 @@ performance table), the 4S pack; the maximum power, the pack mass, the C-rate an
 test values of ``components_builders`` (they stand in for unpublished motor data). The assertions are the
 consistency of the formula with the other formulas at the masses it names, not a validation: the paper
 publishes no mass envelope of this aircraft (``reference/avistar_elite/MEASUREMENTS.md``), and none is known to
-the project for any RC aircraft. Cost on an Apple laptop: about 45 s for the two roots.
+the project for any RC aircraft. Cost on an Apple laptop: about 3.5 minutes (two roots and six curve samples).
 """
 
 import math

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:7ef3dac820250a06b1d270c8d1f01317c8dcc46a3814bfa7668c34d276705774",
+  "content_hash": "sha256:8a6ddcfcab9aaeee1443cc8a7ae6b39b07bee168e95cd814d1ce34c49a196d4f",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -91,7 +91,7 @@
         "mass_envelope_curve_points": {
           "basis": "numerical",
           "guards": "Mass envelope: the number of equally spaced masses, from the current mass up to the largest mass of level flight, at which the curves over the mass are sampled (the root closes them as one more point). Domain: a whole number of at least 1; the kernel's import refuses anything else.",
-          "source": "a resolution, no physical claim: each sample costs a stall solve, the level-speed search of max-level-speed and the climb search of best-rate-of-climb, which are those very functions (measured in the evidence of mass-envelope); six samples show the shape of curves that vary smoothly with the mass at a cost of a few minutes",
+          "source": "a resolution, no physical claim: each sample costs a stall solve, the level-speed search of max-level-speed and the climb search of best-rate-of-climb, which are those very functions (measured in the evidence of mass-envelope: about 25 s per sample on the Avistar Elite at 3.70 kg, 204 s for the whole formula with six samples); six samples show the shape of curves that vary smoothly with the mass at a cost of a few minutes",
           "unit": "1",
           "value": 6.0
         },
@@ -105,7 +105,7 @@
         "mass_envelope_step": {
           "basis": "numerical",
           "guards": "Mass envelope: the growth of the mass per step of the upward scan that brackets the largest mass of level flight and of the lift-off (each mass is the one before times one plus this number); Illinois regula falsi then refines the root. Domain: a number above 0 (every config value is); the kernel's import refuses anything else.",
-          "source": "a search resolution, no physical claim: the largest mass of a thrust-limited model is a multiple of its current mass (several times on the 3.70 kg reference aircraft, measured in the evidence of mass-envelope), so the scan is geometric; about a third per step brackets it in about seven steps (the whole run, both roots, takes 70 s on the Avistar Elite at 3.70 kg: a stall solve and a speed search of a few seconds per scan point and refinement step; measured in the evidence of mass-envelope), and the roots are refined below the step",
+          "source": "a search resolution, no physical claim: the largest mass of a thrust-limited model is a multiple of its current mass (several times on the 3.70 kg reference aircraft, measured in the evidence of mass-envelope), so the scan is geometric; about a third per step brackets it in about seven steps (the whole run, both roots, without the curve samples takes about 50 s on the Avistar Elite at 3.70 kg (204 s total minus six samples): a stall solve and a speed search of a few seconds per scan point and refinement step; measured in the evidence of mass-envelope), and the roots are refined below the step",
           "unit": "1",
           "value": 0.3
         },
