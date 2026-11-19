@@ -31,6 +31,35 @@ positive-lengths:
   criterion: "Every chord, every fuselage semi-axis (zero allowed at an end section) and every fuselage shape exponent is greater than zero, and the leading-edge chain of a wing has a length greater than zero."
   codes: [non_positive_length]
 
+components-finite-numbers:
+  applies_to: {quantity: components}
+  kind: input
+  on_violation: error
+  criterion: "Every number of the pushed components is finite (no NaN, no infinity)."
+  codes: [non_finite_number]
+
+components-positive-numbers:
+  applies_to: {quantity: components}
+  kind: input
+  on_violation: error
+  criterion: "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v and diameter_in, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push."
+  codes: [non_positive_value]
+
+components-efficiency-at-most:
+  applies_to: {quantity: components}
+  kind: input
+  on_violation: error
+  criterion: "efficiency_pct / 100, where efficiency_pct is present, is at most max_efficiency: an efficiency is a fraction of the input power. (The parameter is a fraction because the unit vocabulary has no percent; the catalogue field is in percent.)"
+  codes: [value_above_maximum]
+  parameters:
+    max_efficiency:
+      value: 1.0
+      unit: "1"
+      basis: definition
+      status: adopted
+      source: "definition: a fraction of the input power cannot exceed 1 (100 %)"
+      regime: "regime-independent"
+
 distinct-sections:
   applies_to: {quantity: airplane}
   kind: input
