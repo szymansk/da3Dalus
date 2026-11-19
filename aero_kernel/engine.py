@@ -52,6 +52,7 @@ from aero_kernel.schema import (
     ComputeRequest,
     ComputeResult,
     Curve,
+    CurveResult,
     DefaultUsed,
     Interval,
     KernelWarning,
@@ -1185,7 +1186,7 @@ class _Call:
                 slug=slug,
                 unit=unit,
                 status=status,
-                curve=Curve(x=value.x, y=value.y),
+                curve=self._curve_of(resolved, value),
                 tool=formula.tool,
                 application=node.id.application,
                 warnings=warnings,
@@ -1201,21 +1202,25 @@ class _Call:
             warnings=warnings,
         )
 
+    def _curve_of(self, resolved: Resolved, value: Curve) -> CurveResult:
+        """The curve of a result: its samples with the canon abscissa and its unit (ch. 8.3)."""
+        abscissa = resolved.quantity.abscissa
+        assert abscissa is not None  # the model requires one of every curve quantity
+        namespace = resolved.slug.partition(":")[0]
+        axis = self.build.model.quantity(f"{namespace}:{abscissa}")
+        assert axis is not None  # the model checked that the abscissa exists
+        return CurveResult(x=value.x, y=value.y, x_quantity=abscissa, x_unit=axis.unit)
+
     def _curve_result(self, resolved: Resolved) -> QuantityResult:
         """The result of a ``curve`` quantity (ch. 8.3, 8.13).
 
-        One producer under one world assignment gives the curve. Under several method worlds, or
-        from several applications, an interval or union of curves would be a pointwise min/max or
-        merge no formula needs yet, so it is a declared ``not_implemented``.
+        One producer under one world assignment gives the curve. Under several method worlds an
+        interval of curves would be a pointwise min/max no formula needs yet, so it is a declared
+        ``not_implemented``. A curve has one producing application: the importer refuses a second
+        (A7: only a ``per_control_surface`` quantity is shared).
         """
-        several = bool(self.subtree.world_assignments(resolved.requested)[0])
-        if not several and len(resolved.producers) == 1:
+        if not self.subtree.world_assignments(resolved.requested)[0]:
             return self._result_under(resolved, {})
-        reason = (
-            "depends on a formula with several method worlds"
-            if several
-            else "is produced by several applications"
-        )
         return QuantityResult(
             slug=resolved.requested,
             unit=resolved.quantity.unit,
@@ -1225,10 +1230,14 @@ class _Call:
                 category=ErrorCategory.NOT_IMPLEMENTED,
                 quantity=resolved.requested,
                 message=(
-                    f"`{resolved.requested}` is a curve and {reason}; "
-                    "an interval or union of curves is not defined."
+                    f"`{resolved.requested}` is a curve and depends on a formula with several "
+                    "method worlds; an interval of curves (a pointwise min and max) is not built."
                 ),
-                hint="Request it from a build whose inputs are plain values.",
+                hint=(
+                    "Request the scalar quantities this curve is computed from, each of which "
+                    "carries its interval over the worlds; the curve itself is not available "
+                    "until a curve formula needs the interval of curves."
+                ),
             ),
         )
 

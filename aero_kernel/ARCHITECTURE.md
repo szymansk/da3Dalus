@@ -383,13 +383,16 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
   the applicable applications, a surface acting in two roles carries two entries. Its `application` field
   lists the ids of the applications that contributed, joined by `, `. A request for it resolves to **all**
   its producing applications (`Resolved.producers`); `value` is not defined for it, and nothing reads it
-  (ch. 8.5). `curve` is the value of a `curve` quantity (gh-1424): `{"x": [...], "y": [...]}`, `x` strictly rising (the swept
-  variable named in the quantity's symbol), `y` in `unit`; it may be empty (a glide angle that does not exist). The
-  canon declares no unit of the abscissa, so the result carries none. The field is **absent** from the JSON of
-  every other result, so those are byte-identical to before. An `ok` result carries exactly one of `value`,
-  `interval`, `surfaces` and `curve`, enforced by the model. A curve under more than one method world, or from
-  more than one application, is `error` with category `not_implemented`, code `uncertain_curve`: a pointwise
-  min/max over worlds is not built until a formula needs it. The other non-scalar types (`curve_pair`, `polar`,
+  (ch. 8.5). `curve` is the value of a `curve` quantity (gh-1424): `{"x": [...], "y": [...], "x_quantity": "<slug>", "x_unit": "<unit>"}`,
+  `x` strictly rising, `y` in the result's `unit`, `x_quantity` the canon quantity the curve runs over (the
+  quantity's `abscissa:`, a scalar of the canon: the crow mix, the mass, the spanwise station) and `x_unit` its unit. A curve may be
+  empty (a glide angle that does not exist). The field is `null` on every other result, as `value`, `surfaces` and `interval`
+  are where they are empty. An `ok` result carries exactly one of `value`,
+  `interval`, `surfaces` and `curve`, enforced by the model. A curve under more than one method world is `error`
+  with category `not_implemented`, code `uncertain_curve`: a pointwise min/max over worlds is not built until a
+  formula needs it. A curve has one producing application (the importer refuses a second, A7), so there is no
+  union of curves to define. Both interfaces of ch. 8.4 (`compute`, `CachedKernel`) run the same engine and return the curve alike; there is no
+  separate step interface in the kernel, and the app's Expert View passes `QuantityResult` through unchanged. The other non-scalar types (`curve_pair`, `polar`,
   `airplane`, ...) are still refused as `non_scalar_result`. One rule, one place: `CanonGraph.resolve`. Numbers are **strict and finite**: `value`, the interval bounds and world
   values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf. The same holds inside every free JSON field
   (`detail` of errors and warnings, `solver_settings`): a non-finite number anywhere in the tree is
@@ -398,7 +401,7 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `ok` requires `tool` and `application` (Q3: every value leads back to its application and tool). A **requested** quantity whose `type` is not `scalar`, `per_control_surface` or `curve` (`polar-stall`,
   `airplane-landing`, a `curve_pair`) is therefore, per quantity, `error` with category `not_implemented`, code
   `non_scalar_result`, decided at request time before anything is computed; the rest of the request is
-  computed. The canon model is not touched: such quantities are requestable by the canon, only the v1
+  computed. Such quantities are requestable by the canon, only the v1
   result type cannot carry them (a `curve` it can, since gh-1424). **Internal node values are not constrained by this:** the engine passes
   polars, configured geometry and curves between nodes as the structured types of ch. 8.12; only what
   enters a `QuantityResult` is a float, a per-surface map or a curve.
@@ -507,7 +510,7 @@ write; the miss reports that same time, so a later hit reports what the miss did
   JSON unchanged. The node is cheap (a device setting) and runs again; the nodes that read its configured
   airplane are cached, keyed by its dump.
 - a node with an output of a type v1 does not carry (curve pair): the engine
-  discards such values (ch. 8.3). Cached types: scalar, polar, per control surface and curve (stored as `x` and `y`; a stall curve's extra fields are not a result and are not stored).
+  discards such values (ch. 8.3). Cached types: scalar, polar, per control surface and curve (stored as `x` and `y`; a stall curve's extra fields are not a result and are not stored; the abscissa comes from the canon on every hit).
 
 **On a hit**, the engine still takes the node's defaults (logged, in `defaults_used`), records the tool
 versions and settings of the node's world in the provenance (they are equal: they are in the key) and

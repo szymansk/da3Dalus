@@ -486,8 +486,9 @@ async def test_the_engine_hands_out_the_three_curves_over_the_mix() -> None:
         assert quantity.curve is not None
         assert (quantity.value, quantity.interval, quantity.application) == (None, None, "crow")
         assert quantity.curve.x == tuple(i / 10 for i in range(11))
+        assert (quantity.curve.x_quantity, quantity.curve.x_unit) == ("crow-mix", "1")
     assert stall.curve is not None
-    assert type(stall.curve) is Curve  # the sweep's extra fields stay inside the formula
+    assert not isinstance(stall.curve, StallCurve)  # the sweep's extra fields stay in the formula
 
 
 async def test_the_engine_reports_a_fully_mixable_airplane_with_the_curve_in_the_detail() -> None:

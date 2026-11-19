@@ -10,6 +10,7 @@ tags:
   - point/over-mass
   - role/output
 type: curve_pair
+abscissa: aircraft-mass
 ---
 
 # Speed range over the mass · `V_S(m), V_max(m)`

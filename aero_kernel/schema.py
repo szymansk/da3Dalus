@@ -8,7 +8,7 @@ import json
 import math
 from collections.abc import Iterable, Mapping
 from enum import StrEnum
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Literal, Self
 
 from aero_kernel.components import Components
 from aero_kernel.errors import (
@@ -24,8 +24,6 @@ from pydantic import (
     ConfigDict,
     Field,
     JsonValue,
-    SerializerFunctionWrapHandler,
-    model_serializer,
     model_validator,
 )
 
@@ -36,6 +34,7 @@ __all__ = [
     "ComputeRequest",
     "ComputeResult",
     "Curve",
+    "CurveResult",
     "DefaultUsed",
     "Interval",
     "KernelError",
@@ -418,6 +417,21 @@ class Curve(BaseModel):
         return self
 
 
+class CurveResult(Curve):
+    """A curve as the result of a ``curve`` quantity: the samples and what ``x`` is (ch. 8.3).
+
+    ``y`` is in the result's ``unit``; ``x`` is the abscissa the canon declares for the quantity.
+
+    Attributes:
+        x_quantity: Slug of the canon quantity the curve runs over (the crow mix, the mass, the
+            spanwise station).
+        x_unit: Unit of ``x``, the unit of that quantity.
+    """
+
+    x_quantity: str = Field(min_length=1)
+    x_unit: str = Field(min_length=1)
+
+
 class QuantityResult(BaseModel):
     """The result for one requested quantity (ch. 8.3).
 
@@ -431,9 +445,8 @@ class QuantityResult(BaseModel):
         surfaces: The value of a ``per_control_surface`` quantity: per surface key, per application
             id, the value in ``unit``. The union of the applicable applications' entries; a
             dual-role surface has one entry per role.
-        curve: The value of a ``curve`` quantity: the samples ``x`` and ``y``, ``y`` in ``unit``
-            (the swept variable ``x`` is named in the quantity's symbol; the canon declares no unit for it). Absent from the JSON of
-            every other result, so those stay as they were.
+        curve: The value of a ``curve`` quantity: the samples ``x`` and ``y``, ``y`` in ``unit``,
+            with the canon quantity ``x`` runs over and its unit (``x_quantity``, ``x_unit``).
         interval: The spread over method worlds, for an uncertain quantity.
         tool: Tool that produced the value.
         application: Id of the application that produced the value.
@@ -456,7 +469,7 @@ class QuantityResult(BaseModel):
     value: FiniteFloat | None = None
     surfaces: dict[str, dict[str, FiniteFloat]] | None = None
     interval: Interval | None = None
-    curve: Curve | None = None
+    curve: CurveResult | None = None
     tool: str | None = None
     application: str | None = None
     validated: Literal[False] = False
@@ -464,14 +477,6 @@ class QuantityResult(BaseModel):
     error: KernelError | None = None
     from_cache: bool = False
     timing: Timing | None = None
-
-    @model_serializer(mode="wrap")
-    def _omit_absent_curve(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
-        """Leave ``curve`` out of the JSON unless there is one: other results keep their form."""
-        data: dict[str, Any] = handler(self)
-        if self.curve is None:
-            data.pop("curve", None)
-        return data
 
     @model_validator(mode="after")
     def _check_timing(self) -> Self:

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:a640910acc89a979b278039fb85ea8ac4a72075009958f40b91e35779dc7a94b",
+  "content_hash": "sha256:a1fa164ce3eb236d30e7451934367e62544f8fc12dba2607a09a5b4a72463dfc",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -253,6 +253,7 @@
       },
       "quantities": {
         "aircraft-mass": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -272,6 +273,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -289,6 +291,7 @@
           "unit": "1"
         },
         "gravity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -306,6 +309,7 @@
           "unit": "m/s^2"
         },
         "ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -323,6 +327,7 @@
           "unit": "1"
         },
         "weight": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -340,6 +345,7 @@
           "unit": "N"
         },
         "weight-estimate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -357,6 +363,7 @@
           "unit": "N"
         },
         "weight-flapped": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -374,6 +381,7 @@
           "unit": "N"
         },
         "weight-outer": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -391,6 +399,7 @@
           "unit": "N"
         },
         "weight-twice": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -408,6 +417,7 @@
           "unit": "N"
         },
         "weight-weighed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,

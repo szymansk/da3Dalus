@@ -11,6 +11,7 @@ from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
     ComputeResult,
+    CurveResult,
     Provenance,
     QuantityResult,
     QuantityStatus,
@@ -324,6 +325,40 @@ def test_a_quantity_is_computed(client_and_db, monkeypatch):
     assert timing["own_s"] == {"lower": pytest.approx(0.25), "upper": pytest.approx(0.75)}
     assert timing["before_s"] == {"lower": pytest.approx(1.0), "upper": pytest.approx(1.5)}
     assert timing["total_s"] == {"lower": pytest.approx(1.25), "upper": pytest.approx(2.25)}
+
+
+@pytest.mark.integration
+def test_a_curve_quantity_passes_through_to_the_response(client_and_db, monkeypatch):
+    async def curve_kernel(
+        aircraft: AircraftInput, request: ComputeRequest, **_limits: int | None
+    ) -> ComputeResult:
+        quantity = QuantityResult(
+            slug=request.quantities[0],
+            unit="m/s",
+            status=QuantityStatus.OK,
+            curve=CurveResult(x=(0.0, 1.0), y=(9.0, 11.0), x_quantity="crow-mix", x_unit="1"),
+            tool="OPT",
+            application="crow",
+        )
+        return ComputeResult(quantities=(quantity,), provenance=Provenance(build_digest="test"))
+
+    monkeypatch.setattr(
+        canon_service, "KERNEL", type("F", (), {"compute": staticmethod(curve_kernel)})
+    )
+    client, _ = client_and_db
+    response = client.post(
+        "/canon/compute",
+        json={"aircraft": {"fleet": "bryan"}, "quantities": ["butterfly-stall-speed-curve"]},
+    )
+    assert response.status_code == 200
+    quantity = response.json()["quantities"][0]
+    assert quantity["value"] is None
+    assert quantity["curve"] == {
+        "x": [0.0, 1.0],
+        "y": [9.0, 11.0],
+        "x_quantity": "crow-mix",
+        "x_unit": "1",
+    }
 
 
 @pytest.mark.integration
