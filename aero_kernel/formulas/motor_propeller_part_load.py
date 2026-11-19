@@ -67,8 +67,9 @@ def _solve_part_load_speed(
 ) -> float:
     """The propeller speed in 1/s where the table's thrust equals the drag (bisection).
 
-    The thrust minus the drag is evaluated at the table's rpm blocks that cover this airspeed; the
-    lowest neighbouring pair of covered blocks with a sign change is bisected.
+    The drag minus the thrust is evaluated at the table's rpm blocks that cover this airspeed and at the
+    coverage edge between a covered and an uncovered block (gh-1417); the lowest neighbouring pair of
+    covered points with a sign change is bisected.
     """
     advance, lookup, thrust = advance_ratio_of(ctx), table_lookup_of(ctx), thrust_of(ctx)
 
@@ -82,16 +83,25 @@ def _solve_part_load_speed(
         if low.residual is None or high.residual is None or not low.residual > 0.0 >= high.residual:
             continue
         return bisect_root(shortfall, low.n, high.n, balance_tolerance())
-    covered = sum(p.residual is not None for p in points)
+    grid = [p for p in points if not p.edge]
+    covered = sum(p.residual is not None for p in grid)
     raise FormulaError(
         ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "outside_propeller_table",
-        f"motor-propeller-part-load found no speed on the rpm grid points the table covers at "
-        f"{v:.4g} m/s ({covered} of {len(points)} grid points) at which the propeller thrust equals "
-        f"the drag {drag:.4g} N. A balance between a covered and an uncovered point is not searched.",
+        f"motor-propeller-part-load found no speed where the table covers the advance ratio at "
+        f"{v:.4g} m/s ({covered} of {len(grid)} grid points covered, {len(points) - len(grid)} "
+        f"coverage edge(s) located) at which the propeller thrust equals the drag {drag:.4g} N: the "
+        f"thrust minus the drag does not change sign between two covered points or between a "
+        f"coverage edge and the covered grid point next to it, so the balance, if there is one, lies "
+        f"where the table has no data.",
         "Use a propeller whose table covers the thrust level of this flight; the kernel does not "
         "extrapolate.",
-        detail={"drag_n": drag, "v_ms": v, "covered_grid_points": covered},
+        detail={
+            "drag_n": drag,
+            "v_ms": v,
+            "covered_grid_points": covered,
+            "coverage_edges": len(points) - len(grid),
+        },
     )
 
 

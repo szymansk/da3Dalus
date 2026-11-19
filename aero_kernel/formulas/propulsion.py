@@ -8,6 +8,7 @@ type. The result types of the relations live here so that the formulas need not 
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import Protocol, cast
 
 from aero_kernel.components import Components
@@ -224,21 +225,56 @@ def terminal_voltage(current: float, r_m: float, n_prop: float, k_v: float) -> f
 
 @dataclass(frozen=True)
 class GridPoint:
-    """The residual and the power coefficient at one grid speed; ``None`` where uncovered.
+    """The residual and the power coefficient at one search speed; ``None`` where uncovered.
 
     Attributes:
-        n: The grid speed in 1/s.
+        n: The speed in 1/s.
         residual: The residual of the balance there, or ``None`` if the table does not cover it.
         c_p: The power coefficient there, or ``None`` if the table does not cover it.
+        edge: Whether the point is a coverage edge found between a covered and an uncovered grid
+            speed (gh-1417), not a grid speed of the table.
     """
 
     n: float
     residual: float | None
     c_p: float | None
+    edge: bool = False
+
+
+def _coverage_edge(
+    state: Callable[[float], tuple[float, float]], covered: float, uncovered: float
+) -> GridPoint | None:
+    """The covered speed nearest the uncovered one, by bisection on coverage; ``None`` if there is none.
+
+    Between two neighbouring table speeds one end is covered and the other is not. The advance ratio
+    ``J = V / (n D)`` falls with the speed, so the covered speeds are those from an edge on (or up to
+    one); the edge is located to the relative width ``powertrain_balance_tolerance``. If the covered
+    end is itself the nearest covered speed (the interpolated table covers nothing between), the edge
+    is that end and nothing is added.
+    """
+    tolerance = balance_tolerance()
+    while abs(covered - uncovered) > tolerance * max(covered, uncovered):
+        middle = 0.5 * (covered + uncovered)
+        try:
+            state(middle)
+        except FormulaError as error:
+            if error.code != "outside_propeller_table":
+                raise
+            uncovered = middle
+        else:
+            covered = middle
+    residual, c_p = state(covered)
+    return GridPoint(covered, residual, c_p, edge=True)
 
 
 def scan_grid(state: Callable[[float], tuple[float, float]], grid: list[float]) -> list[GridPoint]:
-    """The (residual, ``C_P``) at the grid speeds; a point the table does not cover is kept as such."""
+    """The (residual, ``C_P``) at the grid speeds, plus the coverage edges between them.
+
+    A speed the table does not cover is kept as such. Where a covered and an uncovered grid speed
+    are neighbours, the edge of the coverage between them is located and added as a covered point
+    (gh-1417), so that a balance between the edge and the covered speed is found: the table does
+    contain it. The points are in increasing speed.
+    """
     found: list[GridPoint] = []
     for n in grid:
         try:
@@ -249,7 +285,24 @@ def scan_grid(state: Callable[[float], tuple[float, float]], grid: list[float]) 
             found.append(GridPoint(n, None, None))
         else:
             found.append(GridPoint(n, residual, c_p))
-    return found
+    return _with_edges(state, found)
+
+
+def _with_edges(
+    state: Callable[[float], tuple[float, float]], points: list[GridPoint]
+) -> list[GridPoint]:
+    """The points with the coverage edge inserted in every neighbouring (uncovered, covered) pair."""
+    extended: list[GridPoint] = []
+    for low, high in pairwise(points):
+        extended.append(low)
+        if (low.residual is None) == (high.residual is None):
+            continue
+        covered, uncovered = (high, low) if low.residual is None else (low, high)
+        edge = _coverage_edge(state, covered.n, uncovered.n)
+        if edge is not None and edge.n != covered.n:
+            extended.append(edge)
+    extended.append(points[-1])
+    return extended
 
 
 def bisect_root(

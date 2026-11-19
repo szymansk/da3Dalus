@@ -83,12 +83,15 @@ def declare_route(ctx: Context) -> None:
 
 def _no_balance(points: list[GridPoint], v: float) -> FormulaError:
     """The declared failure of a scan that found no sign change between covered grid points."""
+    grid = [p for p in points if not p.edge]
     covered = [p for p in points if p.residual is not None]
+    covered_grid = [p for p in grid if p.residual is not None]
     windmilling = [p for p in covered if p.c_p is not None and p.c_p < 0.0]
     detail: dict[str, JsonValue] = {
         "v_ms": v,
-        "grid_points": len(points),
-        "covered_grid_points": len(covered),
+        "grid_points": len(grid),
+        "covered_grid_points": len(covered_grid),
+        "coverage_edges": len(points) - len(grid),
     }
     if windmilling:
         return FormulaError(
@@ -104,10 +107,12 @@ def _no_balance(points: list[GridPoint], v: float) -> FormulaError:
     return FormulaError(
         ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "outside_propeller_table",
-        "motor-propeller-equilibrium: no balance found on the rpm grid points the table covers at "
-        f"{v:.4g} m/s ({len(covered)} of {len(points)} grid points, below the motor's free-run "
-        "speed): the motor torque never crosses the propeller torque between two covered points. "
-        "A balance between a covered and an uncovered point is not searched.",
+        "motor-propeller-equilibrium: no balance found where the table covers the advance ratio at "
+        f"{v:.4g} m/s ({len(covered_grid)} of {len(grid)} grid points covered, "
+        f"{len(points) - len(grid)} coverage edge(s) located, below the motor's free-run speed): the "
+        "motor torque never crosses the propeller torque between two covered points or between a "
+        "coverage edge and the covered grid point next to it, so a balance, if there is one, lies "
+        "where the table has no data.",
         "Use a propeller whose table covers the speed this motor turns it at; the kernel does not "
         "extrapolate.",
         detail=detail,
