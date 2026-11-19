@@ -131,7 +131,9 @@ def table_lookup(components: Components, j: float, n_prop: float) -> Coefficient
     low, high = blocks[upper - 1], blocks[upper]
     fraction = (rpm - low.rpm) / (high.rpm - low.rpm)
     at_low = _in_block(low, j)
-    if fraction == 0.0:
+    if (
+        rpm <= low.rpm
+    ):  # exactly on the lower block: the upper block has no weight and no range check
         return at_low
     at_high = _in_block(high, j)
     return Coefficients(
