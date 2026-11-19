@@ -166,7 +166,7 @@ async def test_an_absent_winding_resistance_is_missing_input_not_route_a() -> No
 
 
 @pytest.mark.asyncio
-async def test_a_drive_train_with_no_thrust_at_full_throttle_is_refused() -> None:
+async def test_a_motor_whose_free_run_speed_is_below_the_table_has_no_balance() -> None:
     # a 40 V/rpm motor on 14.8 V turns 592 rpm: below the table, so the balance has no solution
     x = bound_inputs(**{"motor-voltage-constant": 40.0})
     with pytest.raises(FormulaError) as caught:

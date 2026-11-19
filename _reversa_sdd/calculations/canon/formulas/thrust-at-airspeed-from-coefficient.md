@@ -53,7 +53,7 @@ with the coefficient table computed for the fitted propeller (APC PER3 — compu
 
 **Validity in the RC/UAV regime (ADR 0028).** This is the *right* scale for it: the tables are APC model
 propellers. Two limits are real. The coefficient is clamped at zero past the zero-thrust
-point, so nothing windmilling is modelled. And a table lookup outside its `J` range is an
+point, so nothing windmilling is modelled. *Remark (gh-1411, undated):* the implementation does not clamp: a negative `C_T` of the table gives a negative thrust, because a clamp would be an undeclared substitution (ADR 0020). The difference awaits the maintainer; see decisions/propeller-table-lookup-interface-and-range.md (PR gh-1411, awaiting the maintainer). And a table lookup outside its `J` range is an
 extrapolation, which the implementation already flags.
 
 ## ⚠️ Conflict — two authorities for thrust

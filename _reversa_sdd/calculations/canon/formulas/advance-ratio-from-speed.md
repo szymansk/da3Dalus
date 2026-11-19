@@ -39,6 +39,8 @@ J = V / (n_prop * D_prop)
 
 **Validity in the RC/UAV regime (ADR 0028).** Exact.
 
+*Remark (gh-1411, undated):* the implementation guards the division: `n_prop * D_prop <= 0` (a propeller that does not turn) ends as `invalid_input` / `non_positive_value`. Through the engine the guard cannot trigger (`propeller-speed` comes from the torque balance and is positive; `propeller-diameter` is checked positive at the input); it only protects a direct call of the relation.
+
 ## Implementations (1)
 
 | node | claimed | verified | deviation |

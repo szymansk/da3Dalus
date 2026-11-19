@@ -64,7 +64,7 @@ practice size on power loading `W/P`, not `T/W` — that belongs to the design d
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/static_thrust_to_weight.py` | DEVIATES | 🟢 | `T_0 / W` with `T_0` from the four embedded relations at `V = 0`, obtained through `ctx.embedded` (the first embedder; the engine hands out the registered relations of the canon's `embeds`). **Deviation:** route B only, as `motor-propeller-equilibrium` (an absent `R_m` or `I_0` is `missing_input`, the table-range failures propagate); the route notice of the equilibrium is declared on this quantity as well. A weight not above zero is `invalid_input` |
+| `aero_kernel/formulas/static_thrust_to_weight.py` | DEVIATES | 🟢 | `T_0 / W` with `T_0` from the four embedded relations at `V = 0`, obtained through `ctx.embedded` (the first embedder; the engine hands out the registered relations of the canon's `embeds`). **Deviation:** route B only, as `motor-propeller-equilibrium` (an absent `R_m` or `I_0` is `missing_input`, the table-range failures propagate); the route notice of the equilibrium is declared on this quantity as well. The weight is positive by the canon (`aircraft-mass` and `gravity` are `positive: true`) |
 
 No register node is mapped to this entry.
 

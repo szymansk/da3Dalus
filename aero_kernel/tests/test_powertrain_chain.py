@@ -45,7 +45,6 @@ from aero_kernel.tests.wing_builders import airplane_document
 RHO = 1.225
 D_PROP = 13 * 0.0254
 U_BAT = 14.8
-TOLERANCE = 1e-9
 G = 9.80665
 
 
@@ -56,6 +55,13 @@ def context(embeds: tuple[str, ...] = ()) -> Context:
         solvers=solvers_with(),
         relations={k: v for k, v in relations.items() if v is not None},
     )
+
+
+def context_for(slug: str) -> Context:
+    """The context of a formula: the relations of its canon ``embeds`` (what the engine hands out)."""
+    formula = shipped_build().model.formula(slug)
+    assert formula is not None
+    return context(tuple(formula.embeds))
 
 
 def table() -> list[dict[str, Any]]:
@@ -211,7 +217,7 @@ async def test_the_formula_returns_both_coefficients() -> None:
 async def test_the_balance_matches_the_independent_solution(v: float) -> None:
     rpm, current, q_m, _ = independent_balance(v)
     x = bound_inputs("motor-propeller-equilibrium", **{"flight-speed": v})
-    ctx = context()
+    ctx = context_for("motor-propeller-equilibrium")
     got = await motor_propeller_equilibrium(x, ctx)
     assert close(got["n_prop"] * 60, rpm, 1e-7)
     assert close(got["q_m"], q_m, 1e-6)
@@ -226,7 +232,7 @@ async def test_the_balance_matches_the_independent_solution(v: float) -> None:
 async def test_the_hand_values_of_the_two_operating_points() -> None:
     for v, rpm, torque in ((0.0, 8898.305, 0.62298), (10.0, 8662.075, 0.65694)):
         x = bound_inputs("motor-propeller-equilibrium", **{"flight-speed": v})
-        got = await motor_propeller_equilibrium(x, context())
+        got = await motor_propeller_equilibrium(x, context_for("motor-propeller-equilibrium"))
         assert close(got["n_prop"] * 60, rpm, 1e-6)
         assert close(got["q_m"], torque, 1e-4)
 
@@ -244,11 +250,10 @@ def test_route_a_and_a_default_current_are_not_built_an_absent_value_fails(
         "r_m": 0.082,
         "u_bat": U_BAT,
         "d_prop": D_PROP,
-        "tolerance": TOLERANCE,
     }
     arguments[name] = None
     with pytest.raises(FormulaError) as caught:
-        equilibrium(**arguments)
+        equilibrium(context_for("motor-propeller-equilibrium"), **arguments)
     assert caught.value.code == "missing_input"
     assert caught.value.parameter == name
     assert caught.value.detail["inputs"] == [f"components.motor.{path}"]
@@ -257,16 +262,32 @@ def test_route_a_and_a_default_current_are_not_built_an_absent_value_fails(
 def test_a_free_run_speed_below_the_first_block_has_no_balance() -> None:
     with pytest.raises(FormulaError) as caught:
         equilibrium(
-            complete_components_with_table(), 0.0, RHO, 40.0, 1.2, 0.082, U_BAT, D_PROP, TOLERANCE
+            context_for("motor-propeller-equilibrium"),
+            complete_components_with_table(),
+            0.0,
+            RHO,
+            40.0,
+            1.2,
+            0.082,
+            U_BAT,
+            D_PROP,
         )
     assert caught.value.code == "outside_propeller_table"
-    assert caught.value.detail["rpm_free_run"] == 40.0 * U_BAT
+    assert caught.value.detail["covered_grid_points"] == 0
 
 
 def test_a_motor_that_pulls_the_propeller_beyond_the_last_block_has_no_balance() -> None:
     with pytest.raises(FormulaError) as caught:
         equilibrium(
-            complete_components_with_table(), 0.0, RHO, 1500.0, 1.2, 1e-4, U_BAT, D_PROP, TOLERANCE
+            context_for("motor-propeller-equilibrium"),
+            complete_components_with_table(),
+            0.0,
+            RHO,
+            1500.0,
+            1.2,
+            1e-4,
+            U_BAT,
+            D_PROP,
         )
     assert caught.value.code == "outside_propeller_table"
 
@@ -296,20 +317,6 @@ async def test_the_static_thrust_to_weight_is_the_hand_thrust_over_the_weight() 
     assert set(ctx.embedded_requests) == set(formula.embeds)  # the embedding test (ch. 8.12)
 
 
-@pytest.mark.asyncio
-async def test_a_weight_not_above_zero_is_refused() -> None:
-    x = bound_inputs("static-thrust-to-weight", weight=0.0)
-    with pytest.raises(FormulaError) as caught:
-        await static_thrust_to_weight(x, context(tuple(_embeds("static-thrust-to-weight"))))
-    assert caught.value.code == "non_positive_value"
-
-
-def _embeds(slug: str) -> tuple[str, ...]:
-    formula = shipped_build().model.formula(slug)
-    assert formula is not None
-    return tuple(formula.embeds)
-
-
 # --- battery-mass-from-capacity -------------------------------------------------------------
 
 
@@ -323,18 +330,6 @@ async def test_the_battery_mass_is_the_energy_over_the_specific_energy() -> None
     )
     got = await battery_mass_from_capacity(x, context())
     assert close(got["m_bat_pred"], 0.64, 1e-12)
-
-
-@pytest.mark.asyncio
-async def test_a_specific_energy_not_above_zero_is_refused() -> None:
-    x = inputs_from_model(
-        shipped_build().model,
-        "battery-mass-from-capacity",
-        {"battery-energy-required": 89.6, "battery-specific-energy": 0.0},
-    )
-    with pytest.raises(FormulaError) as caught:
-        await battery_mass_from_capacity(x, context())
-    assert caught.value.parameter == "e_star"
 
 
 # --- through the engine ---------------------------------------------------------------------

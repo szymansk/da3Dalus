@@ -244,10 +244,11 @@ nothing failed. The category enum holds only the eight rows above.
   only `asyncio.CancelledError` and Pydantic `ValidationError` when the caller builds a malformed
   `AircraftInput` or `ComputeRequest` (wrong types, unknown fields). Physically inadmissible but well-typed
   input is not an exception: it is returned in `ComputeResult.input_errors`.
+- **Not converged** (`not_converged`): `avl_roll_branch_inconsistent` (AVL's Newton iteration landed on a spurious branch); `lift_balance_not_converged` — the level-flight lift balance of `motor-propeller-part-load` was not reached within the configured evaluations, or the lift stopped rising with the angle of attack (`detail`: speed and weight, gh-1411).
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
-- **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, a balance that lies outside the table; never extrapolated, `detail`: the point and the range, gh-1411); `unsupported_layout` — the neutral point
+- **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, or no balance found on the rpm grid points the table covers; never extrapolated, `detail`: the point and the range, gh-1411); `propeller_windmilling` — the propeller is driven by the airstream (negative `C_P` on the covered points) and the torque balance of a driven propeller has no solution (gh-1411); `no_thrust_at_full_throttle` — the drive train gives no thrust at full throttle, so the thrust demand ratio is undefined (gh-1411); `unsupported_layout` — the neutral point
   is defined for one `main_wing` with one `horizontal_tail` or `v_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
   declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
@@ -1594,6 +1595,21 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   the embedder passes the solved values to the handle's `check(...)`. The engine **records** the items each
   run requests through `ctx.embedded`; the embedding tests assert that they equal the formula's `embeds`
   (S7: no static source scan).
+  **What is built (gh-1411, the first embedders `static-thrust-to-weight` and `motor-propeller-part-load`)
+  and what is deferred.** Built: `@relation(slug)` registers the formula's plain module-level function
+  (`Registry.relation_of`); the engine gives each node's `Context` the registered relations of the
+  formula's canon `embeds` (`Engine._relations_of`), by embed item; `Context.embedded(item)` returns that
+  **raw relation function** and the **context itself records** each distinct item it hands out
+  (`Context.embedded_requests`; the engine does not record); an item the formula does not embed is a
+  `KeyError` (a defect of the formula). The embedding tests assert that the recorded items equal the entry's
+  `embeds`. The embedder passes **all** of the relation's inputs (the constants and bindings of the
+  embedded application are not applied by the handle: the default applications of the propulsion
+  relations have none), and a relation that reaches another relation takes the context as its first
+  parameter and goes through `ctx.embedded` too (`equilibrium`). The embedders never import a relation
+  function to call it: typed accessors (`formulas/propulsion.py`) only give the handed-out item its
+  signature. Deferred, because no embedded formula needs them yet: handing out the relation with
+  application constants and bindings applied, running the embedded formula's postconditions through the
+  handle (`check(...)`), and the optimisation form of an embedded relation.
 - **Registration** is by decorator at import of `aero_kernel.formulas`.
   - **Shape.** `registry.Registry` holds, per qualified formula slug, one implementation, its embeddable
     relation if any, and per `(slug, kind, check id)` one check function. The decorators `formula`,

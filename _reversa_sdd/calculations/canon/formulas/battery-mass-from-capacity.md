@@ -56,7 +56,7 @@ RC-Network tabulates MJ/kg; the app uses Wh/kg. 1 MJ = 0.2778 kWh, so 0.55 MJ/kg
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | [[end_battery_mass_predicted]] | DEVIATES | 🟢 | the app node divides the capacity of the chosen battery, not the required energy — a different input; the rewritten input (the required energy) has no implementation yet (#1238) |
-| `aero_kernel/formulas/battery_mass_from_capacity.py` | AGREES | 🟢 | `m_bat,pred = E_req / E*` with `E_req` a caller-supplied input (its producer comes with #1238) and `E*` the stated default (140 Wh/kg, pack level, `defaults.yaml`, declared as every default is); `E* <= 0` ends as `invalid_input` |
+| `aero_kernel/formulas/battery_mass_from_capacity.py` | AGREES | 🟢 | `m_bat,pred = E_req / E*` with `E_req` a caller-supplied input (its producer comes with #1238) and `E*` the stated default (140 Wh/kg, pack level, `defaults.yaml`, declared as every default is); `E* > 0` is the canon's `positive: true` of `battery-specific-energy`, checked at the input |
 
 ## Approval
 

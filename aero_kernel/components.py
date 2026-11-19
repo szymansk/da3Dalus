@@ -13,9 +13,11 @@ reads no file.
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = ["Battery", "Chemistry", "Components", "Motor", "Propeller", "PropellerTable", "RpmBlock"]
+
+SCHEMA_VERSION = 2  # the version of this contract
 
 Number = Annotated[float, Field(strict=True)]
 
@@ -126,6 +128,20 @@ class Components(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     schema_version: Literal[2]
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def _supported_version(cls, value: object) -> object:
+        """Refuse another version with a message that names the contract."""
+        if value != SCHEMA_VERSION:
+            msg = (
+                f"components schema_version {value!r} is not supported: this kernel accepts "
+                f"version {SCHEMA_VERSION} (version 2 added the propeller performance table "
+                "`propeller.table`)"
+            )
+            raise ValueError(msg)
+        return value
+
     motor: Motor | None = None
     battery: Battery | None = None
     propeller: Propeller | None = None

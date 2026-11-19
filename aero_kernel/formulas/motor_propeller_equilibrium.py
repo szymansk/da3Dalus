@@ -10,47 +10,37 @@ With ``K_v' = 2 pi K_v / 60`` (rad/(V s)) and the speed ``n`` in 1/s the balance
     propeller:  Q_p(n) = C_P(J, n) rho n^2 D^5 / (2 pi),   J = V / (n D)
     balance:    Q_m(n) = Q_p(n)
 
-``Q_m`` falls and ``Q_p`` rises with ``n`` over the usual range, so the root is found by bisection
-on the interval between two neighbouring rpm blocks where the sign of ``Q_m - Q_p`` changes.
+``Q_m`` falls and ``Q_p`` rises with ``n`` over the usual range. The residual ``Q_m - Q_p`` is evaluated
+at the rpm blocks of the table (the grid) that lie below the motor's free-run speed and that the table
+covers at this airspeed; the highest neighbouring pair of covered grid points with a sign change is
+bisected. A root between a covered and an uncovered grid point is not searched (no edge refinement).
 """
 
-import math
-from collections.abc import Callable
-from dataclasses import dataclass
 from itertools import pairwise
 
 from aero_kernel.components import Components
-from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.formulas.advance_ratio_from_speed import advance_ratio
-from aero_kernel.formulas.propeller_table_lookup import components_of, table_lookup, table_of
+from aero_kernel.formulas.propeller_table_lookup import components_of, table_of
+from aero_kernel.formulas.propulsion import (
+    RPM_PER_HZ,
+    Balance,
+    GridPoint,
+    advance_ratio_of,
+    balance_tolerance,
+    bisect_root,
+    current_at_speed,
+    motor_torque,
+    optional,
+    propeller_torque,
+    scan_grid,
+    table_lookup_of,
+)
 from aero_kernel.formulas.values import number
 from aero_kernel.registry import formula, relation
 from pydantic import JsonValue
 
-__all__ = [
-    "Balance",
-    "declare_route",
-    "equilibrium",
-    "motor_propeller_equilibrium",
-    "require_motor_values",
-]
-
-_RPM_PER_HZ = 60.0
-
-
-@dataclass(frozen=True)
-class Balance:
-    """The solved balance point.
-
-    Attributes:
-        n_prop: Propeller speed in 1/s.
-        q_m: Torque at the balance in N m (motor torque, equal to the propeller torque).
-    """
-
-    n_prop: float
-    q_m: float
+__all__ = ["declare_route", "equilibrium", "motor_propeller_equilibrium", "require_motor_values"]
 
 
 def _absent(name: str, path: str) -> FormulaError:
@@ -79,15 +69,6 @@ def require_motor_values(i_0: float | None, r_m: float | None) -> tuple[float, f
     return i_0, r_m
 
 
-def _propeller_torque(
-    components: Components, v: float, rho: float, d_prop: float, n_prop: float
-) -> float:
-    """``Q_p = C_P(J, n) rho n^2 D^5 / (2 pi)`` in N m."""
-    j = advance_ratio(v, n_prop, d_prop)
-    c_p = table_lookup(components, j, n_prop).c_p
-    return c_p * rho * n_prop**2 * d_prop**5 / (2.0 * math.pi)
-
-
 def declare_route(ctx: Context) -> None:
     """Declare route B and what its resistance leaves out (ADR 0020, canon ``Q-PT-6``)."""
     ctx.warn(
@@ -100,12 +81,33 @@ def declare_route(ctx: Context) -> None:
     )
 
 
-def _no_balance(detail: dict[str, JsonValue], why: str) -> FormulaError:
-    """The declared failure of a balance the table does not contain."""
+def _no_balance(points: list[GridPoint], v: float) -> FormulaError:
+    """The declared failure of a scan that found no sign change between covered grid points."""
+    covered = [p for p in points if p.residual is not None]
+    windmilling = [p for p in covered if p.c_p is not None and p.c_p < 0.0]
+    detail: dict[str, JsonValue] = {
+        "v_ms": v,
+        "grid_points": len(points),
+        "covered_grid_points": len(covered),
+    }
+    if windmilling:
+        return FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            "propeller_windmilling",
+            f"motor-propeller-equilibrium: at {v:.4g} m/s the propeller's power coefficient is "
+            f"negative on {len(windmilling)} of {len(covered)} covered grid points (the airstream "
+            "drives the propeller), so the torque balance of a driven propeller has no solution; "
+            "windmilling is not modelled.",
+            "Give a speed at which the propeller is driven by the motor.",
+            detail=detail,
+        )
     return FormulaError(
         ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "outside_propeller_table",
-        f"motor-propeller-equilibrium found no balance inside the propeller table: {why}.",
+        "motor-propeller-equilibrium: no balance found on the rpm grid points the table covers at "
+        f"{v:.4g} m/s ({len(covered)} of {len(points)} grid points, below the motor's free-run "
+        "speed): the motor torque never crosses the propeller torque between two covered points. "
+        "A balance between a covered and an uncovered point is not searched.",
         "Use a propeller whose table covers the speed this motor turns it at; the kernel does not "
         "extrapolate.",
         detail=detail,
@@ -114,6 +116,7 @@ def _no_balance(detail: dict[str, JsonValue], why: str) -> FormulaError:
 
 @relation("motor-propeller-equilibrium")
 def equilibrium(
+    ctx: Context,
     components: Components,
     v: float,
     rho: float,
@@ -122,13 +125,15 @@ def equilibrium(
     r_m: float | None,
     u_bat: float,
     d_prop: float,
-    tolerance: float,
 ) -> Balance:
     """The balance of the motor and the propeller at the airspeed (route B).
 
     The relation embedded by the propulsion embedders and called by the formula below (ADR 0022).
+    It reaches the advance ratio and the table lookup through ``ctx.embedded``, so the context must
+    belong to a formula whose canon entry embeds them (this one, or an embedder of this one).
 
     Args:
+        ctx: The formula context that hands out the embedded relations.
         components: The pushed components (the propeller table).
         v: Flight speed in m/s (zero for the static point).
         rho: Air density in kg/m^3.
@@ -137,64 +142,42 @@ def equilibrium(
         r_m: Winding resistance in ohm.
         u_bat: Pack voltage in V (nominal; sag under load is not modelled).
         d_prop: Propeller diameter in m.
-        tolerance: Relative width of the speed interval at which the bisection stops (1).
 
     Returns:
         The propeller speed and the torque at the balance.
 
     Raises:
         FormulaError: ``missing_input`` for an absent ``r_m`` or ``i_0``; ``outside_propeller_table``
-            if the table contains no balance or a point the search needs.
+            if no covered grid points bracket a balance; ``propeller_windmilling`` if the propeller
+            is driven by the airstream there.
     """
     i_0, r_m = require_motor_values(i_0, r_m)
-    k_v_rad = 2.0 * math.pi * k_v / _RPM_PER_HZ
+    advance, lookup = advance_ratio_of(ctx), table_lookup_of(ctx)
+
+    def coefficient_power(n: float) -> float:
+        return lookup(components, advance(v, n, d_prop), n).c_p
 
     def residual(n: float) -> float:
-        current = (u_bat - 2.0 * math.pi * n / k_v_rad) / r_m
-        return (current - i_0) / k_v_rad - _propeller_torque(components, v, rho, d_prop, n)
+        current = current_at_speed(n, k_v, u_bat, r_m)
+        return motor_torque(current, i_0, k_v) - propeller_torque(
+            coefficient_power(n), rho, n, d_prop
+        )
+
+    def state(n: float) -> tuple[float, float]:
+        return residual(n), coefficient_power(n)
 
     blocks = table_of(components).blocks
-    free_run = k_v * u_bat / _RPM_PER_HZ
-    n_top = min(blocks[-1].rpm / _RPM_PER_HZ, free_run)
-    grid = [b.rpm / _RPM_PER_HZ for b in blocks if b.rpm / _RPM_PER_HZ < n_top] + [n_top]
-    seen = _scan(residual, grid)
-    for (n_low, f_low), (n_high, f_high) in reversed(list(pairwise(seen))):
-        if f_low is None or f_high is None or not f_low > 0.0 >= f_high:
+    n_top = min(blocks[-1].rpm / RPM_PER_HZ, k_v * u_bat / RPM_PER_HZ)
+    grid = [b.rpm / RPM_PER_HZ for b in blocks if b.rpm / RPM_PER_HZ < n_top] + [n_top]
+    points = scan_grid(state, grid)
+    for low, high in reversed(list(pairwise(points))):
+        if low.residual is None or high.residual is None or not low.residual > 0.0 >= high.residual:
             continue
-        low, high = n_low, n_high
-        while high - low > tolerance * high:
-            middle = 0.5 * (low + high)
-            if residual(middle) > 0.0:
-                low = middle
-            else:
-                high = middle
-        n_balance = 0.5 * (low + high)
-        return Balance(n_balance, _propeller_torque(components, v, rho, d_prop, n_balance))
-    raise _no_balance(
-        {
-            "rpm_table_min": blocks[0].rpm,
-            "rpm_table_max": blocks[-1].rpm,
-            "rpm_free_run": free_run * _RPM_PER_HZ,
-        },
-        f"between {blocks[0].rpm:g} rpm and {n_top * _RPM_PER_HZ:g} rpm (the smaller of the table's "
-        f"last block and the motor's free-run speed) the motor torque never crosses the propeller "
-        "torque at a point the table covers",
-    )
-
-
-def _scan(
-    residual: Callable[[float], float], grid: list[float]
-) -> list[tuple[float, float | None]]:
-    """The residual at the grid points; ``None`` where the table does not cover the point."""
-    found: list[tuple[float, float | None]] = []
-    for n in grid:
-        try:
-            found.append((n, residual(n)))
-        except FormulaError as error:
-            if error.code != "outside_propeller_table":
-                raise
-            found.append((n, None))
-    return found
+        n_balance = bisect_root(residual, low.n, high.n, balance_tolerance())
+        return Balance(
+            n_balance, propeller_torque(coefficient_power(n_balance), rho, n_balance, d_prop)
+        )
+    raise _no_balance(points, v)
 
 
 @formula("motor-propeller-equilibrium")
@@ -215,23 +198,15 @@ async def motor_propeller_equilibrium(x: Inputs, ctx: Context) -> dict[str, floa
         FormulaError: From :func:`equilibrium`, unchanged.
     """
     balance = equilibrium(
+        ctx,
         components_of(x),
         number(x, "v"),
         number(x, "rho"),
         number(x, "k_v"),
-        _optional(x, "i_0"),
-        _optional(x, "r_m"),
+        optional(x, "i_0"),
+        optional(x, "r_m"),
         number(x, "u_bat"),
         number(x, "d_prop"),
-        config().powertrain_balance_tolerance.value,
     )
     declare_route(ctx)
     return {"n_prop": balance.n_prop, "q_m": balance.q_m}
-
-
-def _optional(x: Inputs, name: str) -> float | None:
-    """The value of an ``optional`` parameter, ``None`` if absent."""
-    value = x[name]
-    if value is None:
-        return None
-    return number(x, name)

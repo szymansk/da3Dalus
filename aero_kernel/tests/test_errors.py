@@ -591,6 +591,7 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "table_not_increasing": ErrorCategory.INVALID_INPUT,
         "outside_propeller_table": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "no_thrust_at_full_throttle": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "propeller_windmilling": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "lift_balance_not_converged": ErrorCategory.NOT_CONVERGED,
         "unsupported_layout": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "roll_device_on_unmirrored_surface": ErrorCategory.UNSUPPORTED_CONFIGURATION,

@@ -13,31 +13,16 @@ advance ratio beyond the tabulated range of a block the speed needs, is the decl
 """
 
 from bisect import bisect_right
-from dataclasses import dataclass
 
 from aero_kernel.components import Components, PropellerTable, RpmBlock
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.formulas.propulsion import RPM_PER_HZ, Coefficients
 from aero_kernel.formulas.values import number
 from aero_kernel.registry import formula, relation
 from pydantic import JsonValue
 
-__all__ = ["Coefficients", "components_of", "propeller_table_lookup", "table_lookup"]
-
-_RPM_PER_HZ = 60.0
-
-
-@dataclass(frozen=True)
-class Coefficients:
-    """The propeller coefficients at one point of the table.
-
-    Attributes:
-        c_t: Thrust coefficient (1).
-        c_p: Power coefficient (1).
-    """
-
-    c_t: float
-    c_p: float
+__all__ = ["components_of", "propeller_table_lookup", "table_lookup", "table_of"]
 
 
 def components_of(x: Inputs) -> Components:
@@ -118,24 +103,25 @@ def table_lookup(components: Components, j: float, n_prop: float) -> Coefficient
             speed is outside the first and last block or ``j`` outside the range of a block used.
     """
     blocks = table_of(components).blocks
-    rpm = n_prop * _RPM_PER_HZ
+    rpm = n_prop * RPM_PER_HZ
     if not blocks[0].rpm <= rpm <= blocks[-1].rpm:
         raise _outside(
             f"the propeller speed {rpm:.6g} rpm is outside the table "
             f"({blocks[0].rpm:g} to {blocks[-1].rpm:g} rpm).",
             {"rpm": rpm, "rpm_min": blocks[0].rpm, "rpm_max": blocks[-1].rpm},
         )
-    upper = min(max(bisect_right([b.rpm for b in blocks], rpm), 1), len(blocks) - 1)
-    if len(blocks) == 1:
+    if rpm <= blocks[0].rpm:  # exactly on the first block
         return _in_block(blocks[0], j)
+    if rpm >= blocks[-1].rpm:  # exactly on the last block, symmetric to the first
+        return _in_block(blocks[-1], j)
+    upper = bisect_right([b.rpm for b in blocks], rpm)
     low, high = blocks[upper - 1], blocks[upper]
-    fraction = (rpm - low.rpm) / (high.rpm - low.rpm)
-    at_low = _in_block(low, j)
     if (
         rpm <= low.rpm
-    ):  # exactly on the lower block: the upper block has no weight and no range check
-        return at_low
-    at_high = _in_block(high, j)
+    ):  # exactly on an inner block: the upper block has no weight and no range check
+        return _in_block(low, j)
+    fraction = (rpm - low.rpm) / (high.rpm - low.rpm)
+    at_low, at_high = _in_block(low, j), _in_block(high, j)
     return Coefficients(
         c_t=at_low.c_t + fraction * (at_high.c_t - at_low.c_t),
         c_p=at_low.c_p + fraction * (at_high.c_p - at_low.c_p),

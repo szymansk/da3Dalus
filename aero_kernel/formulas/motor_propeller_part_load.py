@@ -3,10 +3,10 @@
 Route B only (the manufacturer publishes ``R_m`` and ``I_0``; route A and the default ``I_0 = 0`` are
 not built, gh-1411). The steps, with ``K_v' = 2 pi K_v / 60`` (rad/(V s)):
 
-1. the angle of attack ``alpha`` where AeroBuildup's lift equals the weight at ``V`` (secant search),
-   and the drag ``D`` there;
+1. the angle of attack ``alpha`` where AeroBuildup's lift equals the weight at ``V`` (secant search on
+   the rising part of the lift curve), and the drag ``D`` there;
 2. the propeller speed ``n_pl`` where ``C_T(J, n) rho n^2 D_prop^4 = D``, ``J = V / (n D_prop)``
-   (the propeller table alone fixes it; bisection between neighbouring rpm blocks);
+   (the propeller table alone fixes it; bisection between neighbouring covered rpm blocks);
 3. ``Q = C_P rho n_pl^2 D_prop^5 / (2 pi)``, ``I = I_0 + Q K_v'``, ``U_m = I R_m + 2 pi n_pl / K_v'``,
    ``P_bat = U_m I``, ``I_bat = P_bat / U_bat``;
 4. ``r_T = D / T_full(V)`` with ``T_full`` the thrust at the full-throttle speed of
@@ -14,136 +14,135 @@ not built, gh-1411). The steps, with ``K_v' = 2 pi K_v / 60`` (rad/(V s)):
    ``demand_within_full_throttle`` gives a ``warning``.
 """
 
-import math
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from itertools import pairwise
-from typing import ParamSpec, TypeVar, cast
 
 from aero_kernel.components import Components
 from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.formulas.advance_ratio_from_speed import advance_ratio
-from aero_kernel.formulas.motor_propeller_equilibrium import (
-    Balance,
-    declare_route,
-    equilibrium,
-    require_motor_values,
+from aero_kernel.formulas.motor_propeller_equilibrium import declare_route, require_motor_values
+from aero_kernel.formulas.propeller_table_lookup import components_of, table_of
+from aero_kernel.formulas.propulsion import (
+    RPM_PER_HZ,
+    advance_ratio_of,
+    balance_tolerance,
+    bisect_root,
+    current_for_torque,
+    equilibrium_of,
+    optional,
+    propeller_torque,
+    scan_grid,
+    table_lookup_of,
+    terminal_voltage,
+    thrust_of,
 )
-from aero_kernel.formulas.propeller_table_lookup import (
-    Coefficients,
-    components_of,
-    table_lookup,
-    table_of,
-)
-from aero_kernel.formulas.thrust_at_airspeed_from_coefficient import thrust
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import CheckResult, formula, postcondition
+from aero_kernel.schema import KernelWarning
 
 __all__ = ["demand_within_full_throttle", "motor_propeller_part_load"]
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-_RPM_PER_HZ = 60.0
 
-
-def _relation(ctx: Context, item: str, kind: Callable[_P, _R]) -> Callable[_P, _R]:
-    """The embedded relation of ``item``, typed as the function it is (``kind`` names the type)."""
-    del kind
-    return cast("Callable[_P, _R]", ctx.embedded(item))
-
-
-async def _level_flight_drag(x: Inputs, ctx: Context) -> float:
-    """The drag in N at the angle of attack where AeroBuildup's lift equals the weight at ``V``.
-
-    A secant search on ``L(alpha) - m g`` from the starting angles 0 and ``powertrain_alpha_step_deg``;
-    the evaluations' caveats (regime, induced-drag factor) are forwarded, deduplicated by the engine.
-
-    Raises:
-        FormulaError: ``lift_balance_not_converged`` if the lift does not reach the weight within
-            the configured number of evaluations (a speed the wing cannot hold).
-    """
-    airplane, air, v = airplane_of(x), air_state(x), number(x, "v")
-    weight = number(x, "m") * number(x, "g")
-    tolerance = config().powertrain_lift_tolerance.value
-    limit = int(config().powertrain_lift_iterations.value)
-
-    async def point(alpha: float) -> tuple[float, float]:
-        evaluation = await ctx.solvers.opti.evaluate(airplane, air, v, alpha)
-        forward_warnings(ctx, evaluation.warnings)
-        return evaluation.forces.lift_n - weight, evaluation.forces.drag_n
-
-    alpha_previous, alpha = 0.0, config().powertrain_alpha_step_deg.value
-    miss_previous, drag = await point(alpha_previous)
-    for _ in range(limit - 1):
-        if abs(miss_previous) <= tolerance * weight:
-            return drag
-        miss, drag_here = await point(alpha)
-        if abs(miss) <= tolerance * weight:
-            return drag_here
-        if miss == miss_previous:
-            break
-        alpha_previous, alpha = (
-            alpha,
-            alpha - miss * (alpha - alpha_previous) / (miss - miss_previous),
-        )
-        miss_previous = miss
-    raise FormulaError(
+def _not_converged(v: float, weight: float, why: str) -> FormulaError:
+    """The declared failure of a level-flight lift balance that was not reached."""
+    return FormulaError(
         ErrorCategory.NOT_CONVERGED,
         "lift_balance_not_converged",
         f"motor-propeller-part-load found no angle of attack with lift = weight ({weight:.4g} N) "
-        f"at {v:.4g} m/s within {limit} evaluations.",
+        f"at {v:.4g} m/s: {why}.",
         "The wing may not carry the weight at this speed (weight above the maximum lift); "
         "give a higher flight speed or a lower mass.",
         detail={"v_ms": v, "weight_n": weight},
     )
 
 
+async def _level_flight_drag(x: Inputs, ctx: Context) -> float:
+    """The drag in N at the angle of attack where AeroBuildup's lift equals the weight at ``V``.
+
+    A secant search on ``L(alpha) - m g`` from the starting angles 0 and ``powertrain_alpha_step_deg``
+    (``config.yaml``). The kernel has no other level-flight solve to reuse (the stall code sweeps a
+    grid for the lift peak). Each secant slope must be positive: a lift that does not rise with the
+    angle is past the first lift peak or flat, and the search stops there with a declared failure
+    instead of converging on a post-stall angle. Only the converged point's caveats are forwarded.
+
+    Raises:
+        FormulaError: ``lift_balance_not_converged`` if the lift balance is not reached within
+            ``powertrain_lift_iterations`` evaluations or the lift stops rising with the angle.
+    """
+    airplane, air, v = airplane_of(x), air_state(x), number(x, "v")
+    weight = number(x, "m") * number(x, "g")
+    tolerance = config().powertrain_lift_tolerance.value
+    limit = int(config().powertrain_lift_iterations.value)
+
+    async def point(alpha: float) -> tuple[float, float, tuple[KernelWarning, ...]]:
+        evaluation = await ctx.solvers.opti.evaluate(airplane, air, v, alpha)
+        return evaluation.forces.lift_n - weight, evaluation.forces.drag_n, evaluation.warnings
+
+    alpha_previous = 0.0
+    alpha = config().powertrain_alpha_step_deg.value
+    miss_previous, drag, warnings = await point(alpha_previous)
+    evaluations = 1
+    while True:
+        if abs(miss_previous) <= tolerance * weight:
+            forward_warnings(ctx, warnings)
+            return drag
+        if evaluations >= limit:
+            raise _not_converged(
+                v, weight, f"the lift balance was not reached within {limit} evaluations"
+            )
+        miss, drag_here, warnings_here = await point(alpha)
+        evaluations += 1
+        if abs(miss) <= tolerance * weight:
+            forward_warnings(ctx, warnings_here)
+            return drag_here
+        slope = (miss - miss_previous) / (alpha - alpha_previous)
+        if not slope > 0.0:
+            raise _not_converged(
+                v,
+                weight,
+                f"the lift does not rise with the angle of attack between {alpha_previous:.4g} and "
+                f"{alpha:.4g} deg (past the first lift peak, or flat)",
+            )
+        alpha_previous, alpha = alpha, alpha - miss / slope
+        miss_previous, warnings = miss, warnings_here
+
+
 def _solve_part_load_speed(
+    ctx: Context,
     components: Components,
     v: float,
     rho: float,
     d_prop: float,
     drag: float,
-    tolerance: float,
-    relations: tuple[Callable[..., float], Callable[..., Coefficients], Callable[..., float]],
 ) -> float:
-    """The propeller speed in 1/s where the table's thrust equals the drag (bisection)."""
-    advance, lookup, thrust_of = relations
+    """The propeller speed in 1/s where the table's thrust equals the drag (bisection).
+
+    The thrust minus the drag is evaluated at the table's rpm blocks that cover this airspeed; the
+    lowest neighbouring pair of covered blocks with a sign change is bisected.
+    """
+    advance, lookup, thrust = advance_ratio_of(ctx), table_lookup_of(ctx), thrust_of(ctx)
+
+    def shortfall(n: float) -> float:
+        """Drag minus thrust: negative where the propeller out-pulls the drag."""
+        return drag - thrust(lookup(components, advance(v, n, d_prop), n).c_t, rho, n, d_prop)
+
     blocks = table_of(components).blocks
-
-    def excess(n: float) -> float:
-        coefficients = lookup(components, advance(v, n, d_prop), n)
-        return thrust_of(coefficients.c_t, rho, n, d_prop) - drag
-
-    seen: list[tuple[float, float | None]] = []
-    for block in blocks:
-        n = block.rpm / _RPM_PER_HZ
-        try:
-            seen.append((n, excess(n)))
-        except FormulaError as error:
-            if error.code != "outside_propeller_table":
-                raise
-            seen.append((n, None))
-    for (n_low, f_low), (n_high, f_high) in pairwise(seen):
-        if f_low is None or f_high is None or not f_low < 0.0 <= f_high:
+    points = scan_grid(lambda n: (shortfall(n), 0.0), [b.rpm / RPM_PER_HZ for b in blocks])
+    for low, high in pairwise(points):
+        if low.residual is None or high.residual is None or not low.residual > 0.0 >= high.residual:
             continue
-        low, high = n_low, n_high
-        while high - low > tolerance * high:
-            middle = 0.5 * (low + high)
-            if excess(middle) < 0.0:
-                low = middle
-            else:
-                high = middle
-        return 0.5 * (low + high)
+        return bisect_root(shortfall, low.n, high.n, balance_tolerance())
+    covered = sum(p.residual is not None for p in points)
     raise FormulaError(
         ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "outside_propeller_table",
-        f"the propeller table has no speed between {blocks[0].rpm:g} and {blocks[-1].rpm:g} rpm "
-        f"at which its thrust equals the drag {drag:.4g} N at {v:.4g} m/s.",
+        f"motor-propeller-part-load found no speed on the rpm grid points the table covers at "
+        f"{v:.4g} m/s ({covered} of {len(points)} grid points) at which the propeller thrust equals "
+        f"the drag {drag:.4g} N. A balance between a covered and an uncovered point is not searched.",
         "Use a propeller whose table covers the thrust level of this flight; the kernel does not "
         "extrapolate.",
-        detail={"drag_n": drag, "v_ms": v},
+        detail={"drag_n": drag, "v_ms": v, "covered_grid_points": covered},
     )
 
 
@@ -168,28 +167,18 @@ async def motor_propeller_part_load(x: Inputs, ctx: Context) -> dict[str, float]
             ``outside_propeller_table``; ``no_thrust_at_full_throttle``; the adapter's failures.
     """
     components = components_of(x)
-    i_0, r_m = require_motor_values(_optional(x, "i_0"), _optional(x, "r_m"))
+    i_0, r_m = require_motor_values(optional(x, "i_0"), optional(x, "r_m"))
     v, rho, d_prop = number(x, "v"), number(x, "rho"), number(x, "d_prop")
     k_v, u_bat = number(x, "k_v"), number(x, "u_bat")
-    tolerance = config().powertrain_balance_tolerance.value
     drag = await _level_flight_drag(x, ctx)
-    advance = _relation(ctx, "calc:advance-ratio-from-speed.default", advance_ratio)
-    lookup = _relation(ctx, "calc:propeller-table-lookup.default", table_lookup)
-    thrust_of = _relation(ctx, "calc:thrust-at-airspeed-from-coefficient.default", thrust)
-    n_pl = _solve_part_load_speed(
-        components, v, rho, d_prop, drag, tolerance, (advance, lookup, thrust_of)
-    )
-    coefficients = lookup(components, advance(v, n_pl, d_prop), n_pl)
-    shaft_torque = coefficients.c_p * rho * n_pl**2 * d_prop**5 / (2.0 * math.pi)
-    k_v_rad = 2.0 * math.pi * k_v / _RPM_PER_HZ
-    current = i_0 + shaft_torque * k_v_rad
-    terminal_voltage = current * r_m + 2.0 * math.pi * n_pl / k_v_rad
-    p_bat = terminal_voltage * current
-    balance: Balance = _relation(ctx, "calc:motor-propeller-equilibrium.default", equilibrium)(
-        components, v, rho, k_v, i_0, r_m, u_bat, d_prop, tolerance
-    )
-    full = lookup(components, advance(v, balance.n_prop, d_prop), balance.n_prop)
-    t_full = thrust_of(full.c_t, rho, balance.n_prop, d_prop)
+    advance, lookup, thrust = advance_ratio_of(ctx), table_lookup_of(ctx), thrust_of(ctx)
+    n_pl = _solve_part_load_speed(ctx, components, v, rho, d_prop, drag)
+    c_p = lookup(components, advance(v, n_pl, d_prop), n_pl).c_p
+    current = current_for_torque(propeller_torque(c_p, rho, n_pl, d_prop), i_0, k_v)
+    p_bat = terminal_voltage(current, r_m, n_pl, k_v) * current
+    balance = equilibrium_of(ctx)(ctx, components, v, rho, k_v, i_0, r_m, u_bat, d_prop)
+    c_t_full = lookup(components, advance(v, balance.n_prop, d_prop), balance.n_prop).c_t
+    t_full = thrust(c_t_full, rho, balance.n_prop, d_prop)
     if not t_full > 0.0:
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,
@@ -221,8 +210,3 @@ def demand_within_full_throttle(x: Mapping[str, object], y: Mapping[str, object]
             "current describe a demand the drive train cannot meet"
         ),
     )
-
-
-def _optional(x: Inputs, name: str) -> float | None:
-    """The value of an ``optional`` parameter, ``None`` if absent."""
-    return None if x[name] is None else number(x, name)
