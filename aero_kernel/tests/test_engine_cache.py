@@ -422,7 +422,7 @@ async def test_a_new_tool_version_expires_only_the_world_of_that_tool() -> None:
 
 
 async def test_a_non_finite_number_in_an_unread_geometry_field_does_not_break_the_key() -> None:
-    """Validation skips unread fields (spars); the key spells NaN out instead of failing."""
+    """Validation skips unread fields (the spar pocket); the key spells NaN out instead of failing."""
     counter = Counted()
 
     async def span(x: Inputs, ctx: Context) -> Mapping[str, object]:
@@ -436,10 +436,10 @@ async def test_a_non_finite_number_in_an_unread_geometry_field_does_not_break_th
         return aircraft(wings={"Main": wing})
 
     build, store = counted_build(counter, **{"wing-span": span}), RecordingCache()
-    with_nan = with_spar(spare_position_factor=float("nan"))
+    with_nan = with_spar(spare_support_dimension_width=float("nan"))
     first = by_slug(await run(build, store, "span-q", the_aircraft=with_nan))["span-q"]
     second = by_slug(await run(build, store, "span-q", the_aircraft=with_nan))["span-q"]
     without = by_slug(await run(build, store, "span-q", the_aircraft=with_spar()))["span-q"]
     assert first.status is QuantityStatus.OK
     assert second.from_cache
-    assert not without.from_cache  # NaN is not equated with an absent (null) factor
+    assert not without.from_cache  # NaN is not equated with a finite pocket width

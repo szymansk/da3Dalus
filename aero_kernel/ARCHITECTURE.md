@@ -1423,11 +1423,12 @@ parts are the separate canon input quantity **`components`** (type `components`,
 since `84599128`), bound to `AircraftInput.components`; only the formulas that read parts bind it, so a
 change of parts expires only their subtree (A1). A missing `components` is the ordinary `missing_input` of
 that one quantity (ch. 8.11, 8.13), `input_path` `components`. The field list is defined with the first KAT
-formula, `airplane-components` (gh-1397), `schema_version` 1, and was extended by `propeller-table-lookup` (gh-1411) to `schema_version` 2, in `components.py`; the names and units are the
+formula, `airplane-components` (gh-1397), `schema_version` 1, was extended by `propeller-table-lookup` (gh-1411) to `schema_version` 2 and by the spar capacity (gh-1427) to `schema_version` 3, in `components.py`; the names and units are the
 catalogue's, a field with `?` may be absent:
 
 ```
-Components { schema_version: 1, motor?: Motor, battery?: Battery, propeller?: Propeller }
+Components { schema_version: 3, motor?: Motor, battery?: Battery, propeller?: Propeller, materials?: {key: Material} }
+Material   { name, bending_strength_pa?, source? }                                         # Pa, free text
 Motor      { kv_rpm_per_volt, max_power_w?, io_no_load_a?, rm_ohm?, efficiency_pct? }   # rpm/V, W, A, ohm, %
 Battery    { capacity_mah, cells, mass_g?, c_rate?, cell_voltage_v?, chemistry? }       # mAh, 1, g, 1/h, V, enum
 Propeller  { diameter_in, table?: PropellerTable }                                      # inch
@@ -1442,6 +1443,33 @@ reports a non-finite number, a number <= 0 (the no-load current may be 0) and an
 `components.<part>.<field>`; an absent field is no finding. The table is checked at the input (rules `components-propeller-table-shape` and `-ordered`): at least one block, at least two points per block with `j`, `ct`, `cp` of one length (`malformed_table`), `rpm` > 0 and strictly increasing, `j` >= 0 and strictly increasing within a block (`table_not_increasing`). The engine carries the type like the geometry
 (`_CARRIED_TYPES`); the components are a direct input of the nodes that read them and enter their cache key by
 their JSON form. A quantity of type `components` in `values` is `not_an_input`.
+
+**The materials table** (`schema_version` 3, gh-1427). A material's key is a plain name that the spars of the
+geometry refer to (`spare_list[i].material`), never a storage id (ADR 0019). `bending_strength_pa` is the
+**published breaking strength in bending** as its source states it: no safety, resistance or knock-down factor is
+folded in anywhere (maintainer, 2026-11-19), and the kernel applies none; an already reduced allowable must not
+be pushed. It is absent where the catalogue has none, never defaulted or estimated; `source` travels with it. No
+density is carried: nothing reads one (ADR 0021). Version handling follows the rule of this contract: **an older
+document is refused** (`schema_version` 1 or 2 names the contract and the version), and it is re-pushed with the
+number raised, since version 3 only adds the optional `materials`. `validate.py` reports a strength <= 0 at
+`components.materials["<key>"].bending_strength_pa` (`non_positive_value`, rule `components-positive-numbers`).
+
+**The spar capacity** (`spar_capacity.py`, gh-1427; unreachable until its reader `spar-break-load-factor`, gh-1429,
+ADR 0021). `bending_capacity(wing, y, materials)` returns a **typed outcome**: `BendingCapacity` (a value),
+`NoSparAtStation`, or `CapacityUnknown` (the front spar is present but has no section), so that a caller cannot
+treat "unknown" as "skip"; a station outside the half span or not a number is the error `station_outside_wing`.
+The front spar alone bends the wing (BR-W16): at a station it is the spar with the smallest
+`spare_position_factor` among those **present** there (a spar ended by `spare_start`/`spare_length` is not
+present); a present front spar without a section makes the capacity unknown, the rear spar never stands in for
+it; several spars present need distinct finite positions (`front_spar_not_determinable`, rule
+`spar-front-determinable`). A segment's `section` is the smallest the spar has within it and is held constant; a
+spar continued over several segments is read from the entry of the segment that owns the station; the extent
+follows the creator's construction (`VaseModeWingCreator.py:807-819`), and a partial extent in the chained modes
+`follow` / `*_backward` is `spar_extent_not_determinable`. Whether a spar's material key resolves, and whether the
+material has a strength, is decided only here (`spar_material_missing`, `spar_material_unknown`,
+`spar_material_without_strength`, rule `spar-capacity-material`), so a missing material never aborts a quantity
+that does not need it. `validate.py` checks the section (`invalid_spar_section`, rule `spar-section-admissible`)
+and the extent fields it now reads (`invalid_spar_extent`, rule `spar-extent-admissible`).
 
 **An absent catalogue value fails the formula that needs it.** Until the maintainer decides how an *absent
 output* is carried (gh-1397: `optional:` naming outputs, status `not_applicable` / `not_given`), a value the
@@ -1576,6 +1604,8 @@ one code, one test:
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
 | `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 | `missing_surface_type` | a wing without its `surface_type` (D9: required, never inferred) |
+| `invalid_spar_extent` | a spar's `spare_start` < 0, `spare_length` <= 0, `spare_position_factor` outside [0, 1], or a zero `spare_vector` (rule `spar-extent-admissible`); non-finite values are `non_finite_number`; `input_path` the field |
+| `invalid_spar_section` | a spar `section` (format version 3, rule `spar-section-admissible`) with a dimension <= 0, a tube wall of at least half the outer diameter, or a capped flange of at least half the height; `input_path` the section |
 | `main_wing_count` | not exactly one wing of `surface_type` `main_wing` |
 
 `values` are checked here for finiteness only. **Their admissibility comes from the canon model, never

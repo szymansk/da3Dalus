@@ -123,6 +123,18 @@ Gerechnet mit `bryan_spar_break.py` nach dem Kanon-Eintrag spar-break-load-facto
 - **Nicht gerechnet, nach Entscheidung:** Befestigung, Klebung, Schub im Steg, örtliches Beulen des
   1 mm dünnen Druckgurts zwischen den Rippen. Der Kanon rechnet nur die Festigkeit (BR-W18). Beulen
   wäre bei so dünnen Gurten die erste Frage, falls der Holm je knapp wird.
+- **Section in the airplane document (format version 3, gh-1427).** `bryan.airplane.json` carries the
+  main spar (index 0) of segments 0 to 11 as a `capped` section with the key `birch_ply`. Values, per
+  segment, at the segment's **outboard** rib (the smallest section of the segment, held constant; the
+  convention of format ch. 5.1): `width` and `height` are the pocket width and pocket height of the main
+  spar at that rib, `flange_thickness` 1.0 mm (`bryan.konstruktion.json`, birch plywood). Segment 12 has
+  no section: its outboard rib carries no spar, so no value is recorded. **The balsa web (2.0 mm) is
+  ignored, which is conservative** (the capped model counts the flanges only; the reference script above
+  includes the web). The flange width of the construction file is 4.0 mm throughout, but the pocket
+  width falls from 3.98 mm to about 2.0 mm from rib 7 outward; the document uses the pocket width, the
+  smaller value, so the capacity there is the lower one. The rear spar (index 1, balsa web on edge)
+  carries torsion (BR-W16) and has no section. The strength of `birch_ply` is not in the document: it is
+  pushed with the components.
 - **Geprüft, kein App-Befund (03.10.2026):** Die Wirbelgitter-Rechnung lieferte zuerst unbrauchbare
   Werte (Panelkräfte von 10⁹ N). Ursache war mein eigener Aufruf mit 24 Panels **je Segment**: Auf den
   winzigen Segmenten des runden Randbogens entstehen dadurch fast entartete Panels. Die App verteilt die

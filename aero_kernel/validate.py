@@ -7,8 +7,9 @@ differs from the geometry's, a geometry deflection the kernel ignores) come back
 Regime (Re, Mach) is not validated (ch. 8.2) and the stops of control devices are never read
 (ch. 8.11).
 
-A check exists only for a field the kernel reads: CAD-only fields (servo, spars, turbulator,
-spacings, stops) are in :data:`UNREAD_FIELDS` and skipped.
+A check exists only for a field the kernel reads: CAD-only fields (servo, the spar pocket, turbulator,
+spacings, stops) are in :data:`UNREAD_FIELDS` and skipped. The spar's ``section`` and ``material``
+are read (the spar capacity, gh-1427) and checked.
 """
 
 import json
@@ -74,12 +75,16 @@ _TED_READ = frozenset(
 
 # Fields no kernel formula reads. This is the policy "a check exists only for a field the kernel
 # reads" (ch. 8.11): a finding on them would be noise. When a later formula starts reading one
-# (turbulator, spars), that unit removes it from this table. A device's
+# (turbulator), that unit removes it from this table. The spar capacity (gh-1427) reads a spar's
+# ``section``, ``material``, extent (``spare_start``, ``spare_length``), position factor, mode,
+# vector and origin; only the pocket dimensions stay unread. A device's
 # ``control_surface`` is read for its deflection only (to report an ignored one); the stops
 # (``*_deflection_deg``) are never read.
 UNREAD_FIELDS: Mapping[type[BaseModel], frozenset[str]] = {
     geometry.Servo: frozenset(geometry.Servo.model_fields),
-    geometry.SpareDetail: frozenset(geometry.SpareDetail.model_fields),
+    geometry.SpareDetail: frozenset(
+        {"spare_support_dimension_width", "spare_support_dimension_height"}
+    ),
     geometry.Turbulator: frozenset(geometry.Turbulator.model_fields),
     geometry.ControlSurface: frozenset(geometry.ControlSurface.model_fields) - {"deflection"},
     geometry.TrailingEdgeDevice: frozenset(geometry.TrailingEdgeDevice.model_fields) - _TED_READ,
@@ -149,6 +154,10 @@ def _non_finite(node: object, path: str, skip: frozenset[str] = frozenset()) -> 
         # isinstance narrows a generic tuple to tuple[Unknown, ...]
         for index, item in enumerate(cast("tuple[object, ...]", node)):
             findings += _non_finite(item, f"{path}[{index}]")
+    elif isinstance(node, dict):
+        # the materials table: a dict of models keyed by name (the keys are strings)
+        for key, item in cast("dict[str, object]", node).items():
+            findings += _non_finite(item, _key_path(path, key))
     return findings
 
 
@@ -210,6 +219,24 @@ _POSITIVE_COMPONENT_FIELDS: dict[str, tuple[tuple[str, str], ...]] = {
 _PERCENT = 100.0
 
 
+def _material_findings(components: Components) -> list[KernelError]:
+    """Report a material strength <= 0 where present; an absent one is no finding."""
+    errors: list[KernelError] = []
+    for key, material in (components.materials or {}).items():
+        base = _key_path("components.materials", key)
+        strength = material.bending_strength_pa
+        if strength is not None:
+            errors += _not_positive(
+                strength,
+                f"{base}.bending_strength_pa",
+                "non_positive_value",
+                "Value of bending_strength_pa",
+                "Pa",
+                "Give bending_strength_pa a value > 0.",
+            )
+    return errors
+
+
 def _component_findings(components: Components | None, rules: Rules) -> list[KernelError]:
     """Report what is inadmissible in the pushed components (ARCHITECTURE ch. 8.11).
 
@@ -237,6 +264,7 @@ def _component_findings(components: Components | None, rules: Rules) -> list[Ker
                 unit,
                 f"Give {name} a value > 0.",
             )
+    errors += _material_findings(components)
     if components.propeller is not None and components.propeller.table is not None:
         errors += _table_findings(components.propeller.table, "components.propeller.table")
     if components.motor is not None:
@@ -420,6 +448,89 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str, rules: Rules) -> lis
     return findings
 
 
+# The spar sections with a wall: the wall dimension and the size it must leave open (a bore, a gap).
+_WALL_AND_SIZE: dict[type[BaseModel], tuple[str, str]] = {
+    geometry.TubeSection: ("wall_thickness", "outer_diameter"),
+    geometry.CappedSection: ("flange_thickness", "height"),
+}
+
+
+def _section_defect(section: geometry.SparSection) -> str | None:
+    """What is physically inadmissible about a spar section's dimensions, or ``None``.
+
+    A non-finite dimension is reported elsewhere (``non_finite_number``) and skipped here.
+    """
+    sizes = {
+        name: value
+        for name, value in section.model_dump(exclude={"shape"}).items()
+        if math.isfinite(value)
+    }
+    for name, value in sizes.items():
+        if value <= 0:
+            return f"{name} is {value} m; every dimension must be > 0"
+    names = _WALL_AND_SIZE.get(type(section))
+    if names is not None and all(name in sizes for name in names):
+        wall, size = (sizes[name] for name in names)
+        if wall >= size / 2.0:
+            return f"{names[0]} must be less than half the {names[1]}"
+    return None
+
+
+def _extent_defects(spar: geometry.SpareDetail) -> list[tuple[str, str]]:
+    """The ``(field, what is wrong)`` of a spar's extent fields; a non-finite number is skipped.
+
+    ``spare_start`` >= 0, ``spare_length`` > 0 where given, ``spare_position_factor`` in [0, 1]
+    where given, and a given ``spare_vector`` is not the zero vector.
+    """
+    defects: list[tuple[str, str]] = []
+    if math.isfinite(spar.spare_start) and spar.spare_start < 0:
+        defects.append(("spare_start", f"spare_start is {spar.spare_start} m; it must be >= 0"))
+    length = spar.spare_length
+    if length is not None and math.isfinite(length) and length <= 0:
+        defects.append(("spare_length", f"spare_length is {length} m; it must be > 0"))
+    factor = spar.spare_position_factor
+    if factor is not None and math.isfinite(factor) and not 0.0 <= factor <= 1.0:
+        defects.append(
+            ("spare_position_factor", f"spare_position_factor is {factor}; it must be in [0, 1]")
+        )
+    vector = spar.spare_vector
+    if vector is not None and all(math.isfinite(c) for c in vector) and not any(vector):
+        defects.append(
+            ("spare_vector", "spare_vector is the zero vector; it must have a direction")
+        )
+    return defects
+
+
+def _spar_findings(spars: tuple[geometry.SpareDetail, ...] | None, path: str) -> list[KernelError]:
+    """Report what is inadmissible about the section and the extent of the spars of a segment."""
+    findings: list[KernelError] = []
+    for index, spar in enumerate(spars or ()):
+        base = f"{path}.spare_list[{index}]"
+        if spar.section is not None:
+            defect = _section_defect(spar.section)
+            if defect is not None:
+                findings.append(
+                    _finding(
+                        "invalid_spar_section",
+                        f"{base}.section",
+                        f"The {spar.section.shape} spar section at {base}.section: {defect}.",
+                        "Give the section dimensions in metres, all > 0 and with a wall or "
+                        "flange that leaves a gap (format ch. 5.1).",
+                    )
+                )
+        for field, what in _extent_defects(spar):
+            findings.append(
+                _finding(
+                    "invalid_spar_extent",
+                    f"{base}.{field}",
+                    f"The spar at {base}: {what}.",
+                    "Give the extent in metres, the position factor as a fraction of the chord "
+                    "(format ch. 5).",
+                )
+            )
+    return findings
+
+
 def _section_findings(
     x_sec: geometry.WingXSec, path: str, rules: Rules, *, is_last: bool
 ) -> list[KernelError]:
@@ -434,6 +545,7 @@ def _section_findings(
         "Give the chord a length > 0.",
     )
     findings += _airfoil_findings(x_sec.airfoil, f"{path}.airfoil", rules)
+    findings += _spar_findings(x_sec.spare_list, path)
     if is_last:
         details = {
             "trailing_edge_device": x_sec.trailing_edge_device,

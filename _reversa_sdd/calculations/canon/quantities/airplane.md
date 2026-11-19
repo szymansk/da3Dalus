@@ -9,13 +9,17 @@ tags:
   - module/construction
   - role/input
 type: airplane
-data: geometry:$
+data:
+  - geometry:$
+  - geometry:wings.x_secs.spare_list.section
+  - geometry:wings.x_secs.spare_list.material
 ---
 
 # Airplane · `airplane`
 
 The aircraft geometry as handed to the solver — wings with their sections and airfoils,
-fuselage, tail, reference values; **geometry only** (maintainer, 2026-10-17, S15). The fitted
+fuselage, tail, reference values, and each spar's optional cross-section and material key (format version 3,
+gh-1427); **geometry only** (maintainer, 2026-10-17, S15). The fitted
 motor, battery and propeller are the separate input [[components]]. Not a number but the model
 every solver-backed relation is evaluated on. Listed as an input so that the graph says the truth for invalidation (A1):
 a change to the geometry dirties every quantity the solver produces.

@@ -20,14 +20,19 @@ __all__ = [
     "Airfoil",
     "AirplaneGeometry",
     "BodyRole",
+    "CappedSection",
     "ControlSurface",
     "Fuselage",
     "FuselageXSecSuperEllipse",
     "InlineAirfoil",
+    "RectangularSection",
+    "RodSection",
     "Servo",
+    "SparSection",
     "SpareDetail",
     "SurfaceType",
     "TrailingEdgeDevice",
+    "TubeSection",
     "Turbulator",
     "Wing",
     "WingUnits",
@@ -180,6 +185,73 @@ class ControlSurface(_Frozen):
     deflection: Num = 0.0
 
 
+class RodSection(_Frozen):
+    """A solid round spar section (format ch. 5, version 3). Metres.
+
+    Attributes:
+        shape: The tag ``rod``.
+        diameter: Diameter, metres.
+    """
+
+    shape: Literal["rod"]
+    diameter: Num
+
+
+class TubeSection(_Frozen):
+    """A round tube spar section (format ch. 5, version 3). Metres.
+
+    Attributes:
+        shape: The tag ``tube``.
+        outer_diameter: Outer diameter, metres.
+        wall_thickness: Wall thickness, metres; the inner diameter is ``outer - 2 * wall``.
+    """
+
+    shape: Literal["tube"]
+    outer_diameter: Num
+    wall_thickness: Num
+
+
+class RectangularSection(_Frozen):
+    """A solid rectangular spar section (format ch. 5, version 3). Metres.
+
+    Attributes:
+        shape: The tag ``rectangular``.
+        width: Extent across the chord, metres.
+        height: Extent in the airfoil thickness direction, metres; the bending axis is the
+            chordwise one, so this is the dimension that enters the section modulus squared.
+    """
+
+    shape: Literal["rectangular"]
+    width: Num
+    height: Num
+
+
+class CappedSection(_Frozen):
+    """A capped (I-beam) spar section: two flanges only, the web carries no bending. Metres.
+
+    The upper and the lower flange are each ``width`` wide and ``flange_thickness`` thick, flush
+    with the outer ``height``; the gap between them is ``height - 2 * flange_thickness``. The web
+    between the flanges is not part of the bending model (as in the app's capped formula).
+
+    Attributes:
+        shape: The tag ``capped``.
+        width: Flange width across the chord, metres.
+        height: Outer height over both flanges in the airfoil thickness direction, metres.
+        flange_thickness: Thickness of one flange, metres.
+    """
+
+    shape: Literal["capped"]
+    width: Num
+    height: Num
+    flange_thickness: Num
+
+
+SparSection = Annotated[
+    RodSection | TubeSection | RectangularSection | CappedSection, Field(discriminator="shape")
+]
+"""The cross-section of a spar, a union tagged by ``shape`` (format ch. 5, version 3)."""
+
+
 class SpareDetail(_Frozen):
     """One spar of a segment. Every length is metres in the document (ch. 5); never scaled.
 
@@ -192,6 +264,10 @@ class SpareDetail(_Frozen):
         spare_mode: How origin and direction are derived.
         spare_vector: Dimensionless unit direction of the spar axis.
         spare_origin: Start point of the spar axis, metres.
+        section: Cross-section of the spar for its bending capacity (format version 3); ``None``
+            means the document does not give it and the spar has no capacity. Independent of the
+            pocket fields above.
+        material: Key into ``components.materials`` for the strength of the section (version 3).
     """
 
     spare_support_dimension_width: Num
@@ -204,6 +280,8 @@ class SpareDetail(_Frozen):
     ) = "standard"
     spare_vector: Point3 | None = None
     spare_origin: Point3 | None = None
+    section: SparSection | None = None
+    material: str | None = None
 
 
 class Servo(_Frozen):
