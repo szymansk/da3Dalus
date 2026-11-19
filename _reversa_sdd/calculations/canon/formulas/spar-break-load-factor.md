@@ -18,6 +18,7 @@ tags:
 tex: n_{break,\pm} = \min_{y}\; \frac{M_{cap,\pm}(y)}{\lvert M_{1g,\pm}(y) \rvert}
 inputs:
   airplane: airplane
+  components: components
   m: aircraft-mass
   g: gravity
   rho: air-density
@@ -38,7 +39,7 @@ n_break,+ = min over y:  M_cap,+(y) / |M_1g,+(y)|
 n_break,- = min over y:  M_cap,-(y) / |M_1g,-(y)|
 ```
 
-**Produces** [[break-load-factor-positive]] · [[break-load-factor-negative]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[maneuvering-speed]]
+**Produces** [[break-load-factor-positive]] · [[break-load-factor-negative]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[maneuvering-speed]]
 
 **Kind: a procedure — an evaluation of the airplane's structure.** At every spanwise station the bending capacity of the spar actually fitted (`M_cap`, from its section and material) against the bending moment of a 1 g load (`M_1g`, from the spanwise lift distribution). The smallest ratio over the span is the load factor at which the spar breaks. Upward (`+`) and downward (`−`) separately: for a symmetric spar — a carbon tube, an I-spar with equal flanges like BRYAN's — both have the same magnitude; for an asymmetric one they differ.
 
@@ -63,9 +64,11 @@ untwisted wing in attached flow it is.
 
 **Validity in the RC/UAV regime (ADR 0028).** Beam bending, `M_cap = W·σ_allow`, is structural and independent of the flow regime; treating the wing skin as non-structural matches both build routes. The aerodynamic regime enters only through the 1 g spanload from [[spanwise-loads]] (AVL: inviscid, attached flow). At model Reynolds numbers local `c_l,max` is lower (Anderson §4.3), and narrow tips run at a lower Re than the root, which makes them prone to tip stall (Lennon Ch. 1–3); a distribution computed without local stall is valid only while every section stays below its own Re-dependent `c_l,max`. The declared linear scaling is exact only for an untwisted wing. Real model loads of 6–19 g lie far above FAR 23 category values, which are not regulation for models [no source: maintainer measurement].
 
+Remark (2026-11-19, maintainer, #1427): **the kernel computes `M_cap` itself** from the airplane document, as `W · strength`, and **no safety, resistance or knock-down factor is folded in anywhere** — no `j`, no `k`, no 2/3. A material carries its published **breaking strength in bending** (`components.materials[key].bending_strength_pa`, Pa; an already reduced allowable must not be pushed). This settles the question left open above (whether the allowable already carries `k`): in the kernel there is no `k`; BR-W17 is the app's business. Strength only (BR-W18): no buckling, no stiffness, no modulus of elasticity; attachments are ignored. How the spar is read (format version 3, `AIRPLANE-GEOMETRY.md` §5): the spar's `section` (`rod`, `tube`, `rectangular` or `capped`, metres; `height` in the airfoil thickness direction, bending about the chordwise axis) and its `material` key; the section modulus per shape is `rod: π d³/32`, `tube: π (D⁴−d⁴)/(32 D)`, `rectangular: b h²/6`, `capped: b (H³−h³)/(6 H)` with `h = H − 2 t` — **flanges only, the web carries no bending**, as the app's capped formula defines it. A spar without a `section` is valid and has no capacity. **BR-W16 decides how several spars combine:** the front spar alone carries the bending, so the capacities are *not* added — the front spar is the one with the smallest `spare_position_factor` present at the station (a missing or non-unique position among several spars fails with `front_spar_not_determinable`, a front spar without a section gives no capacity, the rear spar never stands in for it). A spar that continues through several segments is counted once, by the entry of the segment that contains the station. Failures, declared and never substituted (rules `spar-capacity-material`, `spar-front-determinable`, `spar-section-admissible`): a section without a material, an unknown material key, a material without a strength. The pure functions exist in `aero_kernel/spar_capacity.py` (section modulus and capacity at a station); the formula itself is not implemented (#1429).
+
 ## Implementations (0)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+None in aero_kernel yet; no register node is mapped to this entry. The capacity function it will read is `aero_kernel/spar_capacity.py` (#1427), unreachable until #1429 (ADR 0021, rule 2).
 
 ## Approval
 

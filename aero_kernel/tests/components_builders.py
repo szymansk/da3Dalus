@@ -34,7 +34,7 @@ def components_of(
     battery_fields = data["batteries"][battery_id]["fields"] | extra.get("battery", {})
     return Components.model_validate(
         {
-            "schema_version": 2,
+            "schema_version": 3,
             "motor": motor_fields,
             "battery": battery_fields,
             "propeller": data["propellers"][propeller_id]["fields"],

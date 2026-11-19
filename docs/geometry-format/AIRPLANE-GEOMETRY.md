@@ -6,7 +6,13 @@ Konstruktion zu lesen sind.*
 Begleitdatei: [`airplane-geometry.schema.json`](./airplane-geometry.schema.json) —
 JSON Schema (Draft 2020-12), maschinell prüfbar.
 
-**Formatversion 2** (`x-format-version` im Schema, gh-1187): jede Fläche trägt eine
+**Format version 3** (`x-format-version` in the schema, gh-1427): a spar may optionally carry
+its cross-section (`section`) and the key of its material (`material`), §5.1. Version 3 **only
+adds optional fields**: every version 2 document is unchanged a valid version 3 document (a spar
+without `section` is valid and has no capacity). The document itself carries no version number
+that would have to be raised, so there is nothing to upgrade.
+
+**Formatversion 2** (gh-1187): jede Fläche trägt eine
 ausdrückliche, **verpflichtende** Rolle `surface_type` (§4.0). Dokumente der Version 1
 (ohne `surface_type`) werden vom Schema abgelehnt; die App schreibt das Feld bei jedem Export.
 
@@ -66,6 +72,7 @@ kommt, ist metrisch; was aus dem Bauteilkatalog kommt, ist in Millimetern.
 | `twist`, `dihedral`, alle `*_deflection_deg` | **Grad** | |
 | `spare_*` (Maße, Länge, Start, Ursprung) | **m** in der API | in der **Datenbank mm**; `wing_service` rechnet beim Lesen und Schreiben um |
 | `spare_vector` | — | Einheitsvektor, **dimensionslos**, wird nie skaliert |
+| `spare_list[].section` (alle Maße) | **m** | cross-section of a spar (format version 3), metres in the document; see §5.1 |
 | `hinge_spacing`, `side_spacing_root`, `side_spacing_tip` | **mm** | am Ruder, **nicht** umgerechnet |
 | `turbulator.height_mm` | **mm** | trägt die Einheit im Namen |
 | alle Felder von `servo` | **mm** | Katalogmaße eines Bauteils |
@@ -244,6 +251,59 @@ Darstellung. Zweitens: Bei `normal` ist `spare_origin` ein **Versatz** gegenübe
 Segmentursprung, in allen anderen Modi ein absoluter Punkt.
 
 Fehlt `spare_position_factor`, setzt die Kette beim Lösen 0,25 ein.
+
+### 5.1 Section and material of a spar (format version 3, gh-1427)
+
+*(This subsection is in English, as all new in-tree documentation is, ADR 0029.)*
+
+A spar may carry two optional fields next to the pocket fields. They describe **the spar
+itself**; the pocket fields describe the cut-out in the ribs and stay unchanged and independent
+of them.
+
+```json
+{
+  "spare_support_dimension_width": 0.006, "spare_support_dimension_height": 0.016,
+  "spare_position_factor": 0.25, "spare_mode": "standard",
+  "section": {"shape": "tube", "outer_diameter": 0.016, "wall_thickness": 0.001},
+  "material": "carbon_tube"
+}
+```
+
+`section` is a union tagged by `shape`. **Every dimension is metres.**
+
+| `shape` | fields | section modulus `W` about the chordwise axis |
+|---|---|---|
+| `rod` | `diameter` | `π d³ / 32` |
+| `tube` | `outer_diameter` `D`, `wall_thickness` `t` (inner `d = D − 2t`) | `π (D⁴ − d⁴) / (32 D)` |
+| `rectangular` | `width` `b`, `height` `h` | `b h² / 6` |
+| `capped` | `width` `b`, `height` `H`, `flange_thickness` `t` (gap `h = H − 2t`) | `b (H³ − h³) / (6 H)` |
+
+* **Bending axis.** The spar bends about the **chordwise** axis. `height` is measured in the
+  **airfoil thickness direction**, `width` across the chord. `height` is the dimension that
+  enters `W` squared (rectangular) or cubed (capped).
+* **`capped` is two flanges.** An upper and a lower flange, each `width` wide and
+  `flange_thickness` thick, flush with the outer `height`. **Only the flanges carry bending;
+  the web between them does not count** (the same definition as the app's capped formula, which
+  is conservative against a real web). `rod` uses the exact `π d³ / 32`, not the `d³ / 10`
+  rule of thumb.
+* **A spar without `section` is valid and has no capacity.** The kernel never infers a section
+  from the pocket.
+* **`material`** is a plain key into the **components'** `materials` table (components contract
+  `schema_version` 3), not a storage id. The strength is catalogue data, pushed with the
+  components; it is not part of this document. The kernel reads the **published breaking
+  strength in bending** and applies **no safety, resistance or knock-down factor**.
+* **Spanwise extent.** `spare_start` and `spare_length` (metres, `spare_length: null` = to the
+  end of the segment) are measured from the segment's root rib along the straight line between
+  the leading-edge points of its two ribs, and projected on `y`. A spar is consulted only at
+  stations of its own segment (`y_i ≤ y < y_(i+1)`; the last segment also owns the outer rib),
+  so a spar that continues through several segments (`*_backward`, `follow`) is counted once.
+* **Several spars.** The **front spar alone carries the bending** (spec BR-W16: the rear spar
+  carries the torsion); capacities are not added. The front spar is the one with the smallest
+  `spare_position_factor` at the station; with several spars present, every one needs a
+  distinct position, otherwise the capacity fails (`front_spar_not_determinable`).
+* **Validity.** All dimensions > 0; `wall_thickness` < `outer_diameter / 2`;
+  `flange_thickness` < `height / 2` (`invalid_spar_section`).
+* **Not covered:** buckling, stiffness, the modulus of elasticity, attachments (BR-W18).
 
 ---
 

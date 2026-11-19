@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://da3dalus.dev/schemas/airplane-geometry.schema.json",
   "title": "Airplane geometry document",
-  "x-format-version": 2,
+  "x-format-version": 3,
   "description": "Complete geometric description of an aeroplane — every wing surface and every fuselage — as returned by the v2 REST API and accepted on write. Mirrors app/schemas/aeroplaneschema.py. Lengths are metres and angles are degrees UNLESS a field name or description says otherwise; see AIRPLANE-GEOMETRY.md §2 for the unit table, which has genuine exceptions. This schema is deliberately STRICTER than the runtime: it forbids unknown properties so that typos in hand-written or agent-written documents fail loudly, while the FastAPI layer silently ignores them.",
   "type": "object",
   "required": ["name"],
@@ -192,7 +192,7 @@
 
     "SpareDetail": {
       "type": "object",
-      "description": "One spar in a wing segment. In the API contract every length here is METRES; the database stores them in millimetres and the service converts on read and on write.",
+      "description": "One spar in a wing segment. In the API contract every length here is METRES; the database stores them in millimetres and the service converts on read and on write. The pocket fields describe the cut-out; 'section' and 'material' (format version 3) describe the spar itself.",
       "required": ["spare_support_dimension_width", "spare_support_dimension_height"],
       "additionalProperties": false,
       "properties": {
@@ -234,7 +234,69 @@
         "spare_origin": {
           "anyOf": [{ "$ref": "#/$defs/Point3" }, { "type": "null" }],
           "description": "Start point of the spar axis in aeroplane coordinates, metres. Solved from the mode; for mode 'normal' a supplied value is an OFFSET from the segment plane origin, not an absolute point."
+        },
+        "section": {
+          "anyOf": [
+            { "$ref": "#/$defs/RodSection" },
+            { "$ref": "#/$defs/TubeSection" },
+            { "$ref": "#/$defs/RectangularSection" },
+            { "$ref": "#/$defs/CappedSection" },
+            { "type": "null" }
+          ],
+          "description": "Cross-section of the spar, for its bending capacity (format version 3). A union tagged by 'shape'. All dimensions are METRES. 'height' is measured in the airfoil thickness direction and the spar bends about the chordwise axis, so 'height' enters the section modulus squared. Null (or absent) means the section is not recorded: the spar is valid and has no capacity. The pocket fields above are independent of the section. See AIRPLANE-GEOMETRY.md section 5."
+        },
+        "material": {
+          "type": ["string", "null"],
+          "description": "Key of the spar's material in the components' materials table (format version 3). A plain name, not a storage id. Needed only to compute a capacity from 'section'; the strength itself is catalogue data pushed with the components, never part of this document."
         }
+      }
+    },
+
+    "RodSection": {
+      "type": "object",
+      "description": "Solid round spar section. Section modulus pi d^3 / 32.",
+      "required": ["shape", "diameter"],
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "const": "rod", "type": "string" },
+        "diameter": { "type": "number", "description": "Diameter in metres.", "exclusiveMinimum": 0.0 }
+      }
+    },
+
+    "TubeSection": {
+      "type": "object",
+      "description": "Round tube spar section. Section modulus pi (D^4 - d^4) / (32 D), inner diameter d = D - 2 t.",
+      "required": ["shape", "outer_diameter", "wall_thickness"],
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "const": "tube", "type": "string" },
+        "outer_diameter": { "type": "number", "description": "Outer diameter D in metres.", "exclusiveMinimum": 0.0 },
+        "wall_thickness": { "type": "number", "description": "Wall thickness t in metres; less than half the outer diameter.", "exclusiveMinimum": 0.0 }
+      }
+    },
+
+    "RectangularSection": {
+      "type": "object",
+      "description": "Solid rectangular spar section. Section modulus b h^2 / 6.",
+      "required": ["shape", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "const": "rectangular", "type": "string" },
+        "width": { "type": "number", "description": "Extent across the chord, b, in metres.", "exclusiveMinimum": 0.0 },
+        "height": { "type": "number", "description": "Extent in the airfoil thickness direction, h, in metres.", "exclusiveMinimum": 0.0 }
+      }
+    },
+
+    "CappedSection": {
+      "type": "object",
+      "description": "Capped (I-beam) spar section: an upper and a lower flange, flush with the outer height. ONLY THE FLANGES carry bending; the web between them is not part of the bending model. Section modulus b (H^3 - h^3) / (6 H) with the gap h = H - 2 t.",
+      "required": ["shape", "width", "height", "flange_thickness"],
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "const": "capped", "type": "string" },
+        "width": { "type": "number", "description": "Width b of each flange across the chord, in metres.", "exclusiveMinimum": 0.0 },
+        "height": { "type": "number", "description": "Outer height H over both flanges in the airfoil thickness direction, in metres.", "exclusiveMinimum": 0.0 },
+        "flange_thickness": { "type": "number", "description": "Thickness t of one flange in metres; less than half the outer height.", "exclusiveMinimum": 0.0 }
       }
     },
 
