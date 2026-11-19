@@ -10,6 +10,7 @@ rho = 1.225 kg/m^3, V = 10 m/s):
 - ``Q = C_P rho n^2 D^5 / 2 pi``, ``I = I_0 + Q K_v'``, ``U_m = I R_m + 2 pi n / K_v'``, ``P = U_m I``
 """
 
+import math
 from typing import Any
 
 import pytest
@@ -72,7 +73,7 @@ class LinearOpti(StubOpti):
         v_ms: float,
         n_load: float,
     ) -> LevelFlightPoint:
-        assert n_load == 1.0  # level flight
+        assert math.isclose(n_load, 1.0)  # level flight
         weight = mass_kg * gravity
         self.points.append((mass_kg, gravity, air.density, v_ms))
         if self.lift_slope <= 0.0:

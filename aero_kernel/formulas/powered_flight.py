@@ -201,7 +201,7 @@ class PoweredFlight:
             if error.detail.get("limit") == WING_LIFT_LIMIT:
                 return None
             raise
-        if n_load == LEVEL_FLIGHT and (
+        if math.isclose(n_load, LEVEL_FLIGHT) and (
             self.lowest_level_speed is None or v < self.lowest_level_speed
         ):
             self.lowest_level_speed = v

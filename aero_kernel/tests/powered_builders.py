@@ -63,7 +63,7 @@ class PolarOpti(StubOpti):
         self.evaluations.append((v_ms, n_load))
         q_s = 0.5 * air.density * v_ms**2 * AREA
         cl = n_load * mass_kg * gravity / q_s
-        if n_load == 0.0 and v_ms < self.zero_lift_floor:
+        if n_load <= 0.0 and v_ms < self.zero_lift_floor:
             raise FormulaError(
                 ErrorCategory.NOT_CONVERGED,
                 "not_converged",

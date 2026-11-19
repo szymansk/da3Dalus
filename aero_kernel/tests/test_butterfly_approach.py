@@ -132,7 +132,7 @@ class CrowStub(StubOpti):
         v_ms: float,
         n_load: float,
     ) -> LevelFlightPoint:
-        assert n_load == 1.0  # level flight
+        assert math.isclose(n_load, 1.0)  # level flight
         self.glide_speeds.append(v_ms)
         area = stand_in_main_wing_properties(airplane).s_ref
         cl = 2.0 * mass_kg * gravity / (air.density * v_ms**2 * area)
