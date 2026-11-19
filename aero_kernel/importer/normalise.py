@@ -105,6 +105,7 @@ def _quantity(entry: Entry, findings: list[Finding]) -> JsonDict:
             "positive",
             "at_most",
             "checks",
+            "abscissa",
         )
     }
     if "data" in entry.front:

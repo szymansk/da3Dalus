@@ -19,7 +19,13 @@ from aero_kernel.errors import (
     qualify,
 )
 from aero_kernel.geometry import AirplaneGeometry
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    model_validator,
+)
 
 __all__ = [
     "WARNING_CATALOGUE",
@@ -28,6 +34,7 @@ __all__ = [
     "ComputeRequest",
     "ComputeResult",
     "Curve",
+    "CurveResult",
     "DefaultUsed",
     "Interval",
     "KernelError",
@@ -384,6 +391,47 @@ class Timing(BaseModel):
         return self
 
 
+class Curve(BaseModel):
+    """A sampled function of one variable (ch. 8.12): the canon type ``curve``.
+
+    Attributes:
+        x: The variable, strictly rising; empty where the curve has no point (a glide angle
+            that does not exist).
+        y: The value at each sample.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    x: tuple[FiniteFloat, ...]
+    y: tuple[FiniteFloat, ...]
+
+    @model_validator(mode="after")
+    def _check_series(self) -> Self:
+        """Require equally long series and a strictly rising variable (empty: no point)."""
+        if len(self.x) != len(self.y):
+            msg = "x and y must have the same length"
+            raise ValueError(msg)
+        if any(b <= a for a, b in zip(self.x, self.x[1:], strict=False)):
+            msg = "x must be strictly rising"
+            raise ValueError(msg)
+        return self
+
+
+class CurveResult(Curve):
+    """A curve as the result of a ``curve`` quantity: the samples and what ``x`` is (ch. 8.3).
+
+    ``y`` is in the result's ``unit``; ``x`` is the abscissa the canon declares for the quantity.
+
+    Attributes:
+        x_quantity: Slug of the canon quantity the curve runs over (the crow mix, the mass, the
+            spanwise station).
+        x_unit: Unit of ``x``, the unit of that quantity.
+    """
+
+    x_quantity: str = Field(min_length=1)
+    x_unit: str = Field(min_length=1)
+
+
 class QuantityResult(BaseModel):
     """The result for one requested quantity (ch. 8.3).
 
@@ -397,6 +445,8 @@ class QuantityResult(BaseModel):
         surfaces: The value of a ``per_control_surface`` quantity: per surface key, per application
             id, the value in ``unit``. The union of the applicable applications' entries; a
             dual-role surface has one entry per role.
+        curve: The value of a ``curve`` quantity: the samples ``x`` and ``y``, ``y`` in ``unit``,
+            with the canon quantity ``x`` runs over and its unit (``x_quantity``, ``x_unit``).
         interval: The spread over method worlds, for an uncertain quantity.
         tool: Tool that produced the value.
         application: Id of the application that produced the value.
@@ -419,6 +469,7 @@ class QuantityResult(BaseModel):
     value: FiniteFloat | None = None
     surfaces: dict[str, dict[str, FiniteFloat]] | None = None
     interval: Interval | None = None
+    curve: CurveResult | None = None
     tool: str | None = None
     application: str | None = None
     validated: Literal[False] = False
@@ -448,12 +499,11 @@ class QuantityResult(BaseModel):
         if self.from_cache and self.status is not QuantityStatus.OK:
             msg = f"from_cache requires status ok, not {self.status.value}: only ok is stored"
             raise ValueError(msg)
-        has_result = (
-            self.value is not None or self.interval is not None or self.surfaces is not None
-        )
+        carried = (self.value, self.interval, self.surfaces, self.curve)
+        has_result = any(x is not None for x in carried)
         if self.status is QuantityStatus.OK:
-            if sum(x is not None for x in (self.value, self.interval, self.surfaces)) != 1:
-                msg = "status ok needs exactly one of value, interval and surfaces"
+            if sum(x is not None for x in carried) != 1:
+                msg = "status ok needs exactly one of value, interval, surfaces and curve"
                 raise ValueError(msg)
             if self.surfaces is not None and (not self.surfaces or not all(self.surfaces.values())):
                 msg = "surfaces needs at least one surface, each with at least one application"
@@ -470,7 +520,9 @@ class QuantityResult(BaseModel):
                     msg = f"status ok needs {name}: every value leads back to its application and tool"
                     raise ValueError(msg)
         elif has_result:
-            msg = f"status {self.status.value} must not carry a value or interval"
+            msg = (
+                f"status {self.status.value} must not carry a value or interval, surfaces or curve"
+            )
             raise ValueError(msg)
         if self.status is QuantityStatus.ERROR and self.error is None:
             msg = "status error needs an error"
@@ -639,32 +691,6 @@ class Polar(BaseModel):
             raise ValueError(msg)
         if any(b <= a for a, b in zip(self.alpha_deg, self.alpha_deg[1:], strict=False)):
             msg = "alpha_deg must be strictly rising"
-            raise ValueError(msg)
-        return self
-
-
-class Curve(BaseModel):
-    """A sampled function of one variable (ch. 8.12): the canon type ``curve``.
-
-    Attributes:
-        x: The variable, strictly rising; empty where the curve has no point (a glide angle
-            that does not exist).
-        y: The value at each sample.
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    x: tuple[FiniteFloat, ...]
-    y: tuple[FiniteFloat, ...]
-
-    @model_validator(mode="after")
-    def _check_series(self) -> Self:
-        """Require equally long series and a strictly rising variable (empty: no point)."""
-        if len(self.x) != len(self.y):
-            msg = "x and y must have the same length"
-            raise ValueError(msg)
-        if any(b <= a for a, b in zip(self.x, self.x[1:], strict=False)):
-            msg = "x must be strictly rising"
             raise ValueError(msg)
         return self
 

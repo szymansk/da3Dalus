@@ -10,6 +10,7 @@ tags:
   - point/over-mass
   - role/output
 type: curve
+abscissa: aircraft-mass
 ---
 
 # Best climb rate over the mass · `ROC_max(m)`

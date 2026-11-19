@@ -451,12 +451,17 @@ def aircraft(**values: float) -> AircraftInput:
     return AircraftInput.model_validate({"airplane": document(), "values": given})
 
 
-async def engine(values: dict[str, float], stub: StubOpti | None = None, **doc: bool) -> Any:
+async def engine(
+    values: dict[str, float],
+    stub: StubOpti | None = None,
+    quantities: tuple[str, ...] = ("butterfly-max-mix",),
+    **doc: bool,
+) -> Any:
     solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=stub or CrowStub())
     given = aircraft(**values)
     if doc:
         given = AircraftInput.model_validate({"airplane": document(**doc), "values": given.values})
-    request = ComputeRequest(quantities=("butterfly-max-mix",))
+    request = ComputeRequest(quantities=quantities)
     return await evaluate(shipped_build(), given, request, solvers=solvers)
 
 
@@ -467,6 +472,23 @@ async def test_the_engine_carries_the_largest_mix_from_the_approach_margin() -> 
     assert (quantity.unit, quantity.tool, quantity.application) == ("1", "OPT", "crow")
     assert quantity.value is not None
     assert abs(quantity.value - (1.25 - 1.25 / 1.05**2) / 0.18) < 2e-3
+
+
+async def test_the_engine_hands_out_the_three_curves_over_the_mix() -> None:
+    curves = ("butterfly-stall-speed-curve", "butterfly-approach-speed-curve")
+    result = await engine(
+        {"approach-speed-margin-target": 1.05}, quantities=(*curves, "butterfly-glide-angle-curve")
+    )
+    stall, approach, glide = result.quantities
+    assert [q.status for q in result.quantities] == [QuantityStatus.OK] * 3, result
+    assert (stall.unit, approach.unit, glide.unit) == ("m/s", "m/s", "deg")
+    for quantity in (stall, approach, glide):
+        assert quantity.curve is not None
+        assert (quantity.value, quantity.interval, quantity.application) == (None, None, "crow")
+        assert quantity.curve.x == tuple(i / 10 for i in range(11))
+        assert (quantity.curve.x_quantity, quantity.curve.x_unit) == ("crow-mix", "1")
+    assert stall.curve is not None
+    assert not isinstance(stall.curve, StallCurve)  # the sweep's extra fields stay in the formula
 
 
 async def test_the_engine_reports_a_fully_mixable_airplane_with_the_curve_in_the_detail() -> None:

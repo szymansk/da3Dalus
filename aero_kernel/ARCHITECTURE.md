@@ -383,18 +383,28 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
   the applicable applications, a surface acting in two roles carries two entries. Its `application` field
   lists the ids of the applications that contributed, joined by `, `. A request for it resolves to **all**
   its producing applications (`Resolved.producers`); `value` is not defined for it, and nothing reads it
-  (ch. 8.5). The other non-scalar types (curve, ...) are still refused as `non_scalar_result`. Numbers are **strict and finite**: `value`, the interval bounds and world
+  (ch. 8.5). `curve` is the value of a `curve` quantity (gh-1424): `{"x": [...], "y": [...], "x_quantity": "<slug>", "x_unit": "<unit>"}`,
+  `x` strictly rising, `y` in the result's `unit`, `x_quantity` the canon quantity the curve runs over (the
+  quantity's `abscissa:`, a scalar of the canon: the crow mix, the mass, the spanwise station) and `x_unit` its unit. A curve may be
+  empty (a glide angle that does not exist). The field is `null` on every other result, as `value`, `surfaces` and `interval`
+  are where they are empty. An `ok` result carries exactly one of `value`,
+  `interval`, `surfaces` and `curve`, enforced by the model. A curve under more than one method world is `error`
+  with category `not_implemented`, code `uncertain_curve`: a pointwise min/max over worlds is not built until a
+  formula needs it. A curve has one producing application (the importer refuses a second, A7), so there is no
+  union of curves to define. Both interfaces of ch. 8.4 (`compute`, `CachedKernel`) run the same engine and return the curve alike; there is no
+  separate step interface in the kernel, and the app's Expert View passes `QuantityResult` through unchanged. The other non-scalar types (`curve_pair`, `polar`,
+  `airplane`, ...) are still refused as `non_scalar_result`. One rule, one place: `CanonGraph.resolve`. Numbers are **strict and finite**: `value`, the interval bounds and world
   values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf. The same holds inside every free JSON field
   (`detail` of errors and warnings, `solver_settings`): a non-finite number anywhere in the tree is
   rejected — one shared recursive check in `errors.py` — because JSON would silently turn it into `null`
   (ADR 0020).
-- `ok` requires `tool` and `application` (Q3: every value leads back to its application and tool). A **requested** quantity whose `type` is not `scalar` (`polar-stall`,
-  `airplane-landing`, a `curve`) is therefore, per quantity, `error` with category `not_implemented`, code
+- `ok` requires `tool` and `application` (Q3: every value leads back to its application and tool). A **requested** quantity whose `type` is not `scalar`, `per_control_surface` or `curve` (`polar-stall`,
+  `airplane-landing`, a `curve_pair`) is therefore, per quantity, `error` with category `not_implemented`, code
   `non_scalar_result`, decided at request time before anything is computed; the rest of the request is
-  computed. The canon model is not touched: such quantities are requestable by the canon, only the v1
-  result type cannot carry them. **Internal node values are not constrained by this:** the engine passes
+  computed. Such quantities are requestable by the canon, only the v1
+  result type cannot carry them (a `curve` it can, since gh-1424). **Internal node values are not constrained by this:** the engine passes
   polars, configured geometry and curves between nodes as the structured types of ch. 8.12; only what
-  enters a `QuantityResult` is float-only.
+  enters a `QuantityResult` is a float, a per-surface map or a curve.
 - `reason` codes are a closed enum of their own, separate from error codes; `ok` has neither `reason` nor
   `error`, `error` has `error` and no `reason`, the other two have `reason` and no `error`.
 - `tool` and `application`
@@ -499,8 +509,8 @@ write; the miss reports that same time, so a later hit reports what the miss did
   format's millimetre fields and by design does not parse again (`geometry.py`), so it cannot come back from
   JSON unchanged. The node is cheap (a device setting) and runs again; the nodes that read its configured
   airplane are cached, keyed by its dump.
-- a node with an output of a type v1 does not carry (curve, curve pair, per control surface): the engine
-  discards such values (ch. 8.3). Cached types: scalar and polar.
+- a node with an output of a type v1 does not carry (curve pair): the engine
+  discards such values (ch. 8.3). Cached types: scalar, polar, per control surface and curve (stored as `x` and `y`; a stall curve's extra fields are not a result and are not stored; the abscissa comes from the canon on every hit).
 
 **On a hit**, the engine still takes the node's defaults (logged, in `defaults_used`), records the tool
 versions and settings of the node's world in the provenance (they are equal: they are in the key) and
@@ -1764,8 +1774,8 @@ sampled grid and no `-static` chain.
   uncertain formulas in a quantity's subtree (A11 rule 3); a node outside an uncertain formula's subtree
   runs once and is shared by all assignments.
 - The interval of a quantity is min and max over its assignments; `worlds` lists every assignment with its
-  value. Never interval arithmetic. For `curve` and `curve_pair` min and max are pointwise over the swept
-  variable, which must be the same grid in every world (else `internal`); for `airplane` and `polar` there is
+  value. Never interval arithmetic. For `curve` and `curve_pair` min and max would be pointwise over the swept
+  variable, which must be the same grid in every world (else `internal`); not built (gh-1424): a requested curve under more than one world is `not_implemented` (`uncertain_curve`) until a curve formula has worlds; for `airplane` and `polar` there is
   no min/max, only `worlds`.
 - Worlds follow **value edges**, not `embeds:`. A formula that reads an uncertain quantity (`mass-envelope`
   reads `neutral-point`) is in its subtree and runs once per assignment like any node; all its outputs
@@ -1927,6 +1937,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
 | Q38 | Non-scalar quantity requested in v1 | requesting `polar-stall` together with `stall-speed`: `polar-stall` is `error`, `not_implemented`, code `non_scalar_result`, no formula called for it; `stall-speed` computes and its formula, which also returns the polar internally, runs once |
 | Q39 | Crow that never reaches the approach speed (interim, #1402) | `butterfly-max-mix` is `error`, category `unsupported_configuration`, code `unsupported_configuration`, the message says "fully mixable": the stall speed stays below the approach speed flown without crow up to `s = 1`, so there is no largest mix; the result is in `detail` (`mix`, `v_s0_m_s`, `v_app_m_s`, `glide_angle_deg`), the hint says it is a result and not a failure. The kernel has no mechanism for a declared absent output yet; the maintainer decides (Soll, #1402). An approach speed at or below `V_S0(0)` gives `s_max = 0` and an empty glide-angle curve; a mix off the first `C_L` peak is named even where there is no crossing; the glide angle at `V_app(s)` is read from `OptiAdapter.level_flight_point` (`atan2(C_D, C_L)`), the kernel's one lift-equals-weight solve |
+| Q40 | Curve requested (gh-1424) | requesting a `curve` quantity: `ok` with `curve: {x, y}` and no `value`; under more than one method world: `error`, `not_implemented`, code `uncertain_curve` (`test_curve_result.py`) |
 
 ## 11. Risks and technical debt
 
@@ -1957,6 +1968,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | **Cost class** | `instant` / `seconds` / `minutes` | Kostenklasse |
 | **Operating point** | mass, altitude, speed and controls of one flight condition (O10); one call evaluates one (ch. 8.13) | Betriebspunkt |
 | **Parameter** | the name of a formula input or output inside the formula; applications bind it to a quantity | — |
+| **Curve** | the result of a `curve` quantity: samples `x` (strictly rising) and `y` in the quantity's unit, one per point of the swept variable (ch. 8.3) | Kurve |
 | **World assignment** | one world chosen per uncertain formula of a subtree (ch. 8.13) | — |
 
 ---

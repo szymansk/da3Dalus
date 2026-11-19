@@ -67,6 +67,7 @@ QUANTITY_CARRIED = frozenset(
         "at_most",
         "uncertainty",
         "checks",
+        "abscissa",
         "data",
         "consistency",
     }
@@ -96,6 +97,7 @@ _QUANTITY_SHAPE = {
     "type": "string",
     "uncertainty": "string",
     "checks": "string",
+    "abscissa": "string",
 }
 _QUANTITY_REQUIRED = ("symbol", "unit", "role", "type")
 
