@@ -63,6 +63,12 @@ IMPLEMENTED = {
     "calc:aerobuildup-evaluation",
     "calc:lift-to-drag-ratio",
     "calc:zero-lift-angle",
+    "calc:parabolic-polar-fit",
+    "calc:induced-drag-factor",
+    "calc:drag-polar",
+    "calc:max-lift-to-drag-parabolic",
+    "calc:minimum-drag-speed-closed-form",
+    "calc:sink-rate",
     "calc:airplane-components",
 }
 
@@ -123,6 +129,8 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_probe_tolerance": 1e-6,
     "opt_peak_tolerance": 1e-6,
     "opt_zero_span": 1e-15,
+    "opt_level_lift_tolerance": 1e-6,
+    "opt_level_max_steps": 20,
     "opt_alpha_margin_deg": 1e-9,
     "opt_hinge_floor": 1e-16,
     "opt_flap_rib_gap_m": 1e-6,

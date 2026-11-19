@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:911405a9126296d26972bea867c12a09a8fe9dafa58b50cd742f77ddc4b2d6ca",
+  "content_hash": "sha256:fdf15922e0511fc0163e4d7b9b5dded618e0e9fd3f60550aea6765c1908731a6",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -137,6 +137,20 @@
           "unit": "1",
           "value": 1e-16
         },
+        "opt_level_lift_tolerance": {
+          "basis": "numerical",
+          "guards": "Parabolic polar fit: the relative difference between the lift AeroBuildup returns at a level-flight point and the weight m g, at which the angle of attack of that point is accepted (the angle is refined by secant steps from the sweep's linear interpolation).",
+          "source": "the lift balance of every other optimisation of the kernel is solved by IPOPT to its default tolerance of 1e-8 on the scaled constraint (opt_probe_tolerance, 1e-6 leaves two decades); a fit point whose lift misses the weight by one part in a million moves its C_L by the same fraction, far below the scatter of the polar",
+          "unit": "1",
+          "value": 1e-06
+        },
+        "opt_level_max_steps": {
+          "basis": "numerical",
+          "guards": "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance.",
+          "source": "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one",
+          "unit": "1",
+          "value": 20.0
+        },
         "opt_peak_tolerance": {
           "basis": "numerical",
           "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled first peak by this much; both are samples of one curve, so it only absorbs numerical noise.",
@@ -181,7 +195,7 @@
         },
         "opt_zero_span": {
           "basis": "numerical",
-          "guards": "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference.",
+          "guards": "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference. Also the zero test of a slope that is divided by: the secant slope of a level-flight point (lift per degree) and the slope of the parabola fitted to the level-flight polar (a slope this close to zero has no finite Oswald factor).",
           "source": "a margin over floating-point noise of C_L, which is of order 1",
           "unit": "1",
           "value": 1e-15
@@ -1598,7 +1612,14 @@
             "k": "calc:induced-drag-factor"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "oswald_factor_positive",
+              "on_violation": "error",
+              "parameter": "e_osw"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
@@ -2093,7 +2114,14 @@
             "e_max_probe": "calc:max-lift-to-drag-probe"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "parabola_defined",
+              "on_violation": "error",
+              "parameter": "cd0"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
@@ -2412,7 +2440,14 @@
             "v_md_probe": "calc:minimum-drag-speed-probe"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "parabola_defined",
+              "on_violation": "error",
+              "parameter": "cd0"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
@@ -2927,8 +2962,14 @@
           "preconditions": [
             {
               "applications": null,
-              "id": "small_glide_angle",
-              "on_violation": "warning",
+              "id": "lift_coefficient_positive",
+              "on_violation": "error",
+              "parameter": "cl"
+            },
+            {
+              "applications": null,
+              "id": "drag_coefficient_positive",
+              "on_violation": "error",
               "parameter": "cd"
             }
           ],
@@ -7242,6 +7283,74 @@
             }
           }
         },
+        "parabolic-polar-fit": {
+          "applies_to": {
+            "formula": "parabolic-polar-fit",
+            "quantity": null
+          },
+          "codes": [
+            "polar_fit_nonphysical",
+            "polar_fit_residual",
+            "empty_fit_window",
+            "invalid_fit_points",
+            "defective_solver_drag"
+          ],
+          "criterion": "The parabola C_D = C_D0 + C_L^2 / (pi AR e) is fitted by least squares to fit_points points of the solver polar along level flight, equally spaced in C_L between max(window_cl_floor, window_lower_fraction C_L,max) and window_upper_fraction C_L,max (each point at the speed where it flies level, L = m g, so at its own Reynolds number). Two results are not physically meaningful and are declared with the warning polar_fit_nonphysical (severity error) while the fitted numbers are still returned: a fitted C_D0 at or below zero, and an Oswald factor at or below zero (a slope k at or below zero) or above max_oswald. A slope of zero (to the configuration value opt_zero_span) has no finite Oswald factor and is an error of the formula, as are a solver drag at or below zero at any point (defective_solver_drag, checked before anything is divided by it), an empty window (empty_fit_window: the upper end is not above the lower end) and a fit_points that is no integer of at least 3 (invalid_fit_points). Every fit also declares its residual in the notice polar_fit_residual (RMS and largest deviation of the solver C_D from the parabola, C_L range and number of points). Raising fit_points is the way to a better fit; no threshold on the residual exists (BR-16: resolution goes up, thresholds never move).",
+          "kind": "tool",
+          "on_violation": "warning",
+          "parameters": {
+            "fit_points": {
+              "at_most": null,
+              "basis": "convention",
+              "positive": true,
+              "regime": "regime-independent: a sampling density; the points carry their own Reynolds numbers",
+              "source": "a resolution, not a physical limit: the number of level-flight points of the fit window. Chosen from the convergence measurement of #1401: fitted C_D0 and e at 12, 48 and 96 points on BRYAN (C_D0 0.02672, 0.02698, 0.02702; e 0.7596, 0.7645, 0.7653) and on the Ultra Stick 120 (C_D0 0.00972, 0.01000, 0.01005; e 0.7253, 0.7341, 0.7356): 48 points are within 0.2 % of 96 in e and 0.5 % in C_D0 on both, 12 are 0.7 to 1.4 % off in e; a point costs about 0.7 s of AeroBuildup on BRYAN. Raising it is the remedy for a poor fit (BR-16)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 48.0
+            },
+            "max_oswald": {
+              "at_most": null,
+              "basis": "definition",
+              "positive": true,
+              "regime": "regime-independent: a bound from lifting-line theory; the lower BR-16 gate e > 0.4 was an empirical band and is not adopted (the canon computes, it does not judge)",
+              "source": "Anderson, Fundamentals of Aerodynamics 6e, 5.3.3: the span efficiency of a planar wing is at most 1 (the elliptical lift distribution has the least induced drag), and the Oswald factor of the complete airplane (6.7.2) absorbs further drag, so it is at most the span efficiency. An airplane polar with e above 1 is not physically meaningful (the app's gate unphysical_e_oswald, BR-16, used the same upper bound)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1.0
+            },
+            "window_cl_floor": {
+              "at_most": null,
+              "basis": "convention",
+              "positive": true,
+              "regime": "RC/UAV: the window is a fraction of the airplane's own C_L,max, so it follows the section's Reynolds-dependent C_L,max (Anderson 4.3, Lennon Ch. 1-3: NACA 0012 C_L,max falls from 1.55 to 0.83 at low model Re) instead of a fixed C_L",
+              "source": "BR-16 of the aero-analysis requirements (gh-672): the fit window CL in [max(0.10, 0.10 CL_max), 0.85 CL_max], the app's window since gh-672; no published source for the numbers. The lower end keeps the fit away from the C_L ~ 0 region where the polar of a cambered airplane departs from the parabola, the upper end away from the stall",
+              "status": "adopted",
+              "unit": "1",
+              "value": 0.1
+            },
+            "window_lower_fraction": {
+              "at_most": 1.0,
+              "basis": "convention",
+              "positive": true,
+              "regime": "see window_cl_floor",
+              "source": "BR-16 (gh-672), see window_cl_floor",
+              "status": "adopted",
+              "unit": "1",
+              "value": 0.1
+            },
+            "window_upper_fraction": {
+              "at_most": 1.0,
+              "basis": "convention",
+              "positive": true,
+              "regime": "see window_cl_floor; 0.85 C_L,max stays clear of the laminar-separation and stall region of the section polar, where the polar is the least parabolic",
+              "source": "BR-16 (gh-672), see window_cl_floor",
+              "status": "adopted",
+              "unit": "1",
+              "value": 0.85
+            }
+          }
+        },
         "positive-lengths": {
           "applies_to": {
             "formula": null,
@@ -7363,6 +7472,30 @@
           "kind": "input",
           "on_violation": "error",
           "parameters": {}
+        },
+        "small-glide-angle": {
+          "applies_to": {
+            "formula": "sink-rate",
+            "quantity": null
+          },
+          "codes": [
+            "small_glide_angle"
+          ],
+          "criterion": "The sink rate w = V C_D / C_L is the small-glide-angle form of the steady glide: it drops cos(gamma) from sin(gamma) = tan(gamma) cos(gamma) and takes L = W instead of W cos(gamma). Both overstate the sink rate, by about 3 percent together at C_L/C_D = 5 and about 8 percent at 3. A point whose glide ratio C_L/C_D is below min_glide_ratio is reported with the warning small_glide_angle (the value is still returned, never dropped); the detail holds the glide ratio, the glide angle and the two exact overstatements.",
+          "kind": "tool",
+          "on_violation": "warning",
+          "parameters": {
+            "min_glide_ratio": {
+              "at_most": null,
+              "basis": "convention",
+              "positive": true,
+              "regime": "RC/UAV: E of 10-20 for gliders and 3-6 for a draggy sport model at low Re (the entry), so the floor falls inside the range of powered models; the exact overstatements are in the detail of every warning, so a caller can read the size of the error rather than rely on the floor",
+              "source": "the entry sink-rate (draft value E ~ 5, 'fixed at approval'): at E = 5 the two dropped factors overstate the sink rate by 2.0 % and 1.0 % (exact trigonometry, tabulated in the entry). The value is a draft of the entry that the maintainer fixes at approval; no published source states a floor. The RC-Network Wiki 'Gleitzahl' gives only tan(gamma) = 1/E",
+              "status": "adopted",
+              "unit": "1",
+              "value": 5.0
+            }
+          }
         },
         "spinner-merge": {
           "applies_to": {

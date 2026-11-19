@@ -263,6 +263,7 @@ nothing failed. The category enum holds only the eight rows above.
   `no_control_in_role` — the role's condition holds but no segment carries a device acting in it (a device on
   the last rib of a wing spans nothing); `hinge_outside_chord` — a hinge at or beyond an edge of the chord (at the leading edge the whole
   section would turn, at the trailing edge nothing), where no hinge moment is defined.
+- **The parabolic polar fit (#1401):** `empty_fit_window` and `invalid_fit_points` (`invalid_input`) — the window of `C_L` is empty, or the rule's `fit_points` is no integer of at least 3; `defective_solver_drag` (`not_converged`) — a level-flight point with a solver `C_D` at or below zero, refused before anything is divided by it.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `warning` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
@@ -340,7 +341,7 @@ Sources:
   unchanged and not declared. Declared only for an admissible input
 - the kernel's drag (`induced_drag_viscous_factor_removed`, `notice`, #1346, ch. 8.8): AeroBuildup's full-scale
   viscous factor `k_e,D0` is taken out of its induced drag on every drag the kernel reads; one per evaluation
-  (evaluate, best glide, minimum sink; not the stall, whose values read lift only — the reader of the published
+  (evaluate, best glide, minimum sink, the level-flight polar of `parabolic-polar-fit`; not the stall, whose values read lift only — the reader of the published
   polar's `C_D` declares it), `detail`: `k_e_d0` and `induced_drag_share_removed`
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`warning`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`warning`)
@@ -855,6 +856,7 @@ caller's responsibility.
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
     `FormulaError`; a dead worker discards its own worker slot (the others and their model functions stay)
     and becomes `internal`. Tested with a stub solver.
+  - **The parabolic polar fit (#1401).** `polar_fit_residual` (`notice`, every fit of `parabolic-polar-fit`; `detail`: `points`, `cl_min`, `cl_max`, `v_min_ms`, `v_max_ms`, `rms`, `max_abs`, `max_relative`), `polar_fit_nonphysical` (`error`: a fitted slope or `C_D0` at or below zero, or an Oswald factor above `max_oswald`; the fitted numbers are returned and declared, never replaced; `detail`: `reasons`, `cd0`, `k`, `e_osw`) and `small_glide_angle` (`warning`, `sink-rate` below the glide-ratio floor of the rule `small-glide-angle`; `detail`: `glide_ratio`, `glide_angle_deg`, `from_tan_for_sin`, `from_lift_equals_weight`, `floor`).
   - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **The lateral chain (#1277).** The static-margin probe and its warnings (`aerobuildup_no_downwash`, `static_margin_probe_disagrees`, `static_margin_probe_sign_disagrees`) are deleted (maintainer 2026-11-05, #1347; reasons in the canon's `STAND.md`). `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
@@ -913,9 +915,23 @@ caller's responsibility.
     worker in the request (`k_e_d0` of `StallRequest`, `SweepRequest`, `EvaluationRequest`); it is applied
     outside the model function, which therefore needs no new key. The aero tier checks that the canon value is
     AeroSandbox's (`oswalds_efficiency / e_theo` to 1·10⁻⁹) and that AeroBuildup's `D` is `D_profile +
-    D_induced`. Every value that carries the correction — the evaluation, best glide, minimum sink — gets the
+    D_induced`. Every value that carries the correction — the evaluation, best glide, minimum sink, the level-flight polar — gets the
     `notice` `induced_drag_viscous_factor_removed` (ch. 8.2), once per
     evaluation, with `k_e_d0` and `induced_drag_share_removed` (`1 − k_e,D0`) in `detail`.
+  - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
+    polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
+    `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the
+    angle of attack is read from one alpha sweep at that speed on the branch before the first C_L peak
+    (`alpha_for_lift_coefficient`) and refined by secant steps on AeroBuildup's lift until it equals `m g` to
+    `opt_level_lift_tolerance` (`config.yaml`); a level the lift curve does not reach, a missing peak or a point
+    that does not settle in `LEVEL_MAX_STEPS` is `not_converged`. The drag is `kernel_drag`. The regime warnings
+    are those of the slowest and of the fastest point (Reynolds number and Mach number rise strictly with V in a
+    fixed air state, so the regime bands are met first at one of the two extremes and the two bound every point
+    between them), the drag notice is declared once. A converged point must lie at or below the angle of the
+    sweep's first C_L peak, else `not_converged`; the step limit is `opt_level_max_steps` (`config.yaml`,
+    termination only). The fit itself (least
+    squares in `C_L^2`, residual) is the formula's, in `formulas/parabolic_polar_fit.py`; its window and point
+    count are the parameters of the rule `parabolic-polar-fit`.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
     the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
     extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
@@ -1936,11 +1952,11 @@ model (part of `IMPORT_REPORT.md`).
 | `cg-for-target-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `cruise-target-performance` | procedure | OPT | law | 14 → 2 | 1 | – | – | seconds | later |
 | `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
-| `drag-polar` | law | APP | approximation | 3 → 1 | 1 | – | – | instant | later |
+| `drag-polar` | law | APP | approximation | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `dynamic-pressure` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `endurance-and-range` | procedure | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
 | `endurance-and-range-optimum` | optimization | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
-| `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
+| `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `lateral-static-stability-app` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
@@ -1948,22 +1964,22 @@ model (part of `IMPORT_REPORT.md`).
 | `maneuvering-speed` | optimization | OPT | law | 7 → 1 | 1 | – | – | seconds | later · implemented (#1381) |
 | `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
-| `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
+| `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `roll-rate-cruise-target` | procedure | OPT | law | 9 → 1 | 1 | – | A11 | seconds | later · implemented (#1382) |
 | `roll-rate` | procedure | OPT | law | 5 → 2 | 1 | – | A11 | seconds | core chain |
 | `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
 | `mean-geometric-chord` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `min-sustained-turn-radius` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
-| `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later |
+| `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `minimum-drag-speed` | optimization | OPT | route | 5 → 2 | 1 | – | – | seconds | core chain |
 | `minimum-sink-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | core chain |
 | `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe |
 | `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later |
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
-| `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe |
+| `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds (tens of seconds: 10 to 90 s measured, declared) | probe · implemented (#1401) |
 | `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe |
-| `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
+| `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain · implemented (#1401) |
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
 | `spiral-parameter` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |

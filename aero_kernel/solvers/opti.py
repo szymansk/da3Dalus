@@ -75,6 +75,9 @@ __all__ = [
     "Evaluation",
     "EvaluationRequest",
     "Forces",
+    "LevelFlight",
+    "LevelPolar",
+    "LevelPolarRequest",
     "MinSink",
     "MinSinkSolution",
     "OptiAdapter",
@@ -93,6 +96,7 @@ __all__ = [
     "device_spans",
     "evaluation_worker",
     "induced_drag_notice",
+    "level_polar_worker",
     "min_sink_worker",
     "stall_worker",
     "steady_roll_worker",
@@ -1436,6 +1440,188 @@ def evaluation_worker(request: EvaluationRequest) -> WorkerOutcome[Forces]:
     return WorkerOutcome(value=Forces(lift_n=lift, drag_n=drag), diagnostics=diagnostics)
 
 
+class LevelPolarRequest(BaseModel):
+    """What the worker needs for the level-flight polar; plain data, picklable.
+
+    Attributes:
+        airplane: The geometry as evaluated (devices as configured).
+        mass_kg: Mass in kg, > 0.
+        gravity: Gravity in m/s^2, > 0.
+        air: The air state.
+        cl_levels: The lift coefficients of the points, > 0 and strictly rising; each is flown at the
+            speed where the weight is carried, ``V = sqrt(2 m g / (rho S_ref C_L))``.
+        k_e_d0: The viscous factor the kernel takes out of AeroBuildup's induced drag (rule
+            ``aerobuildup-induced-drag``).
+        lift_tolerance: Relative difference between the lift of a point and the weight at which its
+            angle of attack is accepted (``config.yaml``, ``opt_level_lift_tolerance``).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    mass_kg: float
+    gravity: float
+    air: AirState
+    cl_levels: tuple[float, ...]
+    k_e_d0: float
+    lift_tolerance: float
+
+
+class LevelPolar(BaseModel):
+    """The solver polar along level flight: every point at the speed where it carries the weight.
+
+    Attributes:
+        v_ms: The speed of each point in m/s.
+        alpha_deg: The angle of attack of each point in degrees.
+        cl: The lift coefficient of each point (``L / (q S_ref)``, equal to the requested level).
+        cd: The kernel's drag coefficient of each point (``kernel_drag / (q S_ref)``).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    v_ms: tuple[float, ...]
+    alpha_deg: tuple[float, ...]
+    cl: tuple[float, ...]
+    cd: tuple[float, ...]
+
+    @model_validator(mode="after")
+    def _check_series(self) -> Self:
+        """Require equally long series of at least three points."""
+        lengths = {len(self.v_ms), len(self.alpha_deg), len(self.cl), len(self.cd)}
+        if len(lengths) != 1 or len(self.cl) < 3:
+            msg = "v_ms, alpha_deg, cl and cd must have the same length, at least 3"
+            raise ValueError(msg)
+        return self
+
+
+class LevelFlight(BaseModel):
+    """A level-flight polar and the caveats of its points.
+
+    Attributes:
+        polar: The polar.
+        warnings: Flap, regime and drag-notice warnings, without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    polar: LevelPolar
+    warnings: tuple[KernelWarning, ...]
+
+
+def _level_alpha(sweep: LiftCurve, level: float, speed: float) -> tuple[float, float]:
+    """The angle on the pre-stall branch at which the sweep at ``speed`` reaches ``level``, and the first peak's.
+
+    Raises:
+        FormulaError: ``not_converged`` if the lift curve has no peak or does not reach ``level``.
+    """
+    peak = _bracket(sweep, upright=True)
+    found = alpha_for_lift_coefficient(sweep.alpha_deg, sweep.cl, peak, level)
+    if found is None:
+        raise _not_converged(
+            f"the airplane does not reach C_L = {level:.4g} below its first C_L peak at "
+            f"{speed:.3f} m/s",
+            "the level-flight point lies beyond the stall of the airplane at its own Reynolds "
+            "number; check mass, wing area and the fit window",
+            cl=level,
+            v_ms=speed,
+        )
+    return found, sweep.alpha_deg[peak]
+
+
+def _level_failed(level: float, speed: float, what: str) -> FormulaError:
+    """``not_converged`` for the level-flight point ``level`` flown at ``speed``."""
+    return _not_converged(
+        f"the lift of the level-flight point C_L = {level:.4g} {what}",
+        "AeroBuildup's lift is not smooth at this point; check the airplane and the fit window",
+        cl=level,
+        v_ms=speed,
+    )
+
+
+def _local_slope(sweep: LiftCurve, alpha: float) -> float:
+    """``dC_L / d alpha`` per degree of the sweep sample interval that holds ``alpha``."""
+    for k in range(1, len(sweep.alpha_deg)):
+        if sweep.alpha_deg[k] >= alpha:
+            return (sweep.cl[k] - sweep.cl[k - 1]) / (sweep.alpha_deg[k] - sweep.alpha_deg[k - 1])
+    return (sweep.cl[-1] - sweep.cl[-2]) / (sweep.alpha_deg[-1] - sweep.alpha_deg[-2])
+
+
+def _level_point(
+    asb_airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    request: LevelPolarRequest,
+    level: float,
+) -> tuple[float, float, float, float]:
+    """One level-flight point: speed, angle of attack, ``C_L`` and ``C_D``.
+
+    The speed follows from the level ``C_L`` and the weight; the angle of attack is the one at which
+    AeroBuildup's lift equals the weight at that speed, found by secant steps from the linear
+    interpolation of one alpha sweep.
+
+    Raises:
+        FormulaError: ``not_converged`` if the lift curve does not reach the level or the secant
+            does not settle within ``opt_level_max_steps`` or settles beyond the sweep's first C_L peak.
+    """
+    air, weight = request.air, request.mass_kg * request.gravity
+    area = float(asb_airplane.s_ref)
+    speed = math.sqrt(2.0 * weight / (air.density * area * level))
+    dynamic_pressure = 0.5 * air.density * speed * speed
+    sweep = sweep_lift(asb_airplane, air, speed, _grid(), NEURALFOIL_MODEL_SIZE)
+    alpha, peak_alpha = _level_alpha(sweep, level, speed)
+    max_steps = int(config().opt_level_max_steps.value)
+    previous: tuple[float, float] | None = None
+    for _step in range(max_steps):
+        lift, drag = evaluate_forces(
+            asb_airplane, air, speed, alpha, NEURALFOIL_MODEL_SIZE, request.k_e_d0
+        )
+        miss = lift - weight
+        if abs(miss) <= request.lift_tolerance * weight:
+            if alpha > peak_alpha:
+                raise _level_failed(
+                    level,
+                    speed,
+                    f"settled at {alpha:.2f} deg, beyond the first C_L peak at {peak_alpha:.2f} deg "
+                    "of the sweep, so not on the branch before the stall",
+                )
+            return speed, alpha, lift / (dynamic_pressure * area), drag / (dynamic_pressure * area)
+        if previous is None:
+            slope = dynamic_pressure * area * _local_slope(sweep, alpha)
+        else:
+            slope = (lift - previous[1]) / (alpha - previous[0])
+        if math.isclose(slope, 0.0, abs_tol=config().opt_zero_span.value):
+            raise _level_failed(level, speed, "has no lift slope in the angle of attack")
+        previous = (alpha, lift)
+        alpha -= miss / slope
+    raise _level_failed(level, speed, f"did not reach the weight within {max_steps} steps")
+
+
+def level_polar_worker(request: LevelPolarRequest) -> WorkerOutcome[LevelPolar]:
+    """Compute the solver polar along level flight in the pool worker (canon ``parabolic-polar-fit``).
+
+    For every level ``C_L`` of the request the speed is ``sqrt(2 m g / (rho S_ref C_L))`` (the lift
+    balance ``L = m g``), so each point carries its own Reynolds number; its angle of attack is
+    found on the pre-stall branch (see :func:`_level_point`) and the drag is the kernel's.
+
+    Args:
+        request: The airplane, mass, air state and levels.
+
+    Returns:
+        The polar with the worker's diagnostics.
+
+    Raises:
+        FormulaError: ``not_converged`` as :func:`_level_point`.
+    """
+    started = time.perf_counter()
+    asb_airplane = to_asb_airplane(request.airplane)
+    points = [_level_point(asb_airplane, request, level) for level in request.cl_levels]
+    polar = LevelPolar(
+        v_ms=tuple(p[0] for p in points),
+        alpha_deg=tuple(p[1] for p in points),
+        cl=tuple(p[2] for p in points),
+        cd=tuple(p[3] for p in points),
+    )
+    return WorkerOutcome(value=polar, diagnostics=_diagnostics(started))
+
+
 class ZeroLiftRequest(BaseModel):
     """What the worker needs for the zero-lift root at one speed; plain data, picklable.
 
@@ -1622,6 +1808,8 @@ class OptiAdapter(SolverAdapter):
             "opt_probe_tolerance": config().opt_probe_tolerance.value,
             "opt_peak_tolerance": config().opt_peak_tolerance.value,
             "opt_zero_span": config().opt_zero_span.value,
+            "opt_level_lift_tolerance": config().opt_level_lift_tolerance.value,
+            "opt_level_max_steps": config().opt_level_max_steps.value,
             "opt_alpha_margin_deg": config().opt_alpha_margin_deg.value,
             "opt_hinge_floor": config().opt_hinge_floor.value,
             "opt_flap_rib_gap_m": config().opt_flap_rib_gap.value,
@@ -1754,6 +1942,75 @@ class OptiAdapter(SolverAdapter):
         warnings.append(induced_drag_notice(request.k_e_d0))
         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)
         return BestGlide(solution=solution, warnings=tuple(warnings))
+
+    async def level_polar(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        cl_levels: Sequence[float],
+    ) -> LevelFlight:
+        """The solver polar along level flight at the given lift coefficients (``parabolic-polar-fit``).
+
+        Every level is flown at the speed where ``L = m g`` (so at its own Reynolds number); its angle
+        of attack is found on the pre-stall branch and the drag is the kernel's.
+
+        Args:
+            airplane: The geometry with its devices as they are to be evaluated.
+            mass_kg: Mass in kg, > 0.
+            gravity: Gravity in m/s^2, > 0.
+            air: The air state.
+            cl_levels: The lift coefficients of the points, finite, > 0, strictly rising, at least 3.
+
+        Returns:
+            The polar and the caveats of its points (flap, regime at the slowest and the fastest
+            point, and the notice that the drag is the kernel's). The Reynolds number
+            (chord times V over the kinematic viscosity) and the Mach number (V over the speed
+            of sound) both rise strictly with V in a fixed air state, so the regime bands (Re
+            below, Re and Mach above) are met first at the slowest or the fastest point: the two
+            extremes bound the regime of every point between them.
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for an
+                inadmissible input; ``unsupported_configuration`` for a deflected control surface
+                other than a flap; ``not_converged`` as :func:`level_polar_worker`.
+        """
+        request, flaps = self._request(airplane, mass_kg, gravity, 1.0, air, upright_only=True)
+        levels = tuple(cl_levels)
+        rising = all(b > a for a, b in pairwise(levels))
+        if len(levels) < 3 or not rising or not all(math.isfinite(v) and v > 0 for v in levels):
+            raise _invalid(
+                "the lift coefficients of the level-flight points must be finite, greater than "
+                "zero, strictly rising, and at least three",
+                "give at least three rising lift coefficients above 0",
+                "cl_max",
+            )
+        work = LevelPolarRequest(
+            airplane=airplane,
+            mass_kg=mass_kg,
+            gravity=gravity,
+            air=air,
+            cl_levels=levels,
+            k_e_d0=request.k_e_d0,
+            lift_tolerance=config().opt_level_lift_tolerance.value,
+        )
+        polar = await self.runtime.run_cpu(level_polar_worker, work)
+        warnings = _flap_warnings(flaps)
+        seen: set[tuple[str, str]] = set()
+        for speed in (min(polar.v_ms), max(polar.v_ms)):
+            for warning in await self._regime_warnings(airplane, speed, air):
+                if (warning.code, warning.message) not in seen:
+                    seen.add((warning.code, warning.message))
+                    warnings.append(warning)
+        warnings.append(induced_drag_notice(request.k_e_d0))
+        logger.debug(
+            "level-flight polar of %d points from %.3f to %.3f m/s",
+            len(levels),
+            max(polar.v_ms),
+            min(polar.v_ms),
+        )
+        return LevelFlight(polar=polar, warnings=tuple(warnings))
 
     async def sweep(
         self,
