@@ -75,13 +75,16 @@ _TED_READ = frozenset(
 
 # Fields no kernel formula reads. This is the policy "a check exists only for a field the kernel
 # reads" (ch. 8.11): a finding on them would be noise. When a later formula starts reading one
-# (turbulator), that unit removes it from this table. The spar's ``section`` and ``material`` are
-# read by the spar capacity (gh-1427); the pocket fields stay unread. A device's
+# (turbulator), that unit removes it from this table. The spar capacity (gh-1427) reads a spar's
+# ``section``, ``material``, extent (``spare_start``, ``spare_length``), position factor, mode,
+# vector and origin; only the pocket dimensions stay unread. A device's
 # ``control_surface`` is read for its deflection only (to report an ignored one); the stops
 # (``*_deflection_deg``) are never read.
 UNREAD_FIELDS: Mapping[type[BaseModel], frozenset[str]] = {
     geometry.Servo: frozenset(geometry.Servo.model_fields),
-    geometry.SpareDetail: frozenset(geometry.SpareDetail.model_fields) - {"section", "material"},
+    geometry.SpareDetail: frozenset(
+        {"spare_support_dimension_width", "spare_support_dimension_height"}
+    ),
     geometry.Turbulator: frozenset(geometry.Turbulator.model_fields),
     geometry.ControlSurface: frozenset(geometry.ControlSurface.model_fields) - {"deflection"},
     geometry.TrailingEdgeDevice: frozenset(geometry.TrailingEdgeDevice.model_fields) - _TED_READ,
@@ -217,23 +220,20 @@ _PERCENT = 100.0
 
 
 def _material_findings(components: Components) -> list[KernelError]:
-    """Report a material strength or density <= 0 where present; an absent one is no finding."""
+    """Report a material strength <= 0 where present; an absent one is no finding."""
     errors: list[KernelError] = []
     for key, material in (components.materials or {}).items():
         base = _key_path("components.materials", key)
-        for name, value, unit in (
-            ("bending_strength_pa", material.bending_strength_pa, "Pa"),
-            ("density_kg_m3", material.density_kg_m3, "kg/m^3"),
-        ):
-            if value is not None:
-                errors += _not_positive(
-                    value,
-                    f"{base}.{name}",
-                    "non_positive_value",
-                    f"Value of {name}",
-                    unit,
-                    f"Give {name} a value > 0.",
-                )
+        strength = material.bending_strength_pa
+        if strength is not None:
+            errors += _not_positive(
+                strength,
+                f"{base}.bending_strength_pa",
+                "non_positive_value",
+                "Value of bending_strength_pa",
+                "Pa",
+                "Give bending_strength_pa a value > 0.",
+            )
     return errors
 
 
@@ -476,22 +476,56 @@ def _section_defect(section: geometry.SparSection) -> str | None:
     return None
 
 
+def _extent_defects(spar: geometry.SpareDetail) -> list[tuple[str, str]]:
+    """The ``(field, what is wrong)`` of a spar's extent fields; a non-finite number is skipped.
+
+    ``spare_start`` >= 0, ``spare_length`` > 0 where given, ``spare_position_factor`` in [0, 1]
+    where given, and a given ``spare_vector`` is not the zero vector.
+    """
+    defects: list[tuple[str, str]] = []
+    if math.isfinite(spar.spare_start) and spar.spare_start < 0:
+        defects.append(("spare_start", f"spare_start is {spar.spare_start} m; it must be >= 0"))
+    length = spar.spare_length
+    if length is not None and math.isfinite(length) and length <= 0:
+        defects.append(("spare_length", f"spare_length is {length} m; it must be > 0"))
+    factor = spar.spare_position_factor
+    if factor is not None and math.isfinite(factor) and not 0.0 <= factor <= 1.0:
+        defects.append(
+            ("spare_position_factor", f"spare_position_factor is {factor}; it must be in [0, 1]")
+        )
+    vector = spar.spare_vector
+    if vector is not None and all(math.isfinite(c) for c in vector) and not any(vector):
+        defects.append(
+            ("spare_vector", "spare_vector is the zero vector; it must have a direction")
+        )
+    return defects
+
+
 def _spar_findings(spars: tuple[geometry.SpareDetail, ...] | None, path: str) -> list[KernelError]:
-    """Report the spars of a segment whose section dimensions are physically inadmissible."""
+    """Report what is inadmissible about the section and the extent of the spars of a segment."""
     findings: list[KernelError] = []
     for index, spar in enumerate(spars or ()):
-        if spar.section is None:
-            continue
-        defect = _section_defect(spar.section)
-        if defect is not None:
-            where = f"{path}.spare_list[{index}].section"
+        base = f"{path}.spare_list[{index}]"
+        if spar.section is not None:
+            defect = _section_defect(spar.section)
+            if defect is not None:
+                findings.append(
+                    _finding(
+                        "invalid_spar_section",
+                        f"{base}.section",
+                        f"The {spar.section.shape} spar section at {base}.section: {defect}.",
+                        "Give the section dimensions in metres, all > 0 and with a wall or "
+                        "flange that leaves a gap (format ch. 5.1).",
+                    )
+                )
+        for field, what in _extent_defects(spar):
             findings.append(
                 _finding(
-                    "invalid_spar_section",
-                    where,
-                    f"The {spar.section.shape} spar section at {where}: {defect}.",
-                    "Give the section dimensions in metres, all > 0 and with a wall or flange "
-                    "that leaves a gap (format ch. 5).",
+                    "invalid_spar_extent",
+                    f"{base}.{field}",
+                    f"The spar at {base}: {what}.",
+                    "Give the extent in metres, the position factor as a fraction of the chord "
+                    "(format ch. 5).",
                 )
             )
     return findings

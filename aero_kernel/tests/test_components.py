@@ -91,20 +91,18 @@ def test_a_material_needs_only_its_name_and_the_rest_stays_absent() -> None:
     birch = parsed.materials["birch_ply"]
     assert birch.name == "Birch plywood"
     assert birch.bending_strength_pa is None
-    assert birch.density_kg_m3 is None
     assert birch.source is None
 
 
-def test_a_material_carries_strength_density_and_source() -> None:
+def test_a_material_carries_strength_and_source() -> None:
     material = Material.model_validate(
         {
             "name": "Test material",
             "bending_strength_pa": 1.0e8,
-            "density_kg_m3": 500.0,
             "source": "a test value",
         }
     )
-    assert (material.bending_strength_pa, material.density_kg_m3) == (1.0e8, 500.0)
+    assert material.bending_strength_pa == 1.0e8
     assert material.source == "a test value"
 
 
@@ -116,3 +114,9 @@ def test_a_material_has_no_safety_factor_field() -> None:
 def test_a_material_strength_must_be_a_number_not_a_string() -> None:
     with pytest.raises(ValidationError, match="bending_strength_pa"):
         Material.model_validate({"name": "x", "bending_strength_pa": "100"})
+
+
+def test_a_material_has_no_density_field() -> None:
+    """Nothing reads a density (ADR 0021): the contract does not carry one."""
+    with pytest.raises(ValidationError, match="density_kg_m3"):
+        Material.model_validate({"name": "x", "density_kg_m3": 500.0})

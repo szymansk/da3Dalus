@@ -20,7 +20,7 @@ data:
 
 The fitted-components document: motor, battery, and propeller with its APC table, and the materials
 table the spars refer to (`materials`, schema version 3, gh-1427: per material the published breaking
-strength in bending, the density and the source; pushed by the caller, absent = none, never defaulted) —
+strength in bending and the source; pushed by the caller, absent = none, never defaulted) —
 what the aircraft is built with, as distinct from its geometry ([[airplane]]). Not a number. An input with no default
 (maintainer, 2026-10-17, S15): swapping a battery, motor or propeller dirties every quantity read from
 it (A1), without touching the geometry.

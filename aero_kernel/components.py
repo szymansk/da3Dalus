@@ -140,15 +140,13 @@ class Material(BaseModel):
         name: Display name of the material.
         bending_strength_pa: Breaking strength in bending in Pa, or ``None`` if the catalogue has
             none (a spar of this material then has no capacity: ``spar_material_without_strength``).
-        density_kg_m3: Density in kg/m^3.
-        source: Where the strength and the density come from, as free text.
+        source: Where the strength comes from, as free text.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     name: str
     bending_strength_pa: Number | None = None
-    density_kg_m3: Number | None = None
     source: str | None = None
 
 

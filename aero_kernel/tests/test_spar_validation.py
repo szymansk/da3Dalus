@@ -4,9 +4,10 @@ import math
 from typing import Any
 
 import pytest
+from aero_kernel.geometry import SpareDetail
 from aero_kernel.schema import AircraftInput
 from aero_kernel.tests.spar_builders import CAPPED, RECTANGULAR, ROD, TUBE, spar
-from aero_kernel.validate import validate_aircraft
+from aero_kernel.validate import UNREAD_FIELDS, validate_aircraft
 
 
 def aircraft(
@@ -102,13 +103,13 @@ def components(materials: dict[str, Any]) -> dict[str, Any]:
 
 def test_a_material_with_positive_numbers_or_none_is_accepted() -> None:
     table = {
-        "a": {"name": "A", "bending_strength_pa": 1.0e8, "density_kg_m3": 500.0},
+        "a": {"name": "A", "bending_strength_pa": 1.0e8},
         "b": {"name": "B"},
     }
     assert findings(aircraft(components=components(table))) == []
 
 
-@pytest.mark.parametrize("field", ["bending_strength_pa", "density_kg_m3"])
+@pytest.mark.parametrize("field", ["bending_strength_pa"])
 @pytest.mark.parametrize("value", [0.0, -1.0])
 def test_a_material_number_that_is_not_positive_is_refused(field: str, value: float) -> None:
     table = {"birch": {"name": "Birch", field: value}}
@@ -128,3 +129,57 @@ def test_a_spar_material_key_missing_from_the_components_is_not_an_input_error()
     """Whether the key resolves is decided where the capacity is read, never for other quantities."""
     found = aircraft([spar(section=ROD, material="nowhere")], components({}))
     assert findings(found) == []
+
+
+# --- the extent fields are read by the capacity, so they are checked --------------------------
+
+
+def extent_findings(**fields: Any) -> list[tuple[str, str | None]]:
+    return findings(aircraft([spar(**fields)]))
+
+
+EXTENT_PATH = 'airplane.wings["Main"].x_secs[0].spare_list[0].'
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "code"),
+    [
+        ("spare_start", -0.01, "invalid_spar_extent"),
+        ("spare_length", 0.0, "invalid_spar_extent"),
+        ("spare_length", -0.2, "invalid_spar_extent"),
+        ("spare_position_factor", 1.5, "invalid_spar_extent"),
+        ("spare_position_factor", -0.1, "invalid_spar_extent"),
+        ("spare_start", math.nan, "non_finite_number"),
+        ("spare_length", math.inf, "non_finite_number"),
+        ("spare_position_factor", math.nan, "non_finite_number"),
+    ],
+)
+def test_an_inadmissible_extent_field_is_refused_at_its_path(
+    field: str, value: float, code: str
+) -> None:
+    assert extent_findings(**{field: value}) == [(code, EXTENT_PATH + field)]
+
+
+def test_admissible_extent_fields_are_accepted() -> None:
+    assert extent_findings(spare_start=0.0, spare_length=0.2, spare_position_factor=1.0) == []
+    assert extent_findings(spare_start=0.1, spare_length=None, spare_position_factor=0.0) == []
+
+
+def test_a_zero_spar_vector_is_refused() -> None:
+    found = extent_findings(spare_mode="normal", spare_vector=[0.0, 0.0, 0.0])
+    assert found == [("invalid_spar_extent", EXTENT_PATH + "spare_vector")]
+
+
+def test_a_non_finite_spar_vector_or_origin_is_refused() -> None:
+    found = extent_findings(spare_vector=[0.0, math.nan, 0.0], spare_origin=[0.0, math.inf, 0.0])
+    assert found == [
+        ("non_finite_number", EXTENT_PATH + "spare_vector[1]"),
+        ("non_finite_number", EXTENT_PATH + "spare_origin[1]"),
+    ]
+
+
+def test_the_pocket_fields_alone_stay_unread() -> None:
+    assert UNREAD_FIELDS[SpareDetail] == {
+        "spare_support_dimension_width",
+        "spare_support_dimension_height",
+    }

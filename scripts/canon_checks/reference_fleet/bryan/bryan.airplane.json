@@ -41,7 +41,14 @@
         0.13675,
         -0.000343352,
         -0.019242924
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00398,
+        "height": 0.01434,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       },
       {
        "spare_support_dimension_width": 0.00301,
@@ -91,7 +98,14 @@
         0.13675,
         0.023030025,
         -0.0179897
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00398,
+        "height": 0.0135,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       },
       {
        "spare_support_dimension_width": 0.00302,
@@ -141,7 +155,14 @@
         0.13675,
         0.063071078,
         -0.016066242
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00398,
+        "height": 0.01254,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       },
       {
        "spare_support_dimension_width": 0.00302,
@@ -230,7 +251,14 @@
         0.13675,
         0.126915532,
         -0.013113746
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00398,
+        "height": 0.01194,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       },
       {
        "spare_support_dimension_width": 0.00302,
@@ -306,7 +334,14 @@
         0.13675,
         0.184860783,
         -0.010535327
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00398,
+        "height": 0.01119,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       },
       {
        "spare_support_dimension_width": 0.00302,
@@ -382,7 +417,14 @@
         0.13675,
         0.208849473,
         -0.009569062
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00398,
+        "height": 0.01057,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       },
       {
        "spare_support_dimension_width": 0.00302,
@@ -459,7 +501,14 @@
         0.13675,
         0.226464385,
         -0.009015805
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00202,
+        "height": 0.00971,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       }
      ]
     },
@@ -492,7 +541,14 @@
         0.13675,
         0.234973635,
         -0.008874398
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00202,
+        "height": 0.00859,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       }
      ]
     },
@@ -525,7 +581,14 @@
         0.13675,
         0.243496856,
         -0.008855254
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00201,
+        "height": 0.00737,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       }
      ]
     },
@@ -558,7 +621,14 @@
         0.13675,
         0.251524205,
         -0.008991699
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00201,
+        "height": 0.00564,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       }
      ]
     },
@@ -591,7 +661,14 @@
         0.13675,
         0.258060687,
         -0.009258241
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.00201,
+        "height": 0.00399,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       }
      ]
     },
@@ -624,7 +701,14 @@
         0.13675,
         0.264604747,
         -0.009769416
-       ]
+       ],
+       "section": {
+        "shape": "capped",
+        "width": 0.002,
+        "height": 0.00224,
+        "flange_thickness": 0.001
+       },
+       "material": "birch_ply"
       }
      ]
     },

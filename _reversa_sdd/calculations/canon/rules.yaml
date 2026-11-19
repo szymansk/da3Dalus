@@ -42,7 +42,7 @@ components-positive-numbers:
   applies_to: {quantity: components}
   kind: input
   on_violation: error
-  criterion: "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v, diameter_in and, of every material of the materials table, bending_strength_pa and density_kg_m3, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push."
+  criterion: "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v, diameter_in and, of every material of the materials table, bending_strength_pa, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push."
   codes: [non_positive_value]
 
 components-efficiency-at-most:
@@ -144,8 +144,15 @@ spar-section-admissible:
   applies_to: {quantity: airplane}
   kind: input
   on_violation: error
-  criterion: "The optional section of a spar (format version 3, gh-1427) has every dimension greater than zero, in metres; a tube's wall thickness is less than half its outer diameter and a capped section's flange thickness is less than half its height, so that a bore or a gap remains. A spar without a section is valid: it has no capacity. The pocket fields stay unchecked (CAD only)."
+  criterion: "The optional section of a spar (format version 3, gh-1427) has every dimension greater than zero, in metres; a tube's wall thickness is less than half its outer diameter and a capped section's flange thickness is less than half its height, so that a bore or a gap remains. A spar without a section is valid: it has no capacity. A segment's section is the smallest section the spar has within that segment (the producer of the document is responsible); the kernel holds it constant over the segment and never interpolates. The pocket fields stay unchecked (CAD only)."
   codes: [invalid_spar_section]
+
+spar-extent-admissible:
+  applies_to: {quantity: airplane}
+  kind: input
+  on_violation: error
+  criterion: "The fields that place a spar in span, which the spar capacity reads (gh-1427), are admissible: spare_start is not negative, spare_length is greater than zero where given, spare_position_factor is between 0 and 1 where given, and a given spare_vector is not the zero vector. Non-finite numbers are refused by finite-numbers' code. Whether a missing position factor matters is decided where the capacity is read (spar-front-determinable)."
+  codes: [invalid_spar_extent]
 
 segment-details-not-on-last-section:
   applies_to: {quantity: airplane}
@@ -485,12 +492,12 @@ spar-capacity-material:
   applies_to: {formula: spar-break-load-factor}
   kind: input
   on_violation: error
-  criterion: "The bending capacity M_cap = W * strength of the front spar at a station needs the strength of its material: a spar with a section has a material key (spar_material_missing), the key is in the pushed components' materials table (spar_material_unknown), and the material has a bending_strength_pa (spar_material_without_strength). Nothing is substituted: no default material, no estimated strength, no safety factor (maintainer, 2026-11-19, gh-1427). A spar without a section needs none of this and simply has no capacity."
-  codes: [spar_material_missing, spar_material_unknown, spar_material_without_strength]
+  criterion: "The bending capacity M_cap = W * strength of the front spar at a station needs the strength of its material: a spar with a section has a material key (spar_material_missing), the key is in the pushed components' materials table (spar_material_unknown), and the material has a bending_strength_pa (spar_material_without_strength). Nothing is substituted: no default material, no estimated strength, no safety factor (maintainer, 2026-11-19, gh-1427). A spar without a section needs none of this. A station outside the half span, or not a number, is refused (station_outside_wing). A station with no spar present, and a station whose present front spar has no section, are different, typed outcomes of the capacity (no spar; capacity unknown), never one value or one skip."
+  codes: [spar_material_missing, spar_material_unknown, spar_material_without_strength, station_outside_wing]
 
 spar-front-determinable:
   applies_to: {formula: spar-break-load-factor}
   kind: input
   on_violation: error
-  criterion: "The front spar alone carries the bending (BR-W16, wing-design/spar-sizing); where several spars of a segment are present at a station, the front one is the one with the smallest spare_position_factor, so every spar present has a position and the smallest is unique. The kernel does not add the capacities of several spars and does not fall back to the rear spar when the front one has no section."
-  codes: [front_spar_not_determinable]
+  criterion: "The front spar alone carries the bending (BR-W16, wing-design/spar-sizing); capacities are not added. The front spar at a station is the spar with the smallest spare_position_factor among those present at that station (a spar that has ended by spare_start / spare_length is not present; the remaining one is then the front spar). A present front spar without a section means the capacity is unknown: the rear spar never stands in for a present front spar. Where several spars are present, every one has a finite position and the positions are distinct (front_spar_not_determinable). The spanwise extent of a spar follows the construction (VaseModeWingCreator.py:807-819); a partial extent (spare_start or spare_length given) of a spar in the chained modes follow, standard_backward or orthogonal_backward, or of a standard spar without a position factor or a vector, cannot be placed (spar_extent_not_determinable). The spar's angle to the y axis (sweep, dihedral, the modes' vectors) does not enter the capacity; against the bending moment about the y direction that is conservative by the cosine of the angle."
+  codes: [front_spar_not_determinable, spar_extent_not_determinable]

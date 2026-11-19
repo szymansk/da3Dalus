@@ -10,7 +10,6 @@ from aero_kernel.components import Material
 from aero_kernel.geometry import Wing
 
 TEST_STRENGTH_PA = 100.0e6  # test value, not a real material
-TEST_DENSITY = 500.0  # test value, not a real material
 
 RECTANGULAR: dict[str, Any] = {"shape": "rectangular", "width": 0.02, "height": 0.003}
 CAPPED: dict[str, Any] = {
@@ -25,9 +24,7 @@ ROD: dict[str, Any] = {"shape": "rod", "diameter": 0.01}
 
 def material_with(strength: float | None = TEST_STRENGTH_PA) -> Material:
     """A material with the test strength, or without any strength."""
-    return Material(
-        name="Test material", bending_strength_pa=strength, density_kg_m3=TEST_DENSITY, source=None
-    )
+    return Material(name="Test material", bending_strength_pa=strength, source=None)
 
 
 def spar(**fields: Any) -> dict[str, Any]:

@@ -213,7 +213,7 @@
         "spare_length": {
           "type": ["number", "null"],
           "description": "Spar length in metres. Null means the spar runs the full segment.",
-          "minimum": 0.0
+          "exclusiveMinimum": 0.0
         },
         "spare_start": {
           "type": "number",
@@ -243,7 +243,7 @@
             { "$ref": "#/$defs/CappedSection" },
             { "type": "null" }
           ],
-          "description": "Cross-section of the spar, for its bending capacity (format version 3). A union tagged by 'shape'. All dimensions are METRES. 'height' is measured in the airfoil thickness direction and the spar bends about the chordwise axis, so 'height' enters the section modulus squared. Null (or absent) means the section is not recorded: the spar is valid and has no capacity. The pocket fields above are independent of the section. See AIRPLANE-GEOMETRY.md section 5."
+          "description": "Cross-section of the spar, for its bending capacity (format version 3). A union tagged by 'shape'. All dimensions are METRES. 'height' is measured in the airfoil thickness direction and the spar bends about the chordwise axis, so 'height' enters the section modulus squared. A segment's section is the SMALLEST section the spar has within that segment (the producer of the document is responsible); the kernel holds it constant over the segment and never interpolates. Null (or absent) means the section is not recorded: the spar is valid and has no capacity. The pocket fields above are independent of the section. The angle of the spar to the y axis does not enter the capacity. See AIRPLANE-GEOMETRY.md section 5."
         },
         "material": {
           "type": ["string", "null"],
@@ -271,7 +271,7 @@
       "properties": {
         "shape": { "const": "tube", "type": "string" },
         "outer_diameter": { "type": "number", "description": "Outer diameter D in metres.", "exclusiveMinimum": 0.0 },
-        "wall_thickness": { "type": "number", "description": "Wall thickness t in metres; less than half the outer diameter.", "exclusiveMinimum": 0.0 }
+        "wall_thickness": { "type": "number", "description": "Wall thickness t in metres. Must be less than half the outer diameter: JSON Schema cannot compare two fields, so the kernel enforces it (error invalid_spar_section).", "exclusiveMinimum": 0.0 }
       }
     },
 
@@ -296,7 +296,7 @@
         "shape": { "const": "capped", "type": "string" },
         "width": { "type": "number", "description": "Width b of each flange across the chord, in metres.", "exclusiveMinimum": 0.0 },
         "height": { "type": "number", "description": "Outer height H over both flanges in the airfoil thickness direction, in metres.", "exclusiveMinimum": 0.0 },
-        "flange_thickness": { "type": "number", "description": "Thickness t of one flange in metres; less than half the outer height.", "exclusiveMinimum": 0.0 }
+        "flange_thickness": { "type": "number", "description": "Thickness t of one flange in metres. Must be less than half the outer height: JSON Schema cannot compare two fields, so the kernel enforces it (error invalid_spar_section).", "exclusiveMinimum": 0.0 }
       }
     },
 

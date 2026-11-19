@@ -1418,7 +1418,7 @@ catalogue's, a field with `?` may be absent:
 
 ```
 Components { schema_version: 3, motor?: Motor, battery?: Battery, propeller?: Propeller, materials?: {key: Material} }
-Material   { name, bending_strength_pa?, density_kg_m3?, source? }                       # Pa, kg/m^3, free text
+Material   { name, bending_strength_pa?, source? }                                         # Pa, free text
 Motor      { kv_rpm_per_volt, max_power_w?, io_no_load_a?, rm_ohm?, efficiency_pct? }   # rpm/V, W, A, ohm, %
 Battery    { capacity_mah, cells, mass_g?, c_rate?, cell_voltage_v?, chemistry? }       # mAh, 1, g, 1/h, V, enum
 Propeller  { diameter_in, table?: PropellerTable }                                      # inch
@@ -1438,16 +1438,28 @@ their JSON form. A quantity of type `components` in `values` is `not_an_input`.
 geometry refer to (`spare_list[i].material`), never a storage id (ADR 0019). `bending_strength_pa` is the
 **published breaking strength in bending** as its source states it: no safety, resistance or knock-down factor is
 folded in anywhere (maintainer, 2026-11-19), and the kernel applies none; an already reduced allowable must not
-be pushed. It is absent where the catalogue has none, never defaulted or estimated. `density_kg_m3` and `source`
-travel with it. Version handling follows the rule of this contract: **an older document is refused**
-(`schema_version` 1 or 2 names the contract and the version), and it is re-pushed with the number raised, since
-version 3 only adds the optional `materials`. `validate.py` reports a strength or a density <= 0 at
-`components.materials["<key>"].<field>` (`non_positive_value`, rule `components-positive-numbers`). Whether a
-spar's key resolves, and whether the material has a strength, is decided only where the spar capacity is read
-(`spar_capacity.py`): codes `spar_material_missing`, `spar_material_unknown`, `spar_material_without_strength`
-(rule `spar-capacity-material`), so a missing material never aborts a quantity that does not need it. The
-capacity reads the front spar alone (BR-W16, rule `spar-front-determinable`, code `front_spar_not_determinable`);
-the module is unreachable until its reader `spar-break-load-factor` is implemented (gh-1429, ADR 0021).
+be pushed. It is absent where the catalogue has none, never defaulted or estimated; `source` travels with it. No
+density is carried: nothing reads one (ADR 0021). Version handling follows the rule of this contract: **an older
+document is refused** (`schema_version` 1 or 2 names the contract and the version), and it is re-pushed with the
+number raised, since version 3 only adds the optional `materials`. `validate.py` reports a strength <= 0 at
+`components.materials["<key>"].bending_strength_pa` (`non_positive_value`, rule `components-positive-numbers`).
+
+**The spar capacity** (`spar_capacity.py`, gh-1427; unreachable until its reader `spar-break-load-factor`, gh-1429,
+ADR 0021). `bending_capacity(wing, y, materials)` returns a **typed outcome**: `BendingCapacity` (a value),
+`NoSparAtStation`, or `CapacityUnknown` (the front spar is present but has no section), so that a caller cannot
+treat "unknown" as "skip"; a station outside the half span or not a number is the error `station_outside_wing`.
+The front spar alone bends the wing (BR-W16): at a station it is the spar with the smallest
+`spare_position_factor` among those **present** there (a spar ended by `spare_start`/`spare_length` is not
+present); a present front spar without a section makes the capacity unknown, the rear spar never stands in for
+it; several spars present need distinct finite positions (`front_spar_not_determinable`, rule
+`spar-front-determinable`). A segment's `section` is the smallest the spar has within it and is held constant; a
+spar continued over several segments is read from the entry of the segment that owns the station; the extent
+follows the creator's construction (`VaseModeWingCreator.py:807-819`), and a partial extent in the chained modes
+`follow` / `*_backward` is `spar_extent_not_determinable`. Whether a spar's material key resolves, and whether the
+material has a strength, is decided only here (`spar_material_missing`, `spar_material_unknown`,
+`spar_material_without_strength`, rule `spar-capacity-material`), so a missing material never aborts a quantity
+that does not need it. `validate.py` checks the section (`invalid_spar_section`, rule `spar-section-admissible`)
+and the extent fields it now reads (`invalid_spar_extent`, rule `spar-extent-admissible`).
 
 **An absent catalogue value fails the formula that needs it.** Until the maintainer decides how an *absent
 output* is carried (gh-1397: `optional:` naming outputs, status `not_applicable` / `not_given`), a value the
@@ -1582,6 +1594,7 @@ one code, one test:
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
 | `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 | `missing_surface_type` | a wing without its `surface_type` (D9: required, never inferred) |
+| `invalid_spar_extent` | a spar's `spare_start` < 0, `spare_length` <= 0, `spare_position_factor` outside [0, 1], or a zero `spare_vector` (rule `spar-extent-admissible`); non-finite values are `non_finite_number`; `input_path` the field |
 | `invalid_spar_section` | a spar `section` (format version 3, rule `spar-section-admissible`) with a dimension <= 0, a tube wall of at least half the outer diameter, or a capped flange of at least half the height; `input_path` the section |
 | `main_wing_count` | not exactly one wing of `surface_type` `main_wing` |
 
