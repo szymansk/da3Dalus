@@ -7,6 +7,7 @@ cache, no request, no global.
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from aero_kernel.components import Components
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.rules import Rules
 from aero_kernel.schema import KernelWarning, Polar
@@ -18,9 +19,10 @@ from pydantic import JsonValue
 
 __all__ = ["Context", "Inputs", "Solvers", "Value"]
 
-# The values that flow between nodes: a scalar in the canon unit of its quantity, or the geometry.
+# The values that flow between nodes: a scalar in the canon unit of its quantity, the geometry, a
+# polar or the fitted components.
 # A new quantity type adds its class here when the first formula needs it (ch. 8.12).
-Value = float | AirplaneGeometry | Polar
+Value = float | AirplaneGeometry | Polar | Components
 
 # ``x`` of a formula: value per canon parameter name; ``None`` only for an absent ``optional`` input.
 Inputs = Mapping[str, Value | None]

@@ -10,6 +10,7 @@ from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
+from aero_kernel.components import Components
 from aero_kernel.errors import (
     ErrorCategory,
     KernelError,
@@ -633,6 +634,8 @@ class AircraftInput(BaseModel):
 
     Attributes:
         airplane: The geometry document; its millimetre fields are metres once parsed.
+        components: The fitted motor, battery and propeller, a contract of its own; ``None`` if
+            none are pushed (the quantities that read them are then ``missing_input``).
         values: Value per canon input or target slug, in the quantity's SI unit.
         rule_overrides: Value per ``<rule>.<parameter>`` of the canon's ``rules.yaml``, for an expert
             user whose aircraft breaks a convention (e.g. a main wing inclined past 45 deg); each
@@ -642,6 +645,7 @@ class AircraftInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     airplane: AirplaneGeometry
+    components: Components | None = None
     values: dict[Annotated[str, Field(min_length=1)], Annotated[float, Field(strict=True)]] = Field(
         default_factory=dict
     )

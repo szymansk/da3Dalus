@@ -67,6 +67,7 @@ IMPLEMENTED = {
     "calc:max-lift-to-drag-parabolic",
     "calc:minimum-drag-speed-closed-form",
     "calc:sink-rate",
+    "calc:airplane-components",
 }
 
 
