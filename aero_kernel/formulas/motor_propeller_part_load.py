@@ -28,7 +28,7 @@ from aero_kernel.formulas.propulsion import (
     balance_tolerance,
     bisect_root,
     current_for_torque,
-    equilibrium_of,
+    full_throttle_thrust,
     optional,
     propeller_torque,
     scan_grid,
@@ -40,6 +40,8 @@ from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings
 from aero_kernel.registry import CheckResult, formula, postcondition
 
 __all__ = ["demand_within_full_throttle", "motor_propeller_part_load"]
+
+_LEVEL_FLIGHT = 1.0  # the load factor of level flight: L = W (definition of n = L / W)
 
 
 async def _level_flight_drag(x: Inputs, ctx: Context) -> float:
@@ -54,7 +56,7 @@ async def _level_flight_drag(x: Inputs, ctx: Context) -> float:
             first lift peak at this speed.
     """
     found = await ctx.solvers.opti.level_flight_point(
-        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), number(x, "v")
+        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), number(x, "v"), _LEVEL_FLIGHT
     )
     forward_warnings(ctx, found.warnings)
     return found.point.drag_n
@@ -123,14 +125,11 @@ async def motor_propeller_part_load(x: Inputs, ctx: Context) -> dict[str, float]
     v, rho, d_prop = number(x, "v"), number(x, "rho"), number(x, "d_prop")
     k_v, u_bat = number(x, "k_v"), number(x, "u_bat")
     drag = await _level_flight_drag(x, ctx)
-    advance, lookup, thrust = advance_ratio_of(ctx), table_lookup_of(ctx), thrust_of(ctx)
     n_pl = _solve_part_load_speed(ctx, components, v, rho, d_prop, drag)
-    c_p = lookup(components, advance(v, n_pl, d_prop), n_pl).c_p
+    c_p = table_lookup_of(ctx)(components, advance_ratio_of(ctx)(v, n_pl, d_prop), n_pl).c_p
     current = current_for_torque(propeller_torque(c_p, rho, n_pl, d_prop), i_0, k_v)
     p_bat = terminal_voltage(current, r_m, n_pl, k_v) * current
-    balance = equilibrium_of(ctx)(ctx, components, v, rho, k_v, i_0, r_m, u_bat, d_prop)
-    c_t_full = lookup(components, advance(v, balance.n_prop, d_prop), balance.n_prop).c_t
-    t_full = thrust(c_t_full, rho, balance.n_prop, d_prop)
+    t_full = full_throttle_thrust(ctx, components, v, rho, k_v, i_0, r_m, u_bat, d_prop)
     if not t_full > 0.0:
         raise FormulaError(
             ErrorCategory.UNSUPPORTED_CONFIGURATION,

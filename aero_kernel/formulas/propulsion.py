@@ -27,6 +27,7 @@ __all__ = [
     "current_at_speed",
     "current_for_torque",
     "equilibrium_of",
+    "full_throttle_thrust",
     "motor_torque",
     "optional",
     "propeller_torque",
@@ -109,6 +110,34 @@ def thrust_of(ctx: Context) -> Callable[[float, float, float, float], float]:
 def equilibrium_of(ctx: Context) -> EquilibriumRelation:
     """The embedded ``motor-propeller-equilibrium`` relation."""
     return cast("EquilibriumRelation", ctx.embedded(_EQUILIBRIUM))
+
+
+def full_throttle_thrust(
+    ctx: Context,
+    components: Components,
+    v: float,
+    rho: float,
+    k_v: float,
+    i_0: float | None,
+    r_m: float | None,
+    u_bat: float,
+    d_prop: float,
+) -> float:
+    """The thrust in N the drive train gives at full throttle at the airspeed ``v``.
+
+    The one composition of the four embedded relations: the torque balance of the motor and the
+    propeller at ``v`` (``motor-propeller-equilibrium``), the advance ratio there, the table's thrust
+    coefficient and the thrust from it. ``static-thrust-to-weight`` (``v = 0``),
+    ``motor-propeller-part-load`` and the powered-performance formulas call it (ADR 0022).
+
+    Raises:
+        FormulaError: The failures of the relations, unchanged (``missing_input`` for an absent
+            ``r_m`` or ``i_0``; ``outside_propeller_table``; ``propeller_windmilling``).
+    """
+    balance = equilibrium_of(ctx)(ctx, components, v, rho, k_v, i_0, r_m, u_bat, d_prop)
+    j = advance_ratio_of(ctx)(v, balance.n_prop, d_prop)
+    c_t = table_lookup_of(ctx)(components, j, balance.n_prop).c_t
+    return thrust_of(ctx)(c_t, rho, balance.n_prop, d_prop)
 
 
 def balance_tolerance() -> float:

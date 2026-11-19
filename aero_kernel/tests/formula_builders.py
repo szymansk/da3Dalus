@@ -76,6 +76,12 @@ IMPLEMENTED = {
     "calc:motor-propeller-equilibrium",
     "calc:motor-propeller-part-load",
     "calc:static-thrust-to-weight",
+    "calc:best-angle-of-climb",
+    "calc:best-rate-of-climb",
+    "calc:dive-speed",
+    "calc:max-level-speed",
+    "calc:max-sustained-turn-rate",
+    "calc:min-sustained-turn-radius",
     "calc:battery-mass-from-capacity",
 }
 

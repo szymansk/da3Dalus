@@ -114,6 +114,8 @@ ALPHA_MIN_DEG = -15.0
 ALPHA_MAX_DEG = 25.0
 # Sample spacing of the sweep (the prototype's 0.25 deg, scripts/canon_checks/*).
 ALPHA_STEP_DEG = 0.25
+# The ``limit`` detail of the not_converged failure of a point the wing cannot carry (before its stall).
+WING_LIFT_LIMIT = "wing_lift"
 # The lift coefficient assumed to choose the speed of the first bracketing sweep. It only fixes the
 # Reynolds number at which the C_L extremum is first located; the sweep is repeated once at the speed
 # that extremum implies, and the result is re-evaluated at V_S (postcondition
@@ -1528,6 +1530,7 @@ def _level_alpha(sweep: LiftCurve, level: float, speed: float) -> tuple[float, f
             "number; check mass, wing area and the fit window",
             cl=level,
             v_ms=speed,
+            limit=WING_LIFT_LIMIT,
         )
     return found, sweep.alpha_deg[peak]
 
@@ -1550,24 +1553,30 @@ def _local_slope(sweep: LiftCurve, alpha: float) -> float:
     return (sweep.cl[-1] - sweep.cl[-2]) / (sweep.alpha_deg[-1] - sweep.alpha_deg[-2])
 
 
-def _level_point(
+def _lift_point(
     asb_airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
     request: LevelPolarRequest,
+    speed: float,
+    lift_target: float,
     level: float,
-) -> tuple[float, float, float, float]:
-    """One level-flight point: speed, angle of attack, ``C_L`` and ``C_D``.
+) -> tuple[float, float, float]:
+    """The point at ``speed`` where AeroBuildup's lift equals ``lift_target``: angle of attack, ``C_L``, ``C_D``.
 
-    The speed follows from the level ``C_L`` and the weight; the angle of attack is the one at which
-    AeroBuildup's lift equals the weight at that speed, found by secant steps from the linear
-    interpolation of one alpha sweep.
+    ``level`` is the lift coefficient ``lift_target / (q S_ref)`` the caller derived (the one it
+    reports in failures).
+
+    The angle of attack is the one at which the lift equals the target at that speed, found by
+    secant steps from the linear interpolation of one alpha sweep on the branch before the first
+    ``C_L`` peak. The tolerance is relative to the weight ``m g`` (the target of level flight; also
+    the scale where the target is zero).
 
     Raises:
-        FormulaError: ``not_converged`` if the lift curve does not reach the level or the secant
-            does not settle within ``opt_level_max_steps`` or settles beyond the sweep's first C_L peak.
+        FormulaError: ``not_converged`` if the lift curve does not reach the target (detail
+            ``limit`` = ``wing_lift``) or the secant does not settle within ``opt_level_max_steps``
+            or settles beyond the sweep's first C_L peak.
     """
     air, weight = request.air, request.mass_kg * request.gravity
     area = float(asb_airplane.s_ref)
-    speed = math.sqrt(2.0 * weight / (air.density * area * level))
     dynamic_pressure = 0.5 * air.density * speed * speed
     sweep = sweep_lift(asb_airplane, air, speed, _grid(), NEURALFOIL_MODEL_SIZE)
     alpha, peak_alpha = _level_alpha(sweep, level, speed)
@@ -1577,7 +1586,7 @@ def _level_point(
         lift, drag = evaluate_forces(
             asb_airplane, air, speed, alpha, NEURALFOIL_MODEL_SIZE, request.k_e_d0
         )
-        miss = lift - weight
+        miss = lift - lift_target
         if abs(miss) <= request.lift_tolerance * weight:
             if alpha > peak_alpha:
                 raise _level_failed(
@@ -1586,7 +1595,7 @@ def _level_point(
                     f"settled at {alpha:.2f} deg, beyond the first C_L peak at {peak_alpha:.2f} deg "
                     "of the sweep, so not on the branch before the stall",
                 )
-            return speed, alpha, lift / (dynamic_pressure * area), drag / (dynamic_pressure * area)
+            return alpha, lift / (dynamic_pressure * area), drag / (dynamic_pressure * area)
         if previous is None:
             slope = dynamic_pressure * area * _local_slope(sweep, alpha)
         else:
@@ -1596,6 +1605,25 @@ def _level_point(
         previous = (alpha, lift)
         alpha -= miss / slope
     raise _level_failed(level, speed, f"did not reach the weight within {max_steps} steps")
+
+
+def _level_point(
+    asb_airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
+    request: LevelPolarRequest,
+    level: float,
+) -> tuple[float, float, float, float]:
+    """One level-flight point: speed, angle of attack, ``C_L`` and ``C_D``.
+
+    The speed follows from the level ``C_L`` and the weight (``L = m g``); the point is
+    :func:`_lift_point` at that speed.
+
+    Raises:
+        FormulaError: ``not_converged`` as :func:`_lift_point`.
+    """
+    air, weight = request.air, request.mass_kg * request.gravity
+    speed = math.sqrt(2.0 * weight / (air.density * float(asb_airplane.s_ref) * level))
+    alpha, cl, cd = _lift_point(asb_airplane, request, speed, weight, level)
+    return speed, alpha, cl, cd
 
 
 def level_polar_worker(request: LevelPolarRequest) -> WorkerOutcome[LevelPolar]:
@@ -1635,6 +1663,7 @@ class LevelPointRequest(BaseModel):
         gravity: Gravity in m/s^2, > 0.
         air: The air state.
         v_ms: The speed in m/s, > 0.
+        n_load: The load factor, >= 0: the lift of the point is ``n m g`` (0: zero lift).
         k_e_d0: The viscous factor the kernel takes out of AeroBuildup's induced drag.
         lift_tolerance: Relative lift-to-weight difference at which the angle is accepted
             (``config.yaml``, ``opt_level_lift_tolerance``).
@@ -1647,6 +1676,7 @@ class LevelPointRequest(BaseModel):
     gravity: float
     air: AirState
     v_ms: float
+    n_load: float
     k_e_d0: float
     lift_tolerance: float
 
@@ -1688,31 +1718,31 @@ class LevelFlightPoint(BaseModel):
 
 
 def level_point_worker(request: LevelPointRequest) -> WorkerOutcome[LevelPoint]:
-    """Compute the level-flight point at a given speed in the pool worker.
+    """Compute the point at a given speed and load factor in the pool worker.
 
-    The same machinery as the level-flight polar (:func:`_level_point`): the speed fixes the level
-    ``C_L = 2 m g / (rho S_ref V^2)``, whose point is flown at that same speed (the speed
-    ``sqrt(2 m g / (rho S_ref C_L))`` returns ``V``). The angle of attack is found on the pre-stall branch.
+    The same machinery as the level-flight polar (:func:`_lift_point`): the lift to carry is
+    ``n m g`` and the point is flown at the given speed. The angle of attack is found on the
+    pre-stall branch.
 
     Raises:
-        FormulaError: ``not_converged`` as :func:`_level_point`.
+        FormulaError: ``not_converged`` as :func:`_lift_point`.
     """
     started = time.perf_counter()
     asb_airplane = to_asb_airplane(request.airplane)
-    weight = request.mass_kg * request.gravity
-    area = float(asb_airplane.s_ref)
-    level = 2.0 * weight / (request.air.density * area * request.v_ms**2)
+    lift_target = request.n_load * request.mass_kg * request.gravity
     polar_request = LevelPolarRequest(
         airplane=request.airplane,
         mass_kg=request.mass_kg,
         gravity=request.gravity,
         air=request.air,
-        cl_levels=(level,),
+        cl_levels=(1.0,),  # unused by _lift_point
         k_e_d0=request.k_e_d0,
         lift_tolerance=request.lift_tolerance,
     )
-    _, alpha, cl, cd = _level_point(asb_airplane, polar_request, level)
-    dynamic_pressure_area = 0.5 * request.air.density * request.v_ms**2 * area
+    dynamic_pressure_area = 0.5 * request.air.density * request.v_ms**2 * float(asb_airplane.s_ref)
+    alpha, cl, cd = _lift_point(
+        asb_airplane, polar_request, request.v_ms, lift_target, lift_target / dynamic_pressure_area
+    )
     point = LevelPoint(
         v_ms=request.v_ms,
         alpha_deg=alpha,
@@ -2121,12 +2151,14 @@ class OptiAdapter(SolverAdapter):
         gravity: float,
         air: AirState,
         v_ms: float,
+        n_load: float,
     ) -> LevelFlightPoint:
-        """The level-flight point at a given speed: the angle where AeroBuildup's lift equals ``m g``.
+        """The point at a given speed and load factor: the angle where AeroBuildup's lift equals ``n m g``.
 
-        The single-speed reading of :meth:`level_polar` (one lift-equals-weight solve in the kernel):
+        The single-speed reading of :meth:`level_polar` (the kernel's one lift-equals-weight solve):
         one alpha sweep plus secant steps, bounded by the first lift peak, with the configured
-        tolerance and step limit; the drag is the kernel's.
+        tolerance and step limit; the drag is the kernel's. Level flight is ``n_load = 1``, a
+        coordinated level turn ``n_load = n``, a steady climb ``cos(gamma)`` and a vertical dive 0.
 
         Args:
             airplane: The geometry with its devices as they are to be evaluated.
@@ -2134,6 +2166,7 @@ class OptiAdapter(SolverAdapter):
             gravity: Gravity in m/s^2, > 0.
             air: The air state.
             v_ms: The speed in m/s, finite and > 0.
+            n_load: The load factor, finite and >= 0 (the lift is ``n_load m g``); the canon binds it.
 
         Returns:
             The angle of attack, ``C_L``, ``C_D``, lift and drag in N, and the caveats (flap, regime
@@ -2141,18 +2174,26 @@ class OptiAdapter(SolverAdapter):
 
         Raises:
             FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for an
-                inadmissible speed; ``unsupported_configuration`` for a deflected control surface
-                other than a flap; ``not_converged`` as :func:`level_point_worker`.
+                inadmissible speed or load factor; ``unsupported_configuration`` for a deflected
+                control surface other than a flap; ``not_converged`` as :func:`level_point_worker`
+                (detail ``limit`` = ``wing_lift`` if the wing cannot carry the lift).
         """
         request, flaps = self._request(airplane, mass_kg, gravity, 1.0, air, upright_only=True)
         if not _admissible(v_ms, positive=True):
             raise _invalid(f"V = {v_ms} is not admissible", "give a finite speed above 0", "v")
+        if not (math.isfinite(n_load) and n_load >= 0.0):
+            raise _invalid(
+                f"n_load = {n_load} is not admissible",
+                "give a finite load factor of 0 or more",
+                "n_load",
+            )
         work = LevelPointRequest(
             airplane=airplane,
             mass_kg=mass_kg,
             gravity=gravity,
             air=air,
             v_ms=v_ms,
+            n_load=n_load,
             k_e_d0=request.k_e_d0,
             lift_tolerance=config().opt_level_lift_tolerance.value,
         )
@@ -2160,7 +2201,7 @@ class OptiAdapter(SolverAdapter):
         warnings = _flap_warnings(flaps)
         warnings += await self._regime_warnings(airplane, v_ms, air)
         warnings.append(induced_drag_notice(request.k_e_d0))
-        logger.debug("level-flight point at %.4f m/s: %.2f deg", v_ms, point.alpha_deg)
+        logger.debug("point at %.4f m/s, n = %.4f: %.2f deg", v_ms, n_load, point.alpha_deg)
         return LevelFlightPoint(point=point, warnings=tuple(warnings))
 
     async def sweep(

@@ -686,6 +686,24 @@
         "opt_zero_span": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "powered_optimum_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_root_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_search_max_steps": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_speed_scan_limit": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_speed_scan_start": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_speed_scan_step": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "powertrain_balance_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         }
@@ -719,7 +737,13 @@
         "opt_body_merge_exponent_max",
         "opt_body_axis_tolerance",
         "avl_contour_margin",
-        "powertrain_balance_tolerance"
+        "powertrain_balance_tolerance",
+        "powered_speed_scan_start",
+        "powered_speed_scan_step",
+        "powered_speed_scan_limit",
+        "powered_root_tolerance",
+        "powered_optimum_tolerance",
+        "powered_search_max_steps"
       ],
       "title": "KernelConfig",
       "type": "object"

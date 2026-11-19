@@ -34,13 +34,14 @@ from aero_kernel.tests.test_solvers_opti_level import (
 pytestmark = pytest.mark.asyncio
 
 
-def point_request(v_ms: float) -> LevelPointRequest:
+def point_request(v_ms: float, n_load: float = 1.0) -> LevelPointRequest:
     return LevelPointRequest(
         airplane=airplane(),
         mass_kg=MASS,
         gravity=GRAVITY,
         air=AIR,
         v_ms=v_ms,
+        n_load=n_load,
         k_e_d0=K_E_D0,
         lift_tolerance=TOLERANCE,
     )
@@ -99,10 +100,16 @@ async def test_the_adapter_hands_over_the_speed_and_adds_the_regime_and_the_drag
 
     monkeypatch.setattr(opti_module, "level_point_worker", worker)
     result = await OptiAdapter(InProcessRuntime()).level_flight_point(
-        airplane(), MASS, GRAVITY, AIR, 18.0
+        airplane(), MASS, GRAVITY, AIR, 18.0, 1.5
     )
     (given,) = seen
-    assert (given.mass_kg, given.gravity, given.air, given.v_ms) == (MASS, GRAVITY, AIR, 18.0)
+    assert (given.mass_kg, given.gravity, given.air, given.v_ms, given.n_load) == (
+        MASS,
+        GRAVITY,
+        AIR,
+        18.0,
+        1.5,
+    )
     assert given.k_e_d0 == K_E_D0
     assert given.lift_tolerance == 1e-6
     assert result.point == canned
@@ -113,6 +120,53 @@ async def test_the_adapter_hands_over_the_speed_and_adds_the_regime_and_the_drag
 async def test_an_inadmissible_speed_is_refused_before_any_solve(speed: float) -> None:
     with pytest.raises(FormulaError) as caught:
         await OptiAdapter(InProcessRuntime()).level_flight_point(
-            airplane(), MASS, GRAVITY, AIR, speed
+            airplane(), MASS, GRAVITY, AIR, speed, 1.0
         )
     assert caught.value.category is ErrorCategory.INVALID_INPUT
+
+
+@pytest.mark.parametrize("n_load", [-0.5, math.nan, math.inf])
+async def test_an_inadmissible_load_factor_is_refused_before_any_solve(n_load: float) -> None:
+    with pytest.raises(FormulaError) as caught:
+        await OptiAdapter(InProcessRuntime()).level_flight_point(
+            airplane(), MASS, GRAVITY, AIR, 18.0, n_load
+        )
+    assert caught.value.category is ErrorCategory.INVALID_INPUT
+    assert caught.value.parameter == "n_load"
+
+
+async def test_a_load_factor_scales_the_lift_the_point_carries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """At 18 m/s and n = 2 the lift is 2 m g: C_L = 2 * 2 m g / (rho S V^2); the drag follows the polar."""
+    installed(monkeypatch)
+    found = level_point_worker(point_request(18.0, 2.0)).value
+    q_s = 0.5 * AIR.density * 18.0**2 * AREA
+    expected_cl = 2.0 * 2.0 * MASS * GRAVITY / (2.0 * q_s)
+    assert close(found.lift_n, 2.0 * MASS * GRAVITY, 1e-6)
+    assert close(found.cl, expected_cl, 1e-6)
+    assert close(stand_in_cl(found.alpha_deg), expected_cl, 1e-6)
+    assert close(found.cd, CD0 + K * expected_cl**2, 1e-6)
+
+
+async def test_a_load_factor_of_zero_is_the_zero_lift_point(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The stand-in lift curve crosses zero at -2 deg, where the drag is the zero-lift drag."""
+    installed(monkeypatch)
+    found = level_point_worker(point_request(18.0, 0.0)).value
+    q_s = 0.5 * AIR.density * 18.0**2 * AREA
+    assert abs(found.alpha_deg + 2.0) <= 1e-6
+    assert abs(found.lift_n) <= TOLERANCE * MASS * GRAVITY
+    assert close(found.drag_n, q_s * CD0, 1e-6)
+
+
+async def test_the_wing_limit_is_named_in_the_failure_detail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed(monkeypatch)
+    slow = math.sqrt(2.0 * MASS * GRAVITY / (AIR.density * AREA * 2.0))
+    with pytest.raises(FormulaError) as caught:
+        level_point_worker(point_request(slow))
+    assert caught.value.detail is not None
+    assert caught.value.detail["limit"] == "wing_lift"

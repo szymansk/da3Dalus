@@ -64,13 +64,16 @@ solve for V, alpha, n_prop:   L(V, alpha) = 0
 
 **Termination.** A failed solve returns no value (ADR 0020).
 
-## Implementations (3)
+## Implementations (4)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | [[fe_dive_factor]] | DEVIATES | 🟢 | Ist: `V_D = 1.4 · V_max` — the factor this entry replaced on 2026-10-01 |
 | [[fe_v_dive]] | DEVIATES | 🟢 | Ist: `1.4 · V_max`, with `V_max` a 28 m/s default |
 | [[kpi_dive_speed]] | DEVIATES | 🟢 | Ist: `1.4 · V_max` |
+| `aero_kernel/formulas/dive_speed.py` | DEVIATES | 🟢 | the root of `D(V, alpha_0) - m g - T_full(V)` (the drag at load factor 0, i.e. at the zero-lift angle), scan and Illinois. **Measured limit:** the dive speed of every RC-size airplane lies far beyond the advance-ratio range of its propeller table, so the value is the declared failure `outside_propeller_table`; see the decision file `dive-speed-beyond-the-propeller-table`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+**Implementation note (gh-1414).** Warnings forwarded: those of the answer's zero-lift point and the route notice. The kernel does not extrapolate the propeller table, so the full-throttle dive speed is not available for any airplane whose dive speed lies beyond the table's advance-ratio range.
 
 ## Approval
 

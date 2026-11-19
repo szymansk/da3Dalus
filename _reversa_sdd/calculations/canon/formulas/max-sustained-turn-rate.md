@@ -79,9 +79,15 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 
 **Validity in the RC/UAV regime (ADR 0028).** The kinematics of a coordinated level turn are exact; the load factor is the vector sum of weight and centrifugal force (Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21). The fastest sustained turn sits at the stall corner, so the answer is only as good as C_L,max at the turn's own Reynolds number; Lennon (Ch. 1–3) documents a 46 % loss of section C_L,max at low model Reynolds number (see [[stall-speed]]). AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴ and C_L 1.0 (Sharpe 2024 §7.2.4). Induced drag rises with `C_L²` (Anderson §6.7.2), so at high load factor the thrust limit binds through the propeller table, with its Re₀.₇₅ and rpm-block limits. A demanded C_L above C_L,max gives an accelerated stall (Lennon Ch. 21), which is the "wing" termination.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/max_sustained_turn_rate.py` | DEVIATES | 🟢 | per speed the highest load factor in `[1, n_lim]` for which the wing carries `n m g` before its stall and `T_full >= D(V, n)` (bisection), then the maximum of `g sqrt(n^2 - 1) / V` over the speed. The limit that binds (`thrust`, `wing`, `structure`) is declared by the notice `powered_limit_declared`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** The optimum of the turn rate lies at the corner where the thrust limit meets the wing limit; both bind there and the notice names the one the search met first.
 
 ## Approval
 

@@ -145,6 +145,7 @@ class TestKernelWarning:
             "polar_fit_nonphysical": WarningSeverity.ERROR,
             "hinge_moment_inviscid_estimate": WarningSeverity.NOTICE,
             "hinge_moment_pitch_untrimmed": WarningSeverity.NOTICE,
+            "powered_limit_declared": WarningSeverity.NOTICE,
         }
 
     def test_carries_world_and_json_detail(self) -> None:

@@ -219,3 +219,45 @@ opt_roll_max_refinements:
   guards: "Required aileron deflection, AeroBuildup world: the number of refinement steps after which the search for the command ends without having reached the target (not_converged)."
   basis: numerical
   source: "termination of the refinement only: the Illinois regula falsi converges superlinearly on a smooth bracketed root, so a handful of steps reach the target tolerance; 40 is far beyond that and bounds a non-smooth roll rate"
+
+powered_speed_scan_start:
+  value: 2.0
+  unit: m/s
+  guards: "Powered performance at full throttle (max-level-speed, dive-speed, the climbs, the sustained turns): the first speed of the upward scan that brackets a root or an optimum. Below the stall the wing cannot carry the weight, so the points under the stall speed are skipped, not evaluated further."
+  basis: numerical
+  source: "a search start, no physical claim: below the stall speed of every aircraft of the reference fleet (smallest about 5 m/s), above the speed at which a sweep's Reynolds number is meaningless; a start below the stall only costs skipped points"
+
+powered_speed_scan_step:
+  value: 2.0
+  unit: m/s
+  guards: "Powered performance at full throttle: the step of the upward scan of the airspeed. An optimum or a root is bracketed to this resolution and then refined; two features of the curve closer together than the step can be missed (the entries assume one maximum)."
+  basis: numerical
+  source: "a search resolution, no physical claim: the thrust and drag curves of the reference fleet vary on a scale of several m/s (the best-rate-of-climb speed of the Avistar lies within a step of 2 m/s of its neighbours), and a finer scan costs one AeroBuildup point per step"
+
+powered_speed_scan_limit:
+  value: 150.0
+  unit: m/s
+  guards: "Powered performance at full throttle: the speed at which the upward scan ends without a bracket (not_converged). Termination only."
+  basis: numerical
+  source: "termination of the scan only: about Mach 0.44, beyond the Mach 0.3 where the incompressible solver stops being exact (Anderson sec. 1.10.3), so every value below it is reported with the Mach notice of the solver adapter and none is cut off by this limit in the RC and UAV regime"
+
+powered_root_tolerance:
+  value: 0.00000001
+  unit: "1"
+  guards: "Powered performance at full throttle: the force residual, relative to the weight m g, at which a root search (Illinois regula falsi) accepts its root."
+  basis: numerical
+  source: "far below the 1e-6 of the level-flight lift tolerance (opt_level_lift_tolerance) that fixes every point's own accuracy and far above double-precision noise; a root is no more exact than the points it is made of, so the value only decides when a smooth search stops"
+
+powered_optimum_tolerance:
+  value: 0.0001
+  unit: "1"
+  guards: "Powered performance at full throttle: the relative width of the interval at which the golden-section search of an optimum over the airspeed and the bisection of the limit load factor stop."
+  basis: numerical
+  source: "an optimum is flat: the objective differs from its maximum by the square of the distance, so a speed known to 1e-4 of itself gives the value to about 1e-8; the search resolution is a numerical margin, no domain threshold"
+
+powered_search_max_steps:
+  value: 60
+  unit: "1"
+  guards: "Powered performance at full throttle: the number of steps after which a root search or a golden-section search ends without having reached its tolerance (not_converged). Termination only."
+  basis: numerical
+  source: "termination only: Illinois regula falsi converges superlinearly on a smooth bracketed root and the golden section shrinks the interval by 0.618 per step, so 60 steps reach 1e-12 of the interval; the limit is never reached on a smooth curve and bounds a non-smooth one"

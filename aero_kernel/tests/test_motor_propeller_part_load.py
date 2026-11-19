@@ -64,8 +64,15 @@ class LinearOpti(StubOpti):
         self.points: list[tuple[float, float, float, float]] = []
 
     async def level_flight_point(
-        self, airplane: AirplaneGeometry, mass_kg: float, gravity: float, air: AirState, v_ms: float
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+        n_load: float,
     ) -> LevelFlightPoint:
+        assert n_load == 1.0  # level flight
         weight = mass_kg * gravity
         self.points.append((mass_kg, gravity, air.density, v_ms))
         if self.lift_slope <= 0.0:

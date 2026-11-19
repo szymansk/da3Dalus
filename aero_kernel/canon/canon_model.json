@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:8237fbfbc427238c470b9d41b11f8812a6d48ff841c010b0941037eaae855ba2",
+  "content_hash": "sha256:08b624cbd4c9e28e77eb7504e78fe0b4671707eaa5c634a963e7137d660012c9",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -199,6 +199,48 @@
           "source": "a margin over floating-point noise of C_L, which is of order 1",
           "unit": "1",
           "value": 1e-15
+        },
+        "powered_optimum_tolerance": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the relative width of the interval at which the golden-section search of an optimum over the airspeed and the bisection of the limit load factor stop.",
+          "source": "an optimum is flat: the objective differs from its maximum by the square of the distance, so a speed known to 1e-4 of itself gives the value to about 1e-8; the search resolution is a numerical margin, no domain threshold",
+          "unit": "1",
+          "value": 0.0001
+        },
+        "powered_root_tolerance": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the force residual, relative to the weight m g, at which a root search (Illinois regula falsi) accepts its root.",
+          "source": "far below the 1e-6 of the level-flight lift tolerance (opt_level_lift_tolerance) that fixes every point's own accuracy and far above double-precision noise; a root is no more exact than the points it is made of, so the value only decides when a smooth search stops",
+          "unit": "1",
+          "value": 1e-08
+        },
+        "powered_search_max_steps": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the number of steps after which a root search or a golden-section search ends without having reached its tolerance (not_converged). Termination only.",
+          "source": "termination only: Illinois regula falsi converges superlinearly on a smooth bracketed root and the golden section shrinks the interval by 0.618 per step, so 60 steps reach 1e-12 of the interval; the limit is never reached on a smooth curve and bounds a non-smooth one",
+          "unit": "1",
+          "value": 60.0
+        },
+        "powered_speed_scan_limit": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the speed at which the upward scan ends without a bracket (not_converged). Termination only.",
+          "source": "termination of the scan only: about Mach 0.44, beyond the Mach 0.3 where the incompressible solver stops being exact (Anderson sec. 1.10.3), so every value below it is reported with the Mach notice of the solver adapter and none is cut off by this limit in the RC and UAV regime",
+          "unit": "m/s",
+          "value": 150.0
+        },
+        "powered_speed_scan_start": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle (max-level-speed, dive-speed, the climbs, the sustained turns): the first speed of the upward scan that brackets a root or an optimum. Below the stall the wing cannot carry the weight, so the points under the stall speed are skipped, not evaluated further.",
+          "source": "a search start, no physical claim: below the stall speed of every aircraft of the reference fleet (smallest about 5 m/s), above the speed at which a sweep's Reynolds number is meaningless; a start below the stall only costs skipped points",
+          "unit": "m/s",
+          "value": 2.0
+        },
+        "powered_speed_scan_step": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the step of the upward scan of the airspeed. An optimum or a root is bracketed to this resolution and then refined; two features of the curve closer together than the step can be missed (the entries assume one maximum).",
+          "source": "a search resolution, no physical claim: the thrust and drag curves of the reference fleet vary on a scale of several m/s (the best-rate-of-climb speed of the Avistar lies within a step of 2 m/s of its neighbours), and a finer scan costs one AeroBuildup point per step",
+          "unit": "m/s",
+          "value": 2.0
         },
         "powertrain_balance_tolerance": {
           "basis": "numerical",

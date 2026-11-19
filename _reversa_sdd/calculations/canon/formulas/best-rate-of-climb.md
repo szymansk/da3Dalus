@@ -70,9 +70,15 @@ gamma in radians inside sin and cos; where it is reported, it is converted to de
 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/best_rate_of_climb.py` | DEVIATES | 🟢 | per speed the steepest steady climb angle (root of `T - D(V, cos gamma) - m g sin gamma` on the angles the wing can carry, vertical where the excess at 90 deg is not negative), then the maximum of `V sin gamma` over the speed (scan and golden section). **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** The optimum at the stall corner is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see the decision file `climb-optimum-on-the-stall-corner` (the entry's Termination text asks for no value there; the sibling decision of #1268 for `minimum-sink-speed` returns the boundary value with a notice).
 
 ## Approval
 

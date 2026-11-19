@@ -72,9 +72,15 @@ gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is 
 
 **When the answer is vertical, `V_x` is not unique.** With thrust above weight the climb angle reaches 90° over a whole speed range (BRYAN: from about 3 m/s — hanging on the propeller). Then the result is "climbs vertically", with the range if wanted, and no single `V_x`.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/best_angle_of_climb.py` | DEVIATES | 🟢 | per speed the steepest steady climb angle (as `best-rate-of-climb`), then the maximum of `gamma` over the speed. The vertical case returns `gamma = 90 deg` at the upper edge of the speed range in which the climb is vertical (the entry: no single `V_x`), declared by the notice `powered_limit_declared`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** Measured on the closed-form airplane of the tests and on the Avistar Elite: the best angle of climb is the steepest at the lowest speed at which the wing still carries `m g cos gamma`, so the optimum lies on the stall corner as a rule, not an exception. It is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see the decision file `climb-optimum-on-the-stall-corner`.
 
 ## Approval
 
