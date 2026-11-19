@@ -136,6 +136,7 @@ aero_kernel/
   engine.py         walks the graph; takes an optional node cache (none = stateless)
   runtime.py        executor: worker slots with model affinity, concurrency limit, cancellation
   geometry.py       AirplaneGeometry and its sub-models (format mirror, mm → m at parse, ch. 8.11)
+  components.py     Components, the fitted motor, battery and propeller, pushed (ch. 8.11)
   schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Timing, TimeBounds, Polar,
                     KernelWarning, Provenance (Pydantic, extra="forbid"); re-exports AirplaneGeometry and KernelError
   canon/            canon_model.json         the interpreted canon (versioned, committed)
@@ -943,6 +944,17 @@ caller's responsibility.
       formula (and `roll-rate-cruise-target`, which shares `steady_roll_rate`, #1382) declares `world_outside_validity` in the `avl` world (`detail`: `p_hat`, `p_deg_s`, `limit`) and
       the interval is the AeroBuildup world alone (ch. 8.13). The adapter's own `warning` warning
       `avl_roll_rate_beyond_range` stays: it is the tool's statement, the exclusion is the canon's decision.
+    - *The inverse, `aileron-deflection-required` (#1400).* The same `steady_roll_rate`, solved for the command.
+      AeroBuildup world: the command is marched upward from 0 in steps of `opt_roll_search_step` (5°) until the roll
+      rate reaches the target (then Illinois regula falsi to `opt_roll_target_tolerance`, relative) or stops
+      increasing (`target_above_method_maximum`, `detail`: `max_roll_rate_deg_s`, `delta_a_deg`, `search_step_deg`: the
+      highest value on the step grid, with `p(0) = 0` assumed, not evaluated); `opt_roll_search_limit` (90°) and `opt_roll_max_refinements` (40) only terminate the search (`not_converged`). Every trial is one IPOPT
+      solve; only the answer's own warnings are reported. AVL world: one run at `avl_roll_reference_deflection`
+      (5°), scaled by AVL's linearity; `world_outside_validity` is decided on the target, `|p̂_target| > 0.10`, and
+      carries the AVL angle (`delta_a_deg`); the adapter's `avl_roll_rate_beyond_range` of the reference run is not
+      forwarded (it describes the reference, not the answer). A reference `p̂` not above `avl_roll_print_floor`
+      (none, noise, reversed device) is `target_above_method_maximum`, as in the AeroBuildup world. A negative
+      target gives the mirrored (negative) command; a zero target needs no solve.
     - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
       one sweep on the airplane **without the roll command** (its configured flaps stay): with the deflection the curve has kinks and its first
       local maximum lies far below the stall (trainer: C_L 0.364 at 1° against a clean peak of 1.233 at 16°),
@@ -1321,8 +1333,29 @@ The canon quantity `airplane` (type `airplane`) is **geometry only**: `AircraftI
 parts are the separate canon input quantity **`components`** (type `components`, S15, on the canon's main
 since `84599128`), bound to `AircraftInput.components`; only the formulas that read parts bind it, so a
 change of parts expires only their subtree (A1). A missing `components` is the ordinary `missing_input` of
-that one quantity (ch. 8.11, 8.13). Its exact field list is defined with the first KAT / APC formula
-implementation, not before (ADR 0021).
+that one quantity (ch. 8.11, 8.13), `input_path` `components`. The field list is defined with the first KAT
+formula, `airplane-components` (gh-1397), `schema_version` 1, in `components.py`; the names and units are the
+catalogue's, a field with `?` may be absent:
+
+```
+Components { schema_version: 1, motor?: Motor, battery?: Battery, propeller?: Propeller }
+Motor      { kv_rpm_per_volt, max_power_w?, io_no_load_a?, rm_ohm?, efficiency_pct? }   # rpm/V, W, A, ohm, %
+Battery    { capacity_mah, cells, mass_g?, c_rate?, cell_voltage_v?, chemistry? }       # mAh, 1, g, 1/h, V, enum
+Propeller  { diameter_in }                                                              # inch
+```
+
+The fields the catalogue requires are required; the others stay optional (absence survives, rule 3). The
+propeller's measured table is added with `propeller-table-lookup` and a new `schema_version`. `validate.py`
+reports a non-finite number, a number <= 0 (the no-load current may be 0) and an efficiency above 100 % at
+`components.<part>.<field>`; an absent field is no finding. The engine carries the type like the geometry
+(`_CARRIED_TYPES`); the components are a direct input of the nodes that read them and enter their cache key by
+their JSON form. A quantity of type `components` in `values` is `not_an_input`.
+
+**An absent catalogue value fails the formula that needs it.** Until the maintainer decides how an *absent
+output* is carried (gh-1397: `optional:` naming outputs, status `not_applicable` / `not_given`), a value the
+formula needs and the components do not carry is a `missing_input` raised by the formula, naming every absent
+`components.<part>.<field>` in the message and in `detail.inputs`; the formula returns none of its quantities
+and substitutes nothing (no chemistry table, no default cell voltage, no default efficiency).
 
 **Binding of canon input quantities to the input:**
 - **Units.** A value is given, and a result returned, in the unit the canon model declares for the
@@ -1849,9 +1882,9 @@ model (part of `IMPORT_REPORT.md`).
 |---|---|---|---|---|---|---|---|---|---|
 | `advance-ratio-from-speed` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `aerobuildup-evaluation` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain · implemented (#1334) |
-| `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
+| `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain · implemented (#1400) |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
-| `airplane-components` | procedure | KAT | law | 1 → 11 | 1 | – | – | instant | probe |
+| `airplane-components` | procedure | KAT | law | 1 → 13 | 1 | – | – | instant | probe · implemented for complete data (#1397) |
 | `airplane-configuration` | procedure | GEO | law | 2 → 1 | 2 | – | – | instant | core chain |
 | `airplane-geometry` | procedure | GEO | law | 1 → 3 | 1 | – | – | instant | core chain |
 | `aspect-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:a5a4cdf021cb658310a39f256bfa49f39dd39e2c7f14bd75adadbc56918ea84f",
+  "content_hash": "sha256:a5e8aa02faabeb6282822b6738e9efe2318cb4d7a50c417e03b47975ac2f1694",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -52,6 +52,13 @@
           "source": "AVL prints p'b/2V with five and the derivatives with six decimals",
           "unit": "1",
           "value": 0.0002
+        },
+        "avl_roll_reference_deflection": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection: the one aileron command at which AVL's roll is run; AVL is linear in the deflection (amake.f:1184-1187), so the deflection a target needs is the target scaled by this run.",
+          "source": "any value gives the same answer in a linear model; 5 deg keeps p'b/2V of the fleet's ailerons (0.07 at BRYAN) inside AVL's range of 0.10 (avl_doc.txt:121-141) and well above its five-decimal print",
+          "unit": "deg",
+          "value": 5.0
         },
         "avl_roll_refinement_tolerance": {
           "basis": "decision",
@@ -150,6 +157,34 @@
           "source": "IPOPT's default convergence tolerance is 1e-8 on the scaled constraint, so 1e-6 leaves two decades for the scaling and the sweep's float rounding",
           "unit": "1",
           "value": 1e-06
+        },
+        "opt_roll_max_refinements": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the number of refinement steps after which the search for the command ends without having reached the target (not_converged).",
+          "source": "termination of the refinement only: the Illinois regula falsi converges superlinearly on a smooth bracketed root, so a handful of steps reach the target tolerance; 40 is far beyond that and bounds a non-smooth roll rate",
+          "unit": "1",
+          "value": 40.0
+        },
+        "opt_roll_search_limit": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the command at which the upward search ends without having found the target or the maximum (not_converged).",
+          "source": "termination of the search only: tau * delta is an angle shift of a plain flap and has no meaning beyond a right angle; the canon sets no range for a deflection (D6, 2026-10-14)",
+          "unit": "deg",
+          "value": 90.0
+        },
+        "opt_roll_search_step": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the step of the upward search of the command; the maximum roll rate is reported at the resolution of this step.",
+          "source": "a search resolution, no physical claim: fine enough to resolve the saturation of the fleet's ailerons (p(delta) flattens between 20 and 40 deg), coarse enough that a 20 deg target needs four solves",
+          "unit": "deg",
+          "value": 5.0
+        },
+        "opt_roll_target_tolerance": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the relative difference between the roll rate at the returned deflection and the target at which the search stops.",
+          "source": "two decades above IPOPT's convergence tolerance of 1e-8 on the scaled constraint (see opt_probe_tolerance), and far below the 23 % spread between the worlds",
+          "unit": "1",
+          "value": 0.0001
         },
         "opt_zero_span": {
           "basis": "numerical",
@@ -6846,6 +6881,56 @@
           "criterion": "Only the visible part of a canopy counts (maintainer decision 2026-11-05, #1355): this is the maintainer's decision, not a textbook method; Scholz and Sadraey have no canopy method, and Sadraey's drag build-up (Eq. 7.5/7.6) takes one wetted area for the fuselage. Every body of role canopy is therefore merged, for the solvers only, into the body it sits on (attached_to); nacelles, fairings, pods and other bodies stay bodies of their own. The stored document is never changed and the measured contour is never read. Per parent: (1) stations are the union of the parent's sections and the canopies' stations inside its x range, exact duplicates collapsed; where no canopy shows (outside every canopy, a canopy section of size 0, or a canopy hidden inside the parent) the parent's section is kept verbatim and nothing is inserted; (2) each body's section at a station is linear in x between its neighbours (xyz, a, b, n, n_lower; n_lower defaults to n); (3) on a z grid the half-width is the largest of the bodies' half-widths about the parent's y, an off-centre canopy counting with its offset; an interior gap of zero width (a canopy floating just above the parent) is filled with the smaller of the widest half-width below and above it, a notch of positive width is kept; (4) the envelope is refitted to one section of two exponents: centre the middle of its height, b half the height, a the largest half-width, and each half's exponent the one that keeps that half's area, f(n) = A_half / (2 a b) with f(n) = Gamma(1 + 1/n)^2 / Gamma(1 + 2/n), by bisection; (5) several canopies on one parent fold into the same envelope. AeroSandbox then takes the equivalent symmetric section of each refitted section (aerosandbox-fuselage-shape) and AVL the round body of its area. The z grid (opt_body_merge_z_cells), the bisection tolerance (opt_body_merge_area_tolerance) and the exponent bracket (opt_body_merge_exponent_min/max) are numeric settings of config.yaml, not engineering constants. Declared (ADR 0020) by the notice canopy_merged_into_fuselage, origin airplane, one per canopy (detail: canopy, parent, canopies_on_parent, merged_stations, canopy_wetted_area_m2, visible_wetted_area_added_m2, area_max_deviation, perimeter_max_deviation); a refitted exponent clamped to the bracket is the warning canopy_merge_exponent_clamped, a canopy not centred on its parent's y the warning canopy_off_centre. The axis kink of a merged body is not treated here but by the rule fuselage-axis-straightened (#1358), which AeroBuildup applies to the merged body. Spinners: rule spinner-merge.",
           "kind": "tool",
           "on_violation": "warning",
+          "parameters": {}
+        },
+        "components-efficiency-at-most": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "value_above_maximum"
+          ],
+          "criterion": "efficiency_pct / 100, where efficiency_pct is present, is at most max_efficiency: an efficiency is a fraction of the input power. (The parameter is a fraction because the unit vocabulary has no percent; the catalogue field is in percent.)",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "max_efficiency": {
+              "at_most": null,
+              "basis": "definition",
+              "positive": null,
+              "regime": "regime-independent",
+              "source": "definition: a fraction of the input power cannot exceed 1 (100 %)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1.0
+            }
+          }
+        },
+        "components-finite-numbers": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "non_finite_number"
+          ],
+          "criterion": "Every number of the pushed components is finite (no NaN, no infinity).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-positive-numbers": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "non_positive_value"
+          ],
+          "criterion": "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v and diameter_in, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push.",
+          "kind": "input",
+          "on_violation": "error",
           "parameters": {}
         },
         "control-surface-needs-device": {
