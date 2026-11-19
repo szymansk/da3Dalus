@@ -738,7 +738,7 @@ class CanonGraph:
         Returns:
             The resolved quantity, or the per-quantity error the request earns: ``unknown_quantity``,
             ``not_requestable`` for an input or target, ``non_scalar_result`` for a quantity that
-            is neither a scalar nor a per-control-surface value (v1).
+            is neither a scalar, a per-control-surface value nor a curve (v1).
 
         """
         qualified = _try_qualify(slug)
@@ -759,13 +759,13 @@ class CanonGraph:
                 f"`{slug}` is a {quantity.role}: it is supplied, not computed.",
                 "Pass it in `values` and request a derived or output quantity.",
             )
-        if quantity.type not in ("scalar", "per_control_surface"):
+        if quantity.type not in ("scalar", "per_control_surface", "curve"):
             return _request_error(
                 slug,
                 "non_scalar_result",
                 ErrorCategory.NOT_IMPLEMENTED,
-                f"`{slug}` is a {quantity.type}; v1 returns scalar quantities only.",
-                "Request a scalar quantity.",
+                f"`{slug}` is a {quantity.type}; v1 returns scalar, per-surface and curve quantities only.",
+                "Request a scalar, per-surface or curve quantity.",
             )
         # every computed quantity has a producer: the constructor checked it
         producer = self._producers[qualified]

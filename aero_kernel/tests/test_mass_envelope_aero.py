@@ -8,6 +8,8 @@ publishes no mass envelope of this aircraft (``reference/avistar_elite/MEASUREME
 the project for any RC aircraft. Cost on an Apple laptop: about 45 s for the two roots.
 """
 
+import math
+
 import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.engine import evaluate
@@ -32,7 +34,7 @@ async def run(aircraft: AircraftInput, *slugs: str) -> dict[str, QuantityResult]
 # the Avistar Elite as measured in the paper
 
 
-async def test_the_two_largest_masses_end_the_state_they_name_and_the_curves_are_not_requestable() -> (
+async def test_the_two_largest_masses_end_the_state_they_name_and_the_climb_curve_is_the_formulas_climb() -> (
     None
 ):
     got = await run(
@@ -45,11 +47,26 @@ async def test_the_two_largest_masses_end_the_state_they_name_and_the_curves_are
     m_level, m_to = value(got, "max-mass-level-flight"), value(got, "max-mass-lift-off")
     assert CURRENT_KG < m_to < m_level  # the overloaded bomber: it cruises, it cannot climb out
     assert "powertrain_route_winding_resistance" in codes(got, "max-mass-level-flight")
-    for slug in ("speed-range-over-mass", "climb-rate-over-mass"):  # ARCHITECTURE ch. 8.3
-        error = got[slug].error
-        assert got[slug].status is QuantityStatus.ERROR
-        assert error is not None
-        assert error.code == "non_scalar_result"
+    # the climb curve is a result (gh-1424): the samples are the climb search of best-rate-of-climb itself
+    climb = got["climb-rate-over-mass"].curve
+    assert got["climb-rate-over-mass"].status is QuantityStatus.OK
+    assert climb is not None
+    assert (climb.x_quantity, climb.x_unit) == ("aircraft-mass", "kg")
+    assert climb.x[0] == CURRENT_KG
+    assert math.isclose(
+        climb.x[-1], m_level, rel_tol=1e-12
+    )  # closed by the root, where no climb is left
+    assert climb.y[-1] == 0.0
+    assert all(
+        a > b for a, b in zip(climb.y, climb.y[1:], strict=False)
+    )  # the climb falls with the mass
+    at_current = await run(avistar(), "max-rate-of-climb")
+    assert math.isclose(climb.y[0], value(at_current, "max-rate-of-climb"), rel_tol=1e-9)
+    # a curve_pair is not a result: the speed range is computed and not requestable
+    speed_range = got["speed-range-over-mass"]
+    assert speed_range.status is QuantityStatus.ERROR
+    assert speed_range.error is not None
+    assert speed_range.error.code == "non_scalar_result"
 
     # the hand check, with the other formulas: a little below the largest level-flight mass the airplane
     # still climbs (a little), above it nothing climbs and level flight has no speed. Above is 2 percent,

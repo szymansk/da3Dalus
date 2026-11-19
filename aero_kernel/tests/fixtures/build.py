@@ -63,8 +63,9 @@ quantities = {
     "neutral-point": q("x_np", "m", "output", uncertainty="interval"),
     "roll-rate-cruise": q("p_c", "deg/s", "output"),
     "max-mass-level-flight": q("m_max_level", "kg", "output"),
-    "butterfly-stall-speed-curve": q("V_S0(s)", "m/s", "output", "curve"),
-    "butterfly-speed-range": q("V_range", "m/s", "output", "curve_pair"),
+    "crow-mix": q("s", "1", "input"),
+    "butterfly-stall-speed-curve": q("V_S0(s)", "m/s", "output", "curve", abscissa="crow-mix"),
+    "butterfly-speed-range": q("V_range", "m/s", "output", "curve_pair", abscissa="crow-mix"),
 }
 
 defaults = {

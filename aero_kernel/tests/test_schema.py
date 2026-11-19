@@ -633,7 +633,7 @@ def test_all_pins_the_public_names() -> None:
             "ComputeRequest",
             "ComputeResult",
             "Curve",
-            "CurvePair",
+            "CurveResult",
             "DefaultUsed",
             "Interval",
             "KernelError",

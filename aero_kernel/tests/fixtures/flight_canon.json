@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:aa92487463f446938eec244b4dc179a2be54a01db096fffc7c90013e2e90b7c3",
+  "content_hash": "sha256:aac40f238ef237faac2f475839fa24e7dbdd372483357351e73c653cb877b65b",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -403,6 +403,7 @@
       },
       "quantities": {
         "air-density": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -420,6 +421,7 @@
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -437,6 +439,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -454,6 +457,7 @@
           "unit": "1"
         },
         "airplane-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -471,6 +475,7 @@
           "unit": "1"
         },
         "approach-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -488,6 +493,7 @@
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -505,6 +511,7 @@
           "unit": "1"
         },
         "butterfly-speed-range": {
+          "abscissa": "crow-mix",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -522,6 +529,7 @@
           "unit": "m/s"
         },
         "butterfly-stall-speed-curve": {
+          "abscissa": "crow-mix",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -538,7 +546,26 @@
           "uncertainty": null,
           "unit": "m/s"
         },
+        "crow-mix": {
+          "abscissa": null,
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": null,
+          "group": null,
+          "module": null,
+          "point": null,
+          "positive": null,
+          "role": "input",
+          "stage": null,
+          "symbol": "s",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
         "cruise-speed-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -556,6 +583,7 @@
           "unit": "m/s"
         },
         "flap-deflection-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -573,6 +601,7 @@
           "unit": "deg"
         },
         "gravity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -590,6 +619,7 @@
           "unit": "m/s^2"
         },
         "inverted-max-lift-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -607,6 +637,7 @@
           "unit": "1"
         },
         "max-lift-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -624,6 +655,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -641,6 +673,7 @@
           "unit": "1"
         },
         "max-mass-level-flight": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -658,6 +691,7 @@
           "unit": "kg"
         },
         "neutral-point": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -675,6 +709,7 @@
           "unit": "m"
         },
         "polar-stall": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -692,6 +727,7 @@
           "unit": "1"
         },
         "roll-rate-cruise": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -709,6 +745,7 @@
           "unit": "deg/s"
         },
         "stall-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -726,6 +763,7 @@
           "unit": "m/s"
         },
         "stall-speed-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,

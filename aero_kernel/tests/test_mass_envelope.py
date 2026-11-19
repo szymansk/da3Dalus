@@ -31,7 +31,7 @@ from aero_kernel.formulas.mass_envelope import (
 from aero_kernel.formulas.max_level_speed import max_level_speed
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import DEFAULT_REGISTRY
-from aero_kernel.schema import Curve, CurvePair, KernelWarning
+from aero_kernel.schema import Curve, KernelWarning
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import LevelFlightPoint, Stall, StallSolution
 from aero_kernel.tests import powered_builders as pb
@@ -507,14 +507,15 @@ def few_points(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_the_curve_samples_are_what_max_level_speed_and_best_rate_of_climb_return_at_that_mass() -> (
     None
 ):
-    """One producer (ADR 0022): at every sample mass the curve holds exactly the value the two formulas
+    """One producer (ADR 0022): at every sample mass the curves hold exactly the value the two formulas
     return for that mass and its clean stall speed: same functions, same scan grid and start, no second
     search. Equality, not agreement."""
     got, _ = await run()
-    pair, climb = got["speed_range"], got["roc_curve"]
-    assert isinstance(pair, CurvePair)
+    _, level_curve = got["speed_range"]
+    climb = got["roc_curve"]
+    assert isinstance(level_curve, Curve)
     assert isinstance(climb, Curve)
-    for k, mass in enumerate(pair.x[:-1]):
+    for k, mass in enumerate(level_curve.x[:-1]):
         values: dict[str, Any] = {"stall-speed": v_stall(mass)}
         level = await max_level_speed(
             pb.bound_inputs("max-level-speed", mass, **values),
@@ -524,7 +525,7 @@ async def test_the_curve_samples_are_what_max_level_speed_and_best_rate_of_climb
             pb.bound_inputs("best-rate-of-climb", mass, **values),
             pb.context("best-rate-of-climb", EnvelopeOpti()),
         )
-        assert pair.upper[k] == level["v_max"]
+        assert level_curve.y[k] == level["v_max"]
         assert climb.y[k] == rate["roc_max"]
 
 
@@ -532,22 +533,21 @@ async def test_the_curves_run_from_the_current_mass_to_the_largest_level_mass_an
     None
 ):
     got, _ = await run()
-    pair, climb = got["speed_range"], got["roc_curve"]
-    assert isinstance(pair, CurvePair)
-    assert isinstance(climb, Curve)
+    stall_curve, level_curve = got["speed_range"]
+    climb = got["roc_curve"]
     root = got["m_max_level"]
-    assert len(pair.x) == CURVE_POINTS + 1
-    assert climb.x == pair.x
-    assert pair.x[0] == M0
-    assert pair.x[-1] == root
-    for k, mass in enumerate(pair.x[:-1]):  # equally spaced from the current mass
+    assert len(stall_curve.x) == CURVE_POINTS + 1
+    assert stall_curve.x == level_curve.x == climb.x  # the speed range is two curves over one grid
+    assert stall_curve.x[0] == M0
+    assert stall_curve.x[-1] == root
+    for k, mass in enumerate(stall_curve.x[:-1]):  # equally spaced from the current mass
         assert close(mass, M0 + (root - M0) * k / CURVE_POINTS, 1e-12)
-    for k, mass in enumerate(pair.x):
-        assert close(pair.lower[k], v_stall(mass), 1e-9)  # the stall solve of each mass
-    assert list(pair.lower) == sorted(pair.lower)  # V_S rises with the mass
+    for k, mass in enumerate(stall_curve.x):
+        assert close(stall_curve.y[k], v_stall(mass), 1e-9)  # the stall solve of each mass
+    assert list(stall_curve.y) == sorted(stall_curve.y)  # V_S rises with the mass
     assert climb.y[0] > climb.y[1] > climb.y[-2] > 0.0  # the climb falls with the mass ...
     assert climb.y[-1] == 0.0  # ... and is zero where level flight ends
-    assert close(pair.upper[-1], best_excess(root)[1], 1e-3)  # V_max closes on the best speed
+    assert close(level_curve.y[-1], best_excess(root)[1], 1e-3)  # V_max closes on the best speed
 
 
 async def test_a_sample_whose_search_fails_surfaces_with_its_mass_named() -> None:

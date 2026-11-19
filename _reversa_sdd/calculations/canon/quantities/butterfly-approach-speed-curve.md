@@ -10,6 +10,7 @@ tags:
   - point/approach
   - role/output
 type: curve
+abscissa: crow-mix
 ---
 
 # Approach speed over the crow mix · `V_app(s)`

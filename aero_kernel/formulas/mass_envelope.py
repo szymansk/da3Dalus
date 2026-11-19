@@ -68,7 +68,7 @@ from aero_kernel.formulas.stall_speed import first_extremum_check
 from aero_kernel.formulas.values import air_state, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import CheckResult, formula, precondition
-from aero_kernel.schema import Curve, CurvePair
+from aero_kernel.schema import Curve
 from aero_kernel.solvers.opti import Stall
 
 __all__ = ["current_mass_positive", "mass_envelope", "takeoff_speed_above_stall_speed"]
@@ -326,7 +326,7 @@ class Envelope:
             raise _named_at(error, mass) from error
         return v_s, v_max, optimum.value
 
-    async def curves(self, root: float) -> tuple[CurvePair, Curve]:
+    async def curves(self, root: float) -> tuple[tuple[Curve, Curve], Curve]:
         """The speed range and the best rate of climb over the masses of the sweep, closed by the root.
 
         The samples are equally spaced from the current mass up to (not including) ``m_max,level``. At the
@@ -341,9 +341,9 @@ class Envelope:
         stall = [x[0] for x in samples] + [v_s_root]
         top = [x[1] for x in samples] + [v_best]
         climb = [x[2] for x in samples] + [0.0]
-        return CurvePair(x=tuple(masses), lower=tuple(stall), upper=tuple(top)), Curve(
-            x=tuple(masses), y=tuple(climb)
-        )
+        grid = tuple(masses)
+        speed_range = (Curve(x=grid, y=tuple(stall)), Curve(x=grid, y=tuple(top)))
+        return speed_range, Curve(x=grid, y=tuple(climb))
 
     async def declare_level(self, root: float) -> None:
         """Evaluate and declare the level-flight answer at ``m_max,level``."""
@@ -368,7 +368,7 @@ class Envelope:
 
 
 @formula("mass-envelope")
-async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float | Curve | CurvePair]:
+async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float | Curve | tuple[Curve, Curve]]:
     """The two largest masses (level flight, lift-off) and the speed range and climb rate over the mass.
 
     Args:
@@ -381,8 +381,8 @@ async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float | Curve | Cu
             declares the route, the skipped speeds and the bounds the answers lie on.
 
     Returns:
-        ``m_max_level`` and ``m_max_to`` in kg; ``speed_range`` (``V_S`` and ``V_max`` in m/s over the
-        mass in kg) and ``roc_curve`` (the best rate of climb in m/s over the mass).
+        ``m_max_level`` and ``m_max_to`` in kg; ``speed_range`` (the two curves ``V_S(m)`` and ``V_max(m)`` in m/s over
+        the mass in kg; a ``curve_pair`` is not a result, so it is computed and not requestable) and ``roc_curve`` (the best rate of climb in m/s over the mass).
 
     Raises:
         TypeError: If ``airplane``, ``airplane_to`` or ``components`` is not the document.

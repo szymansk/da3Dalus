@@ -10,6 +10,7 @@ tags:
   - point/over-mass
   - role/output
 type: curve_pair
+abscissa: aircraft-mass
 ---
 
 # Trimmable CG range over the mass · `x_fwd(m), x_aft(m)`

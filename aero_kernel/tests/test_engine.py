@@ -409,7 +409,7 @@ async def test_an_input_slug_is_not_requestable_and_keeps_its_unit() -> None:
 
 
 async def test_a_non_scalar_request_is_an_error_with_the_unit() -> None:
-    result = await run("curve-q", "independent-q")
+    result = await run("polar-q", "independent-q")
     assert result.quantities[0].error is not None
     assert result.quantities[0].error.code == "non_scalar_result"
     assert result.quantities[0].unit == "1"

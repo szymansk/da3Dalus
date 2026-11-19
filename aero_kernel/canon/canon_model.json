@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:4830f4888def12ebf717e792d87697b09a7f0baeed3979f8efa20561346e0dc0",
+  "content_hash": "sha256:7ef3dac820250a06b1d270c8d1f01317c8dcc46a3814bfa7668c34d276705774",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -4083,6 +4083,7 @@
       },
       "quantities": {
         "advance-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4100,6 +4101,7 @@
           "unit": "1"
         },
         "aileron-deflection": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4119,6 +4121,7 @@
           "unit": "deg"
         },
         "aileron-deflection-required-approach": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4136,6 +4139,7 @@
           "unit": "deg"
         },
         "aileron-deflection-required-cruise": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4153,6 +4157,7 @@
           "unit": "deg"
         },
         "air-density": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4170,6 +4175,7 @@
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": [
@@ -4191,6 +4197,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4210,6 +4217,7 @@
           "unit": "1"
         },
         "airplane-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4227,6 +4235,7 @@
           "unit": "1"
         },
         "airplane-takeoff": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4244,6 +4253,7 @@
           "unit": "1"
         },
         "alpha-break": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4261,6 +4271,7 @@
           "unit": "deg"
         },
         "altitude": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4281,6 +4292,7 @@
           "unit": "m"
         },
         "angle-of-attack": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4300,6 +4312,7 @@
           "unit": "deg"
         },
         "angle-of-attack-best-glide": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4317,6 +4330,7 @@
           "unit": "deg"
         },
         "angle-of-attack-minimum-sink": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4334,6 +4348,7 @@
           "unit": "deg"
         },
         "angle-of-attack-stall": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4351,6 +4366,7 @@
           "unit": "deg"
         },
         "approach-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4368,6 +4384,7 @@
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4388,6 +4405,7 @@
           "unit": "1"
         },
         "aspect-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4405,6 +4423,7 @@
           "unit": "1"
         },
         "battery-c-rate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4424,6 +4443,7 @@
           "unit": "1/h"
         },
         "battery-capacity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4445,6 +4465,7 @@
           "unit": "Wh"
         },
         "battery-charge-capacity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4464,6 +4485,7 @@
           "unit": "mAh"
         },
         "battery-current": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4481,6 +4503,7 @@
           "unit": "A"
         },
         "battery-current-allowed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4501,6 +4524,7 @@
           "unit": "A"
         },
         "battery-energy-required": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4518,6 +4542,7 @@
           "unit": "Wh"
         },
         "battery-mass": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4537,6 +4562,7 @@
           "unit": "kg"
         },
         "battery-power": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4554,6 +4580,7 @@
           "unit": "W"
         },
         "battery-specific-energy": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4573,6 +4600,7 @@
           "unit": "Wh/kg"
         },
         "battery-voltage": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4593,6 +4621,7 @@
           "unit": "V"
         },
         "best-angle-of-climb-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4610,6 +4639,7 @@
           "unit": "m/s"
         },
         "best-rate-of-climb-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4627,6 +4657,7 @@
           "unit": "m/s"
         },
         "break-load-factor-negative": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4644,6 +4675,7 @@
           "unit": "1"
         },
         "break-load-factor-positive": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4661,6 +4693,7 @@
           "unit": "1"
         },
         "butterfly-approach-speed-curve": {
+          "abscissa": "crow-mix",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4678,6 +4711,7 @@
           "unit": "m/s"
         },
         "butterfly-glide-angle-curve": {
+          "abscissa": "crow-mix",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4695,6 +4729,7 @@
           "unit": "deg"
         },
         "butterfly-max-mix": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4712,6 +4747,7 @@
           "unit": "1"
         },
         "butterfly-stall-speed-curve": {
+          "abscissa": "crow-mix",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4729,6 +4765,7 @@
           "unit": "m/s"
         },
         "cell-voltage-nominal": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4750,6 +4787,7 @@
           "unit": "V"
         },
         "centre-of-gravity-design": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4767,6 +4805,7 @@
           "unit": "m"
         },
         "centre-of-gravity-measured": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4786,6 +4825,7 @@
           "unit": "m"
         },
         "cg-envelope-over-mass": {
+          "abscissa": "aircraft-mass",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4803,6 +4843,7 @@
           "unit": "m"
         },
         "climb-rate-over-mass": {
+          "abscissa": "aircraft-mass",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4820,6 +4861,7 @@
           "unit": "m/s"
         },
         "components": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4841,6 +4883,7 @@
           "unit": "1"
         },
         "crow-aileron-deflection": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4858,6 +4901,7 @@
           "unit": "deg"
         },
         "crow-flap-deflection": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4874,7 +4918,26 @@
           "uncertainty": null,
           "unit": "deg"
         },
+        "crow-mix": {
+          "abscissa": null,
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
+          "positive": null,
+          "role": "input",
+          "stage": null,
+          "symbol": "s",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
         "cruise-speed-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4894,6 +4957,7 @@
           "unit": "m/s"
         },
         "dihedral-effect-app": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4911,6 +4975,7 @@
           "unit": "1/rad"
         },
         "dihedral-effect-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4928,6 +4993,7 @@
           "unit": "1/rad"
         },
         "dihedral-effect-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4945,6 +5011,7 @@
           "unit": "1/rad"
         },
         "dive-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4962,6 +5029,7 @@
           "unit": "m/s"
         },
         "drag-coefficient-parabolic": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4979,6 +5047,7 @@
           "unit": "1"
         },
         "drag-force": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4996,6 +5065,7 @@
           "unit": "N"
         },
         "dynamic-pressure": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5013,6 +5083,7 @@
           "unit": "Pa"
         },
         "dynamic-viscosity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5030,6 +5101,7 @@
           "unit": "Pa*s"
         },
         "elevator-deflection-down": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5049,6 +5121,7 @@
           "unit": "deg"
         },
         "elevator-deflection-up": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5068,6 +5141,7 @@
           "unit": "deg"
         },
         "endurance-at-cruise-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5085,6 +5159,7 @@
           "unit": "s"
         },
         "endurance-estimate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5102,6 +5177,7 @@
           "unit": "s"
         },
         "flap-deflection-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5121,6 +5197,7 @@
           "unit": "deg"
         },
         "flap-deflection-takeoff": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5140,6 +5217,7 @@
           "unit": "deg"
         },
         "flight-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5159,6 +5237,7 @@
           "unit": "m/s"
         },
         "gravity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5178,6 +5257,7 @@
           "unit": "m/s^2"
         },
         "hinge-moment": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5195,6 +5275,7 @@
           "unit": "N*m"
         },
         "horizontal-tail-arm": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5212,6 +5293,7 @@
           "unit": "m"
         },
         "horizontal-tail-volume": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5229,6 +5311,7 @@
           "unit": "1"
         },
         "induced-drag-factor": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5246,6 +5329,7 @@
           "unit": "1"
         },
         "inverted-max-lift-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5263,6 +5347,7 @@
           "unit": "1"
         },
         "lift-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5280,6 +5365,7 @@
           "unit": "1"
         },
         "lift-coefficient-best-glide": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5297,6 +5383,7 @@
           "unit": "1"
         },
         "lift-coefficient-minimum-sink": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5314,6 +5401,7 @@
           "unit": "1"
         },
         "lift-curve-slope-best-glide": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5331,6 +5419,7 @@
           "unit": "1/rad"
         },
         "lift-curve-slope-minimum-sink": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5348,6 +5437,7 @@
           "unit": "1/rad"
         },
         "lift-force": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5365,6 +5455,7 @@
           "unit": "N"
         },
         "lift-to-drag-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5382,6 +5473,7 @@
           "unit": "1"
         },
         "limit-load-factor": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5401,6 +5493,7 @@
           "unit": "1"
         },
         "load-factor": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5420,6 +5513,7 @@
           "unit": "1"
         },
         "maneuvering-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5437,6 +5531,7 @@
           "unit": "m/s"
         },
         "max-climb-angle": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5454,6 +5549,7 @@
           "unit": "deg"
         },
         "max-endurance": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5471,6 +5567,7 @@
           "unit": "s"
         },
         "max-level-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5488,6 +5585,7 @@
           "unit": "m/s"
         },
         "max-lift-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5505,6 +5603,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5522,6 +5621,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-takeoff": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5539,6 +5639,7 @@
           "unit": "1"
         },
         "max-lift-to-drag-probe": {
+          "abscissa": null,
           "at_most": null,
           "checks": "max-lift-to-drag-ratio",
           "consistency": null,
@@ -5556,6 +5657,7 @@
           "unit": "1"
         },
         "max-lift-to-drag-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5573,6 +5675,7 @@
           "unit": "1"
         },
         "max-mass-level-flight": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5590,6 +5693,7 @@
           "unit": "kg"
         },
         "max-mass-lift-off": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5607,6 +5711,7 @@
           "unit": "kg"
         },
         "max-mass-structure": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5624,6 +5729,7 @@
           "unit": "kg"
         },
         "max-range": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5641,6 +5747,7 @@
           "unit": "m"
         },
         "max-rate-of-climb": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5658,6 +5765,7 @@
           "unit": "m/s"
         },
         "max-sustained-turn-rate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5675,6 +5783,7 @@
           "unit": "deg/s"
         },
         "max-sustained-turn-rate-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5692,6 +5801,7 @@
           "unit": "m/s"
         },
         "mean-aerodynamic-chord": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5709,6 +5819,7 @@
           "unit": "m"
         },
         "mean-geometric-chord": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5726,6 +5837,7 @@
           "unit": "m"
         },
         "min-sustained-turn-radius": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5743,6 +5855,7 @@
           "unit": "m"
         },
         "min-sustained-turn-radius-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5760,6 +5873,7 @@
           "unit": "m/s"
         },
         "minimum-drag-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5777,6 +5891,7 @@
           "unit": "m/s"
         },
         "minimum-drag-speed-probe": {
+          "abscissa": null,
           "at_most": null,
           "checks": "minimum-drag-speed",
           "consistency": null,
@@ -5794,6 +5909,7 @@
           "unit": "m/s"
         },
         "minimum-sink-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5811,6 +5927,7 @@
           "unit": "m/s"
         },
         "motor-circuit-resistance": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5830,6 +5947,7 @@
           "unit": "ohm"
         },
         "motor-efficiency": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5850,6 +5968,7 @@
           "unit": "1"
         },
         "motor-max-power": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5869,6 +5988,7 @@
           "unit": "W"
         },
         "motor-no-load-current": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5888,6 +6008,7 @@
           "unit": "A"
         },
         "motor-torque": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5905,6 +6026,7 @@
           "unit": "N*m"
         },
         "motor-voltage-constant": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5924,6 +6046,7 @@
           "unit": "rpm/V"
         },
         "neutral-point": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5941,6 +6064,7 @@
           "unit": "m"
         },
         "oswald-efficiency": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5958,6 +6082,7 @@
           "unit": "1"
         },
         "polar-stall": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5975,6 +6100,7 @@
           "unit": "1"
         },
         "predicted-battery-mass": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5992,6 +6118,7 @@
           "unit": "kg"
         },
         "propeller-diameter": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6011,6 +6138,7 @@
           "unit": "m"
         },
         "propeller-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6028,6 +6156,7 @@
           "unit": "1/s"
         },
         "propeller-speed-part-load": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6045,6 +6174,7 @@
           "unit": "1/s"
         },
         "range-at-cruise-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6062,6 +6192,7 @@
           "unit": "m"
         },
         "range-estimate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6079,6 +6210,7 @@
           "unit": "m"
         },
         "roll-due-to-yaw-rate-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6096,6 +6228,7 @@
           "unit": "1/rad"
         },
         "roll-rate-approach": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6113,6 +6246,7 @@
           "unit": "deg/s"
         },
         "roll-rate-cruise": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6130,6 +6264,7 @@
           "unit": "deg/s"
         },
         "roll-rate-nondimensional-approach": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6147,6 +6282,7 @@
           "unit": "1"
         },
         "roll-rate-target-approach": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6164,6 +6300,7 @@
           "unit": "deg/s"
         },
         "roll-rate-target-cruise": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6183,6 +6320,7 @@
           "unit": "deg/s"
         },
         "rudder-deflection": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6202,6 +6340,7 @@
           "unit": "deg"
         },
         "rudder-roll-authority-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6219,6 +6358,7 @@
           "unit": "1"
         },
         "rudder-roll-authority-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6236,6 +6376,7 @@
           "unit": "1"
         },
         "sink-rate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6253,6 +6394,7 @@
           "unit": "m/s"
         },
         "spanwise-bending-moment": {
+          "abscissa": "wing-station",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6270,6 +6412,7 @@
           "unit": "N*m"
         },
         "spanwise-lift-distribution": {
+          "abscissa": "wing-station",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6287,6 +6430,7 @@
           "unit": "N/m"
         },
         "spanwise-shear-force": {
+          "abscissa": "wing-station",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6304,6 +6448,7 @@
           "unit": "N"
         },
         "speed-of-sound": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6321,6 +6466,7 @@
           "unit": "m/s"
         },
         "speed-range-over-mass": {
+          "abscissa": "aircraft-mass",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6338,6 +6484,7 @@
           "unit": "m/s"
         },
         "spiral-criterion-app": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6355,6 +6502,7 @@
           "unit": "1/rad^2"
         },
         "spiral-criterion-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6372,6 +6520,7 @@
           "unit": "1/rad^2"
         },
         "spiral-criterion-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6389,6 +6538,7 @@
           "unit": "1/rad^2"
         },
         "spiral-doubling-time-app": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6406,6 +6556,7 @@
           "unit": "s"
         },
         "spiral-doubling-time-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6423,6 +6574,7 @@
           "unit": "s"
         },
         "spiral-doubling-time-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6440,6 +6592,7 @@
           "unit": "s"
         },
         "spiral-parameter-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6457,6 +6610,7 @@
           "unit": "1"
         },
         "spiral-parameter-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6474,6 +6628,7 @@
           "unit": "1"
         },
         "stall-break-fraction": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6493,6 +6648,7 @@
           "unit": "1"
         },
         "stall-break-width": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6510,6 +6666,7 @@
           "unit": "deg"
         },
         "stall-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6527,6 +6684,7 @@
           "unit": "m/s"
         },
         "stall-speed-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6544,6 +6702,7 @@
           "unit": "m/s"
         },
         "stall-speed-takeoff": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6561,6 +6720,7 @@
           "unit": "m/s"
         },
         "stall-speed-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6578,6 +6738,7 @@
           "unit": "m/s"
         },
         "static-margin-measured": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6595,6 +6756,7 @@
           "unit": "1"
         },
         "static-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6614,6 +6776,7 @@
           "unit": "1"
         },
         "static-thrust-to-weight": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6631,6 +6794,7 @@
           "unit": "1"
         },
         "tail-efficiency": {
+          "abscissa": null,
           "at_most": 1.0,
           "checks": null,
           "consistency": null,
@@ -6650,6 +6814,7 @@
           "unit": "1"
         },
         "takeoff-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6667,6 +6832,7 @@
           "unit": "m/s"
         },
         "takeoff-speed-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6687,6 +6853,7 @@
           "unit": "1"
         },
         "thrust-at-airspeed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6704,6 +6871,7 @@
           "unit": "N"
         },
         "thrust-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6721,6 +6889,7 @@
           "unit": "1"
         },
         "thrust-demand-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6738,6 +6907,7 @@
           "unit": "1"
         },
         "touchdown-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6755,6 +6925,7 @@
           "unit": "m/s"
         },
         "touchdown-speed-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6774,6 +6945,7 @@
           "unit": "1"
         },
         "turn-sideslip": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6791,6 +6963,7 @@
           "unit": "deg"
         },
         "turn-sideslip-gain": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6808,6 +6981,7 @@
           "unit": "1"
         },
         "vertical-tail-arm": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6825,6 +6999,7 @@
           "unit": "m"
         },
         "vertical-tail-volume": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6842,6 +7017,7 @@
           "unit": "1"
         },
         "weathercock-stability-app": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6859,6 +7035,7 @@
           "unit": "1/rad"
         },
         "weathercock-stability-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6876,6 +7053,7 @@
           "unit": "1/rad"
         },
         "weathercock-stability-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6893,6 +7071,7 @@
           "unit": "1/rad"
         },
         "weight": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6910,6 +7089,7 @@
           "unit": "N"
         },
         "wing-loading": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6927,6 +7107,7 @@
           "unit": "N/m^2"
         },
         "wing-loading-limit-stall": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6944,6 +7125,7 @@
           "unit": "N/m^2"
         },
         "wing-reference-area": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6961,6 +7143,7 @@
           "unit": "m^2"
         },
         "wing-span": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6977,7 +7160,26 @@
           "uncertainty": null,
           "unit": "m"
         },
+        "wing-station": {
+          "abscissa": null,
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": null,
+          "group": null,
+          "module": "construction",
+          "point": null,
+          "positive": null,
+          "role": "input",
+          "stage": null,
+          "symbol": "y_st",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
         "zero-lift-angle-best-glide": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6995,6 +7197,7 @@
           "unit": "deg"
         },
         "zero-lift-angle-minimum-sink": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -7012,6 +7215,7 @@
           "unit": "deg"
         },
         "zero-lift-drag-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,

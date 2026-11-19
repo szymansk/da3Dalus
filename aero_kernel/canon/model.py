@@ -171,6 +171,9 @@ class Quantity(BaseModel):
         checks: The slug of the quantity this one verifies (a probe); ``None`` for any other.
         at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),
             otherwise omitted (``None``).
+        abscissa: The slug of the scalar quantity a ``curve`` or ``curve_pair`` runs over (the crow
+            mix, the aircraft mass, the spanwise station); its unit is the unit of ``x``. Exactly
+            the quantities of these two types carry it; the model checks that it exists and is a scalar.
         data: Where the quantity comes from in our data, each ``<kind>:<location>`` (a quantity no
             formula produces; stage 2 of the approval); ``None`` while it has no demonstrated source.
         consistency: Sources that only check the supplied value and never supply it (the geometry's
@@ -192,6 +195,7 @@ class Quantity(BaseModel):
     discipline: Slug | None = None
     checks: Slug | None = None
     at_most: FiniteNumber | None = None
+    abscissa: Slug | None = None
     data: Annotated[list[DataSource], Field(min_length=1)] | None = None
     consistency: Annotated[list[DataSource], Field(min_length=1)] | None = None
 
@@ -216,6 +220,18 @@ class Quantity(BaseModel):
             if self.type != "scalar":
                 msg = f"{name} is only allowed on a scalar quantity, not {self.type}"
                 raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_abscissa(self) -> Self:
+        """Require an abscissa on a curve or curve pair, and on nothing else."""
+        has_axis = self.type in ("curve", "curve_pair")
+        if has_axis and self.abscissa is None:
+            msg = f"a {self.type} needs an abscissa: the scalar quantity it runs over"
+            raise ValueError(msg)
+        if not has_axis and self.abscissa is not None:
+            msg = f"abscissa is only allowed on a curve or curve_pair, not {self.type}"
+            raise ValueError(msg)
         return self
 
     @model_validator(mode="after")
@@ -797,7 +813,7 @@ class CanonProblem(TypedDict):
 
     Attributes:
         namespace: Namespace of the entry.
-        section: ``formulas``, ``defaults`` or ``rules``.
+        section: ``formulas``, ``defaults``, ``rules`` or ``quantities``.
         slug: Slug of the entry.
         field: Field of the entry, e.g. ``applications[1].bind.m``; empty for the whole entry.
         side: ``inputs`` or ``outputs`` for a formula-level default, ``bind`` or ``produce`` for an
@@ -808,7 +824,7 @@ class CanonProblem(TypedDict):
     """
 
     namespace: str
-    section: Literal["formulas", "defaults", "rules"]
+    section: Literal["formulas", "defaults", "rules", "quantities"]
     slug: str
     field: str
     side: Literal["inputs", "outputs", "bind", "produce"] | None
@@ -1010,6 +1026,37 @@ class CanonModel(BaseModel):
         if quantity.role not in ("input", "target") or slug in self.namespaces[namespace].defaults:
             return f"given {reference} must be an input or target without default"
         return None
+
+    @model_validator(mode="after")
+    def _check_abscissae(self) -> Self:
+        """Require the abscissa of every curve to be a scalar quantity of the same canon."""
+        problems: list[CanonProblem] = []
+        for namespace, content in self.namespaces.items():
+            for slug, quantity in content.quantities.items():
+                if quantity.abscissa is None:
+                    continue
+                axis = content.quantities.get(quantity.abscissa)
+                if axis is None:
+                    text = f"abscissa {quantity.abscissa} is no quantity of the canon"
+                elif axis.type != "scalar":
+                    text = f"abscissa {quantity.abscissa} is a {axis.type}, not a scalar"
+                else:
+                    continue
+                problems.append(
+                    CanonProblem(
+                        namespace=namespace,
+                        section="quantities",
+                        slug=slug,
+                        field="abscissa",
+                        side=None,
+                        application=None,
+                        parameter=None,
+                        text=text,
+                    )
+                )
+        if problems:
+            raise _canon_error(problems)
+        return self
 
     @model_validator(mode="after")
     def _check_defaults(self) -> Self:
