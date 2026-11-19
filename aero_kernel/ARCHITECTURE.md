@@ -244,7 +244,7 @@ nothing failed. The category enum holds only the eight rows above.
   only `asyncio.CancelledError` and Pydantic `ValidationError` when the caller builds a malformed
   `AircraftInput` or `ComputeRequest` (wrong types, unknown fields). Physically inadmissible but well-typed
   input is not an exception: it is returned in `ComputeResult.input_errors`.
-- **Not converged** (`not_converged`): `avl_roll_branch_inconsistent` (AVL's Newton iteration landed on a spurious branch); `lift_balance_not_converged` — the level-flight lift balance of `motor-propeller-part-load` was not reached within the configured evaluations, or the lift stopped rising with the angle of attack (`detail`: speed and weight, gh-1411).
+- **Not converged** (`not_converged`): `avl_roll_branch_inconsistent` (AVL's Newton iteration landed on a spurious branch).
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
@@ -258,7 +258,13 @@ nothing failed. The category enum holds only the eight rows above.
   (`invalid_input`) — a driven roll device or a deflected flap without `rel_chord_root`, the tool's default hinge is never used;
   `flap_deflections_differ` — deflected flaps at different angles reach AVL, which holds them as one control variable;
   `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
-  value per section; `detail`: wing key, y).
+  value per section; `detail`: wing key, y); `hinge_device_on_unmirrored_surface` — a control surface sits on
+  a wing that spreads sideways and is not mirrored (the hinge-moment procedure, #1399); `duplicate_surface_key`
+  (`invalid_input`) — two control surfaces have the same key `<wing>.<device>[_left|_right]`;
+  `no_control_in_role` — the role's condition holds but no segment carries a device acting in it (a device on
+  the last rib of a wing spans nothing); `hinge_outside_chord` — a hinge at or beyond an edge of the chord (at the leading edge the whole
+  section would turn, at the trailing edge nothing), where no hinge moment is defined.
+- **The parabolic polar fit (#1401):** `empty_fit_window` and `invalid_fit_points` (`invalid_input`) — the window of `C_L` is empty, or the rule's `fit_points` is no integer of at least 3; `defective_solver_drag` (`not_converged`) — a level-flight point with a solver `C_D` at or below zero, refused before anything is divided by it.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `warning` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
@@ -336,7 +342,7 @@ Sources:
   unchanged and not declared. Declared only for an admissible input
 - the kernel's drag (`induced_drag_viscous_factor_removed`, `notice`, #1346, ch. 8.8): AeroBuildup's full-scale
   viscous factor `k_e,D0` is taken out of its induced drag on every drag the kernel reads; one per evaluation
-  (evaluate, best glide, minimum sink; not the stall, whose values read lift only — the reader of the published
+  (evaluate, best glide, minimum sink, the level-flight polar of `parabolic-polar-fit`; not the stall, whose values read lift only — the reader of the published
   polar's `C_D` declares it), `detail`: `k_e_d0` and `induced_drag_share_removed`
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`warning`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`warning`)
@@ -370,12 +376,14 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
   (`not_applicable`: `condition_not_met`, `not_given` or `depends_on_not_applicable`, ch. 8.5; `skipped`: `long_run_not_included` or
   `depends_on_skipped`; `error`: see `error`)
-- `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13), exactly one when `ok`, neither
-  otherwise. `value` is a float in the quantity's canon unit, or a structured value of the quantity's `type`
-  (ch. 8.12). **v1 returns floats only**; the union widens with the first non-scalar formula, no placeholder
-  type before that (ADR 0021). The `per_control_surface` value (keyed by surface and application, with
-  `application` then `None`) and the handling of duplicate surface keys are specified with the first such
-  formula implementation (ch. 8.5). Numbers are **strict and finite**: `value`, the interval bounds and world
+- `value`, `interval {min, max, worlds{assignment: value}}` (ch. 8.13) **or** `surfaces`, exactly one when `ok`,
+  none otherwise. `value` is a float in the quantity's canon unit. `surfaces` is the value of a
+  `per_control_surface` quantity (`hinge-moment`, #1399): per surface key
+  `<wing>.<device>[_left|_right]`, per application id, a float in the canon unit; the union of the entries of
+  the applicable applications, a surface acting in two roles carries two entries. Its `application` field
+  lists the ids of the applications that contributed, joined by `, `. A request for it resolves to **all**
+  its producing applications (`Resolved.producers`); `value` is not defined for it, and nothing reads it
+  (ch. 8.5). The other non-scalar types (curve, ...) are still refused as `non_scalar_result`. Numbers are **strict and finite**: `value`, the interval bounds and world
   values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf. The same holds inside every free JSON field
   (`detail` of errors and warnings, `solver_settings`): a non-finite number anywhere in the tree is
   rejected — one shared recursive check in `errors.py` — because JSON would silently turn it into `null`
@@ -599,8 +607,19 @@ quantity.
   formula — one tool, one unit — and is the union of the applicable applications' entries; two formulas
   never produce it (ADR 0022). Such a quantity is bound by no application, so no value edge ever has to
   choose a producer: `graph._index_producers` admits the same exception, and a read of a quantity with
-  several producers is a `GraphModelError`. Resolving a requested quantity to all its producers, their
-  closures and the engine's union come with the first `per_control_surface` formula implementation.
+  several producers is a `GraphModelError`. A request resolves it to **all** its producers
+  (`Resolved.producers`, one subtree over their closures, #1399). **The union** (`engine._surfaces_result`):
+  the entries of the applications that are `ok` are merged per surface key, each under its application id;
+  an application that is `not_applicable` adds nothing; a failed application makes the quantity an `error`
+  (the first by the row of the status order, then by application id) and a `skipped` one makes it `skipped`,
+  because a union that silently lacked a role would be narrower than the caller asked for; when no
+  application applies the quantity is `not_applicable` (`condition_not_met`). The own time of the producers
+  is counted as that of one node (the longest for the lower bound, the sum for the upper one). The node
+  cache stores a per-surface output as a JSON object, like any output. **Duplicate surface keys** are
+  refused by the AVL mesh before any run: `invalid_input` / `duplicate_surface_key` (ch. 8.1), the key being
+  `<wing>.<device>[_left|_right]` with the device name derived like the geometry format derives it (name,
+  else label, else role). **An application names its role to the formula by a constant** (`role`: 1 aileron,
+  2 elevator, 3 rudder, 4 flap), because a formula never sees its application.
 - An application has at most two kinds of condition; without either it exists always:
   - `when`: one term of the closed vocabulary over facts of the aircraft geometry (`has_vertical_tail`,
     `has_aileron`, …). The canon `README.md` defines the vocabulary; each term is implemented once in
@@ -838,6 +857,7 @@ caller's responsibility.
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
     `FormulaError`; a dead worker discards its own worker slot (the others and their model functions stay)
     and becomes `internal`. Tested with a stub solver.
+  - **The parabolic polar fit (#1401).** `polar_fit_residual` (`notice`, every fit of `parabolic-polar-fit`; `detail`: `points`, `cl_min`, `cl_max`, `v_min_ms`, `v_max_ms`, `rms`, `max_abs`, `max_relative`), `polar_fit_nonphysical` (`error`: a fitted slope or `C_D0` at or below zero, or an Oswald factor above `max_oswald`; the fitted numbers are returned and declared, never replaced; `detail`: `reasons`, `cd0`, `k`, `e_osw`) and `small_glide_angle` (`warning`, `sink-rate` below the glide-ratio floor of the rule `small-glide-angle`; `detail`: `glide_ratio`, `glide_angle_deg`, `from_tan_for_sin`, `from_lift_equals_weight`, `floor`).
   - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **The lateral chain (#1277).** The static-margin probe and its warnings (`aerobuildup_no_downwash`, `static_margin_probe_disagrees`, `static_margin_probe_sign_disagrees`) are deleted (maintainer 2026-11-05, #1347; reasons in the canon's `STAND.md`). `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
@@ -896,9 +916,23 @@ caller's responsibility.
     worker in the request (`k_e_d0` of `StallRequest`, `SweepRequest`, `EvaluationRequest`); it is applied
     outside the model function, which therefore needs no new key. The aero tier checks that the canon value is
     AeroSandbox's (`oswalds_efficiency / e_theo` to 1·10⁻⁹) and that AeroBuildup's `D` is `D_profile +
-    D_induced`. Every value that carries the correction — the evaluation, best glide, minimum sink — gets the
+    D_induced`. Every value that carries the correction — the evaluation, best glide, minimum sink, the level-flight polar — gets the
     `notice` `induced_drag_viscous_factor_removed` (ch. 8.2), once per
     evaluation, with `k_e_d0` and `induced_drag_share_removed` (`1 − k_e,D0`) in `detail`.
+  - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
+    polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
+    `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the
+    angle of attack is read from one alpha sweep at that speed on the branch before the first C_L peak
+    (`alpha_for_lift_coefficient`) and refined by secant steps on AeroBuildup's lift until it equals `m g` to
+    `opt_level_lift_tolerance` (`config.yaml`); a level the lift curve does not reach, a missing peak or a point
+    that does not settle in `LEVEL_MAX_STEPS` is `not_converged`. The drag is `kernel_drag`. The regime warnings
+    are those of the slowest and of the fastest point (Reynolds number and Mach number rise strictly with V in a
+    fixed air state, so the regime bands are met first at one of the two extremes and the two bound every point
+    between them), the drag notice is declared once. A converged point must lie at or below the angle of the
+    sweep's first C_L peak, else `not_converged`; the step limit is `opt_level_max_steps` (`config.yaml`,
+    termination only). The fit itself (least
+    squares in `C_L^2`, residual) is the formula's, in `formulas/parabolic_polar_fit.py`; its window and point
+    count are the parameters of the rule `parabolic-polar-fit`.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
     the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
     extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
@@ -930,6 +964,31 @@ caller's responsibility.
     `avl-binary` and `aerosandbox`. The AVL world adds no regime warning: those come with the
     minimum-drag speed and are inherited. The reference value for BRYAN under these conditions is in
     `scripts/sim_export/crrcsim/AVL_CONVERGENCE.md`.
+  - **The hinge moments** (`avl.hinge_moments`, `avl_hinge.hinge_mesh`, #1399; canon
+    `control-surface-hinge-moments`). One AVL run per role (aileron, elevator, rudder, flap) at the lift
+    coefficient `n m g / (q S_ref)`, no pitch trim, only the surfaces of the role deflected. AVL's `HM`
+    sums every surface that shares a control name, and the image of a `YDUPLICATE` surface keeps the control
+    index (`amake.f:812-822`), so the model differs from the roll's: **every half of every wing is its own
+    explicit `SURFACE`** (a left half runs tip to root, `avl_doc.txt:615-625`), every surface acting in the
+    role is **its own control at gain 1** under an internal name `c01`, `c02`, ... that never leaves the
+    adapter (ADR 0019), and each half carrying a control is split at its hinge line into a front and an aft
+    surface of one `COMPONENT` (Drela's rule 3), the aft one carrying the control, hinge at its own leading
+    edge. A *surface* is a run of adjacent segments of one wing with a device of one name and role; the ends
+    of a run are stations (sine-to-tip on the main wing, the main wing's stations inside the span on a
+    horizontal tail, the strip width of the main wing elsewhere). The fuselages are in the run as round bodies of equal area exactly as in the lateral run (`mesh_bodies`, notice `avl_body_equivalent_round`; its refusals apply). Every wing is meshed, so the downwash of the
+    wing at the tail and the sidewash at the fin act. **Signs:** the control value is the role's command with
+    the sign of its side (aileron: right −, left +; elevator and flap: both +; rudder: right/unmirrored +,
+    left −: a rudder command to the right, trailing edge towards +y on a fin, right panel down and left up
+    on a V-tail), and `HM` is positive for a positive deflection of that surface (trailing edge down on a
+    surface that spreads in y, towards +y on one that stands up; the hinge vector of the image of a mirrored
+    fin is −z). The moment is `q S_ref c_ref Chinge`, with the `S_ref`, `c_ref` the AVL file carries (AVL
+    prints `Chinge` with four significant digits). Declared: `hinge_moment_inviscid_estimate` and
+    `hinge_moment_pitch_untrimmed` (`notice`), and the Reynolds and Mach warnings of ADR 0028 per surface and
+    device (`regime_by_surface`). **No refinement run**: the approved canon entry asks for none; the mesh
+    sensitivity was measured once (#1399, BRYAN, JAGUAR and RV7 with a NACA 0012 stand-in contour): doubling the
+    strips and chordwise vortices changes a hinge moment by 1.5-2.2 % for ailerons and elevators and by
+    3.5-4.1 % for the RV7's flap and rudder, the thin-airfoil comparison of the aero test by 1 %; it is
+    reported in the pull request, not declared at run time.
   - **The steady roll** (`opti.steady_roll`, `avl.steady_roll`, #1211). Both worlds solve the same roll: rotation
     about the stability x axis through the airplane's reference point, the stability-axis rolling moment zero,
     positive to the right.
@@ -1745,8 +1804,7 @@ Every error propagates the same way, `missing_input` included: the quantity that
 directly gets `missing_input`, its dependents `upstream_failed` with the cause in `detail.causes`. A
 predecessor counts only if the node actually reads it; an unused output of a multi-output formula does not
 propagate. `Subtree.propagate` is the one home of rows 2, 4 and 7; the engine applies the order. How the
-statuses of several producers of one `per_control_surface` quantity combine is specified with the first
-such formula implementation (ch. 8.5).
+statuses of several producers of one `per_control_surface` quantity combine is specified in ch. 8.5 (the union).
 
 ### 8.14 Logging
 
@@ -1913,11 +1971,11 @@ model (part of `IMPORT_REPORT.md`).
 | `cg-for-target-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `cruise-target-performance` | procedure | OPT | law | 14 → 2 | 1 | – | – | seconds | later |
 | `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
-| `drag-polar` | law | APP | approximation | 3 → 1 | 1 | – | – | instant | later |
+| `drag-polar` | law | APP | approximation | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `dynamic-pressure` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `endurance-and-range` | procedure | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
 | `endurance-and-range-optimum` | optimization | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
-| `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
+| `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `lateral-static-stability-app` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
@@ -1925,22 +1983,22 @@ model (part of `IMPORT_REPORT.md`).
 | `maneuvering-speed` | optimization | OPT | law | 7 → 1 | 1 | – | – | seconds | later · implemented (#1381) |
 | `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
-| `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
+| `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `roll-rate-cruise-target` | procedure | OPT | law | 9 → 1 | 1 | – | A11 | seconds | later · implemented (#1382) |
 | `roll-rate` | procedure | OPT | law | 5 → 2 | 1 | – | A11 | seconds | core chain |
 | `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
 | `mean-geometric-chord` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `min-sustained-turn-radius` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
-| `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later |
+| `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `minimum-drag-speed` | optimization | OPT | route | 5 → 2 | 1 | – | – | seconds | core chain |
 | `minimum-sink-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | core chain |
 | `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe · implemented for complete data, route B (#1411) |
 | `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later · implemented for complete data, route B (#1411) |
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
-| `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe |
+| `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds (tens of seconds: 10 to 90 s measured, declared) | probe · implemented (#1401) |
 | `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe · implemented for complete data, route B (#1411) |
-| `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
+| `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain · implemented (#1401) |
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
 | `spiral-parameter` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |

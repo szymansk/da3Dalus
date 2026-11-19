@@ -103,6 +103,11 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "fuselage_axis_straightened": WarningSeverity.NOTICE,
     "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
     "powertrain_route_winding_resistance": WarningSeverity.NOTICE,
+    "small_glide_angle": WarningSeverity.WARNING,
+    "polar_fit_residual": WarningSeverity.NOTICE,
+    "polar_fit_nonphysical": WarningSeverity.ERROR,
+    "hinge_moment_inviscid_estimate": WarningSeverity.NOTICE,
+    "hinge_moment_pitch_untrimmed": WarningSeverity.NOTICE,
 }
 
 
@@ -383,7 +388,10 @@ class QuantityResult(BaseModel):
             quantity of that slug (unknown or malformed slug, or no loadable model), required for ``ok``.
         status: Outcome class.
         reason: Why the quantity is ``not_applicable`` or ``skipped``.
-        value: The value (floats only in v1).
+        value: The value of a scalar quantity.
+        surfaces: The value of a ``per_control_surface`` quantity: per surface key, per application
+            id, the value in ``unit``. The union of the applicable applications' entries; a
+            dual-role surface has one entry per role.
         interval: The spread over method worlds, for an uncertain quantity.
         tool: Tool that produced the value.
         application: Id of the application that produced the value.
@@ -404,6 +412,7 @@ class QuantityResult(BaseModel):
     status: QuantityStatus
     reason: Reason | None = None
     value: FiniteFloat | None = None
+    surfaces: dict[str, dict[str, FiniteFloat]] | None = None
     interval: Interval | None = None
     tool: str | None = None
     application: str | None = None
@@ -434,10 +443,15 @@ class QuantityResult(BaseModel):
         if self.from_cache and self.status is not QuantityStatus.OK:
             msg = f"from_cache requires status ok, not {self.status.value}: only ok is stored"
             raise ValueError(msg)
-        has_result = self.value is not None or self.interval is not None
+        has_result = (
+            self.value is not None or self.interval is not None or self.surfaces is not None
+        )
         if self.status is QuantityStatus.OK:
-            if (self.value is None) == (self.interval is None):
-                msg = "status ok needs exactly one of value and interval"
+            if sum(x is not None for x in (self.value, self.interval, self.surfaces)) != 1:
+                msg = "status ok needs exactly one of value, interval and surfaces"
+                raise ValueError(msg)
+            if self.surfaces is not None and (not self.surfaces or not all(self.surfaces.values())):
+                msg = "surfaces needs at least one surface, each with at least one application"
                 raise ValueError(msg)
             if self.error is not None:
                 msg = "status ok must not carry an error"

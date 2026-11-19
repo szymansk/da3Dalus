@@ -13,7 +13,7 @@ import time
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeGuard, cast
 
 from aero_kernel.build import Build
 from aero_kernel.cache import Entry, Lease, NodeCache, cache_key
@@ -184,7 +184,7 @@ _CARRIED_TYPES = frozenset({"scalar", "airplane", "polar", "components"})
 # parse again (``geometry.py``), so it cannot come back from JSON unchanged; a node that produces
 # one (``airplane-configuration``, a cheap device setting) is not cached. Nor the types v1 does
 # not carry (curve, ...): the engine discards those values. Declared, not silent (ADR 0020).
-_CACHED_TYPES = frozenset({"scalar", "polar"})
+_CACHED_TYPES = frozenset({"scalar", "polar", "per_control_surface"})
 
 
 def _key_value(value: Value | None) -> JsonValue:
@@ -194,18 +194,40 @@ def _key_value(value: Value | None) -> JsonValue:
     return value
 
 
+def _is_surface_moments(value: object) -> TypeGuard[dict[str, float]]:
+    """Whether a value is a non-empty mapping from a surface key to a finite float."""
+    if not isinstance(value, dict) or not value:
+        return False
+    items = cast("dict[object, object]", value)  # the keys and values are checked just below
+    return all(
+        isinstance(key, str) and isinstance(item, float) and math.isfinite(item)
+        for key, item in items.items()
+    )
+
+
 def _stored_value(value: object) -> JsonValue:
     """The JSON form of a cached output, by its type (ch. 8.4); lossless, ``-0.0`` kept."""
     if isinstance(value, Polar):
         return value.model_dump(mode="json")
+    if _is_surface_moments(value):  # a per_control_surface value: surface key -> float
+        return dict(value.items())
     assert isinstance(value, float)  # _check_outputs passed and the type is a cached one
     return value
 
 
-def _restored_value(kind: str, value: JsonValue) -> Value:
+def _as_float(value: JsonValue) -> float:
+    """A stored per-surface number back as a float (JSON may spell ``1.0`` as ``1``)."""
+    assert isinstance(value, int | float)  # stored by _stored_value
+    return float(value)
+
+
+def _restored_value(kind: str, value: JsonValue) -> object:
     """A cached output back as the value of its type: a fresh object (ch. 8.4)."""
     if kind == "polar":
         return Polar.model_validate(value)
+    if kind == "per_control_surface":
+        assert isinstance(value, dict)  # stored by _stored_value
+        return {key: _as_float(item) for key, item in value.items()}
     assert isinstance(value, float)  # stored by _stored_value for a scalar
     return value
 
@@ -270,7 +292,8 @@ class _Call:
         # the first requested spelling of a node's quantities names the node in its messages
         self.requested_by_node: dict[NodeId, str] = {}
         for resolved in subtree.requested:
-            self.requested_by_node.setdefault(resolved.producer, resolved.requested)
+            for producer in resolved.producers:
+                self.requested_by_node.setdefault(producer, resolved.requested)
 
     # --- running the graph -----------------------------------------------------------------
 
@@ -987,7 +1010,7 @@ class _Call:
 
         Raises:
             ValueError: If the formula returned other parameters than the canon declares.
-            TypeError: If an exposed scalar, airplane or polar output is not a value of its type.
+            TypeError: If an exposed scalar, airplane, polar or per-surface output is not a value of its type.
         """
         expected = set(formula.application(node.id.application).produce)
         if set(returned) != expected:
@@ -1008,6 +1031,9 @@ class _Call:
             if quantity.type == "polar" and not isinstance(value, Polar):
                 msg = f"output {produce.parameter} is not a polar"
                 raise TypeError(msg)
+            if quantity.type == "per_control_surface" and not _is_surface_moments(value):
+                msg = f"output {produce.parameter} is not a non-empty value per control surface"
+                raise TypeError(msg)
 
     # --- results ---------------------------------------------------------------------------
 
@@ -1025,13 +1051,21 @@ class _Call:
         timing = self._timing(resolved)
         if timing is not None:
             update["timing"] = timing
-        if result.status is QuantityStatus.OK and self._served_from_cache(resolved.producer):
+        if result.status is QuantityStatus.OK and self._served_from_cache_all(resolved):
             update["from_cache"] = True
         return result.model_copy(update=update) if update else result
 
     def _served_from_cache(self, node_id: NodeId) -> bool:
         """Whether every run of the node, one per world assignment, was a cache hit (ch. 8.4)."""
         return all(self.runs[(node_id, key)].from_cache for key, _ in self.slots[node_id])
+
+    def _served_from_cache_all(self, resolved: Resolved) -> bool:
+        """Whether every producer of a quantity that ran was served from the cache."""
+        return all(
+            self._served_from_cache(p)
+            for p in resolved.producers
+            if self.runs[(p, self.slots[p][0][0])].outcome.status is QuantityStatus.OK
+        )
 
     def _own_time(self, node_id: NodeId) -> TimeBounds | None:
         """The own time of a node over its runs, or ``None`` if a run did not finish."""
@@ -1040,13 +1074,23 @@ class _Call:
         return run_bounds(measured) if len(measured) == len(durations) else None
 
     def _timing(self, resolved: Resolved) -> Timing | None:
-        """The timing of a requested quantity, or ``None`` if a node of its subtree did not finish."""
+        """The timing of a requested quantity, or ``None`` if a node of its subtree did not finish.
+
+        A quantity with several producers (the applications of a ``per_control_surface`` value) counts
+        them as one node: they run concurrently in one layer, so its own lower bound is the longest
+        of them and its own upper bound their sum, like the runs of one node under several worlds.
+        """
         own: dict[NodeId, TimeBounds] = {}
         for node_id in self.subtree.nodes_for(resolved.slug):
             bounds = self._own_time(node_id)
             if bounds is None:
                 return None
             own[node_id] = bounds
+        if len(resolved.producers) > 1:
+            own[resolved.producer] = TimeBounds(
+                lower=max(own[p].lower for p in resolved.producers),
+                upper=math.fsum(own[p].upper for p in resolved.producers),
+            )
         predecessors = {
             node_id: tuple(edge.predecessor for edge in self.subtree.edges[node_id])
             for node_id in own
@@ -1055,6 +1099,8 @@ class _Call:
 
     def _merged_result(self, resolved: Resolved) -> QuantityResult:
         """The result of one requested quantity over its world assignments, without timing."""
+        if len(resolved.producers) > 1:
+            return self._surfaces_result(resolved)
         assignments = self.subtree.world_assignments(resolved.requested)
         if len(assignments) == 1 and not assignments[0]:
             return self._result_under(resolved, {})
@@ -1089,7 +1135,6 @@ class _Call:
         parameter = next(p.parameter for p in node.produces if p.quantity == resolved.slug)
         formula, _ = self._formula(node)
         value = None if run.outputs is None else run.outputs[parameter]
-        assert isinstance(value, float)  # checked by _check_outputs for a scalar
         subtree_nodes = self.subtree.nodes_for(resolved.slug)
         read = {r.quantity for node_id in subtree_nodes for r in self.nodes[node_id].reads}
         inherited: list[KernelWarning] = []
@@ -1107,6 +1152,19 @@ class _Call:
                 *inherited,
             ]
         )
+        if _is_surface_moments(value):
+            application = node.id.application
+            surfaces = {key: {application: item} for key, item in value.items()}
+            return QuantityResult(
+                slug=slug,
+                unit=unit,
+                status=status,
+                surfaces=surfaces,
+                tool=formula.tool,
+                application=application,
+                warnings=warnings,
+            )
+        assert isinstance(value, float)  # checked by _check_outputs for a scalar
         return QuantityResult(
             slug=slug,
             unit=unit,
@@ -1115,6 +1173,63 @@ class _Call:
             tool=formula.tool,
             application=node.id.application,
             warnings=warnings,
+        )
+
+    def _surfaces_result(self, resolved: Resolved) -> QuantityResult:
+        """The result of a ``per_control_surface`` quantity: the union of its applications (ch. 8.5).
+
+        Applications that are not applicable add nothing. A failed application makes the quantity
+        an error, the first by the row of the status order and then by application id, and a skipped
+        one makes it skipped: a union that silently lacked a role would be a narrower value than the
+        caller asked for (ch. 8.13). When no application applies the quantity is not applicable; a
+        quantity with uncertain formulas is not defined (none exists: its inputs are plain values).
+        """
+        if self.subtree.world_assignments(resolved.requested)[0]:
+            return QuantityResult(
+                slug=resolved.requested,
+                unit=resolved.quantity.unit,
+                status=QuantityStatus.ERROR,
+                error=KernelError(
+                    code="non_scalar_result",
+                    category=ErrorCategory.NOT_IMPLEMENTED,
+                    quantity=resolved.requested,
+                    message=(
+                        f"`{resolved.requested}` is a value per control surface and depends on a "
+                        "formula with several method worlds; an interval of such a value is not defined."
+                    ),
+                    hint="Request it from a build whose inputs are plain values.",
+                ),
+            )
+        parts = [
+            (
+                node_id,
+                self._result_under(resolved.model_copy(update={"producer": node_id}), {}),
+            )
+            for node_id in resolved.producers
+        ]
+        failed = [
+            (_row(result, computed=self._run_of(node_id, {}).computed), node_id.application, result)
+            for node_id, result in parts
+            if result.status in (QuantityStatus.ERROR, QuantityStatus.SKIPPED)
+        ]
+        if failed:
+            return min(failed, key=lambda item: (item[0], item[1]))[2]
+        ok = [(node_id, result) for node_id, result in parts if result.status is QuantityStatus.OK]
+        if not ok:
+            return parts[0][1]
+        surfaces: dict[str, dict[str, float]] = {}
+        for _, result in ok:
+            assert result.surfaces is not None  # an ok part of a per_control_surface quantity
+            for key, by_application in result.surfaces.items():
+                surfaces.setdefault(key, {}).update(by_application)
+        return QuantityResult(
+            slug=resolved.requested,
+            unit=resolved.quantity.unit,
+            status=QuantityStatus.OK,
+            surfaces=surfaces,
+            tool=ok[0][1].tool,
+            application=", ".join(node_id.application for node_id, _ in ok),
+            warnings=dedupe_warnings([w for _, result in ok for w in result.warnings]),
         )
 
 

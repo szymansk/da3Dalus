@@ -23,9 +23,15 @@ from aero_kernel.geometry_properties import MainWingProperties
 from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime, WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import KernelWarning
-from aero_kernel.solvers.asb_airplane import load_aerosandbox, main_wing_properties
+from aero_kernel.solvers.air import AirState
+from aero_kernel.solvers.asb_airplane import (
+    load_aerosandbox,
+    main_wing_properties,
+    surface_sections,
+)
 from aero_kernel.solvers.avl_body import MeshBody, body_file_text, mesh_bodies
 from aero_kernel.solvers.avl_contour import repanel
+from aero_kernel.solvers.avl_hinge import hinge_mesh
 from aero_kernel.solvers.avl_mesh import (
     MESH_DECIMALS,
     ROLL_CONTROL,
@@ -45,12 +51,14 @@ from aero_kernel.solvers.avl_writer import (
     airfoil_file_name,
     avl_commands,
     avl_geometry,
+    avl_hinge_commands,
     avl_lateral_commands,
     avl_roll_commands,
     body_file_name,
     control_order,
     parse_avl_output,
     parse_flap_echo,
+    parse_hinge_output,
     parse_lateral_output,
     parse_roll_output,
 )
@@ -61,11 +69,12 @@ from aero_kernel.solvers.devices import (
     refuse_deflected_devices,
     roll_segments,
 )
+from aero_kernel.solvers.regime import RegimeBands, regime_by_surface
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["AvlAdapter", "AvlLateral", "AvlNeutralPoint", "AvlRoll", "Contour"]
+__all__ = ["AvlAdapter", "AvlHinge", "AvlLateral", "AvlNeutralPoint", "AvlRoll", "Contour"]
 
 # Mesh and vortex core, from the BRYAN mesh study (scripts/sim_export/crrcsim/AVL_CONVERGENCE.md):
 # aligned strips 10 chordwise / 24 spanwise converge to 0.3 % MAC against the next finer level;
@@ -167,6 +176,21 @@ class AvlLateral(BaseModel):
     c_n_p: float
     c_l_r: float
     c_n_r: float
+    warnings: tuple[KernelWarning, ...] = ()
+
+
+class AvlHinge(BaseModel):
+    """The hinge moments AVL found for one role, and the caveats of the run.
+
+    Attributes:
+        moments: The hinge moment in N*m per surface key ``<wing>.<device>[_left|_right]``, positive
+            in the sense of a positive deflection of that surface.
+        warnings: The regime warnings of the run (Reynolds and Mach), without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    moments: dict[str, float]
     warnings: tuple[KernelWarning, ...] = ()
 
 
@@ -857,4 +881,115 @@ class AvlAdapter(SolverAdapter):
             c_l_r=output.c_l_r,
             c_n_r=output.c_n_r,
             warnings=(*_flap_warnings(flaps), *_body_warnings(bodies)),
+        )
+
+    async def hinge_moments(
+        self,
+        airplane: AirplaneGeometry,
+        *,
+        cl: float,
+        role: str,
+        delta_deg: float,
+        speed_ms: float,
+        air: AirState,
+    ) -> AvlHinge:
+        """Find the hinge moment of every control surface of a role (canon ``control-surface-hinge-moments``).
+
+        One run on the mesh of :func:`aero_kernel.solvers.avl_hinge.hinge_mesh`: every surface acting
+        in the role is its own control at gain 1, driven to ``delta_deg`` in the sign of its side, the
+        angle of attack from ``C_L`` alone (the pitching moment is not trimmed). AVL's ``Chinge`` is
+        referred to ``S_ref * c_ref``, so the moment is ``q S_ref c_ref Chinge``. The regime of the
+        flow (Reynolds and Mach, ADR 0028) is checked per surface and device.
+
+        Args:
+            airplane: The validated geometry, devices at rest, with one main wing.
+            cl: The lift coefficient of the operating point.
+            role: ``aileron``, ``elevator``, ``rudder`` or ``flap``.
+            delta_deg: The deflection of the role in degrees.
+            speed_ms: The flight speed in m/s.
+            air: The air state.
+
+        Returns:
+            The moments in N*m by surface key and the regime warnings.
+
+        Raises:
+            FormulaError: ``tool_unavailable``; ``invalid_input`` for a non-finite deflection, a
+                device without a hinge or two surfaces with one key; ``unsupported_configuration``
+                for a deflected geometry state, a device on an unmirrored surface, a discontinuous
+                hinge line, no control surface acting in the role (``no_control_in_role``: the
+                canon's ``when`` condition looks at every rib, a surface needs a segment) or a
+                mesh that overflows AVL's array.
+            RuntimeError: If AVL fails or breaks its own checks (a defect, reported as ``internal``).
+        """
+        self.require_available()
+        refuse_deflected_devices(airplane, "AVL", flaps_supported=False)
+        if not math.isfinite(delta_deg):
+            raise FormulaError(
+                ErrorCategory.INVALID_INPUT,
+                "invalid_input",
+                f"delta = {delta_deg} is not admissible",
+                "give a finite deflection",
+                parameter="delta",
+            )
+        reference = main_wing_properties(airplane)
+        numbers: dict[Airfoil, int] = {}
+
+        def number(airfoil: Airfoil) -> int:
+            return numbers.setdefault(airfoil, len(numbers))
+
+        mesh = hinge_mesh(
+            airplane,
+            role,
+            N_SPAN,
+            number,
+            join_tolerance_m=self.join_tolerance_m(),
+            split_n_chord=SPLIT_N_CHORD,
+        )
+        if not mesh.controls:
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "no_control_in_role",
+                f"no control surface acts as {role}: a device on the last rib of a wing has no "
+                "segment to span",
+                "a device belongs to the segment that starts at its rib; give it a rib to end on",
+                parameter="airplane",
+            )
+        bodies = mesh_bodies(airplane)  # the fuselages as in the lateral run, one reuse
+        contours = await self._contours(tuple(numbers))
+        order = control_order(mesh.surfaces)
+        values = {c.name: c.sign * delta_deg for c in mesh.controls}
+        stdout = await self._execute(
+            mesh.surfaces,
+            contours,
+            (N_CHORD, N_SPAN),
+            avl_hinge_commands(cl, CORE_RATIO, values, order=order),
+            reference,
+            airplane.xyz_ref,
+            bodies,
+        )
+        output = parse_hinge_output(stdout, order)
+        if output is None:
+            msg = "the vortex lattice run did not complete (no hinge moments in the output)"
+            logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])
+            raise RuntimeError(msg)
+        if abs(output.cl - cl) > config().avl_cl_tolerance.value:
+            msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
+            raise RuntimeError(msg)
+        echo_tolerance = config().avl_control_echo_tolerance.value
+        for name, value in values.items():
+            if abs(output.controls[name] - value) > echo_tolerance:
+                msg = f"the vortex lattice echoed a control at {output.controls[name]}, not the commanded {value}"
+                raise RuntimeError(msg)
+        scale = 0.5 * air.density * speed_ms**2 * reference.s_ref * reference.c_mac
+        sections = await asyncio.to_thread(surface_sections, airplane)
+        warnings = regime_by_surface(
+            sections,
+            speed_ms,
+            air.speed_of_sound,
+            air.kinematic_viscosity,
+            RegimeBands.of(self.rules),
+        )
+        return AvlHinge(
+            moments={c.key: scale * output.moments[c.name] for c in mesh.controls},
+            warnings=(*_body_warnings(bodies), *warnings),
         )

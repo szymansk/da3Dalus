@@ -659,6 +659,12 @@
         "opt_hinge_floor": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_level_lift_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_level_max_steps": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_peak_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -680,16 +686,7 @@
         "opt_zero_span": {
           "$ref": "#/$defs/ConfigValue"
         },
-        "powertrain_alpha_step_deg": {
-          "$ref": "#/$defs/ConfigValue"
-        },
         "powertrain_balance_tolerance": {
-          "$ref": "#/$defs/ConfigValue"
-        },
-        "powertrain_lift_iterations": {
-          "$ref": "#/$defs/ConfigValue"
-        },
-        "powertrain_lift_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         }
       },
@@ -709,6 +706,8 @@
         "opt_probe_tolerance",
         "opt_peak_tolerance",
         "opt_zero_span",
+        "opt_level_lift_tolerance",
+        "opt_level_max_steps",
         "opt_active_bound_fraction",
         "opt_alpha_margin_deg",
         "opt_hinge_floor",
@@ -720,10 +719,7 @@
         "opt_body_merge_exponent_max",
         "opt_body_axis_tolerance",
         "avl_contour_margin",
-        "powertrain_balance_tolerance",
-        "powertrain_lift_tolerance",
-        "powertrain_lift_iterations",
-        "powertrain_alpha_step_deg"
+        "powertrain_balance_tolerance"
       ],
       "title": "KernelConfig",
       "type": "object"

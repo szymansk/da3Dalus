@@ -18,7 +18,6 @@ from collections.abc import Mapping
 from itertools import pairwise
 
 from aero_kernel.components import Components
-from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.motor_propeller_equilibrium import declare_route, require_motor_values
@@ -39,73 +38,26 @@ from aero_kernel.formulas.propulsion import (
 )
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import CheckResult, formula, postcondition
-from aero_kernel.schema import KernelWarning
 
 __all__ = ["demand_within_full_throttle", "motor_propeller_part_load"]
 
 
-def _not_converged(v: float, weight: float, why: str) -> FormulaError:
-    """The declared failure of a level-flight lift balance that was not reached."""
-    return FormulaError(
-        ErrorCategory.NOT_CONVERGED,
-        "lift_balance_not_converged",
-        f"motor-propeller-part-load found no angle of attack with lift = weight ({weight:.4g} N) "
-        f"at {v:.4g} m/s: {why}.",
-        "The wing may not carry the weight at this speed (weight above the maximum lift); "
-        "give a higher flight speed or a lower mass.",
-        detail={"v_ms": v, "weight_n": weight},
-    )
-
-
 async def _level_flight_drag(x: Inputs, ctx: Context) -> float:
-    """The drag in N at the angle of attack where AeroBuildup's lift equals the weight at ``V``.
+    """The drag in N of the level-flight point at ``V``: AeroBuildup's lift equals the weight there.
 
-    A secant search on ``L(alpha) - m g`` from the starting angles 0 and ``powertrain_alpha_step_deg``
-    (``config.yaml``). The kernel has no other level-flight solve to reuse (the stall code sweeps a
-    grid for the lift peak). Each secant slope must be positive: a lift that does not rise with the
-    angle is past the first lift peak or flat, and the search stops there with a declared failure
-    instead of converging on a post-stall angle. Only the converged point's caveats are forwarded.
+    The kernel's one lift-equals-weight solve (``OptiAdapter.level_flight_point``, the machinery of the
+    level-flight polar): an alpha sweep plus secant steps bounded by the first lift peak, with the
+    tolerance and step limit of ``config.yaml`` (``opt_level_*``). Its caveats are forwarded.
 
     Raises:
-        FormulaError: ``lift_balance_not_converged`` if the lift balance is not reached within
-            ``powertrain_lift_iterations`` evaluations or the lift stops rising with the angle.
+        FormulaError: ``not_converged`` from the adapter if the weight is not carried before the
+            first lift peak at this speed.
     """
-    airplane, air, v = airplane_of(x), air_state(x), number(x, "v")
-    weight = number(x, "m") * number(x, "g")
-    tolerance = config().powertrain_lift_tolerance.value
-    limit = int(config().powertrain_lift_iterations.value)
-
-    async def point(alpha: float) -> tuple[float, float, tuple[KernelWarning, ...]]:
-        evaluation = await ctx.solvers.opti.evaluate(airplane, air, v, alpha)
-        return evaluation.forces.lift_n - weight, evaluation.forces.drag_n, evaluation.warnings
-
-    alpha_previous = 0.0
-    alpha = config().powertrain_alpha_step_deg.value
-    miss_previous, drag, warnings = await point(alpha_previous)
-    evaluations = 1
-    while True:
-        if abs(miss_previous) <= tolerance * weight:
-            forward_warnings(ctx, warnings)
-            return drag
-        if evaluations >= limit:
-            raise _not_converged(
-                v, weight, f"the lift balance was not reached within {limit} evaluations"
-            )
-        miss, drag_here, warnings_here = await point(alpha)
-        evaluations += 1
-        if abs(miss) <= tolerance * weight:
-            forward_warnings(ctx, warnings_here)
-            return drag_here
-        slope = (miss - miss_previous) / (alpha - alpha_previous)
-        if not slope > 0.0:
-            raise _not_converged(
-                v,
-                weight,
-                f"the lift does not rise with the angle of attack between {alpha_previous:.4g} and "
-                f"{alpha:.4g} deg (past the first lift peak, or flat)",
-            )
-        alpha_previous, alpha = alpha, alpha - miss / slope
-        miss_previous, warnings = miss, warnings_here
+    found = await ctx.solvers.opti.level_flight_point(
+        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), number(x, "v")
+    )
+    forward_warnings(ctx, found.warnings)
+    return found.point.drag_n
 
 
 def _solve_part_load_speed(
@@ -163,8 +115,8 @@ async def motor_propeller_part_load(x: Inputs, ctx: Context) -> dict[str, float]
 
     Raises:
         TypeError: If ``airplane`` or ``components`` is not the document.
-        FormulaError: ``missing_input`` for an absent ``r_m`` or ``i_0``; ``lift_balance_not_converged``;
-            ``outside_propeller_table``; ``no_thrust_at_full_throttle``; the adapter's failures.
+        FormulaError: ``missing_input`` for an absent ``r_m`` or ``i_0``;
+            ``outside_propeller_table``; ``no_thrust_at_full_throttle``; the adapter's failures (``not_converged``).
     """
     components = components_of(x)
     i_0, r_m = require_motor_values(optional(x, "i_0"), optional(x, "r_m"))

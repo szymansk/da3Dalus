@@ -44,7 +44,12 @@ __all__ = [
     "MeshSection",
     "MeshSurface",
     "mesh_surfaces",
+    "root_station",
+    "section_at",
+    "sine_to_tip",
     "split_at_hinge",
+    "uniform_stations",
+    "wing_axis",
 ]
 
 # A tail station closer to the tail tip than this many wing strip widths would leave a sliver strip.
@@ -72,6 +77,8 @@ class MeshControl(BaseModel):
         x_hinge: Hinge position as a fraction of the local chord.
         name: The control variable's name: :data:`ROLL_CONTROL` or :data:`FLAP_CONTROL`.
         sgn_dup: The sign of the mirrored half's deflection relative to the written one.
+        hinge_vector: The hinge axis ``(x, y, z)`` of a positive deflection (right-hand rule);
+            ``(0, 0, 0)`` puts it along the hinge line in the direction the sections run.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -80,6 +87,7 @@ class MeshControl(BaseModel):
     x_hinge: float
     name: str = ROLL_CONTROL
     sgn_dup: int = ROLL_SGN_DUP
+    hinge_vector: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
 
 class MeshSection(BaseModel):
@@ -94,6 +102,7 @@ class MeshSection(BaseModel):
         airfoil: Index of the airfoil, as numbered by the caller's callback.
         control: The roll control declared here, if the station lies on a driven device.
         flap: The flap control declared here, if the station lies on a deflected flap.
+        others: Further controls declared here (the per-surface controls of a hinge-moment run).
         chord_range: The part of the airfoil this piece of a split surface carries, as fractions
             of the chord (AVL ``AFIL x_min x_max``); ``None`` for the whole contour.
     """
@@ -108,11 +117,12 @@ class MeshSection(BaseModel):
     airfoil: int
     control: MeshControl | None = None
     flap: MeshControl | None = None
+    others: tuple[MeshControl, ...] = ()
     chord_range: tuple[float, float] | None = None
 
     def controls(self) -> tuple[MeshControl, ...]:
         """The controls declared here, the roll control first (the order they are written in)."""
-        return tuple(c for c in (self.control, self.flap) if c is not None)
+        return (*(c for c in (self.control, self.flap) if c is not None), *self.others)
 
 
 class MeshSurface(BaseModel):
@@ -148,7 +158,7 @@ def _interp(position: Sequence[float], values: Sequence[float], at: float) -> fl
     return values[lower] + fraction * (values[upper] - values[lower])
 
 
-def _axis(wing: Wing) -> int:
+def wing_axis(wing: Wing) -> int:
     """1 (y) for a surface that spreads sideways, 2 (z) for one that stands up."""
     secs = wing.x_secs
     y_extent = abs(secs[-1].xyz_le[1] - secs[0].xyz_le[1])
@@ -156,7 +166,7 @@ def _axis(wing: Wing) -> int:
     return 1 if y_extent >= z_extent else 2
 
 
-def _root(wing: Wing, chain: Sequence[ChainPoint]) -> float:
+def root_station(wing: Wing, chain: Sequence[ChainPoint]) -> float:
     """Y of the first station: the centreline for a mirrored surface (centreline convention).
 
     A root section stored slightly off the centreline would give a strip that crosses its own
@@ -167,12 +177,12 @@ def _root(wing: Wing, chain: Sequence[ChainPoint]) -> float:
     return 0.0 if wing.symmetric else chain[0].y
 
 
-def _uniform(start: float, end: float, count: int) -> list[float]:
+def uniform_stations(start: float, end: float, count: int) -> list[float]:
     """``count`` equal strips from ``start`` to ``end``: the ``count + 1`` stations."""
     return [round(start + k * (end - start) / count, MESH_DECIMALS) for k in range(count + 1)]
 
 
-def _section_at(
+def section_at(
     chain: Sequence[ChainPoint], axis: int, at: float, airfoil_index: Callable[[Airfoil], int]
 ) -> MeshSection:
     """The section of an oriented chain at the station ``at`` along ``axis``."""
@@ -188,7 +198,7 @@ def _section_at(
     )
 
 
-def _sine_to_tip(start: float, end: float, count: int, breaks: Sequence[float]) -> list[float]:
+def sine_to_tip(start: float, end: float, count: int, breaks: Sequence[float]) -> list[float]:
     """The ``count + 1`` stations of a driven surface: one sine-to-tip distribution, breaks exact.
 
     ``y = start + (end - start) sin(pi/2 t)``, ``t`` in [0, 1]: a cosine distribution over the whole
@@ -417,6 +427,7 @@ def split_at_hinge(
                     "chord": cut * section.chord,
                     "control": None,
                     "flap": None,
+                    "others": (),
                     "chord_range": (0.0, cut),
                 }
             )
@@ -428,6 +439,9 @@ def split_at_hinge(
                     "chord": (1.0 - cut) * section.chord,
                     "control": moved(section.control, cut),
                     "flap": moved(section.flap, cut),
+                    "others": tuple(
+                        c for other in section.others if (c := moved(other, cut)) is not None
+                    ),
                     "chord_range": (cut, 1.0),
                 }
             )
@@ -528,9 +542,9 @@ def mesh_surfaces(
     rest = sorted((w for w in wings if w is not main and w not in tails), key=lambda w: w.name)
 
     main_chain = oriented_chain(main, 1)
-    y_root, y_tip = _root(main, main_chain), main_chain[-1].y
+    y_root, y_tip = root_station(main, main_chain), main_chain[-1].y
     step = (y_tip - y_root) / n_wing
-    main_stations = _uniform(y_root, y_tip, n_wing)
+    main_stations = uniform_stations(y_root, y_tip, n_wing)
     roll_spans, flap_spans = _main_spans(
         main_key, main_chain, join_tolerance_m, drive_roll=drive_roll, drive_flaps=drive_flaps
     )
@@ -539,10 +553,10 @@ def mesh_surfaces(
             *_device_ends(roll_spans, join_tolerance_m),
             *_device_ends(flap_spans, join_tolerance_m),
         ]
-        main_stations = _sine_to_tip(y_root, y_tip, n_wing, breaks)
+        main_stations = sine_to_tip(y_root, y_tip, n_wing, breaks)
 
     def main_section(y: float) -> MeshSection:
-        section = _section_at(main_chain, 1, y, airfoil_index)
+        section = section_at(main_chain, 1, y, airfoil_index)
         control = _control_at(
             y, roll_spans, section, join_tolerance_m, (ROLL_CONTROL, ROLL_SGN_DUP)
         )
@@ -558,28 +572,28 @@ def mesh_surfaces(
     ]
     for tail in tails:
         chain = oriented_chain(tail, 1)
-        root, tip = _root(tail, chain), chain[-1].y
+        root, tip = root_station(tail, chain), chain[-1].y
         inside = [y for y in main_stations if root < y < tip - SLIVER_STEPS * step]
         stations = [root, *inside, tip]
         surfaces.append(
             MeshSurface(
                 name=tail.name,
                 symmetric=bool(tail.symmetric),
-                sections=tuple(_section_at(chain, 1, y, airfoil_index) for y in stations),
+                sections=tuple(section_at(chain, 1, y, airfoil_index) for y in stations),
             )
         )
     for wing in rest:
-        axis = _axis(wing)
+        axis = wing_axis(wing)
         chain = oriented_chain(wing, axis)
         along = [p.y if axis == 1 else p.z for p in chain]
         start, end = along[0], along[-1]
         count = max(2, round(abs(end - start) / abs(step)))
-        stations = _uniform(start, end, count)
+        stations = uniform_stations(start, end, count)
         surfaces.append(
             MeshSurface(
                 name=wing.name,
                 symmetric=bool(wing.symmetric),
-                sections=tuple(_section_at(chain, axis, t, airfoil_index) for t in stations),
+                sections=tuple(section_at(chain, axis, t, airfoil_index) for t in stations),
             )
         )
     return tuple(surfaces)

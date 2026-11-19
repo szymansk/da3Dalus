@@ -17,6 +17,8 @@ tags:
   - status/draft
 inputs: {e_osw: oswald-efficiency, ar: aspect-ratio}
 outputs: {k: induced-drag-factor}
+preconditions:
+  - {id: oswald_factor_positive, parameter: e_osw, on_violation: error}
 ---
 
 # Induced-drag factor of the parabolic polar
@@ -52,12 +54,17 @@ Oswald factor in Anderson's sense (§6.7.2), applied on top of NeuralFoil's sect
 drag carries the inviscid `e_theo` (the span efficiency of §5.3.3), and the lift-dependent profile drag is
 NeuralFoil's only.
 
-## Implementations (2)
+## Preconditions on the bindings
+
+**`oswald_factor_positive` — the Oswald factor and the aspect ratio must be greater than zero (on `e_osw`; error).** The relation divides by `π · e · AR`. A factor of zero has no finite `k`; a negative factor is what [[parabolic-polar-fit]] reports (with the `error` warning `polar_fit_nonphysical`) when the fitted slope is negative, and a negative `k` is no induced drag. The violation is an **error** at this formula, never a substituted value (ADR 0020): the display chain stops where the fit is not physically meaningful. The bound is physical, not a tuned threshold.
+
+## Implementations (3)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | [[end_k_induced]] | EXACT | 🟢 |  |
 | [[induced_drag_factor_k]] | EXACT | 🟢 |  |
+| `aero_kernel/formulas/induced_drag_factor.py` | EXACT | 🟢 | `k = 1 / (π e AR)`; the precondition `oswald_factor_positive` is the registered check of the same module (#1401) |
 
 ## Approval
 

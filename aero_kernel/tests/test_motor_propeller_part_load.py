@@ -3,7 +3,7 @@
 The AeroBuildup boundary is a stub with a closed-form lift and drag (the solver itself is not what is
 tested here): ``L(alpha) = 10 + 5 alpha`` N and ``D(alpha) = 2 + 0.05 alpha^2`` N. At m = 3.4 kg
 (W = 33.3426 N) the lift balance gives ``alpha = 4.66852 deg`` and ``D = 3.0898 N``. The rest is
-computed independently with numpy and the published APC 13x8E table (T-Motor AT2814 KV900, 14.8 V,
+computed by a separately written plain-Python model and the published APC 13x8E table (T-Motor AT2814 KV900, 14.8 V,
 rho = 1.225 kg/m^3, V = 10 m/s):
 
 - thrust = drag: ``n_pl`` by bisection between the rpm blocks
@@ -17,16 +17,16 @@ from aero_kernel.build import shipped_build
 from aero_kernel.components import Components
 from aero_kernel.context import Context
 from aero_kernel.engine import evaluate
-from aero_kernel.errors import FormulaError
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.motor_propeller_part_load import (
     demand_within_full_throttle,
     motor_propeller_part_load,
 )
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import DEFAULT_REGISTRY
-from aero_kernel.schema import AircraftInput, QuantityStatus
+from aero_kernel.schema import AircraftInput, KernelWarning, QuantityStatus
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.opti import Evaluation, Forces
+from aero_kernel.solvers.opti import LevelFlightPoint, LevelPoint
 from aero_kernel.tests import powertrain_reference as reference
 from aero_kernel.tests.components_builders import (
     complete_components_with_table,
@@ -41,22 +41,45 @@ KV, I0, RM = 900.0, 1.2, 0.082
 
 
 class LinearOpti(StubOpti):
-    """AeroBuildup stand-in: ``L = lift_0 + 5 alpha`` N, ``D = drag_0 + 0.05 alpha^2`` N."""
+    """AeroBuildup stand-in for the level-flight solve: ``L = lift_0 + 5 alpha`` N, ``D = drag_0 + 0.05 alpha^2`` N.
 
-    def __init__(self, lift_0: float = 10.0, lift_slope: float = 5.0, drag_0: float = 2.0) -> None:
+    ``level_flight_point`` answers like the adapter: the angle where the lift equals the weight, or the
+    adapter's declared ``not_converged`` if the lift cannot reach it (``lift_slope <= 0``).
+    """
+
+    def __init__(
+        self,
+        lift_0: float = 10.0,
+        lift_slope: float = 5.0,
+        drag_0: float = 2.0,
+        warnings: tuple[KernelWarning, ...] = (),
+    ) -> None:
         super().__init__()
-        self.lift_0, self.lift_slope, self.drag_0 = lift_0, lift_slope, drag_0
-        self.alphas: list[float] = []
-
-    async def evaluate(
-        self, airplane: AirplaneGeometry, air: AirState, v_ms: float, alpha_deg: float
-    ) -> Evaluation:
-        self.alphas.append(alpha_deg)
-        forces = Forces(
-            lift_n=self.lift_0 + self.lift_slope * alpha_deg,
-            drag_n=self.drag_0 + 0.05 * alpha_deg**2,
+        self.lift_0, self.lift_slope, self.drag_0, self.warnings = (
+            lift_0,
+            lift_slope,
+            drag_0,
+            warnings,
         )
-        return Evaluation(forces=forces, warnings=())
+        self.points: list[tuple[float, float, float, float]] = []
+
+    async def level_flight_point(
+        self, airplane: AirplaneGeometry, mass_kg: float, gravity: float, air: AirState, v_ms: float
+    ) -> LevelFlightPoint:
+        weight = mass_kg * gravity
+        self.points.append((mass_kg, gravity, air.density, v_ms))
+        if self.lift_slope <= 0.0:
+            raise FormulaError(
+                ErrorCategory.NOT_CONVERGED,
+                "not_converged",
+                "the airplane does not reach the level lift below its first C_L peak",
+                "check mass and speed",
+                detail={"v_ms": v_ms},
+            )
+        alpha = (weight - self.lift_0) / self.lift_slope
+        drag = self.drag_0 + 0.05 * alpha**2
+        point = LevelPoint(v_ms=v_ms, alpha_deg=alpha, cl=0.5, cd=0.05, lift_n=weight, drag_n=drag)
+        return LevelFlightPoint(point=point, warnings=self.warnings)
 
 
 def context(opti: StubOpti) -> Context:
@@ -111,8 +134,7 @@ async def test_the_part_load_point_matches_the_independent_computation() -> None
     assert close(got["i_bat"], i_bat, 1e-6)
     assert close(got["r_t"], r_t, 1e-6)
     assert got["r_t"] < 1.0
-    assert close(opti.alphas[-1], alpha, 1e-6)
-    assert len(opti.alphas) == 3  # two starting angles and one secant step: the stub lift is linear
+    assert opti.points == [(MASS, G, RHO, V)]  # one level-flight solve at the speed
     assert [w.code for w in ctx.warnings] == ["powertrain_route_winding_resistance"]
 
 
@@ -127,10 +149,12 @@ async def test_the_embedded_relations_are_the_ones_the_canon_lists() -> None:
 
 @pytest.mark.asyncio
 async def test_a_wing_that_cannot_carry_the_weight_is_not_converged() -> None:
-    opti = LinearOpti(lift_slope=0.0)  # the lift never reaches the weight, the secant has no slope
+    opti = LinearOpti(
+        lift_slope=0.0
+    )  # the adapter cannot reach the weight: its declared failure passes
     with pytest.raises(FormulaError) as caught:
         await motor_propeller_part_load(bound_inputs(), context(opti))
-    assert caught.value.code == "lift_balance_not_converged"
+    assert caught.value.code == "not_converged"
     assert caught.value.detail["v_ms"] == V
 
 

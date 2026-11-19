@@ -1,6 +1,5 @@
 """The edges of the powertrain chain: the table's edges, windmilling, level-flight search, input checks."""
 
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -8,11 +7,10 @@ from aero_kernel.build import shipped_build
 from aero_kernel.components import Components
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import FormulaError
-from aero_kernel.formulas import motor_propeller_part_load as part_load_module
 from aero_kernel.formulas.motor_propeller_equilibrium import equilibrium
 from aero_kernel.formulas.motor_propeller_part_load import motor_propeller_part_load
 from aero_kernel.formulas.propeller_table_lookup import table_lookup
-from aero_kernel.schema import AircraftInput
+from aero_kernel.schema import AircraftInput, KernelWarning
 from aero_kernel.tests.components_builders import (
     apc_13x8e_table,
     complete_components_with_table,
@@ -82,59 +80,13 @@ def test_a_propeller_driven_by_the_airstream_is_the_truthful_windmilling_failure
 
 
 @pytest.mark.asyncio
-async def test_a_lift_that_does_not_rise_with_the_angle_stops_the_search_declared() -> None:
-    with pytest.raises(FormulaError) as caught:
-        await motor_propeller_part_load(
-            part_load_inputs(), part_load_context(LinearOpti(lift_slope=-5.0))
-        )
-    assert caught.value.code == "lift_balance_not_converged"
-    assert "does not rise with the angle of attack" in caught.value.message
-
-
-@pytest.mark.asyncio
-async def test_the_iteration_limit_ends_the_search_declared(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    real = part_load_module.config()
-    limited = SimpleNamespace(
-        powertrain_lift_iterations=SimpleNamespace(value=2.0),
-        powertrain_lift_tolerance=real.powertrain_lift_tolerance,
-        powertrain_alpha_step_deg=real.powertrain_alpha_step_deg,
-    )
-    monkeypatch.setattr(part_load_module, "config", lambda: limited)
-    opti = LinearOpti()
-    with pytest.raises(FormulaError) as caught:
-        await motor_propeller_part_load(part_load_inputs(), part_load_context(opti))
-    assert caught.value.code == "lift_balance_not_converged"
-    assert "within 2 evaluations" in caught.value.message
-    assert len(opti.alphas) == 2
-
-
-@pytest.mark.asyncio
-async def test_only_the_converged_points_caveats_are_forwarded() -> None:
-    from aero_kernel.geometry import AirplaneGeometry
-    from aero_kernel.schema import KernelWarning
-    from aero_kernel.solvers.air import AirState
-    from aero_kernel.solvers.opti import Evaluation, Forces
-
-    class Caveated(LinearOpti):
-        async def evaluate(
-            self, airplane: AirplaneGeometry, air: AirState, v_ms: float, alpha_deg: float
-        ) -> Evaluation:
-            forces = (await super().evaluate(airplane, air, v_ms, alpha_deg)).forces
-            note = KernelWarning.of(
-                "reynolds_bubble_sensitive", "low Re", detail={"alpha": alpha_deg}
-            )
-            return Evaluation(
-                forces=Forces(lift_n=forces.lift_n, drag_n=forces.drag_n), warnings=(note,)
-            )
-
-    opti = Caveated()
-    ctx = part_load_context(opti)
+async def test_the_level_flight_points_caveats_are_forwarded() -> None:
+    note = KernelWarning.of("reynolds_bubble_sensitive", "low Re", detail={"v_ms": 10.0})
+    ctx = part_load_context(LinearOpti(warnings=(note,)))
     await motor_propeller_part_load(part_load_inputs(), ctx)
-    caveats = [w for w in ctx.warnings if w.code == "reynolds_bubble_sensitive"]
-    assert len(caveats) == 1
-    assert caveats[0].detail["alpha"] == opti.alphas[-1]
+    assert [w.detail for w in ctx.warnings if w.code == "reynolds_bubble_sensitive"] == [
+        {"v_ms": 10.0}
+    ]
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@ from collections.abc import Callable, Sequence
 
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
-from aero_kernel.schema import FlowConditions, Polar
+from aero_kernel.schema import FlowConditions, KernelWarning, Polar
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import (
     BestGlide,
@@ -14,6 +14,8 @@ from aero_kernel.solvers.opti import (
     DeviceConfidence,
     Evaluation,
     Forces,
+    LevelFlight,
+    LevelPolar,
     MinSink,
     MinSinkSolution,
     OptiAdapter,
@@ -142,6 +144,11 @@ class StubOpti(OptiAdapter):
         self.roll_confidence: DeflectionDiagnostics | None = None
         self.roll_calls: list[tuple[AirplaneGeometry, float, float, AirState, float, float]] = []
         self.forces = Forces(lift_n=LIFT_N, drag_n=DRAG_N)
+        self.level_answer: Callable[[Sequence[float]], LevelPolar] | None = None
+        self.level_warnings: tuple[KernelWarning, ...] = ()
+        self.level_calls: list[
+            tuple[AirplaneGeometry, float, float, AirState, tuple[float, ...]]
+        ] = []
         self.evaluate_calls: list[tuple[AirplaneGeometry, AirState, float, float]] = []
         self.zero_lift_calls: list[tuple[AirplaneGeometry, AirState, float]] = []
         self.delay_s = delay_s
@@ -248,3 +255,28 @@ class StubOpti(OptiAdapter):
         """Answer the zero-lift root without a solver: :func:`stub_zero_lift` at the speed."""
         self.zero_lift_calls.append((airplane, air, v_ms))
         return ZeroLift(solution=stub_zero_lift(v_ms), warnings=())
+
+    async def level_polar(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        cl_levels: Sequence[float],
+    ) -> LevelFlight:
+        """Answer the level-flight polar without a solver: the stub's parabola, or ``level_answer``."""
+        levels = tuple(cl_levels)
+        self.level_calls.append((airplane, mass_kg, gravity, air, levels))
+        if self.level_answer is not None:
+            return LevelFlight(polar=self.level_answer(levels), warnings=self.level_warnings)
+        return LevelFlight(polar=parabolic_level_polar(levels), warnings=self.level_warnings)
+
+
+def parabolic_level_polar(levels: Sequence[float], cd0: float = CD0, k: float = K) -> LevelPolar:
+    """A level-flight polar that is exactly the parabola ``cd0 + k C_L^2`` (speed and angle are fillers)."""
+    return LevelPolar(
+        v_ms=tuple(10.0 for _ in levels),
+        alpha_deg=tuple(5.0 for _ in levels),
+        cl=tuple(levels),
+        cd=tuple(cd0 + k * level * level for level in levels),
+    )

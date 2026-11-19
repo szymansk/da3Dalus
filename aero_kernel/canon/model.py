@@ -669,6 +669,8 @@ class KernelConfig(BaseModel):
     opt_probe_tolerance: ConfigValue
     opt_peak_tolerance: ConfigValue
     opt_zero_span: ConfigValue
+    opt_level_lift_tolerance: ConfigValue
+    opt_level_max_steps: ConfigValue
     opt_active_bound_fraction: ConfigValue
     opt_alpha_margin_deg: ConfigValue
     opt_hinge_floor: ConfigValue
@@ -681,9 +683,6 @@ class KernelConfig(BaseModel):
     opt_body_axis_tolerance: ConfigValue
     avl_contour_margin: ConfigValue
     powertrain_balance_tolerance: ConfigValue
-    powertrain_lift_tolerance: ConfigValue
-    powertrain_lift_iterations: ConfigValue
-    powertrain_alpha_step_deg: ConfigValue
 
 
 class Namespace(BaseModel):
