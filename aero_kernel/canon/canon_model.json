@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:7eafedc3214c3222dfbced8c10c1bf892377c3f1861110ee76ce65eba969c008",
+  "content_hash": "sha256:911405a9126296d26972bea867c12a09a8fe9dafa58b50cd742f77ddc4b2d6ca",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -946,12 +946,18 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:aileron-deflection",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 1.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -963,12 +969,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:elevator-deflection-up",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 2.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -980,12 +992,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:elevator-deflection-down",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 2.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -997,12 +1015,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:rudder-deflection",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 3.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -1014,12 +1038,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:flap-deflection-takeoff",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 4.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -1031,12 +1061,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:flap-deflection-landing",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 4.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -1052,12 +1088,15 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "delta": null,
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "n_load": "calc:load-factor",
             "rho": "calc:air-density",
+            "role": null,
             "v": "calc:flight-speed"
           },
           "kind": "procedure",
@@ -7074,6 +7113,36 @@
               "value": 1e-08
             }
           }
+        },
+        "hinge-moment-device-layout": {
+          "applies_to": {
+            "formula": "control-surface-hinge-moments",
+            "quantity": null
+          },
+          "codes": [
+            "missing_hinge",
+            "hinge_outside_chord",
+            "hinge_device_on_unmirrored_surface",
+            "duplicate_surface_key",
+            "no_control_in_role"
+          ],
+          "criterion": "A control surface whose hinge moment is read has a hinge position (missing_hinge: the tool's default hinge is never used) strictly inside the chord (hinge_outside_chord: at 0 the whole section turns, which is a stabilator, not covered; at 1 nothing turns, a zero-chord control has no hinge moment); sits on a mirrored surface if the surface spreads sideways (hinge_device_on_unmirrored_surface); has a key <wing>.<device>[_left|_right] that no other surface has (duplicate_surface_key); and a role that the conditions allow is carried by at least one segment (no_control_in_role).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "hinge-moment-line-continuity": {
+          "applies_to": {
+            "formula": "control-surface-hinge-moments",
+            "quantity": null
+          },
+          "codes": [
+            "hinge_line_discontinuous"
+          ],
+          "criterion": "Adjacent segments of one control surface have the same hinge position at the rib they meet at: AVL holds one hinge position per section. Two positions closer than the join_tolerance of the rule hinge-line-continuity are one rib (the one threshold, not a second one).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
         },
         "isa-altitude-range": {
           "applies_to": {

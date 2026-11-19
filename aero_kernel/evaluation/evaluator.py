@@ -202,6 +202,12 @@ def _judge(rule: Rule, quantity: QuantityResult | None, facts: WhenFacts) -> Rul
             RuleStatus.NOT_AVAILABLE,
             f"`{rule.quantity.slug}` has no value (status {quantity.status.value}).",
         )
+    if quantity.surfaces is not None:
+        return _verdict(
+            rule,
+            RuleStatus.NOT_AVAILABLE,
+            f"`{rule.quantity.slug}` is a value per control surface; a band judges one number.",
+        )
     return _judge_value(rule, quantity)
 
 
