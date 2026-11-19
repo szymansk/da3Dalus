@@ -221,7 +221,7 @@ def _axis(wing: Wing, index: int, position: int, spar: SpareDetail) -> tuple[flo
     if spar.spare_vector is not None:
         vector = spar.spare_vector
         run = math.sqrt(sum(c * c for c in vector))
-        if run == 0.0:
+        if not run > 0.0:
             raise _not_determinable(wing, index, position, "spare_vector is the zero vector")
         slope = vector[1] / run
     elif mode == "standard":
@@ -234,7 +234,7 @@ def _axis(wing: Wing, index: int, position: int, spar: SpareDetail) -> tuple[flo
         slope = d_y / math.sqrt(d_x * d_x + d_y * d_y + d_z * d_z)
     else:
         slope = d_y / math.hypot(d_y, d_z)
-    if slope == 0.0:
+    if not abs(slope) > 0.0:
         raise _not_determinable(wing, index, position, f"mode {mode!r}: the axis is not spanwise")
     offset = 0.0 if spar.spare_origin is None else spar.spare_origin[1]
     if mode == "normal" or spar.spare_origin is None:
@@ -245,10 +245,10 @@ def _axis(wing: Wing, index: int, position: int, spar: SpareDetail) -> tuple[flo
 def _present_at(wing: Wing, index: int, position: int, spar: SpareDetail, y: float) -> bool:
     """Whether the spar of segment ``index`` exists at station ``y`` (already inside the segment)."""
     start, length = spar.spare_start, spar.spare_length
-    if start == 0.0 and length is None:
+    if start <= 0.0 and length is None:
         return True
     y_origin, slope = _axis(wing, index, position, spar)
-    if start == 0.0:
+    if start <= 0.0:
         low = -math.inf if length is None else -length
         high = math.inf if length is None else length
     else:
