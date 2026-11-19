@@ -368,6 +368,7 @@ class AvlAdapter(SolverAdapter):
             "avl_roll_nchord_front": SPLIT_N_CHORD[0],
             "avl_roll_nchord_aft": SPLIT_N_CHORD[1],
             "avl_roll_branch_tolerance": cfg.avl_roll_branch_tolerance.value,
+            "avl_roll_reference_deflection_deg": cfg.avl_roll_reference_deflection.value,
             "avl_chord_spacing": CHORD_SPACING,
             "avl_body_nodes": BODY_NODES,
             "avl_body_spacing": BODY_SPACING,

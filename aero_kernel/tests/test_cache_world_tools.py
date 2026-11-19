@@ -152,6 +152,7 @@ def _with_config_value(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
         "avl_roll_moment_tolerance",
         "avl_control_echo_tolerance",
         "avl_cl_tolerance",
+        "avl_roll_reference_deflection",
         "opt_body_merge_z_cells",
         "opt_body_merge_area_tolerance",
         "opt_body_merge_exponent_min",
@@ -184,6 +185,10 @@ def test_a_changed_avl_config_value_misses_the_cache_in_the_avl_world(
         "opt_body_merge_exponent_min",
         "opt_body_merge_exponent_max",
         "opt_body_axis_tolerance",
+        "opt_roll_search_step",
+        "opt_roll_search_limit",
+        "opt_roll_target_tolerance",
+        "opt_roll_max_refinements",
     ],
 )
 def test_a_changed_optimisation_config_value_misses_the_cache_in_the_aerobuildup_world(

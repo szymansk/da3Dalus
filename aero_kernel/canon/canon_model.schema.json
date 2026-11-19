@@ -623,6 +623,9 @@
         "avl_roll_print_floor": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "avl_roll_reference_deflection": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "avl_roll_refinement_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -665,6 +668,18 @@
         "opt_probe_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_roll_max_refinements": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_roll_search_limit": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_roll_search_step": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_roll_target_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_zero_span": {
           "$ref": "#/$defs/ConfigValue"
         }
@@ -676,6 +691,11 @@
         "avl_roll_print_floor",
         "avl_roll_moment_tolerance",
         "avl_control_echo_tolerance",
+        "avl_roll_reference_deflection",
+        "opt_roll_search_step",
+        "opt_roll_search_limit",
+        "opt_roll_target_tolerance",
+        "opt_roll_max_refinements",
         "avl_cl_tolerance",
         "opt_probe_tolerance",
         "opt_peak_tolerance",

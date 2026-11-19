@@ -1817,6 +1817,10 @@ class OptiAdapter(SolverAdapter):
             "opt_body_merge_exponent_min": config().opt_body_merge_exponent_min.value,
             "opt_body_merge_exponent_max": config().opt_body_merge_exponent_max.value,
             "opt_body_axis_tolerance_m": config().opt_body_axis_tolerance.value,
+            "opt_roll_search_step_deg": config().opt_roll_search_step.value,
+            "opt_roll_search_limit_deg": config().opt_roll_search_limit.value,
+            "opt_roll_target_tolerance": config().opt_roll_target_tolerance.value,
+            "opt_roll_max_refinements": config().opt_roll_max_refinements.value,
         }
 
     def _model_key(self, airplane: AirplaneGeometry, roll_deg: float) -> str:
