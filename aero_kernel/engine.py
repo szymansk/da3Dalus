@@ -247,7 +247,7 @@ def _check_warning(
         f"{what}_unchecked" if unchecked else f"{what}_violated",
         f"The {what} `{check_id}` of `{display_slug(node.id.formula)}` {verdict}: {result.message}",
         origin=origin,
-        detail={what: check_id},
+        detail={what: check_id, **result.detail},
     )
 
 
@@ -729,7 +729,7 @@ class _Call:
             if result.state == "held":
                 continue
             if result.state == "violated" and entry.on_violation == "error":
-                return warnings, self._violation_error(kind, what, entry.id, node, result.message)
+                return warnings, self._violation_error(kind, what, entry.id, node, result)
             warnings.append(_check_warning(what, entry.id, node, result, origin))
         return warnings, None
 
@@ -753,7 +753,7 @@ class _Call:
 
     @staticmethod
     def _violation_error(
-        kind: Literal["pre", "post"], what: str, check_id: str, node: Node, message: str
+        kind: Literal["pre", "post"], what: str, check_id: str, node: Node, result: CheckResult
     ) -> KernelError:
         """The error of a violated check whose ``on_violation`` is ``error``."""
         formula_slug = display_slug(node.id.formula)
@@ -762,13 +762,13 @@ class _Call:
             category=ErrorCategory.UNSUPPORTED_CONFIGURATION,
             formula=formula_slug,
             application=node.id.application,
-            message=f"The {what} `{check_id}` of `{formula_slug}` is violated: {message}",
+            message=f"The {what} `{check_id}` of `{formula_slug}` is violated: {result.message}",
             hint=(
                 "Change the inputs so that the formula applies."
                 if kind == "pre"
                 else "The value was discarded; the evaluation is not trustworthy."
             ),
-            detail={what: check_id},
+            detail={what: check_id, **result.detail},
         )
 
     def _inherit(

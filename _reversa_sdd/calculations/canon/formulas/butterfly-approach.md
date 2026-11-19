@@ -20,6 +20,7 @@ inputs:
   airplane: null
   m: aircraft-mass
   g: gravity
+  n_load: null
   rho: air-density
   mu: dynamic-viscosity
   a: speed-of-sound
@@ -34,8 +35,11 @@ outputs:
   s_max: butterfly-max-mix
 applications:
   - id: crow
-    bind: {airplane: airplane-landing}
+    bind: {airplane: airplane-landing, n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
     when: has_separate_flap_and_aileron
+preconditions:
+  - {id: approach_speed_positive, parameter: v_app, on_violation: error}
+  - {id: crow_aileron_not_negative, parameter: delta_a_crow, on_violation: error}
 postconditions:
   - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
 ---
@@ -83,19 +87,32 @@ configurations): crow needs both.
 implementation, not a copy (architect, 2026-10-15). Not an embed: a form that re-solves another
 formula's problem under a configuration it varies itself is not an embed (ARCHITECTURE §8.5).
 
-**Declared limit — approval needs a comparison.** Crow flaps deflect 45–80°; the flow on the
-flap is separated there. AeroBuildup has no flap model of its own, and NeuralFoil never sees the deflected surface: AeroSandbox evaluates the clean airfoil at `α_eff = α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), and multiplies the drag by a factor fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, reached from `aero_buildup.py:784-801`; AeroSandbox 4.2.9 / NeuralFoil 0.3.2). There is no flap separation: the effectiveness is over-predicted at large δ until the clean section stalls, and the δ range of the τ fit is unknown. At crow deflections the flap
-effect is therefore over-predicted. Approval requires a check against measured or plan values of a
-glider in the reference fleet.
+**Declared limit — approval needs a comparison.** Crow flaps deflect 45–80°; RC practice goes up to 90°. The flow on the flap is separated there, and the section method does not know it. *Correction by evidence (#1402; the earlier text of this paragraph described the `τ·δ` angle shift, which since #1212 is the model of the roll aileron only):* the kernel evaluates the lowered flap **and the raised aileron** as the **deflected contour** — the airfoil behind the hinge rotated by the angle (trailing edge down positive; a raised aileron is a negative angle), handed to NeuralFoil inside AeroBuildup, the same as the flap of [[airplane-configuration]] (`aero_kernel/devices.py: crow_configuration`; the raised aileron is carried as a symmetric flap-like contour for the tools). There is no flap separation model. What the kernel declares, per [[airplane-configuration]], with the rule `flap-model-validity`: `flap_deflection_beyond_validity` for any deflected device above 30° (by magnitude), and `flap_confidence_low` where NeuralFoil's area-weighted `analysis_confidence` over the span of the device is below 0.85; both are evaluated **at the mix of the sweep with the largest deflection** (full crow unless the crow flap angle is below the landing flap angle), and the value is still computed. Measured on the RV-7 section (NACA 23013.5, hinge 0.75 c, section `C_l,max`, NeuralFoil xlarge, evidence sheet of `butterfly-approach`): at Re 1·10⁵ the confidence at the stall is 0.97 clean, 0.96 at 15°, 0.52 at 30°, 0.01 at 45° and 0.00 from 60° to 90°; a raised aileron gives 0.70 at 20° up and 0.05 at 40° up. Above about 30° the numbers of this formula are therefore **not a prediction**, whatever their precision; they are what the section method returns. Approval requires a check against measured or plan values of a glider in the reference fleet; the fleet has no glider with separate flaps and ailerons and no crow measurement (evidence sheet), so that comparison does not exist yet. *Also declared (#1402):* a sweep whose stall solve fails at one mix fails the whole formula, no curve with a hole is returned. On the RV-7 (landing flap 30°) a crow of 45° flap and 15° aileron up converges at all eleven mixes (`V_S0` 6.250 to 6.835 m/s), whereas 60° and 20° up fails at `s = 0.8`: the stall optimum lies on the angle-of-attack bound at 11.0°, and the first `C_L` peak jumps from 11.6° at `s = 0.7` to 16° at `s = 0.9`.
 
 **Source.** 🟡 PARTIAL — the stall relation as in [[stall-speed]]; crow as the dominant landing
 aid for models per the RC sources (§3.7); the reading of the question is the maintainer's.
 
-**Validity in the RC/UAV regime (ADR 0028).** The stall relation is the one in [[stall-speed]] and inherits its Reynolds-number qualification. Crow is RC practice: flaps down (up to 90°) and ailerons up, the inner-wing lift gain partly cancelled by the outer-wing loss, needing slightly higher approach speeds than a minimum-speed landing (RC-Network wiki, *Landehilfen*); its braking comes mainly from the strongly non-elliptic loading and the induced drag that follows (*Butterfly*); since RC practice deflects crow flaps up to 90°, the declared limit above applies up to 90°, not only to 45–80°. AeroBuildup computes induced drag at aircraft level through a Trefftz-plane projection (Sharpe 2024 §5.3), so that mechanism is represented as far as the section lifts are right. The section lifts are where it fails: at 45–80° the flap is far outside the attached range where linear estimates hold (Anderson §4.13), and below chord Re 7·10⁴ laminar separation sets in even undeflected (§20.3.2). AeroBuildup still applies its δ-independent τ fit (AeroSandbox study "Control Surface Effectiveness") to both the lowered flap and the raised aileron; both are over-predicted, so the sign of the net error in `V_S0(s)`, and hence in `s_max`, is open [no source]. Mach ≤ 0.3 needs no correction (Anderson §1.10.3).
+**Validity in the RC/UAV regime (ADR 0028).** The stall relation is the one in [[stall-speed]] and inherits its Reynolds-number qualification. Crow is RC practice: flaps down (up to 90°) and ailerons up, the inner-wing lift gain partly cancelled by the outer-wing loss, needing slightly higher approach speeds than a minimum-speed landing (RC-Network wiki, *Landehilfen*); its braking comes mainly from the strongly non-elliptic loading and the induced drag that follows (*Butterfly*); since RC practice deflects crow flaps up to 90°, the declared limit above applies up to 90°, not only to 45–80°. AeroBuildup computes induced drag at aircraft level through a Trefftz-plane projection (Sharpe 2024 §5.3), so that mechanism is represented as far as the section lifts are right. The section lifts are where it fails: at 45–80° the flap is far outside the attached range where linear estimates hold (Anderson §4.13), and below chord Re 7·10⁴ laminar separation sets in even undeflected (§20.3.2). *Correction by evidence (#1402):* NeuralFoil was not trained on contours with such a flap (its confidence is 0 from 60°, see the declared limit); both the lowered flap and the raised aileron are evaluated as deflected contours, with no separation, so the sign and size of the net error in `V_S0(s)`, and hence in `s_max`, are open [no source]. Mach ≤ 0.3 needs no correction (Anderson §1.10.3).
 
-## Implementations (0)
+## Implementation notes (#1402)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+*Not dated maintainer decisions; what the implementation does where the entry was silent.*
+
+- **The mix grid.** `s` runs from 0 to 1 in `butterfly_mix_steps` equal steps (`config.yaml`, 10: eleven samples); each sample is one stall solve ([[stall-speed]]'s problem, `n = 1`, `L = m g`) on the airplane in the configuration `crow_configuration(s)`. `s_max` is the first crossing of `V_S0(s)` with `V_app`, interpolated linearly between the two samples that bracket it (`V_S0(s)` is convex in `s` for a linear `C_L,max(s)`, so the interpolated mix is slightly below the root; on the RV-7 an independent real stall at the interpolated mix lands within 1 % of the approach speed, see the evidence). `V_S0(0) ≥ V_app` gives `s_max = 0`.
+- **Devices, by role.** Flaps: the devices of role `flap` run from `δ_f,landing` to `δ_f,crow`. Ailerons: the devices of role `aileron` or `elevon` rise from 0 to `δ_a,crow`. A flaperon is neither (D10): it keeps the angle the landing configuration gave it. `crow-aileron-deflection` is **the angle the aileron is raised**, a positive number of degrees up; a negative value is refused (`invalid_input`).
+- **The glide angle** is the steady glide without thrust, `γ = atan(C_D/C_L)` with `L = m g`, read at `V_app(s)` from the one lift-equals-weight solve of the kernel (`OptiAdapter.level_flight_point`, shared with the level-flight polar and the powertrain: the angle on the pre-stall branch where AeroBuildup's lift is `m g`, by secant steps to the configured tolerance; `γ = atan2(C_D, C_L)` in the formula; the drag is the kernel's, [[aerobuildup-evaluation]]). A `V_app(s)` below the stall speed of the configuration (an approach margin below 1) is `not_converged`.
+- **The curves** are values inside the node (`Curve`, `StallCurve`); in v1 they are not requestable (`non_scalar_result`). `butterfly-max-mix` is the carried scalar.
+- **No largest mix (interim, Soll: #1402).** The kernel has no declared absent output, so a stall speed that never reaches `V_app` up to `s = 1` is an `error` of `butterfly-max-mix` whose `detail` carries the sweep (ARCHITECTURE Q39). The maintainer decides whether an absent output becomes a `not_applicable` result with its own reason (shared with `airplane-components`) or stays this declared error; until then "fully mixable", the ordinary result with a normal approach margin, is an error.
+- **Validity declarations** are read at the mix with the largest deflection only (one warning per device, not one per sample).
+- **Caveats forwarded.** The adapters report caveats per solve; the formula forwards the caveats of the two solves the answer rests on (the landing stall at `s = 0` and the sample that closes the bracket of `s_max`, full crow where there is no crossing) with the glide read at the same mixes, plus one `control_surface_fit_range_unknown` carrying, per device, the largest deflection and the lowest NeuralFoil confidence over the whole sweep. The regime and drag messages of the other mixes are dropped (they repeat with another Reynolds number); the answer's own Reynolds regime is that of the forwarded solves.
+- **The stall problem is level** (`n = 1`, bound with its source in the application, as in [[stall-speed]]); the preconditions `approach_speed_positive` and `crow_aileron_not_negative` refuse a non-positive approach speed and a negative crow aileron angle before any solve.
+- **`V_app` at or below `V_S0(0)`.** `s_max = 0` and the glide-angle curve is empty: no glide exists below the stall speed, none is read.
+- **The first-peak check also guards the no-crossing path:** a mix on another branch is the error that names it, not "fully mixable".
+- **The check** `optimum_at_first_cl_peak` runs on the sweep of every mix (shared function with `stall-speed`); a violation names the mix in `detail`.
+
+## Implementations (1)
+
+[[butterfly-approach]] is implemented in `aero_kernel/formulas/butterfly_approach.py`; no app implementation maps to this entry.
 
 ## Approval
 

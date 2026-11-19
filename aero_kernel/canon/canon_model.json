@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:ad31480180a376951be492f7103e6b2cab2f760bcaf9eece647d6e71137fe082",
+  "content_hash": "sha256:7606c9aaa0499cdfdcd9a89b1b4e23474f976288c440f08704f6e9cd1cca086b",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -66,6 +66,13 @@
           "source": "maintainer, #1211 D8: fixed before any measurement; the agreement asked of the independent template reference",
           "unit": "1",
           "value": 0.01
+        },
+        "butterfly_mix_steps": {
+          "basis": "numerical",
+          "guards": "Butterfly: the crow mix s in [0, 1] is sampled in this many equal steps (one more sample than steps, both ends included); each sample is one stall solve and one glide read. s_max is interpolated linearly between the two samples that bracket it.",
+          "source": "resolution of a sampled curve, not a physical quantity: a tenth of full crow is the finest setting a flap knob or mixer is set by hand; the interpolation error of s_max is measured in the evidence of butterfly-approach",
+          "unit": "1",
+          "value": 10.0
         },
         "endurance_speed_ratio": {
           "basis": "numerical",
@@ -888,6 +895,10 @@
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "mu": "calc:dynamic-viscosity",
+                "n_load": {
+                  "const": 1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
+                },
                 "rho": "calc:air-density",
                 "v_app": "calc:approach-speed"
               },
@@ -915,6 +926,7 @@
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
             "mu": "calc:dynamic-viscosity",
+            "n_load": null,
             "rho": "calc:air-density",
             "v_app": "calc:approach-speed"
           },
@@ -934,7 +946,20 @@
               "parameter": "v_s0_curve"
             }
           ],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "approach_speed_positive",
+              "on_violation": "error",
+              "parameter": "v_app"
+            },
+            {
+              "applications": null,
+              "id": "crow_aileron_not_negative",
+              "on_violation": "error",
+              "parameter": "delta_a_crow"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [],

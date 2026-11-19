@@ -24,6 +24,7 @@ from aero_kernel.solvers.stall_math import first_extremum_from_zero
 __all__ = [
     "alpha_range_past_inverted_stall",
     "cl_max_at_stall_reynolds_number",
+    "first_extremum_check",
     "optimum_at_first_cl_peak",
     "optimum_at_first_cl_trough",
     "stall_speed",
@@ -111,18 +112,20 @@ def cl_max_at_stall_reynolds_number(
     return CheckResult(state="held", message="V_S closes the lift balance at the sweep's C_L")
 
 
-def _first_extremum_check(y: Mapping[str, object], *, upright: bool) -> CheckResult:
-    """The optimum is the first sampled C_L peak (trough) from alpha = 0, within one sweep step."""
-    polar = _polar(y)
+def first_extremum_check(
+    polar: Polar, alpha_s: float, cl_max: float, *, upright: bool
+) -> CheckResult:
+    """The optimum is the first sampled C_L peak (trough) from alpha = 0, within one sweep step.
+
+    The one implementation of the check ``optimum_at_first_cl_peak`` / ``_trough``: ``stall-speed``
+    runs it on its polar, ``butterfly-approach`` on the polar of each crow mix (K32).
+    """
     what = "peak" if upright else "trough"
-    if polar is None:
-        return _unchecked(f"the first C_L {what} is read off the sweep")
     index = first_extremum_from_zero(polar.alpha_deg, polar.cl, upright=upright)
     if index is None:
         return CheckResult(
             state="violated", message=f"the sweep at V_S has no C_L {what} inside its range"
         )
-    alpha_s, cl_max = number(y, "alpha_s"), number(y, "cl_max")
     peak_alpha, peak_cl = polar.alpha_deg[index], polar.cl[index]
     if abs(peak_alpha - alpha_s) > ALPHA_STEP_DEG + config().opt_alpha_margin_deg.value:
         return CheckResult(
@@ -139,6 +142,14 @@ def _first_extremum_check(y: Mapping[str, object], *, upright: bool) -> CheckRes
             message=f"C_L = {cl_max} lies {beyond:.2e} short of the first sampled {what} {peak_cl}",
         )
     return CheckResult(state="held", message=f"the optimum is the first C_L {what}")
+
+
+def _first_extremum_check(y: Mapping[str, object], *, upright: bool) -> CheckResult:
+    polar = _polar(y)
+    if polar is None:
+        what = "peak" if upright else "trough"
+        return _unchecked(f"the first C_L {what} is read off the sweep")
+    return first_extremum_check(polar, number(y, "alpha_s"), number(y, "cl_max"), upright=upright)
 
 
 @postcondition("stall-speed", "optimum_at_first_cl_peak")
