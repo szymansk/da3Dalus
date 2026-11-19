@@ -10,13 +10,33 @@ maximised over the speed (scan, golden section). Which limit binds at the optimu
 """
 
 import math
+from collections.abc import Mapping
 
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.powered_flight import PoweredFlight, sustained_turn
 from aero_kernel.formulas.values import number
-from aero_kernel.registry import formula
+from aero_kernel.registry import CheckResult, formula, precondition
 
-__all__ = ["max_sustained_turn_rate"]
+__all__ = ["limit_load_factor_above_one", "max_sustained_turn_rate"]
+
+
+@precondition("max-sustained-turn-rate", "limit_load_factor_above_one")
+@precondition("min-sustained-turn-radius", "limit_load_factor_above_one")
+def limit_load_factor_above_one(x: Mapping[str, object]) -> CheckResult:
+    """The limit load factor must be above 1: a sustained turn needs ``1 < n <= n_lim``.
+
+    The one implementation of the check of both sustained-turn entries.
+    """
+    n_lim = number(x, "n_lim")
+    if n_lim > 1.0:
+        return CheckResult(state="held", message=f"the limit load factor {n_lim:g} is above 1")
+    return CheckResult(
+        state="violated",
+        message=(
+            f"the limit load factor {n_lim:g} is not above 1, so no level turn is allowed "
+            "(a turn needs a load factor above 1); give a higher limit load factor"
+        ),
+    )
 
 
 def turn_rate(g: float, v: float, n: float) -> float:

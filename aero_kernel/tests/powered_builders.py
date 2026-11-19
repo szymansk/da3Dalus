@@ -44,9 +44,11 @@ class PolarOpti(StubOpti):
         cd0: float = CD0,
         warnings: tuple[KernelWarning, ...] = (),
         zero_lift_floor: float = 0.0,
+        no_peak_below: float = 0.0,
     ) -> None:
         super().__init__()
         self.cd0, self.warnings, self.zero_lift_floor = cd0, warnings, zero_lift_floor
+        self.no_peak_below = no_peak_below
         self.evaluations: list[tuple[float, float]] = []
 
     async def level_flight_point(
@@ -61,7 +63,23 @@ class PolarOpti(StubOpti):
         self.evaluations.append((v_ms, n_load))
         q_s = 0.5 * air.density * v_ms**2 * AREA
         cl = n_load * mass_kg * gravity / q_s
-        if cl > CL_MAX or (n_load == 0.0 and v_ms < self.zero_lift_floor):
+        if n_load == 0.0 and v_ms < self.zero_lift_floor:
+            raise FormulaError(
+                ErrorCategory.NOT_CONVERGED,
+                "not_converged",
+                f"the zero-lift angle of the lift curve at {v_ms} m/s is not inside the sweep",
+                "no stall",
+                detail={"v_ms": v_ms},
+            )
+        if v_ms < self.no_peak_below:
+            raise FormulaError(
+                ErrorCategory.NOT_CONVERGED,
+                "not_converged",
+                f"the lift coefficient has no peak inside the sweep at {v_ms} m/s",
+                "no stall",
+                detail={"v_ms": v_ms},
+            )
+        if cl > CL_MAX:
             raise FormulaError(
                 ErrorCategory.NOT_CONVERGED,
                 "not_converged",

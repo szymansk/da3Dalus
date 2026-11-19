@@ -114,8 +114,10 @@ ALPHA_MIN_DEG = -15.0
 ALPHA_MAX_DEG = 25.0
 # Sample spacing of the sweep (the prototype's 0.25 deg, scripts/canon_checks/*).
 ALPHA_STEP_DEG = 0.25
-# The ``limit`` detail of the not_converged failure of a state with no point on the branch before the
-# stall: the lift curve has no first peak in the sweep, does not reach the lift, or settles beyond the peak.
+# The ``limit`` detail of the not_converged failure of a state whose lift the wing cannot carry before its
+# first lift peak (the lift curve does not reach it below the peak, or the secant settles beyond the peak):
+# the wing limit, a bound of a search and not a defect. A sweep without a peak and a zero-lift angle outside
+# the sweep are not marked: they are solver or domain failures.
 WING_LIFT_LIMIT = "wing_lift"
 # The lift coefficient assumed to choose the speed of the first bracketing sweep. It only fixes the
 # Reynolds number at which the C_L extremum is first located; the sweep is repeated once at the speed
@@ -460,7 +462,6 @@ def _bracket(polar: LiftCurve, upright: bool) -> int:
             "the airplane does not stall inside the sampled angles of attack",
             alpha_min_deg=ALPHA_MIN_DEG,
             alpha_max_deg=ALPHA_MAX_DEG,
-            limit=WING_LIFT_LIMIT,
         )
     return index
 
@@ -1525,6 +1526,15 @@ def _level_alpha(sweep: LiftCurve, level: float, speed: float) -> tuple[float, f
     peak = _bracket(sweep, upright=True)
     found = alpha_for_lift_coefficient(sweep.alpha_deg, sweep.cl, peak, level)
     if found is None:
+        if level <= 0.0:
+            raise _not_converged(
+                f"the zero-lift angle of the lift curve at {speed:.3f} m/s is not inside the sweep "
+                f"{ALPHA_MIN_DEG}..{ALPHA_MAX_DEG} deg below its first C_L peak",
+                "the lift curve has no zero crossing before its first peak (a very low Reynolds number or "
+                "an airfoil outside the sampled angles); this is not a stall",
+                cl=level,
+                v_ms=speed,
+            )
         raise _not_converged(
             f"the airplane does not reach C_L = {level:.4g} below its first C_L peak at "
             f"{speed:.3f} m/s",

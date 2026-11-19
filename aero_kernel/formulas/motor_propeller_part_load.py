@@ -21,6 +21,7 @@ from aero_kernel.components import Components
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.motor_propeller_equilibrium import declare_route, require_motor_values
+from aero_kernel.formulas.powered_flight import LEVEL_FLIGHT
 from aero_kernel.formulas.propeller_table_lookup import components_of, table_of
 from aero_kernel.formulas.propulsion import (
     RPM_PER_HZ,
@@ -41,8 +42,6 @@ from aero_kernel.registry import CheckResult, formula, postcondition
 
 __all__ = ["demand_within_full_throttle", "motor_propeller_part_load"]
 
-_LEVEL_FLIGHT = 1.0  # the load factor of level flight: L = W (definition of n = L / W)
-
 
 async def _level_flight_drag(x: Inputs, ctx: Context) -> float:
     """The drag in N of the level-flight point at ``V``: AeroBuildup's lift equals the weight there.
@@ -56,7 +55,7 @@ async def _level_flight_drag(x: Inputs, ctx: Context) -> float:
             first lift peak at this speed.
     """
     found = await ctx.solvers.opti.level_flight_point(
-        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), number(x, "v"), _LEVEL_FLIGHT
+        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), number(x, "v"), LEVEL_FLIGHT
     )
     forward_warnings(ctx, found.warnings)
     return found.point.drag_n

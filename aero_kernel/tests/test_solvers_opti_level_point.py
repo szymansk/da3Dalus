@@ -188,3 +188,25 @@ async def test_a_point_that_settles_beyond_the_first_peak_is_the_wing_limit(
         level_point_worker(point_request(speed))
     assert caught.value.detail["limit"] == "wing_lift"
     assert "beyond the first C_L peak" in caught.value.message
+
+
+async def test_a_sweep_without_a_peak_is_not_the_wing_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No first C_L peak inside the sweep is a solver failure, not a stall: it carries no wing-limit tag."""
+    installed(monkeypatch, lambda alpha: 0.05 * (alpha + 20.0))  # rises over the whole sweep
+    with pytest.raises(FormulaError) as caught:
+        level_point_worker(point_request(18.0))
+    assert "no peak" in caught.value.message
+    assert "limit" not in caught.value.detail
+
+
+async def test_a_zero_lift_angle_outside_the_sweep_is_not_the_wing_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The lift curve is above zero everywhere below its peak: the zero-lift point does not exist, no stall."""
+    installed(monkeypatch, lambda alpha: 0.5 + 0.1 * (alpha + 15.0) - 0.002 * (alpha + 15.0) ** 2)
+    with pytest.raises(FormulaError) as caught:
+        level_point_worker(point_request(18.0, 0.0))
+    assert "zero-lift angle" in caught.value.message
+    assert "limit" not in caught.value.detail

@@ -14,6 +14,7 @@ import math
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.powered_flight import (
     PoweredFlight,
+    Unflyable,
     climb_angle,
     finish_climb,
     maximise_over_speed,
@@ -47,13 +48,15 @@ async def best_rate_of_climb(x: Inputs, ctx: Context) -> dict[str, float]:
     """
     flight = PoweredFlight(x, ctx)
 
-    async def rate(v: float) -> float | None:
+    async def rate(v: float) -> float | Unflyable:
         gamma = await climb_angle(flight, v)
-        return None if gamma is None else v * math.sin(gamma)
+        return gamma if isinstance(gamma, Unflyable) else v * math.sin(gamma)
 
-    optimum = await maximise_over_speed(rate)
+    optimum = await maximise_over_speed(rate, flight)
     gamma = await climb_angle(flight, optimum.v)
-    if gamma is None:  # pragma: no cover - the optimum is evaluated at a speed that climbs
+    if isinstance(
+        gamma, Unflyable
+    ):  # pragma: no cover - the optimum is evaluated at a speed that climbs
         msg = "the best-rate-of-climb speed does not climb"
         raise AssertionError(msg)
     await finish_climb(flight, optimum, gamma)

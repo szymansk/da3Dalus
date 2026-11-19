@@ -36,6 +36,8 @@ outputs: {omega_max: max-sustained-turn-rate, v_omega: max-sustained-turn-rate-s
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: limit_load_factor_above_one, parameter: n_lim, on_violation: error}
 ---
 
 # Fastest sustained turn at full throttle
@@ -88,6 +90,8 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 No register node is mapped to this entry.
 
 **Implementation note (gh-1414).** The optimum of the turn rate lies at the corner where the thrust limit meets the wing limit; both bind there and the notice names the one the search met first.
+
+**Implementation remark on method and assumptions (#1414).** Solved per speed for the highest load factor (bisection to `powered_load_factor_tolerance`, 1e-6, much tighter than the speed search), then the maximum of the rate over the speed (scan, golden section to 1e-4 of the scan step). Assumptions: feasibility falls monotonically with the load factor; one maximum of the rate over the speed; features no narrower than the scan step (2 m/s). The input check `limit_load_factor_above_one` (precondition on `n_lim`, `on_violation: error`) mirrors the kernel: no turn is allowed at `n_lim <= 1`.
 
 ## Approval
 

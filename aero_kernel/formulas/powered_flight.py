@@ -18,6 +18,18 @@ root or maximum over ``V`` (and a root over ``gamma`` or a bound over ``n`` insi
 upward scan of the airspeed, Illinois regula falsi for roots and golden section for a maximum; their
 numerical settings are in ``config.yaml`` (``powered_*``).
 
+What the searches assume (stated in the canon entries, #1414): one maximum of the objective over the speed
+(golden section), one hump of ``T - D`` over the speed for the level speed, and features no narrower than the
+scan step (two features closer together than the step can be missed).
+
+A speed at which a state cannot be evaluated is never dropped silently. The result of an evaluation is a
+value or an :class:`Unflyable`: ``WING`` (the wing cannot carry the lift before its first lift peak),
+``THRUST`` (the thrust is below the drag) or ``TABLE`` (the propeller table ends). Speeds skipped below the
+first feasible speed are declared with the notice ``powered_speeds_skipped``; the table edge is a bound of
+the search (an interior optimum is returned, an optimum on the bound is the declared failure
+``outside_propeller_table``). Any other failure of an evaluation (a sweep without a lift peak, a zero-lift
+angle outside the sweep) surfaces as ``not_converged``: it is not a stall.
+
 Warnings of the evaluations along the search are not forwarded; the answer is evaluated once more and its
 warnings (flap, regime, the drag notice) are the formula's. Where the optimum lies on a limit the entry
 names, the formula declares it with the notice ``powered_limit_declared``.
@@ -26,6 +38,7 @@ names, the formula declares it with the notice ``powered_limit_declared``.
 import math
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
+from enum import StrEnum
 
 from aero_kernel.components import Components
 from aero_kernel.config import config
@@ -35,16 +48,19 @@ from aero_kernel.formulas.motor_propeller_equilibrium import declare_route
 from aero_kernel.formulas.propeller_table_lookup import components_of
 from aero_kernel.formulas.propulsion import full_throttle_thrust, optional
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
-from aero_kernel.solvers.opti import WING_LIFT_LIMIT
+from aero_kernel.solvers.opti import WING_LIFT_LIMIT, LevelPoint
 from pydantic import JsonValue
 
 __all__ = [
     "LEVEL_FLIGHT",
     "RIGHT_ANGLE",
+    "TABLE_FAILURE",
     "VERTICAL_FLIGHT",
+    "GoldenResult",
     "Optimum",
     "PoweredFlight",
     "TurnLimit",
+    "Unflyable",
     "climb_angle",
     "declare_limit",
     "finish_climb",
@@ -61,8 +77,30 @@ __all__ = [
 LEVEL_FLIGHT = 1.0  # the load factor of level flight: L = W (definition of n = L / W)
 VERTICAL_FLIGHT = 0.0  # the load factor of a flight path without lift: L = 0
 RIGHT_ANGLE = 0.5 * math.pi  # the bound gamma <= pi/2 of the climb problems (rad)
+TABLE_FAILURE = "outside_propeller_table"  # the error code of the end of the propeller table
 
-Objective = Callable[[float], Awaitable[float | None]]
+
+class Unflyable(StrEnum):
+    """Why a state has no value at a speed (a bound of the search, not a defect).
+
+    Attributes:
+        WING: the wing cannot carry the lift of the state before its first lift peak.
+        THRUST: the thrust at full throttle is below what the state needs.
+        TABLE: the propeller table ends before this speed.
+    """
+
+    WING = "wing"
+    THRUST = "thrust"
+    TABLE = "table"
+
+
+Objective = Callable[[float], Awaitable[float | Unflyable]]
+
+_SKIP_TEXT = {
+    Unflyable.WING: "the wing cannot carry the lift of the state before its first lift peak",
+    Unflyable.THRUST: "the thrust at full throttle is below what the state needs",
+    Unflyable.TABLE: "the propeller table ends",
+}
 
 
 def no_feasible_speed(what: str) -> FormulaError:
@@ -71,8 +109,18 @@ def no_feasible_speed(what: str) -> FormulaError:
         ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "no_feasible_speed",
         what,
-        "the thrust is below the drag everywhere, the wing cannot carry the lift, or the load factor "
-        "limit leaves no turn; use a stronger drive train or give a higher limit load factor",
+        "see the reason in the message: a stronger drive train helps where the thrust is short, a lighter "
+        "airplane or a larger wing where the wing cannot carry the lift",
+    )
+
+
+def never_flyable(reasons: set[Unflyable]) -> FormulaError:
+    """``no_feasible_speed`` naming what stopped the state at every speed of the scan."""
+    start = config().powered_speed_scan_start.value
+    limit = config().powered_speed_scan_limit.value
+    why = " and ".join(sorted(_SKIP_TEXT[r] for r in reasons)) or "no speed was evaluated"
+    return no_feasible_speed(
+        f"the state has no value at any speed of the scan ({start:g} to {limit:g} m/s): {why}"
     )
 
 
@@ -87,7 +135,12 @@ class PoweredFlight:
 
     Built from the inputs of a powered-performance formula (the airplane, mass, gravity, air and the
     drive-train values of its canon entry). Evaluations along a search return values; ``answer`` is the
-    one evaluation whose warnings the formula forwards.
+    one evaluation whose warnings the formula forwards, and the place where the speeds skipped by the
+    search are declared.
+
+    Attributes:
+        lowest_level_speed: The lowest evaluated speed at which level flight was possible, in m/s
+            (``None`` until a level point was evaluated): an upper bound of the level-flight stall speed.
     """
 
     def __init__(self, x: Inputs, ctx: Context) -> None:
@@ -99,10 +152,12 @@ class PoweredFlight:
         self.x, self.ctx = x, ctx
         self.components: Components = components_of(x)
         self.weight = number(x, "m") * number(x, "g")
+        self.lowest_level_speed: float | None = None
         self._thrust: dict[float, float] = {}
+        self._skipped: list[tuple[float, Unflyable]] = []
 
     def thrust(self, v: float) -> float:
-        """The thrust in N at full throttle at the airspeed ``v`` (``motor-propeller-equilibrium``).
+        """The thrust in N at full throttle at the airspeed ``v`` (``motor-propeller-equilibrium``); kept per speed.
 
         Raises:
             FormulaError: The failures of the drive-train relations (``missing_input``,
@@ -127,8 +182,9 @@ class PoweredFlight:
         """The drag in N at speed ``v`` and lift ``n m g``; ``None`` where the wing cannot carry that lift.
 
         ``None`` is the answer of an airplane whose lift curve does not reach the lift before its first
-        peak (the speed is below the stall for this load factor): the wing limit, a bound of the
-        problem and not an error.
+        peak (``limit`` = ``wing_lift`` of the adapter's failure): the wing limit, a bound of the problem.
+        Every other failure of the adapter (a sweep without a peak, a zero-lift angle outside the sweep,
+        a secant that does not settle) is raised: it is not a stall.
 
         Raises:
             FormulaError: The adapter's failures other than the wing limit (``not_converged``).
@@ -146,6 +202,10 @@ class PoweredFlight:
             if error.detail.get("limit") == WING_LIFT_LIMIT:
                 return None
             raise
+        if n_load == LEVEL_FLIGHT and (
+            self.lowest_level_speed is None or v < self.lowest_level_speed
+        ):
+            self.lowest_level_speed = v
         return found.point.drag_n
 
     async def required_drag(self, v: float, n_load: float) -> float:
@@ -164,8 +224,16 @@ class PoweredFlight:
             )
         return value
 
-    async def answer(self, v: float, n_load: float) -> None:
-        """Evaluate the answer state once more and forward its warnings; declare the drive-train route."""
+    def note_skipped(self, v: float, reason: Unflyable) -> None:
+        """Remember a speed the search passed over, to declare it with the answer."""
+        self._skipped.append((v, reason))
+
+    async def answer(self, v: float, n_load: float) -> LevelPoint:
+        """Evaluate the answer state once more, forward its warnings, declare the route and the skipped speeds.
+
+        Returns:
+            The level-flight point of the answer (angle of attack, ``C_L``, ``C_D``, forces).
+        """
         found = await self.ctx.solvers.opti.level_flight_point(
             airplane_of(self.x),
             number(self.x, "m"),
@@ -176,6 +244,28 @@ class PoweredFlight:
         )
         forward_warnings(self.ctx, found.warnings)
         declare_route(self.ctx)
+        self._declare_skipped()
+        return found.point
+
+    def _declare_skipped(self) -> None:
+        """One notice for the speeds the search skipped: the count, the range and the reasons (ADR 0020)."""
+        if not self._skipped:
+            return
+        speeds = [v for v, _ in self._skipped]
+        reasons = sorted({reason for _, reason in self._skipped})
+        self.ctx.warn(
+            "powered_speeds_skipped",
+            f"{len(speeds)} speeds from {min(speeds):.4g} to {max(speeds):.4g} m/s were skipped by the "
+            f"upward scan, below the first speed with a value: "
+            + "; ".join(_SKIP_TEXT[r] for r in reasons)
+            + ".",
+            {
+                "count": len(speeds),
+                "v_min_ms": min(speeds),
+                "v_max_ms": max(speeds),
+                "reasons": [str(r) for r in reasons],
+            },
+        )
 
 
 def scan_speeds() -> Iterator[float]:
@@ -240,48 +330,68 @@ async def illinois_root(
 _GOLDEN = 0.5 * (math.sqrt(5.0) - 1.0)  # the golden-section ratio, 0.618...
 
 
-async def golden_maximum(f: Objective, low: float, high: float) -> tuple[float, float]:
-    """The argument and the value of the maximum of ``f`` inside ``[low, high]`` (golden section).
+@dataclass(frozen=True)
+class GoldenResult:
+    """The maximum found by the golden section and what bounds its final bracket from above.
 
-    ``f`` returns ``None`` where it is not defined (not flyable); ``None`` ranks below every value,
-    so the search leaves it behind. The maximum is assumed to be the only one inside the interval. The
-    result is the best point the search evaluated, so it is always a point where ``f`` is defined, also
-    where the maximum lies on the edge of the defined region.
+    Attributes:
+        v: The argument of the best evaluated point.
+        value: The objective there.
+        above: What the evaluated point that set the upper edge of the final bracket returned, if it
+            was not a value (a ``TABLE`` there: the maximum lies against the end of the propeller
+            table); ``None`` if it was a value or the edge is the end of the starting interval.
+    """
+
+    v: float
+    value: float
+    above: Unflyable | None
+
+
+async def golden_maximum(f: Objective, low: float, high: float) -> GoldenResult:
+    """The maximum of ``f`` inside ``[low, high]`` (golden section), with what bounds the final bracket.
+
+    ``f`` returns an :class:`Unflyable` where it has no value; that ranks below every value, so the search
+    leaves it behind. The maximum is assumed to be the only one inside the interval. The result is the best
+    point the search evaluated (always a value). The final bracket is narrower than
+    ``powered_optimum_tolerance`` of the scan step; if its upper edge was set by an evaluation without a
+    value (``TABLE``), the maximum lies against the end of the propeller table.
 
     Raises:
-        FormulaError: ``not_converged`` if the interval is not narrower than
-            ``powered_optimum_tolerance`` of its upper end within ``powered_search_max_steps`` steps, or
-            ``f`` is undefined at every point the search evaluated.
+        FormulaError: ``not_converged`` if the interval does not narrow within ``powered_search_max_steps``
+            steps, or ``f`` has no value at every point the search evaluated.
     """
-    tolerance = config().powered_optimum_tolerance.value
+    step = config().powered_speed_scan_step.value
+    tolerance = config().powered_optimum_tolerance.value * step
     steps = int(config().powered_search_max_steps.value)
     best: list[tuple[float, float]] = []
+    high_kind: Unflyable | None = None
 
-    async def value(v: float) -> float:
+    async def value(v: float) -> tuple[float, Unflyable | None]:
         found = await f(v)
-        if found is None:
-            return -math.inf
+        if isinstance(found, Unflyable):
+            return -math.inf, found
         best.append((v, found))
-        return found
+        return found, None
 
     x_a, x_b = high - _GOLDEN * (high - low), low + _GOLDEN * (high - low)
-    f_a, f_b = await value(x_a), await value(x_b)
+    (f_a, kind_a), (f_b, kind_b) = await value(x_a), await value(x_b)
     for _ in range(steps):
-        if high - low <= tolerance * high:
+        if high - low <= tolerance:
             if not best:
                 break
-            return max(best, key=lambda point: point[1])
+            v_best, top = max(best, key=lambda point: point[1])
+            return GoldenResult(v_best, top, high_kind)
         if f_a >= f_b:
-            high, x_b, f_b = x_b, x_a, f_a
+            high, x_b, f_b, kind_b, high_kind = x_b, x_a, f_a, kind_a, kind_b
             x_a = high - _GOLDEN * (high - low)
-            f_a = await value(x_a)
+            f_a, kind_a = await value(x_a)
         else:
-            low, x_a, f_a = x_a, x_b, f_b
+            low, x_a, f_a, kind_a = x_a, x_b, f_b, kind_b
             x_b = low + _GOLDEN * (high - low)
-            f_b = await value(x_b)
+            f_b, kind_b = await value(x_b)
     raise _not_converged(
-        f"the search for the optimum did not narrow below {tolerance:.3g} of the speed in {steps} steps, "
-        "or found no flyable speed",
+        f"the search for the optimum did not narrow below {tolerance:.3g} m/s in {steps} steps, "
+        "or found no point with a value",
         "report the case; the objective is not unimodal over the speed",
         low=low,
         high=high,
@@ -295,8 +405,9 @@ class Optimum:
     Attributes:
         v: The speed in m/s.
         value: The objective there.
-        on_wing_limit: Whether the speed lies on the edge of the speeds the airplane can fly the state
-            at (the wing cannot carry the lift just below it): the stall corner of the state.
+        on_wing_limit: Whether the scan point one step below the best scan point is one where the wing
+            cannot carry the lift: the optimum lies within the resolution of the search (one scan step)
+            of the stall corner of the state.
     """
 
     v: float
@@ -304,53 +415,86 @@ class Optimum:
     on_wing_limit: bool
 
 
-async def maximise_over_speed(f: Objective) -> Optimum:
+def table_failure(speed: float, what: str) -> FormulaError:
+    """The declared failure of a search whose answer lies at or beyond the end of the propeller table."""
+    return FormulaError(
+        ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        TABLE_FAILURE,
+        f"{what}: the propeller table ends before {speed:.4g} m/s, so the full-throttle thrust is not "
+        "available there (no extrapolation).",
+        "Use a propeller whose table covers the speeds of this flight; the kernel does not extrapolate.",
+        detail={"v_ms": speed},
+    )
+
+
+async def maximise_over_speed(f: Objective, flight: PoweredFlight) -> Optimum:
     """The maximum of ``f`` over the airspeed: upward scan, then golden section around the best point.
 
-    The upward scan skips the speeds where ``f`` is ``None`` before its first value and stops at the first
-    ``None`` after it, so the feasible speeds are taken as one interval. The maximum is refined between the
-    neighbours of the best scan point. If ``f`` is ``None`` just below the optimum, the optimum is on the
-    edge of the flyable speeds (the stall corner of the state) and the result says so.
+    The upward scan skips the speeds without a value before its first value (declared with the answer) and
+    ends at the first speed without one after it, so the feasible speeds are taken as one interval. The
+    maximum is refined between the neighbours of the best scan point. The end of the propeller table is a
+    bound of the scan: an optimum bracketed below it is returned; one that sits on it (the nearest
+    evaluated point above is beyond the table) is the declared failure ``outside_propeller_table``. A
+    ``WING`` scan point just below the best scan point puts the optimum at the stall corner to the
+    resolution of the scan (:attr:`Optimum.on_wing_limit`).
 
     Raises:
-        FormulaError: ``no_feasible_speed`` if ``f`` is ``None`` at every scan speed (or the propeller
-            table ends before any speed was feasible); ``not_converged`` from the search.
+        FormulaError: ``no_feasible_speed`` if no scan speed has a value; ``outside_propeller_table``
+            for an optimum on the table edge; ``not_converged`` from the search.
     """
     speeds: list[float] = []
     values: list[float] = []
+    below: dict[float, Unflyable | None] = {}  # the kind of the scan point below each valued one
+    previous_kind: Unflyable | None = None
+    reasons: set[Unflyable] = set()
+    table_edge: float | None = None
+    guarded = _table_as_result(f)
     for v in scan_speeds():
-        try:
-            found = await f(v)
-        except FormulaError as error:
-            if values or error.code != "outside_propeller_table":
-                raise
-            raise no_feasible_speed(
-                f"the thrust is below what the state needs at every speed the propeller table "
-                f"covers (the table ends before {v:.4g} m/s)"
-            ) from error
-        if found is None:
+        found = await guarded(v)
+        if isinstance(found, Unflyable):
+            reasons.add(found)
             if values:
+                table_edge = v if found is Unflyable.TABLE else None
                 break
-            continue
+            if found is not Unflyable.TABLE:
+                flight.note_skipped(v, found)
+                previous_kind = found
+                continue
+            break
         speeds.append(v)
         values.append(found)
+        below[v] = previous_kind
+        previous_kind = None
     if not values:
-        raise no_feasible_speed(
-            "the airplane cannot fly this state at any speed of the scan at full throttle "
-            f"(from {config().powered_speed_scan_start.value:g} m/s in steps of "
-            f"{config().powered_speed_scan_step.value:g} m/s up to the scan limit)"
-        )
+        raise never_flyable(reasons)
     best = max(range(len(values)), key=values.__getitem__)
     step = config().powered_speed_scan_step.value
-    # The lower end stays above half the speed: a relative width never narrows towards zero.
-    low = max(speeds[best] - step, 0.5 * speeds[best])
-    v_best, value = await golden_maximum(f, low, speeds[best] + step)
-    probe = v_best * (1.0 - 10.0 * config().powered_optimum_tolerance.value)
-    return Optimum(v_best, value, await f(probe) is None)
+    low = max(speeds[best] - step, config().powered_speed_scan_start.value)
+    result = await golden_maximum(guarded, low, speeds[best] + step)
+    if result.above is Unflyable.TABLE:
+        raise table_failure(
+            table_edge if table_edge is not None else result.v,
+            f"the optimum lies on the end of the table (best value at {result.v:.4g} m/s)",
+        )
+    return Optimum(result.v, result.value, below[speeds[best]] is Unflyable.WING)
 
 
-async def climb_angle(flight: PoweredFlight, v: float) -> float | None:
-    """The steepest steady climb angle in rad at the speed ``v``, at full throttle; ``None`` if there is none.
+def _table_as_result(f: Objective) -> Objective:
+    """``f`` with the end of the propeller table (``outside_propeller_table``) as the result ``TABLE``."""
+
+    async def guarded(v: float) -> float | Unflyable:
+        try:
+            return await f(v)
+        except FormulaError as error:
+            if error.code == TABLE_FAILURE:
+                return Unflyable.TABLE
+            raise
+
+    return guarded
+
+
+async def climb_angle(flight: PoweredFlight, v: float) -> float | Unflyable:
+    """The steepest steady climb angle in rad at the speed ``v``, at full throttle, or why there is none.
 
     The force balances of the exact steady climb: along the path ``T - D(V, cos gamma) = m g sin gamma``
     and across it ``L = m g cos gamma``, so the drag is the one at the load factor ``cos gamma`` and the
@@ -358,14 +502,16 @@ async def climb_angle(flight: PoweredFlight, v: float) -> float | None:
     ``gamma``; the climb angle is its root, ``pi/2`` (vertical, the declared bound of the entry) where
     ``F`` is not negative there. Below the stall of level flight only the angles steep enough for the wing
     to carry ``m g cos gamma`` exist, so the bracket is found by bisection that treats "the wing cannot
-    carry it" as "too shallow", and is then refined by Illinois regula falsi. ``None`` where no angle
-    is both flyable and held by the thrust.
+    carry it" as "too shallow", and is then refined by Illinois regula falsi. ``THRUST`` where level flight
+    is held but the thrust is below its drag; ``WING`` where no angle the thrust holds is one the wing can
+    carry.
 
     The search assumes ``F`` has one root on the angles the wing can carry (the lift of a steeper climb is
     smaller, so the induced drag is too, and the weight component grows).
 
     Raises:
-        FormulaError: As :meth:`PoweredFlight.thrust` and :meth:`PoweredFlight.required_drag`.
+        FormulaError: As :meth:`PoweredFlight.thrust` and :meth:`PoweredFlight.required_drag`; a failure
+            of the adapter that is not the wing limit (also at the zero-lift point) is raised, not skipped.
     """
     thrust, weight = flight.thrust(v), flight.weight
 
@@ -390,10 +536,10 @@ async def climb_angle(flight: PoweredFlight, v: float) -> float | None:
         return RIGHT_ANGLE
     f_level = await excess(0.0)
     if f_level is not None and f_level < 0.0:
-        return None
+        return Unflyable.THRUST
     low = (0.0, f_level) if f_level is not None else None
     shallow, steep = 0.0, RIGHT_ANGLE
-    tolerance = config().powered_optimum_tolerance.value
+    tolerance = config().powered_load_factor_tolerance.value
     while low is None and steep - shallow > tolerance * steep:
         middle = 0.5 * (shallow + steep)
         found = await excess(middle)
@@ -404,7 +550,7 @@ async def climb_angle(flight: PoweredFlight, v: float) -> float | None:
         else:
             steep = middle
     if low is None:
-        return None
+        return Unflyable.WING
     return await illinois_root(required, low, (RIGHT_ANGLE, f_top), weight)
 
 
@@ -422,32 +568,37 @@ class TurnLimit:
     limit: str
 
 
-async def sustained_load_factor(flight: PoweredFlight, v: float, n_lim: float) -> TurnLimit | None:
+async def sustained_load_factor(
+    flight: PoweredFlight, v: float, n_lim: float
+) -> TurnLimit | Unflyable:
     """The highest load factor ``n`` in ``[1, n_lim]`` that the airplane holds in a level turn at ``v``.
 
     A sustained turn is level at constant speed: ``L = n m g`` and ``T >= D(V, n)``, with the drag at
     the load factor ``n`` and the wing on the branch before the stall. Feasibility falls with ``n``
     (more lift: more induced drag, and the stall), so the highest feasible ``n`` is found by bisection
-    on ``[1, n_lim]`` to ``powered_optimum_tolerance``; the answer is the feasible end. ``None`` where
-    level flight itself is not held (the wing or the thrust).
+    on ``[1, n_lim]`` to ``powered_load_factor_tolerance`` (much tighter than the speed search, so the
+    objective is not a staircase at the resolution of the speed); the answer is the feasible end. The
+    result is ``WING`` or ``THRUST`` where level flight itself is not held.
 
     Raises:
         FormulaError: As :meth:`PoweredFlight.thrust` and :meth:`PoweredFlight.drag`.
     """
 
-    async def verdict(n: float) -> str | None:
+    async def verdict(n: float) -> Unflyable | None:
         """``None`` if the turn at ``n`` is held, else the limit that stops it."""
         drag = await flight.drag(v, n)
         if drag is None:
-            return "wing"
-        return None if flight.thrust(v) >= drag else "thrust"
+            return Unflyable.WING
+        return None if flight.thrust(v) >= drag else Unflyable.THRUST
 
-    if await verdict(LEVEL_FLIGHT) is not None:
-        return None
+    level = await verdict(LEVEL_FLIGHT)
+    if level is not None:
+        return level
     stop = await verdict(n_lim)
     if stop is None:
         return TurnLimit(n_lim, "structure")
-    low, high, tolerance = LEVEL_FLIGHT, n_lim, config().powered_optimum_tolerance.value
+    low, high = LEVEL_FLIGHT, n_lim
+    tolerance = config().powered_load_factor_tolerance.value
     while high - low > tolerance * high:
         middle = 0.5 * (low + high)
         found = await verdict(middle)
@@ -455,7 +606,7 @@ async def sustained_load_factor(flight: PoweredFlight, v: float, n_lim: float) -
             low = middle
         else:
             high, stop = middle, found
-    return TurnLimit(low, stop)
+    return TurnLimit(low, str(stop))
 
 
 def declare_limit(ctx: Context, limit: str, what: str, detail: dict[str, JsonValue]) -> None:
@@ -472,7 +623,8 @@ async def vertical_upper_edge(flight: PoweredFlight, v: float) -> float:
 
     Raises:
         FormulaError: ``not_converged`` if the climb is still vertical at the scan limit; the failures
-            of :meth:`PoweredFlight.thrust`.
+            of :meth:`PoweredFlight.thrust` (the end of the propeller table before the edge is
+            ``outside_propeller_table``).
     """
 
     async def excess(speed: float) -> float:
@@ -500,10 +652,11 @@ async def finish_climb(flight: PoweredFlight, optimum: Optimum, gamma: float) ->
 
     The state of the answer is the load factor ``cos(gamma)``, ``0`` for the vertical climb. The vertical
     climb (the entry's one declared exception) and the stall corner (the wing cannot carry the lift of a
-    slower speed) are declared with the notice ``powered_limit_declared``.
+    slower speed) are declared with the notice ``powered_limit_declared``; the corner notice carries the
+    numbers needed to read a climb speed below the level stall speed.
     """
     v, vertical = optimum.v, gamma >= RIGHT_ANGLE
-    await flight.answer(v, VERTICAL_FLIGHT if vertical else math.cos(gamma))
+    point = await flight.answer(v, VERTICAL_FLIGHT if vertical else math.cos(gamma))
     if vertical:
         declare_limit(
             flight.ctx,
@@ -515,13 +668,29 @@ async def finish_climb(flight: PoweredFlight, optimum: Optimum, gamma: float) ->
             {"v_ms": v},
         )
     elif optimum.on_wing_limit:
+        detail: dict[str, JsonValue] = {
+            "v_ms": v,
+            "cl": point.cl,
+            "gamma_deg": math.degrees(gamma),
+            "cos_gamma": math.cos(gamma),
+        }
+        level = flight.lowest_level_speed
+        if level is not None:
+            detail["lowest_evaluated_level_flight_speed_ms"] = level
         declare_limit(
             flight.ctx,
             "wing",
-            f"The optimum lies on the stall corner: at {v:.4g} m/s the wing carries the lift of the "
-            "climb at its maximum before the stall, and a slower speed would need more lift than the "
-            "wing gives. The climb is limited by the wing at this speed, not by the thrust.",
-            {"v_ms": v},
+            f"The optimum lies on the stall corner: at {v:.4g} m/s on a climb of "
+            f"{math.degrees(gamma):.4g} deg the wing carries the lift m g cos(gamma) = "
+            f"{math.cos(gamma):.3g} m g at C_L = {point.cl:.3g}, and a slower speed would need more lift "
+            "than the wing gives. The climb is limited by the wing at this speed, not by the thrust; the "
+            "speed may lie below the level-flight stall speed because a steep path needs less lift"
+            + (
+                f" (level flight was possible down to {level:.4g} m/s among the evaluated speeds)."
+                if level
+                else "."
+            ),
+            detail,
         )
 
 
@@ -539,15 +708,19 @@ async def sustained_turn(
         FormulaError: As :func:`maximise_over_speed`.
     """
 
-    async def at_speed(v: float) -> float | None:
+    async def at_speed(v: float) -> float | Unflyable:
         found = await sustained_load_factor(flight, v, n_lim)
-        if found is None or found.n <= LEVEL_FLIGHT:
-            return None
+        if isinstance(found, Unflyable):
+            return found
+        if found.n <= LEVEL_FLIGHT:
+            return Unflyable.THRUST
         return objective(v, found.n)
 
-    v = (await maximise_over_speed(at_speed)).v
+    v = (await maximise_over_speed(at_speed, flight)).v
     limit = await sustained_load_factor(flight, v, n_lim)
-    if limit is None:  # pragma: no cover - the maximum is evaluated at a speed that held a turn
+    if isinstance(
+        limit, Unflyable
+    ):  # pragma: no cover - the maximum is evaluated at a speed that held a turn
         raise _not_converged("the optimum turn is not flyable", "report the case", v_ms=v)
     await flight.answer(v, limit.n)
     declare_limit(

@@ -29,6 +29,7 @@ from aero_kernel.context import Context, Inputs
 from aero_kernel.devices import crow_configuration, flap_deflections
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.flap_validity import warn_flap_validity
+from aero_kernel.formulas.powered_flight import LEVEL_FLIGHT
 from aero_kernel.formulas.stall_speed import first_extremum_check
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
@@ -197,9 +198,6 @@ def _off_peak(curve: StallCurve) -> FormulaError | None:
     )
 
 
-_LEVEL_FLIGHT = 1.0  # the load factor of level flight: L = W (definition of n = L / W)
-
-
 async def _glides(
     ctx: Context,
     configurations: Sequence[AirplaneGeometry],
@@ -212,7 +210,7 @@ async def _glides(
         await asyncio.gather(
             *(
                 ctx.solvers.opti.level_flight_point(
-                    configuration, mass, gravity, air, speed, _LEVEL_FLIGHT
+                    configuration, mass, gravity, air, speed, LEVEL_FLIGHT
                 )
                 for configuration, speed in zip(configurations, speeds, strict=True)
             )

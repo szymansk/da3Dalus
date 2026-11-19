@@ -36,6 +36,8 @@ outputs: {r_min: min-sustained-turn-radius, v_r: min-sustained-turn-radius-speed
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: limit_load_factor_above_one, parameter: n_lim, on_violation: error}
 ---
 
 # Tightest sustained turn at full throttle
@@ -82,6 +84,8 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 No register node is mapped to this entry.
 
 **Implementation note (gh-1414).** The optimum lies at the corner where the thrust limit meets the wing limit when the lift maximum binds; the notice names the limit the search met first.
+
+**Implementation remark on method and assumptions (#1414).** As `max-sustained-turn-rate` with the objective `-r`; the same assumptions and the same precondition `limit_load_factor_above_one` on `n_lim`.
 
 ## Approval
 

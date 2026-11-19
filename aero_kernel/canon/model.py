@@ -689,6 +689,7 @@ class KernelConfig(BaseModel):
     powered_speed_scan_limit: ConfigValue
     powered_root_tolerance: ConfigValue
     powered_optimum_tolerance: ConfigValue
+    powered_load_factor_tolerance: ConfigValue
     powered_search_max_steps: ConfigValue
 
     @model_validator(mode="after")

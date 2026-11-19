@@ -74,6 +74,8 @@ No register node is mapped to this entry.
 
 **Implementation note (gh-1414).** Warnings forwarded: those of the answer's level-flight point (flap, Reynolds, Mach and the drag notice of the adapter) and the route notice; those of the search iterates are not. New error code `no_feasible_speed` (`unsupported_configuration`): the thrust is below the drag at every speed the wing can fly (or the propeller table covers).
 
+**Implementation remark on method and assumptions (#1414).** Solved as the largest `V` with `T - D >= 0`: an upward scan of the speed to the end of the evaluable range (the scan limit, or the end of the propeller table, which is a bound of the search) keeps the *last* positive-to-negative change of `T - D`, refined by Illinois regula falsi. Assumptions: features of `T - D` no narrower than the scan step (2 m/s, `powered_speed_scan_step`; a dip and recovery inside one step can be missed); the thrust still above the drag where the table ends is the declared failure `outside_propeller_table` (the optimum is on the bound), not a value. Speeds the wing cannot fly are skipped and declared by the notice `powered_speeds_skipped`.
+
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority

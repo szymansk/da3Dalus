@@ -689,6 +689,9 @@
         "opt_zero_span": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "powered_load_factor_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "powered_optimum_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -747,6 +750,7 @@
         "powered_speed_scan_limit",
         "powered_root_tolerance",
         "powered_optimum_tolerance",
+        "powered_load_factor_tolerance",
         "powered_search_max_steps"
       ],
       "title": "KernelConfig",

@@ -58,6 +58,8 @@ gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is 
 
 **Termination.** The bound `0 ≤ γ ≤ π/2` is part of the problem: without it the inverted solution `γ = π` (`L = −m·g`, `T ≥ D`) would be feasible and larger than any upright climb angle; `sin` and `cos` are periodic, so without the bound the problem is unbounded in `γ` and has no maximum. `γ` is in radians inside `sin` and `cos` and is converted to degrees for the output. Approval asks for **no bound active at the optimum** — with one declared exception: `gamma` at its 90° bound means the aircraft climbs vertically at that speed. Any other active bound, and a failed solve, return no value (ADR 0020).
 
+**Remark on Termination (#1414).** An optimum on the stall corner is returned together with the notice `powered_limit_declared` (`limit` `wing`) instead of being withheld; reasons as in `best-rate-of-climb`: the best angle of climb sits on or within 1 % of the stall corner on every airplane measured (closed-form airplane at 3.4 and 6.0 kg; Avistar Elite `V_x` 10.0 m/s at 40.6 deg with `C_L` 1.19 against 1.22 at the stall).
+
 **The current is a verdict, not a constraint.** The optimum yields the motor current. Above the motor's, the controller's or the battery's limit the drive is overloaded at full throttle — reported, not optimised away.
 
 **Model fidelity is declared** (`Q-PT-6`): which route of the torque balance ran, and that the battery voltage is nominal.
@@ -80,7 +82,9 @@ gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is 
 
 No register node is mapped to this entry.
 
-**Implementation note (gh-1414).** The optimum of the angle of climb lies on, or within 1 % of, the stall corner: on a closed-form airplane with a thrust-to-weight ratio near 1 the steepest angle is flown at the lowest speed at which the wing still carries `m g cos gamma`; on the Avistar Elite (AXI 4120/14 on 4S, APC 13x8E) `V_x` is 10.0 m/s at 40.6 deg, below the level-flight stall speed of 11.4 m/s because a steep path needs less lift, at `C_L` 1.19 against 1.22 at the stall. A corner optimum is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see the decision file `climb-optimum-on-the-stall-corner` (the entry's Termination text asks for no value there; the sibling decision of #1268 for `minimum-sink-speed` returns the boundary value with a notice).
+**Implementation note (gh-1414).** The optimum of the angle of climb lies on, or within 1 % of, the stall corner: on a closed-form airplane with a thrust-to-weight ratio near 1 the steepest angle is flown at the lowest speed at which the wing still carries `m g cos gamma`; on the Avistar Elite (AXI 4120/14 on 4S, APC 13x8E) `V_x` is 10.0 m/s at 40.6 deg, below the level-flight stall speed of 11.4 m/s because a steep path needs less lift, at `C_L` 1.19 against 1.22 at the stall. A corner optimum is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see #1414 (the entry's Termination text asks for no value there; see the remark on Termination).
+
+**Implementation remark on method and assumptions (#1414).** As `best-rate-of-climb`, with the angle itself as the objective. Assumptions: one maximum of the angle over the speed; one root of the excess over the angles the wing can carry; features no narrower than the scan step (2 m/s).
 
 ## Approval
 

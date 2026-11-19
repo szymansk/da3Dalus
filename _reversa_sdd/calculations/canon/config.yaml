@@ -232,7 +232,7 @@ powered_speed_scan_start:
   unit: m/s
   guards: "Powered performance at full throttle (max-level-speed, dive-speed, the climbs, the sustained turns): the first speed of the upward scan that brackets a root or an optimum. Below the stall the wing cannot carry the weight, so the points under the stall speed are skipped, not evaluated further."
   basis: numerical
-  source: "a search start, no physical claim: below the stall speed of every aircraft of the reference fleet (smallest about 5 m/s), above the speed at which a sweep's Reynolds number is meaningless; a start below the stall only costs skipped points"
+  source: "a search start, no physical claim: below the level-flight stall speed of the aircraft this was run on (Avistar Elite 11.4 m/s); the points below the stall are skipped and the skipped range is declared in the result"
 
 powered_speed_scan_step:
   value: 2.0
@@ -249,18 +249,25 @@ powered_speed_scan_limit:
   source: "termination of the scan only: about Mach 0.44, beyond the Mach 0.3 where the incompressible solver stops being exact (Anderson sec. 1.10.3), so every value below it is reported with the Mach notice of the solver adapter and none is cut off by this limit in the RC and UAV regime"
 
 powered_root_tolerance:
-  value: 0.00000001
+  value: 0.00001
   unit: "1"
   guards: "Powered performance at full throttle: the force residual, relative to the weight m g, at which a root search (Illinois regula falsi) accepts its root."
   basis: numerical
-  source: "far below the 1e-6 of the level-flight lift tolerance (opt_level_lift_tolerance) that fixes every point's own accuracy and far above double-precision noise; a root is no more exact than the points it is made of, so the value only decides when a smooth search stops"
+  source: "at the accuracy of the points the root is made of: each drag comes from a level-flight point whose lift matches its target to opt_level_lift_tolerance (1e-6 of m g), and a force residual below that is noise of the evaluation, not information; one order above it (1e-5 of m g) lets a search terminate on a noisy evaluation, and still places a root of a thrust or drag of a few newtons to about 1e-4 N"
 
 powered_optimum_tolerance:
   value: 0.0001
   unit: "1"
-  guards: "Powered performance at full throttle: the relative width of the interval at which the golden-section search of an optimum over the airspeed and the bisection of the limit load factor stop."
+  guards: "Powered performance at full throttle: the width of the interval, relative to the scan step of the airspeed, at which the golden-section search of an optimum over the airspeed stops."
   basis: numerical
-  source: "an optimum is flat: the objective differs from its maximum by the square of the distance, so a speed known to 1e-4 of itself gives the value to about 1e-8; the search resolution is a numerical margin, no domain threshold"
+  source: "an optimum is flat: the objective differs from its maximum by the square of the distance, so a speed known to 1e-4 of the scan step (0.2 mm/s at 2 m/s) gives the value to far below the accuracy of the drag; a numerical resolution, no domain threshold"
+
+powered_load_factor_tolerance:
+  value: 0.000001
+  unit: "1"
+  guards: "Powered performance at full throttle, sustained turn: the relative width of the interval of the load factor at which the bisection of the highest feasible load factor at one airspeed stops."
+  basis: numerical
+  source: "the outer search over the speed resolves the speed to 1e-4 of the scan step; the objective at one speed carries the load factor to the first power (omega = g sqrt(n^2 - 1) / V), so a staircase of relative width d in n makes a staircase of about d in the objective; 1e-6 is two orders below the 1e-4 of the outer search, so the objective is smooth at the resolution of the speed search"
 
 powered_search_max_steps:
   value: 60

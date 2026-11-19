@@ -51,10 +51,7 @@ async def best_angle_of_climb(x: Inputs, ctx: Context) -> dict[str, float]:
     """
     flight = PoweredFlight(x, ctx)
 
-    async def angle(v: float) -> float | None:
-        return await climb_angle(flight, v)
-
-    optimum = await maximise_over_speed(angle)
+    optimum = await maximise_over_speed(lambda v: climb_angle(flight, v), flight)
     gamma = optimum.value
     if gamma >= RIGHT_ANGLE:
         optimum = Optimum(await vertical_upper_edge(flight, optimum.v), gamma, False)

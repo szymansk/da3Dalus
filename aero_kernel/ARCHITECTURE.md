@@ -932,8 +932,12 @@ caller's responsibility.
     rest is a one-dimensional search over the speed: an upward scan (`powered_speed_scan_*`), Illinois regula
     falsi for roots and golden section for maxima (`powered_*` in `config.yaml`). Warnings of the iterates are not
     forwarded, those of the answer's evaluation are. A bound the optimum lies on is declared with the `notice`
-    `powered_limit_declared` (`detail.limit`: `gamma_90_deg`, `wing`, `thrust`, `structure`); the propeller table
-    ends the search with `outside_propeller_table`, not an extrapolation.
+    `powered_limit_declared` (`detail.limit`: `gamma_90_deg`, `wing`, `thrust`, `structure`); speeds the upward scan
+    skips below the first speed with a value are declared by the `notice` `powered_speeds_skipped` (count, range, reason).
+    An evaluation is a value or an `Unflyable` (`wing`, `thrust`, `table`); only the adapter's `limit = wing_lift` failure
+    is the wing, every other failure (a sweep without a peak, a zero-lift angle outside the sweep) is raised. The end of
+    the propeller table is a bound of the search: an interior optimum is returned, one on the edge is
+    `outside_propeller_table`, not an extrapolation.
   - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
     polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
     `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the

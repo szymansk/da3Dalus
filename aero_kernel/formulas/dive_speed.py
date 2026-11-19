@@ -13,29 +13,39 @@ from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.powered_flight import (
+    TABLE_FAILURE,
     VERTICAL_FLIGHT,
     PoweredFlight,
     illinois_root,
     scan_speeds,
+    table_failure,
 )
 from aero_kernel.registry import formula
 
 __all__ = ["dive_speed"]
 
 
-async def _surplus(flight: PoweredFlight, v: float) -> float | None:
+async def _surplus(flight: PoweredFlight, v: float) -> float:
     """The drag at zero lift minus the weight and the thrust at full throttle at ``v`` (N).
 
-    ``None`` where the lift curve has no zero-lift point before its first peak at this speed (a very low
-    Reynolds number): the speed is skipped, the dive does not end there.
+    The zero-lift point must exist at every speed (a lift curve that does not cross zero before its first
+    peak is a failure of the adapter, not a stall: it is raised, not skipped).
+
+    Raises:
+        FormulaError: ``outside_propeller_table`` naming the speed at which the dive left the table.
     """
-    drag = await flight.drag(v, VERTICAL_FLIGHT)
-    return None if drag is None else drag - flight.weight - flight.thrust(v)
-
-
-async def _bracketed_surplus(flight: PoweredFlight, v: float) -> float:
-    """The surplus at a speed inside a bracket, where the zero-lift point must exist."""
-    return await flight.required_drag(v, VERTICAL_FLIGHT) - flight.weight - flight.thrust(v)
+    drag = await flight.required_drag(v, VERTICAL_FLIGHT)
+    try:
+        thrust = flight.thrust(v)
+    except FormulaError as error:
+        if error.code != TABLE_FAILURE:
+            raise
+        raise table_failure(
+            v,
+            f"the dive left the propeller table at {v:.4g} m/s before the zero-lift drag "
+            f"({drag:.4g} N) reached the weight ({flight.weight:.4g} N) plus the thrust",
+        ) from error
+    return drag - flight.weight - thrust
 
 
 def _not_reached(at_start: bool) -> FormulaError:
@@ -77,13 +87,11 @@ async def dive_speed(x: Inputs, ctx: Context) -> dict[str, float]:
     previous: tuple[float, float] | None = None
     for v in scan_speeds():
         surplus = await _surplus(flight, v)
-        if surplus is None:
-            continue
         if surplus > 0.0:
             if previous is None:
                 break
             v_d = await illinois_root(
-                lambda speed: _bracketed_surplus(flight, speed),
+                lambda speed: _surplus(flight, speed),
                 previous,
                 (v, surplus),
                 flight.weight,
