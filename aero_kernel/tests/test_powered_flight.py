@@ -35,8 +35,14 @@ def flight(slug: str = "max-level-speed", mass: float = 3.4) -> pf.PoweredFlight
 async def test_the_scan_runs_from_the_given_start_to_the_limit_in_steps() -> None:
     speeds = list(pf.scan_speeds(START))
     assert (speeds[0], speeds[1], speeds[-1], len(speeds)) == (2.0, 4.0, 150.0, 75)
-    from_stall = list(pf.scan_speeds(9.5))
-    assert (from_stall[0], from_stall[1], from_stall[-1]) == (9.5, 11.5, 149.5)
+
+
+async def test_the_scan_goes_on_at_the_multiples_of_the_step_after_an_off_grid_start() -> None:
+    """Whatever the start, the speeds after it are the multiples of the step, so the end of the propeller
+    table falls between the same two scan speeds as ever (JAGUAR: root 39.0 m/s, edge near 40 m/s, gh-1419)."""
+    speeds = list(pf.scan_speeds(9.5))
+    assert speeds[:4] == [9.5, 10.0, 12.0, 14.0]
+    assert speeds[-1] == 150.0
 
 
 async def test_illinois_finds_the_cube_root_of_two() -> None:

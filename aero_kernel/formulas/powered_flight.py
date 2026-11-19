@@ -311,13 +311,19 @@ class PoweredFlight:
 
 
 def scan_speeds(start: float) -> Iterator[float]:
-    """The speeds of the upward scan: start, start + step, ... up to the limit (``config.yaml``)."""
+    """The speeds of the upward scan: ``start``, then the multiples of the step above it, up to the limit.
+
+    The speeds after ``start`` are the multiples of ``powered_speed_scan_step`` (``config.yaml``), not
+    ``start + k * step``: a speed away from the start is then the same whatever the aircraft, and the end of
+    the propeller table falls between the same two scan speeds as for any other start.
+    """
     settings = config()
     step = settings.powered_speed_scan_step.value
     limit = settings.powered_speed_scan_limit.value
-    k = 0
-    while start + k * step <= limit:
-        yield start + k * step
+    yield start
+    k = math.floor(start / step) + 1
+    while k * step <= limit:
+        yield k * step
         k += 1
 
 
