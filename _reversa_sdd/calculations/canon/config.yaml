@@ -87,10 +87,17 @@ opt_level_lift_tolerance:
   basis: numerical
   source: "the lift balance of every other optimisation of the kernel is solved by IPOPT to its default tolerance of 1e-8 on the scaled constraint (opt_probe_tolerance, 1e-6 leaves two decades); a fit point whose lift misses the weight by one part in a million moves its C_L by the same fraction, far below the scatter of the polar"
 
+opt_level_max_steps:
+  value: 20
+  unit: "1"
+  guards: "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance."
+  basis: numerical
+  source: "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one"
+
 opt_zero_span:
   value: 1.0e-15
   unit: "1"
-  guards: "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference."
+  guards: "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference. Also the zero test of a slope that is divided by: the secant slope of a level-flight point (lift per degree) and the slope of the parabola fitted to the level-flight polar (a slope this close to zero has no finite Oswald factor)."
   basis: numerical
   source: "a margin over floating-point noise of C_L, which is of order 1"
 

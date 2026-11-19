@@ -1,15 +1,17 @@
 """parabolic-polar-fit (#1401): the least-squares fit, the window, the declarations, through the engine."""
 
+import dataclasses
 import math
 from collections.abc import Callable, Sequence
 from itertools import pairwise
 
 import pytest
 from aero_kernel.build import shipped_build
-from aero_kernel.context import Value
+from aero_kernel.context import Context, Value
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.parabolic_polar_fit import ParabolaFit, fit_parabola, parabolic_polar_fit
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.rules import Rules
 from aero_kernel.schema import KernelWarning, QuantityStatus, WarningSeverity
 from aero_kernel.solvers.opti import LevelPolar
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
@@ -18,6 +20,7 @@ from aero_kernel.tests.formula_builders import (
     close,
     context_with,
     inputs_from_model,
+    solvers_with,
 )
 from aero_kernel.tests.stall_stubs import CD0, UPRIGHT_PEAK, K, StubOpti, parabolic_level_polar
 from aero_kernel.tests.test_roll_rate_engine import GRAVITY, MASS, RHO, plane, run
@@ -166,7 +169,8 @@ def falling(cl: float) -> float:
 
 
 def below_zero(cl: float) -> float:
-    return -0.01 + 0.05 * cl * cl
+    """Every point has a positive drag, but the line fitted in C_L^2 has a negative intercept."""
+    return 0.001 + 0.1 * cl**4
 
 
 def nearly_flat(cl: float) -> float:
@@ -203,6 +207,52 @@ async def test_a_flat_polar_has_no_finite_oswald_factor() -> None:
     with pytest.raises(FormulaError) as raised:
         await parabolic_polar_fit(fit_inputs(), ctx)
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
+
+
+def one_bad_point(bad: float) -> Callable[[Sequence[float]], LevelPolar]:
+    """The parabola with the drag of its middle point replaced by ``bad``: the slope stays non-zero."""
+
+    def answer(levels: Sequence[float]) -> LevelPolar:
+        base = parabolic_level_polar(levels)
+        cd = list(base.cd)
+        cd[len(cd) // 2] = bad
+        return base.model_copy(update={"cd": tuple(cd)})
+
+    return answer
+
+
+@pytest.mark.parametrize("bad", [0.0, -0.01])
+async def test_a_single_solver_drag_at_or_below_zero_is_refused_with_its_code(bad: float) -> None:
+    """One point with C_D <= 0 among good ones (a non-zero fitted slope): never fitted, never divided by."""
+    opti = StubOpti()
+    opti.level_answer = one_bad_point(bad)
+    ctx = context_with(StubAtmosphere({}), opti=opti)
+    with pytest.raises(FormulaError) as raised:
+        await parabolic_polar_fit(fit_inputs(), ctx)
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED
+    assert raised.value.code == "defective_solver_drag"
+
+
+async def test_an_empty_window_has_its_code() -> None:
+    ctx = context_with(StubAtmosphere({}), opti=StubOpti())
+    with pytest.raises(FormulaError) as raised:
+        await parabolic_polar_fit(fit_inputs(cl_max=0.1), ctx)
+    assert raised.value.code == "empty_fit_window"
+
+
+@pytest.mark.parametrize("points", [2.5, 2.0, 0.5])
+async def test_a_fit_point_count_that_is_no_integer_of_at_least_three_is_refused(
+    points: float,
+) -> None:
+    solvers = dataclasses.replace(
+        solvers_with(opti=StubOpti()),
+        rules=Rules(MODEL, {"parabolic-polar-fit.fit_points": points}),
+    )
+    ctx = Context(origin="t", solvers=solvers)
+    with pytest.raises(FormulaError) as raised:
+        await parabolic_polar_fit(fit_inputs(), ctx)
+    assert raised.value.category is ErrorCategory.INVALID_INPUT
+    assert raised.value.code == "invalid_fit_points"
 
 
 def flat(_cl: float) -> float:

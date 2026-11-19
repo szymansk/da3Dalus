@@ -3,6 +3,7 @@ canon: parabolic-polar-fit
 entry: formula
 kind: fit
 tool: OPT
+cost: seconds
 shape: law
 status: draft
 output: zero-lift-drag-coefficient, oswald-efficiency
@@ -83,7 +84,11 @@ fitted numbers in its `detail`; the formulas that divide by them ([[induced-drag
 non-positive `e` by their own preconditions. The only refusals of the fit itself are an empty window, a level
 that the airplane does not reach before its first `C_L` peak, a point whose lift does not settle on the weight,
 a solver drag at or below zero, and a slope of zero to `opt_zero_span` (no finite `e`): each is a `FormulaError`, never a
-value. The kernel's drag is declared as everywhere (`induced_drag_viscous_factor_removed`).
+value. The refusals carry the codes `empty_fit_window`, `invalid_fit_points` (a point count that is no integer of at least 3), `defective_solver_drag` (any point with `C_D ≤ 0`, before anything is divided by it) and `not_converged`. The kernel's drag is declared as everywhere (`induced_drag_viscous_factor_removed`).
+
+**Cost (measured, #1401).** The fit is the slowest formula of the kernel that is not a long run: 48 points take about 10 s (RV-7) to 90 s (WIESEL) on the reference fleet, about 40 s on BRYAN (one AeroBuildup sweep and a few evaluations per point). The cost class is declared `seconds` (`cost: seconds`, tens of seconds); the class `minutes` would skip the fit, and everything that reads it, unless the caller asks for long runs (ARCHITECTURE §8.7).
+
+**Regime warnings.** The regime of the fit is that of its slowest and its fastest point: Reynolds number (chord times V over the kinematic viscosity) and Mach number (V over the speed of sound) rise strictly with V, so the bands are met first at one of the two extremes.
 
 ## Implementations (1)
 

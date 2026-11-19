@@ -258,6 +258,7 @@ nothing failed. The category enum holds only the eight rows above.
   `flap_deflections_differ` — deflected flaps at different angles reach AVL, which holds them as one control variable;
   `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
   value per section; `detail`: wing key, y).
+- **The parabolic polar fit (#1401):** `empty_fit_window` and `invalid_fit_points` (`invalid_input`) — the window of `C_L` is empty, or the rule's `fit_points` is no integer of at least 3; `defective_solver_drag` (`not_converged`) — a level-flight point with a solver `C_D` at or below zero, refused before anything is divided by it.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `warning` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
@@ -906,7 +907,11 @@ caller's responsibility.
     (`alpha_for_lift_coefficient`) and refined by secant steps on AeroBuildup's lift until it equals `m g` to
     `opt_level_lift_tolerance` (`config.yaml`); a level the lift curve does not reach, a missing peak or a point
     that does not settle in `LEVEL_MAX_STEPS` is `not_converged`. The drag is `kernel_drag`. The regime warnings
-    are those of the slowest and of the fastest point, the drag notice is declared once. The fit itself (least
+    are those of the slowest and of the fastest point (Reynolds number and Mach number rise strictly with V in a
+    fixed air state, so the regime bands are met first at one of the two extremes and the two bound every point
+    between them), the drag notice is declared once. A converged point must lie at or below the angle of the
+    sweep's first C_L peak, else `not_converged`; the step limit is `opt_level_max_steps` (`config.yaml`,
+    termination only). The fit itself (least
     squares in `C_L^2`, residual) is the formula's, in `formulas/parabolic_polar_fit.py`; its window and point
     count are the parameters of the rule `parabolic-polar-fit`.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
@@ -1930,7 +1935,7 @@ model (part of `IMPORT_REPORT.md`).
 | `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe |
 | `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later |
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
-| `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe · implemented (#1401) |
+| `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds (tens of seconds: 10 to 90 s measured, declared) | probe · implemented (#1401) |
 | `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe |
 | `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain · implemented (#1401) |
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |

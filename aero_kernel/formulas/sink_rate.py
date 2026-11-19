@@ -12,7 +12,7 @@ from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import number
 from aero_kernel.registry import CheckResult, formula, precondition
 
-__all__ = ["lift_coefficient_positive", "sink_rate"]
+__all__ = ["drag_coefficient_positive", "lift_coefficient_positive", "sink_rate"]
 
 RULE = "small-glide-angle"
 
@@ -34,13 +34,31 @@ def lift_coefficient_positive(x: Inputs) -> CheckResult:
     )
 
 
+@precondition("sink-rate", "drag_coefficient_positive")
+def drag_coefficient_positive(x: Inputs) -> CheckResult:
+    """The drag coefficient of the parabola must be greater than zero: a glide with no drag has no sink rate.
+
+    A parabola with a non-positive ``C_D`` at this ``C_L`` is not physically meaningful (it can come
+    from a non-physical fit); the canon declares the violation an error at this formula
+    (``on_violation: error``), so no zero or negative sink rate is returned and nothing is
+    substituted (ADR 0020). The bound is physical, not a tuned threshold.
+    """
+    cd = number(x, "cd")
+    if cd > 0.0:
+        return CheckResult(state="held", message=f"C_D = {cd} is greater than zero")
+    return CheckResult(
+        state="violated",
+        message=f"C_D = {cd} is not greater than zero: the parabola has no drag at this point",
+    )
+
+
 @formula("sink-rate")
 async def sink_rate(x: Inputs, ctx: Context) -> dict[str, float]:
     """The vertical descent rate of a steady glide at a speed, from the polar's drag and lift coefficients.
 
     Args:
-        x: ``v`` the flight speed in m/s, ``cl`` the lift coefficient (1, > 0 by the precondition)
-            and ``cd`` the drag coefficient of the parabola (1).
+        x: ``v`` the flight speed in m/s, ``cl`` the lift coefficient and ``cd`` the drag coefficient of the
+            parabola (both 1 and > 0 by the preconditions).
         ctx: The formula context; ``ctx.solvers.rules`` holds the glide-ratio floor.
 
     Returns:
@@ -51,7 +69,7 @@ async def sink_rate(x: Inputs, ctx: Context) -> dict[str, float]:
     """
     speed, cl, cd = number(x, "v"), number(x, "cl"), number(x, "cd")
     floor = ctx.solvers.rules.value(RULE, "min_glide_ratio")
-    glide_ratio = cl / cd if cd > 0.0 else math.inf
+    glide_ratio = cl / cd
     if glide_ratio < floor:
         gamma = math.atan(cd / cl)
         from_tan = 1.0 / math.cos(gamma) - 1.0

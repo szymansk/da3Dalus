@@ -69,7 +69,7 @@ def _window(x: Inputs, ctx: Context) -> list[float]:
     """The levels of the fit: ``fit_points`` values equally spaced over the window of ``C_L``.
 
     Raises:
-        FormulaError: ``invalid_input`` if the window is empty or the number of points is not an
+        FormulaError: ``invalid_input`` (``empty_fit_window``) if the window is empty, (``invalid_fit_points``) if the number of points is not an
             integer of at least three.
     """
     rules = ctx.solvers.rules
@@ -81,7 +81,7 @@ def _window(x: Inputs, ctx: Context) -> list[float]:
     if not high > low:
         raise FormulaError(
             ErrorCategory.INVALID_INPUT,
-            "invalid_input",
+            "empty_fit_window",
             f"the fit window of C_L is empty: C_L,max = {cl_max:.4g} gives [{low:.4g}, {high:.4g}]",
             "the fit needs an airplane whose C_L,max is clearly above the window floor",
             detail={"cl_low": low, "cl_high": high, "cl_max": cl_max},
@@ -91,7 +91,7 @@ def _window(x: Inputs, ctx: Context) -> list[float]:
     if count != int(count) or count < 3:
         raise FormulaError(
             ErrorCategory.INVALID_INPUT,
-            "invalid_input",
+            "invalid_fit_points",
             f"fit_points = {count} must be an integer of at least 3",
             "give rule_overrides['parabolic-polar-fit.fit_points'] an integer of at least 3",
         )
@@ -125,7 +125,7 @@ async def parabolic_polar_fit(x: Inputs, ctx: Context) -> dict[str, float]:
 
     Raises:
         TypeError: If ``airplane`` is not the geometry or a number is not a number.
-        FormulaError: ``invalid_input`` for an empty window; ``not_converged`` for a fitted slope of
+        FormulaError: ``invalid_input`` for an empty window or a bad point count; ``not_converged`` (``defective_solver_drag``) for a solver drag at or below zero, and for a fitted slope of
             exactly zero (no finite Oswald factor) and from the adapter, unchanged.
 
     Warnings: ``polar_fit_residual`` (``notice``, every fit); ``polar_fit_nonphysical`` (``error``)
@@ -138,6 +138,15 @@ async def parabolic_polar_fit(x: Inputs, ctx: Context) -> dict[str, float]:
     )
     forward_warnings(ctx, flight.warnings)
     polar = flight.polar
+    if min(polar.cd) <= 0.0:
+        raise FormulaError(
+            ErrorCategory.NOT_CONVERGED,
+            "defective_solver_drag",
+            f"the solver drag coefficient {min(polar.cd):.4g} of a level-flight point is not "
+            "greater than zero: a defective solver result",
+            "profile and induced drag are never negative; check the airplane",
+            detail={"cd_min": min(polar.cd)},
+        )
     fit = fit_parabola(polar.cl, polar.cd)
     if math.isclose(fit.k, 0.0, abs_tol=config().opt_zero_span.value):
         raise FormulaError(

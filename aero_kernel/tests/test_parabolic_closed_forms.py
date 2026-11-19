@@ -19,7 +19,11 @@ from aero_kernel.formulas.minimum_drag_speed_closed_form import (
 from aero_kernel.formulas.minimum_drag_speed_closed_form import (
     parabola_defined as v_md_parabola_defined,
 )
-from aero_kernel.formulas.sink_rate import lift_coefficient_positive, sink_rate
+from aero_kernel.formulas.sink_rate import (
+    drag_coefficient_positive,
+    lift_coefficient_positive,
+    sink_rate,
+)
 from aero_kernel.schema import KernelWarning
 from aero_kernel.tests.formula_builders import (
     StubAtmosphere,
@@ -219,3 +223,24 @@ async def test_sink_rate_precondition_refuses_a_lift_coefficient_at_or_below_zer
         {"flight-speed": 10.0, "lift-coefficient": cl, "drag-coefficient-parabolic": 0.05},
     )
     assert lift_coefficient_positive(x).state == "violated"
+
+
+@pytest.mark.parametrize("cd", [0.0, -0.01])
+async def test_sink_rate_precondition_refuses_a_drag_coefficient_at_or_below_zero(
+    cd: float,
+) -> None:
+    x = inputs_from_model(
+        MODEL,
+        "sink-rate",
+        {"flight-speed": 10.0, "lift-coefficient": 0.5, "drag-coefficient-parabolic": cd},
+    )
+    assert drag_coefficient_positive(x).state == "violated"
+
+
+async def test_sink_rate_precondition_holds_for_a_positive_drag_coefficient() -> None:
+    x = inputs_from_model(
+        MODEL,
+        "sink-rate",
+        {"flight-speed": 10.0, "lift-coefficient": 0.5, "drag-coefficient-parabolic": 0.05},
+    )
+    assert drag_coefficient_positive(x).state == "held"

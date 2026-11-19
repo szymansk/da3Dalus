@@ -148,7 +148,13 @@ async def test_a_secant_that_does_not_settle_is_not_converged(
         return weight * (1.5 + 0.01 * alpha), 0.1
 
     monkeypatch.setattr(opti_module, "evaluate_forces", always_high)
-    monkeypatch.setattr(opti_module, "LEVEL_MAX_STEPS", 1)
+    shipped = opti_module.config()
+    one_step = shipped.model_copy(
+        update={
+            "opt_level_max_steps": shipped.opt_level_max_steps.model_copy(update={"value": 1.0})
+        }
+    )
+    monkeypatch.setattr(opti_module, "config", lambda: one_step)
     with pytest.raises(FormulaError) as raised:
         opti_module.level_polar_worker(request((0.4, 0.8, 1.0)))
     assert raised.value.category is ErrorCategory.NOT_CONVERGED
@@ -272,3 +278,24 @@ async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.Mon
 async def test_the_polar_needs_equally_long_series_of_at_least_three_points() -> None:
     with pytest.raises(ValueError, match="at least 3"):
         LevelPolar(v_ms=(1.0, 2.0), alpha_deg=(1.0, 2.0), cl=(0.1, 0.2), cd=(0.03, 0.03))
+
+
+async def test_a_point_that_settles_beyond_the_first_peak_is_not_converged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The sweep reaches C_L = 0.8 near 7 deg, but the evaluation's lift is linear and weak, so the
+    secant settles at 24.7 deg, past the sweep's first peak at 23 deg: not on the pre-stall branch."""
+    installed(monkeypatch)
+    weight = MASS * GRAVITY
+
+    def weak_linear(
+        _plane: object, _air: object, speed: float, alpha: float, _size: str, _k: float
+    ) -> tuple[float, float]:
+        q = 0.5 * AIR.density * speed * speed
+        return q * AREA * 0.03 * (alpha + 2.0), 0.1 * weight
+
+    monkeypatch.setattr(opti_module, "evaluate_forces", weak_linear)
+    with pytest.raises(FormulaError) as raised:
+        opti_module.level_polar_worker(request((0.4, 0.6, 0.8)))
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED
+    assert "first C_L peak" in raised.value.message

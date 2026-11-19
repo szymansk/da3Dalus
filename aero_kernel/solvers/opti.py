@@ -1508,15 +1508,8 @@ class LevelFlight(BaseModel):
     warnings: tuple[KernelWarning, ...]
 
 
-# Secant steps allowed to bring the lift of one level-flight point onto the weight: the start is the
-# linear interpolation of a 0.25 deg sweep, which is already within a fraction of a percent, and the
-# lift is smooth below the first C_L peak, so the secant needs a handful of steps. A point that has
-# not converged is an error, never a value (ADR 0020).
-LEVEL_MAX_STEPS = 20
-
-
-def _level_alpha(sweep: LiftCurve, level: float, speed: float) -> float:
-    """The angle on the pre-stall branch at which the sweep at ``speed`` reaches ``level``.
+def _level_alpha(sweep: LiftCurve, level: float, speed: float) -> tuple[float, float]:
+    """The angle on the pre-stall branch at which the sweep at ``speed`` reaches ``level``, and the first peak's.
 
     Raises:
         FormulaError: ``not_converged`` if the lift curve has no peak or does not reach ``level``.
@@ -1532,7 +1525,7 @@ def _level_alpha(sweep: LiftCurve, level: float, speed: float) -> float:
             cl=level,
             v_ms=speed,
         )
-    return found
+    return found, sweep.alpha_deg[peak]
 
 
 def _level_failed(level: float, speed: float, what: str) -> FormulaError:
@@ -1566,21 +1559,29 @@ def _level_point(
 
     Raises:
         FormulaError: ``not_converged`` if the lift curve does not reach the level or the secant
-            does not reach the weight within :data:`LEVEL_MAX_STEPS`.
+            does not settle within ``opt_level_max_steps`` or settles beyond the sweep's first C_L peak.
     """
     air, weight = request.air, request.mass_kg * request.gravity
     area = float(asb_airplane.s_ref)
     speed = math.sqrt(2.0 * weight / (air.density * area * level))
     dynamic_pressure = 0.5 * air.density * speed * speed
     sweep = sweep_lift(asb_airplane, air, speed, _grid(), NEURALFOIL_MODEL_SIZE)
-    alpha = _level_alpha(sweep, level, speed)
+    alpha, peak_alpha = _level_alpha(sweep, level, speed)
+    max_steps = int(config().opt_level_max_steps.value)
     previous: tuple[float, float] | None = None
-    for _step in range(LEVEL_MAX_STEPS):
+    for _step in range(max_steps):
         lift, drag = evaluate_forces(
             asb_airplane, air, speed, alpha, NEURALFOIL_MODEL_SIZE, request.k_e_d0
         )
         miss = lift - weight
         if abs(miss) <= request.lift_tolerance * weight:
+            if alpha > peak_alpha:
+                raise _level_failed(
+                    level,
+                    speed,
+                    f"settled at {alpha:.2f} deg, beyond the first C_L peak at {peak_alpha:.2f} deg "
+                    "of the sweep, so not on the branch before the stall",
+                )
             return speed, alpha, lift / (dynamic_pressure * area), drag / (dynamic_pressure * area)
         if previous is None:
             slope = dynamic_pressure * area * _local_slope(sweep, alpha)
@@ -1590,7 +1591,7 @@ def _level_point(
             raise _level_failed(level, speed, "has no lift slope in the angle of attack")
         previous = (alpha, lift)
         alpha -= miss / slope
-    raise _level_failed(level, speed, f"did not reach the weight within {LEVEL_MAX_STEPS} steps")
+    raise _level_failed(level, speed, f"did not reach the weight within {max_steps} steps")
 
 
 def level_polar_worker(request: LevelPolarRequest) -> WorkerOutcome[LevelPolar]:
@@ -1808,6 +1809,7 @@ class OptiAdapter(SolverAdapter):
             "opt_peak_tolerance": config().opt_peak_tolerance.value,
             "opt_zero_span": config().opt_zero_span.value,
             "opt_level_lift_tolerance": config().opt_level_lift_tolerance.value,
+            "opt_level_max_steps": config().opt_level_max_steps.value,
             "opt_alpha_margin_deg": config().opt_alpha_margin_deg.value,
             "opt_hinge_floor": config().opt_hinge_floor.value,
             "opt_flap_rib_gap_m": config().opt_flap_rib_gap.value,
@@ -1963,7 +1965,11 @@ class OptiAdapter(SolverAdapter):
 
         Returns:
             The polar and the caveats of its points (flap, regime at the slowest and the fastest
-            point, and the notice that the drag is the kernel's).
+            point, and the notice that the drag is the kernel's). The Reynolds number
+            (chord times V over the kinematic viscosity) and the Mach number (V over the speed
+            of sound) both rise strictly with V in a fixed air state, so the regime bands (Re
+            below, Re and Mach above) are met first at the slowest or the fastest point: the two
+            extremes bound the regime of every point between them.
 
         Raises:
             FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for an

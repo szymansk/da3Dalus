@@ -728,6 +728,7 @@ inputs: {v: flight-speed, cl: lift-coefficient, cd: drag-coefficient-parabolic}
 outputs: {w_sink: sink-rate}
 preconditions:
   - {id: lift_coefficient_positive, parameter: cl, on_violation: error}
+  - {id: drag_coefficient_positive, parameter: cd, on_violation: error}
 ```
 
 A **procedure** with declared uncertainty (`neutral-point`):
@@ -862,6 +863,7 @@ A **fit** (`parabolic-polar-fit`):
 ```yaml
 kind: fit
 tool: OPT
+cost: seconds
 output: zero-lift-drag-coefficient, oswald-efficiency
 inputs:
   airplane: airplane

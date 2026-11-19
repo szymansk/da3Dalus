@@ -19,6 +19,7 @@ inputs: {v: flight-speed, cl: lift-coefficient, cd: drag-coefficient-parabolic}
 outputs: {w_sink: sink-rate}
 preconditions:
   - {id: lift_coefficient_positive, parameter: cl, on_violation: error}
+  - {id: drag_coefficient_positive, parameter: cd, on_violation: error}
 ---
 
 # Steady-glide sink rate
@@ -65,6 +66,8 @@ the validity condition `small_glide_angle` below.
 ## Preconditions on the bindings
 
 **`lift_coefficient_positive` — the lift coefficient must be greater than zero (on `cl`; error).** The relation divides by `C_L`; at `C_L ≤ 0` there is no steady glide and `tan(γ) = C_D / C_L` has no meaning. The violation is an **error** at this formula (ADR 0020); nothing is substituted. The bound is physical, not a tuned threshold.
+
+**`drag_coefficient_positive` — the drag coefficient of the parabola must be greater than zero (on `cd`; error).** A parabola with a zero or negative `C_D` at this `C_L` has no glide: the formula would return a zero or negative sink rate, which is no descent. Such a value can come from a non-physical fit ([[parabolic-polar-fit]] declares it with `polar_fit_nonphysical`). The violation is an **error** at this formula (ADR 0020); nothing is substituted. The bound is physical, not a tuned threshold.
 
 ## Validity condition `small_glide_angle` (a warning of the formula)
 

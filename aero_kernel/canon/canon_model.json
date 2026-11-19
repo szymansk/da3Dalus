@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e8f02c8cce5313432c7c70078fdb7a584bfc4819d62996a6ade80e2f5922e401",
+  "content_hash": "sha256:ecefb679fc2124adf42f36459098e67c3698a6a61fde7d07299d82fceab63ed6",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -144,6 +144,13 @@
           "unit": "1",
           "value": 1e-06
         },
+        "opt_level_max_steps": {
+          "basis": "numerical",
+          "guards": "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance.",
+          "source": "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one",
+          "unit": "1",
+          "value": 20.0
+        },
         "opt_peak_tolerance": {
           "basis": "numerical",
           "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled first peak by this much; both are samples of one curve, so it only absorbs numerical noise.",
@@ -188,7 +195,7 @@
         },
         "opt_zero_span": {
           "basis": "numerical",
-          "guards": "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference.",
+          "guards": "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference. Also the zero test of a slope that is divided by: the secant slope of a level-flight point (lift per degree) and the slope of the parabola fitted to the level-flight polar (a slope this close to zero has no finite Oswald factor).",
           "source": "a margin over floating-point noise of C_L, which is of order 1",
           "unit": "1",
           "value": 1e-15
@@ -2919,6 +2926,12 @@
               "id": "lift_coefficient_positive",
               "on_violation": "error",
               "parameter": "cl"
+            },
+            {
+              "applications": null,
+              "id": "drag_coefficient_positive",
+              "on_violation": "error",
+              "parameter": "cd"
             }
           ],
           "tool": "APP",
@@ -7208,9 +7221,12 @@
           },
           "codes": [
             "polar_fit_nonphysical",
-            "polar_fit_residual"
+            "polar_fit_residual",
+            "empty_fit_window",
+            "invalid_fit_points",
+            "defective_solver_drag"
           ],
-          "criterion": "The parabola C_D = C_D0 + C_L^2 / (pi AR e) is fitted by least squares to fit_points points of the solver polar along level flight, equally spaced in C_L between max(window_cl_floor, window_lower_fraction C_L,max) and window_upper_fraction C_L,max (each point at the speed where it flies level, L = m g, so at its own Reynolds number). Two results are not physically meaningful and are declared with the warning polar_fit_nonphysical (severity error) while the fitted numbers are still returned: a fitted C_D0 at or below zero, and an Oswald factor at or below zero (a slope k at or below zero) or above max_oswald. A slope of zero (to the configuration value opt_zero_span) has no finite Oswald factor and is an error of the formula. Every fit also declares its residual in the notice polar_fit_residual (RMS and largest deviation of the solver C_D from the parabola, C_L range and number of points). Raising fit_points is the way to a better fit; no threshold on the residual exists (BR-16: resolution goes up, thresholds never move).",
+          "criterion": "The parabola C_D = C_D0 + C_L^2 / (pi AR e) is fitted by least squares to fit_points points of the solver polar along level flight, equally spaced in C_L between max(window_cl_floor, window_lower_fraction C_L,max) and window_upper_fraction C_L,max (each point at the speed where it flies level, L = m g, so at its own Reynolds number). Two results are not physically meaningful and are declared with the warning polar_fit_nonphysical (severity error) while the fitted numbers are still returned: a fitted C_D0 at or below zero, and an Oswald factor at or below zero (a slope k at or below zero) or above max_oswald. A slope of zero (to the configuration value opt_zero_span) has no finite Oswald factor and is an error of the formula, as are a solver drag at or below zero at any point (defective_solver_drag, checked before anything is divided by it), an empty window (empty_fit_window: the upper end is not above the lower end) and a fit_points that is no integer of at least 3 (invalid_fit_points). Every fit also declares its residual in the notice polar_fit_residual (RMS and largest deviation of the solver C_D from the parabola, C_L range and number of points). Raising fit_points is the way to a better fit; no threshold on the residual exists (BR-16: resolution goes up, thresholds never move).",
           "kind": "tool",
           "on_violation": "warning",
           "parameters": {
