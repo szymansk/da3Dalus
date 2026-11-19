@@ -178,6 +178,13 @@ opt_body_axis_tolerance:
   basis: numerical
   source: "a margin over the floating-point round-off of the least-squares fit on coordinates of metres (about 1e-16 m per metre of body); a nanometre is far below any coordinate a geometry document states, so every real step of the axis is straightened and declared"
 
+powertrain_balance_tolerance:
+  value: 0.000000001
+  unit: "1"
+  guards: "Motor-propeller torque balance: the relative width of the propeller-speed interval at which the bisection stops; the speed is then known to this fraction of itself."
+  basis: numerical
+  source: "a numerical margin: far below the table's own resolution (APC rpm blocks 1000 rpm apart, coefficients to four decimals) and far above double-precision noise; it decides when the bisection of a monotone torque balance has converged, no domain threshold"
+
 avl_roll_reference_deflection:
   value: 5.0
   unit: deg

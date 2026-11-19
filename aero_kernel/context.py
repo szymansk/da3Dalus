@@ -4,7 +4,7 @@
 cache, no request, no global.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from aero_kernel.components import Components
@@ -102,18 +102,54 @@ class Solvers:
 class Context:
     """The context of one formula call."""
 
-    def __init__(self, *, origin: str, solvers: Solvers, world: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        origin: str,
+        solvers: Solvers,
+        world: str | None = None,
+        relations: Mapping[str, Callable[..., object]] | None = None,
+    ) -> None:
         """Create the context of one node.
 
         Args:
             origin: Slug of the quantity that warnings of this call are reported against.
             solvers: The solver adapters of the call.
             world: The method world this formula runs in, for a formula with worlds (ch. 8.13).
+            relations: The relations of the formula's ``embeds``, by the embed item
+                (``<namespace>:<slug>.<application-id>``); the engine builds it from the canon.
         """
         self._origin = origin
         self.solvers = solvers
         self.world = world
+        self._relations = dict(relations or {})
+        self._embedded: list[str] = []
         self._warnings: list[KernelWarning] = []
+
+    def embedded(self, item: str) -> Callable[..., object]:
+        """Return the relation of an embedded application and record the request (ch. 8.12).
+
+        Args:
+            item: The embed item, ``<namespace>:<slug>.<application-id>``, as the canon lists it.
+
+        Returns:
+            The relation, a plain function over parameter names.
+
+        Raises:
+            KeyError: If the formula does not embed ``item`` (a defect of the formula, never a
+                user error: the embedding tests compare the requests with the canon's ``embeds``).
+        """
+        if item not in self._relations:
+            msg = f"the formula does not embed {item!r}"
+            raise KeyError(msg)
+        if item not in self._embedded:
+            self._embedded.append(item)
+        return self._relations[item]
+
+    @property
+    def embedded_requests(self) -> tuple[str, ...]:
+        """The embed items requested so far, in order of first request."""
+        return tuple(self._embedded)
 
     def warn(self, code: str, message: str, detail: dict[str, JsonValue] | None = None) -> None:
         """Report a value with a caveat; the severity follows from the closed warning table.

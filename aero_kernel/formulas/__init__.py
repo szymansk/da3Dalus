@@ -5,6 +5,7 @@ One module per canon formula, named after its slug.
 """
 
 from aero_kernel.formulas import (
+    advance_ratio_from_speed,
     aerobuildup_evaluation,
     aileron_deflection_required,
     air_density_isa,
@@ -12,6 +13,7 @@ from aero_kernel.formulas import (
     airplane_configuration,
     airplane_geometry,
     aspect_ratio,
+    battery_mass_from_capacity,
     cg_for_target_margin,
     control_surface_hinge_moments,
     drag_polar,
@@ -30,8 +32,11 @@ from aero_kernel.formulas import (
     minimum_drag_speed,
     minimum_drag_speed_closed_form,
     minimum_sink_speed,
+    motor_propeller_equilibrium,
+    motor_propeller_part_load,
     neutral_point,
     parabolic_polar_fit,
+    propeller_table_lookup,
     roll_rate,
     roll_rate_cruise_target,
     rudder_roll_authority,
@@ -42,6 +47,8 @@ from aero_kernel.formulas import (
     stall_speed,
     stall_wing_loading_limit,
     static_margin,
+    static_thrust_to_weight,
+    thrust_at_airspeed_from_coefficient,
     turn_sideslip,
     vertical_tail_arm,
     vertical_tail_volume,
@@ -52,6 +59,7 @@ from aero_kernel.formulas import (
 from aero_kernel.registry import DEFAULT_REGISTRY
 
 __all__ = [
+    "advance_ratio_from_speed",
     "aerobuildup_evaluation",
     "aileron_deflection_required",
     "air_density_isa",
@@ -59,6 +67,7 @@ __all__ = [
     "airplane_configuration",
     "airplane_geometry",
     "aspect_ratio",
+    "battery_mass_from_capacity",
     "cg_for_target_margin",
     "control_surface_hinge_moments",
     "drag_polar",
@@ -77,8 +86,11 @@ __all__ = [
     "minimum_drag_speed",
     "minimum_drag_speed_closed_form",
     "minimum_sink_speed",
+    "motor_propeller_equilibrium",
+    "motor_propeller_part_load",
     "neutral_point",
     "parabolic_polar_fit",
+    "propeller_table_lookup",
     "roll_rate",
     "roll_rate_cruise_target",
     "rudder_roll_authority",
@@ -89,6 +101,8 @@ __all__ = [
     "stall_speed",
     "stall_wing_loading_limit",
     "static_margin",
+    "static_thrust_to_weight",
+    "thrust_at_airspeed_from_coefficient",
     "turn_sideslip",
     "vertical_tail_arm",
     "vertical_tail_volume",

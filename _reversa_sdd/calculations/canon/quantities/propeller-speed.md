@@ -20,4 +20,4 @@ Propeller rotational speed in revolutions per second. Written `n_prop` rather th
 
 **Produced by.** [[motor-propeller-equilibrium]]
 
-**Used by.** [[advance-ratio-from-speed]] · [[thrust-at-airspeed-from-coefficient]]
+**Used by.** [[advance-ratio-from-speed]] · [[propeller-table-lookup]] · [[thrust-at-airspeed-from-coefficient]]

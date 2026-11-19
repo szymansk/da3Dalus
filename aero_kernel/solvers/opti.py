@@ -76,6 +76,9 @@ __all__ = [
     "EvaluationRequest",
     "Forces",
     "LevelFlight",
+    "LevelFlightPoint",
+    "LevelPoint",
+    "LevelPointRequest",
     "LevelPolar",
     "LevelPolarRequest",
     "MinSink",
@@ -96,6 +99,7 @@ __all__ = [
     "device_spans",
     "evaluation_worker",
     "induced_drag_notice",
+    "level_point_worker",
     "level_polar_worker",
     "min_sink_worker",
     "stall_worker",
@@ -1622,6 +1626,104 @@ def level_polar_worker(request: LevelPolarRequest) -> WorkerOutcome[LevelPolar]:
     return WorkerOutcome(value=polar, diagnostics=_diagnostics(started))
 
 
+class LevelPointRequest(BaseModel):
+    """What the worker needs for one level-flight point at a given speed; plain data, picklable.
+
+    Attributes:
+        airplane: The geometry as evaluated (devices as configured).
+        mass_kg: Mass in kg, > 0.
+        gravity: Gravity in m/s^2, > 0.
+        air: The air state.
+        v_ms: The speed in m/s, > 0.
+        k_e_d0: The viscous factor the kernel takes out of AeroBuildup's induced drag.
+        lift_tolerance: Relative lift-to-weight difference at which the angle is accepted
+            (``config.yaml``, ``opt_level_lift_tolerance``).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    mass_kg: float
+    gravity: float
+    air: AirState
+    v_ms: float
+    k_e_d0: float
+    lift_tolerance: float
+
+
+class LevelPoint(BaseModel):
+    """The level-flight point at one speed: the angle where AeroBuildup's lift carries the weight.
+
+    Attributes:
+        v_ms: The speed in m/s.
+        alpha_deg: The angle of attack in degrees (on the branch before the first lift peak).
+        cl: The lift coefficient (reference area of the airplane).
+        cd: The kernel's drag coefficient there.
+        lift_n: The lift in N (the weight, to the lift tolerance).
+        drag_n: The kernel's drag in N.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    v_ms: float
+    alpha_deg: float
+    cl: float
+    cd: float
+    lift_n: float
+    drag_n: float
+
+
+class LevelFlightPoint(BaseModel):
+    """A level-flight point and the caveats of its evaluation.
+
+    Attributes:
+        point: The point.
+        warnings: Flap, regime and drag-notice warnings, without origin.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    point: LevelPoint
+    warnings: tuple[KernelWarning, ...]
+
+
+def level_point_worker(request: LevelPointRequest) -> WorkerOutcome[LevelPoint]:
+    """Compute the level-flight point at a given speed in the pool worker.
+
+    The same machinery as the level-flight polar (:func:`_level_point`): the speed fixes the level
+    ``C_L = 2 m g / (rho S_ref V^2)``, whose point is flown at that same speed (the speed
+    ``sqrt(2 m g / (rho S_ref C_L))`` returns ``V``). The angle of attack is found on the pre-stall branch.
+
+    Raises:
+        FormulaError: ``not_converged`` as :func:`_level_point`.
+    """
+    started = time.perf_counter()
+    asb_airplane = to_asb_airplane(request.airplane)
+    weight = request.mass_kg * request.gravity
+    area = float(asb_airplane.s_ref)
+    level = 2.0 * weight / (request.air.density * area * request.v_ms**2)
+    polar_request = LevelPolarRequest(
+        airplane=request.airplane,
+        mass_kg=request.mass_kg,
+        gravity=request.gravity,
+        air=request.air,
+        cl_levels=(level,),
+        k_e_d0=request.k_e_d0,
+        lift_tolerance=request.lift_tolerance,
+    )
+    _, alpha, cl, cd = _level_point(asb_airplane, polar_request, level)
+    dynamic_pressure_area = 0.5 * request.air.density * request.v_ms**2 * area
+    point = LevelPoint(
+        v_ms=request.v_ms,
+        alpha_deg=alpha,
+        cl=cl,
+        cd=cd,
+        lift_n=cl * dynamic_pressure_area,
+        drag_n=cd * dynamic_pressure_area,
+    )
+    return WorkerOutcome(value=point, diagnostics=_diagnostics(started))
+
+
 class ZeroLiftRequest(BaseModel):
     """What the worker needs for the zero-lift root at one speed; plain data, picklable.
 
@@ -2011,6 +2113,55 @@ class OptiAdapter(SolverAdapter):
             min(polar.v_ms),
         )
         return LevelFlight(polar=polar, warnings=tuple(warnings))
+
+    async def level_flight_point(
+        self,
+        airplane: AirplaneGeometry,
+        mass_kg: float,
+        gravity: float,
+        air: AirState,
+        v_ms: float,
+    ) -> LevelFlightPoint:
+        """The level-flight point at a given speed: the angle where AeroBuildup's lift equals ``m g``.
+
+        The single-speed reading of :meth:`level_polar` (one lift-equals-weight solve in the kernel):
+        one alpha sweep plus secant steps, bounded by the first lift peak, with the configured
+        tolerance and step limit; the drag is the kernel's.
+
+        Args:
+            airplane: The geometry with its devices as they are to be evaluated.
+            mass_kg: Mass in kg, > 0.
+            gravity: Gravity in m/s^2, > 0.
+            air: The air state.
+            v_ms: The speed in m/s, finite and > 0.
+
+        Returns:
+            The angle of attack, ``C_L``, ``C_D``, lift and drag in N, and the caveats (flap, regime
+            at the speed, and the notice that the drag is the kernel's).
+
+        Raises:
+            FormulaError: ``tool_unavailable`` if AeroSandbox is missing; ``invalid_input`` for an
+                inadmissible speed; ``unsupported_configuration`` for a deflected control surface
+                other than a flap; ``not_converged`` as :func:`level_point_worker`.
+        """
+        request, flaps = self._request(airplane, mass_kg, gravity, 1.0, air, upright_only=True)
+        if not _admissible(v_ms, positive=True):
+            raise _invalid(f"V = {v_ms} is not admissible", "give a finite speed above 0", "v")
+        work = LevelPointRequest(
+            airplane=airplane,
+            mass_kg=mass_kg,
+            gravity=gravity,
+            air=air,
+            v_ms=v_ms,
+            k_e_d0=request.k_e_d0,
+            lift_tolerance=config().opt_level_lift_tolerance.value,
+        )
+        point = await self.runtime.run_cpu(level_point_worker, work)
+        warnings = _flap_warnings(flaps)
+        warnings += await self._regime_warnings(airplane, v_ms, air)
+        warnings.append(induced_drag_notice(request.k_e_d0))
+        logger.debug("level-flight point at %.4f m/s: %.2f deg", v_ms, point.alpha_deg)
+        return LevelFlightPoint(point=point, warnings=tuple(warnings))
 
     async def sweep(
         self,

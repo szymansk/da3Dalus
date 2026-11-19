@@ -34,7 +34,7 @@ def components_of(
     battery_fields = data["batteries"][battery_id]["fields"] | extra.get("battery", {})
     return Components.model_validate(
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "motor": motor_fields,
             "battery": battery_fields,
             "propeller": data["propellers"][propeller_id]["fields"],
@@ -55,3 +55,18 @@ def complete_components() -> Components:
             "cell_voltage_v": TEST_CELL_VOLTAGE_V,
         },
     )
+
+
+PROPELLER_TABLE = Path(__file__).parent.parent / "reference" / "powertrain" / "apc_13x8e.json"
+
+
+def apc_13x8e_table() -> dict[str, Any]:
+    """The published APC 13x8E table (reference/powertrain/apc_13x8e.json) as a plain document."""
+    return json.loads(PROPELLER_TABLE.read_text(encoding="utf-8"))["table"]
+
+
+def complete_components_with_table() -> Components:
+    """``complete_components`` with the APC 13x8E performance table pushed."""
+    document = complete_components().model_dump()
+    document["propeller"]["table"] = apc_13x8e_table()
+    return Components.model_validate(document)

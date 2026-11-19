@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:fdf15922e0511fc0163e4d7b9b5dded618e0e9fd3f60550aea6765c1908731a6",
+  "content_hash": "sha256:8237fbfbc427238c470b9d41b11f8812a6d48ff841c010b0941037eaae855ba2",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -199,6 +199,13 @@
           "source": "a margin over floating-point noise of C_L, which is of order 1",
           "unit": "1",
           "value": 1e-15
+        },
+        "powertrain_balance_tolerance": {
+          "basis": "numerical",
+          "guards": "Motor-propeller torque balance: the relative width of the propeller-speed interval at which the bisection stops; the speed is then known to this fraction of itself.",
+          "source": "a numerical margin: far below the table's own resolution (APC rpm blocks 1000 rpm apart, coefficients to four decimals) and far above double-precision noise; it decides when the bisection of a monotone torque balance has converged, no domain threshold",
+          "unit": "1",
+          "value": 1e-09
         }
       },
       "defaults": {
@@ -2531,8 +2538,14 @@
           ],
           "cost": "instant",
           "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
+          "embeds": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default"
+          ],
           "inputs": {
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -2558,7 +2571,9 @@
           "preconditions": [],
           "tool": "APP",
           "uncertainty": null,
-          "variables": [],
+          "variables": [
+            "calc:propeller-speed"
+          ],
           "worlds": []
         },
         "motor-propeller-part-load": {
@@ -2751,11 +2766,13 @@
             {
               "bind": {
                 "components": "calc:components",
-                "j": "calc:advance-ratio"
+                "j": "calc:advance-ratio",
+                "n_prop": "calc:propeller-speed"
               },
               "given": null,
               "id": "default",
               "produce": {
+                "c_p": null,
                 "c_t": "calc:thrust-coefficient"
               },
               "when": null
@@ -2767,11 +2784,13 @@
           "embeds_closure": [],
           "inputs": {
             "components": "calc:components",
-            "j": "calc:advance-ratio"
+            "j": "calc:advance-ratio",
+            "n_prop": "calc:propeller-speed"
           },
           "kind": "procedure",
           "optional": [],
           "outputs": {
+            "c_p": null,
             "c_t": "calc:thrust-coefficient"
           },
           "postconditions": [],
@@ -4308,7 +4327,7 @@
           "group": null,
           "module": "construction",
           "point": null,
-          "positive": null,
+          "positive": true,
           "role": "input",
           "stage": null,
           "symbol": "E_star",
@@ -7002,6 +7021,32 @@
             "non_positive_value"
           ],
           "criterion": "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v and diameter_in, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-propeller-table-ordered": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "table_not_increasing"
+          ],
+          "criterion": "The rpm of the blocks is greater than zero and strictly increasing; within a block j is not negative and strictly increasing. The lookup interpolates linearly and needs a bracketing pair; an unordered axis has none.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-propeller-table-shape": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "malformed_table"
+          ],
+          "criterion": "The propeller table has at least one rpm block, and every block has at least two points, with j, ct and cp of the same length. A table that cannot be interpolated is refused at the input, not discovered inside the lookup.",
           "kind": "input",
           "on_violation": "error",
           "parameters": {}

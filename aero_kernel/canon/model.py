@@ -682,6 +682,7 @@ class KernelConfig(BaseModel):
     opt_body_merge_exponent_max: ConfigValue
     opt_body_axis_tolerance: ConfigValue
     avl_contour_margin: ConfigValue
+    powertrain_balance_tolerance: ConfigValue
 
 
 class Namespace(BaseModel):

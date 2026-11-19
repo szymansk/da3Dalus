@@ -28,6 +28,8 @@ inputs:
   eta_mot: motor-efficiency
 outputs: {n_prop: propeller-speed, q_m: motor-torque}
 optional: [r_m, i_0]
+embeds: [advance-ratio-from-speed, propeller-table-lookup]
+variables: [propeller-speed]
 ---
 
 # Propeller speed from the motor–propeller torque balance
@@ -82,11 +84,15 @@ Making the route choice an explicit decision over component data is recorded as 
 
 **Source.** 🟢 Drela `motor1` §1.1: the three-parameter DC motor model, `v = i·R + Ω/K_v` and `Q_m = (i − i_0)/K_Q`, with `K_Q = K_v` in the ideal case; §2 gives the bench measurement of `R`, `i_0` and `K_v` (Eq. 9–12). Propeller power from `C_P = P/(ρ·n³·D⁵)` (Brandt & Selig 2011 §II.F). The default band of `eta_mot`, 75–85 % peak efficiency for hobby brushless motors, is from Roxxy Motoren-Fibel Ch. 3 pp. 28–29. 🔴 NO SOURCE FOUND for the structural use of the torque output.
 
-**Validity in the RC/UAV regime (ADR 0028).** The torque balance itself is exact; what it is worth depends on the motor model and on `C_P(J)`. Drela's three-parameter model is valid across typical RC speeds and currents and breaks down only at very low speed or very high current (Drela `motor1` §1.1). `R_m` rises with winding temperature, so a cold catalogue value predicts too high an rpm under load (§1.1.1, §2.1). Small propellers run at Re₀.₇₅ ≈ 15–100 k (ADR 0028; Brandt & Selig 2011 §IV), where `C_T` and `C_P` change with Reynolds number (Deters, Ananda & Selig 2014 §V.A–B); the table block is chosen by nearest rpm, so the solved rpm also fixes the propeller Re the coefficients belong to. Blade tips of RC propellers typically run near Ma ≈ 0.5 (Roxxy Motoren-Fibel Ch. 1 pp. 9–10), above the airframe's M ≤ 0.3; tip compressibility is whatever the table contains. Route A runs at free-run rpm, which loaded brushless motors do not reach — about 85 % of no-load rpm in flight (Roxxy Ch. 1 pp. 9–10). Battery voltage sag under load is not modelled [no source].
+**Validity in the RC/UAV regime (ADR 0028).** The torque balance itself is exact; what it is worth depends on the motor model and on `C_P(J)`. Drela's three-parameter model is valid across typical RC speeds and currents and breaks down only at very low speed or very high current (Drela `motor1` §1.1). `R_m` rises with winding temperature, so a cold catalogue value predicts too high an rpm under load (§1.1.1, §2.1). Small propellers run at Re₀.₇₅ ≈ 15–100 k (ADR 0028; Brandt & Selig 2011 §IV), where `C_T` and `C_P` change with Reynolds number (Deters, Ananda & Selig 2014 §V.A–B); the table block is chosen by nearest rpm, so the solved rpm also fixes the propeller Re the coefficients belong to. *Remark (gh-1411, undated):* the implementation does not choose the nearest block; it interpolates linearly in rpm between the two blocks that bracket the solved speed (continuity of the torque balance), so the coefficients are a mix of two Reynolds numbers. The difference awaits the maintainer; see decisions/propeller-table-lookup-interface-and-range.md (PR gh-1411, awaiting the maintainer). Blade tips of RC propellers typically run near Ma ≈ 0.5 (Roxxy Motoren-Fibel Ch. 1 pp. 9–10), above the airframe's M ≤ 0.3; tip compressibility is whatever the table contains. Route A runs at free-run rpm, which loaded brushless motors do not reach — about 85 % of no-load rpm in flight (Roxxy Ch. 1 pp. 9–10). Battery voltage sag under load is not modelled [no source].
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/motor_propeller_equilibrium.py` | DEVIATES | 🟢 | **Route B only** (complete data, gh-1411): Drela's torque balance `Q_m(n) = (I(n) - I_0)/K_v'` against `Q_p(n) = C_P(J, n) rho n^2 D^5 / (2 pi)`, solved by bisection on the sign change between two neighbouring rpm-block grid points that the table covers at this airspeed (below the motor's free-run speed; relative tolerance `powertrain_balance_tolerance` in `config.yaml`); the advance ratio and the table lookup are reached through `ctx.embedded` (the entry now declares `embeds`); `Q_m` is returned at the balance. **Deviations:** route A (`R_m` absent) and `I_0 = 0` for an absent `I_0` are **not built**: an absent `r_m` or `i_0` ends as `missing_input` naming `components.motor.rm_ohm` / `components.motor.io_no_load_a`; `p_mot_max` and `eta_mot` are bound and not read. If no two neighbouring covered grid points show a sign change the result is `outside_propeller_table` ("no balance found on the rpm grid points the table covers at this speed"): a true balance between a covered and an uncovered grid point is not searched (no edge refinement), so the message does not claim the balance is outside the table. A propeller driven by the airstream (negative `C_P` on the covered points, no balance) is the declared failure `propeller_windmilling`. Nothing is extrapolated. Route B declares itself with the `notice` `powertrain_route_winding_resistance` (winding resistance only, nominal pack voltage). The relation `equilibrium` is the one implementation that the embedders call (ADR 0022) |
+
+No register node is mapped to this entry.
 
 ## Approval
 

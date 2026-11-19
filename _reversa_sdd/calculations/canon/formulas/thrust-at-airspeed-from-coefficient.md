@@ -53,7 +53,7 @@ with the coefficient table computed for the fitted propeller (APC PER3 — compu
 
 **Validity in the RC/UAV regime (ADR 0028).** This is the *right* scale for it: the tables are APC model
 propellers. Two limits are real. The coefficient is clamped at zero past the zero-thrust
-point, so nothing windmilling is modelled. And a table lookup outside its `J` range is an
+point, so nothing windmilling is modelled. *Remark (gh-1411, undated):* the implementation does not clamp: a negative `C_T` of the table gives a negative thrust, because a clamp would be an undeclared substitution (ADR 0020). The difference awaits the maintainer; see decisions/propeller-table-lookup-interface-and-range.md (PR gh-1411, awaiting the maintainer). And a table lookup outside its `J` range is an
 extrapolation, which the implementation already flags.
 
 ## ⚠️ Conflict — two authorities for thrust
@@ -70,9 +70,13 @@ So the field length, the sizing chart and the mission KPI axes are computed with
 the aircraft only has while standing still, while the correct curve sits one module away.
 ADR 0022: one authority per user-facing quantity.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/thrust_at_airspeed_from_coefficient.py` | DEVIATES | 🟢 | `T = C_T rho n_prop^2 D_prop^4` as one module-level relation `thrust`, called by the formula and by the embedders (one implementation, ADR 0022). Agrees with the canonical form. **Deviation from the validity paragraph:** the coefficient is **not** clamped at zero past the zero-thrust point: a negative `C_T` of the table gives a negative thrust (a substitution of zero would be an undeclared clamp, ADR 0020). Nothing windmilling is modelled beyond what the table contains |
+
+No register node is mapped to this entry.
 
 ## Approval
 
