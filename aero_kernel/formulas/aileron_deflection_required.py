@@ -27,13 +27,17 @@ from aero_kernel.schema import KernelWarning
 
 __all__ = ["aileron_deflection_required"]
 
-# Termination of the root refinement only (the Illinois iteration converges superlinearly; a
-# bracketed root reaches the tolerance in a handful of steps). Not a physical constant.
-MAX_REFINEMENTS = 40
-
 # Warnings of a trial evaluation that describe the trial, not the answer: the answer's own are
-# issued once, for the returned deflection.
-_TRIAL_ONLY = frozenset({"world_outside_validity", "aileron_deflection_beyond_reference"})
+# issued once, for the returned deflection. ``avl_roll_rate_beyond_range`` is the adapter's
+# statement about the AVL reference run (a small command), not about the target's roll rate; the
+# target's own range is declared as ``world_outside_validity``.
+_TRIAL_ONLY = frozenset(
+    {
+        "world_outside_validity",
+        "aileron_deflection_beyond_reference",
+        "avl_roll_rate_beyond_range",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -57,27 +61,47 @@ def _forward(ctx: Context, point: _Point) -> None:
     forward_warnings(ctx, tuple(w for w in point.warnings if w.code not in _TRIAL_ONLY))
 
 
-def _above_maximum(best: _Point, target_rad_s: float, world_note: str) -> FormulaError:
-    """The error of a target the method cannot reach, with the maximum found and its command."""
+def _above_grid_maximum(best: _Point, target_rad_s: float, step_deg: float) -> FormulaError:
+    """The error of a target above the roll rate the search found (AeroBuildup world).
+
+    The search marches the command in steps of ``step_deg`` and stops where the roll rate no longer
+    rises, so ``best`` is the highest value on that grid, not a refined maximum.
+    """
     maximum = math.degrees(best.rate)
     return FormulaError(
         ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "target_above_method_maximum",
-        f"The roll-rate target of {math.degrees(target_rad_s):g} deg/s lies above the maximum "
-        f"the {world_note} reaches, {maximum:g} deg/s at an aileron command of "
-        f"{best.delta:g} deg; there is no solution in this world.",
+        f"The roll-rate target of {math.degrees(target_rad_s):g} deg/s lies above the highest roll "
+        f"rate found on the {step_deg:g} deg search grid of the aileron command, {maximum:g} deg/s "
+        f"at {best.delta:g} deg (the roll rate does not rise beyond it); there is no solution in "
+        "this world.",
         "lower the roll-rate target, or give a device with more roll authority",
         {
             "target_deg_s": math.degrees(target_rad_s),
             "max_roll_rate_deg_s": maximum,
             "delta_a_deg": best.delta,
+            "search_step_deg": step_deg,
         },
     )
 
 
-def _is_zero(value: float) -> bool:
-    """Whether a rate is zero to the kernel's zero-span tolerance (``opt_zero_span``)."""
-    return math.isclose(value, 0.0, rel_tol=0.0, abs_tol=config().opt_zero_span.value)
+def _no_avl_roll(point: _Point, p_hat: float, floor: float, target_rad_s: float) -> FormulaError:
+    """The error of an AVL reference run that shows no roll to scale (the same case as above)."""
+    return FormulaError(
+        ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "target_above_method_maximum",
+        f"The roll-rate target of {math.degrees(target_rad_s):g} deg/s cannot be reached: at the "
+        f"reference command of {point.delta:g} deg AVL gives p b / 2V = {p_hat:g}, not above the "
+        f"print resolution of {floor:g}, so the roll is not scaled to a command.",
+        "lower the roll-rate target, or give a device with more roll authority",
+        {
+            "target_deg_s": math.degrees(target_rad_s),
+            "max_roll_rate_deg_s": math.degrees(point.rate),
+            "delta_a_deg": point.delta,
+            "p_hat_reference": p_hat,
+            "print_floor": floor,
+        },
+    )
 
 
 def _reached(rate: float, target: float, tolerance: float) -> bool:
@@ -88,11 +112,13 @@ async def _refine(
     x: Inputs, ctx: Context, speed: float, target: float, bracket: tuple[_Point, _Point]
 ) -> _Point:
     """Illinois regula falsi on ``p(delta) - target`` inside a bracket (below, above)."""
-    tolerance = config().opt_roll_target_tolerance.value
+    settings = config()
+    tolerance = settings.opt_roll_target_tolerance.value
+    refinements = int(settings.opt_roll_max_refinements.value)
     low, high = bracket
     f_low, f_high = low.rate - target, high.rate - target
     side = 0
-    for _ in range(MAX_REFINEMENTS):
+    for _ in range(refinements):
         delta = (low.delta * f_high - high.delta * f_low) / (f_high - f_low)
         point = await _evaluate(x, ctx, speed, delta)
         f_new = point.rate - target
@@ -110,7 +136,7 @@ async def _refine(
     raise FormulaError(
         ErrorCategory.NOT_CONVERGED,
         "not_converged",
-        f"{msg} within {MAX_REFINEMENTS} refinements.",
+        f"{msg} within {refinements} refinements.",
         "report the case; the roll rate is not smooth in the command",
         {"target_deg_s": math.degrees(target), "delta_a_deg": low.delta},
     )
@@ -120,6 +146,8 @@ async def _search_aerobuildup(x: Inputs, ctx: Context, speed: float, target: flo
     """March the command upward from 0; refine once the target is bracketed (``target`` > 0)."""
     settings = config()
     step, limit = settings.opt_roll_search_step.value, settings.opt_roll_search_limit.value
+    # p(0) = 0 is assumed, not evaluated: the airplane is symmetric and undeflected at command 0
+    # (a flaperon's bias is symmetric), so the steady roll does not turn.
     previous = _Point(0.0, 0.0, ())
     k = 1
     while k * step <= limit:
@@ -129,7 +157,7 @@ async def _search_aerobuildup(x: Inputs, ctx: Context, speed: float, target: flo
         if point.rate > target:
             return await _refine(x, ctx, speed, target, (previous, point))
         if point.rate <= previous.rate:
-            raise _above_maximum(previous, target, "AeroBuildup world")
+            raise _above_grid_maximum(previous, target, step)
         previous, k = point, k + 1
     raise FormulaError(
         ErrorCategory.NOT_CONVERGED,
@@ -143,7 +171,7 @@ async def _search_aerobuildup(x: Inputs, ctx: Context, speed: float, target: flo
 
 async def _solve_aerobuildup(x: Inputs, ctx: Context, speed: float, target: float) -> float:
     """The command of the AeroBuildup world for a signed target (rad/s)."""
-    if _is_zero(target):
+    if not target:  # an exact zero given by the caller: no roll wanted, no deflection, no solve
         return 0.0
     point = await _search_aerobuildup(x, ctx, speed, abs(target))
     _forward(ctx, point)
@@ -152,14 +180,16 @@ async def _solve_aerobuildup(x: Inputs, ctx: Context, speed: float, target: floa
 
 async def _solve_avl(x: Inputs, ctx: Context, speed: float, target: float) -> float:
     """The command of the AVL world: linear in the command, from one run at the reference command."""
-    if _is_zero(target):
+    if not target:  # an exact zero given by the caller: no roll wanted, no deflection, no solve
         return 0.0
-    reference = config().avl_roll_reference_deflection.value
+    settings = config()
+    reference = settings.avl_roll_reference_deflection.value
     point = await _evaluate(x, ctx, speed, reference)
     span = number(x, "b_ref")
     p_hat_reference = point.rate * span / (2.0 * speed)
-    if _is_zero(p_hat_reference):
-        raise _above_maximum(point, target, "AVL world")
+    floor = settings.avl_roll_print_floor.value
+    if p_hat_reference <= floor:  # quantisation noise, none, or a reversed device
+        raise _no_avl_roll(point, p_hat_reference, floor, target)
     p_hat_target = target * span / (2.0 * speed)
     delta = reference * p_hat_target / p_hat_reference
     _forward(ctx, point)

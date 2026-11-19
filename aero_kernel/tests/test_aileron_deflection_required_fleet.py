@@ -136,5 +136,12 @@ async def test_a_target_above_the_maximum_is_target_above_method_maximum() -> No
     ).quantities
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.error is not None
-    assert quantity.error.code in {"target_above_method_maximum", "not_converged"}
+    # Pinned from a run through the lock: the roll rate of BRYAN rises to 617.437 deg/s at 25 deg and
+    # falls at 30 deg (a solved point, no failed solve), so the search ends on the roll rate's own
+    # maximum, on the 5 deg grid.
+    assert quantity.error.code == "target_above_method_maximum"
     assert quantity.error.world == REQ_AB
+    detail = quantity.error.detail
+    assert detail["delta_a_deg"] == 25.0
+    assert detail["search_step_deg"] == 5.0
+    assert close(float(detail["max_roll_rate_deg_s"]), 617.4366, 1e-4)  # pyright: ignore[reportArgumentType]

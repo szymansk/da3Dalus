@@ -947,12 +947,14 @@ caller's responsibility.
     - *The inverse, `aileron-deflection-required` (#1400).* The same `steady_roll_rate`, solved for the command.
       AeroBuildup world: the command is marched upward from 0 in steps of `opt_roll_search_step` (5°) until the roll
       rate reaches the target (then Illinois regula falsi to `opt_roll_target_tolerance`, relative) or stops
-      increasing (`target_above_method_maximum`, `detail`: `max_roll_rate_deg_s`, `delta_a_deg`, at the resolution of
-      the step); `opt_roll_search_limit` (90°) only terminates the search (`not_converged`). Every trial is one IPOPT
+      increasing (`target_above_method_maximum`, `detail`: `max_roll_rate_deg_s`, `delta_a_deg`, `search_step_deg`: the
+      highest value on the step grid, with `p(0) = 0` assumed, not evaluated); `opt_roll_search_limit` (90°) and `opt_roll_max_refinements` (40) only terminate the search (`not_converged`). Every trial is one IPOPT
       solve; only the answer's own warnings are reported. AVL world: one run at `avl_roll_reference_deflection`
       (5°), scaled by AVL's linearity; `world_outside_validity` is decided on the target, `|p̂_target| > 0.10`, and
-      carries the AVL angle (`delta_a_deg`). A negative target gives the mirrored (negative) command; a zero target
-      needs no solve.
+      carries the AVL angle (`delta_a_deg`); the adapter's `avl_roll_rate_beyond_range` of the reference run is not
+      forwarded (it describes the reference, not the answer). A reference `p̂` not above `avl_roll_print_floor`
+      (none, noise, reversed device) is `target_above_method_maximum`, as in the AeroBuildup world. A negative
+      target gives the mirrored (negative) command; a zero target needs no solve.
     - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
       one sweep on the airplane **without the roll command** (its configured flaps stay): with the deflection the curve has kinks and its first
       local maximum lies far below the stall (trainer: C_L 0.364 at 1° against a clean peak of 1.233 at 16°),

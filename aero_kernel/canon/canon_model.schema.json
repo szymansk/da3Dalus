@@ -665,6 +665,9 @@
         "opt_probe_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_roll_max_refinements": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_roll_search_limit": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -689,6 +692,7 @@
         "opt_roll_search_step",
         "opt_roll_search_limit",
         "opt_roll_target_tolerance",
+        "opt_roll_max_refinements",
         "avl_cl_tolerance",
         "opt_probe_tolerance",
         "opt_peak_tolerance",

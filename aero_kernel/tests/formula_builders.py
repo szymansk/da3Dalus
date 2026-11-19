@@ -134,6 +134,7 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_roll_search_step_deg": 5.0,
     "opt_roll_search_limit_deg": 90.0,
     "opt_roll_target_tolerance": 1e-4,
+    "opt_roll_max_refinements": 40,
 }
 
 

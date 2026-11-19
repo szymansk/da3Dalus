@@ -664,6 +664,7 @@ class KernelConfig(BaseModel):
     opt_roll_search_step: ConfigValue
     opt_roll_search_limit: ConfigValue
     opt_roll_target_tolerance: ConfigValue
+    opt_roll_max_refinements: ConfigValue
     avl_cl_tolerance: ConfigValue
     opt_probe_tolerance: ConfigValue
     opt_peak_tolerance: ConfigValue
