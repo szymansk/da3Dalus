@@ -966,7 +966,10 @@ caller's responsibility.
     prints `Chinge` with four significant digits). Declared: `hinge_moment_inviscid_estimate` and
     `hinge_moment_pitch_untrimmed` (`notice`), and the Reynolds and Mach warnings of ADR 0028 per surface and
     device (`regime_by_surface`). **No refinement run**: the approved canon entry asks for none; the mesh
-    sensitivity is measured by an aero test, not declared at run time.
+    sensitivity was measured once (#1399, BRYAN, JAGUAR and RV7 with a NACA 0012 stand-in contour): doubling the
+    strips and chordwise vortices changes a hinge moment by 1.5-2.2 % for ailerons and elevators and by
+    3.5-4.1 % for the RV7's flap and rudder, the thin-airfoil comparison of the aero test by 1 %; it is
+    reported in the pull request, not declared at run time.
   - **The steady roll** (`opti.steady_roll`, `avl.steady_roll`, #1211). Both worlds solve the same roll: rotation
     about the stability x axis through the airplane's reference point, the stability-axis rolling moment zero,
     positive to the right.
