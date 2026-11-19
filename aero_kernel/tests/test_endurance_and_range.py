@@ -160,7 +160,11 @@ async def test_cruise_target_with_an_absent_no_load_current_is_missing_input() -
 
 
 @pytest.mark.asyncio
-async def test_through_the_engine_the_four_quantities_with_units() -> None:
+async def test_through_the_engine_an_embedder_reaches_a_relation_two_levels_down() -> None:
+    """The engine hands out the embeds closure: ``cruise-target-performance`` embeds only the part-load
+    relation, which reaches the equilibrium (and through it the table lookup) through the same context;
+    without the closure the call would end as ``internal`` (a ``KeyError``). A cycle in the closure is
+    refused by the importer (``test_importer_rules``: 'is in its own embeds closure (a cycle)')."""
     from aero_kernel.engine import evaluate
 
     aircraft = AircraftInput.model_validate(
@@ -182,6 +186,10 @@ async def test_through_the_engine_the_four_quantities_with_units() -> None:
     )
     got = {q.slug: q for q in result.quantities}
     assert all(q.status is QuantityStatus.OK for q in got.values()), got
+    formula = shipped_build().model.formula("cruise-target-performance")
+    assert formula is not None
+    assert formula.embeds == ("calc:motor-propeller-part-load.default",)
+    assert "calc:motor-propeller-equilibrium.default" in formula.embeds_closure
     assert got["endurance-at-cruise-target"].unit == "s"
     assert got["range-at-cruise-target"].unit == "m"
 

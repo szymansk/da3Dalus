@@ -3,13 +3,13 @@ canon: stall-speed
 kind: quantity
 symbol: V_S
 unit: m/s
-role: derived
+role: output
 tags:
   - canon/quantity
   - discipline/aerodynamics
   - point/stall
   - stage/operating-points
-  - role/derived
+  - role/output
 type: scalar
 ---
 

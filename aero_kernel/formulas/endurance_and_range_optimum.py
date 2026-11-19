@@ -10,7 +10,7 @@ The domain and its search (declared, never silent)
 --------------------------------------------------
 A **scan** starts at the stall speed and rises by the ratio ``endurance_speed_ratio`` (``config.yaml``)
 until the drive train cannot hold the speed (``r_T > 1``) or the part-load chain has no answer there
-(``outside_propeller_table``, the grid limit of its search), or the Mach limit of the RC/UAV regime
+(``outside_propeller_table``: the table holds no balance at that speed), or the Mach limit of the RC/UAV regime
 (rule ``reynolds-mach-regime``, ADR 0028) is reached. A speed at which the level-flight solve does
 not converge (near the stall speed the weight is carried only at the lift peak) is not in the domain;
 the domain starts at the lowest scan speed that solves. The best scan speed of each objective is

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:7606c9aaa0499cdfdcd9a89b1b4e23474f976288c440f08704f6e9cd1cca086b",
+  "content_hash": "sha256:20474ecac722609e7016989fe4c5b378b58397ced40a5a2d0942cfa959df34e3",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6321,7 +6321,7 @@
           "module": null,
           "point": "stall",
           "positive": null,
-          "role": "derived",
+          "role": "output",
           "stage": "operating-points",
           "symbol": "V_S",
           "type": "scalar",

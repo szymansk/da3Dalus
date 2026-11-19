@@ -121,15 +121,15 @@ async def test_no_speed_inside_the_domain_is_a_declared_failure() -> None:
 
 
 @pytest.mark.asyncio
-async def test_the_table_limit_ends_the_domain_and_is_named_where_it_binds() -> None:
-    # D = 100 / V^2 falls with the speed, so the battery power keeps falling until the drag drops
-    # below the thrust of the table's lowest rpm block (the table has no balance there, about 8.3
-    # m/s here): the optimum lies on that edge
-    ctx = context_of(SLUG, SpeedOpti(a=0.0, b=100.0))
+async def test_a_drag_beyond_the_table_ends_the_domain_and_is_named_where_it_binds() -> None:
+    # D = 100 / V^2 falls with the speed, so the battery power keeps falling; above 15 m/s the drag is
+    # beyond the thrust of the whole table (no balance anywhere): the optimum lies on that edge
+    ctx = context_of(SLUG, SpeedOpti(a=0.0, b=100.0, wall_speed=15.0))
     await endurance_and_range_optimum(optimum_inputs(), ctx)
     bounds = [w for w in ctx.warnings if w.code == "optimum_at_domain_bound"]
     assert bounds
     assert all(w.detail["bound"] == "propeller_table" for w in bounds)
+    assert all(14.0 < float(str(w.detail["edge_v_ms"])) < 17.0 for w in bounds)
 
 
 @pytest.mark.asyncio

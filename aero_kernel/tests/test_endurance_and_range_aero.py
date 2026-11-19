@@ -31,8 +31,7 @@ pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
 CRUISE_MS = 18.0
 E_BAT_WH = 6.0 * 14.8  # 6 Ah on the 4S pack at the nominal 3.7 V per cell
-HEAVY_MASS_KG = 3.95
-SCAN_SPEEDS = [12.0 + 0.5 * k for k in range(0, 17)]  # 12 to 20 m/s, until the first hole
+SCAN_SPEEDS = [12.0 + 0.5 * k for k in range(0, 17)]  # 12 to 20 m/s
 
 
 def avistar(values: dict[str, float]) -> AircraftInput:
@@ -75,24 +74,11 @@ async def test_the_cruise_target_is_the_energy_over_the_battery_power_at_the_tar
 
 
 async def test_the_optimum_equals_a_brute_force_scan_and_the_estimate_does_not_exceed_it() -> None:
-    # 3.95 kg is the second test aircraft of the paper: its two estimate speeds lie where the part-load
-    # search finds a balance (at 3.70 kg the minimum-drag speed falls into a hole of the table coverage)
-    values = {"aircraft-mass": HEAVY_MASS_KG}
-    result = await compute(
-        values,
-        "endurance-estimate",
-        "range-estimate",
-        "max-endurance",
-        "max-range",
-    )
+    result = await compute({}, "endurance-estimate", "range-estimate", "max-endurance", "max-range")
     powers: dict[float, float] = {}
     for v in SCAN_SPEEDS:
-        scan = await compute({**values, "flight-speed": v}, "battery-power")
-        found = {q.slug: q for q in scan.quantities}["battery-power"]
-        if found.status is not QuantityStatus.OK or found.value is None:
-            break  # the domain of the optimiser ends at the first speed without a balance, too
-        powers[v] = found.value
-    assert len(powers) >= 8
+        scan = await compute({"flight-speed": v}, "battery-power")
+        powers[v] = value_of(scan, "battery-power")  # every scan speed has a balance (gh-1417)
     t_scan = max(3600.0 * E_BAT_WH / p for p in powers.values())
     r_scan = max(3600.0 * E_BAT_WH * v / p for v, p in powers.items())
     t_max, r_max = value_of(result, "max-endurance"), value_of(result, "max-range")
@@ -106,10 +92,9 @@ async def test_the_optimum_equals_a_brute_force_scan_and_the_estimate_does_not_e
     assert value_of(result, "range-estimate") <= r_max * (1.0 + 1e-6)
 
 
-async def test_the_estimate_is_the_declared_failure_where_the_part_load_search_has_a_hole() -> None:
-    # at 3.70 kg the minimum-drag speed (17.58 m/s) falls into the hole of the table coverage
-    # (17.0 to 17.75 m/s have no balance); both outputs of the formula end in the declared failure
-    result = await compute({}, "endurance-estimate", "range-estimate")
-    for q in result.quantities:
-        assert q.error is not None
-        assert q.error.code == "outside_propeller_table"
+async def test_the_speeds_that_were_holes_of_the_part_load_search_compute() -> None:
+    # before gh-1417 these ended as outside_propeller_table on the Avistar at 3.70 kg
+    for v in (17.0, 17.58, 22.0, 26.0, 30.0):
+        result = await compute({"flight-speed": v}, "battery-power", "thrust-demand-ratio")
+        assert value_of(result, "battery-power") > 0.0
+        assert 0.0 < value_of(result, "thrust-demand-ratio") < 1.0

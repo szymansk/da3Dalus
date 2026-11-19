@@ -25,12 +25,14 @@ RHO, D_PROP, U_BAT, MASS, G = 1.225, 13 * 0.0254, 14.8, 3.4, 9.80665
 KV, I0, RM = 900.0, 1.2, 0.082
 E_BAT_WH = 74.0  # 5 Ah on the 4S pack: the rated energy of the tests (marked test value)
 SPEED_OF_SOUND = 340.0
+WALL_DRAG_N = 1000.0  # beyond the thrust of the whole APC 13x8E table
 
 
 class SpeedOpti(StubOpti):
     """AeroBuildup stand-in for the level-flight solve with ``D(V) = a V^2 + b / V^2`` N.
 
-    Below ``min_speed`` the lift cannot reach the weight: the adapter's declared ``not_converged``.
+    Below ``min_speed`` the lift cannot reach the weight: the adapter's declared ``not_converged``;
+    above ``wall_speed`` the drag is beyond the table.
     """
 
     def __init__(
@@ -38,14 +40,18 @@ class SpeedOpti(StubOpti):
         a: float = 0.01,
         b: float = 200.0,
         min_speed: float = 0.0,
+        wall_speed: float | None = None,
         warnings: tuple[KernelWarning, ...] = (),
     ) -> None:
         super().__init__()
         self.a, self.b, self.min_speed, self.warnings = a, b, min_speed, warnings
+        self.wall_speed = wall_speed
         self.speeds: list[float] = []
 
     def drag(self, v: float) -> float:
-        """The stub's drag in N at the speed."""
+        """The stub's drag in N at the speed; above ``wall_speed`` a drag no propeller table holds."""
+        if self.wall_speed is not None and v > self.wall_speed:
+            return WALL_DRAG_N
         return self.a * v**2 + self.b / v**2
 
     async def level_flight_point(
