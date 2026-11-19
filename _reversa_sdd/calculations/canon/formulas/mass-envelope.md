@@ -92,9 +92,30 @@ and climb problems as in ANFORDERUNGEN §3.10 (this canon's requirements documen
 
 **Validity in the RC/UAV regime (ADR 0028).** The sweep is regime-independent as a construction; each curve carries the limitation of the problem it embeds. `V_S(m)` inherits the Reynolds sensitivity of `C_L,max` (Anderson §4.3; Lennon Ch. 1–3), and since `V_S ∝ √m` the chord Re moves along the sweep, which the polar must follow. For a hand-launched model `V_TO` is the throw speed, with no ground roll and no wheel brakes; whether `T − D ≥ 0` at that speed is the right lift-off criterion for hand launch has no source [no source].
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/mass_envelope.py` | DEVIATES | 🟢 | The entry's optimisations over the mass are solved by what they reduce to, from the pieces that exist (`powered_flight.PoweredFlight`: `full_throttle_thrust` and `OptiAdapter.level_flight_point`; `OptiAdapter.stall`). `m_max,level` is the root over the mass of the best excess thrust over the speed, `G(m) = max_V (T − D)` with `L = m g`; `m_max,TO` is the root of `T − D` at `V_TO(m) = V_S,TO(m) · V_TO / V_S,TO` in the take-off configuration. Both: an upward scan of the mass from the current mass in steps of `mass_envelope_step` to the first mass at which the quantity is not positive, then Illinois regula falsi. **Deviations:** (1) no IPOPT problem is posed (the torque balance is a bisection on the propeller table); (2) the three embedded optimisations are shared functions of the modules of the formulas they name, not relations handed out by `Context.embedded` (ARCHITECTURE ch. 8.12 defers that form; the four propulsion relations are handed out); the embedded stall check `optimum_at_first_cl_peak` runs on every stall solve of the sweep; (3) `V_max(m)` and `ROC_max(m)` are searched in the window of the speeds that the best excess gives, because near `m_max,level` that window is narrower than the 2 m/s scan of `max-level-speed` and `best-rate-of-climb`; (4) the state must hold at the current mass, else `no_feasible_speed` (no downward search). Route B, complete data only (a missing `R_m`, `I_0` or propeller table is `missing_input`); a speed beyond the propeller table is the declared failure `outside_propeller_table`. |
+
+No register node is mapped to this entry.
+
+**What is requestable (#1420).** The two scalars `max-mass-level-flight` and `max-mass-lift-off`. The two curve
+outputs (`speed-range-over-mass`, `climb-rate-over-mass`) are computed inside the node over the scan masses (the
+current mass, then up in steps, closed by `m_max,level`) and are not requestable: a curve is `non_scalar_result`
+(ARCHITECTURE ch. 8.3; the open maintainer decision on curve results). The trim range
+`cg-envelope-over-mass` is not an output of this entry any more: it is the entry [[cg-envelope]], not implemented.
+
+**Implementation remark (#1420).** Warnings forwarded: those of the answer's level-flight point at `m_max,level`
+(flap, Reynolds, Mach and the drag notice of the adapter), those of the stall solve and the level-flight point of
+the answer at `m_max,TO` (with the flap-validity declaration), the route notice once, the skipped speeds of the
+level answer, and `powered_limit_declared` where the best excess lies at the stall corner; the warnings of the
+iterates and of the curve samples are not forwarded. Assumptions: `G(m)` and `T − D` at `V_TO(m)` fall with the
+mass and cross zero once (bracketed by the upward scan); the best excess has one maximum over the speed (golden
+section); the speeds with a climb are contiguous below the speed of the best excess. A state still held at the last
+mass of the scan (`mass_envelope_max_steps`) is `not_converged`. The curve samples are the scan masses (a fifth of
+the current mass apart); the sample at `m_max,level` closes them with `V_max` = the speed of the best excess and a
+rate of climb of zero. Nothing is validated against a measurement: no mass envelope of an RC aircraft is published.
 
 ## Approval
 

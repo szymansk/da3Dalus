@@ -707,11 +707,8 @@ class KernelConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_mass_scan(self) -> Self:
-        """Require a positive mass step and a whole number of scan steps, at least one."""
+        """Require a whole number of mass-scan steps, at least one (the step itself is above 0 as a value)."""
         steps = self.mass_envelope_max_steps.value
-        if self.mass_envelope_step.value <= 0.0:
-            msg = "mass_envelope_step must be above 0"
-            raise ValueError(msg)
         if steps < 1.0 or steps != round(steps):
             msg = "mass_envelope_max_steps must be a whole number of at least 1"
             raise ValueError(msg)
