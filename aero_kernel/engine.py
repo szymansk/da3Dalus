@@ -51,6 +51,7 @@ from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
     ComputeResult,
+    Curve,
     DefaultUsed,
     Interval,
     KernelWarning,
@@ -183,8 +184,9 @@ _CARRIED_TYPES = frozenset({"scalar", "airplane", "polar", "components"})
 # airplane: a parsed geometry holds metres in the format's millimetre fields and by design does not
 # parse again (``geometry.py``), so it cannot come back from JSON unchanged; a node that produces
 # one (``airplane-configuration``, a cheap device setting) is not cached. Nor the types v1 does
-# not carry (curve, ...): the engine discards those values. Declared, not silent (ADR 0020).
-_CACHED_TYPES = frozenset({"scalar", "polar", "per_control_surface"})
+# not carry (curve_pair, ...): the engine discards those values. Declared, not silent (ADR 0020).
+# A curve is stored as its samples (``x``, ``y``): that is all a result carries of it.
+_CACHED_TYPES = frozenset({"scalar", "polar", "per_control_surface", "curve"})
 
 
 def _key_value(value: Value | None) -> JsonValue:
@@ -209,6 +211,8 @@ def _stored_value(value: object) -> JsonValue:
     """The JSON form of a cached output, by its type (ch. 8.4); lossless, ``-0.0`` kept."""
     if isinstance(value, Polar):
         return value.model_dump(mode="json")
+    if isinstance(value, Curve):  # a subclass (the stall curve) keeps only what a result carries
+        return {"x": list(value.x), "y": list(value.y)}
     if _is_surface_moments(value):  # a per_control_surface value: surface key -> float
         return dict(value.items())
     assert isinstance(value, float)  # _check_outputs passed and the type is a cached one
@@ -225,6 +229,8 @@ def _restored_value(kind: str, value: JsonValue) -> object:
     """A cached output back as the value of its type: a fresh object (ch. 8.4)."""
     if kind == "polar":
         return Polar.model_validate(value)
+    if kind == "curve":
+        return Curve.model_validate(value)
     if kind == "per_control_surface":
         assert isinstance(value, dict)  # stored by _stored_value
         return {key: _as_float(item) for key, item in value.items()}
@@ -1008,14 +1014,14 @@ class _Call:
     def _check_outputs(self, node: Node, formula: Formula, returned: Mapping[str, object]) -> None:
         """Require exactly the output parameters, and a value of its type for each carried output.
 
-        The key of an output whose type v1 cannot carry (curve, ...) must be present, but its value
+        The key of an output whose type v1 cannot carry (curve_pair, ...) must be present, but its value
         is neither carried nor type-checked: the engine discards it, and whoever reads it is
         ``not_implemented`` (``unsupported_value_type``). The type check for each such type arrives
         with the unit that adds it to ``Value`` (the polar did with ``stall-break``).
 
         Raises:
             ValueError: If the formula returned other parameters than the canon declares.
-            TypeError: If an exposed scalar, airplane, polar or per-surface output is not a value of its type.
+            TypeError: If an exposed scalar, airplane, polar, curve or per-surface output is not a value of its type.
         """
         expected = set(formula.application(node.id.application).produce)
         if set(returned) != expected:
@@ -1035,6 +1041,9 @@ class _Call:
                 raise TypeError(msg)
             if quantity.type == "polar" and not isinstance(value, Polar):
                 msg = f"output {produce.parameter} is not a polar"
+                raise TypeError(msg)
+            if quantity.type == "curve" and not isinstance(value, Curve):
+                msg = f"output {produce.parameter} is not a curve"
                 raise TypeError(msg)
             if quantity.type == "per_control_surface" and not _is_surface_moments(value):
                 msg = f"output {produce.parameter} is not a non-empty value per control surface"
@@ -1104,6 +1113,8 @@ class _Call:
 
     def _merged_result(self, resolved: Resolved) -> QuantityResult:
         """The result of one requested quantity over its world assignments, without timing."""
+        if resolved.quantity.type == "curve":
+            return self._curve_result(resolved)
         if len(resolved.producers) > 1:
             return self._surfaces_result(resolved)
         assignments = self.subtree.world_assignments(resolved.requested)
@@ -1169,6 +1180,16 @@ class _Call:
                 application=application,
                 warnings=warnings,
             )
+        if isinstance(value, Curve):  # checked by _check_outputs for a curve
+            return QuantityResult(
+                slug=slug,
+                unit=unit,
+                status=status,
+                curve=Curve(x=value.x, y=value.y),
+                tool=formula.tool,
+                application=node.id.application,
+                warnings=warnings,
+            )
         assert isinstance(value, float)  # checked by _check_outputs for a scalar
         return QuantityResult(
             slug=slug,
@@ -1178,6 +1199,37 @@ class _Call:
             tool=formula.tool,
             application=node.id.application,
             warnings=warnings,
+        )
+
+    def _curve_result(self, resolved: Resolved) -> QuantityResult:
+        """The result of a ``curve`` quantity (ch. 8.3, 8.13).
+
+        One producer under one world assignment gives the curve. Under several method worlds, or
+        from several applications, an interval or union of curves would be a pointwise min/max or
+        merge no formula needs yet, so it is a declared ``not_implemented``.
+        """
+        several = bool(self.subtree.world_assignments(resolved.requested)[0])
+        if not several and len(resolved.producers) == 1:
+            return self._result_under(resolved, {})
+        reason = (
+            "depends on a formula with several method worlds"
+            if several
+            else "is produced by several applications"
+        )
+        return QuantityResult(
+            slug=resolved.requested,
+            unit=resolved.quantity.unit,
+            status=QuantityStatus.ERROR,
+            error=KernelError(
+                code="uncertain_curve",
+                category=ErrorCategory.NOT_IMPLEMENTED,
+                quantity=resolved.requested,
+                message=(
+                    f"`{resolved.requested}` is a curve and {reason}; "
+                    "an interval or union of curves is not defined."
+                ),
+                hint="Request it from a build whose inputs are plain values.",
+            ),
         )
 
     def _surfaces_result(self, resolved: Resolved) -> QuantityResult:
@@ -1275,6 +1327,7 @@ _ROW_BY_CODE = {
     "unsupported_value_type": 3,
     "continuous_uncertainty": 3,
     "non_scalar_result": 3,
+    "uncertain_curve": 3,
     "upstream_failed": 4,
     "missing_input": 5,
 }

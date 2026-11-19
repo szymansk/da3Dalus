@@ -10,7 +10,7 @@ from aero_kernel import CachedKernel, compute
 from aero_kernel import api as api_module
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.schema import ComputeRequest, ComputeResult, QuantityResult
+from aero_kernel.schema import ComputeRequest, ComputeResult, Curve, QuantityResult
 from aero_kernel.tests.engine_builders import Impl, aircraft, make_build, num, registry_with
 
 pytestmark = pytest.mark.asyncio
@@ -51,6 +51,10 @@ async def _fails_slowly(x: Inputs, ctx: Context) -> Mapping[str, object]:
     raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "no convergence", "retry")
 
 
+async def _curve(x: Inputs, ctx: Context) -> Mapping[str, object]:
+    return {"c": Curve(x=(0.0, 1.0), y=(-0.0, 2.5))}
+
+
 @pytest.fixture
 def calls(monkeypatch: pytest.MonkeyPatch) -> Calls:
     """Make the fixture build with counting stubs the shipped one."""
@@ -60,6 +64,7 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> Calls:
         "gravity-only": _gravity,
         "independent": _warns,
         "fail-density": _fails_slowly,
+        "curve-producer": _curve,
     }
     build = make_build(
         registry_with({slug: counter.counted(slug, impl) for slug, impl in stubs.items()})
@@ -142,3 +147,12 @@ async def test_the_least_recently_used_node_is_evicted(calls: Calls) -> None:
 async def test_the_size_is_given_at_construction_and_must_be_positive() -> None:
     with pytest.raises(ValueError, match="max_entries"):
         CachedKernel(max_entries=0)
+
+
+async def test_a_curve_is_served_from_the_cache_equal_to_the_computed_one(calls: Calls) -> None:
+    kernel = CachedKernel(max_entries=16)
+    first, second = await call(kernel, "curve-q"), await call(kernel, "curve-q")
+    assert (first.from_cache, second.from_cache) == (False, True)
+    assert first.curve is not None
+    assert second.curve == first.curve
+    assert calls.count["curve-producer"] == 1

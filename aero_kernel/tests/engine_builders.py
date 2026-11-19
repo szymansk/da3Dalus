@@ -12,7 +12,7 @@ from aero_kernel.graph import CanonGraph
 from aero_kernel.registry import Registry
 from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime
-from aero_kernel.schema import AircraftInput, ComputeRequest, Polar
+from aero_kernel.schema import AircraftInput, ComputeRequest, Curve, Polar
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.solvers.avl import AvlAdapter
 from aero_kernel.solvers.opti import OptiAdapter
@@ -382,7 +382,7 @@ async def _cfg_span(x: Inputs, ctx: Context) -> Mapping[str, object]:
 
 
 async def _curve(x: Inputs, ctx: Context) -> Mapping[str, object]:
-    return {"c": 1.0}
+    return {"c": Curve(x=(0.0, 0.5, 1.0), y=(3.0, 2.0, -0.0))}
 
 
 STANDARD: Mapping[str, Impl] = {

@@ -711,9 +711,9 @@ column: α in `deg`, the coefficients `C_L`, `C_D` in `1`; its `unit` field says
 | `scalar` | one number in the declared unit (an interval over worlds when the producer has `uncertainty: interval`) |
 | `airplane` | the aircraft geometry: geometry, sections, airfoils — not a number |
 | `components` | the fitted-components document: motor, battery, propeller with its APC table — not a number |
-| `curve` | one value per point of a swept variable (the crow mix `s`, the mass `m`), named in the symbol |
+| `curve` | one value per point of a swept variable (the crow mix `s`, the mass `m`), named in the symbol. The kernel returns it as a result: `x` and `y` arrays, `y` in the declared unit, the swept variable carries no unit of its own (gh-1424); over more than one method world it is not defined yet (`not_implemented`) |
 | `polar` | the sampled whole-aircraft coefficients over angle of attack — α, C_L, C_D, of equal length — at one evaluation condition, which the slug names (A2); no `C_m`, since no formula reads it (removed with the static-margin probe, #1347) |
-| `curve_pair` | two curves over the same swept variable that bound a range — a lower and an upper edge |
+| `curve_pair` | two curves over the same swept variable that bound a range — a lower and an upper edge; not returnable as a result yet (`non_scalar_result`) |
 | `per_control_surface` | **output only**: one value per control surface, keyed by `<wing>.<device>[_left\|_right]`: the wing's name (required, unique), the device's `name` from the geometry (derived exactly as the geometry format derives it when omitted) and `_left` / `_right` for a mirrored device, e.g. `Seitenleitwerk_links.rudder`; twin fins are separate devices; no length limit; not tied to the mixing names of #955, nor to any solver-internal name. Each entry maps the id of the producing application to a number in the declared unit, so a dual-role surface carries one value per role. Several applications of one formula may produce the same `per_control_surface` quantity; it is the union of the applicable applications' entries. A role without surfaces makes its application not applicable (`when`); when no application applies, the quantity is not applicable (the `when` rule). Two surfaces with the same key are an invalid input (`invalid_input`) |
 
 ### One example per kind
