@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:8237fbfbc427238c470b9d41b11f8812a6d48ff841c010b0941037eaae855ba2",
+  "content_hash": "sha256:ad31480180a376951be492f7103e6b2cab2f760bcaf9eece647d6e71137fe082",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -64,6 +64,20 @@
           "basis": "decision",
           "guards": "Roll rate: the relative disagreement of the declared and the refined AVL mesh above which the roll rate is declared not converged.",
           "source": "maintainer, #1211 D8: fixed before any measurement; the agreement asked of the independent template reference",
+          "unit": "1",
+          "value": 0.01
+        },
+        "endurance_speed_ratio": {
+          "basis": "numerical",
+          "guards": "Greatest endurance and greatest range: the ratio of neighbouring speeds of the scan that starts at the stall speed and ends where the drive train cannot hold the speed (thrust demand ratio above 1, or no balance on the propeller table). The optimum is then refined inside the two cells around the best scan speed.",
+          "source": "a search resolution, no physical claim: the battery power of level flight is a smooth curve with one minimum, so a ten-percent cell isolates it, and each cell costs one level-flight solve (about 0.9 s on the Avistar Elite, measured gh-1415); a finer scan only costs time",
+          "unit": "1",
+          "value": 1.1
+        },
+        "endurance_speed_tolerance": {
+          "basis": "numerical",
+          "guards": "Greatest endurance and greatest range: the relative width of the speed interval at which the golden-section refinement stops; the optimal speed is then known to this fraction of itself.",
+          "source": "a search resolution: at a minimum the battery power (and its quotient with the speed) changes with the square of the speed error, so a one-percent speed error moves the optimum value by a much smaller fraction (second order; checked against a brute-force scan in gh-1415). No domain threshold",
           "unit": "1",
           "value": 0.01
         },
@@ -1456,7 +1470,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -1470,15 +1485,13 @@
           "cost": "seconds",
           "direction": "analysis",
           "embeds": [
-            "calc:motor-propeller-part-load.default",
-            "calc:stall-speed.clean"
+            "calc:motor-propeller-part-load.default"
           ],
           "embeds_closure": [
             "calc:advance-ratio-from-speed.default",
             "calc:motor-propeller-equilibrium.default",
             "calc:motor-propeller-part-load.default",
             "calc:propeller-table-lookup.default",
-            "calc:stall-speed.clean",
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
@@ -1496,7 +1509,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -6282,8 +6296,8 @@
           "module": null,
           "point": "stall",
           "positive": null,
-          "role": "output",
-          "stage": null,
+          "role": "derived",
+          "stage": "operating-points",
           "symbol": "V_S",
           "type": "scalar",
           "uncertainty": null,

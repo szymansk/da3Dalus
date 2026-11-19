@@ -77,6 +77,9 @@ IMPLEMENTED = {
     "calc:motor-propeller-part-load",
     "calc:static-thrust-to-weight",
     "calc:battery-mass-from-capacity",
+    "calc:endurance-and-range",
+    "calc:endurance-and-range-optimum",
+    "calc:cruise-target-performance",
 }
 
 

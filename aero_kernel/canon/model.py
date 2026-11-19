@@ -683,6 +683,8 @@ class KernelConfig(BaseModel):
     opt_body_axis_tolerance: ConfigValue
     avl_contour_margin: ConfigValue
     powertrain_balance_tolerance: ConfigValue
+    endurance_speed_ratio: ConfigValue
+    endurance_speed_tolerance: ConfigValue
 
 
 class Namespace(BaseModel):

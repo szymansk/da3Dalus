@@ -14,21 +14,25 @@ from aero_kernel.components import Components
 from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import FormulaError
-from aero_kernel.formulas.values import number
+from aero_kernel.formulas.values import air_state, airplane_of, number
+from aero_kernel.solvers.opti import LevelFlightPoint
 
 __all__ = [
     "RPM_PER_HZ",
     "Balance",
     "Coefficients",
     "GridPoint",
+    "PartLoad",
     "advance_ratio_of",
     "balance_tolerance",
     "bisect_root",
     "current_at_speed",
     "current_for_torque",
     "equilibrium_of",
+    "level_flight_at",
     "motor_torque",
     "optional",
+    "part_load_of",
     "propeller_torque",
     "scan_grid",
     "table_lookup_of",
@@ -41,6 +45,7 @@ _ADVANCE_RATIO = "calc:advance-ratio-from-speed.default"
 _TABLE_LOOKUP = "calc:propeller-table-lookup.default"
 _THRUST = "calc:thrust-at-airspeed-from-coefficient.default"
 _EQUILIBRIUM = "calc:motor-propeller-equilibrium.default"
+_PART_LOAD = "calc:motor-propeller-part-load.default"
 
 
 @dataclass(frozen=True)
@@ -67,6 +72,43 @@ class Balance:
 
     n_prop: float
     q_m: float
+
+
+@dataclass(frozen=True)
+class PartLoad:
+    """The part-load point of level flight at one speed.
+
+    Attributes:
+        n_pl: Propeller speed in 1/s.
+        i_bat: Battery current in A.
+        p_bat: Battery power in W.
+        r_t: Thrust demand ratio, the drag over the full-throttle thrust (1).
+    """
+
+    n_pl: float
+    i_bat: float
+    p_bat: float
+    r_t: float
+
+
+class PartLoadRelation(Protocol):
+    """The signature of the ``motor-propeller-part-load`` relation: the drive train at a given drag."""
+
+    def __call__(
+        self,
+        ctx: Context,
+        components: Components,
+        v: float,
+        rho: float,
+        k_v: float,
+        i_0: float,
+        r_m: float,
+        u_bat: float,
+        d_prop: float,
+        drag: float,
+    ) -> PartLoad:
+        """Solve the part-load point at the airspeed ``v`` against the drag ``drag`` in N."""
+        ...
 
 
 class EquilibriumRelation(Protocol):
@@ -109,6 +151,35 @@ def thrust_of(ctx: Context) -> Callable[[float, float, float, float], float]:
 def equilibrium_of(ctx: Context) -> EquilibriumRelation:
     """The embedded ``motor-propeller-equilibrium`` relation."""
     return cast("EquilibriumRelation", ctx.embedded(_EQUILIBRIUM))
+
+
+def part_load_of(ctx: Context) -> PartLoadRelation:
+    """The embedded ``motor-propeller-part-load`` relation."""
+    return cast("PartLoadRelation", ctx.embedded(_PART_LOAD))
+
+
+async def level_flight_at(x: Inputs, ctx: Context, v: float) -> LevelFlightPoint:
+    """The level-flight point at the speed ``v``: the kernel's one lift-equals-weight solve.
+
+    ``OptiAdapter.level_flight_point`` (the machinery of the level-flight polar: an alpha sweep plus
+    secant steps bounded by the first lift peak, tolerance and step limit ``opt_level_*`` in
+    ``config.yaml``). The caveats stay in the result: the caller forwards those of the answer only.
+
+    Args:
+        x: ``airplane``, ``m`` in kg, ``g`` in m/s^2, ``rho`` in kg/m^3, ``mu`` in Pa s, ``a`` in m/s.
+        ctx: The formula context that holds the solver adapters.
+        v: The speed in m/s.
+
+    Returns:
+        The point (angle, drag, lift) and its caveats.
+
+    Raises:
+        FormulaError: ``not_converged`` from the adapter if the weight is not carried before the
+            first lift peak at this speed.
+    """
+    return await ctx.solvers.opti.level_flight_point(
+        airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), v
+    )
 
 
 def balance_tolerance() -> float:

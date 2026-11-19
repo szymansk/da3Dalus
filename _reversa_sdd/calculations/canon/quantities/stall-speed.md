@@ -3,12 +3,13 @@ canon: stall-speed
 kind: quantity
 symbol: V_S
 unit: m/s
-role: output
+role: derived
 tags:
   - canon/quantity
   - discipline/aerodynamics
   - point/stall
-  - role/output
+  - stage/operating-points
+  - role/derived
 type: scalar
 ---
 
@@ -19,3 +20,5 @@ Minimum flyable speed of the clean airplane at load factor 1, the lift-balance s
 **Unit.** `m/s`
 
 **Produced by.** [[stall-speed]]
+
+**Used by.** [[endurance-and-range-optimum]]

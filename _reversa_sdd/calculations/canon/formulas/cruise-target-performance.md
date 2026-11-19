@@ -75,9 +75,13 @@ requirement, the result is measured against it (A9).
 
 **Validity in the RC/UAV regime (ADR 0028).** The energy balance is regime-independent; drag and propulsive efficiency carry the regime. Model-scale profile drag is Reynolds- and transition-sensitive (Anderson §4.12; Lennon Ch. 1–3). If the target speed lies near the stall, the wing works near `C_L ≈ 1`, where NeuralFoil flags a laminar separation bubble and low confidence at `Re_c ≈ 8·10⁴` (Sharpe 2024 §7.2.4). The drive-train side is as valid as [[motor-propeller-part-load]]: small-propeller efficiency spans 0.28–0.65 across designs and falls below a blade Re of about 10⁵ (Brandt & Selig 2011 §IV), which the propeller table carries instead of one constant. Usable battery fraction, voltage sag and reserve are not modelled [no source]. Mach is no concern (Anderson §1.10.3).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/cruise_target_performance.py` | DEVIATES | 🟢 | `P_bat(V_cruise,target)` from the embedded relation of [[motor-propeller-part-load]] (one level-flight solve at the target speed, then the drive-train balance), `t_cruise = 3600 E_bat / P_bat`, `R_cruise = V_cruise,target t_cruise`. **Route B only** (complete data, as decided for the powertrain, gh-1411): an absent `r_m` or `i_0` ends as `missing_input`, and `p_mot_max` and `eta_mot` are bound and not read; route A (assumed efficiency) is not built. The energy is the rated pack energy `E_bat` (nominal cell voltage, no usable fraction, no sag, no reserve), as the entry declares; no factor is applied. `outside_propeller_table` of the part-load search at a speed ends the evaluation of that speed (a target speed beyond the table is the declared failure of the part-load chain). Warnings forwarded: the caveats of the level-flight solve, the route `notice`, and for `r_T > 1` the `warning` `postcondition_violated` (`demand_within_full_throttle`): the speed cannot be held, the values describe a demand the drive train cannot meet. Cost: one part-load evaluation, about 1 s (measured on the Avistar Elite, gh-1415) |
+
+No register node is mapped to this entry.
 
 ## Approval
 

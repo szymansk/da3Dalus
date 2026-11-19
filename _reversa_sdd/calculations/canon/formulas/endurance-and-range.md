@@ -65,9 +65,13 @@ P_bat(V) := battery-power of motor-propeller-part-load at V   (thrust = drag, le
 
 **Validity in the RC/UAV regime (ADR 0028).** The energy balance is regime-independent; the numbers carry the regime, and endurance is the more exposed: `V_mp` lies at high `C_L`, about `1.2–1.4·V_S` (Sadraey §4.2.5.4, Eq. 4.25), where the low-Re polar is least certain — NeuralFoil reports low confidence near `C_L ≈ 1` at `Re_c ≈ 8·10⁴` (Sharpe 2024 §7.2.4), and profile drag is transition-sensitive (Anderson §4.12). The drive-train side is as valid as [[motor-propeller-part-load]] (Re₀.₇₅ ≈ 15–100 k, Brandt & Selig 2011 §IV). Battery sag, the usable fraction of the charge and reserve are not modelled [no source]; the battery is taken as its full rated energy. Mach is no concern (Anderson §1.10.3).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry (kernel implementation of the part-load chain and the optimisation: #1238).
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/endurance_and_range.py` | DEVIATES | 🟢 | `P_bat(V_mp)` and `P_bat(V_md)` from the embedded relation of [[motor-propeller-part-load]] (the level-flight point at the speed from the kernel's one lift-equals-weight solve, then the drive-train balance; the embedder passes every input), `t_est = 3600 E_bat / P_bat(V_mp)`, `R_est = 3600 E_bat V_md / P_bat(V_md)`. **Route B only** (complete data, as decided for the powertrain, gh-1411): an absent `r_m` or `i_0` ends as `missing_input`, and `p_mot_max` and `eta_mot` are bound and not read; route A (assumed efficiency) is not built. The energy is the rated pack energy `E_bat` (nominal cell voltage, no usable fraction, no sag, no reserve), as the entry declares; no factor is applied. `outside_propeller_table` of the part-load search at a speed ends the evaluation of that speed (`V_mp` or `V_md` beyond the table or beyond what the wing carries is the declared failure of the part-load chain, never a value). Warnings forwarded: the caveats of the two level-flight solves (regime, flap, kernel drag), the route `notice` of the drive train, and — for a speed at which the drive train cannot hold level flight (`r_T > 1`) — the `warning` `postcondition_violated` for the part-load postcondition `demand_within_full_throttle` (the value is still returned: a demand the drive train cannot meet, A10). Cost: two part-load evaluations, about 2 s (measured on the Avistar Elite, gh-1415) |
+
+No register node is mapped to this entry.
 
 ## Approval
 

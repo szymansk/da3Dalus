@@ -684,9 +684,14 @@ class _Call:
         )
 
     def _relations_of(self, formula: Formula) -> dict[str, Callable[..., object]]:
-        """The registered relations of the formula's ``embeds``, by embed item (ch. 8.5, 8.12)."""
+        """The registered relations reachable through the formula's ``embeds``, by embed item.
+
+        The closure, not only the direct embeds: a relation that reaches another relation does so
+        through the same context (ch. 8.12), so an embedder of ``motor-propeller-part-load`` is handed
+        the relations that one reaches as well (ch. 8.5, 8.12).
+        """
         found: dict[str, Callable[..., object]] = {}
-        for item in formula.embeds:
+        for item in formula.embeds_closure:
             relation = self.build.registry.relation_of(item.split(".", 1)[0])
             if relation is not None:
                 found[item] = relation
