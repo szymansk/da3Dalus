@@ -21,6 +21,7 @@ deflection.
 """
 
 import asyncio
+import math
 from collections.abc import Mapping, Sequence
 
 from aero_kernel.config import config
@@ -34,7 +35,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import CheckResult, formula, postcondition, precondition
 from aero_kernel.schema import Curve, KernelWarning, StallCurve
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.opti import GlidePoint, Stall
+from aero_kernel.solvers.opti import LevelFlightPoint, Stall
 from pydantic import JsonValue
 
 __all__ = [
@@ -141,7 +142,7 @@ def _worst_fit_range(found: Sequence[KernelWarning]) -> KernelWarning | None:
 
 
 def _forward_caveats(
-    ctx: Context, stalls: Sequence[Stall], glides: Sequence[GlidePoint], closing: int
+    ctx: Context, stalls: Sequence[Stall], glides: Sequence[LevelFlightPoint], closing: int
 ) -> None:
     """Forward the caveats of the reference solves once, and the worst fit range of the sweep."""
     seen: set[tuple[str, str]] = set()
@@ -202,16 +203,21 @@ async def _glides(
     speeds: Sequence[float],
     x: Inputs,
     air: AirState,
-) -> list[GlidePoint]:
+) -> list[LevelFlightPoint]:
     mass, gravity = number(x, "m"), number(x, "g")
     return list(
         await asyncio.gather(
             *(
-                ctx.solvers.opti.glide_point(configuration, mass, gravity, air, speed)
+                ctx.solvers.opti.level_flight_point(configuration, mass, gravity, air, speed)
                 for configuration, speed in zip(configurations, speeds, strict=True)
             )
         )
     )
+
+
+def _glide_angle(glide: LevelFlightPoint) -> float:
+    """The steady glide angle without thrust in degrees: ``atan(C_D / C_L)`` with ``L = m g``."""
+    return math.degrees(math.atan2(glide.point.cd, glide.point.cl))
 
 
 def _fully_mixable(
@@ -219,7 +225,7 @@ def _fully_mixable(
     mixes: Sequence[float],
     speeds: Sequence[float],
     approach: Sequence[float],
-    glides: Sequence[GlidePoint],
+    glides: Sequence[LevelFlightPoint],
 ) -> FormulaError:
     return FormulaError(
         ErrorCategory.UNSUPPORTED_CONFIGURATION,
@@ -231,7 +237,7 @@ def _fully_mixable(
             "mix": [*mixes],
             "v_s0_m_s": [*speeds],
             "v_app_m_s": [*approach],
-            "glide_angle_deg": [g.solution.glide_angle_deg for g in glides],
+            "glide_angle_deg": [_glide_angle(g) for g in glides],
             "v_app_without_crow_m_s": v_app,
         },
     )
@@ -297,7 +303,7 @@ async def butterfly_approach(x: Inputs, ctx: Context) -> dict[str, float | Curve
     return {
         "v_s0_curve": curve,
         "v_app_curve": Curve(x=tuple(mixes), y=tuple(approach)),
-        "gamma_curve": Curve(x=tuple(mixes), y=tuple(g.solution.glide_angle_deg for g in glides)),
+        "gamma_curve": Curve(x=tuple(mixes), y=tuple(_glide_angle(g) for g in glides)),
         "s_max": found[0],
     }
 

@@ -60,6 +60,20 @@ components-efficiency-at-most:
       source: "definition: a fraction of the input power cannot exceed 1 (100 %)"
       regime: "regime-independent"
 
+components-propeller-table-shape:
+  applies_to: {quantity: components}
+  kind: input
+  on_violation: error
+  criterion: "The propeller table has at least one rpm block, and every block has at least two points, with j, ct and cp of the same length. A table that cannot be interpolated is refused at the input, not discovered inside the lookup."
+  codes: [malformed_table]
+
+components-propeller-table-ordered:
+  applies_to: {quantity: components}
+  kind: input
+  on_violation: error
+  criterion: "The rpm of the blocks is greater than zero and strictly increasing; within a block j is not negative and strictly increasing. The lookup interpolates linearly and needs a bracketing pair; an unordered axis has none."
+  codes: [table_not_increasing]
+
 distinct-sections:
   applies_to: {quantity: airplane}
   kind: input

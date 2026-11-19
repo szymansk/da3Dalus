@@ -71,6 +71,13 @@ IMPLEMENTED = {
     "calc:minimum-drag-speed-closed-form",
     "calc:sink-rate",
     "calc:airplane-components",
+    "calc:advance-ratio-from-speed",
+    "calc:propeller-table-lookup",
+    "calc:thrust-at-airspeed-from-coefficient",
+    "calc:motor-propeller-equilibrium",
+    "calc:motor-propeller-part-load",
+    "calc:static-thrust-to-weight",
+    "calc:battery-mass-from-capacity",
 }
 
 

@@ -688,6 +688,9 @@
         },
         "opt_zero_span": {
           "$ref": "#/$defs/ConfigValue"
+        },
+        "powertrain_balance_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
         }
       },
       "required": [
@@ -719,7 +722,8 @@
         "opt_body_merge_exponent_max",
         "opt_body_axis_tolerance",
         "avl_contour_margin",
-        "butterfly_mix_steps"
+        "butterfly_mix_steps",
+        "powertrain_balance_tolerance"
       ],
       "title": "KernelConfig",
       "type": "object"

@@ -12,7 +12,7 @@ PROPELLER = {"diameter_in": 13.0}
 
 def test_a_document_with_only_the_required_fields_parses_and_the_rest_is_absent() -> None:
     parsed = Components.model_validate(
-        {"schema_version": 1, "motor": MOTOR, "battery": BATTERY, "propeller": PROPELLER}
+        {"schema_version": 2, "motor": MOTOR, "battery": BATTERY, "propeller": PROPELLER}
     )
     assert parsed.motor == Motor(kv_rpm_per_volt=900.0)
     assert parsed.motor is not None
@@ -30,7 +30,7 @@ def test_a_document_with_only_the_required_fields_parses_and_the_rest_is_absent(
 
 
 def test_a_part_may_be_missing_altogether() -> None:
-    parsed = Components.model_validate({"schema_version": 1})
+    parsed = Components.model_validate({"schema_version": 2})
     assert (parsed.motor, parsed.battery, parsed.propeller) == (None, None, None)
 
 
@@ -38,12 +38,12 @@ def test_the_schema_version_is_required_and_only_one_is_accepted() -> None:
     with pytest.raises(ValidationError, match="schema_version"):
         Components.model_validate({})
     with pytest.raises(ValidationError, match="schema_version"):
-        Components.model_validate({"schema_version": 2})
+        Components.model_validate({"schema_version": 3})
 
 
 def test_an_unknown_field_is_refused() -> None:
     with pytest.raises(ValidationError, match="surprise"):
-        Components.model_validate({"schema_version": 1, "motor": MOTOR | {"surprise": 1.0}})
+        Components.model_validate({"schema_version": 2, "motor": MOTOR | {"surprise": 1.0}})
 
 
 def test_the_chemistry_is_one_of_the_closed_list() -> None:
@@ -65,7 +65,7 @@ def test_a_document_is_frozen() -> None:
 
 
 def test_the_json_round_trip_keeps_absence_absent() -> None:
-    components = Components.model_validate({"schema_version": 1, "motor": MOTOR})
+    components = Components.model_validate({"schema_version": 2, "motor": MOTOR})
     again = Components.model_validate_json(components.model_dump_json())
     assert again == components
     assert again.motor is not None

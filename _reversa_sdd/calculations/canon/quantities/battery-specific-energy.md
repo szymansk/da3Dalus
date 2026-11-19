@@ -10,6 +10,7 @@ tags:
   - role/input
 type: scalar
 data: default:battery-specific-energy
+positive: true
 ---
 
 # Specific energy of the battery · `E_star`

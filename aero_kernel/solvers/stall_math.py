@@ -3,7 +3,6 @@
 from collections.abc import Sequence
 
 __all__ = [
-    "crossing_below_peak",
     "first_crossing_below",
     "first_extremum",
     "first_extremum_from_zero",
@@ -83,35 +82,4 @@ def first_crossing_below(
             before, after = cl[k - 1], cl[k]
             share = (before - level) / (before - after) if before > after else 1.0
             return alphas_deg[k - 1] + share * (alphas_deg[k] - alphas_deg[k - 1])
-    return None
-
-
-def crossing_below_peak(
-    alphas_deg: Sequence[float], cl: Sequence[float], peak_index: int, level: float
-) -> tuple[int, float] | None:
-    """Return where ``C_L`` rises to ``level`` on the branch below the first peak (canon ``butterfly-approach``).
-
-    The scan runs down from the peak sample; the first sample (from the top) with ``C_L <= level``
-    and its upper neighbour bracket the crossing, which is interpolated linearly between them. A
-    sample on the level is the crossing itself.
-
-    Args:
-        alphas_deg: Angles of attack in degrees, rising.
-        cl: Lift coefficient per sample.
-        peak_index: The index of the first C_L peak.
-        level: The lift coefficient to reach.
-
-    Returns:
-        The index of the lower bracketing sample and the share ``(level - cl[k]) / (cl[k+1] - cl[k])``
-        of the way to the upper one, or ``None`` if the peak itself lies below the level (the speed
-        is below the stall speed) or no sample below the peak is at or under it (the event is not
-        bracketed; no sample is substituted, ADR 0020).
-    """
-    if cl[peak_index] < level:
-        return None
-    if cl[peak_index] == level and peak_index > 0:
-        return peak_index - 1, 1.0
-    for k in range(peak_index - 1, -1, -1):
-        if cl[k] <= level:
-            return k, (level - cl[k]) / (cl[k + 1] - cl[k])
     return None

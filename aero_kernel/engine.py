@@ -637,7 +637,12 @@ class _Call:
         application = node.id.application
         inputs, world = call.inputs, call.world
         origin = display_slug(node.produces[0].quantity)
-        warner = Context(origin=origin, solvers=self.solvers, world=world)
+        warner = Context(
+            origin=origin,
+            solvers=self.solvers,
+            world=world,
+            relations=self._relations_of(formula),
+        )
         pre_warnings, refused = self._run_checks("pre", node, formula, inputs, None, origin)
         if refused is not None:
             return self._failed(
@@ -677,6 +682,15 @@ class _Call:
             outputs=returned,
             warnings=(*call.default_warnings, *pre_warnings, *warner.warnings, *post_warnings),
         )
+
+    def _relations_of(self, formula: Formula) -> dict[str, Callable[..., object]]:
+        """The registered relations of the formula's ``embeds``, by embed item (ch. 8.5, 8.12)."""
+        found: dict[str, Callable[..., object]] = {}
+        for item in formula.embeds:
+            relation = self.build.registry.relation_of(item.split(".", 1)[0])
+            if relation is not None:
+                found[item] = relation
+        return found
 
     def _run_checks(
         self,

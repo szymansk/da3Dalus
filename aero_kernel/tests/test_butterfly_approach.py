@@ -30,7 +30,12 @@ from aero_kernel.schema import (
     StallCurve,
 )
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.opti import GlidePoint, GlidePointSolution, Stall, StallSolution
+from aero_kernel.solvers.opti import (
+    LevelFlightPoint,
+    LevelPoint,
+    Stall,
+    StallSolution,
+)
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
 from aero_kernel.tests.stall_stubs import StubOpti, lift_curve
@@ -118,16 +123,21 @@ class CrowStub(StubOpti):
         self.n_loads.append(n_load)
         return Stall(solution=stall_of(airplane, mass_kg, gravity, air), warnings=())
 
-    async def glide_point(
+    async def level_flight_point(
         self, airplane: AirplaneGeometry, mass_kg: float, gravity: float, air: AirState, v_ms: float
-    ) -> GlidePoint:
+    ) -> LevelFlightPoint:
         self.glide_speeds.append(v_ms)
         area = stand_in_main_wing_properties(airplane).s_ref
         cl = 2.0 * mass_kg * gravity / (air.density * v_ms**2 * area)
-        solution = GlidePointSolution(
-            alpha_deg=4.0, cl=cl, cd=CD, glide_angle_deg=math.degrees(math.atan2(CD, cl))
+        point = LevelPoint(
+            v_ms=v_ms,
+            alpha_deg=4.0,
+            cl=cl,
+            cd=CD,
+            lift_n=mass_kg * gravity,
+            drag_n=CD * 0.5 * air.density * v_ms**2 * area,
         )
-        return GlidePoint(solution=solution, warnings=())
+        return LevelFlightPoint(point=point, warnings=())
 
 
 def inputs(**change: object) -> dict[str, object]:
@@ -302,7 +312,7 @@ async def test_an_approach_speed_below_the_landing_stall_gives_zero_without_read
     None
 ):
     class Refusing(CrowStub):
-        async def glide_point(self, *args: Any) -> GlidePoint:  # type: ignore[override]
+        async def level_flight_point(self, *args: Any) -> LevelFlightPoint:  # type: ignore[override]
             self.glide_speeds.append(args[-1])
             raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "below the stall", "h")
 
