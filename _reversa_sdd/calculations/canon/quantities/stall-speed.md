@@ -21,4 +21,4 @@ Minimum flyable speed of the clean airplane at load factor 1, the lift-balance s
 
 **Produced by.** [[stall-speed]]
 
-**Used by.** [[endurance-and-range-optimum]]
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[endurance-and-range-optimum]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]]

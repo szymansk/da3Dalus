@@ -52,7 +52,7 @@ async def best_rate_of_climb(x: Inputs, ctx: Context) -> dict[str, float]:
         gamma = await climb_angle(flight, v)
         return gamma if isinstance(gamma, Unflyable) else v * math.sin(gamma)
 
-    optimum = await maximise_over_speed(rate, flight)
+    optimum = await maximise_over_speed(rate, flight, flight.climb_scan_start())
     gamma = await climb_angle(flight, optimum.v)
     if isinstance(
         gamma, Unflyable

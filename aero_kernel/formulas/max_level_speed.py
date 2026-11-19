@@ -82,7 +82,7 @@ async def max_level_speed(x: Inputs, ctx: Context) -> dict[str, float]:
     last: tuple[float, float] | None = None  # the last evaluated speed and its excess
     crossing: tuple[tuple[float, float], tuple[float, float]] | None = None
     edge: FormulaError | None = None
-    for v in scan_speeds():
+    for v in scan_speeds(flight.v_s):
         try:
             excess = await _excess(flight, v)
         except FormulaError as error:
@@ -101,7 +101,7 @@ async def max_level_speed(x: Inputs, ctx: Context) -> dict[str, float]:
             reasons.add(Unflyable.THRUST)
         last = (v, excess)
     if last is None or (crossing is None and last[1] <= 0.0):
-        raise never_flyable(reasons)
+        raise never_flyable(reasons, flight.v_s)
     if crossing is None or last[1] > 0.0:
         if edge is not None:
             raise table_failure(
