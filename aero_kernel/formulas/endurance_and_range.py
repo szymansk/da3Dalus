@@ -47,5 +47,5 @@ async def endurance_and_range(x: Inputs, ctx: Context) -> dict[str, float]:
     at_md = await part_load_at(x, ctx, v_md)
     t_est = energy_over_power(e_bat, at_mp.point.p_bat, v_mp)
     r_est = v_md * energy_over_power(e_bat, at_md.point.p_bat, v_md)
-    forward_part_load_caveats(ctx, [at_mp, at_md])
+    forward_part_load_caveats(ctx, [at_mp, at_md], e_bat)
     return {"t_est": t_est, "r_est": r_est}

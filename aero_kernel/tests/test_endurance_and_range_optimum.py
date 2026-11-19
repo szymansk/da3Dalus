@@ -161,3 +161,47 @@ async def test_only_the_caveats_of_the_two_answer_speeds_are_forwarded() -> None
     ctx = context_of(SLUG, SpeedOpti(warnings=(caveat,)))
     await endurance_and_range_optimum(optimum_inputs(), ctx)
     assert [w.code for w in ctx.warnings].count("induced_drag_viscous_factor_removed") == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("code", ["no_thrust_at_full_throttle", "propeller_windmilling"])
+async def test_a_vanished_full_throttle_thrust_ends_the_domain_and_is_named(
+    code: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from aero_kernel.errors import ErrorCategory
+    from aero_kernel.formulas import endurance_and_range_optimum as module
+
+    real = module.part_load_at
+
+    async def thrust_vanishes(x: Any, ctx: Any, v: float) -> Any:
+        if v > 15.0:
+            raise FormulaError(ErrorCategory.UNSUPPORTED_CONFIGURATION, code, "no thrust", "none")
+        return await real(x, ctx, v)
+
+    monkeypatch.setattr(module, "part_load_at", thrust_vanishes)
+    ctx = context_of(SLUG, SpeedOpti(a=0.0, b=100.0))
+    await endurance_and_range_optimum(optimum_inputs(), ctx)
+    bounds = [w for w in ctx.warnings if w.code == "optimum_at_domain_bound"]
+    assert bounds
+    assert all(w.detail["bound"] == "full_throttle_thrust" for w in bounds)
+
+
+@pytest.mark.asyncio
+async def test_an_unsolvable_stall_speed_names_the_level_flight_bound_not_the_stall_speed() -> None:
+    # the cost rises above 14 m/s; the wing carries the weight only from 14.0001 m/s on: the best speed
+    # is within the resolution of V_S, but V_S itself is not in the domain
+    ctx = context_of(SLUG, SpeedOpti(min_speed=14.0001))
+    await endurance_and_range_optimum(optimum_inputs(v_s=14.0), ctx)
+    bounds = [w for w in ctx.warnings if w.code == "optimum_at_domain_bound"]
+    assert bounds
+    assert all(w.detail["bound"] == "level_flight_solution" for w in bounds)
+
+
+@pytest.mark.asyncio
+async def test_the_bound_message_states_the_bound_and_the_speeds_and_no_judgement() -> None:
+    ctx = context_of(SLUG, SpeedOpti())
+    await endurance_and_range_optimum(optimum_inputs(v_s=14.0), ctx)
+    message = next(w.message for w in ctx.warnings if w.code == "optimum_at_domain_bound")
+    assert "stall_speed" in message
+    assert "14" in message
+    assert "could be greater" not in message

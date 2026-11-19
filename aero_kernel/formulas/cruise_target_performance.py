@@ -39,8 +39,8 @@ async def cruise_target_performance(x: Inputs, ctx: Context) -> dict[str, float]
             ``outside_propeller_table``, ``no_thrust_at_full_throttle`` of the part-load chain;
             ``non_positive_battery_power``.
     """
-    v = number(x, "v_cruise_target")
+    v, e_bat = number(x, "v_cruise_target"), number(x, "e_bat")
     at_target = await part_load_at(x, ctx, v)
-    t_cruise = energy_over_power(number(x, "e_bat"), at_target.point.p_bat, v)
-    forward_part_load_caveats(ctx, [at_target])
+    t_cruise = energy_over_power(e_bat, at_target.point.p_bat, v)
+    forward_part_load_caveats(ctx, [at_target], e_bat)
     return {"t_cruise": t_cruise, "r_cruise": v * t_cruise}

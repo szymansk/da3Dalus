@@ -201,3 +201,49 @@ def test_a_drive_train_that_draws_no_power_gives_no_flight_time() -> None:
         energy_over_power(74.0, 0.0, 10.0)
     assert caught.value.code == "non_positive_battery_power"
     assert close(energy_over_power(74.0, 60.0, 10.0), 3600.0 * 74.0 / 60.0, 1e-12)
+
+
+@pytest.mark.asyncio
+async def test_the_route_notice_says_the_energy_is_the_rated_pack_energy() -> None:
+    ctx = context_of("endurance-and-range", SpeedOpti())
+    await endurance_and_range(
+        bound("endurance-and-range", {"minimum-sink-speed": V_MP, "minimum-drag-speed": V_MD}), ctx
+    )
+    notice = [w for w in ctx.warnings if w.code == "powertrain_route_winding_resistance"]
+    assert len(notice) == 1
+    assert notice[0].detail["route"] == "B"
+    assert notice[0].detail["energy_basis"] == "rated"
+    assert notice[0].detail["e_bat_wh"] == E_BAT_WH
+    assert "no usable fraction" in notice[0].message
+
+
+@pytest.mark.asyncio
+async def test_other_embedders_keep_the_unchanged_route_notice() -> None:
+    from aero_kernel.formulas.motor_propeller_equilibrium import declare_route
+
+    ctx = context_of("endurance-and-range", SpeedOpti())
+    declare_route(ctx)
+    assert ctx.warnings[0].detail == {"route": "B"}
+    assert "rated" not in ctx.warnings[0].message
+
+
+@pytest.mark.asyncio
+async def test_a_battery_power_not_above_zero_ends_the_formula_as_a_declared_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # reachable with a table whose C_P is negative at the balance (the validation does not check the
+    # sign of the coefficients); stubbed here at the boundary of the embedded chain
+    from aero_kernel.formulas import endurance_and_range as module
+    from aero_kernel.formulas.motor_propeller_part_load import SpeedPoint
+    from aero_kernel.formulas.propulsion import PartLoad
+
+    async def free_power(x: object, ctx: object, v: float) -> SpeedPoint:
+        return SpeedPoint(v, PartLoad(n_pl=50.0, i_bat=0.0, p_bat=0.0, r_t=0.1), ())
+
+    monkeypatch.setattr(module, "part_load_at", free_power)
+    with pytest.raises(FormulaError) as caught:
+        await endurance_and_range(
+            bound("endurance-and-range", {"minimum-sink-speed": V_MP, "minimum-drag-speed": V_MD}),
+            context_of("endurance-and-range", SpeedOpti()),
+        )
+    assert caught.value.code == "non_positive_battery_power"

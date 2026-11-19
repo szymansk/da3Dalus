@@ -17,7 +17,11 @@ from aero_kernel.errors import FormulaError
 from aero_kernel.formulas.motor_propeller_equilibrium import equilibrium
 from aero_kernel.formulas.motor_propeller_part_load import demand_within_full_throttle, part_load
 from aero_kernel.tests import powertrain_reference as reference
-from aero_kernel.tests.components_builders import apc_13x8e_table, components_of
+from aero_kernel.tests.components_builders import (
+    apc_13x8e_table,
+    complete_components_with_table,
+    components_of,
+)
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.test_powertrain_chain import context_for
 from aero_kernel.tests.test_powertrain_edges import small_table
@@ -113,3 +117,49 @@ def test_the_equilibrium_finds_a_balance_below_the_lowest_covered_block() -> Non
         low, high = (middle, high) if residual(middle) > 0.0 else (low, middle)
     assert close(got.n_prop * 60.0, 0.5 * (low + high), 1e-6)
     assert 1817.0 < got.n_prop * 60.0 < 2000.0
+
+
+# --- a covered grid point whose interior neighbour is uncovered -----------------------------------------
+
+
+def narrow_second_block() -> Components:
+    """Blocks 1200, 2400, 3600 rpm (exact in 1/s) with ``J`` ranges 0.8, 0.2, 0.8, flat ``C_T`` 0.1.
+
+    At 1.5 m/s the grid point 1200 rpm (J = 0.227) is covered by its own block, but between 1200 and
+    2400 rpm the interpolation needs the 2400 rpm block, whose range ends at J = 0.2: the stretch from
+    1200 to 1363 rpm (J = 0.2 at 22.7 1/s) is uncovered although both ends of the pair are covered.
+    """
+    document = complete_components_with_table().model_dump()
+    document["propeller"]["table"] = {
+        "blocks": [
+            {"rpm": rpm, "j": [0.0, top], "ct": [0.1, 0.1], "cp": [0.04, 0.04]}
+            for rpm, top in zip((1200.0, 2400.0, 3600.0), (0.8, 0.2, 0.8), strict=True)
+        ]
+    }
+    return Components.model_validate(document)
+
+
+def drag_at(rpm: float) -> float:
+    """The thrust ``0.1 rho n^2 D^4`` of the flat-``C_T`` table at the speed in rpm."""
+    return 0.1 * RHO * (rpm / 60.0) ** 2 * D_PROP**4
+
+
+def solve_part_load_speed(drag: float) -> float:
+    from aero_kernel.formulas.motor_propeller_part_load import solve_part_load_speed
+
+    return solve_part_load_speed(
+        context_for("motor-propeller-part-load"), narrow_second_block(), 1.5, RHO, D_PROP, drag
+    )
+
+
+def test_a_root_in_the_covered_part_of_a_pair_with_an_uncovered_stretch_is_found() -> None:
+    got = solve_part_load_speed(drag_at(1700.0))
+    assert close(got * 60.0, 1700.0, 1e-6)
+
+
+def test_a_root_in_the_uncovered_stretch_is_the_declared_failure_not_a_raw_lookup_error() -> None:
+    # the root at 1300 rpm lies where the interpolation has no data; the search must not bisect into it
+    with pytest.raises(FormulaError) as caught:
+        solve_part_load_speed(drag_at(1300.0))
+    assert caught.value.code == "outside_propeller_table"
+    assert "found no speed where the table covers the advance ratio" in caught.value.message

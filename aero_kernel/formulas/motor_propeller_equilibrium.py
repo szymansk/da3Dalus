@@ -12,11 +12,11 @@ With ``K_v' = 2 pi K_v / 60`` (rad/(V s)) and the speed ``n`` in 1/s the balance
 
 ``Q_m`` falls and ``Q_p`` rises with ``n`` over the usual range. The residual ``Q_m - Q_p`` is evaluated
 at the rpm blocks of the table (the grid) that lie below the motor's free-run speed and that the table
-covers at this airspeed; the highest neighbouring pair of covered grid points with a sign change is
-bisected. A root between a covered and an uncovered grid point is not searched (no edge refinement).
+covers at this airspeed, and at the coverage edge between a covered and an uncovered grid speed (the
+speed at which the advance ratio enters the interpolated table, located by bisection on coverage,
+gh-1417); the highest neighbouring pair of covered points with a sign change and a covered stretch
+between its ends is bisected. A root where the table has no data is not found: the failure says so.
 """
-
-from itertools import pairwise
 
 from aero_kernel.components import Components
 from aero_kernel.context import Context, Inputs
@@ -29,6 +29,7 @@ from aero_kernel.formulas.propulsion import (
     advance_ratio_of,
     balance_tolerance,
     bisect_root,
+    covered_pairs,
     current_at_speed,
     motor_torque,
     optional,
@@ -69,16 +70,30 @@ def require_motor_values(i_0: float | None, r_m: float | None) -> tuple[float, f
     return i_0, r_m
 
 
-def declare_route(ctx: Context) -> None:
-    """Declare route B and what its resistance leaves out (ADR 0020, canon ``Q-PT-6``)."""
-    ctx.warn(
-        "powertrain_route_winding_resistance",
+def declare_route(ctx: Context, rated_energy_wh: float | None = None) -> None:
+    """Declare route B and what its resistance leaves out (ADR 0020, canon ``Q-PT-6``).
+
+    Args:
+        ctx: The formula context that collects the warning.
+        rated_energy_wh: Given by the formulas that turn the battery power into a flight time or a
+            range: the pack energy they used, in Wh. The same notice then also says that this is the
+            rated energy (capacity times nominal voltage), with no usable fraction, no reserve and no
+            sag, and carries it in ``detail`` (``energy_basis``, ``e_bat_wh``).
+    """
+    message = (
         "Route B ran (Q-PT-6): the manufacturer's winding resistance R_m and no-load current I_0 "
         "balance the torque. R_m is the winding only; ESC and cable resistance are not in it, so "
         "the voltage loss is slightly under-estimated, and the nominal pack voltage is used "
-        "(no sag under load).",
-        {"route": "B"},
+        "(no sag under load)."
     )
+    detail: dict[str, JsonValue] = {"route": "B"}
+    if rated_energy_wh is not None:
+        message += (
+            f" The pack energy {rated_energy_wh:.4g} Wh is the rated energy (capacity times nominal "
+            "voltage): no usable fraction and no reserve are taken off."
+        )
+        detail |= {"energy_basis": "rated", "e_bat_wh": rated_energy_wh}
+    ctx.warn("powertrain_route_winding_resistance", message, detail)
 
 
 def _no_balance(points: list[GridPoint], v: float) -> FormulaError:
@@ -175,7 +190,7 @@ def equilibrium(
     n_top = min(blocks[-1].rpm / RPM_PER_HZ, k_v * u_bat / RPM_PER_HZ)
     grid = [b.rpm / RPM_PER_HZ for b in blocks if b.rpm / RPM_PER_HZ < n_top] + [n_top]
     points = scan_grid(state, grid)
-    for low, high in reversed(list(pairwise(points))):
+    for low, high in reversed(covered_pairs(points)):
         if low.residual is None or high.residual is None or not low.residual > 0.0 >= high.residual:
             continue
         n_balance = bisect_root(residual, low.n, high.n, balance_tolerance())

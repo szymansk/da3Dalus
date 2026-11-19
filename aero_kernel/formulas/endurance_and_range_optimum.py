@@ -10,7 +10,8 @@ The domain and its search (declared, never silent)
 --------------------------------------------------
 A **scan** starts at the stall speed and rises by the ratio ``endurance_speed_ratio`` (``config.yaml``)
 until the drive train cannot hold the speed (``r_T > 1``) or the part-load chain has no answer there
-(``outside_propeller_table``: the table holds no balance at that speed), or the Mach limit of the RC/UAV regime
+(``outside_propeller_table``: the table holds no balance at that speed; ``no_thrust_at_full_throttle`` or
+``propeller_windmilling``: the full-throttle thrust has vanished), or the Mach limit of the RC/UAV regime
 (rule ``reynolds-mach-regime``, ADR 0028) is reached. A speed at which the level-flight solve does
 not converge (near the stall speed the weight is carried only at the lift peak) is not in the domain;
 the domain starts at the lowest scan speed that solves. The best scan speed of each objective is
@@ -40,11 +41,15 @@ from pydantic import JsonValue
 
 __all__ = ["endurance_and_range_optimum"]
 
-# The failures of the part-load chain that end the domain at a speed, by the bound they name; any
-# other failure (a missing input, a drive train without thrust) is not about the speed and passes.
+# The failures of the part-load chain that end the domain at a speed, by the bound they name. All four
+# depend on the speed: the level-flight solve has no answer (near the stall speed), the table holds no
+# balance, or the full-throttle thrust of the drive train has vanished (no thrust, or a propeller
+# driven by the airstream). Any other failure (a missing input) is not about the speed and passes.
 _EXIT_BOUNDS = {
     "not_converged": "level_flight_solution",
     "outside_propeller_table": "propeller_table",
+    "no_thrust_at_full_throttle": "full_throttle_thrust",
+    "propeller_windmilling": "full_throttle_thrust",
 }
 _FULL_THROTTLE = "full_throttle"
 _STALL_SPEED = "stall_speed"
@@ -194,7 +199,7 @@ class _Domain:
         below = max((u for u in self._outcome if u < v), default=None)
         above = min((u for u in self._outcome if u > v), default=None)
         if v - self._v_s <= resolution:
-            return _Found(speed, _STALL_SPEED, self._v_s)
+            return _Found(speed, self._bound_of(self._v_s) or _STALL_SPEED, self._v_s)
         if below is not None and self._bound_of(below) and v - below <= resolution:
             return _Found(speed, self._bound_of(below), below)
         if above is not None and self._bound_of(above) and above - v <= resolution:
@@ -210,10 +215,9 @@ def _declare_bound(ctx: Context, what: str, found: _Found) -> None:
         return
     ctx.warn(
         "optimum_at_domain_bound",
-        f"The greatest {what} lies on a bound of the speed domain, the bound `{found.bound}` at "
-        f"{found.edge_v:.4g} m/s (best speed {found.speed.v:.4g} m/s): without that bound the "
-        f"{what} could be greater. The upper edge of the domain is resolved to the scan cell, not to "
-        "the exact crossing.",
+        f"The greatest {what} lies on a bound of the speed domain: the bound `{found.bound}` at "
+        f"{found.edge_v:.4g} m/s (best speed {found.speed.v:.4g} m/s). The upper edge of the domain "
+        "is resolved to the scan cell, not to the exact crossing.",
         {"objective": what, "bound": found.bound, "edge_v_ms": found.edge_v, "v_ms": found.speed.v},
     )
 
@@ -235,8 +239,8 @@ async def endurance_and_range_optimum(x: Inputs, ctx: Context) -> dict[str, floa
     Raises:
         TypeError: If ``airplane`` or ``components`` is not the document.
         FormulaError: ``missing_input`` for an absent ``r_m`` or ``i_0``; ``no_level_flight_speed``;
-            ``no_thrust_at_full_throttle`` and the other failures of the part-load chain that are
-            not about the speed; ``non_positive_battery_power``.
+            ``non_positive_battery_power``; a failure of the part-load chain that is not about the
+            speed passes unchanged.
     """
     mach_limit = ctx.solvers.rules.value(REGIME_RULE, "mach_limit")
     domain = _Domain(x, ctx, number(x, "v_s"), mach_limit * number(x, "a"))
@@ -248,7 +252,7 @@ async def endurance_and_range_optimum(x: Inputs, ctx: Context) -> dict[str, floa
     r_max = best_range.speed.v * energy_over_power(
         e_bat, best_range.speed.point.p_bat, best_range.speed.v
     )
-    forward_part_load_caveats(ctx, [endurance.speed, best_range.speed])
+    forward_part_load_caveats(ctx, [endurance.speed, best_range.speed], e_bat)
     _declare_bound(ctx, "endurance", endurance)
     _declare_bound(ctx, "range", best_range)
     return {"t_max": t_max, "r_max": r_max}

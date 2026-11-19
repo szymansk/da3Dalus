@@ -6,7 +6,8 @@ not built, gh-1411). The steps, with ``K_v' = 2 pi K_v / 60`` (rad/(V s)):
 1. the angle of attack ``alpha`` where AeroBuildup's lift equals the weight at ``V`` (secant search on
    the rising part of the lift curve), and the drag ``D`` there;
 2. the propeller speed ``n_pl`` where ``C_T(J, n) rho n^2 D_prop^4 = D``, ``J = V / (n D_prop)``
-   (the propeller table alone fixes it; bisection between neighbouring covered rpm blocks);
+   (the propeller table alone fixes it; bisection between neighbouring covered points: the rpm blocks
+   and the coverage edges between a covered and an uncovered block, gh-1417);
 3. ``Q = C_P rho n_pl^2 D_prop^5 / (2 pi)``, ``I = I_0 + Q K_v'``, ``U_m = I R_m + 2 pi n_pl / K_v'``,
    ``P_bat = U_m I``, ``I_bat = P_bat / U_bat``;
 4. ``r_T = D / T_full(V)`` with ``T_full`` the thrust at the full-throttle speed of
@@ -16,7 +17,6 @@ not built, gh-1411). The steps, with ``K_v' = 2 pi K_v / 60`` (rad/(V s)):
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from itertools import pairwise
 
 from aero_kernel.components import Components
 from aero_kernel.context import Context, Inputs
@@ -29,6 +29,7 @@ from aero_kernel.formulas.propulsion import (
     advance_ratio_of,
     balance_tolerance,
     bisect_root,
+    covered_pairs,
     current_for_torque,
     equilibrium_of,
     level_flight_at,
@@ -52,12 +53,13 @@ __all__ = [
     "motor_propeller_part_load",
     "part_load",
     "part_load_at",
+    "solve_part_load_speed",
 ]
 
 _SECONDS_PER_HOUR = 3600.0  # s per h: converts the energy in Wh to J
 
 
-def _solve_part_load_speed(
+def solve_part_load_speed(
     ctx: Context,
     components: Components,
     v: float,
@@ -79,7 +81,7 @@ def _solve_part_load_speed(
 
     blocks = table_of(components).blocks
     points = scan_grid(lambda n: (shortfall(n), 0.0), [b.rpm / RPM_PER_HZ for b in blocks])
-    for low, high in pairwise(points):
+    for low, high in covered_pairs(points):
         if low.residual is None or high.residual is None or not low.residual > 0.0 >= high.residual:
             continue
         return bisect_root(shortfall, low.n, high.n, balance_tolerance())
@@ -144,7 +146,7 @@ def part_load(
             the embedded relations.
     """
     advance, lookup, thrust = advance_ratio_of(ctx), table_lookup_of(ctx), thrust_of(ctx)
-    n_pl = _solve_part_load_speed(ctx, components, v, rho, d_prop, drag)
+    n_pl = solve_part_load_speed(ctx, components, v, rho, d_prop, drag)
     c_p = lookup(components, advance(v, n_pl, d_prop), n_pl).c_p
     current = current_for_torque(propeller_torque(c_p, rho, n_pl, d_prop), i_0, k_v)
     p_bat = terminal_voltage(current, r_m, n_pl, k_v) * current
@@ -258,7 +260,9 @@ async def part_load_at(x: Inputs, ctx: Context, v: float) -> SpeedPoint:
     return SpeedPoint(v=v, point=point, warnings=found.warnings)
 
 
-def forward_part_load_caveats(ctx: Context, answered: Sequence[SpeedPoint]) -> None:
+def forward_part_load_caveats(
+    ctx: Context, answered: Sequence[SpeedPoint], e_bat_wh: float
+) -> None:
     """Report the caveats of the speeds an embedder's answer rests on, each once.
 
     What the engine does for the formula's own postcondition, the embedder does for the embedded
@@ -269,6 +273,7 @@ def forward_part_load_caveats(ctx: Context, answered: Sequence[SpeedPoint]) -> N
     Args:
         ctx: The embedder's context.
         answered: The speeds of the answer.
+        e_bat_wh: The rated pack energy in Wh the answer used; the route notice says so.
     """
     seen: set[tuple[str, str]] = set()
     for speed in answered:
@@ -284,7 +289,7 @@ def forward_part_load_caveats(ctx: Context, answered: Sequence[SpeedPoint]) -> N
                 f"violated at {speed.v:.4g} m/s: {verdict.message}",
                 {"postcondition": "demand_within_full_throttle", "v_ms": speed.v},
             )
-    declare_route(ctx)
+    declare_route(ctx, e_bat_wh)
 
 
 def energy_over_power(e_bat_wh: float, p_bat_w: float, v: float) -> float:
