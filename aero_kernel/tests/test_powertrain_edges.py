@@ -125,5 +125,5 @@ def test_a_version_one_components_document_is_refused_with_a_message_that_names_
         AircraftInput.model_validate(document)
     message = str(caught.value)
     assert "components.schema_version" in message
-    assert "this kernel accepts version 2" in message
+    assert "this kernel accepts version 3" in message
     assert "propeller performance table" in message

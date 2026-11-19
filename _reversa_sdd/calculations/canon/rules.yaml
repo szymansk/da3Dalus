@@ -42,7 +42,7 @@ components-positive-numbers:
   applies_to: {quantity: components}
   kind: input
   on_violation: error
-  criterion: "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v and diameter_in, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push."
+  criterion: "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v, diameter_in and, of every material of the materials table, bending_strength_pa, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push."
   codes: [non_positive_value]
 
 components-efficiency-at-most:
@@ -139,6 +139,20 @@ body-attachment:
   on_violation: error
   criterion: "Every body under fuselages has a role (fuselage, canopy, nacelle, fairing, pod, spinner or other; fuselage when the document does not say), stated by the writer and never inferred from its name, and optionally attached_to, the name of the body it sits on (#1355, maintainer 2026-11-05). attached_to, when set, names another body of the same aircraft, and the chain of attached_to has no cycle. A body of role canopy has attached_to. A canopy's x range, from the smallest to the largest xyz[0] of its sections, lies within its parent's x range, ends included and without tolerance; the ranges are compared only when both bodies have at least minimum-sections.min_sections sections with finite positions (a body with fewer is refused by too_few_sections, a non-finite position by finite-numbers). The parent of a canopy is not itself a canopy (slice 2: every canopy is merged into one parent; a canopy on a canopy is refused with invalid_body_attachment). Nothing else is checked: neither whether a canopy's contour describes only its visible part, nor whether several bodies on the symmetry plane lack symmetric. Spinner (#1375; maintainer decision 2026-11-06: recognised by role, not by name): a body of role spinner is the propeller spinner on the motor of another body. It has attached_to, and its parent is neither a canopy nor a spinner (refused with invalid_body_attachment at attached_to). It adjoins one end of its parent: tractor, its largest xyz[0] equals the parent's smallest; pusher, its smallest xyz[0] equals the parent's largest; exact and without tolerance, as the canopy range; compared only when both bodies have at least minimum-sections.min_sections sections with finite positions; otherwise refused with spinner_not_adjoining_parent at the xyz[0] of the spinner section that should lie at the joint (its rearmost when the spinner is nearer the parent's front, else its foremost). How the solvers use role and attached_to is the tool rules canopy-merge and spinner-merge."
   codes: [invalid_body_attachment, canopy_outside_parent, spinner_not_adjoining_parent]
+
+spar-section-admissible:
+  applies_to: {quantity: airplane}
+  kind: input
+  on_violation: error
+  criterion: "The optional section of a spar (format version 3, gh-1427) has every dimension greater than zero, in metres; a tube's wall thickness is less than half its outer diameter and a capped section's flange thickness is less than half its height, so that a bore or a gap remains. A spar without a section is valid: it has no capacity. A segment's section is the smallest section the spar has within that segment (the producer of the document is responsible); the kernel holds it constant over the segment and never interpolates. The pocket fields stay unchecked (CAD only)."
+  codes: [invalid_spar_section]
+
+spar-extent-admissible:
+  applies_to: {quantity: airplane}
+  kind: input
+  on_violation: error
+  criterion: "The fields that place a spar in span, which the spar capacity reads (gh-1427), are admissible: spare_start is not negative, spare_length is greater than zero where given, spare_position_factor is between 0 and 1 where given, and a given spare_vector is not the zero vector. Non-finite numbers are refused by finite-numbers' code. Whether a missing position factor matters is decided where the capacity is read (spar-front-determinable)."
+  codes: [invalid_spar_extent]
 
 segment-details-not-on-last-section:
   applies_to: {quantity: airplane}
@@ -473,3 +487,17 @@ small-glide-angle:
       positive: true
       source: "the entry sink-rate (draft value E ~ 5, 'fixed at approval'): at E = 5 the two dropped factors overstate the sink rate by 2.0 % and 1.0 % (exact trigonometry, tabulated in the entry). The value is a draft of the entry that the maintainer fixes at approval; no published source states a floor. The RC-Network Wiki 'Gleitzahl' gives only tan(gamma) = 1/E"
       regime: "RC/UAV: E of 10-20 for gliders and 3-6 for a draggy sport model at low Re (the entry), so the floor falls inside the range of powered models; the exact overstatements are in the detail of every warning, so a caller can read the size of the error rather than rely on the floor"
+
+spar-capacity-material:
+  applies_to: {formula: spar-break-load-factor}
+  kind: input
+  on_violation: error
+  criterion: "The bending capacity M_cap = W * strength of the front spar at a station needs the strength of its material: a spar with a section has a material key (spar_material_missing), the key is in the pushed components' materials table (spar_material_unknown), and the material has a bending_strength_pa (spar_material_without_strength). Nothing is substituted: no default material, no estimated strength, no safety factor (maintainer, 2026-11-19, gh-1427). A spar without a section needs none of this. A station outside the half span, or not a number, is refused (station_outside_wing). A station with no spar present, and a station whose present front spar has no section, are different, typed outcomes of the capacity (no spar; capacity unknown), never one value or one skip."
+  codes: [spar_material_missing, spar_material_unknown, spar_material_without_strength, station_outside_wing]
+
+spar-front-determinable:
+  applies_to: {formula: spar-break-load-factor}
+  kind: input
+  on_violation: error
+  criterion: "The front spar alone carries the bending (BR-W16, wing-design/spar-sizing); capacities are not added. The front spar at a station is the spar with the smallest spare_position_factor among those present at that station (a spar that has ended by spare_start / spare_length is not present; the remaining one is then the front spar). A present front spar without a section means the capacity is unknown: the rear spar never stands in for a present front spar. Where several spars are present, every one has a finite position and the positions are distinct (front_spar_not_determinable). The spanwise extent of a spar follows the construction (VaseModeWingCreator.py:807-819); a partial extent (spare_start or spare_length given) of a spar in the chained modes follow, standard_backward or orthogonal_backward, or of a standard spar without a position factor or a vector, cannot be placed (spar_extent_not_determinable). The spar's angle to the y axis (sweep, dihedral, the modes' vectors) does not enter the capacity; against the bending moment about the y direction that is conservative by the cosine of the angle."
+  codes: [front_spar_not_determinable, spar_extent_not_determinable]

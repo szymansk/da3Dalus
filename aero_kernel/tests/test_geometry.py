@@ -615,13 +615,18 @@ def test_all_pins_the_public_names() -> None:
             "Airfoil",
             "BodyRole",
             "AirplaneGeometry",
+            "CappedSection",
             "ControlSurface",
             "Fuselage",
             "FuselageXSecSuperEllipse",
             "InlineAirfoil",
+            "RectangularSection",
+            "RodSection",
             "Servo",
             "SurfaceType",
             "SpareDetail",
+            "SparSection",
+            "TubeSection",
             "TrailingEdgeDevice",
             "Turbulator",
             "Wing",
@@ -634,7 +639,8 @@ def test_all_pins_the_public_names() -> None:
 
 
 @pytest.mark.parametrize(
-    "name", [n for n in geometry.__all__ if n not in {"Airfoil", "BodyRole", "SurfaceType"}]
+    "name",
+    [n for n in geometry.__all__ if n not in {"Airfoil", "BodyRole", "SurfaceType", "SparSection"}],
 )
 def test_docstring_documents_every_attribute(name: str) -> None:
     model = getattr(geometry, name)

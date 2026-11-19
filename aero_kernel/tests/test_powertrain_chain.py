@@ -188,7 +188,7 @@ def test_an_absent_table_is_missing_input_naming_the_field() -> None:
         table_lookup(complete_components(), 0.1, 100.0)
     assert caught.value.code == "missing_input"
     assert caught.value.detail["inputs"] == ["components.propeller.table"]
-    no_propeller = Components.model_validate({"schema_version": 2})
+    no_propeller = Components.model_validate({"schema_version": 3})
     with pytest.raises(FormulaError) as without:
         table_lookup(no_propeller, 0.1, 100.0)
     assert without.value.detail["inputs"] == ["components.propeller"]

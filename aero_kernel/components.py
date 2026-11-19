@@ -9,15 +9,29 @@ Types and structure only; physical admissibility is ``validate.py``'s.
 The propeller's performance table (``C_T(J)``, ``C_P(J)`` per rpm block, APC's PER3 data) came
 with ``propeller-table-lookup`` and ``schema_version`` 2. The caller pushes the table; the kernel
 reads no file.
+
+The materials table (``materials``, ``schema_version`` 3, gh-1427) holds what the spar capacity
+reads of a material: its published breaking strength in bending, with its source. It is pushed
+like the motor: a value the catalogue lacks is absent, never defaulted. The key of a material is a
+plain name that the geometry's spars refer to, not a storage id.
 """
 
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-__all__ = ["Battery", "Chemistry", "Components", "Motor", "Propeller", "PropellerTable", "RpmBlock"]
+__all__ = [
+    "Battery",
+    "Chemistry",
+    "Components",
+    "Material",
+    "Motor",
+    "Propeller",
+    "PropellerTable",
+    "RpmBlock",
+]
 
-SCHEMA_VERSION = 2  # the version of this contract
+SCHEMA_VERSION = 3  # the version of this contract
 
 Number = Annotated[float, Field(strict=True)]
 
@@ -115,19 +129,42 @@ class Propeller(BaseModel):
     table: PropellerTable | None = None
 
 
-class Components(BaseModel):
-    """The fitted components of one aircraft; ``AircraftInput.components`` (canon type ``components``).
+class Material(BaseModel):
+    """A structural material (catalogue type ``material``), as the spar capacity reads it.
+
+    The strength is the **published breaking strength in bending**, as the source states it: no
+    safety, resistance or knock-down factor is folded into it, and the kernel applies none
+    (maintainer, 2026-11-19, gh-1427). An already reduced allowable must not be pushed here.
 
     Attributes:
-        schema_version: Version of this contract; the kernel accepts only ``2``.
-        motor: The motor, or ``None`` if the aircraft has none pushed.
-        battery: The battery, or ``None``.
-        propeller: The propeller, or ``None``.
+        name: Display name of the material.
+        bending_strength_pa: Breaking strength in bending in Pa, or ``None`` if the catalogue has
+            none (a spar of this material then has no capacity: ``spar_material_without_strength``).
+        source: Where the strength comes from, as free text.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal[2]
+    name: str
+    bending_strength_pa: Number | None = None
+    source: str | None = None
+
+
+class Components(BaseModel):
+    """The fitted components of one aircraft; ``AircraftInput.components`` (canon type ``components``).
+
+    Attributes:
+        schema_version: Version of this contract; the kernel accepts only ``3``.
+        motor: The motor, or ``None`` if the aircraft has none pushed.
+        battery: The battery, or ``None``.
+        propeller: The propeller, or ``None``.
+        materials: The materials by key (the name the geometry's spars refer to), or ``None`` if
+            none are pushed.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[3]
 
     @field_validator("schema_version", mode="before")
     @classmethod
@@ -137,7 +174,8 @@ class Components(BaseModel):
             msg = (
                 f"components schema_version {value!r} is not supported: this kernel accepts "
                 f"version {SCHEMA_VERSION} (version 2 added the propeller performance table "
-                "`propeller.table`)"
+                "`propeller.table`, version 3 the materials table `materials`; an older document "
+                "is re-pushed with its schema_version raised, nothing else changes)"
             )
             raise ValueError(msg)
         return value
@@ -145,3 +183,4 @@ class Components(BaseModel):
     motor: Motor | None = None
     battery: Battery | None = None
     propeller: Propeller | None = None
+    materials: dict[str, Material] | None = None
