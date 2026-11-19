@@ -293,20 +293,13 @@ powered_search_max_steps:
 mass_envelope_step:
   value: 0.3
   unit: "1"
-  guards: "Mass envelope: the growth of the mass per step of the upward scan that brackets the largest mass of level flight and of the lift-off (each mass is the one before times one plus this number); Illinois regula falsi then refines the root."
+  guards: "Mass envelope: the growth of the mass per step of the upward scan that brackets the largest mass of level flight and of the lift-off (each mass is the one before times one plus this number); Illinois regula falsi then refines the root. Domain: a number above 0 (every config value is); the kernel's import refuses anything else."
   basis: numerical
-  source: "a search resolution, no physical claim: the largest mass of a thrust-limited model is a multiple of its current mass (several times on the 3.70 kg reference aircraft, measured in the evidence of mass-envelope), so the scan is geometric; about a third per step brackets it in about seven steps, each costing one speed search of a few seconds, and the roots are refined below the step"
+  source: "a search resolution, no physical claim: the largest mass of a thrust-limited model is a multiple of its current mass (several times on the 3.70 kg reference aircraft, measured in the evidence of mass-envelope), so the scan is geometric; about a third per step brackets it in about seven steps (the whole run, both roots, takes 43 s on the Avistar Elite at 3.70 kg: a speed search of a few seconds per scan point and refinement step; measured in the evidence of mass-envelope), and the roots are refined below the step"
 
 mass_envelope_max_steps:
   value: 12
   unit: "1"
-  guards: "Mass envelope: the number of steps after which the upward scan of the mass ends without a bracket (not_converged). Termination only."
+  guards: "Mass envelope: the number of steps after which the upward scan of the mass ends without a bracket (not_converged). Termination only. Domain: a whole number of at least 1; the kernel's import refuses anything else."
   basis: numerical
   source: "termination only: twelve steps of 30 percent reach 23 times the current mass, beyond which the model is not the aircraft that was entered (and the stall speed is far above the end of any propeller table); the scan stops at the first mass that closes, so the limit is reached only where the drive train carries that mass"
-
-mass_envelope_curve_points:
-  value: 6
-  unit: "1"
-  guards: "Mass envelope: the number of equally spaced masses, from the current mass up to the largest mass of level flight, at which the curves over the mass are sampled (the root closes them as one more point)."
-  basis: numerical
-  source: "a resolution, no physical claim: each sample costs a stall solve, a level-speed search and a climb search (about 45 s on the reference aircraft, measured in the evidence of mass-envelope); six samples show the shape of curves that vary smoothly with the mass at a cost of a few minutes"

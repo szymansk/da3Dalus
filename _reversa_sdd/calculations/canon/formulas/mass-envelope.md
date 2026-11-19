@@ -5,7 +5,7 @@ kind: optimization
 tool: OPT
 shape: law
 status: draft
-output: speed-range-over-mass, climb-rate-over-mass, max-mass-level-flight, max-mass-lift-off
+output: max-mass-level-flight, max-mass-lift-off
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -34,15 +34,10 @@ inputs:
   eta_mot: motor-efficiency
   airplane_to: airplane-takeoff
 outputs:
-  speed_range: speed-range-over-mass
-  roc_curve: climb-rate-over-mass
   m_max_level: max-mass-level-flight
   m_max_to: max-mass-lift-off
 embeds:
-  - stall-speed.clean
   - stall-speed.takeoff
-  - max-level-speed
-  - best-rate-of-climb
   - motor-propeller-equilibrium
   - advance-ratio-from-speed
   - propeller-table-lookup
@@ -52,6 +47,7 @@ optional: [r_m, i_0]
 cost: minutes
 preconditions:
   - {id: takeoff_speed_above_stall_speed, parameter: v_to, on_violation: error}
+  - {id: current_mass_positive, parameter: m_current, on_violation: error}
 ---
 
 # Mass envelope — what narrows with the take-off mass
@@ -59,28 +55,25 @@ preconditions:
 **Canonical form**
 
 ```
-for each mass m (a sweep; the airplane's mass is one point of it):
-  V_S(m), V_max(m)          stall-speed problem / max-level-speed problem at mass m
-  ROC_max(m)                best-rate-of-climb problem at mass m
-  m_max,level:  maximize m   s.t.  exists V, alpha, n_prop:  L = m g,  T(V, n_prop) >= D(V, alpha)
-  m_max,TO:     maximize m   s.t.  at V_TO(m), take-off configuration:  L = m g,  T - D >= 0
+m_max,level:  maximize m   s.t.  exists V, alpha, n_prop:  L = m g,  T(V, n_prop) >= D(V, alpha)
+m_max,TO:     maximize m   s.t.  at V_TO(m), take-off configuration:  L = m g,  T - D >= 0
 ```
 
-**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]]  ·  **from** [[airplane]] · [[components]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[aircraft-mass]] · [[motor-efficiency]]
+**Produces** [[max-mass-level-flight]] · [[max-mass-lift-off]]  ·  **from** [[airplane]] · [[components]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[aircraft-mass]] · [[motor-efficiency]]
+
+**Embeds** `stall-speed.takeoff` (the stall problem at each mass, for `V_TO(m)`) and the four propulsion relations; the level-flight drag and the full-throttle thrust are those of `max-level-speed`, evaluated at each mass.
 
 **Kind: an optimisation problem family, swept over the mass** (maintainer, 2026-10-02 —
 replaces the payload question: payload is *"how much mass may be added"*). Everything that
-narrows with the take-off mass, as curves over `m`, and the masses at which it closes:
+narrows with the take-off mass, as curves over `m` ([[performance-over-mass]], split off, gh-1420), and the masses at which it closes (this entry):
 
 **A long run** (maintainer-approved plan of epic #1173, 2026-10-14): computed only on explicit request
 (K28), hence `cost: minutes`.
 
-**Variables of the envelope** (#1181): the mass `m`, swept, and the speed `V`, solved in each
+**Variables of the envelope** (#1181): the mass `m`, scanned, and the speed `V`, solved in each
 embedded problem. The load factor is not one: the embedded stall problems bind `n = 1` themselves.
 
-- **Speed range.** `V_S(m)` rises, `V_max(m)` falls; where they meet is `m_max,level` — beyond
-  it no level flight is possible.
-- **Climb.** `ROC_max(m)` falls with the mass and is zero at `m_max,level`.
+- **Speed range and climb.** `V_S(m)` rises, `V_max(m)` falls and `ROC_max(m)` falls with the mass; where the range closes is `m_max,level` — beyond it no level flight is possible, and the climb is zero there. The curves are the entry [[performance-over-mass]].
 - **Lift-off — the overloaded-bomber limit.** Whether the aircraft can still climb at its
   take-off speed in take-off configuration: `m_max,TO`, where the excess thrust at `V_TO(m)`
   vanishes. It lies **below** `m_max,level`: an aircraft can still cruise and yet no longer climb
@@ -90,31 +83,23 @@ embedded problem. The load factor is not one: the embedded stall problems bind `
 **Source.** 🟢 Sadraey §11.6.3 (§12.5.4 and Eq. 12.90, the trim over the speed range, belong to [[cg-envelope]] since gh-1420); the level-flight
 and climb problems as in ANFORDERUNGEN §3.10 (this canon's requirements document, not a Sadraey section).
 
-**Validity in the RC/UAV regime (ADR 0028).** The sweep is regime-independent as a construction; each curve carries the limitation of the problem it embeds. `V_S(m)` inherits the Reynolds sensitivity of `C_L,max` (Anderson §4.3; Lennon Ch. 1–3), and since `V_S ∝ √m` the chord Re moves along the sweep, which the polar must follow. For a hand-launched model `V_TO` is the throw speed, with no ground roll and no wheel brakes; whether `T − D ≥ 0` at that speed is the right lift-off criterion for hand launch has no source [no source].
+**Validity in the RC/UAV regime (ADR 0028).** The scan is regime-independent as a construction; each root carries the limitation of the problem it embeds. The stall speed behind `V_TO(m)` inherits the Reynolds sensitivity of `C_L,max` (Anderson §4.3; Lennon Ch. 1–3), and since `V_S ∝ √m` the chord Re moves along the scan, which the polar must follow. For a hand-launched model `V_TO` is the throw speed, with no ground roll and no wheel brakes; whether `T − D ≥ 0` at that speed is the right lift-off criterion for hand launch has no source [no source].
 
 ## Implementations (1)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/mass_envelope.py` | DEVIATES | 🟢 | The entry's optimisations over the mass are solved by what they reduce to, from the pieces that exist (`powered_flight.PoweredFlight`: `full_throttle_thrust` and `OptiAdapter.level_flight_point`; `OptiAdapter.stall`). `m_max,level` is the root over the mass of the best excess thrust over the speed, `G(m) = max_V (T − D)` with `L = m g`; `m_max,TO` is the root of `T − D` at `V_TO(m) = V_S,TO(m) · V_TO / V_S,TO` in the take-off configuration. Both: an upward scan of the mass from the current mass, each step `mass_envelope_step` (30 percent) more than the one before, to the first mass at which the quantity is not positive, then Illinois regula falsi. **Deviations:** (1) no IPOPT problem is posed (the torque balance is a bisection on the propeller table); (2) the three embedded optimisations are shared functions of the modules of the formulas they name, not relations handed out by `Context.embedded` (ARCHITECTURE ch. 8.12 defers that form; the four propulsion relations are handed out); the embedded stall check `optimum_at_first_cl_peak` runs on every stall solve of the sweep; (3) `V_max(m)` and `ROC_max(m)` are searched in the window of the speeds that the best excess gives, because near `m_max,level` that window is narrower than the 2 m/s scan of `max-level-speed` and `best-rate-of-climb`; (4) the state must hold at the current mass, else `no_feasible_speed` (no downward search). Route B, complete data only (a missing `R_m`, `I_0` or propeller table is `missing_input`); a speed beyond the propeller table is the declared failure `outside_propeller_table`. |
+| `aero_kernel/formulas/mass_envelope.py` | DEVIATES | 🟡 checked by a hand check, a brute-force scan over the mass and an independent fast-tier solution; not validated against a measurement, the motor data are marked test values | `m_max,level` is the root over the mass of the best excess thrust over the speed, `G(m) = max_V (T − D)` with `L = m g`; `m_max,TO` is the root of `T − D` at `V_TO(m) = V_S,TO(m) · V_TO / V_S,TO` in the take-off configuration. Both: an upward scan of the mass from the current mass, each step `mass_envelope_step` (30 percent) more than the one before, to the first mass at which the quantity is not positive, then Illinois regula falsi. **Deviations:** (1) no IPOPT problem is posed (the torque balance is a bisection on the propeller table); (2) the embedded optimisations are shared functions (`PoweredFlight`, `maximise_over_speed`, `OptiAdapter.stall`, `first_extremum_check`), not relations handed out by `Context.embedded` (ARCHITECTURE ch. 8.12 defers that form; the four propulsion relations are handed out); the embedded stall check `optimum_at_first_cl_peak` runs on every stall solve; (3) the state must hold at the current mass, else `no_feasible_speed` (no downward search). Route B, complete data only (a missing `R_m`, `I_0` or propeller table is `missing_input`). |
 
 No register node is mapped to this entry.
 
-**What is requestable (#1420).** The two scalars `max-mass-level-flight` and `max-mass-lift-off`. The two curve
-outputs (`speed-range-over-mass`, `climb-rate-over-mass`) are computed inside the node at six equally spaced masses (`mass_envelope_curve_points`) from the
-current mass up to `m_max,level`, closed by it and are not requestable: a curve is `non_scalar_result`
-(ARCHITECTURE ch. 8.3; the open maintainer decision on curve results). The trim range
-`cg-envelope-over-mass` is not an output of this entry any more: it is the entry [[cg-envelope]], not implemented.
+**What is requestable (#1420).** Both outputs. The curves and the trim range are the entries [[performance-over-mass]] and [[cg-envelope]], not implemented.
 
-**Implementation remark (#1420).** Warnings forwarded: those of the answer's level-flight point at `m_max,level`
-(flap, Reynolds, Mach and the drag notice of the adapter), those of the stall solve and the level-flight point of
-the answer at `m_max,TO` (with the flap-validity declaration), the route notice once, the skipped speeds of the
-level answer, and `powered_limit_declared` where the best excess lies at the stall corner; the warnings of the
-iterates and of the curve samples are not forwarded. Assumptions: `G(m)` and `T − D` at `V_TO(m)` fall with the
-mass and cross zero once (bracketed by the upward scan); the best excess has one maximum over the speed (golden
-section); the speeds with a climb are contiguous below the speed of the best excess. A state still held at the last
-mass of the scan (`mass_envelope_max_steps`) is `not_converged`. The sample at `m_max,level` closes the curves with `V_max` = the speed of the best excess and a
-rate of climb of zero. **Measured (gh-1420, Avistar Elite 3.70 kg, marked test motor values):** `m_max,level` 17.82 kg, `m_max,TO` 17.82 kg (5 g below), the whole run 169 s (at 3.70 kg: stall 2 s, level speed 3 s, climb 30 s). A stall solve of `stall-speed` fails for masses from 8.8 to 9.4 kg on this aircraft (#1423), which the sweep inherits. Nothing is validated against a measurement: no mass envelope of an RC aircraft is published.
+**Implementation remark (#1420) — what closes the bracket.** The scan goes up from the current mass. At a mass above the current one, two outcomes mean "the data end" and close the bracket without a sign change: for `m_max,level` the failure `no_feasible_speed` (no speed inside the propeller table at which the wing carries the weight), for `m_max,TO` the failure `outside_propeller_table` (the lift-off speed is beyond the table). The edge between the last mass that evaluates and the first that does not is bisected to `powered_root_tolerance` of the mass, the last mass that evaluates is the answer, and the notice `powered_limit_declared` with `limit = evaluation_edge` says so (ADR 0020). Every other failure (a stall solve that does not converge, a stall off the first lift peak, a missing input, any failure at the current mass) is not "not held": it surfaces with the mass of the scan in the message and in `detail.mass_kg`.
+
+**Implementation remark (#1420) — warnings, assumptions.** Warnings forwarded: those of the answer's level-flight point at `m_max,level` (flap, Reynolds, Mach and the drag notice of the adapter), those of the stall solve and the level-flight point of the answer at `m_max,TO` (with the flap-validity declaration), the route notice once, the skipped speeds of the level answer, and `powered_limit_declared` where the best excess lies at the stall corner; the warnings of the iterates are not forwarded. Assumptions: `G(m)` and `T − D` at `V_TO(m)` fall with the mass and cross zero once (bracketed by the upward scan); the best excess has one maximum over the speed (golden section). A state still held at the last mass of the scan (`mass_envelope_max_steps`) is `not_converged`.
+
+**Measured (gh-1420, Avistar Elite 3.70 kg, marked test motor values):** `m_max,level` 17.82 kg, `m_max,TO` 17.82 kg (5 g below); the whole run 43 s. A stall solve of `stall-speed` fails for masses from 8.8 to 9.4 kg on this aircraft (#1423), which the scan inherits.
 
 ## Approval
 

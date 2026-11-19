@@ -17,20 +17,14 @@ tags:
   - status/draft
 inputs:
   airplane: airplane
-  components: components
   m_current: aircraft-mass
   g: gravity
   rho: air-density
   mu: dynamic-viscosity
   a: speed-of-sound
+  m_max_level: max-mass-level-flight
   x_np: neutral-point
-  k_v: motor-voltage-constant
-  i_0: motor-no-load-current
-  r_m: motor-circuit-resistance
-  u_bat: battery-voltage
-  p_mot_max: motor-max-power
-  d_prop: propeller-diameter
-  eta_mot: motor-efficiency
+  v_range: speed-range-over-mass
   airplane_ldg: airplane-landing
   delta_e_up: elevator-deflection-up
   delta_e_down: elevator-deflection-down
@@ -38,13 +32,7 @@ outputs:
   cg_envelope: cg-envelope-over-mass
 embeds:
   - stall-speed.landing
-  - max-level-speed
-  - motor-propeller-equilibrium
-  - advance-ratio-from-speed
-  - propeller-table-lookup
-  - thrust-at-airspeed-from-coefficient
-variables: [aircraft-mass, flight-speed]
-optional: [r_m, i_0]
+variables: [aircraft-mass]
 cost: minutes
 ---
 
@@ -53,8 +41,14 @@ cost: minutes
 **Split off from `mass-envelope` (gh-1420).** The entry `mass-envelope` produced this quantity beside the
 speed range, the climb rate and the two largest masses. The trim range needs machinery the kernel does not
 have (a pitching-moment evaluation at a given centre of gravity and elevator angle, a trim solve in the
-centre of gravity), so it is its own formula and `mass-envelope` could be implemented without it. The text
-below is the part of the `mass-envelope` entry that concerns it, moved unchanged.
+centre of gravity), so it is its own formula. The text below is the part of the `mass-envelope` entry that
+concerns it, moved unchanged.
+
+**Depends on the mass sweep, produces no second `V_max`.** The sweep of this entry runs over the same masses
+as [[performance-over-mass]], from the current mass up to `m_max,level` ([[mass-envelope]] produces it:
+input `m_max_level`). Its `V_max(m)` is the upper edge of the speed range that [[performance-over-mass]]
+produces (input `v_range`); this entry reads it and solves no level-speed problem of its own. Only the
+stall problem in landing configuration (`stall-speed.landing`) is embedded.
 
 **Canonical form**
 
@@ -64,7 +58,7 @@ for each mass m (a sweep; the airplane's mass is one point of it):
   x_aft(m):     most aft x_CG trimmable at V_max(m), elevator at delta_e,down     (both given design inputs)
 ```
 
-**Produces** [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[components]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[neutral-point]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-landing]] · [[elevator-deflection-up]] · [[elevator-deflection-down]] · [[aircraft-mass]] · [[motor-efficiency]]
+**Produces** [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[neutral-point]] · [[max-mass-level-flight]] · [[speed-range-over-mass]] · [[airplane-landing]] · [[elevator-deflection-up]] · [[elevator-deflection-down]] · [[aircraft-mass]]
 
 - **Trim.** The CG range `[x_fwd(m), x_aft(m)]` in which the elevator, **at the given deflections** `δ_e,up` / `δ_e,down`, trims
   the aircraft over its whole speed range (Sadraey Eq. 12.90: trim from `V_S` to `V_max` at both
@@ -105,9 +99,9 @@ clean airfoil with a Hoerner drag factor (no flap separation, δ range of the fi
 
 ## Implementations (0)
 
-None in aero_kernel; no register node is mapped to this entry. **Blocked (gh-1420):** the kernel has no
-pitching-moment evaluation and no trim solve, and the curves are not requestable yet, see the decision files
-`mass-envelope-cg-envelope-blocked` and `spanwise-loads-curve-result`.
+None in aero_kernel; no register node is mapped to this entry.
+
+Blocked, and why (new text, gh-1420, undated): the entry needs two things the kernel does not have. First, a trim solve: a pitching-moment evaluation at a given centre of gravity and elevator angle, and a root in the centre of gravity for each mass. Second, a curve result: its output is a curve pair, a curve is not a result of the kernel yet (ARCHITECTURE ch. 8.3), and complete but unreachable code is not kept (ADR 0021). It also reads the speed range of [[performance-over-mass]], which is not implemented either.
 
 ## Approval
 

@@ -17,18 +17,19 @@ import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.config import config
 from aero_kernel.context import Context
-from aero_kernel.errors import FormulaError
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas import mass_envelope as module
-from aero_kernel.formulas.best_rate_of_climb import best_rate_of_climb
 from aero_kernel.formulas.mass_envelope import (
+    LEVEL_NOT_HELD,
+    TAKEOFF_NOT_HELD,
     Envelope,
+    current_mass_positive,
     mass_envelope,
     takeoff_speed_above_stall_speed,
 )
-from aero_kernel.formulas.max_level_speed import max_level_speed
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import DEFAULT_REGISTRY
-from aero_kernel.schema import Curve, CurvePair, KernelWarning
+from aero_kernel.schema import KernelWarning
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import LevelFlightPoint, Stall, StallSolution
 from aero_kernel.tests import powered_builders as pb
@@ -42,7 +43,16 @@ M0 = 3.4
 CD0 = 0.4  # draggy: the best excess thrust vanishes near 6.4 kg
 RESERVE = 1.3
 STUB_NOTICE = KernelWarning.of("induced_drag_viscous_factor_removed", "the stub's drag notice")
-CURVE_POINTS = 6  # config: mass_envelope_curve_points
+
+
+def failure(code: str, message: str) -> FormulaError:
+    """A formula error of the category its code belongs to."""
+    category = (
+        ErrorCategory.NOT_CONVERGED
+        if code == "not_converged"
+        else ErrorCategory.UNSUPPORTED_CONFIGURATION
+    )
+    return FormulaError(category, code, message, "a hint")
 
 
 def v_stall(mass: float) -> float:
@@ -53,9 +63,17 @@ def v_stall(mass: float) -> float:
 class EnvelopeOpti(pb.PolarOpti):
     """The polar stub with a stall solve of the same polar, and a record of the airplanes it saw."""
 
-    def __init__(self, cd0: float = CD0, *, stall_alpha: float = UPRIGHT_PEAK[0], **kwargs: Any):
+    def __init__(
+        self,
+        cd0: float = CD0,
+        *,
+        stall_alpha: float = UPRIGHT_PEAK[0],
+        stall_fails_above: float = math.inf,
+        **kwargs: Any,
+    ):
         super().__init__(cd0=cd0, **kwargs)
         self.stall_alpha = stall_alpha
+        self.stall_fails_above = stall_fails_above
         self.stall_airplanes: list[AirplaneGeometry] = []
         self.level_airplanes: list[AirplaneGeometry] = []
 
@@ -80,6 +98,10 @@ class EnvelopeOpti(pb.PolarOpti):
         air: AirState,
     ) -> Stall:
         self.stall_airplanes.append(airplane)
+        if mass_kg > self.stall_fails_above:
+            raise failure(
+                "not_converged", "the optimum of the stall problem lies on the bound of alpha"
+            )
         solution = StallSolution(
             v_s=v_stall(mass_kg),
             cl_max=pb.CL_MAX,
@@ -210,36 +232,6 @@ async def test_the_largest_lift_off_mass_is_the_root_of_the_excess_at_the_lift_o
     assert abs(takeoff_excess(got["m_max_to"])) < 1e-2  # N
 
 
-# --- the curves ------------------------------------------------------------------------------------
-
-
-async def test_the_curves_are_the_stall_the_level_speed_and_the_climb_over_the_masses_of_the_scan() -> (
-    None
-):
-    got, _ = await run()
-    pair, climb = got["speed_range"], got["roc_curve"]
-    assert isinstance(pair, CurvePair)
-    assert isinstance(climb, Curve)
-    masses = pair.x
-    assert masses[0] == M0
-    assert len(masses) == CURVE_POINTS + 1  # equally spaced from the current mass, then the root
-    assert close(masses[1], M0 + (got["m_max_level"] - M0) / CURVE_POINTS, 1e-12)
-    assert masses[-1] == got["m_max_level"]
-    assert climb.x == masses
-    assert close(pair.lower[0], v_stall(M0), 1e-9)
-    for k, mass in enumerate(masses[:-1]):  # every scan mass against the brute force
-        assert close(pair.lower[k], v_stall(mass), 1e-9)
-        assert close(pair.upper[k], pb.max_level_speed(mass, CD0), 1e-4)
-        assert close(climb.y[k], best_climb_rate(mass), 5e-3)
-    assert list(pair.lower) == sorted(pair.lower)  # the stall speed rises with the mass
-    assert climb.y[0] > climb.y[1] > 0.0  # the climb falls with the mass ...
-    assert climb.y[-1] == 0.0  # ... and is zero where level flight ends
-    assert (
-        pair.upper[-1] > pair.lower[-1]
-    )  # the range has closed to the best speed, above the stall
-    assert close(pair.upper[-1], best_excess(masses[-1])[1], 1e-3)
-
-
 # --- warnings, embedding, configuration ------------------------------------------------------------
 
 
@@ -271,7 +263,7 @@ async def test_the_take_off_stall_and_drag_are_solved_on_the_take_off_configurat
     await run(opti, **swapped)
     assert any(a is takeoff for a in opti.stall_airplanes)  # the take-off stall solves
     assert any(a is takeoff for a in opti.level_airplanes)  # the take-off drag
-    assert any(a is not takeoff for a in opti.stall_airplanes)  # the clean stall of the curves
+    assert all(a is takeoff for a in opti.stall_airplanes)  # only the take-off stall is solved
     assert any(a is not takeoff for a in opti.level_airplanes)  # the clean level flight
 
 
@@ -341,52 +333,34 @@ async def test_the_take_off_speed_must_exceed_the_stall_speed_above_zero(
     assert result.state == state
 
 
-async def test_the_precondition_is_the_one_the_canon_binds_to_the_take_off_speed() -> None:
+@pytest.mark.parametrize(
+    ("mass", "state"),
+    [
+        (3.4, "held"),
+        (0.0, "violated"),
+        (-1.0, "violated"),
+        (math.inf, "violated"),
+        (math.nan, "violated"),
+    ],
+)
+async def test_the_current_mass_must_be_a_finite_number_above_zero(mass: float, state: str) -> None:
+    assert current_mass_positive({"m_current": mass}).state == state
+
+
+async def test_the_preconditions_are_the_ones_the_canon_binds() -> None:
     formula = shipped_build().model.formula("mass-envelope")
     assert formula is not None
     assert [(c.id, c.parameter) for c in formula.preconditions] == [
-        ("takeoff_speed_above_stall_speed", "v_to")
+        ("takeoff_speed_above_stall_speed", "v_to"),
+        ("current_mass_positive", "m_current"),
     ]
     assert DEFAULT_REGISTRY.checks("mass-envelope", "pre") == {
-        "takeoff_speed_above_stall_speed": takeoff_speed_above_stall_speed
+        "takeoff_speed_above_stall_speed": takeoff_speed_above_stall_speed,
+        "current_mass_positive": current_mass_positive,
     }
 
 
-# --- the window searches against the formulas they stand in for -------------------------------------
-
-
-async def test_the_window_searches_agree_with_the_scans_of_max_level_speed_and_best_rate_of_climb() -> (
-    None
-):
-    """Where the scans of the two formulas work (a polar with room for the level flight) the window
-    searches of the sweep, started from the best excess, find the same ``V_max`` and ``ROC_max``."""
-    ctx = pb.context("mass-envelope", EnvelopeOpti(cd0=pb.CD0))
-    sweep = Envelope(inputs(), ctx)
-    flight, best = await sweep.best_excess(M0)
-    v_max = await sweep.level_speed_above(flight, best.v)
-    climb = await sweep.climb_rate(flight, best.v, v_max)
-    level = await max_level_speed(
-        pb.bound_inputs("max-level-speed"), pb.context("max-level-speed", pb.PolarOpti())
-    )
-    rate = await best_rate_of_climb(
-        pb.bound_inputs("best-rate-of-climb"), pb.context("best-rate-of-climb", pb.PolarOpti())
-    )
-    assert close(v_max, level["v_max"], 1e-4)
-    assert close(climb, rate["roc_max"], 1e-3)
-    assert best.v < v_max  # the best excess lies below the highest level speed
-
-
-async def test_a_level_speed_still_above_the_drag_at_the_scan_limit_is_not_converged(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    real = config()
-    low_limit = real.powered_speed_scan_limit.model_copy(update={"value": 12.0})
-    patched = real.model_copy(update={"powered_speed_scan_limit": low_limit})
-    monkeypatch.setattr(module, "config", lambda: patched)
-    with pytest.raises(FormulaError) as caught:
-        await run()
-    assert caught.value.code == "not_converged"
-    assert "level-flight excess thrust" in caught.value.message
+# --- the type of the airplane ---
 
 
 async def test_an_airplane_that_is_not_the_geometry_is_a_type_error() -> None:
@@ -394,3 +368,105 @@ async def test_an_airplane_that_is_not_the_geometry_is_a_type_error() -> None:
     sweep = Envelope(inputs(**swapped), pb.context("mass-envelope", EnvelopeOpti()))
     with pytest.raises(TypeError):
         sweep.airplane(takeoff=True)
+
+
+# --- what closes the bracket, and what does not ----------------------------------------------------------
+
+
+def scan() -> Envelope:
+    """An ``Envelope`` at 3.4 kg (the scan masses are 3.4, 4.42, 5.75, 7.47, 9.71 kg, ...)."""
+    return Envelope(inputs(), pb.context("mass-envelope", EnvelopeOpti()))
+
+
+def with_edge(edge: float, level: float, code: str) -> Callable[[float], Any]:
+    """``f(m) = level - m``, which cannot be evaluated above ``edge`` (the failure ``code``)."""
+
+    async def f(mass: float) -> float:
+        if mass > edge:
+            raise failure(code, "the data end here")
+        return level - mass
+
+    return f
+
+
+@pytest.mark.parametrize(
+    ("code", "not_held"),
+    [("no_feasible_speed", LEVEL_NOT_HELD), ("outside_propeller_table", TAKEOFF_NOT_HELD)],
+)
+async def test_where_the_data_end_with_the_state_still_held_the_last_mass_that_evaluates_is_the_answer(
+    code: str, not_held: frozenset[str]
+) -> None:
+    sweep = scan()
+    got = await sweep.root(with_edge(8.0, 10.0, code), "level flight", not_held)
+    assert close(got, 8.0, 2e-5)  # the edge, bisected to powered_root_tolerance
+    assert got <= 8.0  # the last mass that evaluates
+    declared = [w for w in sweep.ctx.warnings if w.code == "powered_limit_declared"]
+    assert [w.detail["limit"] for w in declared] == ["evaluation_edge"]
+    assert "the data end here" in declared[0].message
+    assert declared[0].detail["mass_kg"] == got
+
+
+@pytest.mark.parametrize(
+    ("code", "not_held"),
+    [("no_feasible_speed", LEVEL_NOT_HELD), ("outside_propeller_table", TAKEOFF_NOT_HELD)],
+)
+async def test_a_sign_change_below_the_edge_is_refined_as_a_root(
+    code: str, not_held: frozenset[str]
+) -> None:
+    sweep = scan()
+    got = await sweep.root(
+        with_edge(8.0, 7.7, code), "level flight", not_held
+    )  # f(7.47) > 0 > f(8.0)
+    assert close(got, 7.7, 1e-4)
+    assert not [w for w in sweep.ctx.warnings if w.code == "powered_limit_declared"]
+
+
+@pytest.mark.parametrize(
+    ("code", "other"),
+    [
+        ("outside_propeller_table", LEVEL_NOT_HELD),  # not the level problem's "not held"
+        ("no_feasible_speed", TAKEOFF_NOT_HELD),  # not the lift-off problem's "not held"
+        ("not_converged", LEVEL_NOT_HELD),
+        ("not_converged", TAKEOFF_NOT_HELD),
+    ],
+)
+async def test_every_other_failure_surfaces_with_the_mass_named(
+    code: str, other: frozenset[str]
+) -> None:
+    with pytest.raises(FormulaError) as caught:
+        await scan().root(with_edge(5.0, 10.0, code), "level flight", other)
+    assert caught.value.code == code
+    assert "at the mass 5.746 kg:" in caught.value.message  # the first scan mass above the edge
+    assert close(float(str(caught.value.detail["mass_kg"])), 5.746, 1e-3)
+    assert caught.value.hint == "a hint"
+
+
+async def test_a_failure_at_the_current_mass_is_never_the_data_end() -> None:
+    with pytest.raises(FormulaError) as caught:
+        await scan().root(with_edge(1.0, 10.0, "no_feasible_speed"), "level flight", LEVEL_NOT_HELD)
+    assert caught.value.code == "no_feasible_speed"
+    assert "at the mass 3.4 kg:" in caught.value.message
+
+
+async def test_an_edge_search_that_does_not_narrow_is_not_converged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = config()
+    short = real.powered_search_max_steps.model_copy(update={"value": 2.0})
+    monkeypatch.setattr(
+        module, "config", lambda: real.model_copy(update={"powered_search_max_steps": short})
+    )
+    with pytest.raises(FormulaError) as caught:
+        await scan().root(with_edge(8.0, 10.0, "no_feasible_speed"), "level flight", LEVEL_NOT_HELD)
+    assert caught.value.code == "not_converged"
+    assert caught.value.detail["steps"] == 2
+
+
+async def test_a_stall_solve_that_fails_above_the_current_mass_surfaces_with_the_mass() -> None:
+    """The defect of bug #1423 (a stall solve that does not converge) is not "not held"."""
+    with pytest.raises(FormulaError) as caught:
+        await run(EnvelopeOpti(stall_fails_above=4.0))
+    assert caught.value.code == "not_converged"
+    assert "at the mass 4.42 kg:" in caught.value.message
+    assert "bound of alpha" in caught.value.message
+    assert close(float(str(caught.value.detail["mass_kg"])), 4.42, 1e-3)

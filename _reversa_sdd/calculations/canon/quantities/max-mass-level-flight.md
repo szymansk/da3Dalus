@@ -8,6 +8,7 @@ tags:
   - canon/quantity
   - discipline/powered
   - point/over-mass
+  - stage/operating-points
   - role/output
 type: scalar
 ---
@@ -19,3 +20,5 @@ Mass at which stall speed and maximum level speed meet — beyond it no level fl
 **Unit.** `kg`
 
 **Produced by.** [[mass-envelope]]
+
+**Used by.** [[cg-envelope]] · [[performance-over-mass]]

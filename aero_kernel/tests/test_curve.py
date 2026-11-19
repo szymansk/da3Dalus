@@ -1,7 +1,7 @@
 """The canon type ``curve``: a sampled function with a rising variable (ch. 8.12)."""
 
 import pytest
-from aero_kernel.schema import Curve, CurvePair, Polar, StallCurve
+from aero_kernel.schema import Curve, Polar, StallCurve
 from pydantic import ValidationError
 
 POLAR = Polar(alpha_deg=(0.0, 1.0), cl=(0.1, 0.2), cd=(0.01, 0.01))
@@ -42,25 +42,3 @@ def test_a_stall_curve_refuses_a_missing_sweep() -> None:
 
 def test_an_empty_curve_is_a_curve_without_points() -> None:
     assert Curve(x=(), y=()).x == ()
-
-
-def test_a_curve_pair_holds_two_functions_over_one_rising_variable() -> None:
-    pair = CurvePair(x=(1.0, 2.0), lower=(3.0, 4.0), upper=(5.0, 6.0))
-    assert pair.upper == (5.0, 6.0)
-
-
-@pytest.mark.parametrize(
-    "change",
-    [{"lower": (1.0,)}, {"upper": (1.0, 2.0, 3.0)}, {"x": (2.0, 2.0)}, {"x": (2.0, 1.0)}],
-)
-def test_a_curve_pair_refuses_unequal_or_unordered_series(
-    change: dict[str, tuple[float, ...]],
-) -> None:
-    fields: dict[str, tuple[float, ...]] = {
-        "x": (1.0, 2.0),
-        "lower": (3.0, 4.0),
-        "upper": (5.0, 6.0),
-    }
-    fields.update(change)
-    with pytest.raises(ValidationError):
-        CurvePair(**fields)

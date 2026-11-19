@@ -8,6 +8,7 @@ tags:
   - canon/quantity
   - discipline/powered
   - point/over-mass
+  - stage/operating-points
   - role/output
 type: curve_pair
 ---
@@ -18,4 +19,6 @@ Stall speed and maximum level speed as functions of the take-off mass.
 
 **Unit.** `m/s`
 
-**Produced by.** [[mass-envelope]]
+**Produced by.** [[performance-over-mass]]
+
+**Used by.** [[cg-envelope]]
