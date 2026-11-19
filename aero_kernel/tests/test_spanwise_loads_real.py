@@ -67,7 +67,7 @@ async def test_the_load_of_the_half_wing_is_half_the_weight_and_the_curves_agree
     strips_lift = trapezoid(l_y.y, l_y.x) + l_y.y[0] * l_y.x[0]
     assert math.isclose(strips_lift, v_y.y[0], rel_tol=0.01)
     moment = trapezoid(tuple(a * b for a, b in zip(l_y.y, l_y.x, strict=True)), l_y.x)
-    assert math.isclose(moment, m_y.y[0], rel_tol=0.03)
+    assert math.isclose(moment, m_y.y[0], rel_tol=0.02)
     assert all(a > b for a, b in zip(v_y.y, v_y.y[1:], strict=False))  # shear falls to the tip
 
 
@@ -154,3 +154,63 @@ async def test_the_root_shear_and_moment_agree_with_the_independent_vortex_latti
     shear, moment = vlm_half_wing(airplane, 0.7)
     assert math.isclose(found.shear[0], shear, rel_tol=shear_tol)
     assert math.isclose(found.moment[0], moment, rel_tol=moment_tol)
+
+
+def elliptic_wing(semi_span: float, root_chord: float, foil: str) -> AirplaneGeometry:
+    """An untwisted wing of elliptic planform, ``c(y) = c_0 sqrt(1 - (y / s)^2)``, on 13 sections.
+
+    The quarter-chord line is straight. The last section is at 0.99 of the semi-span (the chord is
+    0.14 c_0 there, not zero).
+    """
+    stations = [k / 12.0 * 0.99 for k in range(13)]
+    sections = [
+        {
+            "xyz_le": [0.25 * root_chord * (1.0 - math.sqrt(1.0 - t * t)), t * semi_span, 0.0],
+            "chord": root_chord * math.sqrt(1.0 - t * t),
+            "twist": 0.0,
+            "airfoil": foil,
+        }
+        for t in stations
+    ]
+    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
+    return AirplaneGeometry.model_validate(
+        {"name": "elliptic", "xyz_ref": [0.05, 0.0, 0.0], "wings": {"Main": wing}}
+    )
+
+
+async def test_the_elliptic_wing_has_the_closed_form_root_load() -> None:
+    """Closed form of an elliptic distribution (Anderson 5.3.1; Scholz Wing Design 7.3):
+    l(y) = 4 L / (pi b) sqrt(1 - (2y/b)^2), so V(0) = L / 2 and M(0) = L b / (3 pi), with
+    L = n m g and b the span. The planform is elliptic and untwisted, so the lifting-line loading is
+    elliptic; AVL is a vortex lattice, so the two agree to the stated tolerance only. Measured on
+    this wing (AVL against the closed form): root shear -0.7 %, root moment -2.2 %, peak lift per
+    metre +1.0 %; the tolerances are twice the largest measured deviation, rounded up."""
+    semi_span, chord = 0.7, 0.25
+    out = await loads(elliptic_wing(semi_span, chord, "naca0012"), 1.0)
+    lift = MASS * GRAVITY
+    span = 2.0 * semi_span
+    assert math.isclose(out["v_y"].y[0], lift / 2.0, rel_tol=0.02)
+    assert math.isclose(out["m_y"].y[0], lift * span / (3.0 * math.pi), rel_tol=0.045)
+    peak = 4.0 * lift / (math.pi * span)
+    assert math.isclose(out["l_y"].y[0], peak, rel_tol=0.02)
+
+
+async def test_the_main_wing_is_read_whatever_its_place_in_the_document() -> None:
+    """The loads are the main wing's, chosen by surface type: a tail listed before the main wing
+    changes nothing for the loads of the main wing (same C_L for the airplane, same mesh order)."""
+    wing = untwisted_wing("naca0012")
+    tail_sections = [
+        {"xyz_le": [0.7, y, 0.0], "chord": 0.1, "twist": 0.0, "airfoil": "naca0012"}
+        for y in (0.0, 0.25)
+    ]
+    tail = {"name": "Tail", "surface_type": "horizontal_tail", "x_secs": tail_sections}
+    main = (wing.wings or {})["Main"].model_dump(mode="json")
+    first = AirplaneGeometry.model_validate(
+        {"name": "a", "xyz_ref": [0.05, 0.0, 0.0], "wings": {"Main": main, "Tail": tail}}
+    )
+    second = AirplaneGeometry.model_validate(
+        {"name": "b", "xyz_ref": [0.05, 0.0, 0.0], "wings": {"Tail": tail, "Main": main}}
+    )
+    one, two = await asyncio.gather(loads(first, 1.0), loads(second, 1.0))
+    assert one["m_y"].x[-1] == two["m_y"].x[-1] == 0.7  # the main wing's semi-span, not the tail's
+    assert math.isclose(one["m_y"].y[0], two["m_y"].y[0], rel_tol=1e-9)
