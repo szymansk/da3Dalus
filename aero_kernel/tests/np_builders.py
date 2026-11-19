@@ -4,6 +4,7 @@ import math
 from typing import Any
 
 from aero_kernel.build import shipped_build
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.rules import Rules
 from aero_kernel.runtime import SolverRuntime
@@ -113,6 +114,13 @@ class StubAvl(AvlAdapter):
         mesh = hinge_mesh(
             airplane, role, 4, lambda _airfoil: 0, join_tolerance_m=join, split_n_chord=(2, 2)
         )
+        if not mesh.controls and self.hinge_answer is None:
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "no_control_in_role",
+                "no control surface acts in the role",
+                "the stub follows the adapter",
+            )
         return AvlHinge(
             moments=self.hinge_answer
             if self.hinge_answer is not None

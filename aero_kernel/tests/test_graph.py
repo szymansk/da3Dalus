@@ -247,7 +247,9 @@ def test_public_names_of_graph_are_pinned() -> None:
     assert sorted(graph.__all__) == [
         "AILERON_ROLES",
         "CanonGraph",
+        "ELEVATOR_ROLES",
         "Edge",
+        "FLAP_ROLES",
         "GraphModelError",
         "Node",
         "NodeId",
@@ -255,6 +257,7 @@ def test_public_names_of_graph_are_pinned() -> None:
         "PENDING_WHEN_TERMS",
         "Produce",
         "Propagated",
+        "RUDDER_ROLES",
         "Read",
         "Resolved",
         "Subtree",

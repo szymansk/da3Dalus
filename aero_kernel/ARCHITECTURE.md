@@ -136,6 +136,7 @@ aero_kernel/
   engine.py         walks the graph; takes an optional node cache (none = stateless)
   runtime.py        executor: worker slots with model affinity, concurrency limit, cancellation
   geometry.py       AirplaneGeometry and its sub-models (format mirror, mm → m at parse, ch. 8.11)
+  components.py     Components, the fitted motor, battery and propeller, pushed (ch. 8.11)
   schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Timing, TimeBounds, Polar,
                     KernelWarning, Provenance (Pydantic, extra="forbid"); re-exports AirplaneGeometry and KernelError
   canon/            canon_model.json         the interpreted canon (versioned, committed)
@@ -259,7 +260,8 @@ nothing failed. The category enum holds only the eight rows above.
   value per section; `detail`: wing key, y); `hinge_device_on_unmirrored_surface` — a control surface sits on
   a wing that spreads sideways and is not mirrored (the hinge-moment procedure, #1399); `duplicate_surface_key`
   (`invalid_input`) — two control surfaces have the same key `<wing>.<device>[_left|_right]`;
-  `hinge_outside_chord` — a hinge at or beyond an edge of the chord (at the leading edge the whole
+  `no_control_in_role` — the role's condition holds but no segment carries a device acting in it (a device on
+  the last rib of a wing spans nothing); `hinge_outside_chord` — a hinge at or beyond an edge of the chord (at the leading edge the whole
   section would turn, at the trailing edge nothing), where no hinge moment is defined.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `warning` warning and the value is returned. `error` → `unsupported_configuration`, code
@@ -956,7 +958,7 @@ caller's responsibility.
     surface of one `COMPONENT` (Drela's rule 3), the aft one carrying the control, hinge at its own leading
     edge. A *surface* is a run of adjacent segments of one wing with a device of one name and role; the ends
     of a run are stations (sine-to-tip on the main wing, the main wing's stations inside the span on a
-    horizontal tail, the strip width of the main wing elsewhere). Every wing is meshed, so the downwash of the
+    horizontal tail, the strip width of the main wing elsewhere). The fuselages are in the run as round bodies of equal area exactly as in the lateral run (`mesh_bodies`, notice `avl_body_equivalent_round`; its refusals apply). Every wing is meshed, so the downwash of the
     wing at the tail and the sidewash at the fin act. **Signs:** the control value is the role's command with
     the sign of its side (aileron: right −, left +; elevator and flap: both +; rudder: right/unmirrored +,
     left −: a rudder command to the right, trailing edge towards +y on a fin, right panel down and left up
@@ -1363,8 +1365,29 @@ The canon quantity `airplane` (type `airplane`) is **geometry only**: `AircraftI
 parts are the separate canon input quantity **`components`** (type `components`, S15, on the canon's main
 since `84599128`), bound to `AircraftInput.components`; only the formulas that read parts bind it, so a
 change of parts expires only their subtree (A1). A missing `components` is the ordinary `missing_input` of
-that one quantity (ch. 8.11, 8.13). Its exact field list is defined with the first KAT / APC formula
-implementation, not before (ADR 0021).
+that one quantity (ch. 8.11, 8.13), `input_path` `components`. The field list is defined with the first KAT
+formula, `airplane-components` (gh-1397), `schema_version` 1, in `components.py`; the names and units are the
+catalogue's, a field with `?` may be absent:
+
+```
+Components { schema_version: 1, motor?: Motor, battery?: Battery, propeller?: Propeller }
+Motor      { kv_rpm_per_volt, max_power_w?, io_no_load_a?, rm_ohm?, efficiency_pct? }   # rpm/V, W, A, ohm, %
+Battery    { capacity_mah, cells, mass_g?, c_rate?, cell_voltage_v?, chemistry? }       # mAh, 1, g, 1/h, V, enum
+Propeller  { diameter_in }                                                              # inch
+```
+
+The fields the catalogue requires are required; the others stay optional (absence survives, rule 3). The
+propeller's measured table is added with `propeller-table-lookup` and a new `schema_version`. `validate.py`
+reports a non-finite number, a number <= 0 (the no-load current may be 0) and an efficiency above 100 % at
+`components.<part>.<field>`; an absent field is no finding. The engine carries the type like the geometry
+(`_CARRIED_TYPES`); the components are a direct input of the nodes that read them and enter their cache key by
+their JSON form. A quantity of type `components` in `values` is `not_an_input`.
+
+**An absent catalogue value fails the formula that needs it.** Until the maintainer decides how an *absent
+output* is carried (gh-1397: `optional:` naming outputs, status `not_applicable` / `not_given`), a value the
+formula needs and the components do not carry is a `missing_input` raised by the formula, naming every absent
+`components.<part>.<field>` in the message and in `detail.inputs`; the formula returns none of its quantities
+and substitutes nothing (no chemistry table, no default cell voltage, no default efficiency).
 
 **Binding of canon input quantities to the input:**
 - **Units.** A value is given, and a result returned, in the unit the canon model declares for the
@@ -1891,7 +1914,7 @@ model (part of `IMPORT_REPORT.md`).
 | `aerobuildup-evaluation` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain · implemented (#1334) |
 | `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
-| `airplane-components` | procedure | KAT | law | 1 → 11 | 1 | – | – | instant | probe |
+| `airplane-components` | procedure | KAT | law | 1 → 13 | 1 | – | – | instant | probe · implemented for complete data (#1397) |
 | `airplane-configuration` | procedure | GEO | law | 2 → 1 | 2 | – | – | instant | core chain |
 | `airplane-geometry` | procedure | GEO | law | 1 → 3 | 1 | – | – | instant | core chain |
 | `aspect-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |

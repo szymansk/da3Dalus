@@ -4,10 +4,17 @@ import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import Airfoil, AirplaneGeometry
+from aero_kernel.graph import AILERON_ROLES, ELEVATOR_ROLES, FLAP_ROLES, RUDDER_ROLES
 from aero_kernel.rules import Rules
-from aero_kernel.solvers.avl_hinge import HingeMesh, hinge_mesh
+from aero_kernel.solvers.avl_hinge import (
+    COMMAND_SIGNS,
+    ROLE_DEVICE_ROLES,
+    HingeMesh,
+    hinge_mesh,
+)
 from aero_kernel.solvers.avl_mesh import MeshSurface
 from aero_kernel.solvers.avl_writer import control_order
+from aero_kernel.solvers.devices import roll_deflection
 from aero_kernel.tests.formula_builders import near
 from aero_kernel.tests.hinge_builders import (
     conventional,
@@ -311,3 +318,28 @@ def test_an_airplane_without_a_main_wing_is_a_defect_of_the_caller() -> None:
     )
     with pytest.raises(ValueError, match="main_wing"):
         mesh_of(plane, "elevator")
+
+
+def test_the_role_sets_are_those_of_the_conditions_and_the_roll_rule() -> None:
+    """One definition: the hinge mesh and the canon's ``when`` terms use the same sets, and the
+    aileron signs are the roll mapping's (right half up, left half down)."""
+    assert ROLE_DEVICE_ROLES == {
+        "aileron": AILERON_ROLES,
+        "elevator": ELEVATOR_ROLES,
+        "rudder": RUDDER_ROLES,
+        "flap": FLAP_ROLES,
+    }
+    assert COMMAND_SIGNS["aileron"] == (
+        round(roll_deflection(1, 1.0)),
+        round(roll_deflection(-1, 1.0)),
+    )
+    assert COMMAND_SIGNS["aileron"] == (-1, 1)
+
+
+def test_a_device_without_a_name_is_keyed_like_the_geometry_format_derives_it() -> None:
+    """name, else label, else role; never a position."""
+    bare = device(None, "elevator", 0.6)
+    assert list(controls_by_key(mesh_of(conventional(tail={0: bare}), "elevator"))) == [
+        "Tail.elevator_right",
+        "Tail.elevator_left",
+    ]

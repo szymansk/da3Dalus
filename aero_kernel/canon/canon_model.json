@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:0a49a875eef61d17fd1192e8958fc16b62dc3fdab393dd520aa55c1b84aedf8a",
+  "content_hash": "sha256:bff873d03359dc8b85a765f0da95c43330d38fcb181e4e23e831129f385d263c",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -6880,6 +6880,56 @@
           "on_violation": "warning",
           "parameters": {}
         },
+        "components-efficiency-at-most": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "value_above_maximum"
+          ],
+          "criterion": "efficiency_pct / 100, where efficiency_pct is present, is at most max_efficiency: an efficiency is a fraction of the input power. (The parameter is a fraction because the unit vocabulary has no percent; the catalogue field is in percent.)",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "max_efficiency": {
+              "at_most": null,
+              "basis": "definition",
+              "positive": null,
+              "regime": "regime-independent",
+              "source": "definition: a fraction of the input power cannot exceed 1 (100 %)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1.0
+            }
+          }
+        },
+        "components-finite-numbers": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "non_finite_number"
+          ],
+          "criterion": "Every number of the pushed components is finite (no NaN, no infinity).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-positive-numbers": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "non_positive_value"
+          ],
+          "criterion": "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v and diameter_in, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
         "control-surface-needs-device": {
           "applies_to": {
             "formula": null,
@@ -7028,6 +7078,36 @@
               "value": 1e-08
             }
           }
+        },
+        "hinge-moment-device-layout": {
+          "applies_to": {
+            "formula": "control-surface-hinge-moments",
+            "quantity": null
+          },
+          "codes": [
+            "missing_hinge",
+            "hinge_outside_chord",
+            "hinge_device_on_unmirrored_surface",
+            "duplicate_surface_key",
+            "no_control_in_role"
+          ],
+          "criterion": "A control surface whose hinge moment is read has a hinge position (missing_hinge: the tool's default hinge is never used) strictly inside the chord (hinge_outside_chord: at 0 the whole section turns, which is a stabilator, not covered; at 1 nothing turns, a zero-chord control has no hinge moment); sits on a mirrored surface if the surface spreads sideways (hinge_device_on_unmirrored_surface); has a key <wing>.<device>[_left|_right] that no other surface has (duplicate_surface_key); and a role that the conditions allow is carried by at least one segment (no_control_in_role).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "hinge-moment-line-continuity": {
+          "applies_to": {
+            "formula": "control-surface-hinge-moments",
+            "quantity": null
+          },
+          "codes": [
+            "hinge_line_discontinuous"
+          ],
+          "criterion": "Adjacent segments of one control surface have the same hinge position at the rib they meet at: AVL holds one hinge position per section. Two positions closer than the join_tolerance of the rule hinge-line-continuity are one rib (the one threshold, not a second one).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
         },
         "isa-altitude-range": {
           "applies_to": {

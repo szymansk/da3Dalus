@@ -21,10 +21,9 @@ import math
 from collections.abc import Callable, Mapping, Sequence
 from itertools import pairwise
 
-from aero_kernel.devices import FLAP_ROLES
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import Airfoil, AirplaneGeometry, Wing
-from aero_kernel.graph import AILERON_ROLES
+from aero_kernel.graph import AILERON_ROLES, ELEVATOR_ROLES, FLAP_ROLES, RUDDER_ROLES
 from aero_kernel.solvers.avl_mesh import (
     MESH_DECIMALS,
     SLIVER_STEPS,
@@ -38,6 +37,7 @@ from aero_kernel.solvers.avl_mesh import (
     uniform_stations,
     wing_axis,
 )
+from aero_kernel.solvers.devices import roll_deflection
 from aero_kernel.surface_chain import ChainPoint, oriented_chain
 from pydantic import BaseModel, ConfigDict
 
@@ -55,8 +55,8 @@ __all__ = [
 # surface is evaluated once per role.
 ROLE_DEVICE_ROLES: Mapping[str, frozenset[str]] = {
     "aileron": AILERON_ROLES,
-    "elevator": frozenset({"elevator", "elevon", "ruddervator"}),
-    "rudder": frozenset({"rudder", "ruddervator"}),
+    "elevator": ELEVATOR_ROLES,
+    "rudder": RUDDER_ROLES,
     "flap": FLAP_ROLES,
 }
 # The role codes the canon applications bind (``role`` input of the entry): its own coding.
@@ -67,7 +67,8 @@ ROLE_CODES: Mapping[int, str] = {1: "aileron", 2: "elevator", 3: "rudder", 4: "f
 # for a positive command (trailing edge towards +y on a fin; right half down, left half up on a
 # V-tail); the canon fixes no sense for the rudder, this is the one of the entry's remark on it.
 COMMAND_SIGNS: Mapping[str, tuple[int, int]] = {
-    "aileron": (-1, 1),
+    # the one rule of the roll's mapping (``roll_deflection``): the right half goes up, the left down
+    "aileron": (round(roll_deflection(1, 1.0)), round(roll_deflection(-1, 1.0))),
     "elevator": (1, 1),
     "rudder": (1, -1),
     "flap": (1, 1),
@@ -136,7 +137,13 @@ def surface_key(wing_name: str, device_name: str, side: str | None) -> str:
 
 
 def _device_name(point: ChainPoint) -> str:
-    """The name of the device of the segment that starts at a chain point: name, label or role."""
+    """The name of the device of the segment that starts at a chain point: name, label or role.
+
+    This is the derivation of the geometry format (``name`` omitted: the label, else the role), which
+    the canon entry names for the surface key. The ``device {index}`` of other kernel messages is a
+    positional fallback for a device without a role that matters; a surface key must not depend on a
+    position, so it is not used here.
+    """
     device = point.device
     assert device is not None  # callers pass a point with a device
     return device.name or device.label or device.role
@@ -431,9 +438,11 @@ def hinge_mesh(
 
     Raises:
         ValueError: If there is no ``main_wing`` or the role is unknown.
-        FormulaError: ``missing_hinge``, ``hinge_device_on_unmirrored_surface``,
-            ``hinge_line_discontinuous`` and ``duplicate_surface_key`` (see :func:`_runs`,
-            :func:`_check_joints`, :func:`_halves`).
+        FormulaError: ``invalid_input`` (``missing_hinge``, ``duplicate_surface_key``);
+            ``unsupported_configuration`` (``hinge_outside_chord``,
+            ``hinge_device_on_unmirrored_surface``, ``hinge_line_discontinuous``); see
+            :func:`_runs`, :func:`_check_joints` and :func:`_halves`. The mesh of a role that no
+            segment carries is empty; the adapter refuses it (``no_control_in_role``).
     """
     roles = ROLE_DEVICE_ROLES[role]
     wings = list((airplane.wings or {}).values())

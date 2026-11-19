@@ -145,6 +145,14 @@ modelled.
 The control surface must be resolved by the chordwise panels — best modelled as its own `SURFACE`
 (`avl_doc:1110-1119`).
 
+**Convergence and fuselage (implementation remark, #1399).** The mesh is the kernel's AVL mesh
+(`N_CHORD` 10, `N_SPAN` 24, the hinge-split chordwise counts `SPLIT_N_CHORD` 12 and 8; solver settings of
+the AVL adapter): the mesh settings are the source of this limit, and no refinement run is made. Measured once
+on BRYAN, JAGUAR and RV7 (NACA 0012 stand-in contour), doubling strips and chordwise vortices changed a hinge
+moment by 1.5–2.2 % for ailerons and elevators and by 3.5–4.1 % for the RV7's flap and rudder; on a thin
+aspect-ratio-40 wing at zero lift AVL agrees with thin-airfoil theory within 2 %. The fuselages are in the run
+as round bodies of equal area, as in the lateral-stability run, and declared (`avl_body_equivalent_round`).
+
 **The hinge moment as the sources define it.** `H = ½·ρ·V²·S_c·c̄_c·C_h` with the control surface's
 own area and mean chord, `C_h = C_h0 + C_hα·α + C_hδ·δ` (Sadraey §12.7.1, Eq. 12.147–12.148). AVL's
 `C_hinge` is the same moment referred to `S_ref·c_ref`; `H` is identical.

@@ -168,12 +168,15 @@ async def test_the_regime_warnings_of_the_flow_are_returned(fake: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_a_role_without_a_device_is_a_defect_of_the_caller(fake: Path) -> None:
+async def test_a_role_without_a_control_surface_is_a_declared_refusal(fake: Path) -> None:
+    """The conditions of the canon look at every rib; only a device on a segment is a surface."""
     async with SolverRuntime() as runtime:
-        with pytest.raises(ValueError, match="acting as flap"):
+        with pytest.raises(FormulaError) as raised:
             await FakeAvl(runtime).hinge_moments(
                 conventional(), cl=0.5, role="flap", delta_deg=1.0, speed_ms=20.0, air=AIR
             )
+    assert raised.value.code == "no_control_in_role"
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
 @pytest.mark.asyncio
@@ -212,3 +215,32 @@ async def test_an_echoed_control_that_differs_from_the_commanded_one_is_a_defect
     (fake / "fake.json").write_text(json.dumps({"echo_offset": 0.5}))
     with pytest.raises(RuntimeError, match="echoed a control"):
         await hinge()
+
+
+def with_fuselage() -> AirplaneGeometry:
+    """The conventional airplane with a fuselage of three sections."""
+    dumped = conventional().model_dump(mode="json", exclude_none=True)
+    dumped["fuselages"] = {
+        "Rumpf": {
+            "name": "Rumpf",
+            "x_secs": [
+                {"xyz": [0.0, 0.0, 0.0], "a": 0.0, "b": 0.0, "n": 2.0},
+                {"xyz": [0.3, 0.0, 0.0], "a": 0.02, "b": 0.02, "n": 2.0},
+                {"xyz": [0.7, 0.0, 0.0], "a": 0.0, "b": 0.0, "n": 2.0},
+            ],
+        }
+    }
+    return AirplaneGeometry.model_validate(dumped)
+
+
+@pytest.mark.asyncio
+async def test_the_fuselage_is_in_the_run_as_in_the_lateral_run_and_declared(fake: Path) -> None:
+    found = await hinge(with_fuselage(), role="elevator")
+    assert "BODY\nRumpf\n" in seen(fake)["geometry"]
+    assert "avl_body_equivalent_round" in [w.code for w in found.warnings]
+
+
+@pytest.mark.asyncio
+async def test_an_airplane_without_a_fuselage_has_no_body_in_the_file(fake: Path) -> None:
+    await hinge(role="elevator")
+    assert "BODY" not in seen(fake)["geometry"]

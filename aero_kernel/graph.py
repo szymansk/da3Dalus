@@ -20,6 +20,7 @@ from aero_kernel.canon.model import (
     Quantity,
     WhenTerm,
 )
+from aero_kernel.devices import FLAP_ROLES as DEVICE_FLAP_ROLES
 from aero_kernel.errors import (
     ErrorCategory,
     KernelError,
@@ -37,7 +38,10 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "AILERON_ROLES",
+    "ELEVATOR_ROLES",
+    "FLAP_ROLES",
     "PENDING_WHEN_TERMS",
+    "RUDDER_ROLES",
     "CanonGraph",
     "Edge",
     "GraphModelError",
@@ -854,12 +858,12 @@ PENDING_WHEN_TERMS: Mapping[str, str] = {}
 _HORIZONTAL_TAIL_TYPES = frozenset({"horizontal_tail", "v_tail"})
 AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
 # The hinge-moment terms: a device that has a hinge and acts in that role (a stabilator has none).
-_ELEVATOR_ROLES = frozenset({"elevator", "elevon", "ruddervator"})
-_FLAP_ROLES = frozenset({"flap", "flaperon"})
+ELEVATOR_ROLES = frozenset({"elevator", "elevon", "ruddervator"})
+FLAP_ROLES = DEVICE_FLAP_ROLES
 # A butterfly layout (D10) needs a flap and a distinct aileron or elevon; a flaperon is neither.
 _BUTTERFLY_FLAP_ROLES = frozenset({"flap"})
 _BUTTERFLY_AILERON_ROLES = frozenset({"aileron", "elevon"})
-_RUDDER_ROLES = frozenset({"rudder", "ruddervator"})
+RUDDER_ROLES = frozenset({"rudder", "ruddervator"})
 
 
 def _roles(wing: Wing) -> list[str]:
@@ -899,7 +903,7 @@ def _has_vertical_tail(wings: dict[str, Wing]) -> bool:
     root = ribbed[main_name].x_secs[0]
     trailing_edge_x = root.xyz_le[0] + root.chord
     return any(
-        (not wing.symmetric or _RUDDER_ROLES & set(_roles(wing)))
+        (not wing.symmetric or RUDDER_ROLES & set(_roles(wing)))
         and wing.x_secs[0].xyz_le[0] >= trailing_edge_x
         for name, wing in ribbed.items()
         if name != main_name
@@ -928,13 +932,13 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
     has_aileron = any(role in AILERON_ROLES for _, role in devices)
     return WhenFacts(
         has_aileron=has_aileron,
-        has_elevator=any(role in _ELEVATOR_ROLES for _, role in devices),
-        has_flap=any(role in _FLAP_ROLES for _, role in devices),
+        has_elevator=any(role in ELEVATOR_ROLES for _, role in devices),
+        has_flap=any(role in FLAP_ROLES for _, role in devices),
         has_horizontal_tail=any(
             wing.surface_type in _HORIZONTAL_TAIL_TYPES for wing in wings.values()
         ),
         has_no_aileron=not has_aileron,
-        has_rudder=any(role in _RUDDER_ROLES for _, role in devices),
+        has_rudder=any(role in RUDDER_ROLES for _, role in devices),
         has_separate_flap_and_aileron=any(
             flap_role in _BUTTERFLY_FLAP_ROLES
             and aileron_role in _BUTTERFLY_AILERON_ROLES

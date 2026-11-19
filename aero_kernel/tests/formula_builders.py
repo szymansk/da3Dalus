@@ -62,6 +62,7 @@ IMPLEMENTED = {
     "calc:aerobuildup-evaluation",
     "calc:lift-to-drag-ratio",
     "calc:zero-lift-angle",
+    "calc:airplane-components",
 }
 
 

@@ -915,10 +915,10 @@ class AvlAdapter(SolverAdapter):
             FormulaError: ``tool_unavailable``; ``invalid_input`` for a non-finite deflection, a
                 device without a hinge or two surfaces with one key; ``unsupported_configuration``
                 for a deflected geometry state, a device on an unmirrored surface, a discontinuous
-                hinge line or a mesh that overflows AVL's array.
+                hinge line, no control surface acting in the role (``no_control_in_role``: the
+                canon's ``when`` condition looks at every rib, a surface needs a segment) or a
+                mesh that overflows AVL's array.
             RuntimeError: If AVL fails or breaks its own checks (a defect, reported as ``internal``).
-            ValueError: If no device acts in the role (a defect of the caller; the canon's ``when``
-                condition prevents it).
         """
         self.require_available()
         refuse_deflected_devices(airplane, "AVL", flaps_supported=False)
@@ -945,8 +945,15 @@ class AvlAdapter(SolverAdapter):
             split_n_chord=SPLIT_N_CHORD,
         )
         if not mesh.controls:
-            msg = f"the hinge moments need a device acting as {role}"
-            raise ValueError(msg)
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                "no_control_in_role",
+                f"no control surface acts as {role}: a device on the last rib of a wing has no "
+                "segment to span",
+                "a device belongs to the segment that starts at its rib; give it a rib to end on",
+                parameter="airplane",
+            )
+        bodies = mesh_bodies(airplane)  # the fuselages as in the lateral run, one reuse
         contours = await self._contours(tuple(numbers))
         order = control_order(mesh.surfaces)
         values = {c.name: c.sign * delta_deg for c in mesh.controls}
@@ -957,6 +964,7 @@ class AvlAdapter(SolverAdapter):
             avl_hinge_commands(cl, CORE_RATIO, values, order=order),
             reference,
             airplane.xyz_ref,
+            bodies,
         )
         output = parse_hinge_output(stdout, order)
         if output is None:
@@ -982,5 +990,5 @@ class AvlAdapter(SolverAdapter):
         )
         return AvlHinge(
             moments={c.key: scale * output.moments[c.name] for c in mesh.controls},
-            warnings=tuple(warnings),
+            warnings=(*_body_warnings(bodies), *warnings),
         )

@@ -8,6 +8,7 @@ wing of high aspect ratio. No published hinge moment of an RC aircraft exists to
 """
 
 import math
+import re
 
 import numpy as np
 import pytest
@@ -24,13 +25,14 @@ from aero_kernel.solvers.avl import (
     AvlAdapter,
     AvlHinge,
 )
+from aero_kernel.solvers.avl_hinge import hinge_mesh
 from aero_kernel.solvers.avl_mesh import FLAP_CONTROL, split_at_hinge
 from aero_kernel.solvers.avl_writer import (
     avl_hinge_commands,
     control_order,
     parse_hinge_output,
 )
-from aero_kernel.tests.hinge_builders import conventional, device, wing_document
+from aero_kernel.tests.hinge_builders import conventional, device, v_tail_plane, wing_document
 from aero_kernel.tests.mesh_helpers import mesh_surfaces
 from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
@@ -121,7 +123,71 @@ async def test_the_moment_scales_with_the_dynamic_pressure() -> None:
 async def test_a_rudder_on_an_unmirrored_fin_has_its_own_key_and_a_value() -> None:
     found = await hinge(conventional(), "rudder", 5.0)
     assert set(found.moments) == {"Fin.rudder"}
-    assert found.moments["Fin.rudder"] != 0.0
+    assert found.moments["Fin.rudder"] < 0.0  # restoring, in the sense of the positive deflection
+
+
+async def side_force(plane: AirplaneGeometry, role: str, delta: float) -> float:
+    """``CYtot`` of AVL's own output for the role's command, on the hinge-moment mesh and dialogue."""
+    numbers: dict[Airfoil, int] = {}
+
+    def number(airfoil: Airfoil) -> int:
+        return numbers.setdefault(airfoil, len(numbers))
+
+    async with SolverRuntime(max_workers=1) as runtime:
+        adapter = AvlAdapter(runtime)
+        mesh = hinge_mesh(
+            plane,
+            role,
+            N_SPAN,
+            number,
+            join_tolerance_m=adapter.join_tolerance_m(),
+            split_n_chord=SPLIT_N_CHORD,
+        )
+        values = {c.name: c.sign * delta for c in mesh.controls}
+        contours = await adapter._contours(tuple(numbers))  # pyright: ignore[reportPrivateUsage]
+        stdout = await adapter._execute(  # pyright: ignore[reportPrivateUsage]
+            mesh.surfaces,
+            contours,
+            (N_CHORD, N_SPAN),
+            avl_hinge_commands(0.0, CORE_RATIO, values, order=control_order(mesh.surfaces)),
+            main_wing_properties(plane),
+            plane.xyz_ref,
+        )
+    found = re.search(r"CYtot\s*=\s*(-?\d+\.\d+)", stdout)
+    assert found is not None
+    return float(found.group(1))
+
+
+def twin_fins() -> AirplaneGeometry:
+    """A wing and a mirrored pair of fins at y = +-0.2, each with a rudder."""
+    wings = {
+        "Main": wing_document(
+            "Main wing", "main_wing", [(0.0, 0.0, 0.0, 0.2), (0.0, 0.4, 0.0, 0.2)]
+        ),
+        "Fins": wing_document(
+            "Fins",
+            "vertical_tail",
+            [(0.6, 0.2, 0.0, 0.12), (0.6, 0.2, 0.12, 0.1)],
+            {0: device("rudder", "rudder", 0.6)},
+        ),
+    }
+    return AirplaneGeometry.model_validate({"name": "twin", "wings": wings})
+
+
+@pytest.mark.parametrize(
+    "plane", [conventional(), v_tail_plane(), twin_fins()], ids=["fin", "v-tail", "twin-fin"]
+)
+async def test_a_positive_rudder_command_pushes_the_tail_to_the_left_which_yaws_the_nose_right(
+    plane: AirplaneGeometry,
+) -> None:
+    """The entry's remark: positive = rudder to the right = yaw to the right. A rudder to the right
+    puts a side force towards -y (AVL's y is to the right) on a tail behind the reference point, which
+    turns the nose to the right. Checked on AVL's own total side force for an unmirrored fin, a
+    V-tail (right panel down, left up) and a mirrored pair of fins; the negative command mirrors it."""
+    right, left = await side_force(plane, "rudder", 5.0), await side_force(plane, "rudder", -5.0)
+    assert right < -1e-4
+    assert left > 1e-4
+    assert math.isclose(right, -left, rel_tol=5e-3)
 
 
 async def test_the_explicit_halves_sum_to_the_duplicated_control_of_a_hand_written_file() -> None:

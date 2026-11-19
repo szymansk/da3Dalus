@@ -9,6 +9,7 @@ from aero_kernel.cache import DedupedCache, MemoryCache
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.graph import Subtree
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -220,6 +221,14 @@ async def test_an_adapter_answer_that_is_not_a_value_per_surface_is_an_internal_
     assert quantity.error.category is ErrorCategory.INTERNAL
 
 
+async def test_a_device_on_the_last_rib_is_refused_by_the_validation_before_any_run() -> None:
+    """has_rudder looks at every rib, but a device on the last rib is an input error (it spans no
+    segment), so the mesh never meets a role the conditions allow but no segment carries."""
+    result = await run(conventional(fin={1: device("rudder", "rudder", 0.6)}))
+    assert result.quantities == ()
+    assert [e.code for e in result.input_errors] == ["segment_on_last_section"]
+
+
 async def test_the_node_cache_serves_the_second_call_with_the_same_surfaces() -> None:
     avl = StubAvl()
     cache = DedupedCache(MemoryCache(max_entries=64))
@@ -232,3 +241,24 @@ async def test_the_node_cache_serves_the_second_call_with_the_same_surfaces() ->
     assert second.from_cache is True
     assert second.surfaces == first.surfaces
     assert len(avl.hinge_calls) == 4
+
+
+async def test_the_shipped_hinge_moment_has_no_method_worlds_upstream() -> None:
+    """The union assumes plain-value inputs; this pins the assumption on the shipped canon."""
+    subtree = shipped_build().graph.subtree(["hinge-moment"])
+    assert subtree.world_assignments("hinge-moment") == ({},)
+
+
+async def test_a_per_surface_quantity_with_worlds_upstream_is_refused_not_asserted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If an uncertain formula ever lies upstream, the quantity says so instead of failing an assert."""
+
+    def with_worlds(_self: Subtree, _slug: str) -> tuple[dict[str, str], ...]:
+        return ({"neutral-point": "avl"},)
+
+    monkeypatch.setattr(Subtree, "world_assignments", with_worlds)
+    quantity = only(await run())
+    assert quantity.status is QuantityStatus.ERROR
+    assert quantity.error is not None
+    assert quantity.error.code == "non_scalar_result"

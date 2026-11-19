@@ -19,6 +19,7 @@ from aero_kernel.build import Build
 from aero_kernel.cache import Entry, Lease, NodeCache, cache_key
 from aero_kernel.canon.model import Check, ConstBinding, Default, Formula
 from aero_kernel.canonical import spell_non_finite
+from aero_kernel.components import Components
 from aero_kernel.context import Context, Inputs, Solvers, Value
 from aero_kernel.devices import devices_at_rest
 from aero_kernel.errors import (
@@ -176,7 +177,7 @@ def _unit_of(build: Build, slug: str) -> str | None:
 
 
 # The quantity types a value of v1 can carry between nodes (``Value``).
-_CARRIED_TYPES = frozenset({"scalar", "airplane", "polar"})
+_CARRIED_TYPES = frozenset({"scalar", "airplane", "polar", "components"})
 
 # The output types the cache stores (ch. 8.4): they round-trip through JSON bit for bit. Not the
 # airplane: a parsed geometry holds metres in the format's millimetre fields and by design does not
@@ -188,7 +189,7 @@ _CACHED_TYPES = frozenset({"scalar", "polar", "per_control_surface"})
 
 def _key_value(value: Value | None) -> JsonValue:
     """The JSON form of a direct input value in the cache key (ch. 8.4)."""
-    if isinstance(value, AirplaneGeometry | Polar):
+    if isinstance(value, AirplaneGeometry | Polar | Components):
         return spell_non_finite(value.model_dump(mode="json"))
     return value
 
@@ -817,7 +818,7 @@ class _Call:
             formula=formula_slug,
             application=node.id.application,
             message=f"`{quantity}` reads {names}, which the kernel cannot carry yet.",
-            hint="Request a quantity that reads scalars and the airplane only.",
+            hint="Request a quantity that reads scalars, the airplane, polars and components only.",
             detail={"quantities": list[JsonValue](display_slug(slug) for slug, _ in unsupported)},
         )
 
@@ -915,6 +916,8 @@ class _Call:
         quantity = self.build.model.quantity(slug)
         if quantity is not None and quantity.type == "airplane":
             return self.airplane_at_rest
+        if quantity is not None and quantity.type == "components":
+            return self.aircraft.components
         return self.values.get(slug) if quantity is not None and quantity.type == "scalar" else None
 
     def _missing_input(
@@ -929,19 +932,32 @@ class _Call:
         """
         shown = [display_slug(slug) for slug in missing]
         verb = "was" if len(shown) == 1 else "were"
+        kinds = [self._type_of(slug) for slug in missing]
+        scalars = [name for name, kind in zip(shown, kinds, strict=True) if kind != "components"]
+        hints: list[str] = []
+        if scalars:
+            hints.append(f"Supply {join_names([f'`{n}`' for n in scalars])} in `values`.")
+        if "components" in kinds:
+            hints.append(
+                "Push the fitted motor, battery and propeller as AircraftInput.components."
+            )
         return KernelError(
             code="missing_input",
             category=ErrorCategory.INVALID_INPUT,
             quantity=quantity,
             formula=formula_slug,
             application=node.id.application,
-            input_path=f"values.{shown[0]}",
+            input_path="components" if kinds[0] == "components" else f"values.{shown[0]}",
             message=f"`{quantity}` needs {join_names([f'`{n}`' for n in shown])}, "
             f"which {verb} not supplied.",
-            hint=f"Supply {join_names([f'`{n}`' for n in shown])} in `values`."
-            + self._geometry_mass_hint(shown),
+            hint=" ".join(hints) + self._geometry_mass_hint(shown),
             detail={"inputs": list[JsonValue](shown)},
         )
+
+    def _type_of(self, slug: str) -> str | None:
+        """The type of a quantity of the model, or ``None`` if the model has none such."""
+        quantity = self.build.model.quantity(slug)
+        return None if quantity is None else quantity.type
 
     def _geometry_mass_hint(self, shown: Sequence[str]) -> str:
         """The sentence that names the geometry's mass for a missing ``aircraft-mass``, or ``""``."""
@@ -964,7 +980,9 @@ class _Call:
         if quantity is None or quantity.role not in ("input", "target"):
             return None
         # an input of another type is a kernel gap before any formula runs (row 3)
-        return "airplane" if quantity.type == "airplane" else f"values.{display_slug(binding)}"
+        if quantity.type in ("airplane", "components"):
+            return quantity.type
+        return f"values.{display_slug(binding)}"
 
     # --- outputs ---------------------------------------------------------------------------
 
@@ -1152,9 +1170,22 @@ class _Call:
         caller asked for (ch. 8.13). When no application applies the quantity is not applicable; a
         quantity with uncertain formulas is not defined (none exists: its inputs are plain values).
         """
-        assert not self.subtree.world_assignments(resolved.requested)[0], (
-            "a per_control_surface quantity has no method worlds"
-        )
+        if self.subtree.world_assignments(resolved.requested)[0]:
+            return QuantityResult(
+                slug=resolved.requested,
+                unit=resolved.quantity.unit,
+                status=QuantityStatus.ERROR,
+                error=KernelError(
+                    code="non_scalar_result",
+                    category=ErrorCategory.NOT_IMPLEMENTED,
+                    quantity=resolved.requested,
+                    message=(
+                        f"`{resolved.requested}` is a value per control surface and depends on a "
+                        "formula with several method worlds; an interval of such a value is not defined."
+                    ),
+                    hint="Request it from a build whose inputs are plain values.",
+                ),
+            )
         parts = [
             (
                 node_id,
