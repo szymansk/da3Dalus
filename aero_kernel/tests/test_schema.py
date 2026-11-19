@@ -142,6 +142,8 @@ class TestKernelWarning:
             "small_glide_angle": WarningSeverity.WARNING,
             "polar_fit_residual": WarningSeverity.NOTICE,
             "polar_fit_nonphysical": WarningSeverity.ERROR,
+            "hinge_moment_inviscid_estimate": WarningSeverity.NOTICE,
+            "hinge_moment_pitch_untrimmed": WarningSeverity.NOTICE,
         }
 
     def test_carries_world_and_json_detail(self) -> None:

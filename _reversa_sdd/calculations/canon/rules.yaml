@@ -263,6 +263,20 @@ hinge-line-continuity:
       source: "a numerical identity of two positions of one rib; no published source (maintainer 2026-10-26, #1299: a domain limit that stays an overridable rule parameter)"
       regime: "regime-independent: a statement about the geometry document, not about the flow"
 
+hinge-moment-device-layout:
+  applies_to: {formula: control-surface-hinge-moments}
+  kind: input
+  on_violation: error
+  criterion: "A control surface whose hinge moment is read has a hinge position (missing_hinge: the tool's default hinge is never used) strictly inside the chord (hinge_outside_chord: at 0 the whole section turns, which is a stabilator, not covered; at 1 nothing turns, a zero-chord control has no hinge moment); sits on a mirrored surface if the surface spreads sideways (hinge_device_on_unmirrored_surface); has a key <wing>.<device>[_left|_right] that no other surface has (duplicate_surface_key); and a role that the conditions allow is carried by at least one segment (no_control_in_role)."
+  codes: [missing_hinge, hinge_outside_chord, hinge_device_on_unmirrored_surface, duplicate_surface_key, no_control_in_role]
+
+hinge-moment-line-continuity:
+  applies_to: {formula: control-surface-hinge-moments}
+  kind: input
+  on_violation: error
+  criterion: "Adjacent segments of one control surface have the same hinge position at the rib they meet at: AVL holds one hinge position per section. Two positions closer than the join_tolerance of the rule hinge-line-continuity are one rib (the one threshold, not a second one)."
+  codes: [hinge_line_discontinuous]
+
 avl-roll-rate-validity:
   applies_to: {formula: roll-rate}
   kind: tool
