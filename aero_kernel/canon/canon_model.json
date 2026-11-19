@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e2b8623f4f517f4bbc8576237f5b3309c0720d1bc3079de1ea29089cbc6e049a",
+  "content_hash": "sha256:ce9a68d6aedafe945cb98e933810c9fbf02d00e380951f21dff8724d929f39d1",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -850,7 +850,14 @@
             "v_x": "calc:best-angle-of-climb-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -928,7 +935,14 @@
             "v_y": "calc:best-rate-of-climb-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -1372,7 +1386,14 @@
             "v_d": "calc:dive-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -2178,7 +2199,14 @@
             "v_max": "calc:max-level-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -2343,6 +2371,12 @@
               "id": "limit_load_factor_above_one",
               "on_violation": "error",
               "parameter": "n_lim"
+            },
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
             }
           ],
           "tool": "OPT",
@@ -2465,6 +2499,12 @@
               "id": "limit_load_factor_above_one",
               "on_violation": "error",
               "parameter": "n_lim"
+            },
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
             }
           ],
           "tool": "OPT",

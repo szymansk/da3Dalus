@@ -7,6 +7,11 @@ it and Illinois regula falsi refines it. The drag of a windmilling or stopped pr
 (canon ``Q-PT-10``); the thrust is the full-throttle thrust of the table. If the speed runs past the table of
 the propeller before the root, the drive-train relation ends the search with ``outside_propeller_table``
 (no extrapolation, gh-1411): the declared failure.
+
+The scan starts at the clean stall speed ``v_s`` (gh-1419). There the zero-lift drag is ``C_D0 / C_L,max`` of the
+weight, so the surplus is negative, and the root lies above ``v_s``, if ``C_D0 / C_L,max < 1 + T(v_s) / (m g)``.
+Where the surplus is already positive at ``v_s`` the terminal speed lies below it: the declared failure
+``no_feasible_speed`` says so.
 """
 
 from aero_kernel.config import config
@@ -17,6 +22,7 @@ from aero_kernel.formulas.powered_flight import (
     VERTICAL_FLIGHT,
     PoweredFlight,
     illinois_root,
+    no_feasible_speed,
     scan_speeds,
     table_failure,
 )
@@ -48,17 +54,22 @@ async def _surplus(flight: PoweredFlight, v: float) -> float:
     return drag - flight.weight - thrust
 
 
-def _not_reached(at_start: bool) -> FormulaError:
-    where = (
-        "already at the first scan speed"
-        if at_start
-        else f"below the scan limit of {config().powered_speed_scan_limit.value:g} m/s"
-    )
+def _not_reached() -> FormulaError:
     return FormulaError(
         ErrorCategory.NOT_CONVERGED,
         "not_converged",
-        f"the zero-lift drag does not reach the weight plus the full-throttle thrust {where}",
+        "the zero-lift drag does not reach the weight plus the full-throttle thrust below the scan limit "
+        f"of {config().powered_speed_scan_limit.value:g} m/s",
         "report the case; the scan limit ends the search",
+    )
+
+
+def _below_the_stall_speed(v: float, surplus: float) -> FormulaError:
+    """The dive is already terminal at the first scan speed: its speed lies below the clean stall speed."""
+    return no_feasible_speed(
+        f"the zero-lift drag already exceeds the weight plus the full-throttle thrust by {surplus:.4g} N at "
+        f"the clean stall speed {v:.4g} m/s, so the terminal speed of the dive lies below the clean stall "
+        "speed, where the scan does not look"
     )
 
 
@@ -79,7 +90,8 @@ async def dive_speed(x: Inputs, ctx: Context) -> dict[str, float]:
 
     Raises:
         TypeError: If ``airplane`` or ``components`` is not the document.
-        FormulaError: ``not_converged`` if the drag does not reach the weight plus the thrust within
+        FormulaError: ``no_feasible_speed`` if the drag already exceeds the weight plus the thrust at the
+            clean stall speed; ``not_converged`` if the drag does not reach the weight plus the thrust within
             the scan; the failures of the drive train (``missing_input``,
             ``outside_propeller_table``).
     """
@@ -89,7 +101,7 @@ async def dive_speed(x: Inputs, ctx: Context) -> dict[str, float]:
         surplus = await _surplus(flight, v)
         if surplus > 0.0:
             if previous is None:
-                break
+                raise _below_the_stall_speed(v, surplus)
             v_d = await illinois_root(
                 lambda speed: _surplus(flight, speed),
                 previous,
@@ -99,4 +111,4 @@ async def dive_speed(x: Inputs, ctx: Context) -> dict[str, float]:
             await flight.answer(v_d, VERTICAL_FLIGHT)
             return {"v_d": v_d}
         previous = (v, surplus)
-    raise _not_reached(previous is None)
+    raise _not_reached()

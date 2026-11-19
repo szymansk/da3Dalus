@@ -287,6 +287,9 @@ async def test_the_vertical_upper_edge_needs_an_end_inside_the_scan(
     with pytest.raises(FormulaError) as caught:
         await pf.vertical_upper_edge(airplane, 10.0)
     assert caught.value.category is ErrorCategory.NOT_CONVERGED
+    with pytest.raises(FormulaError) as off_grid:
+        await pf.vertical_upper_edge(airplane, 9.5)
+    assert math.isclose(off_grid.value.detail["v_ms"], 150.0)  # type: ignore[index]  # the shared grid
 
 
 async def test_a_state_where_level_flight_is_not_held_gives_no_sustained_turn() -> None:
@@ -324,7 +327,7 @@ async def test_a_thrust_above_the_drag_up_to_the_scan_limit_is_not_converged(
     with pytest.raises(FormulaError) as caught:
         await max_level_speed(pb.bound_inputs("max-level-speed"), ctx)
     assert caught.value.category is ErrorCategory.NOT_CONVERGED
-    assert 148.0 < caught.value.detail["v_ms"] <= 150.0  # type: ignore[index]  # the last scan speed
+    assert math.isclose(caught.value.detail["v_ms"], 150.0)  # type: ignore[index]
 
 
 async def test_a_dive_whose_drag_never_reaches_weight_plus_thrust_is_not_converged(
@@ -345,13 +348,17 @@ async def test_a_dive_that_leaves_the_table_names_the_speed_it_left_at() -> None
     assert "the dive left the propeller table at" in caught.value.message
 
 
-async def test_a_dive_that_is_already_dragged_to_a_stop_at_the_first_speed_is_not_converged() -> (
+async def test_a_dive_whose_drag_already_exceeds_weight_plus_thrust_at_the_stall_speed_says_so() -> (
     None
 ):
+    """The surplus is positive at the first scan speed: the terminal speed lies below the stall speed, where
+    the scan does not look. A declared failure whose message says what happened (not "never reaches")."""
     ctx = pb.context("dive-speed", pb.PolarOpti(cd0=3000.0))
     with pytest.raises(FormulaError) as caught:
         await dive_speed(pb.bound_inputs("dive-speed"), ctx)
-    assert "first scan speed" in caught.value.message
+    assert caught.value.code == "no_feasible_speed"
+    assert "already exceeds" in caught.value.message
+    assert "below the clean stall speed" in caught.value.message
 
 
 # --- the declared skips, the corner notice and the load factor -------------------------------------

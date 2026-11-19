@@ -36,6 +36,8 @@ outputs: {v_max: max-level-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: stall_speed_usable, parameter: v_s, on_violation: error}
 ---
 
 # Maximum level speed at full throttle
@@ -65,7 +67,7 @@ subject to:   L(V, alpha) = m * g
 
 **Multi-start.** The problem has a spurious branch below the stall, where the polar's post-stall drag rise also satisfies `T ≥ D`; on BRYAN one start converged there (5.9 m/s at α = 16.7°). Solve from several starting speeds and keep the largest feasible `V` with no stall-side bound active.
 
-**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. Level flight carries `m g`, so it cannot be flown below the stall speed: the scan starts at `v_s`; a speed where the wing cannot carry the lift is still skipped and declared (`powered_speeds_skipped`), and a solver failure at a speed from `v_s` upward still ends the formula (`not_converged`).
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. Level flight carries `m g`, so it cannot be flown below the stall speed: the scan starts at `v_s`; a speed where the wing cannot carry the lift is still skipped and declared (`powered_speeds_skipped`), and a solver failure at a speed from `v_s` upward still ends the formula (`not_converged`). The input `v_s` has the precondition `stall_speed_usable` (positive, finite, at most the scan limit `powered_speed_scan_limit`): a stall speed beyond the limit leaves nothing to scan, and the entry ends with the precondition's error, not with a value.
 
 ## Implementations (1)
 

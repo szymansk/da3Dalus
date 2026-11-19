@@ -35,6 +35,8 @@ outputs: {v_d: dive-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: stall_speed_usable, parameter: v_s, on_violation: error}
 ---
 
 # Dive speed — terminal speed in a vertical dive
@@ -67,7 +69,7 @@ solve for V, alpha, n_prop:   L(V, alpha) = 0
 
 **Termination.** A failed solve returns no value (ADR 0020).
 
-**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. The scan starts at `v_s`: there the zero-lift drag is `C_D0 / C_L,max` of the weight, below the weight plus the thrust, so the root `D = m g + T` lies above it. A solver failure from `v_s` upward still ends the formula.
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A solver failure from `v_s` upward still ends the formula. The scan starts at `v_s`; the root `D = m g + T` lies above it only if `C_D0 / C_L,max < 1 + T(v_s) / (m g)` (the zero-lift drag at `v_s` is `C_D0 / C_L,max` of the weight). Where the surplus `D - m g - T` is already positive at `v_s` the terminal speed of the dive lies below the clean stall speed, where the scan does not look: the declared failure `no_feasible_speed` says so. The input `v_s` has the precondition `stall_speed_usable` (positive, finite, at most the scan limit).
 
 ## Implementations (4)
 

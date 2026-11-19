@@ -39,6 +39,7 @@ variables: [flight-speed]
 optional: [r_m, i_0]
 preconditions:
   - {id: limit_load_factor_above_one, parameter: n_lim, on_violation: error}
+  - {id: stall_speed_usable, parameter: v_s, on_violation: error}
 ---
 
 # Tightest sustained turn at full throttle
@@ -76,7 +77,7 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 
 **Validity in the RC/UAV regime (ADR 0028).** The kinematics are exact, with the load factor as the vector sum of weight and centrifugal force (Lennon, Ch. 21). The tightest sustained turn is flown slowly and at high `C_L`, so it sits at the lowest chord Reynolds number of manoeuvring flight — often in the bubble-sensitive band below 7·10⁴, where section C_L,max falls sharply (Lennon Ch. 1–3, see [[stall-speed]]). There the transition location sets the result: Anderson §20.3.2 shows laminar separation on both surfaces at Re_c = 10⁵ disappearing when the flow is turbulent. AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴, C_L 1.0 (Sharpe 2024 §7.2.4). Thrust at that low speed comes from the propeller table near static conditions, with its Re₀.₇₅ ≈ 15–100 k and rpm-block limits. Propeller slipstream over the wing is not modelled [no source].
 
-**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A sustained turn carries `n m g` with `n >= 1`, so it cannot be flown below the stall speed: the scan starts at `v_s`; a speed where the wing cannot carry the lift is skipped and declared, a solver failure from `v_s` upward still ends the formula.
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A sustained turn carries `n m g` with `n >= 1`, so it cannot be flown below the stall speed: the scan starts at `v_s`; a speed where the wing cannot carry the lift is skipped and declared, a solver failure from `v_s` upward still ends the formula. The input `v_s` has the precondition `stall_speed_usable (positive, finite, at most the scan limit `powered_speed_scan_limit`)`.
 
 ## Implementations (1)
 
