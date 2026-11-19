@@ -37,6 +37,8 @@ c_bar = S_ref / b_ref
 
 > 14 CFR 23.341(c) (and CS-25.341 / 14 CFR 25.341) symbol list: "C = Mean geometric chord (ft.)" - this is the chord the gust regulation prescribes for the mass ratio. Sadraey §5.6 gives AR = b/c_bar, hence c_bar = S/b when S = b*c_bar.
 
+Remark (gh-1403): Sadraey §5.6 (Eq. 5.17–5.19, read in the book) names the chord in `AR = b/C̄` "the wing MAC or C̄" and states `S = b·C̄` for a rectangular or straight-tapered wing, so the relation he writes is `C̄ = S/b` although he calls the chord MAC; on a tapered wing the true MAC differs from `S/b` (taper 0.5: MAC = 1.037 × `S/b`), which is why the canon keeps the two quantities apart; the regulation text (14 CFR 23.341(c)) is not in the vault and was not read.
+
 **The source writes it as**
 
 ```

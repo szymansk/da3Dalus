@@ -6,6 +6,7 @@ One module per canon formula, named after its slug.
 
 from aero_kernel.formulas import (
     aerobuildup_evaluation,
+    aileron_deflection_required,
     air_density_isa,
     airplane_components,
     airplane_configuration,
@@ -46,6 +47,7 @@ from aero_kernel.registry import DEFAULT_REGISTRY
 
 __all__ = [
     "aerobuildup_evaluation",
+    "aileron_deflection_required",
     "air_density_isa",
     "airplane_components",
     "airplane_configuration",

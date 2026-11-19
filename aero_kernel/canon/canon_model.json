@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:bff873d03359dc8b85a765f0da95c43330d38fcb181e4e23e831129f385d263c",
+  "content_hash": "sha256:911405a9126296d26972bea867c12a09a8fe9dafa58b50cd742f77ddc4b2d6ca",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -52,6 +52,13 @@
           "source": "AVL prints p'b/2V with five and the derivatives with six decimals",
           "unit": "1",
           "value": 0.0002
+        },
+        "avl_roll_reference_deflection": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection: the one aileron command at which AVL's roll is run; AVL is linear in the deflection (amake.f:1184-1187), so the deflection a target needs is the target scaled by this run.",
+          "source": "any value gives the same answer in a linear model; 5 deg keeps p'b/2V of the fleet's ailerons (0.07 at BRYAN) inside AVL's range of 0.10 (avl_doc.txt:121-141) and well above its five-decimal print",
+          "unit": "deg",
+          "value": 5.0
         },
         "avl_roll_refinement_tolerance": {
           "basis": "decision",
@@ -143,6 +150,34 @@
           "source": "IPOPT's default convergence tolerance is 1e-8 on the scaled constraint, so 1e-6 leaves two decades for the scaling and the sweep's float rounding",
           "unit": "1",
           "value": 1e-06
+        },
+        "opt_roll_max_refinements": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the number of refinement steps after which the search for the command ends without having reached the target (not_converged).",
+          "source": "termination of the refinement only: the Illinois regula falsi converges superlinearly on a smooth bracketed root, so a handful of steps reach the target tolerance; 40 is far beyond that and bounds a non-smooth roll rate",
+          "unit": "1",
+          "value": 40.0
+        },
+        "opt_roll_search_limit": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the command at which the upward search ends without having found the target or the maximum (not_converged).",
+          "source": "termination of the search only: tau * delta is an angle shift of a plain flap and has no meaning beyond a right angle; the canon sets no range for a deflection (D6, 2026-10-14)",
+          "unit": "deg",
+          "value": 90.0
+        },
+        "opt_roll_search_step": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the step of the upward search of the command; the maximum roll rate is reported at the resolution of this step.",
+          "source": "a search resolution, no physical claim: fine enough to resolve the saturation of the fleet's ailerons (p(delta) flattens between 20 and 40 deg), coarse enough that a 20 deg target needs four solves",
+          "unit": "deg",
+          "value": 5.0
+        },
+        "opt_roll_target_tolerance": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the relative difference between the roll rate at the returned deflection and the target at which the search stops.",
+          "source": "two decades above IPOPT's convergence tolerance of 1e-8 on the scaled constraint (see opt_probe_tolerance), and far below the 23 % spread between the worlds",
+          "unit": "1",
+          "value": 0.0001
         },
         "opt_zero_span": {
           "basis": "numerical",
