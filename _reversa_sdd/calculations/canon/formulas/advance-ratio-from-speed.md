@@ -39,9 +39,13 @@ J = V / (n_prop * D_prop)
 
 **Validity in the RC/UAV regime (ADR 0028).** Exact.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/advance_ratio_from_speed.py` | AGREES | 🟢 | `J = V / (n_prop D_prop)` as one module-level relation `advance_ratio`, called by the formula and by the embedders (one implementation, ADR 0022). Agrees with the canonical form. A propeller that does not turn (`n_prop D_prop <= 0`) ends as `invalid_input`, since the advance ratio of a stopped propeller is undefined |
+
+No register node is mapped to this entry.
 
 ## Approval
 

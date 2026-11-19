@@ -60,9 +60,13 @@ practice size on power loading `W/P`, not `T/W` — that belongs to the design d
 
 **Validity in the RC/UAV regime (ADR 0028).** The ratio is exact; what it is worth depends on the static thrust, read from the `J = 0` row of the propeller table at the balanced rpm. Static coefficients differ from those in advancing flight, and the blade Reynolds number is lowest there (Brandt & Selig 2011 §II.B, §III); at Re₀.₇₅ ≈ 15–100 k `C_T` changes with rpm (Deters, Ananda & Selig 2014 §V.A–B). Static thrust is the relevant number for hand launch and for hanging on the propeller. On route A it inherits the free-run-rpm overestimate (loaded brushless motors run at about 85 % of no-load rpm, Roxxy Motoren-Fibel Ch. 1 pp. 9–10) unless the power limit binds. For propeller aircraft Sadraey sizes on `W/P`, not `T/W` (§4.3.5.2, Eq. 4.89), as the entry says.
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/static_thrust_to_weight.py` | DEVIATES | 🟢 | `T_0 / W` with `T_0` from the four embedded relations at `V = 0`, obtained through `ctx.embedded` (the first embedder; the engine hands out the registered relations of the canon's `embeds`). **Deviation:** route B only, as `motor-propeller-equilibrium` (an absent `R_m` or `I_0` is `missing_input`, the table-range failures propagate); the route notice of the equilibrium is declared on this quantity as well. A weight not above zero is `invalid_input` |
+
+No register node is mapped to this entry.
 
 ## Approval
 

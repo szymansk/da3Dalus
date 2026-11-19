@@ -247,7 +247,7 @@ nothing failed. The category enum holds only the eight rows above.
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
-- **Refused layouts and tool limits** (`unsupported_configuration`): `unsupported_layout` — the neutral point
+- **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, a balance that lies outside the table; never extrapolated, `detail`: the point and the range, gh-1411); `unsupported_layout` — the neutral point
   is defined for one `main_wing` with one `horizontal_tail` or `v_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
   declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
@@ -347,7 +347,7 @@ Sources:
   C_L,max is not raised; `detail.flaps`: wing, device, `deflection_deg`), and `avl_flap_linearised`
   (`notice`) from AVL, whose flap rotates the panel normals linearly in the deflection, without separation
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
-- the route an `optional:` parameter selected (ch. 8.5)
+- the route an `optional:` parameter selected (ch. 8.5); route B of the drive train, `powertrain_route_winding_resistance` (`notice`, `detail.route`, gh-1411): the manufacturer's winding resistance balances the torque, ESC and cable resistance are not in it, the nominal pack voltage is used
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
 - active bounds in the optimiser
 
@@ -1323,20 +1323,23 @@ parts are the separate canon input quantity **`components`** (type `components`,
 since `84599128`), bound to `AircraftInput.components`; only the formulas that read parts bind it, so a
 change of parts expires only their subtree (A1). A missing `components` is the ordinary `missing_input` of
 that one quantity (ch. 8.11, 8.13), `input_path` `components`. The field list is defined with the first KAT
-formula, `airplane-components` (gh-1397), `schema_version` 1, in `components.py`; the names and units are the
+formula, `airplane-components` (gh-1397), `schema_version` 1, and was extended by `propeller-table-lookup` (gh-1411) to `schema_version` 2, in `components.py`; the names and units are the
 catalogue's, a field with `?` may be absent:
 
 ```
 Components { schema_version: 1, motor?: Motor, battery?: Battery, propeller?: Propeller }
 Motor      { kv_rpm_per_volt, max_power_w?, io_no_load_a?, rm_ohm?, efficiency_pct? }   # rpm/V, W, A, ohm, %
 Battery    { capacity_mah, cells, mass_g?, c_rate?, cell_voltage_v?, chemistry? }       # mAh, 1, g, 1/h, V, enum
-Propeller  { diameter_in }                                                              # inch
+Propeller  { diameter_in, table?: PropellerTable }                                      # inch
+PropellerTable { blocks: [RpmBlock] }      RpmBlock { rpm, j: [..], ct: [..], cp: [..] }  # rpm, 1, 1, 1
 ```
 
 The fields the catalogue requires are required; the others stay optional (absence survives, rule 3). The
-propeller's measured table is added with `propeller-table-lookup` and a new `schema_version`. `validate.py`
+propeller's performance table (APC's PER3 data, every rpm block) came with `propeller-table-lookup` and
+`schema_version` 2: the caller pushes it, the kernel reads no file, and an absent table is `missing_input`
+naming `components.propeller.table`. `validate.py`
 reports a non-finite number, a number <= 0 (the no-load current may be 0) and an efficiency above 100 % at
-`components.<part>.<field>`; an absent field is no finding. The engine carries the type like the geometry
+`components.<part>.<field>`; an absent field is no finding. The table is checked at the input (rules `components-propeller-table-shape` and `-ordered`): at least one block, at least two points per block with `j`, `ct`, `cp` of one length (`malformed_table`), `rpm` > 0 and strictly increasing, `j` >= 0 and strictly increasing within a block (`table_not_increasing`). The engine carries the type like the geometry
 (`_CARRIED_TYPES`); the components are a direct input of the nodes that read them and enter their cache key by
 their JSON form. A quantity of type `components` in `values` is `not_an_input`.
 
@@ -1550,7 +1553,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   type is a canon decision first, then a type here.
 - **`ctx`** carries: `solvers` (the adapters), `world` (the active world of this formula, if it has
   worlds), `warn(code, message, detail=None)` — the severity follows from the closed warning table, as an
-  error's flags follow from its category — and `embedded(item)` (built with the first embedder). Nothing
+  error's flags follow from its category — and `embedded(item)` (built with the first embedder, `static-thrust-to-weight`, gh-1411: `@relation` and `Context.embedded`). Nothing
   else: no cache, no request, no global.
 - **Formula code is cheap.** It runs on the event loop. Anything heavy goes through an adapter; adapters
   run CPU work in the process pool and AVL as an async subprocess (ch. 8.10).
@@ -1568,7 +1571,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   `x` and returning `held | violated | unchecked` with a message. **Postconditions**,
   `@postcondition("stall-speed", "<check-id>")`, take `x` and the implementation's full return dict `y`
   and return the same three states.
-- **Embedded relations** (ch. 8.5; built with the first embedder). The module of an embedded formula exposes its relation as a plain,
+- **Embedded relations** (ch. 8.5; built with the first embedder, `static-thrust-to-weight`, gh-1411: `@relation` and `Context.embedded`). The module of an embedded formula exposes its relation as a plain,
   module-level function over parameter names (numpy- and CasADi-compatible where an OPT formula embeds
   it); its `@formula` coroutine and every embedder call that one function, so there is one implementation
   per relation (ADR 0022). For an embedded optimisation the function is its problem (built into a given
@@ -1810,7 +1813,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
 | Q29 | Target not set | `roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
-| Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `notice` warning naming the route, no `missing_input` |
+| Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `notice` warning naming the route, no `missing_input` (gh-1411 implements the first half only: route A is not built, an absent `r_m` or `i_0` is `missing_input`, see the entries' Implementations) |
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `INFO` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`notice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding (engine half built with the first embedder) | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
@@ -1868,7 +1871,7 @@ model (part of `IMPORT_REPORT.md`).
 
 | Formula | kind | tool | shape | in → out | applications | preconditions | worlds | cost class | v1 |
 |---|---|---|---|---|---|---|---|---|---|
-| `advance-ratio-from-speed` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
+| `advance-ratio-from-speed` | law | APP | law | 3 → 1 | 1 | – | – | instant | later · implemented (#1411) |
 | `aerobuildup-evaluation` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain · implemented (#1334) |
 | `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
@@ -1876,7 +1879,7 @@ model (part of `IMPORT_REPORT.md`).
 | `airplane-configuration` | procedure | GEO | law | 2 → 1 | 2 | – | – | instant | core chain |
 | `airplane-geometry` | procedure | GEO | law | 1 → 3 | 1 | – | – | instant | core chain |
 | `aspect-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
-| `battery-mass-from-capacity` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
+| `battery-mass-from-capacity` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1411) |
 | `best-angle-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | later |
 | `best-rate-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | later |
 | `butterfly-approach` | optimization | OPT | law | 6 → 4 | 1 | – | – | seconds | later |
@@ -1905,11 +1908,11 @@ model (part of `IMPORT_REPORT.md`).
 | `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later |
 | `minimum-drag-speed` | optimization | OPT | route | 5 → 2 | 1 | – | – | seconds | core chain |
 | `minimum-sink-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | core chain |
-| `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe |
-| `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later |
+| `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe · implemented for complete data, route B (#1411) |
+| `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later · implemented for complete data, route B (#1411) |
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
 | `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe |
-| `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe |
+| `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe · implemented for complete data, route B (#1411) |
 | `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
@@ -1918,8 +1921,8 @@ model (part of `IMPORT_REPORT.md`).
 | `stall-speed` | optimization | OPT | law | 5 → 4 | 4 | yes | – | seconds | core chain |
 | `stall-wing-loading-limit` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `static-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
-| `static-thrust-to-weight` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
-| `thrust-at-airspeed-from-coefficient` | law | APP | law | 4 → 1 | 1 | – | – | instant | later |
+| `static-thrust-to-weight` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented for complete data, route B (#1411) |
+| `thrust-at-airspeed-from-coefficient` | law | APP | law | 4 → 1 | 1 | – | – | instant | later · implemented (#1411) |
 | `vertical-tail-volume` | law | APP | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `weight-from-mass` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `wing-loading` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |

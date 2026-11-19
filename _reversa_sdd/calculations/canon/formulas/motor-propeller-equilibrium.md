@@ -84,9 +84,13 @@ Making the route choice an explicit decision over component data is recorded as 
 
 **Validity in the RC/UAV regime (ADR 0028).** The torque balance itself is exact; what it is worth depends on the motor model and on `C_P(J)`. Drela's three-parameter model is valid across typical RC speeds and currents and breaks down only at very low speed or very high current (Drela `motor1` §1.1). `R_m` rises with winding temperature, so a cold catalogue value predicts too high an rpm under load (§1.1.1, §2.1). Small propellers run at Re₀.₇₅ ≈ 15–100 k (ADR 0028; Brandt & Selig 2011 §IV), where `C_T` and `C_P` change with Reynolds number (Deters, Ananda & Selig 2014 §V.A–B); the table block is chosen by nearest rpm, so the solved rpm also fixes the propeller Re the coefficients belong to. Blade tips of RC propellers typically run near Ma ≈ 0.5 (Roxxy Motoren-Fibel Ch. 1 pp. 9–10), above the airframe's M ≤ 0.3; tip compressibility is whatever the table contains. Route A runs at free-run rpm, which loaded brushless motors do not reach — about 85 % of no-load rpm in flight (Roxxy Ch. 1 pp. 9–10). Battery voltage sag under load is not modelled [no source].
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/motor_propeller_equilibrium.py` | DEVIATES | 🟢 | **Route B only** (complete data, gh-1411): Drela's torque balance `Q_m(n) = (I(n) - I_0)/K_v'` against `Q_p(n) = C_P(J, n) rho n^2 D^5 / (2 pi)`, solved by bisection on the sign change between two neighbouring rpm blocks (relative tolerance `powertrain_balance_tolerance` in `config.yaml`); `Q_m` is returned at the balance. **Deviations:** route A (`R_m` absent) and `I_0 = 0` for an absent `I_0` are **not built**: an absent `r_m` or `i_0` ends as `missing_input` naming `components.motor.rm_ohm` / `components.motor.io_no_load_a`; `p_mot_max` and `eta_mot` are bound and not read. A balance the table does not contain (speed outside the blocks, `J` beyond a block's range, motor free-run speed below the first block) is `outside_propeller_table`, not an extrapolation. Route B declares itself with the `notice` `powertrain_route_winding_resistance` (winding resistance only, nominal pack voltage). The relation `equilibrium` is the one implementation that the embedders call (ADR 0022) |
+
+No register node is mapped to this entry.
 
 ## Approval
 

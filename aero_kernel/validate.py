@@ -16,7 +16,7 @@ import logging
 import math
 import re
 from bisect import bisect_left
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from itertools import pairwise
 from typing import cast
 
@@ -24,7 +24,7 @@ from aero_kernel import geometry
 from aero_kernel.body_attachment import AttachedBody, attachment_defects
 from aero_kernel.body_axis import AxisStraightening, aerobuildup_bodies
 from aero_kernel.canon.model import CanonModel
-from aero_kernel.components import Components
+from aero_kernel.components import Components, PropellerTable
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.fuselage_contour import (
     contour_defect,
@@ -237,6 +237,8 @@ def _component_findings(components: Components | None, rules: Rules) -> list[Ker
                 unit,
                 f"Give {name} a value > 0.",
             )
+    if components.propeller is not None and components.propeller.table is not None:
+        errors += _table_findings(components.propeller.table, "components.propeller.table")
     if components.motor is not None:
         current = components.motor.io_no_load_a
         if current is not None:
@@ -259,6 +261,63 @@ def _component_findings(components: Components | None, rules: Rules) -> list[Ker
                 "%",
             )
     return errors
+
+
+def _increasing(values: Sequence[float], path: str, *, first_positive: bool) -> list[KernelError]:
+    """Report an axis that is not strictly increasing, or whose first value is below its bound."""
+    findings: list[KernelError] = []
+    if values and (values[0] <= 0 if first_positive else values[0] < 0):
+        bound = "> 0" if first_positive else ">= 0"
+        findings.append(
+            _finding(
+                "table_not_increasing",
+                f"{path}[0]",
+                f"Value at {path}[0] is {values[0]}; it must be {bound}.",
+                f"Give {path} values {bound}, strictly increasing.",
+                values[0],
+            )
+        )
+    for index in range(1, len(values)):
+        if values[index] <= values[index - 1]:
+            findings.append(
+                _finding(
+                    "table_not_increasing",
+                    f"{path}[{index}]",
+                    f"Value at {path}[{index}] is {values[index]}, not above {values[index - 1]}.",
+                    f"Give {path} strictly increasing values.",
+                    values[index],
+                )
+            )
+    return findings
+
+
+def _table_findings(table: PropellerTable, path: str) -> list[KernelError]:
+    """Report what is inadmissible in the propeller table (rules ``components-propeller-table-*``)."""
+    if not table.blocks:
+        return [
+            _finding(
+                "malformed_table",
+                f"{path}.blocks",
+                f"The table at {path} has no rpm block.",
+                "Push every rpm block of the propeller data.",
+            )
+        ]
+    findings = _increasing([b.rpm for b in table.blocks], f"{path}.blocks.rpm", first_positive=True)
+    for index, block in enumerate(table.blocks):
+        block_path = f"{path}.blocks[{index}]"
+        sizes = {len(block.j), len(block.ct), len(block.cp)}
+        if len(sizes) != 1 or len(block.j) < 2:
+            findings.append(
+                _finding(
+                    "malformed_table",
+                    block_path,
+                    f"The block at {block_path} needs j, ct and cp of one length of at least 2.",
+                    "Give every block at least two points, with j, ct and cp of the same length.",
+                )
+            )
+            continue
+        findings += _increasing(block.j, f"{block_path}.j", first_positive=False)
+    return findings
 
 
 _NACA = re.compile(r"naca(?P<digits>[0-9]{4})", re.IGNORECASE)

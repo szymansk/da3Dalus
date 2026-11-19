@@ -102,6 +102,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "spinner_merge_exponent_clamped": WarningSeverity.WARNING,
     "fuselage_axis_straightened": WarningSeverity.NOTICE,
     "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
+    "powertrain_route_winding_resistance": WarningSeverity.NOTICE,
 }
 
 

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:0ec370cb3aa1b35fa0b467c8717cc26c20e5efb65584bb689a41ca2dd0c929c5",
+  "content_hash": "sha256:21d4f5ed130a7645e7b1f36a0a7f3f23d92dbf3d28ac93446e0af6a5fad9e449",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -150,6 +150,34 @@
           "source": "a margin over floating-point noise of C_L, which is of order 1",
           "unit": "1",
           "value": 1e-15
+        },
+        "powertrain_alpha_step_deg": {
+          "basis": "numerical",
+          "guards": "Part-load drive train: the second starting angle of the secant search for the level-flight angle of attack (the first is 0 deg).",
+          "source": "a start of the root search, not a result: C_L(alpha) of a wing is nearly linear over a few degrees (Anderson, thin airfoil lift slope), so two nearby angles give the secant its first slope; the converged angle does not depend on it",
+          "unit": "deg",
+          "value": 2.0
+        },
+        "powertrain_balance_tolerance": {
+          "basis": "numerical",
+          "guards": "Motor-propeller torque balance: the relative width of the propeller-speed interval at which the bisection stops; the speed is then known to this fraction of itself.",
+          "source": "a numerical margin: far below the table's own resolution (APC rpm blocks 1000 rpm apart, coefficients to four decimals) and far above double-precision noise; it decides when the bisection of a monotone torque balance has converged, no domain threshold",
+          "unit": "1",
+          "value": 1e-09
+        },
+        "powertrain_lift_iterations": {
+          "basis": "numerical",
+          "guards": "Part-load drive train: the number of AeroBuildup evaluations after which the search for the level-flight angle of attack is declared not converged.",
+          "source": "a secant search on a smooth, nearly linear C_L(alpha) converges in under ten evaluations; 50 is a limit that only a speed the wing cannot hold (weight above the maximum lift) reaches",
+          "unit": "1",
+          "value": 50.0
+        },
+        "powertrain_lift_tolerance": {
+          "basis": "numerical",
+          "guards": "Part-load drive train: the relative disagreement |L - m g| / (m g) at which the search for the level-flight angle of attack stops.",
+          "source": "AeroBuildup is smooth and cheap (feedback: raise the resolution, never loosen thresholds); 1e-6 of the weight is far below the model's own accuracy and far above the secant search's floating-point noise",
+          "unit": "1",
+          "value": 1e-06
         }
       },
       "defaults": {
@@ -2642,11 +2670,13 @@
             {
               "bind": {
                 "components": "calc:components",
-                "j": "calc:advance-ratio"
+                "j": "calc:advance-ratio",
+                "n_prop": "calc:propeller-speed"
               },
               "given": null,
               "id": "default",
               "produce": {
+                "c_p": null,
                 "c_t": "calc:thrust-coefficient"
               },
               "when": null
@@ -2658,11 +2688,13 @@
           "embeds_closure": [],
           "inputs": {
             "components": "calc:components",
-            "j": "calc:advance-ratio"
+            "j": "calc:advance-ratio",
+            "n_prop": "calc:propeller-speed"
           },
           "kind": "procedure",
           "optional": [],
           "outputs": {
+            "c_p": null,
             "c_t": "calc:thrust-coefficient"
           },
           "postconditions": [],
@@ -6887,6 +6919,32 @@
             "non_positive_value"
           ],
           "criterion": "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v and diameter_in, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-propeller-table-ordered": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "table_not_increasing"
+          ],
+          "criterion": "The rpm of the blocks is greater than zero and strictly increasing; within a block j is not negative and strictly increasing. The lookup interpolates linearly and needs a bracketing pair; an unordered axis has none.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-propeller-table-shape": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "malformed_table"
+          ],
+          "criterion": "The propeller table has at least one rpm block, and every block has at least two points, with j, ct and cp of the same length. A table that cannot be interpolated is refused at the input, not discovered inside the lookup.",
           "kind": "input",
           "on_violation": "error",
           "parameters": {}

@@ -163,3 +163,32 @@ opt_body_axis_tolerance:
   guards: "Straight body axis for AeroBuildup (#1358): the largest vertical distance of a body's section centre from the least-squares line through all its centres up to which the centres count as already on a line, so the body is handed over unchanged and nothing is declared."
   basis: numerical
   source: "a margin over the floating-point round-off of the least-squares fit on coordinates of metres (about 1e-16 m per metre of body); a nanometre is far below any coordinate a geometry document states, so every real step of the axis is straightened and declared"
+
+powertrain_balance_tolerance:
+  value: 0.000000001
+  unit: "1"
+  guards: "Motor-propeller torque balance: the relative width of the propeller-speed interval at which the bisection stops; the speed is then known to this fraction of itself."
+  basis: numerical
+  source: "a numerical margin: far below the table's own resolution (APC rpm blocks 1000 rpm apart, coefficients to four decimals) and far above double-precision noise; it decides when the bisection of a monotone torque balance has converged, no domain threshold"
+
+powertrain_lift_tolerance:
+  value: 0.000001
+  unit: "1"
+  guards: "Part-load drive train: the relative disagreement |L - m g| / (m g) at which the search for the level-flight angle of attack stops."
+  basis: numerical
+  source: "AeroBuildup is smooth and cheap (feedback: raise the resolution, never loosen thresholds); 1e-6 of the weight is far below the model's own accuracy and far above the secant search's floating-point noise"
+
+powertrain_lift_iterations:
+  value: 50
+  unit: "1"
+  guards: "Part-load drive train: the number of AeroBuildup evaluations after which the search for the level-flight angle of attack is declared not converged."
+  basis: numerical
+  source: "a secant search on a smooth, nearly linear C_L(alpha) converges in under ten evaluations; 50 is a limit that only a speed the wing cannot hold (weight above the maximum lift) reaches"
+
+powertrain_alpha_step_deg:
+  value: 2.0
+  unit: deg
+  guards: "Part-load drive train: the second starting angle of the secant search for the level-flight angle of attack (the first is 0 deg)."
+  basis: numerical
+  source: "a start of the root search, not a result: C_L(alpha) of a wing is nearly linear over a few degrees (Anderson, thin airfoil lift slope), so two nearby angles give the secant its first slope; the converged angle does not depend on it"
+

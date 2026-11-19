@@ -77,9 +77,13 @@ demand against supply:   r_T = D / T_full(V)                  T_full = C_T(J) * 
 
 **Validity in the RC/UAV regime (ADR 0028).** Part load means a lower propeller speed than the full-throttle point, hence a lower blade Reynolds number: small propellers run at Re₀.₇₅ ≈ 15–100 k (Brandt & Selig 2011 §IV), where `C_T` and `C_P` change with Reynolds number (Deters, Ananda & Selig 2014 §V.A–B), and the table block is chosen by nearest rpm — at cruise rpm the blocks are the sparsest and the coefficients the least certain. `R_m` rises with winding temperature, so a cold value understates the loss (Drela §1.1.1, §2.1); `I_0` depends on shaft speed and is meaningful only near the rpm it was measured at (Drela §1.1); the model breaks down at very high current. The drag is the solver's (ADR 0026) — AeroBuildup with the bound `ρ`, `μ` and `a`, which builds no atmosphere of its own ([[aerobuildup-evaluation]]) —, transition-sensitive at model Reynolds numbers (Anderson §4.12). Battery voltage sag under load, the usable fraction of the charge and reserve are not modelled [no source]; Mach is no concern (Anderson §1.10.3).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry (kernel implementation of the part-load chain: #1238).
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/motor_propeller_part_load.py` | DEVIATES | 🟢 | **Route B only** (complete data, gh-1411): the level-flight angle of attack by a secant search on AeroBuildup's lift (start angles 0 deg and `powertrain_alpha_step_deg`, stop at `powertrain_lift_tolerance` of the weight, at most `powertrain_lift_iterations` evaluations, else `lift_balance_not_converged`), the drag there; `n_pl` by bisection of `C_T(J, n) rho n^2 D^4 = D` between neighbouring rpm blocks; `Q`, `I = I_0 + Q K_v'`, `U_m = I R_m + 2 pi n_pl / K_v'`, `P_bat = U_m I`, `I_bat = P_bat / U_bat`; `r_T = D / T_full` with `T_full` from the embedded equilibrium, thrust and lookup relations. **Deviations:** route A (`R_m` absent) and `I_0 = 0` for an absent `I_0` are **not built**: an absent `r_m` or `i_0` ends as `missing_input`; `p_mot_max` and `eta_mot` are bound and not read. A drag the table cannot produce (no speed between the first and last block) is `outside_propeller_table`, not an extrapolation; a drive train with `T_full <= 0` makes `r_T` undefined and ends as `no_thrust_at_full_throttle`. The route `notice` `powertrain_route_winding_resistance` is declared (winding resistance only, nominal pack voltage). The postcondition `demand_within_full_throttle` gives the `warning` for `r_T > 1` |
+
+No register node is mapped to this entry (kernel implementation of the part-load chain: #1238).
 
 ## Approval
 

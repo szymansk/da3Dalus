@@ -51,11 +51,12 @@ RC-Network tabulates MJ/kg; the app uses Wh/kg. 1 MJ = 0.2778 kWh, so 0.55 MJ/kg
 
 **Validity in the RC/UAV regime (ADR 0028).** The critical qualification: 0.55 MJ/kg is a CELL-level figure. Pack-level specific energy after wiring, connectors, balance leads, shrink and case is materially lower - typically 100-140 Wh/kg for RC packs in this class. The skeleton correctly names the quantity 'pack specific energy', so a cell number used as `E*` gives a systematically light mass; the default is the pack-level 140 Wh/kg (above), not the cell number. Record E* with its source and its cell-vs-pack basis (ADR 0028; ADR 0023 is superseded). The catalogue packs in the database give 128–159 Wh/kg.
 
-## Implementations (1)
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | [[end_battery_mass_predicted]] | DEVIATES | 🟢 | the app node divides the capacity of the chosen battery, not the required energy — a different input; the rewritten input (the required energy) has no implementation yet (#1238) |
+| `aero_kernel/formulas/battery_mass_from_capacity.py` | AGREES | 🟢 | `m_bat,pred = E_req / E*` with `E_req` a caller-supplied input (its producer comes with #1238) and `E*` the stated default (140 Wh/kg, pack level, `defaults.yaml`, declared as every default is); `E* <= 0` ends as `invalid_input` |
 
 ## Approval
 

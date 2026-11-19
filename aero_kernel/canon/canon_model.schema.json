@@ -664,6 +664,18 @@
         },
         "opt_zero_span": {
           "$ref": "#/$defs/ConfigValue"
+        },
+        "powertrain_alpha_step_deg": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powertrain_balance_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powertrain_lift_iterations": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powertrain_lift_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
         }
       },
       "required": [
@@ -687,7 +699,11 @@
         "opt_body_merge_exponent_min",
         "opt_body_merge_exponent_max",
         "opt_body_axis_tolerance",
-        "avl_contour_margin"
+        "avl_contour_margin",
+        "powertrain_balance_tolerance",
+        "powertrain_lift_tolerance",
+        "powertrain_lift_iterations",
+        "powertrain_alpha_step_deg"
       ],
       "title": "KernelConfig",
       "type": "object"

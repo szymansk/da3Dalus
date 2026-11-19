@@ -23,3 +23,14 @@ complete component document add the missing fields (efficiency 80 %, maximum pow
 C-rate 25, cell voltage 3.7 V) as plainly marked **test values**, not published data of any part (see
 `aero_kernel/tests/components_builders.py`); the sets here are used to show the honest failure with real data.
 Not verified: Hacker and E-flite pages (named in #1149), the AXI generation of the Esprit table.
+
+## The propeller table (gh-1411)
+
+`apc_13x8e.json` is the performance table of the APC 13x8E (the Avistar Elite's propeller), shaped as
+`aero_kernel.components.PropellerTable`: 18 rpm blocks (1000 to 18000 rpm), per block 29 or 30 points of the advance
+ratio `J`, `C_T` and `C_P`. It is APC's own PER3 performance file `PER3_13x8E.dat`
+(https://www.apcprop.com/files/PER3_13x8E.dat, file version v2022-0915), trimmed to those three columns. The numbers were
+taken from the repository's snapshot `data/cots/apc_props.json.gz`, which was parsed from that file by
+`scripts/parse_apc_props.py`; the file itself was not downloaded again. The data are **computed by APC, not measured in
+a wind tunnel** (the file's header says so); they are a published table, not a validation of the propeller's real
+performance. `tests/test_propeller_reference.py` checks the shape, the source and that every point equals the snapshot.
