@@ -682,7 +682,17 @@ class KernelConfig(BaseModel):
     opt_body_merge_exponent_max: ConfigValue
     opt_body_axis_tolerance: ConfigValue
     avl_contour_margin: ConfigValue
+    butterfly_mix_steps: ConfigValue
     powertrain_balance_tolerance: ConfigValue
+
+    @model_validator(mode="after")
+    def _check_mix_steps(self) -> Self:
+        """Require the crow mix to be sampled in a whole number of steps, at least one."""
+        steps = self.butterfly_mix_steps.value
+        if steps < 1.0 or steps != round(steps):
+            msg = "butterfly_mix_steps must be a whole number of at least 1"
+            raise ValueError(msg)
+        return self
 
 
 class Namespace(BaseModel):
