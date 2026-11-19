@@ -9,12 +9,27 @@ the project for any RC aircraft. Cost on an Apple laptop: see the evidence sheet
 """
 
 import pytest
-from aero_kernel.schema import QuantityStatus
-from aero_kernel.tests.test_powered_performance_aero import avistar, codes, run, value
+from aero_kernel.build import shipped_build
+from aero_kernel.engine import evaluate
+from aero_kernel.schema import AircraftInput, QuantityResult, QuantityStatus
+from aero_kernel.tests.engine_builders import request
+from aero_kernel.tests.formula_builders import solvers_with
+from aero_kernel.tests.test_powered_performance_aero import avistar, codes, value
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
-CURRENT_KG = 3.70  # the Avistar Elite as measured in the paper
+CURRENT_KG = 3.70
+
+
+async def run(aircraft: AircraftInput, *slugs: str) -> dict[str, QuantityResult]:
+    """The quantities with the long runs included (``mass-envelope`` is cost class ``minutes``, K28)."""
+    result = await evaluate(
+        shipped_build(), aircraft, request(*slugs, long_runs=True), solvers=solvers_with()
+    )
+    return {q.slug: q for q in result.quantities}
+
+
+# the Avistar Elite as measured in the paper
 
 
 async def test_the_two_largest_masses_end_the_state_they_name_and_the_curves_are_not_requestable() -> (

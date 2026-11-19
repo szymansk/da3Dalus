@@ -42,8 +42,7 @@ M0 = 3.4
 CD0 = 0.4  # draggy: the best excess thrust vanishes near 6.4 kg
 RESERVE = 1.3
 STUB_NOTICE = KernelWarning.of("induced_drag_viscous_factor_removed", "the stub's drag notice")
-SCAN_STEP = 0.2  # config: mass_envelope_step
-SCAN_STEPS = 8  # config: mass_envelope_max_steps
+CURVE_POINTS = 6  # config: mass_envelope_curve_points
 
 
 def v_stall(mass: float) -> float:
@@ -184,7 +183,7 @@ def takeoff_root() -> float:
 async def test_the_largest_level_flight_mass_is_the_root_of_the_best_excess_thrust() -> None:
     got, _ = await run()
     expected = level_root()
-    assert 5.0 < expected < 8.0  # the brute force closes inside the scan of 2.6 x 3.4 kg
+    assert 5.0 < expected < 8.0  # the brute force closes inside the scan (1.3^12 x 3.4 kg)
     assert close(got["m_max_level"], expected, 1e-3)
 
 
@@ -223,7 +222,8 @@ async def test_the_curves_are_the_stall_the_level_speed_and_the_climb_over_the_m
     assert isinstance(climb, Curve)
     masses = pair.x
     assert masses[0] == M0
-    assert close(masses[1], M0 * (1.0 + SCAN_STEP), 1e-12)  # the scan masses, then the root
+    assert len(masses) == CURVE_POINTS + 1  # equally spaced from the current mass, then the root
+    assert close(masses[1], M0 + (got["m_max_level"] - M0) / CURVE_POINTS, 1e-12)
     assert masses[-1] == got["m_max_level"]
     assert climb.x == masses
     assert close(pair.lower[0], v_stall(M0), 1e-9)
@@ -293,12 +293,18 @@ async def test_a_current_mass_that_cannot_climb_out_is_a_declared_failure() -> N
     assert "the lift-off is not held at the current mass" in caught.value.message
 
 
-async def test_a_state_still_held_at_the_end_of_the_scan_is_not_converged() -> None:
+async def test_a_state_still_held_at_the_end_of_the_scan_is_not_converged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = config()
+    short = real.mass_envelope_max_steps.model_copy(update={"value": 2.0})
+    patched = real.model_copy(update={"mass_envelope_max_steps": short})
+    monkeypatch.setattr(module, "config", lambda: patched)  # 1.3^2 x 3.4 kg = 5.7 kg < 6.3 kg
     with pytest.raises(FormulaError) as caught:
-        await run(EnvelopeOpti(cd0=0.2))  # holds up to about 9.7 kg, beyond 2.6 x 3.4 kg
+        await run()
     assert caught.value.code == "not_converged"
     assert "still held" in caught.value.message
-    assert caught.value.detail["steps"] == SCAN_STEPS
+    assert caught.value.detail["steps"] == 2
 
 
 async def test_a_stall_off_the_first_lift_peak_is_the_embedded_check_failing() -> None:

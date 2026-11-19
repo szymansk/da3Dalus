@@ -28,11 +28,13 @@ functions of their modules, not through ``Context.embedded``, which hands out on
 relations (the four propulsion relations; ARCHITECTURE ch. 8.12 defers the relation form of an embedded
 optimisation).
 
-**The sweep** starts at the current mass and goes up in steps of ``mass_envelope_step`` of it until the
-level flight is lost; the samples are the curves, closed by the root itself. A current mass at which the
-state is already not held is the declared failure ``no_feasible_speed`` (the largest mass then lies below
-it; a downward search is not built). A root not reached in ``mass_envelope_max_steps`` steps is
-``not_converged``.
+**The roots** are bracketed by an upward scan of the mass from the current mass, each step by the factor
+``1 + mass_envelope_step`` (geometric: the largest mass of a thrust-limited model is a multiple of its
+mass, and each scan point costs a speed search), then refined by Illinois regula falsi. A current mass at
+which the state is already not held is the declared failure ``no_feasible_speed`` (the largest mass then
+lies below it; a downward search is not built). A root not reached in ``mass_envelope_max_steps`` steps is
+``not_converged``. **The curves** are sampled at ``mass_envelope_curve_points`` equally spaced masses from
+the current mass up to ``m_max,level``, closed by the root itself.
 
 **Warnings forwarded** (ADR 0020): those of the answer of each scalar only, the level-flight state at
 ``m_max,level`` and the take-off state at ``m_max,TO`` (with the flap-validity declaration of its stall
@@ -136,6 +138,7 @@ class Envelope:
         settings = config()
         self.step = settings.mass_envelope_step.value
         self.steps = round(settings.mass_envelope_max_steps.value)
+        self.points = round(settings.mass_envelope_curve_points.value)
         self._levels: dict[float, tuple[PoweredFlight, Optimum]] = {}  # the best excess per mass
 
     def at(self, mass: float, *, takeoff: bool = False) -> Inputs:
@@ -201,7 +204,7 @@ class Envelope:
 
         Returns:
             The last mass with a positive value and the first without (each with its value), and the
-            number of masses of the scan that held (the first is the current mass).
+            number of steps of the scan (the masses grow by the factor ``1 + mass_envelope_step`` per step).
 
         Raises:
             FormulaError: ``no_feasible_speed`` where ``f`` is not positive at the current mass;
@@ -211,7 +214,7 @@ class Envelope:
         if previous[1] <= 0.0:
             raise _not_held_at_current(what, self.mass)
         for k in range(1, self.steps + 1):
-            mass = self.mass * (1.0 + k * self.step)
+            mass = self.mass * (1.0 + self.step) ** k
             current: Root = (mass, await f(mass))
             if current[1] <= 0.0:
                 return previous, current, k
@@ -284,13 +287,14 @@ class Envelope:
         v_max = await self.level_speed_above(flight, best.v)
         return v_s, v_max, await self.climb_rate(flight, best.v, v_max)
 
-    async def curves(self, held: int, root: float, v_best: float) -> tuple[CurvePair, Curve]:
-        """The speed range and the best rate of climb over the masses of the sweep, closed by the root.
+    async def curves(self, root: float, v_best: float) -> tuple[CurvePair, Curve]:
+        """The speed range and the best rate of climb over ``mass_envelope_curve_points`` masses, closed by the root.
 
-        At the root the thrust equals the drag at the best speed only: ``V_max`` is that speed and the
-        rate of climb is zero.
+        The masses are equally spaced from the current mass up to (not including) ``m_max,level``; at the
+        root the thrust equals the drag at the best speed only: ``V_max`` is that speed and the rate of
+        climb is zero.
         """
-        masses = [self.mass * (1.0 + k * self.step) for k in range(held)]
+        masses = [self.mass + (root - self.mass) * k / self.points for k in range(self.points)]
         samples = [await self.sample(mass) for mass in masses]
         v_s_root = (await self.stall(root, takeoff=False)).solution.v_s
         masses.append(root)
@@ -351,11 +355,11 @@ async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float | Curve | Cu
             ``missing_input``).
     """
     sweep = Envelope(x, ctx)
-    m_level, held = await sweep.root(sweep.level_function, "level flight")
+    m_level, _ = await sweep.root(sweep.level_function, "level flight")
     v_best = await sweep.declare_level(m_level)
     m_to, _ = await sweep.root(sweep.takeoff_function, "the lift-off")
     await sweep.declare_takeoff(m_to)
-    speed_range, roc_curve = await sweep.curves(held, m_level, v_best)
+    speed_range, roc_curve = await sweep.curves(m_level, v_best)
     return {
         "speed_range": speed_range,
         "roc_curve": roc_curve,
