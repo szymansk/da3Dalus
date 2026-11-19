@@ -938,22 +938,27 @@ caller's responsibility.
     is the wing, every other failure (a sweep without a peak, a zero-lift angle outside the sweep) is raised. The end of
     the propeller table is a bound of the search: an interior optimum is returned, one on the edge is
     `outside_propeller_table`, not an extrapolation.
-  - **Implementation note, `mass-envelope` (#1420).** The entry now produces the two scalars
-    `max-mass-level-flight` and `max-mass-lift-off`, both requestable. Its curve outputs and the trim range were
-    split off as the draft entries `performance-over-mass` and `cg-envelope` (not implemented: a curve is not a
-    result, ch. 8.3, and the roots need no curve, ADR 0021; the trim range also needs a trim solve the kernel
-    lacks). `formulas/mass_envelope.py` writes the two root searches over the shared pieces of `powered_flight`
-    (no new physics): `m_max,level` is the root of the best excess thrust over the speed `G(m) = max_V (T - D)`
-    (level flight, `L = m g`), `m_max,TO` the root of `T - D` at `V_TO(m) = V_S,TO(m) V_TO / V_S,TO` in the
-    take-off configuration. The mass is scanned upward from the current mass, each step the factor
+  - **Implementation note, `mass-envelope` (#1420).** The entry produces the two masses `max-mass-level-flight`
+    and `max-mass-lift-off` and the two curves `speed-range-over-mass` (`curve_pair`) and `climb-rate-over-mass`
+    (`curve`). The curves are requestable once the kernel returns curves as results (#1424; until then
+    `non_scalar_result`, ch. 8.3). The trimmable CG range is the separate draft entry `cg-envelope` (not
+    implemented: the kernel has no trim solve; maintainer, 2026-11-19). `formulas/mass_envelope.py` writes the
+    two root searches and the sample loop over the shared pieces of `powered_flight` (no new physics):
+    `m_max,level` is the root of the best excess thrust over the speed `G(m) = max_V (T - D)` (level flight,
+    `L = m g`), `m_max,TO` the root of `T - D` at `V_TO(m) = V_S,TO(m) V_TO / V_S,TO` in the take-off
+    configuration. The mass is scanned upward from the current mass, each step the factor
     `1 + mass_envelope_step`, to a bracket (at most `mass_envelope_max_steps`, else `not_converged`), then
     Illinois regula falsi; a state not held at the current mass is `no_feasible_speed` (no downward search). At a
     mass above the current one the data ending closes the bracket without a sign change: `no_feasible_speed` of
     the level problem, `outside_propeller_table` of the lift-off problem; the edge is bisected and declared
     (`powered_limit_declared`, `limit = evaluation_edge`). Every other failure surfaces with the mass named
-    (`detail.mass_kg`). The embedded optimisations are shared functions; the embedded stall check runs on every
-    stall solve (`postcondition_violated`, `detail.embedded`); the speed scan of the level problem starts at the clean stall speed of the mass (gh-1419), so the clean stall is solved at each mass too; the four propulsion relations go through
-    `Context.embedded`.
+    (`detail.mass_kg`). **One producer of `V_max` and `ROC_max`:** the curve samples (`mass_envelope_curve_points`
+    equally spaced masses from the current mass up to `m_max,level`, closed by the root) call
+    `highest_level_speed` and `best_climb`, the functions `max-level-speed` and `best-rate-of-climb` themselves
+    run, at the sample mass with its clean stall solve: same scan grid and start, no search of its own. A sample
+    inside a window of speeds with an excess narrower than the scan step fails with the mass named. The embedded
+    stall check runs on every stall solve (`postcondition_violated`, `detail.embedded`); the four propulsion
+    relations go through `Context.embedded`.
   - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
     polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
     `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the
@@ -2018,8 +2023,7 @@ model (part of `IMPORT_REPORT.md`).
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
 | `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | core chain · implemented (#1334) |
 | `maneuvering-speed` | optimization | OPT | law | 7 → 1 | 1 | – | – | seconds | later · implemented (#1381) |
-| `mass-envelope` | optimization | OPT | law | 7 → 2 | 1 | – | – | minutes (declared) | core chain · implemented for complete data, route B (#1420) |
-| `performance-over-mass` | optimization | OPT | law | 7 → 2 | 1 | – | – | minutes (declared) | core chain · split off `mass-envelope`, not implemented: curves are not results (#1420) |
+| `mass-envelope` | optimization | OPT | law | 7 → 4 | 1 | – | – | minutes (declared) | core chain · implemented for complete data, route B (#1420); the curves are requestable with #1424 |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe · implemented for complete data, route B (#1414) |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |

@@ -638,6 +638,9 @@
         "endurance_speed_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "mass_envelope_curve_points": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "mass_envelope_max_steps": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -766,6 +769,7 @@
         "powered_search_max_steps",
         "mass_envelope_step",
         "mass_envelope_max_steps",
+        "mass_envelope_curve_points",
         "endurance_speed_ratio",
         "endurance_speed_tolerance"
       ],

@@ -18,4 +18,4 @@ Best rate of climb as a function of the take-off mass.
 
 **Unit.** `m/s`
 
-**Produced by.** [[performance-over-mass]]
+**Produced by.** [[mass-envelope]]

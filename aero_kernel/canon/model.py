@@ -693,6 +693,7 @@ class KernelConfig(BaseModel):
     powered_search_max_steps: ConfigValue
     mass_envelope_step: ConfigValue
     mass_envelope_max_steps: ConfigValue
+    mass_envelope_curve_points: ConfigValue
     endurance_speed_ratio: ConfigValue
     endurance_speed_tolerance: ConfigValue
 
@@ -707,11 +708,12 @@ class KernelConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_mass_scan(self) -> Self:
-        """Require a whole number of mass-scan steps, at least one."""
-        steps = self.mass_envelope_max_steps.value
-        if steps < 1.0 or steps != round(steps):
-            msg = "mass_envelope_max_steps must be a whole number of at least 1"
-            raise ValueError(msg)
+        """Require whole numbers of mass-scan steps and curve points, at least one each."""
+        for name in ("mass_envelope_max_steps", "mass_envelope_curve_points"):
+            count = getattr(self, name).value
+            if count < 1.0 or count != round(count):
+                msg = f"{name} must be a whole number of at least 1"
+                raise ValueError(msg)
         return self
 
 

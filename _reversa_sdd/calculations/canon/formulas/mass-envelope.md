@@ -5,7 +5,7 @@ kind: optimization
 tool: OPT
 shape: law
 status: draft
-output: max-mass-level-flight, max-mass-lift-off
+output: speed-range-over-mass, climb-rate-over-mass, max-mass-level-flight, max-mass-lift-off
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -34,11 +34,15 @@ inputs:
   eta_mot: motor-efficiency
   airplane_to: airplane-takeoff
 outputs:
+  speed_range: speed-range-over-mass
+  roc_curve: climb-rate-over-mass
   m_max_level: max-mass-level-flight
   m_max_to: max-mass-lift-off
 embeds:
   - stall-speed.clean
   - stall-speed.takeoff
+  - max-level-speed
+  - best-rate-of-climb
   - motor-propeller-equilibrium
   - advance-ratio-from-speed
   - propeller-table-lookup
@@ -56,17 +60,22 @@ preconditions:
 **Canonical form**
 
 ```
+for each mass m (a sweep from the current mass up to m_max,level; the airplane's mass is one point of it):
+  V_S(m), V_max(m)          stall-speed problem / max-level-speed problem at mass m
+  ROC_max(m)                best-rate-of-climb problem at mass m
 m_max,level:  maximize m   s.t.  exists V, alpha, n_prop:  L = m g,  T(V, n_prop) >= D(V, alpha)
 m_max,TO:     maximize m   s.t.  at V_TO(m), take-off configuration:  L = m g,  T - D >= 0
 ```
 
-**Produces** [[max-mass-level-flight]] · [[max-mass-lift-off]]  ·  **from** [[airplane]] · [[components]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[aircraft-mass]] · [[motor-efficiency]]
+**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]]  ·  **from** [[airplane]] · [[components]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[aircraft-mass]] · [[motor-efficiency]]
 
-**Embeds** `stall-speed.clean` (the stall problem at each mass, where the speed scan of the level problem starts, gh-1419) and `stall-speed.takeoff` (the stall problem at each mass, for `V_TO(m)`), and the four propulsion relations; the level-flight drag and the full-throttle thrust are those of `max-level-speed`, evaluated at each mass.
+**Embeds** `stall-speed.clean` (the stall problem at each mass, where the speed scans start, gh-1419), `max-level-speed` and `best-rate-of-climb` (evaluated at the masses of the sweep, for `V_max(m)` and `ROC_max(m)`), and `stall-speed.takeoff` (the stall problem at each mass, for `V_TO(m)`), and the four propulsion relations; the level-flight drag and the full-throttle thrust are those of `max-level-speed`, evaluated at each mass.
 
 **Kind: an optimisation problem family, swept over the mass** (maintainer, 2026-10-02 —
 replaces the payload question: payload is *"how much mass may be added"*). Everything that
-narrows with the take-off mass, as curves over `m` ([[performance-over-mass]], split off, gh-1420), and the masses at which it closes (this entry):
+narrows with the take-off mass, as curves over `m`, and the masses at which it closes:
+
+**Maintainer decision (2026-11-19, gh-1420):** the kernel returns curves as results (gh-1424); the two curves stay outputs of this entry, and the trimmable CG range is its own entry [[cg-envelope]] until the kernel has a trim solve.
 
 **A long run** (maintainer-approved plan of epic #1173, 2026-10-14): computed only on explicit request
 (K28), hence `cost: minutes`.
@@ -74,7 +83,9 @@ narrows with the take-off mass, as curves over `m` ([[performance-over-mass]], s
 **Variables of the envelope** (#1181): the mass `m`, scanned, and the speed `V`, solved in each
 embedded problem. The load factor is not one: the embedded stall problems bind `n = 1` themselves.
 
-- **Speed range and climb.** `V_S(m)` rises, `V_max(m)` falls and `ROC_max(m)` falls with the mass; where the range closes is `m_max,level` — beyond it no level flight is possible, and the climb is zero there. The curves are the entry [[performance-over-mass]].
+- **Speed range.** `V_S(m)` rises, `V_max(m)` falls; where they meet is `m_max,level` — beyond
+  it no level flight is possible.
+- **Climb.** `ROC_max(m)` falls with the mass and is zero at `m_max,level`.
 - **Lift-off — the overloaded-bomber limit.** Whether the aircraft can still climb at its
   take-off speed in take-off configuration: `m_max,TO`, where the excess thrust at `V_TO(m)`
   vanishes. It lies **below** `m_max,level`: an aircraft can still cruise and yet no longer climb
@@ -84,7 +95,7 @@ embedded problem. The load factor is not one: the embedded stall problems bind `
 **Source.** 🟢 Sadraey §11.6.3 (§12.5.4 and Eq. 12.90, the trim over the speed range, belong to [[cg-envelope]] since gh-1420); the level-flight
 and climb problems as in ANFORDERUNGEN §3.10 (this canon's requirements document, not a Sadraey section).
 
-**Validity in the RC/UAV regime (ADR 0028).** The scan is regime-independent as a construction; each root carries the limitation of the problem it embeds. The stall speed behind `V_TO(m)` inherits the Reynolds sensitivity of `C_L,max` (Anderson §4.3; Lennon Ch. 1–3), and since `V_S ∝ √m` the chord Re moves along the scan, which the polar must follow. For a hand-launched model `V_TO` is the throw speed, with no ground roll and no wheel brakes; whether `T − D ≥ 0` at that speed is the right lift-off criterion for hand launch has no source [no source].
+**Validity in the RC/UAV regime (ADR 0028).** The sweep is regime-independent as a construction; each curve and each root carries the limitation of the problem it embeds. `V_S(m)` and the stall speed behind `V_TO(m)` inherit the Reynolds sensitivity of `C_L,max` (Anderson §4.3; Lennon Ch. 1–3), and since `V_S ∝ √m` the chord Re moves along the sweep, which the polar must follow. For a hand-launched model `V_TO` is the throw speed, with no ground roll and no wheel brakes; whether `T − D ≥ 0` at that speed is the right lift-off criterion for hand launch has no source [no source].
 
 ## Implementations (1)
 
@@ -94,7 +105,9 @@ and climb problems as in ANFORDERUNGEN §3.10 (this canon's requirements documen
 
 No register node is mapped to this entry.
 
-**What is requestable (#1420).** Both outputs. The curves and the trim range are the entries [[performance-over-mass]] and [[cg-envelope]], not implemented.
+**What is requestable (#1420, new text).** The two masses. The two curves are computed by the formula (the samples are the very functions of `max-level-speed` and `best-rate-of-climb`, same scan grid and start: one producer, ADR 0022) and are requestable once the kernel returns curves as results (#1424); until then a request for them is `non_scalar_result`. The trim range is the entry [[cg-envelope]], not implemented.
+
+**Implementation remark (#1420, new text) — the curves.** `V_S(m)` is the stall solve of each sample mass (with the `stall-speed` check), `V_max(m)` and `ROC_max(m)` are `highest_level_speed` and `best_climb`, the shared functions of `max-level-speed` and `best-rate-of-climb`, evaluated at the sample mass with its clean stall speed. The samples are `mass_envelope_curve_points` equally spaced masses from the current mass up to (not including) `m_max,level`, closed by the root: there the thrust equals the drag at the best speed only, so `V_max` is that speed and the rate of climb is zero. A sample whose search fails (for example a window of speeds with an excess narrower than the 2 m/s scan step, which the scan of the two formulas can miss near the root) is a failure of the formula with the mass named, not a skipped point.
 
 **Implementation remark (#1420) — what closes the bracket.** The scan goes up from the current mass. At a mass above the current one, two outcomes mean "the data end" and close the bracket without a sign change: for `m_max,level` the failure `no_feasible_speed` (no speed inside the propeller table at which the wing carries the weight), for `m_max,TO` the failure `outside_propeller_table` (the lift-off speed is beyond the table). The edge between the last mass that evaluates and the first that does not is bisected to `powered_root_tolerance` of the mass, the last mass that evaluates is the answer, and the notice `powered_limit_declared` with `limit = evaluation_edge` says so (ADR 0020). Every other failure (a stall solve that does not converge, a stall off the first lift peak, a missing input, any failure at the current mass) is not "not held": it surfaces with the mass of the scan in the message and in `detail.mass_kg`.
 

@@ -28,6 +28,7 @@ __all__ = [
     "ComputeRequest",
     "ComputeResult",
     "Curve",
+    "CurvePair",
     "DefaultUsed",
     "Interval",
     "KernelError",
@@ -662,6 +663,33 @@ class Curve(BaseModel):
         """Require equally long series and a strictly rising variable (empty: no point)."""
         if len(self.x) != len(self.y):
             msg = "x and y must have the same length"
+            raise ValueError(msg)
+        if any(b <= a for a, b in zip(self.x, self.x[1:], strict=False)):
+            msg = "x must be strictly rising"
+            raise ValueError(msg)
+        return self
+
+
+class CurvePair(BaseModel):
+    """Two sampled functions of one variable on the same samples (ch. 8.12): the canon type ``curve_pair``.
+
+    Attributes:
+        x: The variable, strictly rising.
+        lower: The first function (the lower edge of a range) at each sample.
+        upper: The second function (the upper edge) at each sample.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    x: tuple[FiniteFloat, ...]
+    lower: tuple[FiniteFloat, ...]
+    upper: tuple[FiniteFloat, ...]
+
+    @model_validator(mode="after")
+    def _check_series(self) -> Self:
+        """Require equally long series and a strictly rising variable."""
+        if not len(self.x) == len(self.lower) == len(self.upper):
+            msg = "x, lower and upper must have the same length"
             raise ValueError(msg)
         if any(b <= a for a, b in zip(self.x, self.x[1:], strict=False)):
             msg = "x must be strictly rising"

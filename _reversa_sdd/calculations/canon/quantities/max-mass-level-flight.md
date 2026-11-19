@@ -21,4 +21,4 @@ Mass at which stall speed and maximum level speed meet — beyond it no level fl
 
 **Produced by.** [[mass-envelope]]
 
-**Used by.** [[cg-envelope]] · [[performance-over-mass]]
+**Used by.** [[cg-envelope]]

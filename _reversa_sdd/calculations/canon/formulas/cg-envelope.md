@@ -45,10 +45,12 @@ centre of gravity), so it is its own formula. The text below is the part of the 
 concerns it, moved unchanged.
 
 **Depends on the mass sweep, produces no second `V_max`.** The sweep of this entry runs over the same masses
-as [[performance-over-mass]], from the current mass up to `m_max,level` ([[mass-envelope]] produces it:
-input `m_max_level`). Its `V_max(m)` is the upper edge of the speed range that [[performance-over-mass]]
+as [[mass-envelope]], from the current mass up to `m_max,level` ([[mass-envelope]] produces it:
+input `m_max_level`). Its `V_max(m)` is the upper edge of the speed range that [[mass-envelope]]
 produces (input `v_range`); this entry reads it and solves no level-speed problem of its own. Only the
 stall problem in landing configuration (`stall-speed.landing`) is embedded.
+
+**Maintainer decision (2026-11-19, gh-1420):** the trimmable CG range is its own entry until the kernel has a trim solve; the two performance curves it reads stay outputs of [[mass-envelope]].
 
 **Canonical form**
 
@@ -101,7 +103,7 @@ clean airfoil with a Hoerner drag factor (no flap separation, δ range of the fi
 
 None in aero_kernel; no register node is mapped to this entry.
 
-Blocked, and why (new text, gh-1420, undated): the entry needs two things the kernel does not have. First, a trim solve: a pitching-moment evaluation at a given centre of gravity and elevator angle, and a root in the centre of gravity for each mass. Second, a curve result: its output is a curve pair, a curve is not a result of the kernel yet (ARCHITECTURE ch. 8.3), and complete but unreachable code is not kept (ADR 0021). It also reads the speed range of [[performance-over-mass]], which is not implemented either.
+Blocked, and why (new text, gh-1420, undated): the entry needs two things the kernel does not have. First, a trim solve: a pitching-moment evaluation at a given centre of gravity and elevator angle, and a root in the centre of gravity for each mass. Second, a curve result: its output is a curve pair, and a curve is not a result of the kernel yet (ARCHITECTURE ch. 8.3; gh-1424 adds it). It also reads the speed range of [[mass-envelope]] as a curve result, which the kernel returns from gh-1424 on.
 
 ## Approval
 

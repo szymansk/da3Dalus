@@ -13,6 +13,7 @@ import math
 
 from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.powered_flight import (
+    Optimum,
     PoweredFlight,
     Unflyable,
     climb_angle,
@@ -21,7 +22,33 @@ from aero_kernel.formulas.powered_flight import (
 )
 from aero_kernel.registry import formula
 
-__all__ = ["best_rate_of_climb"]
+__all__ = ["best_climb", "best_rate_of_climb"]
+
+
+async def best_climb(flight: PoweredFlight) -> tuple[Optimum, float]:
+    """The best steady climb at the mass of ``flight``: the optimum over the speed and its climb angle in rad.
+
+    The one search of ``best-rate-of-climb``: the upward scan from ``flight.climb_scan_start()``, then the
+    golden section. Nothing is forwarded or declared (the caller finishes the answer with
+    :func:`finish_climb`). ``mass-envelope`` evaluates this same function at each mass of its sweep (one
+    producer of ``ROC_max``, ADR 0022).
+
+    Raises:
+        FormulaError: As documented on :func:`best_rate_of_climb`.
+    """
+
+    async def rate(v: float) -> float | Unflyable:
+        gamma = await climb_angle(flight, v)
+        return gamma if isinstance(gamma, Unflyable) else v * math.sin(gamma)
+
+    optimum = await maximise_over_speed(rate, flight, flight.climb_scan_start())
+    gamma = await climb_angle(flight, optimum.v)
+    if isinstance(
+        gamma, Unflyable
+    ):  # pragma: no cover - the optimum is evaluated at a speed that climbs
+        msg = "the best-rate-of-climb speed does not climb"
+        raise AssertionError(msg)
+    return optimum, gamma
 
 
 @formula("best-rate-of-climb")
@@ -47,17 +74,6 @@ async def best_rate_of_climb(x: Inputs, ctx: Context) -> dict[str, float]:
             (``missing_input``, ``outside_propeller_table``).
     """
     flight = PoweredFlight(x, ctx)
-
-    async def rate(v: float) -> float | Unflyable:
-        gamma = await climb_angle(flight, v)
-        return gamma if isinstance(gamma, Unflyable) else v * math.sin(gamma)
-
-    optimum = await maximise_over_speed(rate, flight, flight.climb_scan_start())
-    gamma = await climb_angle(flight, optimum.v)
-    if isinstance(
-        gamma, Unflyable
-    ):  # pragma: no cover - the optimum is evaluated at a speed that climbs
-        msg = "the best-rate-of-climb speed does not climb"
-        raise AssertionError(msg)
+    optimum, gamma = await best_climb(flight)
     await finish_climb(flight, optimum, gamma)
     return {"v_y": optimum.v, "roc_max": optimum.value}

@@ -8,6 +8,11 @@ that exist (ARCHITECTURE ch. 8.5, 8.12):
   as in ``max-level-speed`` since gh-1419). The best excess over the speed, ``G(m) = max_V (T - D)``, falls with the mass and is zero at
   ``m_max,level``; the mass is its root. At that mass the thrust equals the drag at the best speed and no
   climb is left;
+- the curves over the mass: ``V_S(m)`` (the stall solve), ``V_max(m)`` and ``ROC_max(m)`` at
+  ``mass_envelope_curve_points`` equally spaced masses from the current mass up to ``m_max,level``, closed
+  by the root. ``V_max`` and ``ROC_max`` are :func:`highest_level_speed` and :func:`best_climb`, the very
+  functions ``max-level-speed`` and ``best-rate-of-climb`` run, at the sample mass with its clean stall speed:
+  one producer of each (ADR 0022), same scan grid and start, no search of its own;
 - ``m_max,TO``: the root of ``H(m) = T(V_TO) - D(V_TO)`` over the mass, with
   ``V_TO(m) = V_S,TO(m) V_TO / V_S,TO`` (the take-off reserve of the current mass kept), the take-off
   configuration and ``L = m g``.
@@ -46,7 +51,9 @@ from collections.abc import Awaitable, Callable, Collection, Mapping
 from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs, Value
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.formulas.best_rate_of_climb import best_climb
 from aero_kernel.formulas.flap_validity import warn_flap_validity
+from aero_kernel.formulas.max_level_speed import highest_level_speed
 from aero_kernel.formulas.powered_flight import (
     LEVEL_FLIGHT,
     Optimum,
@@ -61,6 +68,7 @@ from aero_kernel.formulas.stall_speed import first_extremum_check
 from aero_kernel.formulas.values import air_state, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import CheckResult, formula, precondition
+from aero_kernel.schema import Curve, CurvePair
 from aero_kernel.solvers.opti import Stall
 
 __all__ = ["current_mass_positive", "mass_envelope", "takeoff_speed_above_stall_speed"]
@@ -158,6 +166,7 @@ class Envelope:
         settings = config()
         self.step = settings.mass_envelope_step.value
         self.steps = round(settings.mass_envelope_max_steps.value)
+        self.points = round(settings.mass_envelope_curve_points.value)
         self._levels: dict[float, tuple[PoweredFlight, Optimum]] = {}  # the best excess per mass
 
     def at(self, mass: float, v_s: float, *, takeoff: bool = False) -> Inputs:
@@ -303,6 +312,39 @@ class Envelope:
                 low = (mid, found)
         raise _no_bracket(what, low[0], limit)
 
+    async def sample(self, mass: float) -> tuple[float, float, float]:
+        """``V_S``, ``V_max`` and ``ROC_max`` at one sample mass, from the functions of the two formulas.
+
+        Every failure surfaces with the mass named (:func:`_named_at`): a sample is not "not held".
+        """
+        try:
+            v_s = (await self.stall(mass, takeoff=False)).solution.v_s
+            flight = self.flight(mass, v_s)
+            v_max = await highest_level_speed(flight)
+            optimum, _ = await best_climb(flight)
+        except FormulaError as error:
+            raise _named_at(error, mass) from error
+        return v_s, v_max, optimum.value
+
+    async def curves(self, root: float) -> tuple[CurvePair, Curve]:
+        """The speed range and the best rate of climb over the masses of the sweep, closed by the root.
+
+        The samples are equally spaced from the current mass up to (not including) ``m_max,level``. At the
+        root the thrust equals the drag at the best speed only: ``V_max`` is that speed (the speed of the
+        best excess the root search found) and the rate of climb is zero.
+        """
+        masses = [self.mass + (root - self.mass) * k / self.points for k in range(self.points)]
+        samples = [await self.sample(mass) for mass in masses]
+        v_s_root = (await self.stall(root, takeoff=False)).solution.v_s
+        v_best = (await self.best_excess(root))[1].v
+        masses.append(root)
+        stall = [x[0] for x in samples] + [v_s_root]
+        top = [x[1] for x in samples] + [v_best]
+        climb = [x[2] for x in samples] + [0.0]
+        return CurvePair(x=tuple(masses), lower=tuple(stall), upper=tuple(top)), Curve(
+            x=tuple(masses), y=tuple(climb)
+        )
+
     async def declare_level(self, root: float) -> None:
         """Evaluate and declare the level-flight answer at ``m_max,level``."""
         flight, optimum = await self.best_excess(root)
@@ -326,8 +368,8 @@ class Envelope:
 
 
 @formula("mass-envelope")
-async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float]:
-    """The largest mass of level flight and the largest mass of the lift-off.
+async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float | Curve | CurvePair]:
+    """The two largest masses (level flight, lift-off) and the speed range and climb rate over the mass.
 
     Args:
         x: ``airplane`` and ``airplane_to`` the clean and the take-off configuration, ``m_current`` the
@@ -339,7 +381,8 @@ async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float]:
             declares the route, the skipped speeds and the bounds the answers lie on.
 
     Returns:
-        ``m_max_level`` and ``m_max_to`` in kg.
+        ``m_max_level`` and ``m_max_to`` in kg; ``speed_range`` (``V_S`` and ``V_max`` in m/s over the
+        mass in kg) and ``roc_curve`` (the best rate of climb in m/s over the mass).
 
     Raises:
         TypeError: If ``airplane``, ``airplane_to`` or ``components`` is not the document.
@@ -354,4 +397,10 @@ async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float]:
     await scan.declare_level(m_level)
     m_to = await scan.root(scan.takeoff_function, "the lift-off", TAKEOFF_NOT_HELD)
     await scan.declare_takeoff(m_to)
-    return {"m_max_level": m_level, "m_max_to": m_to}
+    speed_range, roc_curve = await scan.curves(m_level)
+    return {
+        "speed_range": speed_range,
+        "roc_curve": roc_curve,
+        "m_max_level": m_level,
+        "m_max_to": m_to,
+    }

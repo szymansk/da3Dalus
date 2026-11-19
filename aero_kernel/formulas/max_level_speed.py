@@ -29,7 +29,7 @@ from aero_kernel.formulas.powered_flight import (
 )
 from aero_kernel.registry import formula
 
-__all__ = ["max_level_speed"]
+__all__ = ["highest_level_speed", "max_level_speed"]
 
 
 async def _excess(flight: PoweredFlight, v: float) -> float | Unflyable:
@@ -54,30 +54,18 @@ def _beyond_scan(v: float) -> FormulaError:
     )
 
 
-@formula("max-level-speed")
-async def max_level_speed(x: Inputs, ctx: Context) -> dict[str, float]:
-    """The maximum speed of level flight at full throttle.
+async def highest_level_speed(flight: PoweredFlight) -> float:
+    """The highest speed in m/s at which the thrust at full throttle still equals the level-flight drag.
 
-    Args:
-        x: ``airplane``, ``m`` in kg, ``g`` in m/s^2, ``rho`` in kg/m^3, ``mu`` in Pa s, ``a`` in
-            m/s, ``components``, ``k_v`` in rpm/V, ``i_0`` in A, ``r_m`` in ohm, ``u_bat`` in V,
-            ``d_prop`` in m; ``p_mot_max`` and ``eta_mot`` are bound for route A and not read on
-            route B.
-        ctx: The formula context; it runs AeroBuildup, hands out the embedded relations and
-            declares the route and the speeds skipped. Warnings of the answer's evaluation are
-            forwarded, those of the iterates are not.
-
-    Returns:
-        ``v_max`` in m/s.
+    The one search of ``max-level-speed`` (the entry's problem at the mass of ``flight``): the upward scan
+    from the clean stall speed ``flight.v_s``, the last positive-to-negative change of ``T - D``, Illinois
+    regula falsi. Nothing is forwarded or declared: the caller evaluates its answer with
+    :meth:`PoweredFlight.answer`. ``mass-envelope`` evaluates this same function at each mass of its sweep
+    (one producer of ``V_max``, ADR 0022).
 
     Raises:
-        TypeError: If ``airplane`` or ``components`` is not the document.
-        FormulaError: ``no_feasible_speed`` if the thrust is never above the drag at a speed the wing can
-            fly (the message says whether the wing or the thrust stopped every speed); ``not_converged``
-            if the thrust still exceeds the drag at the scan limit; ``outside_propeller_table`` if it
-            still does where the table ends; ``missing_input`` for an absent ``R_m`` or ``I_0``.
+        FormulaError: As documented on :func:`max_level_speed`.
     """
-    flight = PoweredFlight(x, ctx)
     reasons: set[Unflyable] = set()
     last: tuple[float, float] | None = None  # the last evaluated speed and its excess
     crossing: tuple[tuple[float, float], tuple[float, float]] | None = None
@@ -111,5 +99,33 @@ async def max_level_speed(x: Inputs, ctx: Context) -> dict[str, float]:
     v_max = await illinois_root(
         lambda speed: _bracketed_excess(flight, speed), crossing[0], crossing[1], flight.weight
     )
+    return v_max
+
+
+@formula("max-level-speed")
+async def max_level_speed(x: Inputs, ctx: Context) -> dict[str, float]:
+    """The maximum speed of level flight at full throttle.
+
+    Args:
+        x: ``airplane``, ``m`` in kg, ``g`` in m/s^2, ``rho`` in kg/m^3, ``mu`` in Pa s, ``a`` in
+            m/s, ``components``, ``k_v`` in rpm/V, ``i_0`` in A, ``r_m`` in ohm, ``u_bat`` in V,
+            ``d_prop`` in m; ``p_mot_max`` and ``eta_mot`` are bound for route A and not read on
+            route B.
+        ctx: The formula context; it runs AeroBuildup, hands out the embedded relations and
+            declares the route and the speeds skipped. Warnings of the answer's evaluation are
+            forwarded, those of the iterates are not.
+
+    Returns:
+        ``v_max`` in m/s.
+
+    Raises:
+        TypeError: If ``airplane`` or ``components`` is not the document.
+        FormulaError: ``no_feasible_speed`` if the thrust is never above the drag at a speed the wing can
+            fly (the message says whether the wing or the thrust stopped every speed); ``not_converged``
+            if the thrust still exceeds the drag at the scan limit; ``outside_propeller_table`` if it
+            still does where the table ends; ``missing_input`` for an absent ``R_m`` or ``I_0``.
+    """
+    flight = PoweredFlight(x, ctx)
+    v_max = await highest_level_speed(flight)
     await flight.answer(v_max, LEVEL_FLIGHT)
     return {"v_max": v_max}

@@ -19,6 +19,7 @@ from aero_kernel.config import config
 from aero_kernel.context import Context
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas import mass_envelope as module
+from aero_kernel.formulas.best_rate_of_climb import best_rate_of_climb
 from aero_kernel.formulas.mass_envelope import (
     LEVEL_NOT_HELD,
     TAKEOFF_NOT_HELD,
@@ -27,9 +28,10 @@ from aero_kernel.formulas.mass_envelope import (
     mass_envelope,
     takeoff_speed_above_stall_speed,
 )
+from aero_kernel.formulas.max_level_speed import max_level_speed
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import DEFAULT_REGISTRY
-from aero_kernel.schema import KernelWarning
+from aero_kernel.schema import Curve, CurvePair, KernelWarning
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.opti import LevelFlightPoint, Stall, StallSolution
 from aero_kernel.tests import powered_builders as pb
@@ -42,6 +44,7 @@ pytestmark = pytest.mark.asyncio
 M0 = 3.4
 CD0 = 0.4  # draggy: the best excess thrust vanishes near 6.4 kg
 RESERVE = 1.3
+CURVE_POINTS = 3  # the curve tests patch mass_envelope_curve_points to this (see `few_points`)
 STUB_NOTICE = KernelWarning.of("induced_drag_viscous_factor_removed", "the stub's drag notice")
 
 
@@ -486,3 +489,86 @@ async def test_a_best_excess_at_the_stall_corner_above_a_skipped_speed_is_declar
         got["m_max_level"], level_root(), 1e-3
     )  # the same root: the skipped speeds carry no value
     assert pb.limits(ctx) == ["wing"]
+
+
+@pytest.fixture(autouse=True)
+def few_points(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Three curve samples: the draggy stub's speeds with an excess are narrow near its root, and a sample
+    within a few percent of it is narrower than the 2 m/s scan step of the two formulas (declared limit)."""
+    real = config()
+    few = real.mass_envelope_curve_points.model_copy(update={"value": float(CURVE_POINTS)})
+    patched = real.model_copy(update={"mass_envelope_curve_points": few})
+    monkeypatch.setattr(module, "config", lambda: patched)
+
+
+# --- the curves: one producer ----------------------------------------------------------------------------
+
+
+async def test_the_curve_samples_are_what_max_level_speed_and_best_rate_of_climb_return_at_that_mass() -> (
+    None
+):
+    """One producer (ADR 0022): at every sample mass the curve holds exactly the value the two formulas
+    return for that mass and its clean stall speed: same functions, same scan grid and start, no second
+    search. Equality, not agreement."""
+    got, _ = await run()
+    pair, climb = got["speed_range"], got["roc_curve"]
+    assert isinstance(pair, CurvePair)
+    assert isinstance(climb, Curve)
+    for k, mass in enumerate(pair.x[:-1]):
+        values: dict[str, Any] = {"stall-speed": v_stall(mass)}
+        level = await max_level_speed(
+            pb.bound_inputs("max-level-speed", mass, **values),
+            pb.context("max-level-speed", EnvelopeOpti()),
+        )
+        rate = await best_rate_of_climb(
+            pb.bound_inputs("best-rate-of-climb", mass, **values),
+            pb.context("best-rate-of-climb", EnvelopeOpti()),
+        )
+        assert pair.upper[k] == level["v_max"]
+        assert climb.y[k] == rate["roc_max"]
+
+
+async def test_the_curves_run_from_the_current_mass_to_the_largest_level_mass_and_close_there() -> (
+    None
+):
+    got, _ = await run()
+    pair, climb = got["speed_range"], got["roc_curve"]
+    assert isinstance(pair, CurvePair)
+    assert isinstance(climb, Curve)
+    root = got["m_max_level"]
+    assert len(pair.x) == CURVE_POINTS + 1
+    assert climb.x == pair.x
+    assert pair.x[0] == M0
+    assert pair.x[-1] == root
+    for k, mass in enumerate(pair.x[:-1]):  # equally spaced from the current mass
+        assert close(mass, M0 + (root - M0) * k / CURVE_POINTS, 1e-12)
+    for k, mass in enumerate(pair.x):
+        assert close(pair.lower[k], v_stall(mass), 1e-9)  # the stall solve of each mass
+    assert list(pair.lower) == sorted(pair.lower)  # V_S rises with the mass
+    assert climb.y[0] > climb.y[1] > climb.y[-2] > 0.0  # the climb falls with the mass ...
+    assert climb.y[-1] == 0.0  # ... and is zero where level flight ends
+    assert close(pair.upper[-1], best_excess(root)[1], 1e-3)  # V_max closes on the best speed
+
+
+async def test_a_sample_whose_search_fails_surfaces_with_its_mass_named() -> None:
+    """A curve sample is not "not held": its failure surfaces (here: the climb scan finds no speed)."""
+    with pytest.raises(FormulaError) as caught:
+        await run(EnvelopeOpti(stall_fails_above=5.0))  # the stall solve of a sample mass fails
+    assert caught.value.code == "not_converged"
+    assert "at the mass" in caught.value.message
+
+
+async def test_a_sample_in_a_window_narrower_than_the_scan_step_fails_with_its_mass_named(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The declared limit of one producer: with six samples the last lies 7 percent below the root of the
+    draggy stub, where the speeds with an excess are narrower than the 2 m/s step of the scan the two
+    formulas share. The formula says so, with the mass, instead of skipping the point or searching again."""
+    real = config()
+    six = real.mass_envelope_curve_points.model_copy(update={"value": 6.0})
+    patched = real.model_copy(update={"mass_envelope_curve_points": six})
+    monkeypatch.setattr(module, "config", lambda: patched)
+    with pytest.raises(FormulaError) as caught:
+        await run()
+    assert caught.value.code == "no_feasible_speed"
+    assert "at the mass 5.824 kg:" in caught.value.message

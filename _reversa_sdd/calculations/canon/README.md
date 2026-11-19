@@ -818,7 +818,7 @@ with its own variables, a long run (`mass-envelope`):
 ```yaml
 kind: optimization
 tool: OPT
-output: max-mass-level-flight, max-mass-lift-off
+output: speed-range-over-mass, climb-rate-over-mass, max-mass-level-flight, max-mass-lift-off
 inputs:
   airplane: airplane
   components: components
@@ -838,11 +838,15 @@ inputs:
   eta_mot: motor-efficiency
   airplane_to: airplane-takeoff
 outputs:
+  speed_range: speed-range-over-mass
+  roc_curve: climb-rate-over-mass
   m_max_level: max-mass-level-flight
   m_max_to: max-mass-lift-off
 embeds:
   - stall-speed.clean
   - stall-speed.takeoff
+  - max-level-speed
+  - best-rate-of-climb
   - motor-propeller-equilibrium
   - advance-ratio-from-speed
   - propeller-table-lookup

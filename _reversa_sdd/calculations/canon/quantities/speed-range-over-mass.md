@@ -19,6 +19,6 @@ Stall speed and maximum level speed as functions of the take-off mass.
 
 **Unit.** `m/s`
 
-**Produced by.** [[performance-over-mass]]
+**Produced by.** [[mass-envelope]]
 
 **Used by.** [[cg-envelope]]

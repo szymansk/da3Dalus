@@ -66,3 +66,9 @@ def test_a_fractional_number_of_mass_scan_steps_is_refused(steps: float) -> None
 
 def test_one_mass_scan_step_is_the_least_that_is_accepted() -> None:
     assert with_mass_steps(1.0) is not None
+
+
+@pytest.mark.parametrize("points", [0.5, 2.5])
+def test_a_fractional_number_of_curve_points_is_refused(points: float) -> None:
+    with pytest.raises(ValidationError, match="whole number"):
+        with_mass_steps(points, "mass_envelope_curve_points")

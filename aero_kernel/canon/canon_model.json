@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e782f3142d69ac6094124d648a306d978aabb12ee09bc1f1f798147aa1011363",
+  "content_hash": "sha256:4830f4888def12ebf717e792d87697b09a7f0baeed3979f8efa20561346e0dc0",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -87,6 +87,13 @@
           "source": "a search resolution: at a minimum the battery power (and its quotient with the speed) changes with the square of the speed error, so a one-percent speed error moves the optimum value by a much smaller fraction (second order; checked against a brute-force scan in gh-1415). No domain threshold",
           "unit": "1",
           "value": 0.01
+        },
+        "mass_envelope_curve_points": {
+          "basis": "numerical",
+          "guards": "Mass envelope: the number of equally spaced masses, from the current mass up to the largest mass of level flight, at which the curves over the mass are sampled (the root closes them as one more point). Domain: a whole number of at least 1; the kernel's import refuses anything else.",
+          "source": "a resolution, no physical claim: each sample costs a stall solve, the level-speed search of max-level-speed and the climb search of best-rate-of-climb, which are those very functions (measured in the evidence of mass-envelope); six samples show the shape of curves that vary smoothly with the mass at a cost of a few minutes",
+          "unit": "1",
+          "value": 6.0
         },
         "mass_envelope_max_steps": {
           "basis": "numerical",
@@ -2125,7 +2132,9 @@
               "id": "default",
               "produce": {
                 "m_max_level": "calc:max-mass-level-flight",
-                "m_max_to": "calc:max-mass-lift-off"
+                "m_max_to": "calc:max-mass-lift-off",
+                "roc_curve": "calc:climb-rate-over-mass",
+                "speed_range": "calc:speed-range-over-mass"
               },
               "when": null
             }
@@ -2135,6 +2144,8 @@
           "embeds": [
             "calc:stall-speed.clean",
             "calc:stall-speed.takeoff",
+            "calc:max-level-speed.default",
+            "calc:best-rate-of-climb.default",
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
             "calc:propeller-table-lookup.default",
@@ -2142,6 +2153,8 @@
           ],
           "embeds_closure": [
             "calc:advance-ratio-from-speed.default",
+            "calc:best-rate-of-climb.default",
+            "calc:max-level-speed.default",
             "calc:motor-propeller-equilibrium.default",
             "calc:propeller-table-lookup.default",
             "calc:stall-speed.clean",
@@ -2174,7 +2187,9 @@
           ],
           "outputs": {
             "m_max_level": "calc:max-mass-level-flight",
-            "m_max_to": "calc:max-mass-lift-off"
+            "m_max_to": "calc:max-mass-lift-off",
+            "roc_curve": "calc:climb-rate-over-mass",
+            "speed_range": "calc:speed-range-over-mass"
           },
           "postconditions": [],
           "preconditions": [
@@ -2981,91 +2996,6 @@
           "tool": "OPT",
           "uncertainty": null,
           "variables": [],
-          "worlds": []
-        },
-        "performance-over-mass": {
-          "applications": [
-            {
-              "bind": {
-                "a": "calc:speed-of-sound",
-                "airplane": "calc:airplane",
-                "components": "calc:components",
-                "d_prop": "calc:propeller-diameter",
-                "eta_mot": "calc:motor-efficiency",
-                "g": "calc:gravity",
-                "i_0": "calc:motor-no-load-current",
-                "k_v": "calc:motor-voltage-constant",
-                "m_current": "calc:aircraft-mass",
-                "m_max_level": "calc:max-mass-level-flight",
-                "mu": "calc:dynamic-viscosity",
-                "p_mot_max": "calc:motor-max-power",
-                "r_m": "calc:motor-circuit-resistance",
-                "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
-              },
-              "given": null,
-              "id": "default",
-              "produce": {
-                "roc_curve": "calc:climb-rate-over-mass",
-                "speed_range": "calc:speed-range-over-mass"
-              },
-              "when": null
-            }
-          ],
-          "cost": "minutes",
-          "direction": "analysis",
-          "embeds": [
-            "calc:stall-speed.clean",
-            "calc:max-level-speed.default",
-            "calc:best-rate-of-climb.default",
-            "calc:motor-propeller-equilibrium.default",
-            "calc:advance-ratio-from-speed.default",
-            "calc:propeller-table-lookup.default",
-            "calc:thrust-at-airspeed-from-coefficient.default"
-          ],
-          "embeds_closure": [
-            "calc:advance-ratio-from-speed.default",
-            "calc:best-rate-of-climb.default",
-            "calc:max-level-speed.default",
-            "calc:motor-propeller-equilibrium.default",
-            "calc:propeller-table-lookup.default",
-            "calc:stall-speed.clean",
-            "calc:thrust-at-airspeed-from-coefficient.default"
-          ],
-          "inputs": {
-            "a": "calc:speed-of-sound",
-            "airplane": "calc:airplane",
-            "components": "calc:components",
-            "d_prop": "calc:propeller-diameter",
-            "eta_mot": "calc:motor-efficiency",
-            "g": "calc:gravity",
-            "i_0": "calc:motor-no-load-current",
-            "k_v": "calc:motor-voltage-constant",
-            "m_current": "calc:aircraft-mass",
-            "m_max_level": "calc:max-mass-level-flight",
-            "mu": "calc:dynamic-viscosity",
-            "p_mot_max": "calc:motor-max-power",
-            "r_m": "calc:motor-circuit-resistance",
-            "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
-          },
-          "kind": "optimization",
-          "optional": [
-            "r_m",
-            "i_0"
-          ],
-          "outputs": {
-            "roc_curve": "calc:climb-rate-over-mass",
-            "speed_range": "calc:speed-range-over-mass"
-          },
-          "postconditions": [],
-          "preconditions": [],
-          "tool": "OPT",
-          "uncertainty": null,
-          "variables": [
-            "calc:aircraft-mass",
-            "calc:flight-speed"
-          ],
           "worlds": []
         },
         "propeller-table-lookup": {
