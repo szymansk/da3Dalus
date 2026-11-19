@@ -195,23 +195,25 @@ async def test_a_nonphysical_fit_is_declared_as_an_error_warning_and_the_numbers
     assert reason in warning.detail["reasons"]  # pyright: ignore[reportOperatorIssue]
 
 
-async def test_a_flat_polar_is_declared_nonphysical() -> None:
-    """A drag independent of C_L has a slope of zero up to rounding: e is absurd or negative, declared."""
+async def test_a_flat_polar_has_no_finite_oswald_factor() -> None:
+    """A drag independent of C_L has a slope of zero up to rounding (below opt_zero_span): no finite e."""
     opti = StubOpti()
-    opti.level_answer = lambda levels: polar_of(lambda _cl: 0.04, tuple(levels))
+    opti.level_answer = lambda levels: polar_of(flat, tuple(levels))
     ctx = context_with(StubAtmosphere({}), opti=opti)
-    await parabolic_polar_fit(fit_inputs(), ctx)
-    (warning,) = [w for w in ctx.warnings if w.code == "polar_fit_nonphysical"]
-    reasons = warning.detail["reasons"]
-    assert isinstance(reasons, list)
-    assert set(reasons) & {"k_not_positive", "e_above_maximum"}
+    with pytest.raises(FormulaError) as raised:
+        await parabolic_polar_fit(fit_inputs(), ctx)
+    assert raised.value.category is ErrorCategory.NOT_CONVERGED
+
+
+def flat(_cl: float) -> float:
+    return 0.04
 
 
 def zero_slope(_cl: Sequence[float], _cd: Sequence[float]) -> ParabolaFit:
     return ParabolaFit(cd0=0.04, k=0.0, rms=0.0, max_abs=0.0)
 
 
-async def test_a_slope_of_exactly_zero_has_no_finite_oswald_factor(
+async def test_a_slope_the_fit_reports_as_zero_has_no_finite_oswald_factor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import aero_kernel.formulas.parabolic_polar_fit as module

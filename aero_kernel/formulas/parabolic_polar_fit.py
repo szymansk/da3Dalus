@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
+from aero_kernel.config import config
 from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
@@ -138,7 +139,7 @@ async def parabolic_polar_fit(x: Inputs, ctx: Context) -> dict[str, float]:
     forward_warnings(ctx, flight.warnings)
     polar = flight.polar
     fit = fit_parabola(polar.cl, polar.cd)
-    if fit.k == 0.0:
+    if math.isclose(fit.k, 0.0, abs_tol=config().opt_zero_span.value):
         raise FormulaError(
             ErrorCategory.NOT_CONVERGED,
             "not_converged",

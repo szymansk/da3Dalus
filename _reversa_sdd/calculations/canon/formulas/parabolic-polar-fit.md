@@ -82,7 +82,7 @@ above `max_oswald` (1, Anderson §5.3.3) gives the warning `polar_fit_nonphysica
 fitted numbers in its `detail`; the formulas that divide by them ([[induced-drag-factor]], the probes) refuse a
 non-positive `e` by their own preconditions. The only refusals of the fit itself are an empty window, a level
 that the airplane does not reach before its first `C_L` peak, a point whose lift does not settle on the weight,
-a solver drag at or below zero, and a slope of exactly zero (no finite `e`): each is a `FormulaError`, never a
+a solver drag at or below zero, and a slope of zero to `opt_zero_span` (no finite `e`): each is a `FormulaError`, never a
 value. The kernel's drag is declared as everywhere (`induced_drag_viscous_factor_removed`).
 
 ## Implementations (1)

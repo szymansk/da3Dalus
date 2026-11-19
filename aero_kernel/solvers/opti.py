@@ -1586,7 +1586,7 @@ def _level_point(
             slope = dynamic_pressure * area * _local_slope(sweep, alpha)
         else:
             slope = (lift - previous[1]) / (alpha - previous[0])
-        if slope == 0.0:
+        if math.isclose(slope, 0.0, abs_tol=config().opt_zero_span.value):
             raise _level_failed(level, speed, "has no lift slope in the angle of attack")
         previous = (alpha, lift)
         alpha -= miss / slope
