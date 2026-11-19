@@ -197,6 +197,9 @@ def _off_peak(curve: StallCurve) -> FormulaError | None:
     )
 
 
+_LEVEL_FLIGHT = 1.0  # the load factor of level flight: L = W (definition of n = L / W)
+
+
 async def _glides(
     ctx: Context,
     configurations: Sequence[AirplaneGeometry],
@@ -208,7 +211,9 @@ async def _glides(
     return list(
         await asyncio.gather(
             *(
-                ctx.solvers.opti.level_flight_point(configuration, mass, gravity, air, speed)
+                ctx.solvers.opti.level_flight_point(
+                    configuration, mass, gravity, air, speed, _LEVEL_FLIGHT
+                )
                 for configuration, speed in zip(configurations, speeds, strict=True)
             )
         )
