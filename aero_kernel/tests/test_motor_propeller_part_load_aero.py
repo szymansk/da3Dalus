@@ -9,6 +9,7 @@ cruise power of this aircraft is published.
 
 import pytest
 from aero_kernel.build import shipped_build
+from aero_kernel.components import Components
 from aero_kernel.engine import evaluate
 from aero_kernel.reference_fleet import FleetMember, aircraft_input
 from aero_kernel.schema import AircraftInput, QuantityStatus
@@ -42,9 +43,9 @@ async def test_the_avistar_cruises_on_a_battery_power_the_drive_train_can_delive
     ).model_dump()
     components["propeller"]["table"] = apc_13x8e_table()
     base = aircraft_input(FleetMember.AVISTAR_ELITE, {"flight-speed": CRUISE_MS, "altitude": 0.0})
-    document = base.model_dump()
-    document["components"] = components
-    aircraft = AircraftInput.model_validate(document)
+    aircraft: AircraftInput = base.model_copy(
+        update={"components": Components.model_validate(components)}
+    )
     result = await evaluate(
         shipped_build(),
         aircraft,
