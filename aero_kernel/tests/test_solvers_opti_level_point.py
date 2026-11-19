@@ -225,27 +225,39 @@ async def test_a_lift_just_below_the_true_peak_is_reached_on_the_branch_before_i
     assert close(peaked_cl(found.alpha_deg), level, 2 * TOLERANCE)
 
 
-async def test_the_wing_limit_starts_exactly_at_the_lift_maximum_of_the_curve(
+async def test_the_wing_limit_starts_at_the_lift_maximum_of_the_curve_plus_the_tolerance(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Across the maximum of the curve (between two samples), a lift is reached if and only if it is at
-    most the maximum: the classification is a function of the lift, not of where a search stops."""
+    """Across the maximum of the curve (between two samples), a lift is reached if it is at most the
+    maximum plus the lift tolerance (1e-6 of the weight, 1.3e-6 in C_L here), the wing limit otherwise:
+    a function of the lift, not of where a search stops. The maximum is located to half the
+    tolerance, so only the offsets clear of the tolerance edge are asserted."""
     installed(monkeypatch, peaked_cl)
-    for offset in range(-20, 21):
+    for offset in range(-20, 21):  # in units of 1e-6 in C_L
         level = PEAK_CL + offset * 1.0e-6
-        if offset == 0:
-            continue  # the maximum itself is within the tolerance of both outcomes
         speed = level_speed(level)
-        if offset < 0:
+        if offset <= 0:  # at the maximum and below it: reached (offset 0 is the knife edge)
             found = level_point_worker(point_request(speed)).value
-            assert close(found.cl, level, 2 * TOLERANCE)
-            continue
-        with pytest.raises(FormulaError) as caught:
-            level_point_worker(point_request(speed))
-        assert caught.value.detail["limit"] == "wing_lift", offset
+            assert close(found.cl, level, 2 * TOLERANCE), offset
+            assert found.alpha_deg <= PEAK_ALPHA + 0.1, offset
+        elif offset >= 3:  # more than twice the tolerance above the maximum: the wing limit
+            with pytest.raises(FormulaError) as caught:
+                level_point_worker(point_request(speed))
+            assert caught.value.detail["limit"] == "wing_lift", offset
 
 
-@pytest.mark.parametrize("above_peak", [1.0e-9, 1.0e-3, 0.5])
+async def test_a_lift_within_the_tolerance_above_the_maximum_is_reached_at_the_maximum(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A point within the lift tolerance of the target exists (the maximum), so the lift is reached."""
+    installed(monkeypatch, peaked_cl)
+    level = PEAK_CL + 0.5 * TOLERANCE * PEAK_CL  # half a tolerance above the maximum
+    found = level_point_worker(point_request(level_speed(level))).value
+    assert abs(found.alpha_deg - PEAK_ALPHA) < 0.1
+    assert close(found.lift_n, MASS * GRAVITY, 2 * TOLERANCE)
+
+
+@pytest.mark.parametrize("above_peak", [1.0e-3, 0.5])
 async def test_a_lift_above_the_maximum_is_the_wing_limit(
     monkeypatch: pytest.MonkeyPatch, above_peak: float
 ) -> None:
@@ -253,3 +265,34 @@ async def test_a_lift_above_the_maximum_is_the_wing_limit(
     with pytest.raises(FormulaError) as caught:
         level_point_worker(point_request(level_speed(PEAK_CL + above_peak)))
     assert caught.value.detail["limit"] == "wing_lift"
+
+
+async def test_the_maximum_is_located_with_few_evaluations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The stop follows from the lift tolerance and the curvature at the peak: some ten evaluations
+    for a window of half a degree, not the forty of a search down to float noise."""
+    calls = installed(monkeypatch, peaked_cl)
+    level_point_worker(point_request(level_speed(PEAK_CL)))
+    assert len(calls) < 25
+
+
+@pytest.mark.parametrize("where", ["maximum", "loop"])
+async def test_a_lift_that_is_not_a_number_is_declared_not_converged(
+    monkeypatch: pytest.MonkeyPatch, where: str
+) -> None:
+    """AeroBuildup returns NaN: not a lift, so no point; the message says so, not "did not reach the weight"."""
+    installed(monkeypatch, peaked_cl)
+
+    def nan_lift(
+        _plane: object, _air: object, _speed: float, _alpha: float, _size: str, _k: float
+    ) -> tuple[float, float]:
+        return math.nan, math.nan
+
+    monkeypatch.setattr(opti_module, "evaluate_forces", nan_lift)
+    level = PEAK_CL + 1.0e-6 if where == "maximum" else 1.0  # above the samples: the maximum search
+    with pytest.raises(FormulaError) as caught:
+        level_point_worker(point_request(level_speed(level)))
+    assert caught.value.category is ErrorCategory.NOT_CONVERGED
+    assert "not a finite number" in caught.value.message
+    assert "limit" not in caught.value.detail

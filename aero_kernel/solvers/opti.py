@@ -1562,29 +1562,49 @@ def _sampled_peak_cl(sweep: LiftCurve, peak: int) -> float:
     return here - (after - before) ** 2 / (8.0 * (before - 2.0 * here + after))
 
 
+def _peak_resolution(sweep: LiftCurve, peak: int, tolerance_cl: float) -> float:
+    """The angle width in degrees below which a window around the first peak cannot change the maximum by ``tolerance_cl``.
+
+    Near its maximum the curve is a parabola: ``C_L = C_max - (k / 2) (alpha - alpha_max)^2`` with
+    ``k = |C_L(alpha - h) - 2 C_L(alpha) + C_L(alpha + h)| / h^2`` from the three samples at the peak
+    (``h`` the sweep step). A point within ``w`` of the maximum is lower by at most ``k w^2 / 2``, so
+    a window of width ``w = sqrt(tolerance_cl / k)`` keeps the best point within ``tolerance_cl / 2``
+    of the maximum.
+    """
+    second_difference = abs(sweep.cl[peak - 1] - 2.0 * sweep.cl[peak] + sweep.cl[peak + 1])
+    return ALPHA_STEP_DEG * math.sqrt(tolerance_cl / second_difference)
+
+
 def _lift_maximum(
     asb_airplane: Any,  # noqa: ANN401  # untyped aerosandbox boundary
     request: LevelPolarRequest,
     speed: float,
     window: tuple[float, float],
+    resolution: float,
+    level: float,
 ) -> tuple[float, float]:
     """The angle and the lift in N of the lift maximum of AeroBuildup inside ``window`` (golden section).
 
     The window is the two sweep steps around the sampled first peak, where the curve has one maximum.
-    The search ends when the window is narrower than ``opt_alpha_margin_deg``; it halves geometrically
-    towards that width, so it ends after a fixed number of steps for a given window.
+    The search ends when the window is narrower than ``resolution`` (:func:`_peak_resolution`), the
+    width below which it cannot change the maximum by more than half the lift tolerance.
+
+    Raises:
+        FormulaError: ``not_converged`` if AeroBuildup returns a lift that is not a finite number.
     """
-    margin = config().opt_alpha_margin_deg.value
     air, k_e_d0 = request.air, request.k_e_d0
 
     def lift_at(alpha: float) -> float:
-        return evaluate_forces(asb_airplane, air, speed, alpha, NEURALFOIL_MODEL_SIZE, k_e_d0)[0]
+        lift = evaluate_forces(asb_airplane, air, speed, alpha, NEURALFOIL_MODEL_SIZE, k_e_d0)[0]
+        if not math.isfinite(lift):
+            raise _level_failed(level, speed, f"is not a finite number at {alpha:.3f} deg")
+        return lift
 
     low, high = window
     inner_low = high - GOLDEN_RATIO_INVERSE * (high - low)
     inner_high = low + GOLDEN_RATIO_INVERSE * (high - low)
     lift_low, lift_high = lift_at(inner_low), lift_at(inner_high)
-    while high - low > margin:
+    while high - low > resolution:
         if lift_low < lift_high:
             low, inner_low, lift_low = inner_low, inner_high, lift_high
             inner_high = low + GOLDEN_RATIO_INVERSE * (high - low)
@@ -1609,20 +1629,29 @@ def _start_at_the_peak(
 
     The sweep's samples can lie a little below the curve's own maximum, so a lift above the highest
     sample may still be reachable. The parabola through the samples around the peak says whether it
-    can be (no evaluation otherwise); then the maximum is located and the lift decides: above it is
-    the wing limit, at or below it the root lies between the sample before the peak and the maximum.
+    can be (no evaluation otherwise); then the maximum is located and the lift decides. A lift is
+    reached if it is at most the maximum plus the lift tolerance (the tolerance that accepts any
+    point): within the tolerance of the maximum the point is the maximum itself, below it the root
+    lies between the sample before the peak and the maximum.
 
     Raises:
-        FormulaError: ``not_converged`` with ``limit`` = ``wing_lift`` if the lift is above the maximum.
+        FormulaError: ``not_converged`` with ``limit`` = ``wing_lift`` if the lift is above the maximum
+            by more than the tolerance.
     """
-    if level > _sampled_peak_cl(sweep, peak):
+    tolerance = request.lift_tolerance * request.mass_kg * request.gravity
+    tolerance_cl = tolerance * level / lift_target
+    if level - tolerance_cl > _sampled_peak_cl(sweep, peak):
         raise _wing_limit(level, speed, "")
     window = (sweep.alpha_deg[peak - 1], sweep.alpha_deg[peak + 1])
-    top_alpha, top_lift = _lift_maximum(asb_airplane, request, speed, window)
-    if lift_target > top_lift:
+    resolution = _peak_resolution(sweep, peak, tolerance_cl)
+    top_alpha, top_lift = _lift_maximum(asb_airplane, request, speed, window, resolution, level)
+    if lift_target - top_lift > tolerance:
         raise _wing_limit(level, speed, "")
     low = sweep.alpha_deg[peak - 1]
-    return _LevelStart(alpha=0.5 * (low + top_alpha), low=low, high=top_alpha)
+    at_the_maximum = lift_target - top_lift >= -tolerance
+    return _LevelStart(
+        alpha=top_alpha if at_the_maximum else 0.5 * (low + top_alpha), low=low, high=top_alpha
+    )
 
 
 def _level_start(
@@ -1711,6 +1740,8 @@ def _lift_point(
         lift, drag = evaluate_forces(
             asb_airplane, air, speed, alpha, NEURALFOIL_MODEL_SIZE, request.k_e_d0
         )
+        if not math.isfinite(lift):
+            raise _level_failed(level, speed, f"is not a finite number at {alpha:.3f} deg")
         miss = lift - lift_target
         if abs(miss) <= request.lift_tolerance * weight:
             return alpha, lift / (dynamic_pressure * area), drag / (dynamic_pressure * area)
