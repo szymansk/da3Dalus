@@ -20,6 +20,7 @@ from aero_kernel.canon.model import (
     Quantity,
     WhenTerm,
 )
+from aero_kernel.devices import CROW_AILERON_ROLES, CROW_FLAP_ROLES
 from aero_kernel.devices import FLAP_ROLES as DEVICE_FLAP_ROLES
 from aero_kernel.errors import (
     ErrorCategory,
@@ -861,8 +862,8 @@ AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
 ELEVATOR_ROLES = frozenset({"elevator", "elevon", "ruddervator"})
 FLAP_ROLES = DEVICE_FLAP_ROLES
 # A butterfly layout (D10) needs a flap and a distinct aileron or elevon; a flaperon is neither.
-_BUTTERFLY_FLAP_ROLES = frozenset({"flap"})
-_BUTTERFLY_AILERON_ROLES = frozenset({"aileron", "elevon"})
+_BUTTERFLY_FLAP_ROLES = CROW_FLAP_ROLES
+_BUTTERFLY_AILERON_ROLES = CROW_AILERON_ROLES
 RUDDER_ROLES = frozenset({"rudder", "ruddervator"})
 
 

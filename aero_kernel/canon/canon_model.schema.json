@@ -629,6 +629,9 @@
         "avl_roll_refinement_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "butterfly_mix_steps": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_active_bound_fraction": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -737,6 +740,7 @@
         "opt_body_merge_exponent_max",
         "opt_body_axis_tolerance",
         "avl_contour_margin",
+        "butterfly_mix_steps",
         "powertrain_balance_tolerance",
         "powered_speed_scan_start",
         "powered_speed_scan_step",

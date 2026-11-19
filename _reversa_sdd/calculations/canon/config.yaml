@@ -178,6 +178,13 @@ opt_body_axis_tolerance:
   basis: numerical
   source: "a margin over the floating-point round-off of the least-squares fit on coordinates of metres (about 1e-16 m per metre of body); a nanometre is far below any coordinate a geometry document states, so every real step of the axis is straightened and declared"
 
+butterfly_mix_steps:
+  value: 10
+  unit: "1"
+  guards: "Butterfly: the crow mix s in [0, 1] is sampled in this many equal steps (one more sample than steps, both ends included); each sample is one stall solve and one glide read. s_max is interpolated linearly between the two samples that bracket it."
+  basis: numerical
+  source: "resolution of a sampled curve, not a physical quantity: a tenth of full crow is the finest setting a flap knob or mixer is set by hand; the interpolation error of s_max is measured in the evidence of butterfly-approach"
+
 powertrain_balance_tolerance:
   value: 0.000000001
   unit: "1"

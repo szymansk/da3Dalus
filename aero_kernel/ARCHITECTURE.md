@@ -1922,6 +1922,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q36 | Embedded postcondition and variables (engine half built with the first embedder) | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
 | Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
 | Q38 | Non-scalar quantity requested in v1 | requesting `polar-stall` together with `stall-speed`: `polar-stall` is `error`, `not_implemented`, code `non_scalar_result`, no formula called for it; `stall-speed` computes and its formula, which also returns the polar internally, runs once |
+| Q39 | Crow that never reaches the approach speed (interim, #1402) | `butterfly-max-mix` is `error`, category `unsupported_configuration`, code `unsupported_configuration`, the message says "fully mixable": the stall speed stays below the approach speed flown without crow up to `s = 1`, so there is no largest mix; the result is in `detail` (`mix`, `v_s0_m_s`, `v_app_m_s`, `glide_angle_deg`), the hint says it is a result and not a failure. The kernel has no mechanism for a declared absent output yet; the maintainer decides (Soll, #1402). An approach speed at or below `V_S0(0)` gives `s_max = 0` and an empty glide-angle curve; a mix off the first `C_L` peak is named even where there is no crossing; the glide angle at `V_app(s)` is read from `OptiAdapter.level_flight_point` (`atan2(C_D, C_L)`), the kernel's one lift-equals-weight solve |
 
 ## 11. Risks and technical debt
 
@@ -1982,7 +1983,7 @@ model (part of `IMPORT_REPORT.md`).
 | `battery-mass-from-capacity` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1411) |
 | `best-angle-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
 | `best-rate-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
-| `butterfly-approach` | optimization | OPT | law | 6 → 4 | 1 | – | – | seconds | later |
+| `butterfly-approach` | optimization | OPT | law | 10 → 4 | 1 | – | – | seconds | later · implemented (#1402) |
 | `cg-for-target-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `cruise-target-performance` | procedure | OPT | law | 14 → 2 | 1 | – | – | seconds | later |
 | `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |

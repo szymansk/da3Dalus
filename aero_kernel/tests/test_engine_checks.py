@@ -219,6 +219,22 @@ async def test_a_violated_postcondition_with_on_violation_error_discards_all_out
     assert probe.implementation_calls == 1
 
 
+async def test_the_detail_of_a_violated_check_joins_the_error_and_the_warning() -> None:
+    """A check can name where it failed (the crow mix of ``butterfly-approach``, Q37)."""
+    probe = Probe()
+    probe.states["post_err"] = CheckResult(
+        state="violated", message="b is wrong", detail={"mix": 0.5}
+    )
+    errored = await run(probe, "out-b")
+    assert errored.quantities[0].error is not None
+    assert errored.quantities[0].error.detail == {"postcondition": "post_err", "mix": 0.5}
+    probe = Probe()
+    probe.states["post_warn"] = CheckResult(state="violated", message="a", detail={"mix": 0.25})
+    warned = await run(probe, "out-a")
+    (warning,) = warned.quantities[0].warnings
+    assert warning.detail == {"postcondition": "post_warn", "mix": 0.25}
+
+
 async def test_an_unchecked_postcondition_warns_and_the_value_stays() -> None:
     probe = Probe()
     probe.states["post_err"] = CheckResult(state="unchecked", message="not decidable")

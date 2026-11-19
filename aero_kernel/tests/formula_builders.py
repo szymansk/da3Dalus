@@ -39,6 +39,7 @@ IMPLEMENTED = {
     "calc:stall-break",
     "calc:minimum-drag-speed",
     "calc:maneuvering-speed",
+    "calc:butterfly-approach",
     "calc:minimum-sink-speed",
     "calc:neutral-point",
     "calc:static-margin",
