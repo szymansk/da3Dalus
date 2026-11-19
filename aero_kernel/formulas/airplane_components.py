@@ -25,19 +25,17 @@ _M_PER_INCH = 0.0254
 _PERCENT = 100.0
 _MAH_PER_AH = 1000.0
 
-# The fields the formula reads, in the order a failure names them: (part, field).
-_REQUIRED = (
-    ("motor", "kv_rpm_per_volt"),
+# The optional catalogue fields the formula needs, in the order a failure names them: (part, field).
+# The four fields the contract requires (kv_rpm_per_volt, capacity_mah, cells, diameter_in) cannot be
+# absent and are not listed.
+_NEEDED_OPTIONAL = (
     ("motor", "rm_ohm"),
     ("motor", "io_no_load_a"),
     ("motor", "efficiency_pct"),
     ("motor", "max_power_w"),
-    ("battery", "capacity_mah"),
-    ("battery", "cells"),
     ("battery", "mass_g"),
     ("battery", "c_rate"),
     ("battery", "cell_voltage_v"),
-    ("propeller", "diameter_in"),
 )
 
 
@@ -50,26 +48,29 @@ def _components_of(x: Inputs) -> Components:
     return value
 
 
-def _held(value: _T | None) -> _T:
-    """The value of a field that ``_absent_fields`` found present."""
-    assert value is not None
+def held(value: _T | None, path: str) -> _T:
+    """The value of a field ``_absent_fields`` found present.
+
+    Raises:
+        TypeError: If it is absent after all: a defect of ``_absent_fields``, never a user error.
+    """
+    if value is None:
+        msg = f"{path} is absent although _absent_fields found it present"
+        raise TypeError(msg)
     return value
 
 
 def _absent_fields(components: Components) -> list[str]:
-    """The catalogue fields the formula needs that the components do not carry, as paths."""
+    """The parts and optional catalogue fields the formula needs that are absent, as paths."""
     parts = {
         "motor": components.motor,
         "battery": components.battery,
         "propeller": components.propeller,
     }
-    absent: list[str] = []
-    for part, name in _REQUIRED:
+    absent = [f"components.{part}" for part, body in parts.items() if body is None]
+    for part, name in _NEEDED_OPTIONAL:
         body = parts[part]
-        if body is None:
-            if f"components.{part}" not in absent:
-                absent.append(f"components.{part}")
-        elif getattr(body, name) is None:
+        if body is not None and getattr(body, name) is None:
             absent.append(f"components.{part}.{name}")
     return absent
 
@@ -109,10 +110,12 @@ async def airplane_components(x: Inputs, ctx: Context) -> dict[str, float]:
             parameter="components",
         )
     # _absent_fields is empty: every part and every field read below is present
-    motor, battery = _held(components.motor), _held(components.battery)
-    propeller = _held(components.propeller)
-    mass_g, c_rate = _held(battery.mass_g), _held(battery.c_rate)
-    u_cell = _held(battery.cell_voltage_v)
+    motor = held(components.motor, "components.motor")
+    battery = held(components.battery, "components.battery")
+    propeller = held(components.propeller, "components.propeller")
+    mass_g = held(battery.mass_g, "components.battery.mass_g")
+    c_rate = held(battery.c_rate, "components.battery.c_rate")
+    u_cell = held(battery.cell_voltage_v, "components.battery.cell_voltage_v")
     u_bat = battery.cells * u_cell
     return {
         "m_bat": mass_g / _G_PER_KG,
@@ -122,10 +125,10 @@ async def airplane_components(x: Inputs, ctx: Context) -> dict[str, float]:
         "i_bat_max": c_rate * battery.capacity_mah / _MAH_PER_AH,
         "u_cell": u_cell,
         "k_v": motor.kv_rpm_per_volt,
-        "i_0": _held(motor.io_no_load_a),
-        "r_m": _held(motor.rm_ohm),
-        "eta_mot": _held(motor.efficiency_pct) / _PERCENT,
+        "i_0": held(motor.io_no_load_a, "components.motor.io_no_load_a"),
+        "r_m": held(motor.rm_ohm, "components.motor.rm_ohm"),
+        "eta_mot": held(motor.efficiency_pct, "components.motor.efficiency_pct") / _PERCENT,
         "u_bat": u_bat,
-        "p_mot_max": _held(motor.max_power_w),
+        "p_mot_max": held(motor.max_power_w, "components.motor.max_power_w"),
         "d_prop": propeller.diameter_in * _M_PER_INCH,
     }

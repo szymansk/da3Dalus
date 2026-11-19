@@ -795,7 +795,7 @@ class _Call:
             formula=formula_slug,
             application=node.id.application,
             message=f"`{quantity}` reads {names}, which the kernel cannot carry yet.",
-            hint="Request a quantity that reads scalars and the airplane only.",
+            hint="Request a quantity that reads scalars, the airplane, polars and components only.",
             detail={"quantities": list[JsonValue](display_slug(slug) for slug, _ in unsupported)},
         )
 
@@ -909,39 +909,32 @@ class _Call:
         """
         shown = [display_slug(slug) for slug in missing]
         verb = "was" if len(shown) == 1 else "were"
-        first = self.build.model.quantity(missing[0])
-        if first is not None and first.type == "components":
-            return self._missing_components(node, quantity, formula_slug, shown[0])
+        kinds = [self._type_of(slug) for slug in missing]
+        scalars = [name for name, kind in zip(shown, kinds, strict=True) if kind != "components"]
+        hints: list[str] = []
+        if scalars:
+            hints.append(f"Supply {join_names([f'`{n}`' for n in scalars])} in `values`.")
+        if "components" in kinds:
+            hints.append(
+                "Push the fitted motor, battery and propeller as AircraftInput.components."
+            )
         return KernelError(
             code="missing_input",
             category=ErrorCategory.INVALID_INPUT,
             quantity=quantity,
             formula=formula_slug,
             application=node.id.application,
-            input_path=f"values.{shown[0]}",
+            input_path="components" if kinds[0] == "components" else f"values.{shown[0]}",
             message=f"`{quantity}` needs {join_names([f'`{n}`' for n in shown])}, "
             f"which {verb} not supplied.",
-            hint=f"Supply {join_names([f'`{n}`' for n in shown])} in `values`."
-            + self._geometry_mass_hint(shown),
+            hint=" ".join(hints) + self._geometry_mass_hint(shown),
             detail={"inputs": list[JsonValue](shown)},
         )
 
-    @staticmethod
-    def _missing_components(
-        node: Node, quantity: str, formula_slug: str, shown: str
-    ) -> KernelError:
-        """The ``missing_input`` error of a node whose fitted components were not pushed."""
-        return KernelError(
-            code="missing_input",
-            category=ErrorCategory.INVALID_INPUT,
-            quantity=quantity,
-            formula=formula_slug,
-            application=node.id.application,
-            input_path="components",
-            message=f"`{quantity}` needs `{shown}`, which was not supplied.",
-            hint="Push the fitted motor, battery and propeller as AircraftInput.components.",
-            detail={"inputs": [shown]},
-        )
+    def _type_of(self, slug: str) -> str | None:
+        """The type of a quantity of the model, or ``None`` if the model has none such."""
+        quantity = self.build.model.quantity(slug)
+        return None if quantity is None else quantity.type
 
     def _geometry_mass_hint(self, shown: Sequence[str]) -> str:
         """The sentence that names the geometry's mass for a missing ``aircraft-mass``, or ``""``."""

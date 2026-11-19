@@ -1,7 +1,7 @@
 """``airplane-components``: a plain read of the pushed components (ARCHITECTURE ch. 8.8, 8.11).
 
-Hand computation for the complete document (T-Motor AT2814 KV900 published values, the Avistar pack
-and APC 13x8E; efficiency 80 % and pack mass 560 g are test values nobody publishes):
+Hand computation for the complete document (T-Motor AT2814 KV900 Rm, Io and Kv, the Avistar pack capacity
+and APC 13x8E; efficiency 80 %, power 650 W, pack mass 560 g, C-rate 25 and cell voltage 3.7 V are test values):
 
 - m_bat = 560 g / 1000 = 0.56 kg;  Q_bat = 6000 mAh;  U_cell = 3.7 V;  U_bat = 4 * 3.7 = 14.8 V
 - E_bat = 6000 / 1000 * 14.8 = 88.8 Wh;  I_bat,max = 25 * 6000 / 1000 = 150 A
@@ -160,7 +160,14 @@ async def test_every_absent_field_is_named_in_catalogue_order() -> None:
     )
     error = result.quantities[0].error
     assert error is not None
-    assert error.detail == {"inputs": ["components.motor.max_power_w", "components.battery.mass_g"]}
+    assert error.detail == {
+        "inputs": [
+            "components.motor.max_power_w",
+            "components.battery.mass_g",
+            "components.battery.c_rate",
+            "components.battery.cell_voltage_v",
+        ]
+    }
     assert "`components.motor.max_power_w`" in error.message
     assert "`components.battery.mass_g`" in error.message
 
@@ -209,3 +216,10 @@ async def test_a_changed_component_changes_the_cached_value() -> None:
         )
         again = await kernel.compute(aircraft_with(complete_components()), request("battery-mass"))
     assert [r.quantities[0].value for r in (first, second, again)] == [0.56, 0.6, 0.56]
+
+
+async def test_a_field_found_present_but_absent_is_a_defect_not_a_user_error() -> None:
+    from aero_kernel.formulas.airplane_components import held
+
+    with pytest.raises(TypeError, match=r"components\.motor\.rm_ohm"):
+        held(None, "components.motor.rm_ohm")

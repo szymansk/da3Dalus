@@ -203,14 +203,18 @@ _POSITIVE_COMPONENT_FIELDS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "propeller": (("diameter_in", "in"),),
 }
-_EFFICIENCY_PCT_MAX = 100.0
 
 
-def _component_findings(components: Components | None) -> list[KernelError]:
+# The catalogue states the efficiency in percent, the rule in a fraction (the unit vocabulary has no
+# percent); a definition, not a measured constant.
+_PERCENT = 100.0
+
+
+def _component_findings(components: Components | None, rules: Rules) -> list[KernelError]:
     """Report what is inadmissible in the pushed components (ARCHITECTURE ch. 8.11).
 
     A non-finite number, a number <= 0 where the catalogue field is a positive quantity
-    (``io_no_load_a`` may be 0), and an efficiency above 100 %. An absent field is no finding:
+    (``io_no_load_a`` may be 0), and an efficiency above the rule's ``max_efficiency`` (a fraction). An absent field is no finding:
     absence survives the push (ch. 8.11, "Components", rule 3).
     """
     if components is None:
@@ -249,7 +253,7 @@ def _component_findings(components: Components | None) -> list[KernelError]:
         if efficiency is not None:
             errors += _above_maximum(
                 efficiency,
-                _EFFICIENCY_PCT_MAX,
+                rules.value("components-efficiency-at-most", "max_efficiency") * _PERCENT,
                 "components.motor.efficiency_pct",
                 "efficiency_pct",
                 "%",
@@ -936,7 +940,7 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
     errors += _wing_findings(airplane.wings or {}, rules)
     errors += _fuselage_findings(airplane.fuselages or {}, rules)
     errors += _attachment_findings(airplane.fuselages or {}, rules)
-    errors += _component_findings(aircraft.components)
+    errors += _component_findings(aircraft.components, rules)
     for slug in sorted(aircraft.values):
         errors += _non_finite(aircraft.values[slug], _values_path(slug))
     warnings = (

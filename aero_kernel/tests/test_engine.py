@@ -547,6 +547,7 @@ async def test_order_3_an_unsupported_read_beats_a_missing_input() -> None:
     result = await evaluate(make_build(), no_mass, request("needs-curve-q"), solvers=NO_SOLVERS)
     assert result.quantities[0].error is not None
     assert result.quantities[0].error.code == "unsupported_value_type"
+    assert result.quantities[0].error.input_path is None
 
 
 async def test_order_4_a_failed_predecessor_beats_a_missing_input() -> None:
@@ -755,7 +756,7 @@ async def test_the_exact_fields_of_every_engine_built_error() -> None:
                 "curve-reader",
                 "default",
                 "`curve-read-q` reads `curve-q` (a curve), which the kernel cannot carry yet.",
-                "Request a quantity that reads scalars and the airplane only.",
+                "Request a quantity that reads scalars, the airplane, polars and components only.",
                 None,
             ),
         )
@@ -1434,10 +1435,10 @@ async def test_two_uncarried_reads_are_both_named_with_and() -> None:
     assert quantity.error is not None
     assert quantity.error.code == "unsupported_value_type"
     assert quantity.error.message == (
-        "`two-uncarried-q` reads `curve-q` (a curve) and `curve-in` (a curve), "
+        "`two-uncarried-q` reads `curve-q` (a curve) and `pair-in` (a curve_pair), "
         "which the kernel cannot carry yet."
     )
-    assert quantity.error.detail == {"quantities": ["curve-q", "curve-in"]}
+    assert quantity.error.detail == {"quantities": ["curve-q", "pair-in"]}
 
 
 async def test_three_uncarried_reads_are_listed_as_a_b_and_c() -> None:
@@ -1448,3 +1449,33 @@ async def test_three_uncarried_reads_are_listed_as_a_b_and_c() -> None:
         "`pair-q` (a curve_pair), which the kernel cannot carry yet."
     )
     assert quantity.error.detail == {"quantities": ["curve-q", "curve-in", "pair-q"]}
+
+
+async def _missing_both(slug: str) -> KernelError:
+    nothing = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
+    result = await evaluate(make_build(), nothing, request(slug), solvers=NO_SOLVERS)
+    error = result.quantities[0].error
+    assert error is not None
+    return error
+
+
+async def test_missing_components_and_a_scalar_are_both_named_components_first() -> None:
+    error = await _missing_both("components-then-mass-q")
+    assert error.code == "missing_input"
+    assert error.input_path == "components"
+    assert error.message == (
+        "`components-then-mass-q` needs `components` and `aircraft-mass`, which were not supplied."
+    )
+    assert error.detail == {"inputs": ["components", "aircraft-mass"]}
+    assert "AircraftInput.components" in error.hint
+    assert "`aircraft-mass` in `values`" in error.hint
+    assert "`components` in `values`" not in error.hint
+
+
+async def test_missing_a_scalar_and_components_are_both_named_scalar_first() -> None:
+    error = await _missing_both("mass-then-components-q")
+    assert error.input_path == "values.aircraft-mass"
+    assert error.detail == {"inputs": ["aircraft-mass", "components"]}
+    assert "AircraftInput.components" in error.hint
+    assert "`aircraft-mass` in `values`" in error.hint
+    assert "`components` in `values`" not in error.hint

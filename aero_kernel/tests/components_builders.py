@@ -11,7 +11,10 @@ POWERTRAIN = Path(__file__).parent.parent / "reference" / "powertrain" / "powert
 # Values no source publishes, for the tests that need a complete document. They are test values,
 # not data of any real part (reference/powertrain/README.md).
 TEST_EFFICIENCY_PCT = 80.0
+TEST_MAX_POWER_W = 650.0
 TEST_PACK_MASS_G = 560.0
+TEST_C_RATE = 25.0
+TEST_CELL_VOLTAGE_V = 3.7
 
 
 def reference() -> dict[str, Any]:
@@ -40,11 +43,15 @@ def components_of(
 
 
 def complete_components() -> Components:
-    """The T-Motor AT2814 KV900 with the Avistar pack and propeller, plus the two test values."""
+    """The T-Motor AT2814 KV900 with the Avistar pack and propeller, plus the test values nobody publishes."""
     return components_of(
         "tmotor_at2814_kv900",
         "thunder_power_prolitex_4s_6000",
         "apc_13x8e",
-        motor={"efficiency_pct": TEST_EFFICIENCY_PCT},
-        battery={"mass_g": TEST_PACK_MASS_G},
+        motor={"efficiency_pct": TEST_EFFICIENCY_PCT, "max_power_w": TEST_MAX_POWER_W},
+        battery={
+            "mass_g": TEST_PACK_MASS_G,
+            "c_rate": TEST_C_RATE,
+            "cell_voltage_v": TEST_CELL_VOLTAGE_V,
+        },
     )
