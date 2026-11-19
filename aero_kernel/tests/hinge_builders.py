@@ -28,6 +28,7 @@ def wing_document(
     ribs: list[tuple[float, float, float, float]],
     devices: dict[int, dict[str, Any]] | None = None,
     symmetric: bool = True,
+    airfoil: str = NACA,
 ) -> dict[str, Any]:
     """A wing from ribs ``(x, y, z, chord)``; ``devices`` by the index of the rib a segment starts at."""
     return {
@@ -39,7 +40,7 @@ def wing_document(
                 "xyz_le": [x, y, z],
                 "chord": chord,
                 "twist": 0.0,
-                "airfoil": NACA,
+                "airfoil": airfoil,
                 **({"trailing_edge_device": (devices or {})[k]} if k in (devices or {}) else {}),
             }
             for k, (x, y, z, chord) in enumerate(ribs)

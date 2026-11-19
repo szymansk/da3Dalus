@@ -32,6 +32,7 @@ from aero_kernel.solvers.avl_writer import (
 )
 from aero_kernel.tests.hinge_builders import conventional, device, wing_document
 from aero_kernel.tests.mesh_helpers import mesh_surfaces
+from aero_kernel.tests.reference_fleet import FleetMember, reference_document
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
@@ -158,47 +159,86 @@ async def test_the_explicit_halves_sum_to_the_duplicated_control_of_a_hand_writt
 
 
 def thin_airfoil_flap_coefficient(flap_chord_ratio: float) -> float:
-    """``C_h,delta`` per radian of a plain flap, from thin-airfoil theory, referred to ``c^2``.
+    """``C_h`` per radian of a plain flap at zero total lift, from thin-airfoil theory, over ``q c^2``.
 
-    Glauert's loading of a flat plate with a flap of ``E = c_f / c`` deflected trailing edge down
-    by ``delta``: with ``x = c/2 (1 - cos(theta))``, ``A_0 = delta (pi - theta_h) / pi`` and
-    ``A_n = -(2 delta / (n pi)) (sin(n pi) - sin(n theta_h))``, the pressure difference is
-    ``4 [A_0 (1 + cos theta) / sin theta + sum A_n sin(n theta)]`` times ``q``. The moment of the
-    pressure on the flap about the hinge, positive trailing edge down, is
-    ``-q int_{x_h}^{c} Delta C_p (x - x_h) dx``; the coefficient is that over ``q c^2``.
+    Glauert's loading of a flat plate with a flap of ``E = c_f / c``: with ``x = c/2 (1 - cos(theta))``
+    the pressure difference is ``4 q [A_0 (1 + cos theta) / sin theta + sum A_n sin(n theta)]``,
+    ``A_0 = alpha + delta (pi - theta_h) / pi`` and ``A_n = -(2 delta / (n pi)) (sin(n pi) - sin(n
+    theta_h))``. The moment of the pressure on the flap about the hinge, positive trailing edge down,
+    is ``-q int_{x_h}^{c} Delta C_p (x - x_h) dx``. The run holds ``C_L = 0``, so the angle of attack
+    is ``alpha = -(cl_delta / cl_alpha) delta`` with ``cl_delta = 2 (pi - theta_h + sin theta_h)``
+    and ``cl_alpha = 2 pi``: ``C_h = C_h,delta + alpha/delta * C_h,alpha``.
     """
     theta_h = math.acos(1.0 - 2.0 * (1.0 - flap_chord_ratio))
     theta = np.linspace(theta_h, math.pi, 20001)[1:-1]
-    a0 = (math.pi - theta_h) / math.pi
-    loading = a0 * (1.0 + np.cos(theta)) / np.sin(theta)
-    for n in range(1, 60):
-        a_n = -2.0 / (n * math.pi) * (math.sin(n * math.pi) - math.sin(n * theta_h))
-        loading = loading + a_n * np.sin(n * theta)
-    delta_cp = 4.0 * loading
     x = 0.5 * (1.0 - np.cos(theta))
     x_hinge = 0.5 * (1.0 - math.cos(theta_h))
-    integrand = delta_cp * (x - x_hinge) * 0.5 * np.sin(theta)
-    return -float(np.trapezoid(integrand, theta))
+
+    def hinge(loading: "np.ndarray") -> float:
+        return -float(np.trapezoid(4.0 * loading * (x - x_hinge) * 0.5 * np.sin(theta), theta))
+
+    alpha_loading = (1.0 + np.cos(theta)) / np.sin(theta)
+    flap_loading = (math.pi - theta_h) / math.pi * alpha_loading
+    for n in range(1, 60):
+        a_n = -2.0 / (n * math.pi) * (math.sin(n * math.pi) - math.sin(n * theta_h))
+        flap_loading = flap_loading + a_n * np.sin(n * theta)
+    cl_delta = 2.0 * (math.pi - theta_h + math.sin(theta_h))
+    return hinge(flap_loading) - cl_delta / (2.0 * math.pi) * hinge(alpha_loading)
 
 
 async def test_a_flap_on_a_wing_of_high_aspect_ratio_agrees_with_thin_airfoil_theory() -> None:
-    """A full-span flap (E = 0.3) on a wing of aspect ratio 40 is nearly two-dimensional: AVL's
-    C_hinge per degree must be thin-airfoil theory's within 15 % (the vortex lattice's chordwise
-    resolution of the hinge singularity and the remaining finite-span effect)."""
+    """A full-span flap (E = 0.3) on a thin wing of aspect ratio 40 at zero lift is nearly
+    two-dimensional: AVL's C_hinge per radian must be thin-airfoil theory's within 6 %. Measured
+    without AeroSandbox (NACA 0002 formula contour): 1.8 %; with a 12 % thick section AVL's CLAF
+    thickness factor moves it by 13 %, which is why the test wing is thin."""
     chord, half_span, hinge_at = 0.1, 2.0, 0.7
     wing = wing_document(
         "Main wing",
         "main_wing",
         [(0.0, 0.0, 0.0, chord), (0.0, half_span / 2, 0.0, chord), (0.0, half_span, 0.0, chord)],
         {0: device("flap", "flap", hinge_at), 1: device("flap", "flap", hinge_at)},
+        airfoil="naca0002",
     )
     plane = AirplaneGeometry.model_validate({"name": "plank", "wings": {"Main": wing}})
     speed, delta = 20.0, 2.0
-    found = await hinge(plane, "flap", delta, speed=speed)
+    found = await hinge(plane, "flap", delta, cl=0.0, speed=speed)
     q = 0.5 * AIR.density * speed**2
-    # both halves, per unit span: H_total = C_h2D * q * c^2 * b
     span = 2.0 * half_span
     measured = sum(found.moments.values()) / (q * chord**2 * span) / math.radians(delta)
     expected = thin_airfoil_flap_coefficient(1.0 - hinge_at)
     assert expected < 0.0
-    assert math.isclose(measured, expected, rel_tol=0.15), (measured, expected)
+    assert math.isclose(measured, expected, rel_tol=0.06), (measured, expected)
+
+
+# The fleet aircraft whose devices all have a hinge inside the chord, with the roles they carry: the
+# hinge moments of real plan-derived geometries run, and their signs are those of the physics. Values
+# are not pinned: no published hinge moment of an RC aircraft exists to validate them, and a
+# regression golden would pin the section's AeroSandbox version as much as the code.
+FLEET_ROLES = {
+    FleetMember.BRYAN: ("aileron", "elevator"),
+    FleetMember.JAGUAR: ("aileron", "elevator"),
+    FleetMember.RV7: ("aileron", "elevator", "rudder", "flap"),
+}
+COMMANDS = {"aileron": 10.0, "elevator": 5.0, "rudder": 10.0, "flap": 20.0}
+
+
+@pytest.mark.parametrize("member", list(FLEET_ROLES))
+async def test_the_fleet_aircraft_have_hinge_moments_with_the_sign_of_the_physics(
+    member: FleetMember,
+) -> None:
+    """A trailing-edge-down command (+5 deg elevator, +10 deg rudder, +20 deg flap) meets a restoring
+    (negative) moment at the lift of level flight; an aileron pair differs by the moment of its
+    deflection: the right half (trailing edge up) carries more than the left."""
+    plane = AirplaneGeometry.model_validate(reference_document(member))
+    reference = main_wing_properties(plane)
+    speed = 15.0
+    cl = member.mass_kg * 9.80665 / (0.5 * AIR.density * speed**2 * reference.s_ref)
+    for role in FLEET_ROLES[member]:
+        found = await hinge(plane, role, COMMANDS[role], cl=cl, speed=speed)
+        assert all(math.isfinite(v) and v != 0.0 for v in found.moments.values()), (member, role)
+        if role == "aileron":
+            right = next(v for k, v in found.moments.items() if k.endswith("_right"))
+            left = next(v for k, v in found.moments.items() if k.endswith("_left"))
+            assert right > left, (member, role)
+        else:
+            assert all(v < 0.0 for v in found.moments.values()), (member, role, found.moments)
