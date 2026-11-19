@@ -6,6 +6,7 @@ from aero_kernel.solvers.avl_writer import avl_loads_commands, parse_loads_outpu
 
 # Trimmed copies of the files AVL 3.40 wrote for the 0.28 m^2, 1.4 m rectangular test wing at C_L 0.6
 # (aileron_trainer, 3 of the 24 strips; the surface "Main (YDUP)" follows in the real files).
+STDOUT = "  Alpha =   4.80337   CLtot =   0.59564\n"
 STRIPS = """ ---------------------------------------------------------------
  Surface and Strip Forces by surface
 
@@ -61,9 +62,9 @@ def test_the_dialogue_solves_for_the_lift_coefficient_and_writes_both_files() ->
 
 def test_the_first_surface_is_read_and_the_normalisations_are_undone() -> None:
     """Hand values: y = (2Y/Bref) Bref/2, V/q = Vz/(q Sref) Sref, M/q = Mx/(q Bref Sref) Bref Sref."""
-    output = parse_loads_output(STRIPS, SHEAR_MOMENT, b_ref=1.4, s_ref=0.28)
+    output = parse_loads_output(STDOUT, STRIPS, SHEAR_MOMENT, b_ref=1.4, s_ref=0.28)
     assert output is not None
-    assert output.cl == 0.6
+    assert output.cl == 0.59564
     assert output.y_strip == (0.0146, 0.0437, 0.0729)
     assert output.c_cl == (0.1392, 0.1391, 0.1389)
     assert output.y_station == (0.0, 0.0208 * 0.7, 0.7)
@@ -73,7 +74,6 @@ def test_the_first_surface_is_read_and_the_normalisations_are_undone() -> None:
 
 
 def test_a_file_without_its_table_is_not_a_finished_run() -> None:
-    assert parse_loads_output("", SHEAR_MOMENT, b_ref=1.4, s_ref=0.28) is None
-    assert parse_loads_output(STRIPS, "", b_ref=1.4, s_ref=0.28) is None
-    no_cl = SHEAR_MOMENT.replace("CLtot", "CLxxx")
-    assert parse_loads_output(STRIPS, no_cl, b_ref=1.4, s_ref=0.28) is None
+    assert parse_loads_output(STDOUT, "", SHEAR_MOMENT, b_ref=1.4, s_ref=0.28) is None
+    assert parse_loads_output(STDOUT, STRIPS, "", b_ref=1.4, s_ref=0.28) is None
+    assert parse_loads_output("", STRIPS, SHEAR_MOMENT, b_ref=1.4, s_ref=0.28) is None

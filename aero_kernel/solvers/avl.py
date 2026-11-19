@@ -759,7 +759,7 @@ class AvlAdapter(SolverAdapter):
             LOADS_FILES,
         )
         strips, shear_moment = (files.get(name, "") for name in LOADS_FILES)
-        output = parse_loads_output(strips, shear_moment, reference.b_ref, reference.s_ref)
+        output = parse_loads_output(stdout, strips, shear_moment, reference.b_ref, reference.s_ref)
         if output is None:
             msg = "the vortex lattice run did not complete (no strip forces in the output)"
             logger.error(_FAILED_RUN_LOG, msg, stdout[-500:])

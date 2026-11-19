@@ -502,20 +502,25 @@ def _first_shear_table(text: str, b_ref: float, s_ref: float) -> tuple[list[floa
 
 
 def parse_loads_output(
-    strips: str, shear_moment: str, b_ref: float, s_ref: float
+    stdout: str, strips: str, shear_moment: str, b_ref: float, s_ref: float
 ) -> LoadsOutput | None:
-    """Read the first surface of the strip-force and shear-moment files.
+    """Read ``CLtot`` of the run and the first surface of the strip-force and shear-moment files.
+
+    ``CLtot`` comes from the run's own output (five decimals); the shear-moment file prints it with
+    three.
 
     Args:
+        stdout: The text AVL printed for the run.
         strips: The text of the ``FS`` file.
         shear_moment: The text of the ``VM`` file.
         b_ref: The reference span ``B_ref`` of the run in m.
         s_ref: The reference area ``S_ref`` of the run in m^2.
 
     Returns:
-        The values, or ``None`` if a file is missing a table or ``CLtot`` (the run did not complete).
+        The values, or ``None`` if a file is missing a table or the output its ``CLtot`` (the run did
+        not complete).
     """
-    cl = _first(shear_moment, "CLtot")
+    cl = _first(stdout, "CLtot")
     forces = _first_strip_table(strips)
     table = _first_shear_table(shear_moment, b_ref, s_ref)
     if cl is None or forces is None or table is None:

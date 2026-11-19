@@ -71,15 +71,36 @@ async def test_the_load_of_the_half_wing_is_half_the_weight_and_the_curves_agree
     assert all(a > b for a, b in zip(v_y.y, v_y.y[1:], strict=False))  # shear falls to the tip
 
 
+def untwisted_wing(foil: str) -> AirplaneGeometry:
+    """The 1.4 m span, 0.2 m chord test wing of the trainer, without a device, with a given section."""
+    sections = [
+        {"xyz_le": [0.0, y, 0.0], "chord": 0.2, "twist": 0.0, "airfoil": foil}
+        for y in (0.0, 0.4, 0.7)
+    ]
+    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
+    return AirplaneGeometry.model_validate(
+        {"name": "wing", "xyz_ref": [0.05, 0.0, 0.0], "wings": {"Main": wing}}
+    )
+
+
 async def test_a_downward_load_mirrors_the_upward_one_on_a_symmetric_section() -> None:
-    up, down = await asyncio.gather(loads(aileron_trainer(), 1.0), loads(aileron_trainer(), -1.0))
+    """Measured 0.043310 (m^3) per unit C_L at C_L = +0.7 and -0.7: identical."""
+    wing = untwisted_wing("naca0012")
+    up, down = await asyncio.gather(loads(wing, 1.0), loads(wing, -1.0))
     assert math.isclose(down["m_y"].y[0], -up["m_y"].y[0], rel_tol=1e-3)
     assert math.isclose(down["l_y"].y[5], -up["l_y"].y[5], rel_tol=1e-3)
 
 
-async def test_the_load_follows_the_load_factor_linearly() -> None:
+async def test_the_load_scales_with_the_load_factor_only_approximately_as_the_entry_declares() -> (
+    None
+):
+    """The spanload shape of AVL changes with the angle of attack: on this wing the root moment per
+    unit C_L falls by 3.6 % from C_L 0.60 (n = 1) to 1.79 (n = 3) (a symmetric section: 6.5 % from
+    0.7 to 2.1). The entry declares linear scaling an approximation; this pins its size here. C_L 1.8
+    is beyond a real section's C_L,max and only shows the trend."""
     one, three = await asyncio.gather(loads(aileron_trainer(), 1.0), loads(aileron_trainer(), 3.0))
-    assert math.isclose(three["m_y"].y[0], 3.0 * one["m_y"].y[0], rel_tol=2e-3)
+    ratio = three["m_y"].y[0] / (3.0 * one["m_y"].y[0])
+    assert 0.93 < ratio < 0.97
 
 
 def vlm_half_wing(airplane: AirplaneGeometry, cl_total: float) -> tuple[float, float]:

@@ -27,6 +27,7 @@ for key in ("fs", "vm"):
     name = re.search(rf"^{{key}} (\\S+)$", commands, re.MULTILINE).group(1)
     if key in config:
         pathlib.Path(name).write_text(config[key])
+print(" CLtot = 0.60000")
 sys.exit(0)
 """
 TRIMMED_CL = 0.6
