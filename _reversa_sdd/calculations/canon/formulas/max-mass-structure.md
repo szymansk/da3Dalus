@@ -38,13 +38,9 @@ above 1 g (`n_lim`, class bands) is evaluation (A10).
 
 **Validity in the RC/UAV regime (ADR 0028).** Regime-independent: `n = L/W` is a definition, and its inversion contains no flow physics; Lennon (Ch. 21) describes the load factor of models the same way, as the vector sum of weight and centripetal force in g. It inherits the linear-scaling approximation of [[spar-break-load-factor]]: at `n_break,+·m` the 1 g flight point lies at a different `C_L`, so on a twisted wing the spanload shape, and with it `n_break`, is not exactly mass-invariant [no source].
 
-## Implementations (1)
+## Implementations (0)
 
-| node | claimed | verified | deviation |
-|---|---|---|---|
-| `aero_kernel/formulas/max_mass_structure.py` | EXACT | 🟢 | `n_break,+ · m`, a product of the two inputs, nothing else. The chain below it is not yet complete: its input `break-load-factor-positive` has no implementation (`spar-break-load-factor`, #1398), so the quantity is `not_implemented` in a request until it has (#1398) |
-
-No register node is mapped to this entry.
+None in aero_kernel yet; no register node is mapped to this entry.
 
 ## Approval
 

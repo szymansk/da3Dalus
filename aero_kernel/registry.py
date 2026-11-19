@@ -14,7 +14,7 @@ from typing import Literal, TypeVar
 
 from aero_kernel.canon.model import DEFAULT_NAMESPACE, CanonModel, Check, Formula
 from aero_kernel.errors import IDENTIFIER_REGEX, NAMESPACE_REGEX, SLUG_REGEX
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ __all__ = [
     "formula",
     "postcondition",
     "precondition",
+    "relation",
 ]
 
 
@@ -38,12 +39,15 @@ class CheckResult(BaseModel):
     Attributes:
         state: ``held``, ``violated`` or ``unchecked``.
         message: What was found, for the warning or error the engine builds.
+        detail: Structured values the warning or error carries beside the check's id (where it
+            failed, e.g. the mix of a curve).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     state: Literal["held", "violated", "unchecked"]
     message: str = Field(min_length=1)
+    detail: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 # Loosely typed until the engine unit defines ``Context`` and tightens this alias (ch. 8.12).
@@ -52,6 +56,7 @@ class CheckResult(BaseModel):
 FormulaFunction = Callable[..., Coroutine[object, object, Mapping[str, object]]]
 _FormulaT = TypeVar("_FormulaT", bound=FormulaFunction)
 _CheckT = TypeVar("_CheckT", bound=Callable[..., CheckResult])
+_RelationT = TypeVar("_RelationT", bound=Callable[..., object])
 CheckKind = Literal["pre", "post"]
 
 _SLUG_PATTERN = re.compile(rf"(?:(?P<namespace>{NAMESPACE_REGEX}):)?(?P<slug>{SLUG_REGEX})")
@@ -153,6 +158,7 @@ class Registry:
         """Create an empty registry."""
         self._implementations: dict[str, Implementation] = {}
         self._checks: dict[tuple[str, CheckKind], dict[str, Callable[..., CheckResult]]] = {}
+        self._relations: dict[str, Callable[..., object]] = {}
         self._frozen = False
 
     @property
@@ -212,6 +218,42 @@ class Registry:
             return func
 
         return register
+
+    def relation(self, slug: str) -> Callable[[_RelationT], _RelationT]:
+        """Register the decorated module-level function as the embeddable relation of a formula.
+
+        The relation is the formula's computation as a plain function over parameter names, so the
+        formula's own coroutine and every embedder call one implementation (ch. 8.5, 8.12, ADR 0022).
+
+        Args:
+            slug: Formula slug; bare means the ``calc`` namespace.
+
+        Returns:
+            The decorator; it returns the function unchanged.
+
+        Raises:
+            RegistryError: If the slug is malformed.
+        """
+        self._ensure_open()
+        qualified = _qualify(slug)
+
+        def register(func: _RelationT) -> _RelationT:
+            self._ensure_open()
+            if inspect.iscoroutinefunction(func):
+                msg = f"relation of {qualified} must be a plain function, not a coroutine"
+                raise RegistryError(msg)
+            if qualified in self._relations:
+                msg = f"formula {qualified} already has a relation"
+                raise RegistryError(msg)
+            self._relations[qualified] = func
+            logger.debug("registered relation %s", qualified)
+            return func
+
+        return register
+
+    def relation_of(self, slug: str) -> Callable[..., object] | None:
+        """Look the embeddable relation of a formula up, or ``None`` if it registered none."""
+        return self._relations.get(_qualify(slug))
 
     def slugs(self) -> frozenset[str]:
         """Return the qualified slugs of every formula with any registration."""
@@ -367,5 +409,6 @@ DEFAULT_REGISTRY = Registry()
 """The registry ``aero_kernel.formulas`` fills at import and then freezes."""
 
 formula = DEFAULT_REGISTRY.formula
+relation = DEFAULT_REGISTRY.relation
 precondition = DEFAULT_REGISTRY.precondition
 postcondition = DEFAULT_REGISTRY.postcondition

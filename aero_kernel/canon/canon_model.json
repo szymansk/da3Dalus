@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:0a0d964f4be45c6487c1af1ee1b53e213da4e450514d42aabf673cc12484125e",
+  "content_hash": "sha256:a2bd6591e1b6a5bd5ddd6754a31c24ce6a9f28240e51ce9eb3ee05fbc291839f",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -53,10 +53,38 @@
           "unit": "1",
           "value": 0.0002
         },
+        "avl_roll_reference_deflection": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection: the one aileron command at which AVL's roll is run; AVL is linear in the deflection (amake.f:1184-1187), so the deflection a target needs is the target scaled by this run.",
+          "source": "any value gives the same answer in a linear model; 5 deg keeps p'b/2V of the fleet's ailerons (0.07 at BRYAN) inside AVL's range of 0.10 (avl_doc.txt:121-141) and well above its five-decimal print",
+          "unit": "deg",
+          "value": 5.0
+        },
         "avl_roll_refinement_tolerance": {
           "basis": "decision",
           "guards": "Roll rate: the relative disagreement of the declared and the refined AVL mesh above which the roll rate is declared not converged.",
           "source": "maintainer, #1211 D8: fixed before any measurement; the agreement asked of the independent template reference",
+          "unit": "1",
+          "value": 0.01
+        },
+        "butterfly_mix_steps": {
+          "basis": "numerical",
+          "guards": "Butterfly: the crow mix s in [0, 1] is sampled in this many equal steps (one more sample than steps, both ends included); each sample is one stall solve and one glide read. s_max is interpolated linearly between the two samples that bracket it.",
+          "source": "resolution of a sampled curve, not a physical quantity: a tenth of full crow is the finest setting a flap knob or mixer is set by hand; the interpolation error of s_max is measured in the evidence of butterfly-approach",
+          "unit": "1",
+          "value": 10.0
+        },
+        "endurance_speed_ratio": {
+          "basis": "numerical",
+          "guards": "Greatest endurance and greatest range: the ratio of neighbouring speeds of the scan that starts at the stall speed and ends where the drive train cannot hold the speed (thrust demand ratio above 1, or no balance on the propeller table). The optimum is then refined inside the two cells around the best scan speed.",
+          "source": "a search resolution, no physical claim: the battery power of level flight is a smooth curve with one minimum, so a ten-percent cell isolates it, and each cell costs one level-flight solve (about 0.9 s on the Avistar Elite, measured gh-1415); a finer scan only costs time",
+          "unit": "1",
+          "value": 1.1
+        },
+        "endurance_speed_tolerance": {
+          "basis": "numerical",
+          "guards": "Greatest endurance and greatest range: the relative width of the speed interval at which the golden-section refinement stops; the optimal speed is then known to this fraction of itself.",
+          "source": "a search resolution: at a minimum the battery power (and its quotient with the speed) changes with the square of the speed error, so a one-percent speed error moves the optimum value by a much smaller fraction (second order; checked against a brute-force scan in gh-1415). No domain threshold",
           "unit": "1",
           "value": 0.01
         },
@@ -130,6 +158,20 @@
           "unit": "1",
           "value": 1e-16
         },
+        "opt_level_lift_tolerance": {
+          "basis": "numerical",
+          "guards": "Parabolic polar fit: the relative difference between the lift AeroBuildup returns at a level-flight point and the weight m g, at which the angle of attack of that point is accepted (the angle is refined by secant steps from the sweep's linear interpolation).",
+          "source": "the lift balance of every other optimisation of the kernel is solved by IPOPT to its default tolerance of 1e-8 on the scaled constraint (opt_probe_tolerance, 1e-6 leaves two decades); a fit point whose lift misses the weight by one part in a million moves its C_L by the same fraction, far below the scatter of the polar",
+          "unit": "1",
+          "value": 1e-06
+        },
+        "opt_level_max_steps": {
+          "basis": "numerical",
+          "guards": "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance.",
+          "source": "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one",
+          "unit": "1",
+          "value": 20.0
+        },
         "opt_peak_tolerance": {
           "basis": "numerical",
           "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled first peak by this much; both are samples of one curve, so it only absorbs numerical noise.",
@@ -144,12 +186,96 @@
           "unit": "1",
           "value": 1e-06
         },
+        "opt_roll_max_refinements": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the number of refinement steps after which the search for the command ends without having reached the target (not_converged).",
+          "source": "termination of the refinement only: the Illinois regula falsi converges superlinearly on a smooth bracketed root, so a handful of steps reach the target tolerance; 40 is far beyond that and bounds a non-smooth roll rate",
+          "unit": "1",
+          "value": 40.0
+        },
+        "opt_roll_search_limit": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the command at which the upward search ends without having found the target or the maximum (not_converged).",
+          "source": "termination of the search only: tau * delta is an angle shift of a plain flap and has no meaning beyond a right angle; the canon sets no range for a deflection (D6, 2026-10-14)",
+          "unit": "deg",
+          "value": 90.0
+        },
+        "opt_roll_search_step": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the step of the upward search of the command; the maximum roll rate is reported at the resolution of this step.",
+          "source": "a search resolution, no physical claim: fine enough to resolve the saturation of the fleet's ailerons (p(delta) flattens between 20 and 40 deg), coarse enough that a 20 deg target needs four solves",
+          "unit": "deg",
+          "value": 5.0
+        },
+        "opt_roll_target_tolerance": {
+          "basis": "numerical",
+          "guards": "Required aileron deflection, AeroBuildup world: the relative difference between the roll rate at the returned deflection and the target at which the search stops.",
+          "source": "two decades above IPOPT's convergence tolerance of 1e-8 on the scaled constraint (see opt_probe_tolerance), and far below the 23 % spread between the worlds",
+          "unit": "1",
+          "value": 0.0001
+        },
         "opt_zero_span": {
           "basis": "numerical",
-          "guards": "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference.",
+          "guards": "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference. Also the zero test of a slope that is divided by: the secant slope of a level-flight point (lift per degree) and the slope of the parabola fitted to the level-flight polar (a slope this close to zero has no finite Oswald factor).",
           "source": "a margin over floating-point noise of C_L, which is of order 1",
           "unit": "1",
           "value": 1e-15
+        },
+        "powered_climb_scan_floor": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle (best-rate-of-climb, best-angle-of-climb): the start of the climb scan as a fraction of the clean stall speed, used where the stall speed at the steepest angle the thrust holds is below it or the static thrust is unknown (the climb can be steep or vertical and needs little or no lift, so it has no stall speed of its own). Elsewhere the scan starts at v_s (1 - (T_0/mg)^2)^(1/4). Declared with the answer (powered_limit_declared, limit scan_floor).",
+          "source": "chosen by the implementer, no source; a declared implementer's choice that awaits the maintainer's decision. What it rests on: a climb at the angle gamma carries m g cos(gamma) and can be flown down to v_s sqrt(cos gamma), which is zero for a vertical climb, so physics gives no lower bound there; the number is a compromise between the speeds below the stall speed that a climb can fly and the speeds at which the solver adapter's angle sweep still shows a lift peak. Measured on the 36 reference airframes with the Avistar drive train (gh-1419): the floor binds only where the static thrust is above 0.97 of the weight (29 of the 35 airframes with a stall speed), and there the optimum is not at the floor; the best angle of climb is vertical, reported at the upper edge of the vertical speed range (v/v_s 1.4 to 7.8 on the 28 that compute), and the best rate of climb is at v/v_s 1.6 to 7.8. The airframes with a non-vertical best angle, which the floor does not touch, have v_opt/v_s between 0.88 (Avistar Elite) and 1.27 (6 airframes, median 1.12). So 0.5 is below every measured optimum but is not derived from them, and it is not tied to a Reynolds number: one of the 35 airframes (MILES_MAGISTER, floor start 3.5 m/s) ends not_converged because the sweep shows no lift peak at that start (open decision of the maintainer, PR of gh-1419)",
+          "unit": "1",
+          "value": 0.5
+        },
+        "powered_load_factor_tolerance": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle, sustained turn: the relative width of the interval of the load factor at which the bisection of the highest feasible load factor at one airspeed stops.",
+          "source": "the outer search over the speed resolves the speed to 1e-4 of the scan step; the objective at one speed carries the load factor to the first power (omega = g sqrt(n^2 - 1) / V), so a staircase of relative width d in n makes a staircase of about d in the objective; 1e-6 is two orders below the 1e-4 of the outer search, so the objective is smooth at the resolution of the speed search",
+          "unit": "1",
+          "value": 1e-06
+        },
+        "powered_optimum_tolerance": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the width of the interval, relative to the scan step of the airspeed, at which the golden-section search of an optimum over the airspeed stops.",
+          "source": "an optimum is flat: the objective differs from its maximum by the square of the distance, so a speed known to 1e-4 of the scan step (0.2 mm/s at 2 m/s) gives the value to far below the accuracy of the drag; a numerical resolution, no domain threshold",
+          "unit": "1",
+          "value": 0.0001
+        },
+        "powered_root_tolerance": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the force residual, relative to the weight m g, at which a root search (Illinois regula falsi) accepts its root.",
+          "source": "at the accuracy of the points the root is made of: each drag comes from a level-flight point whose lift matches its target to opt_level_lift_tolerance (1e-6 of m g), and a force residual below that is noise of the evaluation, not information; one order above it (1e-5 of m g) lets a search terminate on a noisy evaluation, and still places a root of a thrust or drag of a few newtons to about 1e-4 N",
+          "unit": "1",
+          "value": 1e-05
+        },
+        "powered_search_max_steps": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the number of steps after which a root search or a golden-section search ends without having reached its tolerance (not_converged). Termination only.",
+          "source": "termination only: Illinois regula falsi converges superlinearly on a smooth bracketed root and the golden section shrinks the interval by 0.618 per step, so 60 steps reach 1e-12 of the interval; the limit is never reached on a smooth curve and bounds a non-smooth one",
+          "unit": "1",
+          "value": 60.0
+        },
+        "powered_speed_scan_limit": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the speed at which the upward scan ends without a bracket (not_converged). Termination only.",
+          "source": "termination of the scan only: about Mach 0.44, beyond the Mach 0.3 where the incompressible solver stops being exact (Anderson sec. 1.10.3), so every value below it is reported with the Mach notice of the solver adapter and none is cut off by this limit in the RC and UAV regime",
+          "unit": "m/s",
+          "value": 150.0
+        },
+        "powered_speed_scan_step": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle: the step of the upward scan of the airspeed. An optimum or a root is bracketed to this resolution and then refined; two features of the curve closer together than the step can be missed (the entries assume one maximum).",
+          "source": "a search resolution, no physical claim: the thrust and drag curves of the reference fleet vary on a scale of several m/s (the best-rate-of-climb speed of the Avistar lies within a step of 2 m/s of its neighbours), and a finer scan costs one AeroBuildup point per step",
+          "unit": "m/s",
+          "value": 2.0
+        },
+        "powertrain_balance_tolerance": {
+          "basis": "numerical",
+          "guards": "Motor-propeller torque balance: the relative width of the propeller-speed interval at which the bisection stops; the speed is then known to this fraction of itself.",
+          "source": "a numerical margin: far below the table's own resolution (APC rpm blocks 1000 rpm apart, coefficients to four decimals) and far above double-precision noise; it decides when the bisection of a monotone torque balance has converged, no domain threshold",
+          "unit": "1",
+          "value": 1e-09
         }
       },
       "defaults": {
@@ -671,7 +797,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -710,7 +837,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -722,7 +850,14 @@
             "v_x": "calc:best-angle-of-climb-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -747,7 +882,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -786,7 +922,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -798,7 +935,14 @@
             "v_y": "calc:best-rate-of-climb-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -818,6 +962,10 @@
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
                 "mu": "calc:dynamic-viscosity",
+                "n_load": {
+                  "const": 1.0,
+                  "source": "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"
+                },
                 "rho": "calc:air-density",
                 "v_app": "calc:approach-speed"
               },
@@ -845,6 +993,7 @@
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
             "mu": "calc:dynamic-viscosity",
+            "n_load": null,
             "rho": "calc:air-density",
             "v_app": "calc:approach-speed"
           },
@@ -864,7 +1013,20 @@
               "parameter": "v_s0_curve"
             }
           ],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "approach_speed_positive",
+              "on_violation": "error",
+              "parameter": "v_app"
+            },
+            {
+              "applications": null,
+              "id": "crow_aileron_not_negative",
+              "on_violation": "error",
+              "parameter": "delta_a_crow"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [],
@@ -911,12 +1073,18 @@
           "applications": [
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:aileron-deflection",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 1.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -928,12 +1096,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:elevator-deflection-up",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 2.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -945,12 +1119,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:elevator-deflection-down",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 2.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -962,12 +1142,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:rudder-deflection",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 3.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -979,12 +1165,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:flap-deflection-takeoff",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 4.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -996,12 +1188,18 @@
             },
             {
               "bind": {
+                "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
                 "delta": "calc:flap-deflection-landing",
                 "g": "calc:gravity",
                 "m": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
                 "n_load": "calc:load-factor",
                 "rho": "calc:air-density",
+                "role": {
+                  "const": 4.0,
+                  "source": "role code of this entry: 1 aileron, 2 elevator, 3 rudder, 4 flap (Roles by function, below); the application names the role it evaluates"
+                },
                 "v": "calc:flight-speed"
               },
               "given": null,
@@ -1017,12 +1215,15 @@
           "embeds": [],
           "embeds_closure": [],
           "inputs": {
+            "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
             "delta": null,
             "g": "calc:gravity",
             "m": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
             "n_load": "calc:load-factor",
             "rho": "calc:air-density",
+            "role": null,
             "v": "calc:flight-speed"
           },
           "kind": "procedure",
@@ -1134,7 +1335,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -1172,7 +1374,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "procedure",
           "optional": [
@@ -1183,7 +1386,14 @@
             "v_d": "calc:dive-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -1361,7 +1571,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -1375,15 +1586,13 @@
           "cost": "seconds",
           "direction": "analysis",
           "embeds": [
-            "calc:motor-propeller-part-load.default",
-            "calc:stall-speed.clean"
+            "calc:motor-propeller-part-load.default"
           ],
           "embeds_closure": [
             "calc:advance-ratio-from-speed.default",
             "calc:motor-propeller-equilibrium.default",
             "calc:motor-propeller-part-load.default",
             "calc:propeller-table-lookup.default",
-            "calc:stall-speed.clean",
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
@@ -1401,7 +1610,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -1524,7 +1734,14 @@
             "k": "calc:induced-drag-factor"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "oswald_factor_positive",
+              "on_violation": "error",
+              "parameter": "e_osw"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
@@ -1931,7 +2148,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -1969,7 +2187,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -1980,7 +2199,14 @@
             "v_max": "calc:max-level-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -2019,7 +2245,14 @@
             "e_max_probe": "calc:max-lift-to-drag-probe"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "parabola_defined",
+              "on_violation": "error",
+              "parameter": "cd0"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
@@ -2078,7 +2311,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -2118,7 +2352,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -2130,7 +2365,20 @@
             "v_omega": "calc:max-sustained-turn-rate-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "limit_load_factor_above_one",
+              "on_violation": "error",
+              "parameter": "n_lim"
+            },
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -2191,7 +2439,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -2231,7 +2480,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -2243,7 +2493,20 @@
             "v_r": "calc:min-sustained-turn-radius-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "limit_load_factor_above_one",
+              "on_violation": "error",
+              "parameter": "n_lim"
+            },
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -2338,7 +2601,14 @@
             "v_md_probe": "calc:minimum-drag-speed-probe"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "parabola_defined",
+              "on_violation": "error",
+              "parameter": "cd0"
+            }
+          ],
           "tool": "APP",
           "uncertainty": null,
           "variables": [],
@@ -2422,8 +2692,14 @@
           ],
           "cost": "instant",
           "direction": "analysis",
-          "embeds": [],
-          "embeds_closure": [],
+          "embeds": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default"
+          ],
           "inputs": {
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
@@ -2449,7 +2725,9 @@
           "preconditions": [],
           "tool": "APP",
           "uncertainty": null,
-          "variables": [],
+          "variables": [
+            "calc:propeller-speed"
+          ],
           "worlds": []
         },
         "motor-propeller-part-load": {
@@ -2642,11 +2920,13 @@
             {
               "bind": {
                 "components": "calc:components",
-                "j": "calc:advance-ratio"
+                "j": "calc:advance-ratio",
+                "n_prop": "calc:propeller-speed"
               },
               "given": null,
               "id": "default",
               "produce": {
+                "c_p": null,
                 "c_t": "calc:thrust-coefficient"
               },
               "when": null
@@ -2658,11 +2938,13 @@
           "embeds_closure": [],
           "inputs": {
             "components": "calc:components",
-            "j": "calc:advance-ratio"
+            "j": "calc:advance-ratio",
+            "n_prop": "calc:propeller-speed"
           },
           "kind": "procedure",
           "optional": [],
           "outputs": {
+            "c_p": null,
             "c_t": "calc:thrust-coefficient"
           },
           "postconditions": [],
@@ -2853,8 +3135,14 @@
           "preconditions": [
             {
               "applications": null,
-              "id": "small_glide_angle",
-              "on_violation": "warning",
+              "id": "lift_coefficient_positive",
+              "on_violation": "error",
+              "parameter": "cl"
+            },
+            {
+              "applications": null,
+              "id": "drag_coefficient_positive",
+              "on_violation": "error",
               "parameter": "cd"
             }
           ],
@@ -2904,7 +3192,20 @@
             "v_y": "calc:spanwise-shear-force"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "flight_speed_positive",
+              "on_violation": "error",
+              "parameter": "v"
+            },
+            {
+              "applications": null,
+              "id": "air_density_positive",
+              "on_violation": "error",
+              "parameter": "rho"
+            }
+          ],
           "tool": "AVL",
           "uncertainty": null,
           "variables": [],
@@ -3712,6 +4013,7 @@
       },
       "quantities": {
         "advance-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3729,6 +4031,7 @@
           "unit": "1"
         },
         "aileron-deflection": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3748,6 +4051,7 @@
           "unit": "deg"
         },
         "aileron-deflection-required-approach": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3765,6 +4069,7 @@
           "unit": "deg"
         },
         "aileron-deflection-required-cruise": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3782,6 +4087,7 @@
           "unit": "deg"
         },
         "air-density": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3799,6 +4105,7 @@
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": [
@@ -3820,6 +4127,7 @@
           "unit": "kg"
         },
         "airplane": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3839,6 +4147,7 @@
           "unit": "1"
         },
         "airplane-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3856,6 +4165,7 @@
           "unit": "1"
         },
         "airplane-takeoff": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3873,6 +4183,7 @@
           "unit": "1"
         },
         "alpha-break": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3890,6 +4201,7 @@
           "unit": "deg"
         },
         "altitude": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3910,6 +4222,7 @@
           "unit": "m"
         },
         "angle-of-attack": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3929,6 +4242,7 @@
           "unit": "deg"
         },
         "angle-of-attack-best-glide": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3946,6 +4260,7 @@
           "unit": "deg"
         },
         "angle-of-attack-minimum-sink": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3963,6 +4278,7 @@
           "unit": "deg"
         },
         "angle-of-attack-stall": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3980,6 +4296,7 @@
           "unit": "deg"
         },
         "approach-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -3997,6 +4314,7 @@
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4017,6 +4335,7 @@
           "unit": "1"
         },
         "aspect-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4034,6 +4353,7 @@
           "unit": "1"
         },
         "battery-c-rate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4053,6 +4373,7 @@
           "unit": "1/h"
         },
         "battery-capacity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4074,6 +4395,7 @@
           "unit": "Wh"
         },
         "battery-charge-capacity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4093,6 +4415,7 @@
           "unit": "mAh"
         },
         "battery-current": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4110,6 +4433,7 @@
           "unit": "A"
         },
         "battery-current-allowed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4130,6 +4454,7 @@
           "unit": "A"
         },
         "battery-energy-required": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4147,6 +4472,7 @@
           "unit": "Wh"
         },
         "battery-mass": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4166,6 +4492,7 @@
           "unit": "kg"
         },
         "battery-power": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4183,6 +4510,7 @@
           "unit": "W"
         },
         "battery-specific-energy": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4193,7 +4521,7 @@
           "group": null,
           "module": "construction",
           "point": null,
-          "positive": null,
+          "positive": true,
           "role": "input",
           "stage": null,
           "symbol": "E_star",
@@ -4202,6 +4530,7 @@
           "unit": "Wh/kg"
         },
         "battery-voltage": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4222,6 +4551,7 @@
           "unit": "V"
         },
         "best-angle-of-climb-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4239,6 +4569,7 @@
           "unit": "m/s"
         },
         "best-rate-of-climb-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4256,6 +4587,7 @@
           "unit": "m/s"
         },
         "break-load-factor-negative": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4273,6 +4605,7 @@
           "unit": "1"
         },
         "break-load-factor-positive": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4290,6 +4623,7 @@
           "unit": "1"
         },
         "butterfly-approach-speed-curve": {
+          "abscissa": "crow-mix",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4307,6 +4641,7 @@
           "unit": "m/s"
         },
         "butterfly-glide-angle-curve": {
+          "abscissa": "crow-mix",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4324,6 +4659,7 @@
           "unit": "deg"
         },
         "butterfly-max-mix": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4341,6 +4677,7 @@
           "unit": "1"
         },
         "butterfly-stall-speed-curve": {
+          "abscissa": "crow-mix",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4358,6 +4695,7 @@
           "unit": "m/s"
         },
         "cell-voltage-nominal": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4379,6 +4717,7 @@
           "unit": "V"
         },
         "centre-of-gravity-design": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4396,6 +4735,7 @@
           "unit": "m"
         },
         "centre-of-gravity-measured": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4415,6 +4755,7 @@
           "unit": "m"
         },
         "cg-envelope-over-mass": {
+          "abscissa": "aircraft-mass",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4432,6 +4773,7 @@
           "unit": "m"
         },
         "climb-rate-over-mass": {
+          "abscissa": "aircraft-mass",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4449,6 +4791,7 @@
           "unit": "m/s"
         },
         "components": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4470,6 +4813,7 @@
           "unit": "1"
         },
         "crow-aileron-deflection": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4487,6 +4831,7 @@
           "unit": "deg"
         },
         "crow-flap-deflection": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4503,7 +4848,26 @@
           "uncertainty": null,
           "unit": "deg"
         },
+        "crow-mix": {
+          "abscissa": null,
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": null,
+          "group": null,
+          "module": "control-deflections",
+          "point": null,
+          "positive": null,
+          "role": "input",
+          "stage": null,
+          "symbol": "s",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "1"
+        },
         "cruise-speed-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4523,6 +4887,7 @@
           "unit": "m/s"
         },
         "dihedral-effect-app": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4540,6 +4905,7 @@
           "unit": "1/rad"
         },
         "dihedral-effect-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4557,6 +4923,7 @@
           "unit": "1/rad"
         },
         "dihedral-effect-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4574,6 +4941,7 @@
           "unit": "1/rad"
         },
         "dive-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4591,6 +4959,7 @@
           "unit": "m/s"
         },
         "drag-coefficient-parabolic": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4608,6 +4977,7 @@
           "unit": "1"
         },
         "drag-force": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4625,6 +4995,7 @@
           "unit": "N"
         },
         "dynamic-pressure": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4642,6 +5013,7 @@
           "unit": "Pa"
         },
         "dynamic-viscosity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4659,6 +5031,7 @@
           "unit": "Pa*s"
         },
         "elevator-deflection-down": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4678,6 +5051,7 @@
           "unit": "deg"
         },
         "elevator-deflection-up": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4697,6 +5071,7 @@
           "unit": "deg"
         },
         "endurance-at-cruise-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4714,6 +5089,7 @@
           "unit": "s"
         },
         "endurance-estimate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4731,6 +5107,7 @@
           "unit": "s"
         },
         "flap-deflection-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4750,6 +5127,7 @@
           "unit": "deg"
         },
         "flap-deflection-takeoff": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4769,6 +5147,7 @@
           "unit": "deg"
         },
         "flight-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4788,6 +5167,7 @@
           "unit": "m/s"
         },
         "gravity": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4807,6 +5187,7 @@
           "unit": "m/s^2"
         },
         "hinge-moment": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4824,6 +5205,7 @@
           "unit": "N*m"
         },
         "horizontal-tail-arm": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4841,6 +5223,7 @@
           "unit": "m"
         },
         "horizontal-tail-volume": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4858,6 +5241,7 @@
           "unit": "1"
         },
         "induced-drag-factor": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4875,6 +5259,7 @@
           "unit": "1"
         },
         "inverted-max-lift-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4892,6 +5277,7 @@
           "unit": "1"
         },
         "lift-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4909,6 +5295,7 @@
           "unit": "1"
         },
         "lift-coefficient-best-glide": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4926,6 +5313,7 @@
           "unit": "1"
         },
         "lift-coefficient-minimum-sink": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4943,6 +5331,7 @@
           "unit": "1"
         },
         "lift-curve-slope-best-glide": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4960,6 +5349,7 @@
           "unit": "1/rad"
         },
         "lift-curve-slope-minimum-sink": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4977,6 +5367,7 @@
           "unit": "1/rad"
         },
         "lift-force": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -4994,6 +5385,7 @@
           "unit": "N"
         },
         "lift-to-drag-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5011,6 +5403,7 @@
           "unit": "1"
         },
         "limit-load-factor": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5030,6 +5423,7 @@
           "unit": "1"
         },
         "load-factor": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5049,6 +5443,7 @@
           "unit": "1"
         },
         "maneuvering-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5066,6 +5461,7 @@
           "unit": "m/s"
         },
         "max-climb-angle": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5083,6 +5479,7 @@
           "unit": "deg"
         },
         "max-endurance": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5100,6 +5497,7 @@
           "unit": "s"
         },
         "max-level-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5117,6 +5515,7 @@
           "unit": "m/s"
         },
         "max-lift-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5134,6 +5533,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5151,6 +5551,7 @@
           "unit": "1"
         },
         "max-lift-coefficient-takeoff": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5168,6 +5569,7 @@
           "unit": "1"
         },
         "max-lift-to-drag-probe": {
+          "abscissa": null,
           "at_most": null,
           "checks": "max-lift-to-drag-ratio",
           "consistency": null,
@@ -5185,6 +5587,7 @@
           "unit": "1"
         },
         "max-lift-to-drag-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5202,6 +5605,7 @@
           "unit": "1"
         },
         "max-mass-level-flight": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5219,6 +5623,7 @@
           "unit": "kg"
         },
         "max-mass-lift-off": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5236,6 +5641,7 @@
           "unit": "kg"
         },
         "max-mass-structure": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5253,6 +5659,7 @@
           "unit": "kg"
         },
         "max-range": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5270,6 +5677,7 @@
           "unit": "m"
         },
         "max-rate-of-climb": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5287,6 +5695,7 @@
           "unit": "m/s"
         },
         "max-sustained-turn-rate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5304,6 +5713,7 @@
           "unit": "deg/s"
         },
         "max-sustained-turn-rate-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5321,6 +5731,7 @@
           "unit": "m/s"
         },
         "mean-aerodynamic-chord": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5338,6 +5749,7 @@
           "unit": "m"
         },
         "mean-geometric-chord": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5355,6 +5767,7 @@
           "unit": "m"
         },
         "min-sustained-turn-radius": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5372,6 +5785,7 @@
           "unit": "m"
         },
         "min-sustained-turn-radius-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5389,6 +5803,7 @@
           "unit": "m/s"
         },
         "minimum-drag-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5406,6 +5821,7 @@
           "unit": "m/s"
         },
         "minimum-drag-speed-probe": {
+          "abscissa": null,
           "at_most": null,
           "checks": "minimum-drag-speed",
           "consistency": null,
@@ -5423,6 +5839,7 @@
           "unit": "m/s"
         },
         "minimum-sink-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5440,6 +5857,7 @@
           "unit": "m/s"
         },
         "motor-circuit-resistance": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5459,6 +5877,7 @@
           "unit": "ohm"
         },
         "motor-efficiency": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5479,6 +5898,7 @@
           "unit": "1"
         },
         "motor-max-power": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5498,6 +5918,7 @@
           "unit": "W"
         },
         "motor-no-load-current": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5517,6 +5938,7 @@
           "unit": "A"
         },
         "motor-torque": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5534,6 +5956,7 @@
           "unit": "N*m"
         },
         "motor-voltage-constant": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5553,6 +5976,7 @@
           "unit": "rpm/V"
         },
         "neutral-point": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5570,6 +5994,7 @@
           "unit": "m"
         },
         "oswald-efficiency": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5587,6 +6012,7 @@
           "unit": "1"
         },
         "polar-stall": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5604,6 +6030,7 @@
           "unit": "1"
         },
         "predicted-battery-mass": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5621,6 +6048,7 @@
           "unit": "kg"
         },
         "propeller-diameter": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5640,6 +6068,7 @@
           "unit": "m"
         },
         "propeller-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5657,6 +6086,7 @@
           "unit": "1/s"
         },
         "propeller-speed-part-load": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5674,6 +6104,7 @@
           "unit": "1/s"
         },
         "range-at-cruise-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5691,6 +6122,7 @@
           "unit": "m"
         },
         "range-estimate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5708,6 +6140,7 @@
           "unit": "m"
         },
         "roll-due-to-yaw-rate-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5725,6 +6158,7 @@
           "unit": "1/rad"
         },
         "roll-rate-approach": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5742,6 +6176,7 @@
           "unit": "deg/s"
         },
         "roll-rate-cruise": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5759,6 +6194,7 @@
           "unit": "deg/s"
         },
         "roll-rate-nondimensional-approach": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5776,6 +6212,7 @@
           "unit": "1"
         },
         "roll-rate-target-approach": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5793,6 +6230,7 @@
           "unit": "deg/s"
         },
         "roll-rate-target-cruise": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5812,6 +6250,7 @@
           "unit": "deg/s"
         },
         "rudder-deflection": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5831,6 +6270,7 @@
           "unit": "deg"
         },
         "rudder-roll-authority-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5848,6 +6288,7 @@
           "unit": "1"
         },
         "rudder-roll-authority-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5865,6 +6306,7 @@
           "unit": "1"
         },
         "sink-rate": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5882,6 +6324,7 @@
           "unit": "m/s"
         },
         "spanwise-bending-moment": {
+          "abscissa": "wing-station",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5899,6 +6342,7 @@
           "unit": "N*m"
         },
         "spanwise-lift-distribution": {
+          "abscissa": "wing-station",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5916,6 +6360,7 @@
           "unit": "N/m"
         },
         "spanwise-shear-force": {
+          "abscissa": "wing-station",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5933,6 +6378,7 @@
           "unit": "N"
         },
         "speed-of-sound": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5950,6 +6396,7 @@
           "unit": "m/s"
         },
         "speed-range-over-mass": {
+          "abscissa": "aircraft-mass",
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5967,6 +6414,7 @@
           "unit": "m/s"
         },
         "spiral-criterion-app": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -5984,6 +6432,7 @@
           "unit": "1/rad^2"
         },
         "spiral-criterion-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6001,6 +6450,7 @@
           "unit": "1/rad^2"
         },
         "spiral-criterion-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6018,6 +6468,7 @@
           "unit": "1/rad^2"
         },
         "spiral-doubling-time-app": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6035,6 +6486,7 @@
           "unit": "s"
         },
         "spiral-doubling-time-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6052,6 +6504,7 @@
           "unit": "s"
         },
         "spiral-doubling-time-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6069,6 +6522,7 @@
           "unit": "s"
         },
         "spiral-parameter-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6086,6 +6540,7 @@
           "unit": "1"
         },
         "spiral-parameter-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6103,6 +6558,7 @@
           "unit": "1"
         },
         "stall-break-fraction": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6122,6 +6578,7 @@
           "unit": "1"
         },
         "stall-break-width": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6139,6 +6596,7 @@
           "unit": "deg"
         },
         "stall-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6149,13 +6607,14 @@
           "point": "stall",
           "positive": null,
           "role": "output",
-          "stage": null,
+          "stage": "operating-points",
           "symbol": "V_S",
           "type": "scalar",
           "uncertainty": null,
           "unit": "m/s"
         },
         "stall-speed-landing": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6173,6 +6632,7 @@
           "unit": "m/s"
         },
         "stall-speed-takeoff": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6190,6 +6650,7 @@
           "unit": "m/s"
         },
         "stall-speed-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6207,6 +6668,7 @@
           "unit": "m/s"
         },
         "static-margin-measured": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6224,6 +6686,7 @@
           "unit": "1"
         },
         "static-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6243,6 +6706,7 @@
           "unit": "1"
         },
         "static-thrust-to-weight": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6260,6 +6724,7 @@
           "unit": "1"
         },
         "tail-efficiency": {
+          "abscissa": null,
           "at_most": 1.0,
           "checks": null,
           "consistency": null,
@@ -6279,6 +6744,7 @@
           "unit": "1"
         },
         "takeoff-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6296,6 +6762,7 @@
           "unit": "m/s"
         },
         "takeoff-speed-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6316,6 +6783,7 @@
           "unit": "1"
         },
         "thrust-at-airspeed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6333,6 +6801,7 @@
           "unit": "N"
         },
         "thrust-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6350,6 +6819,7 @@
           "unit": "1"
         },
         "thrust-demand-ratio": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6367,6 +6837,7 @@
           "unit": "1"
         },
         "touchdown-speed": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6384,6 +6855,7 @@
           "unit": "m/s"
         },
         "touchdown-speed-margin-target": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6403,6 +6875,7 @@
           "unit": "1"
         },
         "turn-sideslip": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6420,6 +6893,7 @@
           "unit": "deg"
         },
         "turn-sideslip-gain": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6437,6 +6911,7 @@
           "unit": "1"
         },
         "vertical-tail-arm": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6454,6 +6929,7 @@
           "unit": "m"
         },
         "vertical-tail-volume": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6471,6 +6947,7 @@
           "unit": "1"
         },
         "weathercock-stability-app": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6488,6 +6965,7 @@
           "unit": "1/rad"
         },
         "weathercock-stability-md": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6505,6 +6983,7 @@
           "unit": "1/rad"
         },
         "weathercock-stability-mp": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6522,6 +7001,7 @@
           "unit": "1/rad"
         },
         "weight": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6539,6 +7019,7 @@
           "unit": "N"
         },
         "wing-loading": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6556,6 +7037,7 @@
           "unit": "N/m^2"
         },
         "wing-loading-limit-stall": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6573,6 +7055,7 @@
           "unit": "N/m^2"
         },
         "wing-reference-area": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6590,6 +7073,7 @@
           "unit": "m^2"
         },
         "wing-span": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6606,7 +7090,26 @@
           "uncertainty": null,
           "unit": "m"
         },
+        "wing-station": {
+          "abscissa": null,
+          "at_most": null,
+          "checks": null,
+          "consistency": null,
+          "data": null,
+          "discipline": null,
+          "group": null,
+          "module": "construction",
+          "point": null,
+          "positive": null,
+          "role": "input",
+          "stage": null,
+          "symbol": "y_st",
+          "type": "scalar",
+          "uncertainty": null,
+          "unit": "m"
+        },
         "zero-lift-angle-best-glide": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6624,6 +7127,7 @@
           "unit": "deg"
         },
         "zero-lift-angle-minimum-sink": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6641,6 +7145,7 @@
           "unit": "deg"
         },
         "zero-lift-drag-coefficient": {
+          "abscissa": null,
           "at_most": null,
           "checks": null,
           "consistency": null,
@@ -6841,6 +7346,82 @@
           "on_violation": "warning",
           "parameters": {}
         },
+        "components-efficiency-at-most": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "value_above_maximum"
+          ],
+          "criterion": "efficiency_pct / 100, where efficiency_pct is present, is at most max_efficiency: an efficiency is a fraction of the input power. (The parameter is a fraction because the unit vocabulary has no percent; the catalogue field is in percent.)",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {
+            "max_efficiency": {
+              "at_most": null,
+              "basis": "definition",
+              "positive": null,
+              "regime": "regime-independent",
+              "source": "definition: a fraction of the input power cannot exceed 1 (100 %)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1.0
+            }
+          }
+        },
+        "components-finite-numbers": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "non_finite_number"
+          ],
+          "criterion": "Every number of the pushed components is finite (no NaN, no infinity).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-positive-numbers": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "non_positive_value"
+          ],
+          "criterion": "kv_rpm_per_volt, max_power_w, rm_ohm, efficiency_pct, capacity_mah, cells, mass_g, c_rate, cell_voltage_v and diameter_in, where present, are greater than zero; io_no_load_a, where present, is not negative (an ideal motor has no no-load current). An absent field is no violation: absence survives the push.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-propeller-table-ordered": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "table_not_increasing"
+          ],
+          "criterion": "The rpm of the blocks is greater than zero and strictly increasing; within a block j is not negative and strictly increasing. The lookup interpolates linearly and needs a bracketing pair; an unordered axis has none.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "components-propeller-table-shape": {
+          "applies_to": {
+            "formula": null,
+            "quantity": "components"
+          },
+          "codes": [
+            "malformed_table"
+          ],
+          "criterion": "The propeller table has at least one rpm block, and every block has at least two points, with j, ct and cp of the same length. A table that cannot be interpolated is refused at the input, not discovered inside the lookup.",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
         "control-surface-needs-device": {
           "applies_to": {
             "formula": null,
@@ -6990,6 +7571,36 @@
             }
           }
         },
+        "hinge-moment-device-layout": {
+          "applies_to": {
+            "formula": "control-surface-hinge-moments",
+            "quantity": null
+          },
+          "codes": [
+            "missing_hinge",
+            "hinge_outside_chord",
+            "hinge_device_on_unmirrored_surface",
+            "duplicate_surface_key",
+            "no_control_in_role"
+          ],
+          "criterion": "A control surface whose hinge moment is read has a hinge position (missing_hinge: the tool's default hinge is never used) strictly inside the chord (hinge_outside_chord: at 0 the whole section turns, which is a stabilator, not covered; at 1 nothing turns, a zero-chord control has no hinge moment); sits on a mirrored surface if the surface spreads sideways (hinge_device_on_unmirrored_surface); has a key <wing>.<device>[_left|_right] that no other surface has (duplicate_surface_key); and a role that the conditions allow is carried by at least one segment (no_control_in_role).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
+        "hinge-moment-line-continuity": {
+          "applies_to": {
+            "formula": "control-surface-hinge-moments",
+            "quantity": null
+          },
+          "codes": [
+            "hinge_line_discontinuous"
+          ],
+          "criterion": "Adjacent segments of one control surface have the same hinge position at the rib they meet at: AVL holds one hinge position per section. Two positions closer than the join_tolerance of the rule hinge-line-continuity are one rib (the one threshold, not a second one).",
+          "kind": "input",
+          "on_violation": "error",
+          "parameters": {}
+        },
         "isa-altitude-range": {
           "applies_to": {
             "formula": "air-density-isa",
@@ -7085,6 +7696,74 @@
               "status": "adopted",
               "unit": "1",
               "value": 1.0
+            }
+          }
+        },
+        "parabolic-polar-fit": {
+          "applies_to": {
+            "formula": "parabolic-polar-fit",
+            "quantity": null
+          },
+          "codes": [
+            "polar_fit_nonphysical",
+            "polar_fit_residual",
+            "empty_fit_window",
+            "invalid_fit_points",
+            "defective_solver_drag"
+          ],
+          "criterion": "The parabola C_D = C_D0 + C_L^2 / (pi AR e) is fitted by least squares to fit_points points of the solver polar along level flight, equally spaced in C_L between max(window_cl_floor, window_lower_fraction C_L,max) and window_upper_fraction C_L,max (each point at the speed where it flies level, L = m g, so at its own Reynolds number). Two results are not physically meaningful and are declared with the warning polar_fit_nonphysical (severity error) while the fitted numbers are still returned: a fitted C_D0 at or below zero, and an Oswald factor at or below zero (a slope k at or below zero) or above max_oswald. A slope of zero (to the configuration value opt_zero_span) has no finite Oswald factor and is an error of the formula, as are a solver drag at or below zero at any point (defective_solver_drag, checked before anything is divided by it), an empty window (empty_fit_window: the upper end is not above the lower end) and a fit_points that is no integer of at least 3 (invalid_fit_points). Every fit also declares its residual in the notice polar_fit_residual (RMS and largest deviation of the solver C_D from the parabola, C_L range and number of points). Raising fit_points is the way to a better fit; no threshold on the residual exists (BR-16: resolution goes up, thresholds never move).",
+          "kind": "tool",
+          "on_violation": "warning",
+          "parameters": {
+            "fit_points": {
+              "at_most": null,
+              "basis": "convention",
+              "positive": true,
+              "regime": "regime-independent: a sampling density; the points carry their own Reynolds numbers",
+              "source": "a resolution, not a physical limit: the number of level-flight points of the fit window. Chosen from the convergence measurement of #1401: fitted C_D0 and e at 12, 48 and 96 points on BRYAN (C_D0 0.02672, 0.02698, 0.02702; e 0.7596, 0.7645, 0.7653) and on the Ultra Stick 120 (C_D0 0.00972, 0.01000, 0.01005; e 0.7253, 0.7341, 0.7356): 48 points are within 0.2 % of 96 in e and 0.5 % in C_D0 on both, 12 are 0.7 to 1.4 % off in e; a point costs about 0.7 s of AeroBuildup on BRYAN. Raising it is the remedy for a poor fit (BR-16)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 48.0
+            },
+            "max_oswald": {
+              "at_most": null,
+              "basis": "definition",
+              "positive": true,
+              "regime": "regime-independent: a bound from lifting-line theory; the lower BR-16 gate e > 0.4 was an empirical band and is not adopted (the canon computes, it does not judge)",
+              "source": "Anderson, Fundamentals of Aerodynamics 6e, 5.3.3: the span efficiency of a planar wing is at most 1 (the elliptical lift distribution has the least induced drag), and the Oswald factor of the complete airplane (6.7.2) absorbs further drag, so it is at most the span efficiency. An airplane polar with e above 1 is not physically meaningful (the app's gate unphysical_e_oswald, BR-16, used the same upper bound)",
+              "status": "adopted",
+              "unit": "1",
+              "value": 1.0
+            },
+            "window_cl_floor": {
+              "at_most": null,
+              "basis": "convention",
+              "positive": true,
+              "regime": "RC/UAV: the window is a fraction of the airplane's own C_L,max, so it follows the section's Reynolds-dependent C_L,max (Anderson 4.3, Lennon Ch. 1-3: NACA 0012 C_L,max falls from 1.55 to 0.83 at low model Re) instead of a fixed C_L",
+              "source": "BR-16 of the aero-analysis requirements (gh-672): the fit window CL in [max(0.10, 0.10 CL_max), 0.85 CL_max], the app's window since gh-672; no published source for the numbers. The lower end keeps the fit away from the C_L ~ 0 region where the polar of a cambered airplane departs from the parabola, the upper end away from the stall",
+              "status": "adopted",
+              "unit": "1",
+              "value": 0.1
+            },
+            "window_lower_fraction": {
+              "at_most": 1.0,
+              "basis": "convention",
+              "positive": true,
+              "regime": "see window_cl_floor",
+              "source": "BR-16 (gh-672), see window_cl_floor",
+              "status": "adopted",
+              "unit": "1",
+              "value": 0.1
+            },
+            "window_upper_fraction": {
+              "at_most": 1.0,
+              "basis": "convention",
+              "positive": true,
+              "regime": "see window_cl_floor; 0.85 C_L,max stays clear of the laminar-separation and stall region of the section polar, where the polar is the least parabolic",
+              "source": "BR-16 (gh-672), see window_cl_floor",
+              "status": "adopted",
+              "unit": "1",
+              "value": 0.85
             }
           }
         },
@@ -7209,6 +7888,30 @@
           "kind": "input",
           "on_violation": "error",
           "parameters": {}
+        },
+        "small-glide-angle": {
+          "applies_to": {
+            "formula": "sink-rate",
+            "quantity": null
+          },
+          "codes": [
+            "small_glide_angle"
+          ],
+          "criterion": "The sink rate w = V C_D / C_L is the small-glide-angle form of the steady glide: it drops cos(gamma) from sin(gamma) = tan(gamma) cos(gamma) and takes L = W instead of W cos(gamma). Both overstate the sink rate, by about 3 percent together at C_L/C_D = 5 and about 8 percent at 3. A point whose glide ratio C_L/C_D is below min_glide_ratio is reported with the warning small_glide_angle (the value is still returned, never dropped); the detail holds the glide ratio, the glide angle and the two exact overstatements.",
+          "kind": "tool",
+          "on_violation": "warning",
+          "parameters": {
+            "min_glide_ratio": {
+              "at_most": null,
+              "basis": "convention",
+              "positive": true,
+              "regime": "RC/UAV: E of 10-20 for gliders and 3-6 for a draggy sport model at low Re (the entry), so the floor falls inside the range of powered models; the exact overstatements are in the detail of every warning, so a caller can read the size of the error rather than rely on the floor",
+              "source": "the entry sink-rate (draft value E ~ 5, 'fixed at approval'): at E = 5 the two dropped factors overstate the sink rate by 2.0 % and 1.0 % (exact trigonometry, tabulated in the entry). The value is a draft of the entry that the maintainer fixes at approval; no published source states a floor. The RC-Network Wiki 'Gleitzahl' gives only tan(gamma) = 1/E",
+              "status": "adopted",
+              "unit": "1",
+              "value": 5.0
+            }
+          }
         },
         "spinner-merge": {
           "applies_to": {

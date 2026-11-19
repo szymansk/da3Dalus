@@ -30,10 +30,13 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
+  v_s: stall-speed
 outputs: {v_d: dive-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: stall_speed_usable, parameter: v_s, on_violation: error}
 ---
 
 # Dive speed — terminal speed in a vertical dive
@@ -46,11 +49,13 @@ solve for V, alpha, n_prop:   L(V, alpha) = 0
                              motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]] · [[stall-speed]]
 
 **Kind: a procedure — a closure by a prescribed value**, not an extremum: the speed at which a vertical dive stops accelerating. Lift is zero, so drag balances weight plus thrust. It is a property of the aircraft and an **upper bound**, and a model reaches it from ordinary flying height.
 
 **Replaces** `V_D = 1.4 · V_max` (2026-10-01, maintainer). The factor came from FAR 23.335, where 1.40 / 1.50 / 1.55 multiply the design **cruise** speed of a certified aircraft, not `V_max`; neither Scholz/Sadraey nor the RC sources give any factor for models (ADR 0023). With the thrust table the full-throttle and the power-off dive give the same number only if the terminal speed lies beyond the propeller's zero-thrust advance ratio, where the thrust coefficient is clamped at 0; below it the full-throttle thrust adds to the weight and the full-throttle dive is the faster one.
+
+**Remark on the clamp (#1414).** The kernel does not clamp: the propeller table is not extrapolated (decision of #1411), so a dive that leaves the table before its terminal speed is the declared failure `outside_propeller_table` naming the speed at which it left. On the Avistar Elite (APC 13x8E, table to about 42 m/s) the power-off dive speed is 109.8 m/s, Mach 0.32, so the formula has no value for any aircraft measured. Whether the thrust beyond the zero-thrust advance ratio is to be taken as 0 (this sentence) is the maintainer's decision; it would be one rule in `PoweredFlight.thrust` and one notice, and the value would lie above Mach 0.3.
 
 **On the safe side, declared.** The drag of a windmilling or stopped propeller is not modelled (`Q-PT-10`), so the real dive speed is lower. The result says so (ADR 0020).
 
@@ -64,13 +69,20 @@ solve for V, alpha, n_prop:   L(V, alpha) = 0
 
 **Termination.** A failed solve returns no value (ADR 0020).
 
-## Implementations (3)
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A solver failure from `v_s` upward still ends the formula. The scan starts at `v_s`; the root `D = m g + T` lies above it only if `C_D0 / C_L,max < 1 + T(v_s) / (m g)` (the zero-lift drag at `v_s` is `C_D0 / C_L,max` of the weight). Where the surplus `D - m g - T` is already positive at `v_s` the terminal speed of the dive lies below the clean stall speed, where the scan does not look: the declared failure `no_feasible_speed` says so. The input `v_s` has the precondition `stall_speed_usable` (positive, finite, at most the scan limit).
+
+## Implementations (4)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | [[fe_dive_factor]] | DEVIATES | 🟢 | Ist: `V_D = 1.4 · V_max` — the factor this entry replaced on 2026-10-01 |
 | [[fe_v_dive]] | DEVIATES | 🟢 | Ist: `1.4 · V_max`, with `V_max` a 28 m/s default |
 | [[kpi_dive_speed]] | DEVIATES | 🟢 | Ist: `1.4 · V_max` |
+| `aero_kernel/formulas/dive_speed.py` | DEVIATES | 🟢 | the root of `D(V, alpha_0) - m g - T_full(V)` (the drag at load factor 0, i.e. at the zero-lift angle), scan and Illinois. **Measured limit:** on the Avistar Elite and every other fleet aircraft tried with its drive train (16 airframes) the dive lies far beyond the advance-ratio range of the propeller table (about 42 m/s against a power-off dive speed of 110 m/s), so the value is the declared failure `outside_propeller_table`; see #1414. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+**Implementation note (gh-1414).** Warnings forwarded: those of the answer's zero-lift point and the route notice. The kernel does not extrapolate the propeller table, so the full-throttle dive speed is not available for any airplane whose dive speed lies beyond the table's advance-ratio range.
+
+**Implementation remark on method and assumptions (#1414).** Solved as the root of `D(V, alpha_0) - m g - T(V)` (scan, Illinois). Assumption: the surplus rises through zero once (drag grows with `V^2`, thrust falls). A dive that leaves the propeller table before the root is `outside_propeller_table` naming the speed.
 
 ## Approval
 

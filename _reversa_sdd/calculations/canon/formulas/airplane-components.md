@@ -75,9 +75,15 @@ changes the mass, the thrust and with them everything downstream. The graph now 
 
 **Ist ≠ Soll (#1235).** Ist: the app reads the capacity in Wh and applies one drive-train efficiency of about 0.52 (η_prop 0.65 × η_motor 0.85 × η_ESC 0.94, all assumptions) in `app/services/endurance_service.py`. Soll: the app **must follow** this entry and the part-load chain and drop that constant (#1238).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/airplane_components.py` | DEVIATES | 🟢 | a plain read of the pushed `components` (`AircraftInput.components`, schema_version 2 since gh-1411, catalogue field names and units) with the unit conversions and the three derivations of the canonical form; tool `KAT`, no solver. **Deviation:** only complete data is read. If any catalogue field the formula needs is absent (`rm_ohm`, `io_no_load_a`, `efficiency_pct`, `max_power_w`, `mass_g`, `c_rate`, `cell_voltage_v`, or a whole part), the formula fails with `missing_input` naming every absent field (`components.<part>.<field>`) — it returns none of its thirteen quantities. The optional outputs (route A without `R_m`, `I_0 = 0` with a notice), the chemistry table, the default cell voltage and the default efficiency of the canonical form are not implemented (#1397) |
+
+No register node is mapped to this entry.
+
+Remark (gh-1397, undated): implemented for **complete data only**. Not yet implemented, awaiting the maintainer's decision (gh-1397): (1) an *absent* value as a declared outcome of one quantity — route A without `R_m`, `I_0` absent (BR-PT15), `mass_g`, `c_rate`, `max_power_w` absent — which needs a way for a formula to return an absent output and changes the status order of the engine (ARCHITECTURE ch. 8.13); proposed: `optional:` also names output parameters, an absent output is `not_applicable` with reason `not_given`, an `optional` reader receives `None`; (2) the chemistry-to-cell-voltage table (lipo 3.7, lihv 3.8, life 3.2, li_ion 3.6, nimh 1.2 V), which has no place in `defaults.yaml` (one value per slug), proposed as a small keyed canon table; (3) the declared fallbacks of `cell-voltage-nominal` and `motor-efficiency` (a formula cannot read the defaults of its own derived outputs). Until then a battery or motor without a published value is a `missing_input` of this formula, never a filled-in value. The `chemistry` field is part of the pushed contract and is not read yet.
 
 ## Approval
 

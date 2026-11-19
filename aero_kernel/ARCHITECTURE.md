@@ -136,6 +136,7 @@ aero_kernel/
   engine.py         walks the graph; takes an optional node cache (none = stateless)
   runtime.py        executor: worker slots with model affinity, concurrency limit, cancellation
   geometry.py       AirplaneGeometry and its sub-models (format mirror, mm → m at parse, ch. 8.11)
+  components.py     Components, the fitted motor, battery and propeller, pushed (ch. 8.11)
   schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Timing, TimeBounds, Polar,
                     KernelWarning, Provenance (Pydantic, extra="forbid"); re-exports AirplaneGeometry and KernelError
   canon/            canon_model.json         the interpreted canon (versioned, committed)
@@ -243,10 +244,11 @@ nothing failed. The category enum holds only the eight rows above.
   only `asyncio.CancelledError` and Pydantic `ValidationError` when the caller builds a malformed
   `AircraftInput` or `ComputeRequest` (wrong types, unknown fields). Physically inadmissible but well-typed
   input is not an exception: it is returned in `ComputeResult.input_errors`.
+- **Not converged** (`not_converged`): `avl_roll_branch_inconsistent` (AVL's Newton iteration landed on a spurious branch).
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
-- **Refused layouts and tool limits** (`unsupported_configuration`): `unsupported_layout` — the neutral point
+- **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, or no balance found on the rpm grid points the table covers; never extrapolated, `detail`: the point and the range, gh-1411); `propeller_windmilling` — the propeller is driven by the airstream (negative `C_P` on the covered points) and the torque balance of a driven propeller has no solution (gh-1411); `no_thrust_at_full_throttle` — the drive train gives no thrust at full throttle, so the thrust demand ratio is undefined (gh-1411); `no_feasible_speed` — the airplane cannot fly the state of a powered-performance formula at any speed at full throttle: the thrust is below the drag, the wing cannot carry the lift, or the propeller table ends before any speed is feasible (the message says which; gh-1414); `no_level_flight_speed` — no scan speed of `endurance-and-range-optimum` lies inside the domain (level flight at full throttle or less, on the propeller table; `detail`: the stall speed, the Mach-limit speed and the outcome per speed, gh-1415); `non_positive_battery_power` — the drive train draws no power at a speed, so no flight time follows (gh-1415); `unsupported_layout` — the neutral point
   is defined for one `main_wing` with one `horizontal_tail` or `v_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
   declared AVL mesh overflows AVL's vortex array (`detail`: the mesh), never retried on a coarser mesh;
@@ -256,7 +258,13 @@ nothing failed. The category enum holds only the eight rows above.
   (`invalid_input`) — a driven roll device or a deflected flap without `rel_chord_root`, the tool's default hinge is never used;
   `flap_deflections_differ` — deflected flaps at different angles reach AVL, which holds them as one control variable;
   `hinge_line_discontinuous` — two driven segments meet at a rib with different hinge lines (AVL holds one
-  value per section; `detail`: wing key, y).
+  value per section; `detail`: wing key, y); `hinge_device_on_unmirrored_surface` — a control surface sits on
+  a wing that spreads sideways and is not mirrored (the hinge-moment procedure, #1399); `duplicate_surface_key`
+  (`invalid_input`) — two control surfaces have the same key `<wing>.<device>[_left|_right]`;
+  `no_control_in_role` — the role's condition holds but no segment carries a device acting in it (a device on
+  the last rib of a wing spans nothing); `hinge_outside_chord` — a hinge at or beyond an edge of the chord (at the leading edge the whole
+  section would turn, at the trailing edge nothing), where no hinge moment is defined.
+- **The parabolic polar fit (#1401):** `empty_fit_window` and `invalid_fit_points` (`invalid_input`) — the window of `C_L` is empty, or the rule's `fit_points` is no integer of at least 3; `defective_solver_drag` (`not_converged`) — a level-flight point with a solver `C_D` at or below zero, refused before anything is divided by it.
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `warning` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
@@ -334,7 +342,7 @@ Sources:
   unchanged and not declared. Declared only for an admissible input
 - the kernel's drag (`induced_drag_viscous_factor_removed`, `notice`, #1346, ch. 8.8): AeroBuildup's full-scale
   viscous factor `k_e,D0` is taken out of its induced drag on every drag the kernel reads; one per evaluation
-  (evaluate, best glide, minimum sink; not the stall, whose values read lift only — the reader of the published
+  (evaluate, best glide, minimum sink, the level-flight polar of `parabolic-polar-fit`; not the stall, whose values read lift only — the reader of the published
   polar's `C_D` declares it), `detail`: `k_e_d0` and `induced_drag_share_removed`
 - AVL mesh validity (ch. 8.8): `avl_mesh_not_converged` (`warning`; `detail`: both values and meshes) and
   `avl_refinement_unchecked` (`warning`)
@@ -346,9 +354,9 @@ Sources:
   C_L,max is not raised; `detail.flaps`: wing, device, `deflection_deg`), and `avl_flap_linearised`
   (`notice`) from AVL, whose flap rotates the panel normals linearly in the deflection, without separation
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
-- the route an `optional:` parameter selected (ch. 8.5)
+- the route an `optional:` parameter selected (ch. 8.5); route B of the drive train, `powertrain_route_winding_resistance` (`notice`, `detail.route`, gh-1411): the manufacturer's winding resistance balances the torque, ESC and cable resistance are not in it, the nominal pack voltage is used
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
-- active bounds in the optimiser
+- active bounds in the optimiser: `optimum_at_domain_bound` (`warning`, gh-1415): the greatest endurance or range lies on a bound of the speed domain — the stall speed, the lowest speed the level-flight solve converges at, the Mach limit of the regime, or the last speed the drive train holds (`full_throttle`) or the propeller table covers (`propeller_table`); `detail`: `objective`, `bound`, `edge_v_ms`, `v_ms`
 
 The A11 "not validated" marker is the field `QuantityResult.validated`, not a warning.
 
@@ -368,23 +376,35 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
   (`not_applicable`: `condition_not_met`, `not_given` or `depends_on_not_applicable`, ch. 8.5; `skipped`: `long_run_not_included` or
   `depends_on_skipped`; `error`: see `error`)
-- `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13), exactly one when `ok`, neither
-  otherwise. `value` is a float in the quantity's canon unit, or a structured value of the quantity's `type`
-  (ch. 8.12). **v1 returns floats only**; the union widens with the first non-scalar formula, no placeholder
-  type before that (ADR 0021). The `per_control_surface` value (keyed by surface and application, with
-  `application` then `None`) and the handling of duplicate surface keys are specified with the first such
-  formula implementation (ch. 8.5). Numbers are **strict and finite**: `value`, the interval bounds and world
+- `value`, `interval {min, max, worlds{assignment: value}}` (ch. 8.13) **or** `surfaces`, exactly one when `ok`,
+  none otherwise. `value` is a float in the quantity's canon unit. `surfaces` is the value of a
+  `per_control_surface` quantity (`hinge-moment`, #1399): per surface key
+  `<wing>.<device>[_left|_right]`, per application id, a float in the canon unit; the union of the entries of
+  the applicable applications, a surface acting in two roles carries two entries. Its `application` field
+  lists the ids of the applications that contributed, joined by `, `. A request for it resolves to **all**
+  its producing applications (`Resolved.producers`); `value` is not defined for it, and nothing reads it
+  (ch. 8.5). `curve` is the value of a `curve` quantity (gh-1424): `{"x": [...], "y": [...], "x_quantity": "<slug>", "x_unit": "<unit>"}`,
+  `x` strictly rising, `y` in the result's `unit`, `x_quantity` the canon quantity the curve runs over (the
+  quantity's `abscissa:`, a scalar of the canon: the crow mix, the mass, the spanwise station) and `x_unit` its unit. A curve may be
+  empty (a glide angle that does not exist). The field is `null` on every other result, as `value`, `surfaces` and `interval`
+  are where they are empty. An `ok` result carries exactly one of `value`,
+  `interval`, `surfaces` and `curve`, enforced by the model. A curve under more than one method world is `error`
+  with category `not_implemented`, code `uncertain_curve`: a pointwise min/max over worlds is not built until a
+  formula needs it. A curve has one producing application (the importer refuses a second, A7), so there is no
+  union of curves to define. Both interfaces of ch. 8.4 (`compute`, `CachedKernel`) run the same engine and return the curve alike; there is no
+  separate step interface in the kernel, and the app's Expert View passes `QuantityResult` through unchanged. The other non-scalar types (`curve_pair`, `polar`,
+  `airplane`, ...) are still refused as `non_scalar_result`. One rule, one place: `CanonGraph.resolve`. Numbers are **strict and finite**: `value`, the interval bounds and world
   values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf. The same holds inside every free JSON field
   (`detail` of errors and warnings, `solver_settings`): a non-finite number anywhere in the tree is
   rejected — one shared recursive check in `errors.py` — because JSON would silently turn it into `null`
   (ADR 0020).
-- `ok` requires `tool` and `application` (Q3: every value leads back to its application and tool). A **requested** quantity whose `type` is not `scalar` (`polar-stall`,
-  `airplane-landing`, a `curve`) is therefore, per quantity, `error` with category `not_implemented`, code
+- `ok` requires `tool` and `application` (Q3: every value leads back to its application and tool). A **requested** quantity whose `type` is not `scalar`, `per_control_surface` or `curve` (`polar-stall`,
+  `airplane-landing`, a `curve_pair`) is therefore, per quantity, `error` with category `not_implemented`, code
   `non_scalar_result`, decided at request time before anything is computed; the rest of the request is
-  computed. The canon model is not touched: such quantities are requestable by the canon, only the v1
-  result type cannot carry them. **Internal node values are not constrained by this:** the engine passes
+  computed. Such quantities are requestable by the canon, only the v1
+  result type cannot carry them (a `curve` it can, since gh-1424). **Internal node values are not constrained by this:** the engine passes
   polars, configured geometry and curves between nodes as the structured types of ch. 8.12; only what
-  enters a `QuantityResult` is float-only.
+  enters a `QuantityResult` is a float, a per-surface map or a curve.
 - `reason` codes are a closed enum of their own, separate from error codes; `ok` has neither `reason` nor
   `error`, `error` has `error` and no `reason`, the other two have `reason` and no `error`.
 - `tool` and `application`
@@ -489,8 +509,8 @@ write; the miss reports that same time, so a later hit reports what the miss did
   format's millimetre fields and by design does not parse again (`geometry.py`), so it cannot come back from
   JSON unchanged. The node is cheap (a device setting) and runs again; the nodes that read its configured
   airplane are cached, keyed by its dump.
-- a node with an output of a type v1 does not carry (curve, curve pair, per control surface): the engine
-  discards such values (ch. 8.3). Cached types: scalar and polar.
+- a node with an output of a type v1 does not carry (curve pair): the engine
+  discards such values (ch. 8.3). Cached types: scalar, polar, per control surface and curve (stored as `x` and `y`; a stall curve's extra fields are not a result and are not stored; the abscissa comes from the canon on every hit).
 
 **On a hit**, the engine still takes the node's defaults (logged, in `defaults_used`), records the tool
 versions and settings of the node's world in the provenance (they are equal: they are in the key) and
@@ -597,8 +617,19 @@ quantity.
   formula — one tool, one unit — and is the union of the applicable applications' entries; two formulas
   never produce it (ADR 0022). Such a quantity is bound by no application, so no value edge ever has to
   choose a producer: `graph._index_producers` admits the same exception, and a read of a quantity with
-  several producers is a `GraphModelError`. Resolving a requested quantity to all its producers, their
-  closures and the engine's union come with the first `per_control_surface` formula implementation.
+  several producers is a `GraphModelError`. A request resolves it to **all** its producers
+  (`Resolved.producers`, one subtree over their closures, #1399). **The union** (`engine._surfaces_result`):
+  the entries of the applications that are `ok` are merged per surface key, each under its application id;
+  an application that is `not_applicable` adds nothing; a failed application makes the quantity an `error`
+  (the first by the row of the status order, then by application id) and a `skipped` one makes it `skipped`,
+  because a union that silently lacked a role would be narrower than the caller asked for; when no
+  application applies the quantity is `not_applicable` (`condition_not_met`). The own time of the producers
+  is counted as that of one node (the longest for the lower bound, the sum for the upper one). The node
+  cache stores a per-surface output as a JSON object, like any output. **Duplicate surface keys** are
+  refused by the AVL mesh before any run: `invalid_input` / `duplicate_surface_key` (ch. 8.1), the key being
+  `<wing>.<device>[_left|_right]` with the device name derived like the geometry format derives it (name,
+  else label, else role). **An application names its role to the formula by a constant** (`role`: 1 aileron,
+  2 elevator, 3 rudder, 4 flap), because a formula never sees its application.
 - An application has at most two kinds of condition; without either it exists always:
   - `when`: one term of the closed vocabulary over facts of the aircraft geometry (`has_vertical_tail`,
     `has_aileron`, …). The canon `README.md` defines the vocabulary; each term is implemented once in
@@ -836,9 +867,10 @@ caller's responsibility.
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
     `FormulaError`; a dead worker discards its own worker slot (the others and their model functions stay)
     and becomes `internal`. Tested with a stub solver.
+  - **The parabolic polar fit (#1401).** `polar_fit_residual` (`notice`, every fit of `parabolic-polar-fit`; `detail`: `points`, `cl_min`, `cl_max`, `v_min_ms`, `v_max_ms`, `rms`, `max_abs`, `max_relative`), `polar_fit_nonphysical` (`error`: a fitted slope or `C_D0` at or below zero, or an Oswald factor above `max_oswald`; the fitted numbers are returned and declared, never replaced; `detail`: `reasons`, `cd0`, `k`, `e_osw`) and `small_glide_angle` (`warning`, `sink-rate` below the glide-ratio floor of the rule `small-glide-angle`; `detail`: `glide_ratio`, `glide_angle_deg`, `from_tan_for_sin`, `from_lift_equals_weight`, `floor`).
   - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **The lateral chain (#1277).** The static-margin probe and its warnings (`aerobuildup_no_downwash`, `static_margin_probe_disagrees`, `static_margin_probe_sign_disagrees`) are deleted (maintainer 2026-11-05, #1347; reasons in the canon's `STAND.md`). `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
-  - **Spanwise loads (#1398).** `spanwise_loads_scope` (`notice`, on every result of `spanwise-loads`): the loads are those of the right half of the main wing from one AVL solution at `L = n m g`, aerodynamic load only (no inertial relief), pitch untrimmed, controls undeflected, normal force only. The three outputs are `curve` values: the engine type-checks them (`schema.Curve`: strictly rising `x`, one `y` per point, finite) and still does not carry them to a caller (a request for one is `non_scalar_result`); how a curve reaches a result is an open maintainer decision.
+  - **Spanwise loads (#1398).** `spanwise_loads_scope` (`notice`, on every result of `spanwise-loads`): the loads are those of the right half of the main wing from one AVL solution at `L = n m g`, aerodynamic load only (no inertial relief), pitch untrimmed, controls undeflected, normal force only. The three outputs are `curve` results over the spanwise station (gh-1424). No Reynolds or Mach warning is raised for them: the entry's inputs carry neither the viscosity nor the speed of sound (open, maintainer).
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
     the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
     `|p·b/2V| > 0.10`, the documented range of the primer (`warning`). AeroBuildup with a deflected
@@ -895,9 +927,42 @@ caller's responsibility.
     worker in the request (`k_e_d0` of `StallRequest`, `SweepRequest`, `EvaluationRequest`); it is applied
     outside the model function, which therefore needs no new key. The aero tier checks that the canon value is
     AeroSandbox's (`oswalds_efficiency / e_theo` to 1·10⁻⁹) and that AeroBuildup's `D` is `D_profile +
-    D_induced`. Every value that carries the correction — the evaluation, best glide, minimum sink — gets the
+    D_induced`. Every value that carries the correction — the evaluation, best glide, minimum sink, the level-flight polar — gets the
     `notice` `induced_drag_viscous_factor_removed` (ch. 8.2), once per
     evaluation, with `k_e_d0` and `induced_drag_share_removed` (`1 − k_e,D0`) in `detail`.
+  - **Implementation note, powered performance at full throttle (#1414).** The six formulas `max-level-speed`,
+    `dive-speed`, `best-rate-of-climb`, `best-angle-of-climb`, `max-sustained-turn-rate` and
+    `min-sustained-turn-radius` share `formulas/powered_flight.py` (ADR 0022): the thrust at full throttle is
+    `propulsion.full_throttle_thrust` (the composition of the four embedded relations, also used by
+    `static-thrust-to-weight` and `motor-propeller-part-load`), the drag at a lift `n m g` is
+    `OptiAdapter.level_flight_point(..., n_load)` (the one lift-equals-weight solve, now with the load factor:
+    level flight 1, a turn `n`, a climb `cos(gamma)`, a vertical dive 0; a wing that cannot carry the lift before
+    its first C_L peak is `not_converged` with `detail.limit = "wing_lift"`, which the formulas read as the wing
+    limit, a bound and not an error). The entries pose IPOPT problems; the motor-propeller balance is a bisection on
+    the propeller table and cannot enter one, so `alpha` and `n_prop` are eliminated by the two solves and the
+    rest is a one-dimensional search over the speed: an upward scan (`powered_speed_scan_*`), Illinois regula
+    falsi for roots and golden section for maxima (`powered_*` in `config.yaml`). Warnings of the iterates are not
+    forwarded, those of the answer's evaluation are. A bound the optimum lies on is declared with the `notice`
+    `powered_limit_declared` (`detail.limit`: `gamma_90_deg`, `wing`, `thrust`, `structure`); speeds the upward scan
+    skips below the first speed with a value are declared by the `notice` `powered_speeds_skipped` (count, range, reason).
+    An evaluation is a value or an `Unflyable` (`wing`, `thrust`, `table`); only the adapter's `limit = wing_lift` failure
+    is the wing, every other failure (a sweep without a peak, a zero-lift angle outside the sweep) is raised. The end of
+    the propeller table is a bound of the search: an interior optimum is returned, one on the edge is
+    `outside_propeller_table`, not an extrapolation.
+  - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
+    polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
+    `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the
+    angle of attack is read from one alpha sweep at that speed on the branch before the first C_L peak
+    (`alpha_for_lift_coefficient`) and refined by secant steps on AeroBuildup's lift until it equals `m g` to
+    `opt_level_lift_tolerance` (`config.yaml`); a level the lift curve does not reach, a missing peak or a point
+    that does not settle in `LEVEL_MAX_STEPS` is `not_converged`. The drag is `kernel_drag`. The regime warnings
+    are those of the slowest and of the fastest point (Reynolds number and Mach number rise strictly with V in a
+    fixed air state, so the regime bands are met first at one of the two extremes and the two bound every point
+    between them), the drag notice is declared once. A converged point must lie at or below the angle of the
+    sweep's first C_L peak, else `not_converged`; the step limit is `opt_level_max_steps` (`config.yaml`,
+    termination only). The fit itself (least
+    squares in `C_L^2`, residual) is the formula's, in `formulas/parabolic_polar_fit.py`; its window and point
+    count are the parameters of the rule `parabolic-polar-fit`.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
     the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
     extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
@@ -929,6 +994,31 @@ caller's responsibility.
     `avl-binary` and `aerosandbox`. The AVL world adds no regime warning: those come with the
     minimum-drag speed and are inherited. The reference value for BRYAN under these conditions is in
     `scripts/sim_export/crrcsim/AVL_CONVERGENCE.md`.
+  - **The hinge moments** (`avl.hinge_moments`, `avl_hinge.hinge_mesh`, #1399; canon
+    `control-surface-hinge-moments`). One AVL run per role (aileron, elevator, rudder, flap) at the lift
+    coefficient `n m g / (q S_ref)`, no pitch trim, only the surfaces of the role deflected. AVL's `HM`
+    sums every surface that shares a control name, and the image of a `YDUPLICATE` surface keeps the control
+    index (`amake.f:812-822`), so the model differs from the roll's: **every half of every wing is its own
+    explicit `SURFACE`** (a left half runs tip to root, `avl_doc.txt:615-625`), every surface acting in the
+    role is **its own control at gain 1** under an internal name `c01`, `c02`, ... that never leaves the
+    adapter (ADR 0019), and each half carrying a control is split at its hinge line into a front and an aft
+    surface of one `COMPONENT` (Drela's rule 3), the aft one carrying the control, hinge at its own leading
+    edge. A *surface* is a run of adjacent segments of one wing with a device of one name and role; the ends
+    of a run are stations (sine-to-tip on the main wing, the main wing's stations inside the span on a
+    horizontal tail, the strip width of the main wing elsewhere). The fuselages are in the run as round bodies of equal area exactly as in the lateral run (`mesh_bodies`, notice `avl_body_equivalent_round`; its refusals apply). Every wing is meshed, so the downwash of the
+    wing at the tail and the sidewash at the fin act. **Signs:** the control value is the role's command with
+    the sign of its side (aileron: right −, left +; elevator and flap: both +; rudder: right/unmirrored +,
+    left −: a rudder command to the right, trailing edge towards +y on a fin, right panel down and left up
+    on a V-tail), and `HM` is positive for a positive deflection of that surface (trailing edge down on a
+    surface that spreads in y, towards +y on one that stands up; the hinge vector of the image of a mirrored
+    fin is −z). The moment is `q S_ref c_ref Chinge`, with the `S_ref`, `c_ref` the AVL file carries (AVL
+    prints `Chinge` with four significant digits). Declared: `hinge_moment_inviscid_estimate` and
+    `hinge_moment_pitch_untrimmed` (`notice`), and the Reynolds and Mach warnings of ADR 0028 per surface and
+    device (`regime_by_surface`). **No refinement run**: the approved canon entry asks for none; the mesh
+    sensitivity was measured once (#1399, BRYAN, JAGUAR and RV7 with a NACA 0012 stand-in contour): doubling the
+    strips and chordwise vortices changes a hinge moment by 1.5-2.2 % for ailerons and elevators and by
+    3.5-4.1 % for the RV7's flap and rudder, the thin-airfoil comparison of the aero test by 1 %; it is
+    reported in the pull request, not declared at run time.
   - **The steady roll** (`opti.steady_roll`, `avl.steady_roll`, #1211). Both worlds solve the same roll: rotation
     about the stability x axis through the airplane's reference point, the stability-axis rolling moment zero,
     positive to the right.
@@ -944,6 +1034,17 @@ caller's responsibility.
       formula (and `roll-rate-cruise-target`, which shares `steady_roll_rate`, #1382) declares `world_outside_validity` in the `avl` world (`detail`: `p_hat`, `p_deg_s`, `limit`) and
       the interval is the AeroBuildup world alone (ch. 8.13). The adapter's own `warning` warning
       `avl_roll_rate_beyond_range` stays: it is the tool's statement, the exclusion is the canon's decision.
+    - *The inverse, `aileron-deflection-required` (#1400).* The same `steady_roll_rate`, solved for the command.
+      AeroBuildup world: the command is marched upward from 0 in steps of `opt_roll_search_step` (5°) until the roll
+      rate reaches the target (then Illinois regula falsi to `opt_roll_target_tolerance`, relative) or stops
+      increasing (`target_above_method_maximum`, `detail`: `max_roll_rate_deg_s`, `delta_a_deg`, `search_step_deg`: the
+      highest value on the step grid, with `p(0) = 0` assumed, not evaluated); `opt_roll_search_limit` (90°) and `opt_roll_max_refinements` (40) only terminate the search (`not_converged`). Every trial is one IPOPT
+      solve; only the answer's own warnings are reported. AVL world: one run at `avl_roll_reference_deflection`
+      (5°), scaled by AVL's linearity; `world_outside_validity` is decided on the target, `|p̂_target| > 0.10`, and
+      carries the AVL angle (`delta_a_deg`); the adapter's `avl_roll_rate_beyond_range` of the reference run is not
+      forwarded (it describes the reference, not the answer). A reference `p̂` not above `avl_roll_print_floor`
+      (none, noise, reversed device) is `target_above_method_maximum`, as in the AeroBuildup world. A negative
+      target gives the mirrored (negative) command; a zero target needs no solve.
     - *AeroBuildup.* IPOPT over α and the stability-axis rate. The window of α and the start value come from
       one sweep on the airplane **without the roll command** (its configured flaps stay): with the deflection the curve has kinks and its first
       local maximum lies far below the stall (trainer: C_L 0.364 at 1° against a clean peak of 1.233 at 16°),
@@ -1322,8 +1423,32 @@ The canon quantity `airplane` (type `airplane`) is **geometry only**: `AircraftI
 parts are the separate canon input quantity **`components`** (type `components`, S15, on the canon's main
 since `84599128`), bound to `AircraftInput.components`; only the formulas that read parts bind it, so a
 change of parts expires only their subtree (A1). A missing `components` is the ordinary `missing_input` of
-that one quantity (ch. 8.11, 8.13). Its exact field list is defined with the first KAT / APC formula
-implementation, not before (ADR 0021).
+that one quantity (ch. 8.11, 8.13), `input_path` `components`. The field list is defined with the first KAT
+formula, `airplane-components` (gh-1397), `schema_version` 1, and was extended by `propeller-table-lookup` (gh-1411) to `schema_version` 2, in `components.py`; the names and units are the
+catalogue's, a field with `?` may be absent:
+
+```
+Components { schema_version: 1, motor?: Motor, battery?: Battery, propeller?: Propeller }
+Motor      { kv_rpm_per_volt, max_power_w?, io_no_load_a?, rm_ohm?, efficiency_pct? }   # rpm/V, W, A, ohm, %
+Battery    { capacity_mah, cells, mass_g?, c_rate?, cell_voltage_v?, chemistry? }       # mAh, 1, g, 1/h, V, enum
+Propeller  { diameter_in, table?: PropellerTable }                                      # inch
+PropellerTable { blocks: [RpmBlock] }      RpmBlock { rpm, j: [..], ct: [..], cp: [..] }  # rpm, 1, 1, 1
+```
+
+The fields the catalogue requires are required; the others stay optional (absence survives, rule 3). The
+propeller's performance table (APC's PER3 data, every rpm block) came with `propeller-table-lookup` and
+`schema_version` 2: the caller pushes it, the kernel reads no file, and an absent table is `missing_input`
+naming `components.propeller.table`. `validate.py`
+reports a non-finite number, a number <= 0 (the no-load current may be 0) and an efficiency above 100 % at
+`components.<part>.<field>`; an absent field is no finding. The table is checked at the input (rules `components-propeller-table-shape` and `-ordered`): at least one block, at least two points per block with `j`, `ct`, `cp` of one length (`malformed_table`), `rpm` > 0 and strictly increasing, `j` >= 0 and strictly increasing within a block (`table_not_increasing`). The engine carries the type like the geometry
+(`_CARRIED_TYPES`); the components are a direct input of the nodes that read them and enter their cache key by
+their JSON form. A quantity of type `components` in `values` is `not_an_input`.
+
+**An absent catalogue value fails the formula that needs it.** Until the maintainer decides how an *absent
+output* is carried (gh-1397: `optional:` naming outputs, status `not_applicable` / `not_given`), a value the
+formula needs and the components do not carry is a `missing_input` raised by the formula, naming every absent
+`components.<part>.<field>` in the message and in `detail.inputs`; the formula returns none of its quantities
+and substitutes nothing (no chemistry table, no default cell voltage, no default efficiency).
 
 **Binding of canon input quantities to the input:**
 - **Units.** A value is given, and a result returned, in the unit the canon model declares for the
@@ -1529,7 +1654,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   type is a canon decision first, then a type here.
 - **`ctx`** carries: `solvers` (the adapters), `world` (the active world of this formula, if it has
   worlds), `warn(code, message, detail=None)` — the severity follows from the closed warning table, as an
-  error's flags follow from its category — and `embedded(item)` (built with the first embedder). Nothing
+  error's flags follow from its category — and `embedded(item)` (built with the first embedder, `static-thrust-to-weight`, gh-1411: `@relation` and `Context.embedded`). Nothing
   else: no cache, no request, no global.
 - **Formula code is cheap.** It runs on the event loop. Anything heavy goes through an adapter; adapters
   run CPU work in the process pool and AVL as an async subprocess (ch. 8.10).
@@ -1547,7 +1672,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   `x` and returning `held | violated | unchecked` with a message. **Postconditions**,
   `@postcondition("stall-speed", "<check-id>")`, take `x` and the implementation's full return dict `y`
   and return the same three states.
-- **Embedded relations** (ch. 8.5; built with the first embedder). The module of an embedded formula exposes its relation as a plain,
+- **Embedded relations** (ch. 8.5; built with the first embedder, `static-thrust-to-weight`, gh-1411: `@relation` and `Context.embedded`). The module of an embedded formula exposes its relation as a plain,
   module-level function over parameter names (numpy- and CasADi-compatible where an OPT formula embeds
   it); its `@formula` coroutine and every embedder call that one function, so there is one implementation
   per relation (ADR 0022). For an embedded optimisation the function is its problem (built into a given
@@ -1559,6 +1684,21 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   the embedder passes the solved values to the handle's `check(...)`. The engine **records** the items each
   run requests through `ctx.embedded`; the embedding tests assert that they equal the formula's `embeds`
   (S7: no static source scan).
+  **What is built (gh-1411, the first embedders `static-thrust-to-weight` and `motor-propeller-part-load`)
+  and what is deferred.** Built: `@relation(slug)` registers the formula's plain module-level function
+  (`Registry.relation_of`); the engine gives each node's `Context` the registered relations of the
+  formula's canon `embeds` (`Engine._relations_of`), by embed item; `Context.embedded(item)` returns that
+  **raw relation function** and the **context itself records** each distinct item it hands out
+  (`Context.embedded_requests`; the engine does not record); an item the formula does not embed is a
+  `KeyError` (a defect of the formula). The embedding tests assert that the recorded items equal the entry's
+  `embeds`. The engine hands out the relations of the formula's `embeds_closure`, not only the direct embeds (gh-1415: an embedder of `motor-propeller-part-load` is handed the relations that one reaches through the same context), so the recorded requests of such an embedder equal its closure. The embedder passes **all** of the relation's inputs (the constants and bindings of the
+  embedded application are not applied by the handle: the default applications of the propulsion
+  relations have none), and a relation that reaches another relation takes the context as its first
+  parameter and goes through `ctx.embedded` too (`equilibrium`). The embedders never import a relation
+  function to call it: typed accessors (`formulas/propulsion.py`) only give the handed-out item its
+  signature. Deferred, because no embedded formula needs them yet: handing out the relation with
+  application constants and bindings applied, running the embedded formula's postconditions through the
+  handle (`check(...)`), and the optimisation form of an embedded relation.
 - **Registration** is by decorator at import of `aero_kernel.formulas`.
   - **Shape.** `registry.Registry` holds, per qualified formula slug, one implementation, its embeddable
     relation if any, and per `(slug, kind, check id)` one check function. The decorators `formula`,
@@ -1635,8 +1775,8 @@ sampled grid and no `-static` chain.
   uncertain formulas in a quantity's subtree (A11 rule 3); a node outside an uncertain formula's subtree
   runs once and is shared by all assignments.
 - The interval of a quantity is min and max over its assignments; `worlds` lists every assignment with its
-  value. Never interval arithmetic. For `curve` and `curve_pair` min and max are pointwise over the swept
-  variable, which must be the same grid in every world (else `internal`); for `airplane` and `polar` there is
+  value. Never interval arithmetic. For `curve` and `curve_pair` min and max would be pointwise over the swept
+  variable, which must be the same grid in every world (else `internal`); not built (gh-1424): a requested curve under more than one world is `not_implemented` (`uncertain_curve`) until a curve formula has worlds; for `airplane` and `polar` there is
   no min/max, only `worlds`.
 - Worlds follow **value edges**, not `embeds:`. A formula that reads an uncertain quantity (`mass-envelope`
   reads `neutral-point`) is in its subtree and runs once per assignment like any node; all its outputs
@@ -1694,8 +1834,7 @@ Every error propagates the same way, `missing_input` included: the quantity that
 directly gets `missing_input`, its dependents `upstream_failed` with the cause in `detail.causes`. A
 predecessor counts only if the node actually reads it; an unused output of a multi-output formula does not
 propagate. `Subtree.propagate` is the one home of rows 2, 4 and 7; the engine applies the order. How the
-statuses of several producers of one `per_control_surface` quantity combine is specified with the first
-such formula implementation (ch. 8.5).
+statuses of several producers of one `per_control_surface` quantity combine is specified in ch. 8.5 (the union).
 
 ### 8.14 Logging
 
@@ -1789,7 +1928,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
 | Q29 | Target not set | `roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
-| Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `notice` warning naming the route, no `missing_input` |
+| Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `notice` warning naming the route, no `missing_input` (gh-1411 implements the first half only: route A is not built, an absent `r_m` or `i_0` is `missing_input`, see the entries' Implementations) |
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `INFO` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`notice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding (engine half built with the first embedder) | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
@@ -1798,6 +1937,8 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q36 | Embedded postcondition and variables (engine half built with the first embedder) | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
 | Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
 | Q38 | Non-scalar quantity requested in v1 | requesting `polar-stall` together with `stall-speed`: `polar-stall` is `error`, `not_implemented`, code `non_scalar_result`, no formula called for it; `stall-speed` computes and its formula, which also returns the polar internally, runs once |
+| Q39 | Crow that never reaches the approach speed (interim, #1402) | `butterfly-max-mix` is `error`, category `unsupported_configuration`, code `unsupported_configuration`, the message says "fully mixable": the stall speed stays below the approach speed flown without crow up to `s = 1`, so there is no largest mix; the result is in `detail` (`mix`, `v_s0_m_s`, `v_app_m_s`, `glide_angle_deg`), the hint says it is a result and not a failure. The kernel has no mechanism for a declared absent output yet; the maintainer decides (Soll, #1402). An approach speed at or below `V_S0(0)` gives `s_max = 0` and an empty glide-angle curve; a mix off the first `C_L` peak is named even where there is no crossing; the glide angle at `V_app(s)` is read from `OptiAdapter.level_flight_point` (`atan2(C_D, C_L)`), the kernel's one lift-equals-weight solve |
+| Q40 | Curve requested (gh-1424) | requesting a `curve` quantity: `ok` with `curve: {x, y}` and no `value`; under more than one method world: `error`, `not_implemented`, code `uncertain_curve` (`test_curve_result.py`) |
 
 ## 11. Risks and technical debt
 
@@ -1828,6 +1969,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | **Cost class** | `instant` / `seconds` / `minutes` | Kostenklasse |
 | **Operating point** | mass, altitude, speed and controls of one flight condition (O10); one call evaluates one (ch. 8.13) | Betriebspunkt |
 | **Parameter** | the name of a formula input or output inside the formula; applications bind it to a quantity | — |
+| **Curve** | the result of a `curve` quantity: samples `x` (strictly rising) and `y` in the quantity's unit, one per point of the swept variable (ch. 8.3) | Kurve |
 | **World assignment** | one world chosen per uncertain formula of a subtree (ch. 8.13) | — |
 
 ---
@@ -1847,49 +1989,49 @@ model (part of `IMPORT_REPORT.md`).
 
 | Formula | kind | tool | shape | in → out | applications | preconditions | worlds | cost class | v1 |
 |---|---|---|---|---|---|---|---|---|---|
-| `advance-ratio-from-speed` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
+| `advance-ratio-from-speed` | law | APP | law | 3 → 1 | 1 | – | – | instant | later · implemented (#1411) |
 | `aerobuildup-evaluation` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain · implemented (#1334) |
-| `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
+| `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain · implemented (#1400) |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
-| `airplane-components` | procedure | KAT | law | 1 → 11 | 1 | – | – | instant | probe |
+| `airplane-components` | procedure | KAT | law | 1 → 13 | 1 | – | – | instant | probe · implemented for complete data (#1397) |
 | `airplane-configuration` | procedure | GEO | law | 2 → 1 | 2 | – | – | instant | core chain |
 | `airplane-geometry` | procedure | GEO | law | 1 → 3 | 1 | – | – | instant | core chain |
 | `aspect-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
-| `battery-mass-from-capacity` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
-| `best-angle-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | later |
-| `best-rate-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | later |
-| `butterfly-approach` | optimization | OPT | law | 6 → 4 | 1 | – | – | seconds | later |
+| `battery-mass-from-capacity` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1411) |
+| `best-angle-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
+| `best-rate-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
+| `butterfly-approach` | optimization | OPT | law | 10 → 4 | 1 | – | – | seconds | later · implemented (#1402) |
 | `cg-for-target-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `cruise-target-performance` | procedure | OPT | law | 14 → 2 | 1 | – | – | seconds | later |
-| `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
-| `drag-polar` | law | APP | approximation | 3 → 1 | 1 | – | – | instant | later |
+| `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
+| `drag-polar` | law | APP | approximation | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `dynamic-pressure` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `endurance-and-range` | procedure | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
 | `endurance-and-range-optimum` | optimization | OPT | law | 15 → 2 | 1 | – | – | seconds | later |
-| `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
+| `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `lateral-static-stability-app` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
 | `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | core chain · implemented (#1334) |
 | `maneuvering-speed` | optimization | OPT | law | 7 → 1 | 1 | – | – | seconds | later · implemented (#1381) |
 | `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
-| `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
-| `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
-| `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented (#1398) |
+| `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe · implemented for complete data, route B (#1414) |
+| `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
+| `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `roll-rate-cruise-target` | procedure | OPT | law | 9 → 1 | 1 | – | A11 | seconds | later · implemented (#1382) |
 | `roll-rate` | procedure | OPT | law | 5 → 2 | 1 | – | A11 | seconds | core chain |
-| `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
+| `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
 | `mean-geometric-chord` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
-| `min-sustained-turn-radius` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
-| `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later |
+| `min-sustained-turn-radius` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
+| `minimum-drag-speed-closed-form` | law | APP | approximation | 4 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `minimum-drag-speed` | optimization | OPT | route | 5 → 2 | 1 | – | – | seconds | core chain |
 | `minimum-sink-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | core chain |
-| `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe |
-| `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later |
+| `motor-propeller-equilibrium` | procedure | APP | law | 9 → 1 | 1 | – | – | instant | probe · implemented for complete data, route B (#1411) |
+| `motor-propeller-part-load` | procedure | OPT | law | 13 → 4 | 1 | – | – | seconds | later · implemented for complete data, route B (#1411) |
 | `neutral-point` | procedure | AVL | law | 5 → 1 | 1 | – | A11 | seconds | core chain |
-| `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds | probe |
-| `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe |
-| `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
+| `parabolic-polar-fit` | fit | OPT | law | 6 → 2 | 1 | – | – | seconds (tens of seconds: 10 to 90 s measured, declared) | probe · implemented (#1401) |
+| `propeller-table-lookup` | procedure | APC | law | 2 → 1 | 1 | – | – | instant | probe · implemented for complete data, route B (#1411) |
+| `sink-rate` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain · implemented (#1401) |
 | `spanwise-loads` | procedure | AVL | law | 6 → 3 | 1 | – | – | seconds | later · implemented (#1398) |
 | `spar-break-load-factor` | procedure | APP | law | 3 → 2 | 1 | – | – | instant | later |
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
@@ -1898,8 +2040,8 @@ model (part of `IMPORT_REPORT.md`).
 | `stall-speed` | optimization | OPT | law | 5 → 4 | 4 | yes | – | seconds | core chain |
 | `stall-wing-loading-limit` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `static-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
-| `static-thrust-to-weight` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
-| `thrust-at-airspeed-from-coefficient` | law | APP | law | 4 → 1 | 1 | – | – | instant | later |
+| `static-thrust-to-weight` | law | APP | law | 2 → 1 | 1 | – | – | instant | later · implemented for complete data, route B (#1411) |
+| `thrust-at-airspeed-from-coefficient` | law | APP | law | 4 → 1 | 1 | – | – | instant | later · implemented (#1411) |
 | `vertical-tail-volume` | law | APP | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `weight-from-mass` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `wing-loading` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |

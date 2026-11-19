@@ -32,10 +32,14 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
+  v_s: stall-speed
 outputs: {omega_max: max-sustained-turn-rate, v_omega: max-sustained-turn-rate-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: limit_load_factor_above_one, parameter: n_lim, on_violation: error}
+  - {id: stall_speed_usable, parameter: v_s, on_violation: error}
 ---
 
 # Fastest sustained turn at full throttle
@@ -50,7 +54,7 @@ subject to:   L(V, alpha) = n * m * g
               1 <= n <= n_lim
 ```
 
-**Produces** [[max-sustained-turn-rate]] · [[max-sustained-turn-rate-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[max-sustained-turn-rate]] · [[max-sustained-turn-rate-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]] · [[stall-speed]]
 
 **The problem is not convex (BRYAN, 2026-10-03).** The fastest sustained turn sits at the stall
 corner. Past the first `C_L` peak the post-stall plateau offers a second local optimum: from a
@@ -79,9 +83,19 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 
 **Validity in the RC/UAV regime (ADR 0028).** The kinematics of a coordinated level turn are exact; the load factor is the vector sum of weight and centrifugal force (Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21). The fastest sustained turn sits at the stall corner, so the answer is only as good as C_L,max at the turn's own Reynolds number; Lennon (Ch. 1–3) documents a 46 % loss of section C_L,max at low model Reynolds number (see [[stall-speed]]). AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴ and C_L 1.0 (Sharpe 2024 §7.2.4). Induced drag rises with `C_L²` (Anderson §6.7.2), so at high load factor the thrust limit binds through the propeller table, with its Re₀.₇₅ and rpm-block limits. A demanded C_L above C_L,max gives an accelerated stall (Lennon Ch. 21), which is the "wing" termination.
 
-## Implementations (0)
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A sustained turn carries `n m g` with `n >= 1`, so it cannot be flown below the stall speed: the scan starts at `v_s`; a speed where the wing cannot carry the lift is skipped and declared, a solver failure from `v_s` upward still ends the formula. The input `v_s` has the precondition `stall_speed_usable` (positive, finite, at most the scan limit `powered_speed_scan_limit`).
 
-None in aero_kernel yet; no register node is mapped to this entry.
+## Implementations (1)
+
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/max_sustained_turn_rate.py` | DEVIATES | 🟢 | per speed the highest load factor in `[1, n_lim]` for which the wing carries `n m g` before its stall and `T_full >= D(V, n)` (bisection), then the maximum of `g sqrt(n^2 - 1) / V` over the speed. The limit that binds (`thrust`, `wing`, `structure`) is declared by the notice `powered_limit_declared`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** The optimum of the turn rate lies at the corner where the thrust limit meets the wing limit; both bind there and the notice names the one the search met first.
+
+**Implementation remark on method and assumptions (#1414).** Solved per speed for the highest load factor (bisection to `powered_load_factor_tolerance`, 1e-6, much tighter than the speed search), then the maximum of the rate over the speed (scan, golden section to 1e-4 of the scan step). Assumptions: feasibility falls monotonically with the load factor; one maximum of the rate over the speed; features no narrower than the scan step (2 m/s). The input check `limit_load_factor_above_one` (precondition on `n_lim`, `on_violation: error`) mirrors the kernel: no turn is allowed at `n_lim <= 1`.
 
 ## Approval
 

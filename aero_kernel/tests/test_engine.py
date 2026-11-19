@@ -409,7 +409,7 @@ async def test_an_input_slug_is_not_requestable_and_keeps_its_unit() -> None:
 
 
 async def test_a_non_scalar_request_is_an_error_with_the_unit() -> None:
-    result = await run("curve-q", "independent-q")
+    result = await run("polar-q", "independent-q")
     assert result.quantities[0].error is not None
     assert result.quantities[0].error.code == "non_scalar_result"
     assert result.quantities[0].unit == "1"
@@ -544,11 +544,10 @@ async def test_order_3_a_pending_when_term_beats_a_failed_predecessor() -> None:
 
 async def test_order_3_an_unsupported_read_beats_a_missing_input() -> None:
     no_mass = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
-    result = await evaluate(
-        make_build(), no_mass, request("needs-components-q"), solvers=NO_SOLVERS
-    )
+    result = await evaluate(make_build(), no_mass, request("needs-curve-q"), solvers=NO_SOLVERS)
     assert result.quantities[0].error is not None
     assert result.quantities[0].error.code == "unsupported_value_type"
+    assert result.quantities[0].error.input_path is None
 
 
 async def test_order_4_a_failed_predecessor_beats_a_missing_input() -> None:
@@ -603,23 +602,6 @@ async def test_a_requested_polar_is_not_a_result_and_its_scalar_sibling_is_produ
     assert polar.error.code == "non_scalar_result"
     assert (scalar.status, scalar.value) == (QuantityStatus.OK, 5.0)
     assert calls == ["called"]
-
-
-async def test_a_curve_output_is_type_checked_and_its_scalar_sibling_is_produced() -> None:
-    result = await run("curve-sib-q", "curve-sib-s")
-    curve, scalar = result.quantities
-    assert curve.error is not None
-    assert curve.error.code == "non_scalar_result"
-    assert (scalar.status, scalar.value) == (QuantityStatus.OK, 5.0)
-
-
-async def test_a_curve_output_that_is_not_a_curve_is_internal() -> None:
-    async def a_float(x: Inputs, ctx: Context) -> Mapping[str, object]:
-        return {"c": 1.0, "s": 5.0}
-
-    quantity = await first("curve-sib-s", overrides={"curve-sibling": a_float})
-    assert quantity.error is not None
-    assert quantity.error.category is ErrorCategory.INTERNAL
 
 
 async def test_a_missing_polar_key_is_internal() -> None:
@@ -774,7 +756,7 @@ async def test_the_exact_fields_of_every_engine_built_error() -> None:
                 "curve-reader",
                 "default",
                 "`curve-read-q` reads `curve-q` (a curve), which the kernel cannot carry yet.",
-                "Request a quantity that reads scalars and the airplane only.",
+                "Request a quantity that reads scalars, the airplane, polars and components only.",
                 None,
             ),
         )
@@ -1216,13 +1198,13 @@ async def test_reading_a_curve_is_not_implemented_with_its_own_code() -> None:
     assert error.quantity == "curve-read-q"
 
 
-async def test_reading_the_components_input_is_not_implemented_never_missing_input() -> None:
+async def test_reading_the_components_input_without_components_is_missing_input() -> None:
     result = await run("needs-components-q")
     error = result.quantities[0].error
     assert error is not None
-    assert error.code == "unsupported_value_type"
+    assert error.code == "missing_input"
+    assert error.input_path == "components"
     assert "`components`" in error.message
-    assert error.input_path is None
 
 
 async def test_an_unsupported_read_fails_only_its_reader() -> None:
@@ -1453,17 +1435,47 @@ async def test_two_uncarried_reads_are_both_named_with_and() -> None:
     assert quantity.error is not None
     assert quantity.error.code == "unsupported_value_type"
     assert quantity.error.message == (
-        "`two-uncarried-q` reads `curve-q` (a curve) and `components` (a components), "
+        "`two-uncarried-q` reads `curve-q` (a curve) and `pair-in` (a curve_pair), "
         "which the kernel cannot carry yet."
     )
-    assert quantity.error.detail == {"quantities": ["curve-q", "components"]}
+    assert quantity.error.detail == {"quantities": ["curve-q", "pair-in"]}
 
 
 async def test_three_uncarried_reads_are_listed_as_a_b_and_c() -> None:
     quantity = await first("three-uncarried-q")
     assert quantity.error is not None
     assert quantity.error.message == (
-        "`three-uncarried-q` reads `curve-q` (a curve), `components` (a components) and "
+        "`three-uncarried-q` reads `curve-q` (a curve), `curve-in` (a curve) and "
         "`pair-q` (a curve_pair), which the kernel cannot carry yet."
     )
-    assert quantity.error.detail == {"quantities": ["curve-q", "components", "pair-q"]}
+    assert quantity.error.detail == {"quantities": ["curve-q", "curve-in", "pair-q"]}
+
+
+async def _missing_both(slug: str) -> KernelError:
+    nothing = AircraftInput.model_validate({"airplane": airplane_document(), "values": {}})
+    result = await evaluate(make_build(), nothing, request(slug), solvers=NO_SOLVERS)
+    error = result.quantities[0].error
+    assert error is not None
+    return error
+
+
+async def test_missing_components_and_a_scalar_are_both_named_components_first() -> None:
+    error = await _missing_both("components-then-mass-q")
+    assert error.code == "missing_input"
+    assert error.input_path == "components"
+    assert error.message == (
+        "`components-then-mass-q` needs `components` and `aircraft-mass`, which were not supplied."
+    )
+    assert error.detail == {"inputs": ["components", "aircraft-mass"]}
+    assert "AircraftInput.components" in error.hint
+    assert "`aircraft-mass` in `values`" in error.hint
+    assert "`components` in `values`" not in error.hint
+
+
+async def test_missing_a_scalar_and_components_are_both_named_scalar_first() -> None:
+    error = await _missing_both("mass-then-components-q")
+    assert error.input_path == "values.aircraft-mass"
+    assert error.detail == {"inputs": ["aircraft-mass", "components"]}
+    assert "AircraftInput.components" in error.hint
+    assert "`aircraft-mass` in `values`" in error.hint
+    assert "`components` in `values`" not in error.hint

@@ -25,7 +25,6 @@ from aero_kernel.runtime import SolverRuntime, WorkerOutcome
 from aero_kernel.schema import QuantityStatus
 from aero_kernel.solvers.atmosphere import AtmosphereAdapter
 from aero_kernel.tests.engine_builders import aircraft, request
-from aero_kernel.tests.formula_builders import IMPLEMENTED
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "flight_canon.json"
 
@@ -246,7 +245,7 @@ async def test_the_first_build_imports_the_formulas_and_freezes_the_default_regi
         "shipped_build()\n"
         "assert 'aero_kernel.formulas' in sys.modules\n"
         "assert DEFAULT_REGISTRY.frozen\n"
-        f"assert len(DEFAULT_REGISTRY.slugs()) == {len(IMPLEMENTED)}\n"
+        "assert len(DEFAULT_REGISTRY.slugs()) == 61\n"
     )
 
 

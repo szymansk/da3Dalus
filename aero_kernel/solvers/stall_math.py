@@ -2,7 +2,11 @@
 
 from collections.abc import Sequence
 
-__all__ = ["first_crossing_below", "first_extremum", "first_extremum_from_zero"]
+__all__ = [
+    "first_crossing_below",
+    "first_extremum",
+    "first_extremum_from_zero",
+]
 
 
 def first_extremum(values: Sequence[float], *, maximum: bool) -> int | None:

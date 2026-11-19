@@ -107,8 +107,9 @@ def test_components_is_a_quantity_type() -> None:
 @pytest.mark.parametrize("role", ["input", "target"])
 def test_positive_only_on_scalars(role: str, type_: str) -> None:
     """Positivity is a property of one number; a curve or the airplane has no ``> 0``."""
-    with pytest.raises(ValidationError, match="scalar"):
-        make_quantity(role=role, type=type_, positive=True)
+    axis = {"abscissa": "t"} if type_ in ("curve", "curve_pair") else {}
+    with pytest.raises(ValidationError, match="only allowed on a scalar"):
+        make_quantity(role=role, type=type_, positive=True, **axis)
 
 
 @pytest.mark.parametrize("value", [1, 1.0, "true", 0, False])

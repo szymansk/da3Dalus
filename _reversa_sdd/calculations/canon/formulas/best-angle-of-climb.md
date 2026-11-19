@@ -31,10 +31,13 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
+  v_s: stall-speed
 outputs: {v_x: best-angle-of-climb-speed, gamma_max: max-climb-angle}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: stall_speed_usable, parameter: v_s, on_violation: error}
 ---
 
 # Best angle of climb at full throttle
@@ -50,13 +53,15 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is in degrees
 ```
 
-**Produces** [[best-angle-of-climb-speed]] · [[max-climb-angle]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[best-angle-of-climb-speed]] · [[max-climb-angle]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]] · [[stall-speed]]
 
 **Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n_prop² · D_prop⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
 
 **Exact steady climb, not the small-angle form.** Sadraey writes `ROC = (T·V − D·V) / W` with `L = W` (Eq. 4.77–4.78, §4.3.5; the propeller form `(η_P·P − D·V)/W` is Eq. 4.84, §4.3.5.2). That holds for shallow climbs only. A model with a high thrust-to-weight ratio climbs steeply, and with `T > W` vertically. Stating both force balances along and across the path costs one variable and keeps the result right at every angle; at `gamma = 90°` the lift constraint gives `L = 0`, which is the honest answer.
 
 **Termination.** The bound `0 ≤ γ ≤ π/2` is part of the problem: without it the inverted solution `γ = π` (`L = −m·g`, `T ≥ D`) would be feasible and larger than any upright climb angle; `sin` and `cos` are periodic, so without the bound the problem is unbounded in `γ` and has no maximum. `γ` is in radians inside `sin` and `cos` and is converted to degrees for the output. Approval asks for **no bound active at the optimum** — with one declared exception: `gamma` at its 90° bound means the aircraft climbs vertically at that speed. Any other active bound, and a failed solve, return no value (ADR 0020).
+
+**Remark on Termination (#1414).** An optimum on the stall corner is returned together with the notice `powered_limit_declared` (`limit` `wing`) instead of being withheld; reasons as in `best-rate-of-climb`: the best angle of climb sits on or within 1 % of the stall corner on every airplane measured (closed-form airplane at 3.4 and 6.0 kg; Avistar Elite `V_x` 10.0 m/s at 40.6 deg with `C_L` 1.19 against 1.22 at the stall).
 
 **The current is a verdict, not a constraint.** The optimum yields the motor current. Above the motor's, the controller's or the battery's limit the drive is overloaded at full throttle — reported, not optimised away.
 
@@ -72,9 +77,19 @@ gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is 
 
 **When the answer is vertical, `V_x` is not unique.** With thrust above weight the climb angle reaches 90° over a whole speed range (BRYAN: from about 3 m/s — hanging on the propeller). Then the result is "climbs vertically", with the range if wanted, and no single `V_x`.
 
-## Implementations (0)
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A climb at the angle `gamma` carries `m g cos(gamma)` and can be flown down to `v_s sqrt(cos gamma)`. The steepest angle the drive train can hold is `sin gamma_T = T_0 / (m g)` with `T_0` the thrust at no airspeed (the largest it gives), so the scan starts at `v_s (1 - (T_0 / m g)^2)^(1/4)`; the best angle may therefore lie below the level stall speed (the Avistar Elite: 10.0 m/s against 11.4 m/s). Where that is below `powered_climb_scan_floor` of `v_s` the scan starts at the floor, a constant chosen by the implementer without a source (`config.yaml`), declared with the answer (`powered_limit_declared`, limit `scan_floor`). The static thrust `T_0` is the drive train's thrust at `J = 0`; a propeller table without that point gives no `T_0`, and the climb scan starts at the floor (declared, `powered_limit_declared`, limit `scan_floor`). Where the drive train gives more thrust than `T_0` at some speed the bound `T_0` is not the largest, the start may have been too high, and the notice `powered_limit_declared` (limit `static_thrust_not_largest`) says so. The input `v_s` has the precondition `stall_speed_usable` (positive, finite, at most the scan limit).
 
-None in aero_kernel yet; no register node is mapped to this entry.
+## Implementations (1)
+
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/best_angle_of_climb.py` | DEVIATES | 🟢 | per speed the steepest steady climb angle (as `best-rate-of-climb`), then the maximum of `gamma` over the speed. The vertical case returns `gamma = 90 deg` at the upper edge of the speed range in which the climb is vertical (the entry: no single `V_x`), declared by the notice `powered_limit_declared`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+
+No register node is mapped to this entry.
+
+**Implementation note (gh-1414).** The optimum of the angle of climb lies on, or within 1 % of, the stall corner: on a closed-form airplane with a thrust-to-weight ratio near 1 the steepest angle is flown at the lowest speed at which the wing still carries `m g cos gamma`; on the Avistar Elite (AXI 4120/14 on 4S, APC 13x8E) `V_x` is 10.0 m/s at 40.6 deg, below the level-flight stall speed of 11.4 m/s because a steep path needs less lift, at `C_L` 1.19 against 1.22 at the stall. A corner optimum is returned with the notice `powered_limit_declared` (`limit` `wing`), not withheld; see #1414 (the entry's Termination text asks for no value there; see the remark on Termination).
+
+**Implementation remark on method and assumptions (#1414).** As `best-rate-of-climb`, with the angle itself as the objective. Assumptions: one maximum of the angle over the speed; one root of the excess over the angles the wing can carry; features no narrower than the scan step (2 m/s).
 
 ## Approval
 

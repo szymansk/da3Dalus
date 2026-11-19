@@ -26,6 +26,9 @@ outputs:
   l_y: spanwise-lift-distribution
   v_y: spanwise-shear-force
   m_y: spanwise-bending-moment
+preconditions:
+  - {id: flight_speed_positive, parameter: v, on_violation: error}
+  - {id: air_density_positive, parameter: rho, on_violation: error}
 ---
 
 # Spanwise lift, shear force and bending moment of the main wing
@@ -102,7 +105,7 @@ source (`aoutput.f:267` ff., `getvm.f:21-118`).
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/spanwise_loads.py` | EXACT | 🟢 | one AVL run (`aero_kernel/solvers/avl.py`, `spanwise_loads`) on the declared mesh (10 chordwise, 24 spanwise strips, core ratio 0.25 — the neutral point's), `C_L = n·m·g / (q·S_ref)` with the kernel's `S_ref`, controls undeflected (a deflected device is refused), then `FS` and `VM` read for the first surface only (the right half, written root → tip, left half by `YDUPLICATE`); the adapter returns the rows per `q` and the formula scales them. The root row is at `y = 0`, so the root-row moment is already the centreline moment (see the remark below). Declared as `spanwise_loads_scope` (`notice`). The three outputs are `curve` values the engine type-checks and does not yet carry to a caller (open maintainer decision, #1398) (#1398) |
+| `aero_kernel/formulas/spanwise_loads.py` | EXACT | 🟢 | one AVL run (`aero_kernel/solvers/avl.py`, `spanwise_loads`) on the declared mesh (10 chordwise, 24 spanwise strips, core ratio 0.25 — the neutral point's), `C_L = n·m·g / (q·S_ref)` with the kernel's `S_ref`, controls undeflected (a deflected device is refused), then `FS` and `VM` read for the first surface only (the right half, written root → tip, left half by `YDUPLICATE`); the adapter returns the rows per `q` and the formula scales them. The root row is at `y = 0`, so the root-row moment is already the centreline moment (see the remark below). Declared as `spanwise_loads_scope` (`notice`). The three outputs are `curve` results over `wing-station` (gh-1424): `l(y)` at the strip centres, `V(y)` and `M(y)` at the root, the strip centres and the tip (#1398) |
 
 No register node is mapped to this entry.
 
@@ -133,7 +136,8 @@ is zero for every wing the kernel meshes; the adapter checks that the table star
 anything else as a defect. A main wing that is not mirrored is refused (`unsupported_configuration`):
 the form speaks of one half of a symmetric load. **Not in the implementation:** a regime warning (the
 inputs carry no `μ` and no `a`, so the chord Reynolds and Mach numbers of the operating point cannot be
-formed; open maintainer decision, #1398) and a refined-mesh check (the mesh is the neutral
+formed; the entry is approved and its inputs are unchanged, the gap goes to the maintainer, #1398) and a refined-mesh check (the mesh is the neutral
 point's, from the BRYAN study; measured agreement with an independent vortex lattice is in the
 evidence sheet).
 
+Remark (gh-1398, undated): the operating point must give a dynamic pressure, so the input `v` has the precondition `flight_speed_positive` and `rho` the precondition `air_density_positive` (both positive, a violation is an error, nothing is substituted). They state what the implementation checks; the inputs of the entry are unchanged.

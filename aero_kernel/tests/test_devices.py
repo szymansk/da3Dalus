@@ -2,7 +2,14 @@
 
 from typing import Any
 
-from aero_kernel.devices import devices_at_rest, has_flap, with_flaps_at
+from aero_kernel.devices import (
+    CROW_AILERON_ROLES,
+    CROW_FLAP_ROLES,
+    crow_configuration,
+    devices_at_rest,
+    has_flap,
+    with_flaps_at,
+)
 from aero_kernel.geometry import AirplaneGeometry
 
 
@@ -82,3 +89,52 @@ def test_with_flaps_at_sets_the_flap_devices_and_leaves_the_others() -> None:
 def test_with_flaps_at_a_geometry_without_flaps_is_the_geometry() -> None:
     model = airplane(section(0.0, {"role": "aileron", "deflection_deg": 3.0}), section(0.4))
     assert with_flaps_at(model, 20.0) == model
+
+
+def crow_airplane() -> AirplaneGeometry:
+    """A wing with a flap, a flaperon, an aileron and an elevator, all at rest."""
+    return airplane(
+        section(0.0, {"role": "flap", "name": "F", "rel_chord_root": 0.75}),
+        section(0.2, {"role": "flaperon", "name": "FA", "rel_chord_root": 0.75}),
+        section(0.4, {"role": "aileron", "name": "A", "rel_chord_root": 0.75}),
+        section(0.6, {"role": "elevator", "name": "E", "rel_chord_root": 0.75}),
+        section(0.8),
+    )
+
+
+def roles_and_angles(model: AirplaneGeometry) -> list[tuple[str, float] | None]:
+    return [
+        None if (d := s.trailing_edge_device) is None else (d.role, d.deflection_deg or 0.0)
+        for s in (model.wings or {})["Main"].x_secs
+    ]
+
+
+def test_the_crow_configuration_runs_the_flaps_from_landing_to_crow_and_raises_the_ailerons() -> (
+    None
+):
+    # flap 30 + 0.5 * (70 - 30) = 50 down; aileron 0.5 * 40 = 20 up = -20 (down positive), evaluated
+    # as a symmetric flap-like contour; the flaperon and the elevator are not part of crow
+    model = crow_configuration(crow_airplane(), 0.5, 30.0, 70.0, 40.0)
+    assert roles_and_angles(model) == [
+        ("flap", 50.0),
+        ("flaperon", 0.0),
+        ("flap", -20.0),
+        ("elevator", 0.0),
+        None,
+    ]
+
+
+def test_the_crow_configuration_at_zero_mix_is_the_landing_flap_and_a_level_aileron() -> None:
+    model = crow_configuration(crow_airplane(), 0.0, 30.0, 70.0, 40.0)
+    assert roles_and_angles(model)[:3] == [("flap", 30.0), ("flaperon", 0.0), ("flap", 0.0)]
+
+
+def test_the_crow_configuration_leaves_the_flaperon_where_landing_put_it() -> None:
+    landing = with_flaps_at(crow_airplane(), 30.0)  # flap and flaperon both at 30
+    model = crow_configuration(landing, 1.0, 30.0, 70.0, 40.0)
+    assert roles_and_angles(model)[:3] == [("flap", 70.0), ("flaperon", 30.0), ("flap", -40.0)]
+
+
+def test_crow_roles_name_the_butterfly_layout_the_graph_tests() -> None:
+    assert frozenset({"flap"}) == CROW_FLAP_ROLES
+    assert frozenset({"aileron", "elevon"}) == CROW_AILERON_ROLES

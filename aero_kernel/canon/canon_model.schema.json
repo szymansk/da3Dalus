@@ -623,7 +623,19 @@
         "avl_roll_print_floor": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "avl_roll_reference_deflection": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "avl_roll_refinement_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "butterfly_mix_steps": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "endurance_speed_ratio": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "endurance_speed_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
         "opt_active_bound_fraction": {
@@ -656,13 +668,55 @@
         "opt_hinge_floor": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_level_lift_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_level_max_steps": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_peak_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
         "opt_probe_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_roll_max_refinements": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_roll_search_limit": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_roll_search_step": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_roll_target_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_zero_span": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_climb_scan_floor": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_load_factor_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_optimum_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_root_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_search_max_steps": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_speed_scan_limit": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powered_speed_scan_step": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "powertrain_balance_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         }
       },
@@ -673,10 +727,17 @@
         "avl_roll_print_floor",
         "avl_roll_moment_tolerance",
         "avl_control_echo_tolerance",
+        "avl_roll_reference_deflection",
+        "opt_roll_search_step",
+        "opt_roll_search_limit",
+        "opt_roll_target_tolerance",
+        "opt_roll_max_refinements",
         "avl_cl_tolerance",
         "opt_probe_tolerance",
         "opt_peak_tolerance",
         "opt_zero_span",
+        "opt_level_lift_tolerance",
+        "opt_level_max_steps",
         "opt_active_bound_fraction",
         "opt_alpha_margin_deg",
         "opt_hinge_floor",
@@ -687,7 +748,18 @@
         "opt_body_merge_exponent_min",
         "opt_body_merge_exponent_max",
         "opt_body_axis_tolerance",
-        "avl_contour_margin"
+        "avl_contour_margin",
+        "butterfly_mix_steps",
+        "powertrain_balance_tolerance",
+        "powered_climb_scan_floor",
+        "powered_speed_scan_step",
+        "powered_speed_scan_limit",
+        "powered_root_tolerance",
+        "powered_optimum_tolerance",
+        "powered_load_factor_tolerance",
+        "powered_search_max_steps",
+        "endurance_speed_ratio",
+        "endurance_speed_tolerance"
       ],
       "title": "KernelConfig",
       "type": "object"
@@ -838,8 +910,21 @@
     },
     "Quantity": {
       "additionalProperties": false,
-      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.\n    module: The taxonomy module of an input, target or reference; ``None`` where the quantity has none.\n    point: The taxonomy operating point of a final result.\n    stage: The taxonomy stage of an intermediate quantity.\n    group: The taxonomy group of a quantity inside its stage.\n    discipline: The taxonomy discipline of a derived quantity.\n    checks: The slug of the quantity this one verifies (a probe); ``None`` for any other.\n    at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),\n        otherwise omitted (``None``).\n    data: Where the quantity comes from in our data, each ``<kind>:<location>`` (a quantity no\n        formula produces; stage 2 of the approval); ``None`` while it has no demonstrated source.\n    consistency: Sources that only check the supplied value and never supply it (the geometry's\n        ``total_mass_kg`` against the passed mass, #1302); ``None`` for any other quantity.",
+      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.\n    module: The taxonomy module of an input, target or reference; ``None`` where the quantity has none.\n    point: The taxonomy operating point of a final result.\n    stage: The taxonomy stage of an intermediate quantity.\n    group: The taxonomy group of a quantity inside its stage.\n    discipline: The taxonomy discipline of a derived quantity.\n    checks: The slug of the quantity this one verifies (a probe); ``None`` for any other.\n    at_most: The largest admissible value of a supplied scalar (an efficiency is at most 1),\n        otherwise omitted (``None``).\n    abscissa: The slug of the scalar quantity a ``curve`` or ``curve_pair`` runs over (the crow\n        mix, the aircraft mass, the spanwise station); its unit is the unit of ``x``. Exactly\n        the quantities of these two types carry it; the model checks that it exists and is a scalar.\n    data: Where the quantity comes from in our data, each ``<kind>:<location>`` (a quantity no\n        formula produces; stage 2 of the approval); ``None`` while it has no demonstrated source.\n    consistency: Sources that only check the supplied value and never supply it (the geometry's\n        ``total_mass_kg`` against the passed mass, #1302); ``None`` for any other quantity.",
       "properties": {
+        "abscissa": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Abscissa"
+        },
         "at_most": {
           "anyOf": [
             {

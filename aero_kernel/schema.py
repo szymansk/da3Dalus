@@ -10,6 +10,7 @@ from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
+from aero_kernel.components import Components
 from aero_kernel.errors import (
     ErrorCategory,
     KernelError,
@@ -18,7 +19,13 @@ from aero_kernel.errors import (
     qualify,
 )
 from aero_kernel.geometry import AirplaneGeometry
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    model_validator,
+)
 
 __all__ = [
     "WARNING_CATALOGUE",
@@ -27,6 +34,7 @@ __all__ = [
     "ComputeRequest",
     "ComputeResult",
     "Curve",
+    "CurveResult",
     "DefaultUsed",
     "Interval",
     "KernelError",
@@ -38,6 +46,7 @@ __all__ = [
     "Reason",
     "ReasonCode",
     "RuleUsed",
+    "StallCurve",
     "TimeBounds",
     "Timing",
     "WarningSeverity",
@@ -103,6 +112,15 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "fuselage_axis_straightened": WarningSeverity.NOTICE,
     "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
     "spanwise_loads_scope": WarningSeverity.NOTICE,
+    "powertrain_route_winding_resistance": WarningSeverity.NOTICE,
+    "small_glide_angle": WarningSeverity.WARNING,
+    "polar_fit_residual": WarningSeverity.NOTICE,
+    "polar_fit_nonphysical": WarningSeverity.ERROR,
+    "hinge_moment_inviscid_estimate": WarningSeverity.NOTICE,
+    "hinge_moment_pitch_untrimmed": WarningSeverity.NOTICE,
+    "powered_limit_declared": WarningSeverity.NOTICE,
+    "powered_speeds_skipped": WarningSeverity.NOTICE,
+    "optimum_at_domain_bound": WarningSeverity.WARNING,
 }
 
 
@@ -374,6 +392,47 @@ class Timing(BaseModel):
         return self
 
 
+class Curve(BaseModel):
+    """A sampled function of one variable (ch. 8.12): the canon type ``curve``.
+
+    Attributes:
+        x: The variable, strictly rising; empty where the curve has no point (a glide angle
+            that does not exist).
+        y: The value at each sample.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    x: tuple[FiniteFloat, ...]
+    y: tuple[FiniteFloat, ...]
+
+    @model_validator(mode="after")
+    def _check_series(self) -> Self:
+        """Require equally long series and a strictly rising variable (empty: no point)."""
+        if len(self.x) != len(self.y):
+            msg = "x and y must have the same length"
+            raise ValueError(msg)
+        if any(b <= a for a, b in zip(self.x, self.x[1:], strict=False)):
+            msg = "x must be strictly rising"
+            raise ValueError(msg)
+        return self
+
+
+class CurveResult(Curve):
+    """A curve as the result of a ``curve`` quantity: the samples and what ``x`` is (ch. 8.3).
+
+    ``y`` is in the result's ``unit``; ``x`` is the abscissa the canon declares for the quantity.
+
+    Attributes:
+        x_quantity: Slug of the canon quantity the curve runs over (the crow mix, the mass, the
+            spanwise station).
+        x_unit: Unit of ``x``, the unit of that quantity.
+    """
+
+    x_quantity: str = Field(min_length=1)
+    x_unit: str = Field(min_length=1)
+
+
 class QuantityResult(BaseModel):
     """The result for one requested quantity (ch. 8.3).
 
@@ -383,7 +442,12 @@ class QuantityResult(BaseModel):
             quantity of that slug (unknown or malformed slug, or no loadable model), required for ``ok``.
         status: Outcome class.
         reason: Why the quantity is ``not_applicable`` or ``skipped``.
-        value: The value (floats only in v1).
+        value: The value of a scalar quantity.
+        surfaces: The value of a ``per_control_surface`` quantity: per surface key, per application
+            id, the value in ``unit``. The union of the applicable applications' entries; a
+            dual-role surface has one entry per role.
+        curve: The value of a ``curve`` quantity: the samples ``x`` and ``y``, ``y`` in ``unit``,
+            with the canon quantity ``x`` runs over and its unit (``x_quantity``, ``x_unit``).
         interval: The spread over method worlds, for an uncertain quantity.
         tool: Tool that produced the value.
         application: Id of the application that produced the value.
@@ -404,7 +468,9 @@ class QuantityResult(BaseModel):
     status: QuantityStatus
     reason: Reason | None = None
     value: FiniteFloat | None = None
+    surfaces: dict[str, dict[str, FiniteFloat]] | None = None
     interval: Interval | None = None
+    curve: CurveResult | None = None
     tool: str | None = None
     application: str | None = None
     validated: Literal[False] = False
@@ -434,10 +500,14 @@ class QuantityResult(BaseModel):
         if self.from_cache and self.status is not QuantityStatus.OK:
             msg = f"from_cache requires status ok, not {self.status.value}: only ok is stored"
             raise ValueError(msg)
-        has_result = self.value is not None or self.interval is not None
+        carried = (self.value, self.interval, self.surfaces, self.curve)
+        has_result = any(x is not None for x in carried)
         if self.status is QuantityStatus.OK:
-            if (self.value is None) == (self.interval is None):
-                msg = "status ok needs exactly one of value and interval"
+            if sum(x is not None for x in carried) != 1:
+                msg = "status ok needs exactly one of value, interval, surfaces and curve"
+                raise ValueError(msg)
+            if self.surfaces is not None and (not self.surfaces or not all(self.surfaces.values())):
+                msg = "surfaces needs at least one surface, each with at least one application"
                 raise ValueError(msg)
             if self.error is not None:
                 msg = "status ok must not carry an error"
@@ -451,7 +521,9 @@ class QuantityResult(BaseModel):
                     msg = f"status ok needs {name}: every value leads back to its application and tool"
                     raise ValueError(msg)
         elif has_result:
-            msg = f"status {self.status.value} must not carry a value or interval"
+            msg = (
+                f"status {self.status.value} must not carry a value or interval, surfaces or curve"
+            )
             raise ValueError(msg)
         if self.status is QuantityStatus.ERROR and self.error is None:
             msg = "status error needs an error"
@@ -624,31 +696,27 @@ class Polar(BaseModel):
         return self
 
 
-class Curve(BaseModel):
-    """A quantity of type ``curve`` (canon README): one value per point of a swept variable.
+class StallCurve(Curve):
+    """A stall speed over a swept variable, with the sweep each point was solved on (ch. 8.12).
 
-    The unit of the swept variable and of the values are the canon's, carried by the quantity; the
-    kernel returns SI (m, N, N m ...). Two curves of one formula may have different grids (the
-    strip centres of a load, the stations of its integral).
+    The postcondition ``optimum_at_first_cl_peak`` is checked at every point, so the curve carries
+    what the check reads: the stall angle, the lift coefficient and the sweep of each point.
 
     Attributes:
-        x: The swept variable, strictly rising.
-        y: The value at each point of ``x``.
+        alpha_s: The stall angle of each point in degrees.
+        cl_max: The lift coefficient at each stall.
+        polars: The sweep at each point's stall speed, with ``alpha_s`` among its samples.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    x: tuple[FiniteFloat, ...] = Field(min_length=2)
-    y: tuple[FiniteFloat, ...]
+    alpha_s: tuple[FiniteFloat, ...]
+    cl_max: tuple[FiniteFloat, ...]
+    polars: tuple[Polar, ...]
 
     @model_validator(mode="after")
-    def _check_series(self) -> Self:
-        """Require one value per point and a strictly rising swept variable."""
-        if len(self.x) != len(self.y):
-            msg = "x and y must have the same length"
-            raise ValueError(msg)
-        if any(b <= a for a, b in zip(self.x, self.x[1:], strict=False)):
-            msg = "x must be strictly rising"
+    def _check_points(self) -> Self:
+        """Require one stall angle, coefficient and sweep per point."""
+        if not len(self.alpha_s) == len(self.cl_max) == len(self.polars) == len(self.x):
+            msg = "alpha_s, cl_max and polars must have one entry per point"
             raise ValueError(msg)
         return self
 
@@ -661,6 +729,8 @@ class AircraftInput(BaseModel):
 
     Attributes:
         airplane: The geometry document; its millimetre fields are metres once parsed.
+        components: The fitted motor, battery and propeller, a contract of its own; ``None`` if
+            none are pushed (the quantities that read them are then ``missing_input``).
         values: Value per canon input or target slug, in the quantity's SI unit.
         rule_overrides: Value per ``<rule>.<parameter>`` of the canon's ``rules.yaml``, for an expert
             user whose aircraft breaks a convention (e.g. a main wing inclined past 45 deg); each
@@ -670,6 +740,7 @@ class AircraftInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     airplane: AirplaneGeometry
+    components: Components | None = None
     values: dict[Annotated[str, Field(min_length=1)], Annotated[float, Field(strict=True)]] = Field(
         default_factory=dict
     )

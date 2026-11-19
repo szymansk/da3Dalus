@@ -8,10 +8,23 @@ from collections.abc import Callable
 
 from aero_kernel.geometry import AirplaneGeometry, Wing, WingXSec
 
-__all__ = ["FLAP_ROLES", "devices_at_rest", "flap_deflections", "has_flap", "with_flaps_at"]
+__all__ = [
+    "CROW_AILERON_ROLES",
+    "CROW_FLAP_ROLES",
+    "FLAP_ROLES",
+    "crow_configuration",
+    "devices_at_rest",
+    "flap_deflections",
+    "has_flap",
+    "with_flaps_at",
+]
 
 # Every control surface that acts as a flap (maintainer, 2026-10-14): flaperons too.
 FLAP_ROLES = frozenset({"flap", "flaperon"})
+# The devices of a butterfly layout (D10): a flap and a distinct aileron or elevon; a flaperon is
+# neither, so it never counts towards crow.
+CROW_FLAP_ROLES = frozenset({"flap"})
+CROW_AILERON_ROLES = frozenset({"aileron", "elevon"})
 
 
 def _converted(
@@ -89,6 +102,52 @@ def with_flaps_at(airplane: AirplaneGeometry, deflection_deg: float) -> Airplane
         )
 
     return _converted(airplane, flapped) if has_flap(airplane) else airplane
+
+
+def crow_configuration(
+    airplane: AirplaneGeometry,
+    mix: float,
+    flap_landing_deg: float,
+    flap_crow_deg: float,
+    aileron_crow_up_deg: float,
+) -> AirplaneGeometry:
+    """Return the airplane at the crow mix ``mix`` (canon ``butterfly-approach``).
+
+    The devices of role ``flap`` run from ``flap_landing_deg`` (mix 0) to ``flap_crow_deg`` (mix 1),
+    trailing edge down. The devices of role ``aileron`` or ``elevon`` rise from 0 to
+    ``aileron_crow_up_deg`` (mix 1) on both halves. A raised aileron is evaluated as the plain-flap
+    contour it becomes in crow: the copy returned here carries it with the role ``flap`` and the
+    negative angle, because the tools map a symmetric trailing-edge deflection of that role only.
+    The copy is for evaluation, never for display. Flaperons and every other device keep their
+    state (a flaperon never counts towards the butterfly layout, D10).
+
+    Args:
+        airplane: The landing configuration (flaps at the landing angle, other devices at rest).
+        mix: The crow mix in [0, 1].
+        flap_landing_deg: The flap angle of the landing configuration (mix 0), degrees.
+        flap_crow_deg: The flap angle of full crow, degrees, trailing edge down positive.
+        aileron_crow_up_deg: The aileron angle of full crow, degrees, positive for trailing edge up.
+
+    Returns:
+        A copy with the flaps and ailerons set; the same object if there is no wing.
+    """
+    flap = flap_landing_deg + mix * (flap_crow_deg - flap_landing_deg)
+    aileron = -mix * aileron_crow_up_deg
+
+    def at_mix(section: WingXSec) -> WingXSec:
+        device = section.trailing_edge_device
+        if device is None:
+            return section
+        if device.role in CROW_FLAP_ROLES:
+            return section.model_copy(
+                update={"trailing_edge_device": device.model_copy(update={"deflection_deg": flap})}
+            )
+        if device.role in CROW_AILERON_ROLES:
+            raised = device.model_copy(update={"role": "flap", "deflection_deg": aileron})
+            return section.model_copy(update={"trailing_edge_device": raised})
+        return section
+
+    return _converted(airplane, at_mix)
 
 
 def flap_deflections(airplane: AirplaneGeometry) -> list[tuple[str, str, float]]:

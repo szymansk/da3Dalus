@@ -85,8 +85,11 @@ def fixture_model() -> CanonModel:
         "scaled-q": quantity("output"),
         "given-q": quantity("output"),
         "target-t": quantity("target"),
-        "curve-q": quantity("output", type="curve"),
+        "sweep-x": quantity("input"),
+        "curve-q": quantity("output", type="curve", abscissa="sweep-x"),
         "components": quantity("input", type="components"),
+        "curve-in": quantity("input", type="curve", abscissa="sweep-x"),
+        "pair-in": quantity("input", type="curve_pair", abscissa="sweep-x"),
         "air-density": quantity("input", unit="kg/m^3", positive=True),
         "margin-target": quantity("target"),
         "density-q": quantity("output"),
@@ -120,10 +123,8 @@ def fixture_model() -> CanonModel:
         "two-na-q": quantity("output"),
         "twice-na-q": quantity("output"),
         "polar-q": quantity("derived", type="polar"),
-        "pair-q": quantity("input", type="curve_pair"),
+        "pair-q": quantity("input", type="curve_pair", abscissa="sweep-x"),
         "polar-scalar-q": quantity("output"),
-        "curve-sib-q": quantity("derived", type="curve"),
-        "curve-sib-s": quantity("output"),
         "polar-read-q": quantity("output"),
         "na-when-q": quantity("output"),
         "long-after-long-q": quantity("output"),
@@ -135,6 +136,9 @@ def fixture_model() -> CanonModel:
         "unexposed-q": quantity("output"),
         "curve-read-q": quantity("output"),
         "needs-components-q": quantity("output"),
+        "needs-curve-q": quantity("output"),
+        "components-then-mass-q": quantity("output"),
+        "mass-then-components-q": quantity("output"),
         "long-after-weight-q": quantity("output"),
         "na-twin-a": quantity("output"),
         "na-twin-b": quantity("output"),
@@ -179,6 +183,13 @@ def fixture_model() -> CanonModel:
         "needs-components": formula(
             {"m": "aircraft-mass", "c": "components"}, {"r": "needs-components-q"}
         ),
+        "components-then-mass": formula(
+            {"c": "components", "m": "aircraft-mass"}, {"r": "components-then-mass-q"}
+        ),
+        "mass-then-components": formula(
+            {"m": "aircraft-mass", "c": "components"}, {"r": "mass-then-components-q"}
+        ),
+        "needs-curve": formula({"m": "aircraft-mass", "c": "curve-in"}, {"r": "needs-curve-q"}),
         "long-after-weight": formula({"w": "weight"}, {"r": "long-after-weight-q"}, cost="minutes"),
         "na-twin": formula({"p": "roll-q"}, {"a": "na-twin-a", "b": "na-twin-b"}),
         "long-twin": formula(
@@ -187,7 +198,6 @@ def fixture_model() -> CanonModel:
         "dep-twin": formula({"w": "weight"}, {"a": "dep-twin-a", "b": "dep-twin-b"}),
         "polar-twin": formula({"m": "aircraft-mass"}, {"pol": "polar-q", "s": "polar-scalar-q"}),
         "polar-reader": formula({"pol": "polar-q"}, {"r": "polar-read-q"}),
-        "curve-sibling": formula({"m": "aircraft-mass"}, {"c": "curve-sib-q", "s": "curve-sib-s"}),
         "na-when": formula({"p": "roll-q"}, {"r": "na-when-q"}, when="has_aileron"),
         "long-after-long": formula({"l": "long-q"}, {"r": "long-after-long-q"}, cost="minutes"),
         "long-needs-t": formula(
@@ -225,9 +235,9 @@ def fixture_model() -> CanonModel:
             {"r": "two-givens-q"},
             given=["calc:target-t", "calc:target-u"],
         ),
-        "two-uncarried": formula({"c": "curve-q", "k": "components"}, {"r": "two-uncarried-q"}),
+        "two-uncarried": formula({"c": "curve-q", "k": "pair-in"}, {"r": "two-uncarried-q"}),
         "three-uncarried": formula(
-            {"c": "curve-q", "k": "components", "q": "pair-q"}, {"r": "three-uncarried-q"}
+            {"c": "curve-q", "k": "curve-in", "q": "pair-q"}, {"r": "three-uncarried-q"}
         ),
         "density-user": formula({"rho": "air-density"}, {"r": "density-q"}),
         "margin-user": formula({"k": "margin-target"}, {"r": "margin-q"}),
@@ -359,13 +369,6 @@ async def _polar_twin(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"pol": A_POLAR, "s": 5.0}
 
 
-A_CURVE = Curve(x=(0.0, 1.0), y=(2.0, 3.0))
-
-
-async def _curve_sibling(x: Inputs, ctx: Context) -> Mapping[str, object]:
-    return {"c": A_CURVE, "s": 5.0}
-
-
 async def _unexposed(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"r": 1.0, "u": 99.0}
 
@@ -380,7 +383,7 @@ async def _cfg_span(x: Inputs, ctx: Context) -> Mapping[str, object]:
 
 
 async def _curve(x: Inputs, ctx: Context) -> Mapping[str, object]:
-    return {"c": 1.0}
+    return {"c": Curve(x=(0.0, 0.5, 1.0), y=(3.0, 2.0, -0.0))}
 
 
 STANDARD: Mapping[str, Impl] = {
@@ -404,13 +407,15 @@ STANDARD: Mapping[str, Impl] = {
     "given-only": _given,
     "curve-reader": _one,
     "needs-components": _one,
+    "needs-curve": _one,
+    "components-then-mass": _one,
+    "mass-then-components": _one,
     "long-after-weight": _one,
     "na-twin": _pair,
     "long-twin": _pair,
     "dep-twin": _pair,
     "polar-twin": _polar_twin,
     "polar-reader": _one,
-    "curve-sibling": _curve_sibling,
     "na-when": _one,
     "long-after-long": _one,
     "long-needs-t": _one,

@@ -80,10 +80,24 @@ opt_peak_tolerance:
   basis: numerical
   source: "float noise between two samples of one sweep"
 
+opt_level_lift_tolerance:
+  value: 0.000001
+  unit: "1"
+  guards: "Parabolic polar fit: the relative difference between the lift AeroBuildup returns at a level-flight point and the weight m g, at which the angle of attack of that point is accepted (the angle is refined by secant steps from the sweep's linear interpolation)."
+  basis: numerical
+  source: "the lift balance of every other optimisation of the kernel is solved by IPOPT to its default tolerance of 1e-8 on the scaled constraint (opt_probe_tolerance, 1e-6 leaves two decades); a fit point whose lift misses the weight by one part in a million moves its C_L by the same fraction, far below the scatter of the polar"
+
+opt_level_max_steps:
+  value: 20
+  unit: "1"
+  guards: "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance."
+  basis: numerical
+  source: "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one"
+
 opt_zero_span:
   value: 1.0e-15
   unit: "1"
-  guards: "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference."
+  guards: "Angle interpolation: two lift-coefficient samples closer than this count as equal, so no division by their difference. Also the zero test of a slope that is divided by: the secant slope of a level-flight point (lift per degree) and the slope of the parabola fitted to the level-flight polar (a slope this close to zero has no finite Oswald factor)."
   basis: numerical
   source: "a margin over floating-point noise of C_L, which is of order 1"
 
@@ -163,3 +177,115 @@ opt_body_axis_tolerance:
   guards: "Straight body axis for AeroBuildup (#1358): the largest vertical distance of a body's section centre from the least-squares line through all its centres up to which the centres count as already on a line, so the body is handed over unchanged and nothing is declared."
   basis: numerical
   source: "a margin over the floating-point round-off of the least-squares fit on coordinates of metres (about 1e-16 m per metre of body); a nanometre is far below any coordinate a geometry document states, so every real step of the axis is straightened and declared"
+
+butterfly_mix_steps:
+  value: 10
+  unit: "1"
+  guards: "Butterfly: the crow mix s in [0, 1] is sampled in this many equal steps (one more sample than steps, both ends included); each sample is one stall solve and one glide read. s_max is interpolated linearly between the two samples that bracket it."
+  basis: numerical
+  source: "resolution of a sampled curve, not a physical quantity: a tenth of full crow is the finest setting a flap knob or mixer is set by hand; the interpolation error of s_max is measured in the evidence of butterfly-approach"
+
+powertrain_balance_tolerance:
+  value: 0.000000001
+  unit: "1"
+  guards: "Motor-propeller torque balance: the relative width of the propeller-speed interval at which the bisection stops; the speed is then known to this fraction of itself."
+  basis: numerical
+  source: "a numerical margin: far below the table's own resolution (APC rpm blocks 1000 rpm apart, coefficients to four decimals) and far above double-precision noise; it decides when the bisection of a monotone torque balance has converged, no domain threshold"
+
+endurance_speed_ratio:
+  value: 1.1
+  unit: "1"
+  guards: "Greatest endurance and greatest range: the ratio of neighbouring speeds of the scan that starts at the stall speed and ends where the drive train cannot hold the speed (thrust demand ratio above 1, or no balance on the propeller table). The optimum is then refined inside the two cells around the best scan speed."
+  basis: numerical
+  source: "a search resolution, no physical claim: the battery power of level flight is a smooth curve with one minimum, so a ten-percent cell isolates it, and each cell costs one level-flight solve (about 0.9 s on the Avistar Elite, measured gh-1415); a finer scan only costs time"
+
+endurance_speed_tolerance:
+  value: 0.01
+  unit: "1"
+  guards: "Greatest endurance and greatest range: the relative width of the speed interval at which the golden-section refinement stops; the optimal speed is then known to this fraction of itself."
+  basis: numerical
+  source: "a search resolution: at a minimum the battery power (and its quotient with the speed) changes with the square of the speed error, so a one-percent speed error moves the optimum value by a much smaller fraction (second order; checked against a brute-force scan in gh-1415). No domain threshold"
+
+avl_roll_reference_deflection:
+  value: 5.0
+  unit: deg
+  guards: "Required aileron deflection: the one aileron command at which AVL's roll is run; AVL is linear in the deflection (amake.f:1184-1187), so the deflection a target needs is the target scaled by this run."
+  basis: numerical
+  source: "any value gives the same answer in a linear model; 5 deg keeps p'b/2V of the fleet's ailerons (0.07 at BRYAN) inside AVL's range of 0.10 (avl_doc.txt:121-141) and well above its five-decimal print"
+
+opt_roll_search_step:
+  value: 5.0
+  unit: deg
+  guards: "Required aileron deflection, AeroBuildup world: the step of the upward search of the command; the maximum roll rate is reported at the resolution of this step."
+  basis: numerical
+  source: "a search resolution, no physical claim: fine enough to resolve the saturation of the fleet's ailerons (p(delta) flattens between 20 and 40 deg), coarse enough that a 20 deg target needs four solves"
+
+opt_roll_search_limit:
+  value: 90.0
+  unit: deg
+  guards: "Required aileron deflection, AeroBuildup world: the command at which the upward search ends without having found the target or the maximum (not_converged)."
+  basis: numerical
+  source: "termination of the search only: tau * delta is an angle shift of a plain flap and has no meaning beyond a right angle; the canon sets no range for a deflection (D6, 2026-10-14)"
+
+opt_roll_target_tolerance:
+  value: 0.0001
+  unit: "1"
+  guards: "Required aileron deflection, AeroBuildup world: the relative difference between the roll rate at the returned deflection and the target at which the search stops."
+  basis: numerical
+  source: "two decades above IPOPT's convergence tolerance of 1e-8 on the scaled constraint (see opt_probe_tolerance), and far below the 23 % spread between the worlds"
+
+opt_roll_max_refinements:
+  value: 40
+  unit: "1"
+  guards: "Required aileron deflection, AeroBuildup world: the number of refinement steps after which the search for the command ends without having reached the target (not_converged)."
+  basis: numerical
+  source: "termination of the refinement only: the Illinois regula falsi converges superlinearly on a smooth bracketed root, so a handful of steps reach the target tolerance; 40 is far beyond that and bounds a non-smooth roll rate"
+
+powered_climb_scan_floor:
+  value: 0.5
+  unit: "1"
+  guards: "Powered performance at full throttle (best-rate-of-climb, best-angle-of-climb): the start of the climb scan as a fraction of the clean stall speed, used where the stall speed at the steepest angle the thrust holds is below it or the static thrust is unknown (the climb can be steep or vertical and needs little or no lift, so it has no stall speed of its own). Elsewhere the scan starts at v_s (1 - (T_0/mg)^2)^(1/4). Declared with the answer (powered_limit_declared, limit scan_floor)."
+  basis: numerical
+  source: "chosen by the implementer, no source; a declared implementer's choice that awaits the maintainer's decision. What it rests on: a climb at the angle gamma carries m g cos(gamma) and can be flown down to v_s sqrt(cos gamma), which is zero for a vertical climb, so physics gives no lower bound there; the number is a compromise between the speeds below the stall speed that a climb can fly and the speeds at which the solver adapter's angle sweep still shows a lift peak. Measured on the 36 reference airframes with the Avistar drive train (gh-1419): the floor binds only where the static thrust is above 0.97 of the weight (29 of the 35 airframes with a stall speed), and there the optimum is not at the floor; the best angle of climb is vertical, reported at the upper edge of the vertical speed range (v/v_s 1.4 to 7.8 on the 28 that compute), and the best rate of climb is at v/v_s 1.6 to 7.8. The airframes with a non-vertical best angle, which the floor does not touch, have v_opt/v_s between 0.88 (Avistar Elite) and 1.27 (6 airframes, median 1.12). So 0.5 is below every measured optimum but is not derived from them, and it is not tied to a Reynolds number: one of the 35 airframes (MILES_MAGISTER, floor start 3.5 m/s) ends not_converged because the sweep shows no lift peak at that start (open decision of the maintainer, PR of gh-1419)"
+
+powered_speed_scan_step:
+  value: 2.0
+  unit: m/s
+  guards: "Powered performance at full throttle: the step of the upward scan of the airspeed. An optimum or a root is bracketed to this resolution and then refined; two features of the curve closer together than the step can be missed (the entries assume one maximum)."
+  basis: numerical
+  source: "a search resolution, no physical claim: the thrust and drag curves of the reference fleet vary on a scale of several m/s (the best-rate-of-climb speed of the Avistar lies within a step of 2 m/s of its neighbours), and a finer scan costs one AeroBuildup point per step"
+
+powered_speed_scan_limit:
+  value: 150.0
+  unit: m/s
+  guards: "Powered performance at full throttle: the speed at which the upward scan ends without a bracket (not_converged). Termination only."
+  basis: numerical
+  source: "termination of the scan only: about Mach 0.44, beyond the Mach 0.3 where the incompressible solver stops being exact (Anderson sec. 1.10.3), so every value below it is reported with the Mach notice of the solver adapter and none is cut off by this limit in the RC and UAV regime"
+
+powered_root_tolerance:
+  value: 0.00001
+  unit: "1"
+  guards: "Powered performance at full throttle: the force residual, relative to the weight m g, at which a root search (Illinois regula falsi) accepts its root."
+  basis: numerical
+  source: "at the accuracy of the points the root is made of: each drag comes from a level-flight point whose lift matches its target to opt_level_lift_tolerance (1e-6 of m g), and a force residual below that is noise of the evaluation, not information; one order above it (1e-5 of m g) lets a search terminate on a noisy evaluation, and still places a root of a thrust or drag of a few newtons to about 1e-4 N"
+
+powered_optimum_tolerance:
+  value: 0.0001
+  unit: "1"
+  guards: "Powered performance at full throttle: the width of the interval, relative to the scan step of the airspeed, at which the golden-section search of an optimum over the airspeed stops."
+  basis: numerical
+  source: "an optimum is flat: the objective differs from its maximum by the square of the distance, so a speed known to 1e-4 of the scan step (0.2 mm/s at 2 m/s) gives the value to far below the accuracy of the drag; a numerical resolution, no domain threshold"
+
+powered_load_factor_tolerance:
+  value: 0.000001
+  unit: "1"
+  guards: "Powered performance at full throttle, sustained turn: the relative width of the interval of the load factor at which the bisection of the highest feasible load factor at one airspeed stops."
+  basis: numerical
+  source: "the outer search over the speed resolves the speed to 1e-4 of the scan step; the objective at one speed carries the load factor to the first power (omega = g sqrt(n^2 - 1) / V), so a staircase of relative width d in n makes a staircase of about d in the objective; 1e-6 is two orders below the 1e-4 of the outer search, so the objective is smooth at the resolution of the speed search"
+
+powered_search_max_steps:
+  value: 60
+  unit: "1"
+  guards: "Powered performance at full throttle: the number of steps after which a root search or a golden-section search ends without having reached its tolerance (not_converged). Termination only."
+  basis: numerical
+  source: "termination only: Illinois regula falsi converges superlinearly on a smooth bracketed root and the golden section shrinks the interval by 0.618 per step, so 60 steps reach 1e-12 of the interval; the limit is never reached on a smooth curve and bounds a non-smooth one"

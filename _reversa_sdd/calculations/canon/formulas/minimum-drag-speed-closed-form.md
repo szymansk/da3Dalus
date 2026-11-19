@@ -21,6 +21,8 @@ inputs:
   cd0: zero-lift-drag-coefficient
   k: induced-drag-factor
 outputs: {v_md_probe: minimum-drag-speed-probe}
+preconditions:
+  - {id: parabola_defined, parameter: cd0, on_violation: error}
 ---
 
 # Minimum-drag speed from the parabolic polar
@@ -55,11 +57,16 @@ Identical to the proposal once W/S is factored (Sadraey writes 2W/(rho*S) groupe
 
 **Validity in the RC/UAV regime (ADR 0028).** Valid at RC scale as an algebraic consequence of the parabolic polar, with the same caveat as max-lift-to-drag-parabolic: at Re 5e4-3e5 the polar is offset-parabolic, so C_D0 and k must be fitted over the C_L range of interest, not anchored at C_L = 0 (see [[parabolic-polar-fit]], which fits over the operating C_L window). Do not let this closed form and the argmax-of-polar route both be authoritative - ADR 0022.
 
-## Implementations (1)
+## Preconditions on the bindings
+
+**`parabola_defined` — the parabola must have a minimum-drag speed (on `cd0`, with `k`, `rho` and `w_s`; error).** The closed form takes `sqrt(C_D0 / k)` and divides by it and by `ρ`; it exists only where `C_D0`, `k`, `ρ` and `W/S` are all greater than zero. The violation is an **error** at this formula (ADR 0020); nothing is substituted. The bounds are algebraic, not tuned thresholds.
+
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | [[v_md]] | EXACT | 🟢 |  |
+| `aero_kernel/formulas/minimum_drag_speed_closed_form.py` | EXACT | 🟢 | `V_md,probe = sqrt(2 (W/S) / (ρ sqrt(C_D0 / k)))`; its output is the quantity `minimum-drag-speed-probe`, which only `checks` `minimum-drag-speed`, so it is no second producer of that quantity (ADR 0022); the precondition `parabola_defined` is the registered check of the same module (#1401) |
 
 ## Approval
 

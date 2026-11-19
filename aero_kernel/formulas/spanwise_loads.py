@@ -9,12 +9,35 @@ row is already the centreline moment.
 """
 
 from aero_kernel.context import Context, Inputs
-from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.values import airplane_of, forward_warnings, number
-from aero_kernel.registry import formula
+from aero_kernel.registry import CheckResult, formula, precondition
 from aero_kernel.schema import Curve
 
-__all__ = ["spanwise_loads"]
+__all__ = ["air_density_positive", "flight_speed_positive", "spanwise_loads"]
+
+
+@precondition("spanwise-loads", "flight_speed_positive")
+def flight_speed_positive(x: Inputs) -> CheckResult:
+    """The flight speed of the operating point must be positive: the dynamic pressure divides by it."""
+    speed = number(x, "v")
+    if speed > 0.0:
+        return CheckResult(state="held", message=f"the flight speed {speed} m/s is positive")
+    return CheckResult(
+        state="violated",
+        message=f"the flight speed {speed} m/s is not positive; give the speed of the load case in m/s",
+    )
+
+
+@precondition("spanwise-loads", "air_density_positive")
+def air_density_positive(x: Inputs) -> CheckResult:
+    """The air density of the operating point must be positive: it makes the dynamic pressure."""
+    rho = number(x, "rho")
+    if rho > 0.0:
+        return CheckResult(state="held", message=f"the air density {rho} kg/m^3 is positive")
+    return CheckResult(
+        state="violated",
+        message=f"the air density {rho} kg/m^3 is not positive; check the altitude of the load case",
+    )
 
 
 @formula("spanwise-loads")
@@ -36,20 +59,11 @@ async def spanwise_loads(x: Inputs, ctx: Context) -> dict[str, Curve]:
 
     Raises:
         TypeError: If ``airplane`` is not the geometry or a number is not a number.
-        FormulaError: ``invalid_input`` for a speed or density that is not positive; from the
-            adapter, unchanged.
+        FormulaError: From the adapter, unchanged. A speed or density that is not positive is
+            refused before this runs, by the canon preconditions of the entry.
     """
     airplane = airplane_of(x)
     speed, rho = number(x, "v"), number(x, "rho")
-    for name, value in (("v", speed), ("rho", rho)):
-        if value <= 0.0:
-            raise FormulaError(
-                ErrorCategory.INVALID_INPUT,
-                "invalid_input",
-                f"{name} = {value} is not admissible for a load at an operating point",
-                "give a positive value",
-                parameter=name,
-            )
     q = 0.5 * rho * speed**2
     reference = await ctx.solvers.geometry.main_wing_reference(airplane)
     cl = number(x, "n_load") * number(x, "m") * number(x, "g") / (q * reference.s_ref)

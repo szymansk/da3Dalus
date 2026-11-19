@@ -17,6 +17,8 @@ tags:
   - status/draft
 inputs: {e_osw: oswald-efficiency, ar: aspect-ratio, cd0: zero-lift-drag-coefficient}
 outputs: {e_max_probe: max-lift-to-drag-probe}
+preconditions:
+  - {id: parabola_defined, parameter: cd0, on_violation: error}
 ---
 
 # Maximum glide ratio of a parabolic polar
@@ -57,11 +59,16 @@ One user-visible number, two different laws behind it. mission_kpi_service repor
 kernel's drag (`D_profile + k_e,D0 · D_induced`); the parabola's `C_D0` and `e` come from the fit to the same drag
 ([[parabolic-polar-fit]]), so the two still compare like with like.
 
-## Implementations (1)
+## Preconditions on the bindings
+
+**`parabola_defined` — the parabola must have a maximum glide ratio (on `cd0`, with `e_osw` and `ar`; error).** The closed form takes the square root of `π · e · AR / C_D0`; it exists only where `C_D0`, `e` and `AR` are all greater than zero. A parabola with a zero or negative parasite drag, or with no induced drag, has no maximum of `C_L / C_D`. The violation is an **error** at this formula (ADR 0020); nothing is substituted. The bounds are algebraic, not tuned thresholds.
+
+## Implementations (2)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
 | [[mkpi_glide]] | DEVIATES | 🟢 | Prefers the empirical sweep maximum and only falls back to the closed form, while always l |
+| `aero_kernel/formulas/max_lift_to_drag_parabolic.py` | EXACT | 🟢 | `E_max,probe = ½ √(π e AR / C_D0)`; its output is the quantity `max-lift-to-drag-probe`, which only `checks` `max-lift-to-drag-ratio`, so it is no second producer of that quantity (ADR 0022); the precondition `parabola_defined` is the registered check of the same module (#1401) |
 
 ## Approval
 

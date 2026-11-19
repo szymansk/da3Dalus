@@ -10,6 +10,7 @@ tags:
   - point/approach
   - role/output
 type: curve
+abscissa: crow-mix
 ---
 
 # Glide angle over the crow mix · `gamma(s)`

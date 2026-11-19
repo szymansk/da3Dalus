@@ -15,8 +15,11 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-inputs: {components: components, j: advance-ratio}
-outputs: {c_t: thrust-coefficient}
+inputs: {components: components, j: advance-ratio, n_prop: propeller-speed}
+outputs: {c_t: thrust-coefficient, c_p: null}
+applications:
+  - id: default
+    produce: {c_t: thrust-coefficient, c_p: null}
 ---
 
 # Thrust coefficient from the propeller table
@@ -24,22 +27,26 @@ outputs: {c_t: thrust-coefficient}
 **Canonical form**
 
 ```
-C_T := interp( table of the chosen propeller, J )
+C_T, C_P := interp( table of the chosen propeller, J, n_prop )     (linear in J inside a block, linear in rpm between the two blocks that bracket 60 n_prop)
 ```
 
-**Produces** [[thrust-coefficient]]  ·  **from** [[components]] · [[advance-ratio]]
+**Produces** [[thrust-coefficient]]  ·  **from** [[components]] · [[advance-ratio]] · [[propeller-speed]]
 
 **Kind: a procedure — a table lookup.** The thrust coefficient of the propeller fitted to the
 airplane, interpolated at the advance ratio. 454 APC propellers with 300 187 computed
-points (APC's own PER3 computation, not wind-tunnel measurement) are in the database; extrapolation outside the tabulated `J` range is flagged.
+points (APC's own PER3 computation, not wind-tunnel measurement) are in the database; outside the tabulated range the kernel does not extrapolate (see Implementations).
 
 **Source.** 🟢 Definitions `J = V/(n·D)`, `C_T = T/(ρ·n²·D⁴)`, `C_P = P/(ρ·n³·D⁵)`: Brandt & Selig 2011 §II.F. The data are APC PER3 performance files (v2022-0915); their header reads "Simulation Date" and "AIRFOIL AERO DATA GENERATED USING: POLAR DIAGRAMS" (`app/tests/fixtures/apc_props/PER3_7x4.dat:3-6`), so they are APC's own computation, not wind-tunnel measurement. 🔴 NO SOURCE FOUND for the accuracy of APC's computation at low Reynolds number.
 
-**Validity in the RC/UAV regime (ADR 0028).** The tables are for the right class, APC model propellers, but the coefficients depend on the propeller's own Reynolds number and tip Mach, not only on `J`. Small propellers run at Re₀.₇₅ ≈ 15–100 k (ADR 0028; Brandt & Selig 2011 §IV), where `C_T` rises and efficiency improves with rpm (Deters, Ananda & Selig 2014 §V.A–B; Brandt & Selig 2011 §IV). Each rpm block of the table holds one Reynolds number (Brandt & Selig 2011 §II.F), and the implementation reads the nearest block, so the error between blocks is a Reynolds-number error. RC propeller tips typically run near Ma ≈ 0.5 (Roxxy Motoren-Fibel Ch. 1 pp. 9–10), above the M 0.3 at which Anderson treats a flow as compressible (§8.5): the propeller is the one part of the chain outside M ≤ 0.3. Static (`J = 0`) coefficients differ from those at small advance ratio (Brandt & Selig 2011 §II.B, §III). Outside the tabulated `J` range the lookup extrapolates, which is flagged.
+**Validity in the RC/UAV regime (ADR 0028).** The tables are for the right class, APC model propellers, but the coefficients depend on the propeller's own Reynolds number and tip Mach, not only on `J`. Small propellers run at Re₀.₇₅ ≈ 15–100 k (ADR 0028; Brandt & Selig 2011 §IV), where `C_T` rises and efficiency improves with rpm (Deters, Ananda & Selig 2014 §V.A–B; Brandt & Selig 2011 §IV). Each rpm block of the table holds one Reynolds number (Brandt & Selig 2011 §II.F), and the implementation interpolates linearly in rpm between the two blocks that bracket the propeller speed (ARCHITECTURE ch. 8.11, rule 2), so the error between blocks is a Reynolds-number error. RC propeller tips typically run near Ma ≈ 0.5 (Roxxy Motoren-Fibel Ch. 1 pp. 9–10), above the M 0.3 at which Anderson treats a flow as compressible (§8.5): the propeller is the one part of the chain outside M ≤ 0.3. Static (`J = 0`) coefficients differ from those at small advance ratio (Brandt & Selig 2011 §II.B, §III). Outside the tabulated `J` range the lookup extrapolates, which is flagged. *Remark (gh-1411, undated):* the implementation does not extrapolate: a speed outside the first and last block or a `J` beyond a block's range is the declared failure `outside_propeller_table`. The difference awaits the maintainer; see decisions/propeller-table-lookup-interface-and-range.md (PR gh-1411, awaiting the maintainer).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/propeller_table_lookup.py` | DEVIATES | 🟢 | the table is pushed with the components (`Components.propeller.table`, `schema_version` 2: `rpm`, `j`, `ct`, `cp` per block, from APC's PER3 file); the kernel reads no file. **Deviations:** (1) the lookup takes the propeller speed `n_prop` as a second input, because the rpm block cannot be chosen from `J` alone (the entry named only `components` and `j`), and returns `C_P` as well, which the application does not expose (`c_p: null`) and the embedders read through the relation (`motor-propeller-equilibrium` needs `C_P(J)`); (2) between rpm blocks the coefficient is **interpolated linearly in rpm**, not read from the nearest block: a nearest-block lookup makes the torque balance discontinuous at the block midpoints, so the bisection need not find a root; (3) **no extrapolation and no clamp** (ADR 0020): a propeller speed outside the first and last block, or an advance ratio beyond the tabulated range of a block the speed needs, ends as `outside_propeller_table` (`unsupported_configuration`), not as a flagged extrapolation; (4) an absent table is `missing_input` naming `components.propeller.table` |
+
+No register node is mapped to this entry.
 
 ## Approval
 

@@ -13,12 +13,13 @@ import time
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeGuard, cast
 
 from aero_kernel.build import Build
 from aero_kernel.cache import Entry, Lease, NodeCache, cache_key
 from aero_kernel.canon.model import Check, ConstBinding, Default, Formula
 from aero_kernel.canonical import spell_non_finite
+from aero_kernel.components import Components
 from aero_kernel.context import Context, Inputs, Solvers, Value
 from aero_kernel.devices import devices_at_rest
 from aero_kernel.errors import (
@@ -51,6 +52,7 @@ from aero_kernel.schema import (
     ComputeRequest,
     ComputeResult,
     Curve,
+    CurveResult,
     DefaultUsed,
     Interval,
     KernelWarning,
@@ -177,35 +179,62 @@ def _unit_of(build: Build, slug: str) -> str | None:
 
 
 # The quantity types a value of v1 can carry between nodes (``Value``).
-_CARRIED_TYPES = frozenset({"scalar", "airplane", "polar"})
+_CARRIED_TYPES = frozenset({"scalar", "airplane", "polar", "components"})
 
 # The output types the cache stores (ch. 8.4): they round-trip through JSON bit for bit. Not the
 # airplane: a parsed geometry holds metres in the format's millimetre fields and by design does not
 # parse again (``geometry.py``), so it cannot come back from JSON unchanged; a node that produces
 # one (``airplane-configuration``, a cheap device setting) is not cached. Nor the types v1 does
-# not carry (curve, ...): the engine discards those values. Declared, not silent (ADR 0020).
-_CACHED_TYPES = frozenset({"scalar", "polar"})
+# not carry (curve_pair, ...): the engine discards those values. Declared, not silent (ADR 0020).
+# A curve is stored as its samples (``x``, ``y``): that is all a result carries of it.
+_CACHED_TYPES = frozenset({"scalar", "polar", "per_control_surface", "curve"})
 
 
 def _key_value(value: Value | None) -> JsonValue:
     """The JSON form of a direct input value in the cache key (ch. 8.4)."""
-    if isinstance(value, AirplaneGeometry | Polar):
+    if isinstance(value, AirplaneGeometry | Polar | Components):
         return spell_non_finite(value.model_dump(mode="json"))
     return value
+
+
+def _is_surface_moments(value: object) -> TypeGuard[dict[str, float]]:
+    """Whether a value is a non-empty mapping from a surface key to a finite float."""
+    if not isinstance(value, dict) or not value:
+        return False
+    items = cast("dict[object, object]", value)  # the keys and values are checked just below
+    return all(
+        isinstance(key, str) and isinstance(item, float) and math.isfinite(item)
+        for key, item in items.items()
+    )
 
 
 def _stored_value(value: object) -> JsonValue:
     """The JSON form of a cached output, by its type (ch. 8.4); lossless, ``-0.0`` kept."""
     if isinstance(value, Polar):
         return value.model_dump(mode="json")
+    if isinstance(value, Curve):  # a subclass (the stall curve) keeps only what a result carries
+        return {"x": list(value.x), "y": list(value.y)}
+    if _is_surface_moments(value):  # a per_control_surface value: surface key -> float
+        return dict(value.items())
     assert isinstance(value, float)  # _check_outputs passed and the type is a cached one
     return value
 
 
-def _restored_value(kind: str, value: JsonValue) -> Value:
+def _as_float(value: JsonValue) -> float:
+    """A stored per-surface number back as a float (JSON may spell ``1.0`` as ``1``)."""
+    assert isinstance(value, int | float)  # stored by _stored_value
+    return float(value)
+
+
+def _restored_value(kind: str, value: JsonValue) -> object:
     """A cached output back as the value of its type: a fresh object (ch. 8.4)."""
     if kind == "polar":
         return Polar.model_validate(value)
+    if kind == "curve":
+        return Curve.model_validate(value)
+    if kind == "per_control_surface":
+        assert isinstance(value, dict)  # stored by _stored_value
+        return {key: _as_float(item) for key, item in value.items()}
     assert isinstance(value, float)  # stored by _stored_value for a scalar
     return value
 
@@ -225,7 +254,7 @@ def _check_warning(
         f"{what}_unchecked" if unchecked else f"{what}_violated",
         f"The {what} `{check_id}` of `{display_slug(node.id.formula)}` {verdict}: {result.message}",
         origin=origin,
-        detail={what: check_id},
+        detail={what: check_id, **result.detail},
     )
 
 
@@ -270,7 +299,8 @@ class _Call:
         # the first requested spelling of a node's quantities names the node in its messages
         self.requested_by_node: dict[NodeId, str] = {}
         for resolved in subtree.requested:
-            self.requested_by_node.setdefault(resolved.producer, resolved.requested)
+            for producer in resolved.producers:
+                self.requested_by_node.setdefault(producer, resolved.requested)
 
     # --- running the graph -----------------------------------------------------------------
 
@@ -614,7 +644,12 @@ class _Call:
         application = node.id.application
         inputs, world = call.inputs, call.world
         origin = display_slug(node.produces[0].quantity)
-        warner = Context(origin=origin, solvers=self.solvers, world=world)
+        warner = Context(
+            origin=origin,
+            solvers=self.solvers,
+            world=world,
+            relations=self._relations_of(formula),
+        )
         pre_warnings, refused = self._run_checks("pre", node, formula, inputs, None, origin)
         if refused is not None:
             return self._failed(
@@ -655,6 +690,20 @@ class _Call:
             warnings=(*call.default_warnings, *pre_warnings, *warner.warnings, *post_warnings),
         )
 
+    def _relations_of(self, formula: Formula) -> dict[str, Callable[..., object]]:
+        """The registered relations reachable through the formula's ``embeds``, by embed item.
+
+        The closure, not only the direct embeds: a relation that reaches another relation does so
+        through the same context (ch. 8.12), so an embedder of ``motor-propeller-part-load`` is handed
+        the relations that one reaches as well (ch. 8.5, 8.12).
+        """
+        found: dict[str, Callable[..., object]] = {}
+        for item in formula.embeds_closure:
+            relation = self.build.registry.relation_of(item.split(".", 1)[0])
+            if relation is not None:
+                found[item] = relation
+        return found
+
     def _run_checks(
         self,
         kind: Literal["pre", "post"],
@@ -687,7 +736,7 @@ class _Call:
             if result.state == "held":
                 continue
             if result.state == "violated" and entry.on_violation == "error":
-                return warnings, self._violation_error(kind, what, entry.id, node, result.message)
+                return warnings, self._violation_error(kind, what, entry.id, node, result)
             warnings.append(_check_warning(what, entry.id, node, result, origin))
         return warnings, None
 
@@ -711,7 +760,7 @@ class _Call:
 
     @staticmethod
     def _violation_error(
-        kind: Literal["pre", "post"], what: str, check_id: str, node: Node, message: str
+        kind: Literal["pre", "post"], what: str, check_id: str, node: Node, result: CheckResult
     ) -> KernelError:
         """The error of a violated check whose ``on_violation`` is ``error``."""
         formula_slug = display_slug(node.id.formula)
@@ -720,13 +769,13 @@ class _Call:
             category=ErrorCategory.UNSUPPORTED_CONFIGURATION,
             formula=formula_slug,
             application=node.id.application,
-            message=f"The {what} `{check_id}` of `{formula_slug}` is violated: {message}",
+            message=f"The {what} `{check_id}` of `{formula_slug}` is violated: {result.message}",
             hint=(
                 "Change the inputs so that the formula applies."
                 if kind == "pre"
                 else "The value was discarded; the evaluation is not trustworthy."
             ),
-            detail={what: check_id},
+            detail={what: check_id, **result.detail},
         )
 
     def _inherit(
@@ -795,7 +844,7 @@ class _Call:
             formula=formula_slug,
             application=node.id.application,
             message=f"`{quantity}` reads {names}, which the kernel cannot carry yet.",
-            hint="Request a quantity that reads scalars and the airplane only.",
+            hint="Request a quantity that reads scalars, the airplane, polars and components only.",
             detail={"quantities": list[JsonValue](display_slug(slug) for slug, _ in unsupported)},
         )
 
@@ -893,6 +942,8 @@ class _Call:
         quantity = self.build.model.quantity(slug)
         if quantity is not None and quantity.type == "airplane":
             return self.airplane_at_rest
+        if quantity is not None and quantity.type == "components":
+            return self.aircraft.components
         return self.values.get(slug) if quantity is not None and quantity.type == "scalar" else None
 
     def _missing_input(
@@ -907,19 +958,32 @@ class _Call:
         """
         shown = [display_slug(slug) for slug in missing]
         verb = "was" if len(shown) == 1 else "were"
+        kinds = [self._type_of(slug) for slug in missing]
+        scalars = [name for name, kind in zip(shown, kinds, strict=True) if kind != "components"]
+        hints: list[str] = []
+        if scalars:
+            hints.append(f"Supply {join_names([f'`{n}`' for n in scalars])} in `values`.")
+        if "components" in kinds:
+            hints.append(
+                "Push the fitted motor, battery and propeller as AircraftInput.components."
+            )
         return KernelError(
             code="missing_input",
             category=ErrorCategory.INVALID_INPUT,
             quantity=quantity,
             formula=formula_slug,
             application=node.id.application,
-            input_path=f"values.{shown[0]}",
+            input_path="components" if kinds[0] == "components" else f"values.{shown[0]}",
             message=f"`{quantity}` needs {join_names([f'`{n}`' for n in shown])}, "
             f"which {verb} not supplied.",
-            hint=f"Supply {join_names([f'`{n}`' for n in shown])} in `values`."
-            + self._geometry_mass_hint(shown),
+            hint=" ".join(hints) + self._geometry_mass_hint(shown),
             detail={"inputs": list[JsonValue](shown)},
         )
+
+    def _type_of(self, slug: str) -> str | None:
+        """The type of a quantity of the model, or ``None`` if the model has none such."""
+        quantity = self.build.model.quantity(slug)
+        return None if quantity is None else quantity.type
 
     def _geometry_mass_hint(self, shown: Sequence[str]) -> str:
         """The sentence that names the geometry's mass for a missing ``aircraft-mass``, or ``""``."""
@@ -942,23 +1006,23 @@ class _Call:
         if quantity is None or quantity.role not in ("input", "target"):
             return None
         # an input of another type is a kernel gap before any formula runs (row 3)
-        return "airplane" if quantity.type == "airplane" else f"values.{display_slug(binding)}"
+        if quantity.type in ("airplane", "components"):
+            return quantity.type
+        return f"values.{display_slug(binding)}"
 
     # --- outputs ---------------------------------------------------------------------------
 
     def _check_outputs(self, node: Node, formula: Formula, returned: Mapping[str, object]) -> None:
         """Require exactly the output parameters, and a value of its type for each carried output.
 
-        The key of an output whose type v1 cannot carry (curve pair, ...) must be present, but its
-        value is neither carried nor type-checked: the engine discards it, and whoever reads it is
+        The key of an output whose type v1 cannot carry (curve_pair, ...) must be present, but its value
+        is neither carried nor type-checked: the engine discards it, and whoever reads it is
         ``not_implemented`` (``unsupported_value_type``). The type check for each such type arrives
-        with the unit that adds it to ``Value`` (the polar did with ``stall-break``). A curve is
-        type-checked (``spanwise-loads``) but still not carried: the curve results are decision
-        ``spanwise-loads-curve-result``.
+        with the unit that adds it to ``Value`` (the polar did with ``stall-break``).
 
         Raises:
             ValueError: If the formula returned other parameters than the canon declares.
-            TypeError: If an exposed scalar, airplane or polar output is not a value of its type.
+            TypeError: If an exposed scalar, airplane, polar, curve or per-surface output is not a value of its type.
         """
         expected = set(formula.application(node.id.application).produce)
         if set(returned) != expected:
@@ -982,6 +1046,9 @@ class _Call:
             if quantity.type == "curve" and not isinstance(value, Curve):
                 msg = f"output {produce.parameter} is not a curve"
                 raise TypeError(msg)
+            if quantity.type == "per_control_surface" and not _is_surface_moments(value):
+                msg = f"output {produce.parameter} is not a non-empty value per control surface"
+                raise TypeError(msg)
 
     # --- results ---------------------------------------------------------------------------
 
@@ -999,13 +1066,21 @@ class _Call:
         timing = self._timing(resolved)
         if timing is not None:
             update["timing"] = timing
-        if result.status is QuantityStatus.OK and self._served_from_cache(resolved.producer):
+        if result.status is QuantityStatus.OK and self._served_from_cache_all(resolved):
             update["from_cache"] = True
         return result.model_copy(update=update) if update else result
 
     def _served_from_cache(self, node_id: NodeId) -> bool:
         """Whether every run of the node, one per world assignment, was a cache hit (ch. 8.4)."""
         return all(self.runs[(node_id, key)].from_cache for key, _ in self.slots[node_id])
+
+    def _served_from_cache_all(self, resolved: Resolved) -> bool:
+        """Whether every producer of a quantity that ran was served from the cache."""
+        return all(
+            self._served_from_cache(p)
+            for p in resolved.producers
+            if self.runs[(p, self.slots[p][0][0])].outcome.status is QuantityStatus.OK
+        )
 
     def _own_time(self, node_id: NodeId) -> TimeBounds | None:
         """The own time of a node over its runs, or ``None`` if a run did not finish."""
@@ -1014,13 +1089,23 @@ class _Call:
         return run_bounds(measured) if len(measured) == len(durations) else None
 
     def _timing(self, resolved: Resolved) -> Timing | None:
-        """The timing of a requested quantity, or ``None`` if a node of its subtree did not finish."""
+        """The timing of a requested quantity, or ``None`` if a node of its subtree did not finish.
+
+        A quantity with several producers (the applications of a ``per_control_surface`` value) counts
+        them as one node: they run concurrently in one layer, so its own lower bound is the longest
+        of them and its own upper bound their sum, like the runs of one node under several worlds.
+        """
         own: dict[NodeId, TimeBounds] = {}
         for node_id in self.subtree.nodes_for(resolved.slug):
             bounds = self._own_time(node_id)
             if bounds is None:
                 return None
             own[node_id] = bounds
+        if len(resolved.producers) > 1:
+            own[resolved.producer] = TimeBounds(
+                lower=max(own[p].lower for p in resolved.producers),
+                upper=math.fsum(own[p].upper for p in resolved.producers),
+            )
         predecessors = {
             node_id: tuple(edge.predecessor for edge in self.subtree.edges[node_id])
             for node_id in own
@@ -1029,6 +1114,10 @@ class _Call:
 
     def _merged_result(self, resolved: Resolved) -> QuantityResult:
         """The result of one requested quantity over its world assignments, without timing."""
+        if resolved.quantity.type == "curve":
+            return self._curve_result(resolved)
+        if len(resolved.producers) > 1:
+            return self._surfaces_result(resolved)
         assignments = self.subtree.world_assignments(resolved.requested)
         if len(assignments) == 1 and not assignments[0]:
             return self._result_under(resolved, {})
@@ -1063,7 +1152,6 @@ class _Call:
         parameter = next(p.parameter for p in node.produces if p.quantity == resolved.slug)
         formula, _ = self._formula(node)
         value = None if run.outputs is None else run.outputs[parameter]
-        assert isinstance(value, float)  # checked by _check_outputs for a scalar
         subtree_nodes = self.subtree.nodes_for(resolved.slug)
         read = {r.quantity for node_id in subtree_nodes for r in self.nodes[node_id].reads}
         inherited: list[KernelWarning] = []
@@ -1081,6 +1169,29 @@ class _Call:
                 *inherited,
             ]
         )
+        if _is_surface_moments(value):
+            application = node.id.application
+            surfaces = {key: {application: item} for key, item in value.items()}
+            return QuantityResult(
+                slug=slug,
+                unit=unit,
+                status=status,
+                surfaces=surfaces,
+                tool=formula.tool,
+                application=application,
+                warnings=warnings,
+            )
+        if isinstance(value, Curve):  # checked by _check_outputs for a curve
+            return QuantityResult(
+                slug=slug,
+                unit=unit,
+                status=status,
+                curve=self._curve_of(resolved, value),
+                tool=formula.tool,
+                application=node.id.application,
+                warnings=warnings,
+            )
+        assert isinstance(value, float)  # checked by _check_outputs for a scalar
         return QuantityResult(
             slug=slug,
             unit=unit,
@@ -1089,6 +1200,102 @@ class _Call:
             tool=formula.tool,
             application=node.id.application,
             warnings=warnings,
+        )
+
+    def _curve_of(self, resolved: Resolved, value: Curve) -> CurveResult:
+        """The curve of a result: its samples with the canon abscissa and its unit (ch. 8.3)."""
+        abscissa = resolved.quantity.abscissa
+        assert abscissa is not None  # the model requires one of every curve quantity
+        namespace = resolved.slug.partition(":")[0]
+        axis = self.build.model.quantity(f"{namespace}:{abscissa}")
+        assert axis is not None  # the model checked that the abscissa exists
+        return CurveResult(x=value.x, y=value.y, x_quantity=abscissa, x_unit=axis.unit)
+
+    def _curve_result(self, resolved: Resolved) -> QuantityResult:
+        """The result of a ``curve`` quantity (ch. 8.3, 8.13).
+
+        One producer under one world assignment gives the curve. Under several method worlds an
+        interval of curves would be a pointwise min/max no formula needs yet, so it is a declared
+        ``not_implemented``. A curve has one producing application: the importer refuses a second
+        (A7: only a ``per_control_surface`` quantity is shared).
+        """
+        if not self.subtree.world_assignments(resolved.requested)[0]:
+            return self._result_under(resolved, {})
+        return QuantityResult(
+            slug=resolved.requested,
+            unit=resolved.quantity.unit,
+            status=QuantityStatus.ERROR,
+            error=KernelError(
+                code="uncertain_curve",
+                category=ErrorCategory.NOT_IMPLEMENTED,
+                quantity=resolved.requested,
+                message=(
+                    f"`{resolved.requested}` is a curve and depends on a formula with several "
+                    "method worlds; an interval of curves (a pointwise min and max) is not built."
+                ),
+                hint=(
+                    "Request the scalar quantities this curve is computed from, each of which "
+                    "carries its interval over the worlds; the curve itself is not available "
+                    "until a curve formula needs the interval of curves."
+                ),
+            ),
+        )
+
+    def _surfaces_result(self, resolved: Resolved) -> QuantityResult:
+        """The result of a ``per_control_surface`` quantity: the union of its applications (ch. 8.5).
+
+        Applications that are not applicable add nothing. A failed application makes the quantity
+        an error, the first by the row of the status order and then by application id, and a skipped
+        one makes it skipped: a union that silently lacked a role would be a narrower value than the
+        caller asked for (ch. 8.13). When no application applies the quantity is not applicable; a
+        quantity with uncertain formulas is not defined (none exists: its inputs are plain values).
+        """
+        if self.subtree.world_assignments(resolved.requested)[0]:
+            return QuantityResult(
+                slug=resolved.requested,
+                unit=resolved.quantity.unit,
+                status=QuantityStatus.ERROR,
+                error=KernelError(
+                    code="non_scalar_result",
+                    category=ErrorCategory.NOT_IMPLEMENTED,
+                    quantity=resolved.requested,
+                    message=(
+                        f"`{resolved.requested}` is a value per control surface and depends on a "
+                        "formula with several method worlds; an interval of such a value is not defined."
+                    ),
+                    hint="Request it from a build whose inputs are plain values.",
+                ),
+            )
+        parts = [
+            (
+                node_id,
+                self._result_under(resolved.model_copy(update={"producer": node_id}), {}),
+            )
+            for node_id in resolved.producers
+        ]
+        failed = [
+            (_row(result, computed=self._run_of(node_id, {}).computed), node_id.application, result)
+            for node_id, result in parts
+            if result.status in (QuantityStatus.ERROR, QuantityStatus.SKIPPED)
+        ]
+        if failed:
+            return min(failed, key=lambda item: (item[0], item[1]))[2]
+        ok = [(node_id, result) for node_id, result in parts if result.status is QuantityStatus.OK]
+        if not ok:
+            return parts[0][1]
+        surfaces: dict[str, dict[str, float]] = {}
+        for _, result in ok:
+            assert result.surfaces is not None  # an ok part of a per_control_surface quantity
+            for key, by_application in result.surfaces.items():
+                surfaces.setdefault(key, {}).update(by_application)
+        return QuantityResult(
+            slug=resolved.requested,
+            unit=resolved.quantity.unit,
+            status=QuantityStatus.OK,
+            surfaces=surfaces,
+            tool=ok[0][1].tool,
+            application=", ".join(node_id.application for node_id, _ in ok),
+            warnings=dedupe_warnings([w for _, result in ok for w in result.warnings]),
         )
 
 
@@ -1129,6 +1336,7 @@ _ROW_BY_CODE = {
     "unsupported_value_type": 3,
     "continuous_uncertainty": 3,
     "non_scalar_result": 3,
+    "uncertain_curve": 3,
     "upstream_failed": 4,
     "missing_input": 5,
 }

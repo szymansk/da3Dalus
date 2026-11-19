@@ -80,13 +80,3 @@ None in aero_kernel yet; no register node is mapped to this entry.
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
-
-Implementation remark (#1398). **Not implemented: `M_cap` has no source in the kernel's `airplane`.** The spar of
-a segment in the geometry document is a `SpareDetail` with the pocket width and height, the chordwise
-position, the length, the start, the mode and the axis — no section shape, no wall, no material, no
-allowable stress — so the section modulus `W(y)` and `M_cap = W·σ_allow` cannot be formed from `airplane`
-as the canonical form and the decision of 2026-10-01 ("aus `airplane` abgeleitet") require. This is an
-open maintainer decision (#1398). The embedded half is ready: `spanwise-loads` is implemented and
-returns `M_1g,±(y)` at `n = ±1`. The kernel's embed engine (`ctx.embedded`, evaluating an embedded
-formula at fixed variable values) is specified but not yet built.
-
