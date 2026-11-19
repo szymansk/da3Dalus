@@ -116,7 +116,7 @@ ALPHA_MAX_DEG = 25.0
 # Sample spacing of the sweep (the prototype's 0.25 deg, scripts/canon_checks/*).
 ALPHA_STEP_DEG = 0.25
 # The ``limit`` detail of the not_converged failure of a state whose lift the wing cannot carry before its
-# first lift peak (the lift curve does not reach it below the peak, or the secant settles beyond the peak):
+# first lift peak (the lift curve does not reach it below the peak, nor does the curve's own maximum):
 # the wing limit, a bound of a search and not a defect. A sweep without a peak and a zero-lift angle outside
 # the sweep are not marked: they are solver or domain failures.
 WING_LIFT_LIMIT = "wing_lift"
