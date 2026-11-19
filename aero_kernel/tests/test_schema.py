@@ -139,6 +139,9 @@ class TestKernelWarning:
             "spinner_merge_exponent_clamped": WarningSeverity.WARNING,
             "fuselage_axis_straightened": WarningSeverity.NOTICE,
             "induced_drag_viscous_factor_removed": WarningSeverity.NOTICE,
+            "small_glide_angle": WarningSeverity.WARNING,
+            "polar_fit_residual": WarningSeverity.NOTICE,
+            "polar_fit_nonphysical": WarningSeverity.ERROR,
             "hinge_moment_inviscid_estimate": WarningSeverity.NOTICE,
             "hinge_moment_pitch_untrimmed": WarningSeverity.NOTICE,
         }

@@ -662,6 +662,12 @@
         "opt_hinge_floor": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_level_lift_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "opt_level_max_steps": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_peak_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -700,6 +706,8 @@
         "opt_probe_tolerance",
         "opt_peak_tolerance",
         "opt_zero_span",
+        "opt_level_lift_tolerance",
+        "opt_level_max_steps",
         "opt_active_bound_fraction",
         "opt_alpha_margin_deg",
         "opt_hinge_floor",

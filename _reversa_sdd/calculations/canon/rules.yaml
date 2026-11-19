@@ -393,3 +393,69 @@ aerobuildup-induced-drag:
       at_most: 1.0
       source: "Nita & Scholz (2012), Estimating the Oswald Factor from Basic Aircraft Geometrical Parameters, section 5: the class values of the viscous factor k_e,D0 (jet transport 0.873, business jet 0.864, turboprop 0.804, general aviation 0.804), as transcribed in AeroSandbox 4.2.9 aerosandbox/library/aerodynamics/inviscid.py:67-74, which uses their mean 0.83625; the paper itself is not in the vault (open gap, #1346). Anderson, Fundamentals of Aerodynamics 6e, 6.7.2: the Oswald factor of the complete-airplane polar absorbs the lift-dependent part of the parasite drag; 5.3.3: where the profile drag comes from a section polar, the inviscid span efficiency factor is the right one. Removal decided by the maintainer 2026-11-03, #1346 (path B). The aero tier checks that this value equals AeroSandbox's (oswalds_efficiency over its e_theo)"
       regime: "not an RC/UAV value: the four classes are full-scale aircraft (ADR 0028), which is why the kernel removes the factor instead of applying it; the value is AeroSandbox's, so that the removal is exact. Measured on BRYAN, WIESEL, CHEKKER and BELEMNITOS (#1346): AeroBuildup's induced drag against AVL Trefftz at C_L 0.9 is +24 to +28 % with the factor and +3.7 to +6.9 % without it; NeuralFoil's lift-dependent profile drag is 0.3 to 1.3 times the term the factor adds"
+
+parabolic-polar-fit:
+  applies_to: {formula: parabolic-polar-fit}
+  kind: tool
+  on_violation: warning
+  criterion: "The parabola C_D = C_D0 + C_L^2 / (pi AR e) is fitted by least squares to fit_points points of the solver polar along level flight, equally spaced in C_L between max(window_cl_floor, window_lower_fraction C_L,max) and window_upper_fraction C_L,max (each point at the speed where it flies level, L = m g, so at its own Reynolds number). Two results are not physically meaningful and are declared with the warning polar_fit_nonphysical (severity error) while the fitted numbers are still returned: a fitted C_D0 at or below zero, and an Oswald factor at or below zero (a slope k at or below zero) or above max_oswald. A slope of zero (to the configuration value opt_zero_span) has no finite Oswald factor and is an error of the formula, as are a solver drag at or below zero at any point (defective_solver_drag, checked before anything is divided by it), an empty window (empty_fit_window: the upper end is not above the lower end) and a fit_points that is no integer of at least 3 (invalid_fit_points). Every fit also declares its residual in the notice polar_fit_residual (RMS and largest deviation of the solver C_D from the parabola, C_L range and number of points). Raising fit_points is the way to a better fit; no threshold on the residual exists (BR-16: resolution goes up, thresholds never move)."
+  codes: [polar_fit_nonphysical, polar_fit_residual, empty_fit_window, invalid_fit_points, defective_solver_drag]
+  parameters:
+    window_cl_floor:
+      value: 0.1
+      unit: "1"
+      basis: convention
+      status: adopted
+      positive: true
+      source: "BR-16 of the aero-analysis requirements (gh-672): the fit window CL in [max(0.10, 0.10 CL_max), 0.85 CL_max], the app's window since gh-672; no published source for the numbers. The lower end keeps the fit away from the C_L ~ 0 region where the polar of a cambered airplane departs from the parabola, the upper end away from the stall"
+      regime: "RC/UAV: the window is a fraction of the airplane's own C_L,max, so it follows the section's Reynolds-dependent C_L,max (Anderson 4.3, Lennon Ch. 1-3: NACA 0012 C_L,max falls from 1.55 to 0.83 at low model Re) instead of a fixed C_L"
+    window_lower_fraction:
+      value: 0.1
+      unit: "1"
+      basis: convention
+      status: adopted
+      positive: true
+      at_most: 1.0
+      source: "BR-16 (gh-672), see window_cl_floor"
+      regime: "see window_cl_floor"
+    window_upper_fraction:
+      value: 0.85
+      unit: "1"
+      basis: convention
+      status: adopted
+      positive: true
+      at_most: 1.0
+      source: "BR-16 (gh-672), see window_cl_floor"
+      regime: "see window_cl_floor; 0.85 C_L,max stays clear of the laminar-separation and stall region of the section polar, where the polar is the least parabolic"
+    fit_points:
+      value: 48
+      unit: "1"
+      basis: convention
+      status: adopted
+      positive: true
+      source: "a resolution, not a physical limit: the number of level-flight points of the fit window. Chosen from the convergence measurement of #1401: fitted C_D0 and e at 12, 48 and 96 points on BRYAN (C_D0 0.02672, 0.02698, 0.02702; e 0.7596, 0.7645, 0.7653) and on the Ultra Stick 120 (C_D0 0.00972, 0.01000, 0.01005; e 0.7253, 0.7341, 0.7356): 48 points are within 0.2 % of 96 in e and 0.5 % in C_D0 on both, 12 are 0.7 to 1.4 % off in e; a point costs about 0.7 s of AeroBuildup on BRYAN. Raising it is the remedy for a poor fit (BR-16)"
+      regime: "regime-independent: a sampling density; the points carry their own Reynolds numbers"
+    max_oswald:
+      value: 1.0
+      unit: "1"
+      basis: definition
+      status: adopted
+      positive: true
+      source: "Anderson, Fundamentals of Aerodynamics 6e, 5.3.3: the span efficiency of a planar wing is at most 1 (the elliptical lift distribution has the least induced drag), and the Oswald factor of the complete airplane (6.7.2) absorbs further drag, so it is at most the span efficiency. An airplane polar with e above 1 is not physically meaningful (the app's gate unphysical_e_oswald, BR-16, used the same upper bound)"
+      regime: "regime-independent: a bound from lifting-line theory; the lower BR-16 gate e > 0.4 was an empirical band and is not adopted (the canon computes, it does not judge)"
+
+small-glide-angle:
+  applies_to: {formula: sink-rate}
+  kind: tool
+  on_violation: warning
+  criterion: "The sink rate w = V C_D / C_L is the small-glide-angle form of the steady glide: it drops cos(gamma) from sin(gamma) = tan(gamma) cos(gamma) and takes L = W instead of W cos(gamma). Both overstate the sink rate, by about 3 percent together at C_L/C_D = 5 and about 8 percent at 3. A point whose glide ratio C_L/C_D is below min_glide_ratio is reported with the warning small_glide_angle (the value is still returned, never dropped); the detail holds the glide ratio, the glide angle and the two exact overstatements."
+  codes: [small_glide_angle]
+  parameters:
+    min_glide_ratio:
+      value: 5.0
+      unit: "1"
+      basis: convention
+      status: adopted
+      positive: true
+      source: "the entry sink-rate (draft value E ~ 5, 'fixed at approval'): at E = 5 the two dropped factors overstate the sink rate by 2.0 % and 1.0 % (exact trigonometry, tabulated in the entry). The value is a draft of the entry that the maintainer fixes at approval; no published source states a floor. The RC-Network Wiki 'Gleitzahl' gives only tan(gamma) = 1/E"
+      regime: "RC/UAV: E of 10-20 for gliders and 3-6 for a draggy sport model at low Re (the entry), so the floor falls inside the range of powered models; the exact overstatements are in the detail of every warning, so a caller can read the size of the error rather than rely on the floor"
