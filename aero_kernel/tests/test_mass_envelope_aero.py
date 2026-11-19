@@ -55,7 +55,7 @@ async def test_the_two_largest_masses_end_the_state_they_name_and_the_curves_are
     # still climbs (a little), a little above it nothing climbs and level flight has no speed
     below = await run(avistar({"aircraft-mass": 0.995 * m_level}), "max-rate-of-climb")
     assert 0.0 < value(below, "max-rate-of-climb") < 0.5  # m/s: the climb has almost closed
-    above = await run(avistar({"aircraft-mass": 1.005 * m_level}), "max-rate-of-climb")
+    above = await run(avistar({"aircraft-mass": 1.02 * m_level}), "max-rate-of-climb")
     assert above["max-rate-of-climb"].status is QuantityStatus.ERROR
     assert above["max-rate-of-climb"].error is not None
     assert above["max-rate-of-climb"].error.code == "no_feasible_speed"

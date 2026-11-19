@@ -295,7 +295,7 @@ mass_envelope_step:
   unit: "1"
   guards: "Mass envelope: the growth of the mass per step of the upward scan that brackets the largest mass of level flight and of the lift-off (each mass is the one before times one plus this number); Illinois regula falsi then refines the root. Domain: a number above 0 (every config value is); the kernel's import refuses anything else."
   basis: numerical
-  source: "a search resolution, no physical claim: the largest mass of a thrust-limited model is a multiple of its current mass (several times on the 3.70 kg reference aircraft, measured in the evidence of mass-envelope), so the scan is geometric; about a third per step brackets it in about seven steps (the whole run, both roots, takes 43 s on the Avistar Elite at 3.70 kg: a speed search of a few seconds per scan point and refinement step; measured in the evidence of mass-envelope), and the roots are refined below the step"
+  source: "a search resolution, no physical claim: the largest mass of a thrust-limited model is a multiple of its current mass (several times on the 3.70 kg reference aircraft, measured in the evidence of mass-envelope), so the scan is geometric; about a third per step brackets it in about seven steps (the whole run, both roots, takes 70 s on the Avistar Elite at 3.70 kg: a stall solve and a speed search of a few seconds per scan point and refinement step; measured in the evidence of mass-envelope), and the roots are refined below the step"
 
 mass_envelope_max_steps:
   value: 12

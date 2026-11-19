@@ -100,7 +100,7 @@ No register node is mapped to this entry.
 
 **Implementation remark (#1420) — warnings, assumptions.** Warnings forwarded: those of the answer's level-flight point at `m_max,level` (flap, Reynolds, Mach and the drag notice of the adapter), those of the stall solve and the level-flight point of the answer at `m_max,TO` (with the flap-validity declaration), the route notice once, the skipped speeds of the level answer, and `powered_limit_declared` where the best excess lies at the stall corner; the warnings of the iterates are not forwarded. Assumptions: `G(m)` and `T − D` at `V_TO(m)` fall with the mass and cross zero once (bracketed by the upward scan); the best excess has one maximum over the speed (golden section). A state still held at the last mass of the scan (`mass_envelope_max_steps`) is `not_converged`.
 
-**Measured (gh-1420, Avistar Elite 3.70 kg, marked test motor values):** `m_max,level` 17.82 kg, `m_max,TO` 17.82 kg (5 g below); the whole run 43 s. A stall solve of `stall-speed` fails for masses from 8.8 to 9.4 kg on this aircraft (#1423), which the scan inherits.
+**Measured (gh-1420, Avistar Elite 3.70 kg, marked test motor values):** `m_max,level` 17.82 kg, `m_max,TO` 17.82 kg (5 g below); the whole run 70 s (after gh-1419, which adds a clean stall solve per mass). A stall solve of `stall-speed` fails for masses from 8.8 to 9.4 kg on this aircraft (#1423), which the scan inherits.
 
 ## Approval
 
