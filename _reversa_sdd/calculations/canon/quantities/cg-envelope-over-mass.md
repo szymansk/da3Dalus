@@ -18,4 +18,4 @@ CG range in which the elevator, at the given deflections (`elevator-deflection-u
 
 **Unit.** `m`
 
-**Produced by.** [[mass-envelope]]
+**Produced by.** [[cg-envelope]]

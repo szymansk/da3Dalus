@@ -289,3 +289,17 @@ powered_search_max_steps:
   guards: "Powered performance at full throttle: the number of steps after which a root search or a golden-section search ends without having reached its tolerance (not_converged). Termination only."
   basis: numerical
   source: "termination only: Illinois regula falsi converges superlinearly on a smooth bracketed root and the golden section shrinks the interval by 0.618 per step, so 60 steps reach 1e-12 of the interval; the limit is never reached on a smooth curve and bounds a non-smooth one"
+
+mass_envelope_step:
+  value: 0.2
+  unit: "1"
+  guards: "Mass envelope: the step of the upward scan of the mass, as a share of the current mass. The scan brackets the largest mass of level flight and of the lift-off, which Illinois regula falsi then refines, and its samples are the points of the curves over the mass."
+  basis: numerical
+  source: "a resolution, no physical claim: a fifth of the current mass is about 740 g on the 3.70 kg reference aircraft, the order of a battery or payload change a builder chooses between; each sample of the curves costs a stall solve, a level-speed search and a climb search (measured in the evidence of mass-envelope), so a finer step only costs minutes; the roots are refined below the step"
+
+mass_envelope_max_steps:
+  value: 8
+  unit: "1"
+  guards: "Mass envelope: the number of steps after which the upward scan of the mass ends without a bracket (not_converged). Termination only."
+  basis: numerical
+  source: "termination only: 8 steps of a fifth reach 2.6 times the current mass, beyond which a model is not the aircraft that was entered; the scan stops at the first mass that closes, so the limit is reached only where the drive train carries that mass"

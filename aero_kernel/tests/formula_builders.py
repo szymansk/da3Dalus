@@ -87,6 +87,7 @@ IMPLEMENTED = {
     "calc:endurance-and-range",
     "calc:endurance-and-range-optimum",
     "calc:cruise-target-performance",
+    "calc:mass-envelope",
 }
 
 

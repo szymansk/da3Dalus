@@ -122,7 +122,7 @@ async def test_everything_else_is_still_not_implemented() -> None:
     result = await evaluate(
         shipped_build(),
         aircraft_of("BRYAN", 0.151),
-        request("max-mass-level-flight"),
+        request("max-mass-structure"),
         solvers=solvers,
     )
     (only,) = result.quantities

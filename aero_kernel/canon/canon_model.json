@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:016ec5d4c99a567950f64038c080c8ea1c42e24a50129df971cb7c437307e38c",
+  "content_hash": "sha256:a287fcfbd7f69ac495a7bb77c62071955b06e534fd6cd3ec2d463e3651edc589",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -87,6 +87,20 @@
           "source": "a search resolution: at a minimum the battery power (and its quotient with the speed) changes with the square of the speed error, so a one-percent speed error moves the optimum value by a much smaller fraction (second order; checked against a brute-force scan in gh-1415). No domain threshold",
           "unit": "1",
           "value": 0.01
+        },
+        "mass_envelope_max_steps": {
+          "basis": "numerical",
+          "guards": "Mass envelope: the number of steps after which the upward scan of the mass ends without a bracket (not_converged). Termination only.",
+          "source": "termination only: 8 steps of a fifth reach 2.6 times the current mass, beyond which a model is not the aircraft that was entered; the scan stops at the first mass that closes, so the limit is reached only where the drive train carries that mass",
+          "unit": "1",
+          "value": 8.0
+        },
+        "mass_envelope_step": {
+          "basis": "numerical",
+          "guards": "Mass envelope: the step of the upward scan of the mass, as a share of the current mass. The scan brackets the largest mass of level flight and of the lift-off, which Illinois regula falsi then refines, and its samples are the points of the curves over the mass.",
+          "source": "a resolution, no physical claim: a fifth of the current mass is about 740 g on the 3.70 kg reference aircraft, the order of a battery or payload change a builder chooses between; each sample of the curves costs a stall solve, a level-speed search and a climb search (measured in the evidence of mass-envelope), so a finer step only costs minutes; the roots are refined below the step",
+          "unit": "1",
+          "value": 0.2
         },
         "opt_active_bound_fraction": {
           "basis": "numerical",
@@ -1012,6 +1026,93 @@
           "tool": "OPT",
           "uncertainty": null,
           "variables": [],
+          "worlds": []
+        },
+        "cg-envelope": {
+          "applications": [
+            {
+              "bind": {
+                "a": "calc:speed-of-sound",
+                "airplane": "calc:airplane",
+                "airplane_ldg": "calc:airplane-landing",
+                "components": "calc:components",
+                "d_prop": "calc:propeller-diameter",
+                "delta_e_down": "calc:elevator-deflection-down",
+                "delta_e_up": "calc:elevator-deflection-up",
+                "eta_mot": "calc:motor-efficiency",
+                "g": "calc:gravity",
+                "i_0": "calc:motor-no-load-current",
+                "k_v": "calc:motor-voltage-constant",
+                "m_current": "calc:aircraft-mass",
+                "mu": "calc:dynamic-viscosity",
+                "p_mot_max": "calc:motor-max-power",
+                "r_m": "calc:motor-circuit-resistance",
+                "rho": "calc:air-density",
+                "u_bat": "calc:battery-voltage",
+                "x_np": "calc:neutral-point"
+              },
+              "given": null,
+              "id": "default",
+              "produce": {
+                "cg_envelope": "calc:cg-envelope-over-mass"
+              },
+              "when": null
+            }
+          ],
+          "cost": "minutes",
+          "direction": "analysis",
+          "embeds": [
+            "calc:stall-speed.landing",
+            "calc:max-level-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:advance-ratio-from-speed.default",
+            "calc:propeller-table-lookup.default",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "embeds_closure": [
+            "calc:advance-ratio-from-speed.default",
+            "calc:max-level-speed.default",
+            "calc:motor-propeller-equilibrium.default",
+            "calc:propeller-table-lookup.default",
+            "calc:stall-speed.landing",
+            "calc:thrust-at-airspeed-from-coefficient.default"
+          ],
+          "inputs": {
+            "a": "calc:speed-of-sound",
+            "airplane": "calc:airplane",
+            "airplane_ldg": "calc:airplane-landing",
+            "components": "calc:components",
+            "d_prop": "calc:propeller-diameter",
+            "delta_e_down": "calc:elevator-deflection-down",
+            "delta_e_up": "calc:elevator-deflection-up",
+            "eta_mot": "calc:motor-efficiency",
+            "g": "calc:gravity",
+            "i_0": "calc:motor-no-load-current",
+            "k_v": "calc:motor-voltage-constant",
+            "m_current": "calc:aircraft-mass",
+            "mu": "calc:dynamic-viscosity",
+            "p_mot_max": "calc:motor-max-power",
+            "r_m": "calc:motor-circuit-resistance",
+            "rho": "calc:air-density",
+            "u_bat": "calc:battery-voltage",
+            "x_np": "calc:neutral-point"
+          },
+          "kind": "optimization",
+          "optional": [
+            "r_m",
+            "i_0"
+          ],
+          "outputs": {
+            "cg_envelope": "calc:cg-envelope-over-mass"
+          },
+          "postconditions": [],
+          "preconditions": [],
+          "tool": "OPT",
+          "uncertainty": null,
+          "variables": [
+            "calc:aircraft-mass",
+            "calc:flight-speed"
+          ],
           "worlds": []
         },
         "cg-for-target-margin": {
@@ -2003,12 +2104,9 @@
               "bind": {
                 "a": "calc:speed-of-sound",
                 "airplane": "calc:airplane",
-                "airplane_ldg": "calc:airplane-landing",
                 "airplane_to": "calc:airplane-takeoff",
                 "components": "calc:components",
                 "d_prop": "calc:propeller-diameter",
-                "delta_e_down": "calc:elevator-deflection-down",
-                "delta_e_up": "calc:elevator-deflection-up",
                 "eta_mot": "calc:motor-efficiency",
                 "g": "calc:gravity",
                 "i_0": "calc:motor-no-load-current",
@@ -2020,13 +2118,11 @@
                 "rho": "calc:air-density",
                 "u_bat": "calc:battery-voltage",
                 "v_s_to": "calc:stall-speed-takeoff",
-                "v_to": "calc:takeoff-speed",
-                "x_np": "calc:neutral-point"
+                "v_to": "calc:takeoff-speed"
               },
               "given": null,
               "id": "default",
               "produce": {
-                "cg_envelope": "calc:cg-envelope-over-mass",
                 "m_max_level": "calc:max-mass-level-flight",
                 "m_max_to": "calc:max-mass-lift-off",
                 "roc_curve": "calc:climb-rate-over-mass",
@@ -2039,7 +2135,6 @@
           "direction": "analysis",
           "embeds": [
             "calc:stall-speed.clean",
-            "calc:stall-speed.landing",
             "calc:stall-speed.takeoff",
             "calc:max-level-speed.default",
             "calc:best-rate-of-climb.default",
@@ -2055,19 +2150,15 @@
             "calc:motor-propeller-equilibrium.default",
             "calc:propeller-table-lookup.default",
             "calc:stall-speed.clean",
-            "calc:stall-speed.landing",
             "calc:stall-speed.takeoff",
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
           "inputs": {
             "a": "calc:speed-of-sound",
             "airplane": "calc:airplane",
-            "airplane_ldg": "calc:airplane-landing",
             "airplane_to": "calc:airplane-takeoff",
             "components": "calc:components",
             "d_prop": "calc:propeller-diameter",
-            "delta_e_down": "calc:elevator-deflection-down",
-            "delta_e_up": "calc:elevator-deflection-up",
             "eta_mot": "calc:motor-efficiency",
             "g": "calc:gravity",
             "i_0": "calc:motor-no-load-current",
@@ -2079,8 +2170,7 @@
             "rho": "calc:air-density",
             "u_bat": "calc:battery-voltage",
             "v_s_to": "calc:stall-speed-takeoff",
-            "v_to": "calc:takeoff-speed",
-            "x_np": "calc:neutral-point"
+            "v_to": "calc:takeoff-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -2088,14 +2178,20 @@
             "i_0"
           ],
           "outputs": {
-            "cg_envelope": "calc:cg-envelope-over-mass",
             "m_max_level": "calc:max-mass-level-flight",
             "m_max_to": "calc:max-mass-lift-off",
             "roc_curve": "calc:climb-rate-over-mass",
             "speed_range": "calc:speed-range-over-mass"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "takeoff_speed_above_stall_speed",
+              "on_violation": "error",
+              "parameter": "v_to"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [

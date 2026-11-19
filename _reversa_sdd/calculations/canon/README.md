@@ -818,7 +818,7 @@ with its own variables, a long run (`mass-envelope`):
 ```yaml
 kind: optimization
 tool: OPT
-output: speed-range-over-mass, climb-rate-over-mass, max-mass-level-flight, max-mass-lift-off, cg-envelope-over-mass
+output: speed-range-over-mass, climb-rate-over-mass, max-mass-level-flight, max-mass-lift-off
 inputs:
   airplane: airplane
   components: components
@@ -829,7 +829,6 @@ inputs:
   a: speed-of-sound
   v_s_to: stall-speed-takeoff
   v_to: takeoff-speed
-  x_np: neutral-point
   k_v: motor-voltage-constant
   i_0: motor-no-load-current
   r_m: motor-circuit-resistance
@@ -838,18 +837,13 @@ inputs:
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
   airplane_to: airplane-takeoff
-  airplane_ldg: airplane-landing
-  delta_e_up: elevator-deflection-up
-  delta_e_down: elevator-deflection-down
 outputs:
   speed_range: speed-range-over-mass
   roc_curve: climb-rate-over-mass
   m_max_level: max-mass-level-flight
   m_max_to: max-mass-lift-off
-  cg_envelope: cg-envelope-over-mass
 embeds:
   - stall-speed.clean
-  - stall-speed.landing
   - stall-speed.takeoff
   - max-level-speed
   - best-rate-of-climb
@@ -860,6 +854,8 @@ embeds:
 variables: [aircraft-mass, flight-speed]
 optional: [r_m, i_0]
 cost: minutes
+preconditions:
+  - {id: takeoff_speed_above_stall_speed, parameter: v_to, on_violation: error}
 ```
 
 A **fit** (`parabolic-polar-fit`):

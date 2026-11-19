@@ -638,6 +638,12 @@
         "endurance_speed_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "mass_envelope_max_steps": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "mass_envelope_step": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_active_bound_fraction": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -758,6 +764,8 @@
         "powered_optimum_tolerance",
         "powered_load_factor_tolerance",
         "powered_search_max_steps",
+        "mass_envelope_step",
+        "mass_envelope_max_steps",
         "endurance_speed_ratio",
         "endurance_speed_tolerance"
       ],

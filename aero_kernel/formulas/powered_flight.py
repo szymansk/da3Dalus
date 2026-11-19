@@ -227,8 +227,14 @@ class PoweredFlight:
         """Remember a speed the search passed over, to declare it with the answer."""
         self._skipped.append((v, reason))
 
-    async def answer(self, v: float, n_load: float) -> LevelPoint:
+    async def answer(self, v: float, n_load: float, *, declare: bool = True) -> LevelPoint:
         """Evaluate the answer state once more, forward its warnings, declare the route and the skipped speeds.
+
+        Args:
+            v: The speed of the answer in m/s.
+            n_load: The load factor of the answer state.
+            declare: Whether to declare the route and the skipped speeds; ``False`` for the second
+                answer of a formula that has two (the notices are made once).
 
         Returns:
             The level-flight point of the answer (angle of attack, ``C_L``, ``C_D``, forces).
@@ -242,8 +248,9 @@ class PoweredFlight:
             n_load,
         )
         forward_warnings(self.ctx, found.warnings)
-        declare_route(self.ctx)
-        self._declare_skipped()
+        if declare:
+            declare_route(self.ctx)
+            self._declare_skipped()
         return found.point
 
     def _declare_skipped(self) -> None:
