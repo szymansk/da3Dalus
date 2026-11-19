@@ -69,13 +69,10 @@ async def test_the_two_largest_masses_end_the_state_they_name_and_the_climb_curv
     assert speed_range.error.code == "non_scalar_result"
 
     # the hand check, with the other formulas: a little below the largest level-flight mass the airplane
-    # still climbs (a little), above it nothing climbs and level flight has no speed. Above is 2 percent,
-    # not 0.5: at 1.005 times the root the level-point solve sits on the lift peak and gives either the wing
-    # limit or a plain not_converged depending on the 7th digit of the mass (bug #1426, reproduced; not
-    # warm start or order), so the check keeps clear of that knife edge until the defect is fixed.
+    # still climbs (a little), a little above it nothing climbs and level flight has no speed
     below = await run(avistar({"aircraft-mass": 0.995 * m_level}), "max-rate-of-climb")
     assert 0.0 < value(below, "max-rate-of-climb") < 0.5  # m/s: the climb has almost closed
-    above = await run(avistar({"aircraft-mass": 1.02 * m_level}), "max-rate-of-climb")
+    above = await run(avistar({"aircraft-mass": 1.005 * m_level}), "max-rate-of-climb")
     assert above["max-rate-of-climb"].status is QuantityStatus.ERROR
     assert above["max-rate-of-climb"].error is not None
     assert above["max-rate-of-climb"].error.code == "no_feasible_speed"
