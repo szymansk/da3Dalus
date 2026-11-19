@@ -51,17 +51,6 @@ def test_post_then_get_returns_the_section_in_metres_and_stores_mm(plane):
         assert row.section["shape"] == "tube"
 
 
-def test_put_replaces_and_clears_the_section(plane):
-    client, _, aid = plane
-    url = URL.format(aid=aid) + "/0"
-    section = {"shape": "rod", "diameter": 0.01}
-    assert client.put(url, json=body(section=section, material="m")).status_code == 200
-    assert client.get(URL.format(aid=aid)).json()[0]["section"] == section
-    assert client.put(url, json=body()).status_code == 200
-    first = client.get(URL.format(aid=aid)).json()[0]
-    assert first["section"] is None and first["material"] is None
-
-
 def test_existing_spars_without_a_section_keep_working(plane):
     client, _, aid = plane
     (spar,) = client.get(URL.format(aid=aid)).json()

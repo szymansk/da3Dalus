@@ -102,11 +102,9 @@ def test_existing_spars_keep_their_values_and_get_null_section_and_material(tmp_
 
 
 def test_the_migration_is_the_single_head_and_chains_on_the_previous_one() -> None:
-    import importlib.util
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
 
-    path = WORKTREE / "alembic" / "versions" / "054bdccea9a7_gh1428_spar_section_material.py"
-    spec = importlib.util.spec_from_file_location("migration_gh1428", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    assert module.revision == THIS_REVISION
-    assert module.down_revision == PREV_REVISION
+    script = ScriptDirectory.from_config(Config(str(ALEMBIC_CFG)))
+    assert script.get_heads() == [THIS_REVISION]
+    assert script.get_revision(THIS_REVISION).down_revision == PREV_REVISION

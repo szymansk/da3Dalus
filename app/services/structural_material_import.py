@@ -15,12 +15,29 @@ _STRENGTH_MIN_MPA = 1.0
 _STRENGTH_MAX_MPA = 5000.0
 
 
+# The strength and where it comes from. Any other spec needs a sibling ``<key>_source``.
+_CITED_KEYS = frozenset(
+    {"bending_strength_mpa", "bending_strength_basis", "bending_strength_source"}
+)
+
+
+def _uncited_keys(specs: dict[str, Any]) -> list[str]:
+    """The spec keys that say nowhere where they come from."""
+    return [
+        key
+        for key in specs
+        if key not in _CITED_KEYS and not key.endswith("_source") and f"{key}_source" not in specs
+    ]
+
+
 def validate_structural_material_record(record: dict[str, Any]) -> str | None:
     """Return an error string if a ``material`` snapshot record is invalid, else ``None``."""
     name = record.get("name", "?")
     if record.get("component_type") != "material":
         return f"'{name}': component_type must be 'material'"
     specs = record.get("specs") or {}
+    if uncited := _uncited_keys(specs):
+        return f"'{name}': specs {uncited} carry no source; add '<key>_source' or remove them"
     strength = specs.get("bending_strength_mpa")
     if strength is None:
         return None

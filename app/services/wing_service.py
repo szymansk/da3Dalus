@@ -5,6 +5,7 @@ This module contains the core logic for wing management,
 separated from HTTP concerns for better testability and reusability.
 """
 
+import copy
 import logging
 from datetime import datetime
 from typing import List
@@ -46,6 +47,9 @@ _MM_TO_M = 0.001
 
 
 _M_TO_MM = 1000.0
+
+# Spar fields a PUT may leave out to keep the stored value (gh-1428).
+_SPAR_KEEP_WHEN_OMITTED = frozenset({"section", "material"})
 
 
 def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareDetailSchema:
@@ -474,6 +478,47 @@ def _resolve_put_surface_type(
     return requested, inferred
 
 
+def _spar_identity_data(wing: WingModel) -> dict[tuple[int, int], tuple[dict | None, str | None]]:
+    """Section (mm) and material of every spar that has one, by (cross-section, spar) index.
+
+    A WingConfiguration cannot carry them (cad_designer is read-only, ADR 0002), so a rebuild
+    from one saves them here first (gh-1428).
+    """
+    saved: dict[tuple[int, int], tuple[dict | None, str | None]] = {}
+    for x_index, x_sec in enumerate(wing.x_secs):
+        spares = x_sec.detail.spares if x_sec.detail is not None else []
+        for s_index, spare in enumerate(spares):
+            if spare.section is not None or spare.material is not None:
+                saved[(x_index, s_index)] = (copy.deepcopy(spare.section), spare.material)
+    return saved
+
+
+def _restore_spar_identity_data(
+    wing_name: str,
+    wing: WingModel,
+    saved: dict[tuple[int, int], tuple[dict | None, str | None]],
+) -> None:
+    """Give a rebuilt wing the saved section and material where the same spar still exists.
+
+    A spar is the same when its cross-section index and its index in that cross-section still
+    exist. The others lose their section and material, and each of them is logged.
+    """
+    for (x_index, s_index), (section, material) in saved.items():
+        x_sec = wing.x_secs[x_index] if x_index < len(wing.x_secs) else None
+        spares = x_sec.detail.spares if x_sec is not None and x_sec.detail is not None else []
+        if s_index >= len(spares):
+            logger.warning(
+                "Wing %r rebuilt from a WingConfiguration: spar %d of cross-section %d no longer "
+                "exists; its section and material are dropped.",
+                wing_name,
+                s_index,
+                x_index,
+            )
+            continue
+        spares[s_index].section = section
+        spares[s_index].material = material
+
+
 def put_wing_as_wingconfig(
     db: Session,
     aeroplane_uuid,
@@ -484,7 +529,9 @@ def put_wing_as_wingconfig(
     """Replace an existing wing from WingConfiguration JSON.
 
     Unlike create_wing_from_wing_configuration, this deletes
-    the existing wing first (idempotent PUT semantics).
+    the existing wing first (idempotent PUT semantics). A WingConfiguration has no spar section
+    or material (gh-1428); those of every spar whose cross-section index and spar index still
+    exist are carried over, the others are dropped and logged.
     """
     try:
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
@@ -493,6 +540,7 @@ def put_wing_as_wingconfig(
             plane, wing_name, existing, wing_config_data.surface_type
         )
         # Remove existing wing if present
+        saved_spars = _spar_identity_data(existing) if existing else {}
         if existing:
             db.delete(existing)
             db.flush()
@@ -509,6 +557,7 @@ def put_wing_as_wingconfig(
         plane.wings.append(wing_model)
         db.add(wing_model)
         db.flush()
+        _restore_spar_identity_data(wing_name, wing_model, saved_spars)
         # Recompute spare_origin/spare_vector and store in mm (gh-402)
         _recompute_spare_vectors(wing_model)
         plane.updated_at = datetime.now()
@@ -1038,7 +1087,12 @@ def update_spare(
                 details={"spar_index": spar_index},
             )
         spare = detail.spares[spar_index]
+        # gh-1428: an omitted ``section`` / ``material`` keeps the stored value (the spar editor
+        # does not send them), an explicit null clears it.
+        sent = spare_data.model_fields_set
         for key, value in _convert_spare_to_mm(spare_data).model_dump().items():
+            if key in _SPAR_KEEP_WHEN_OMITTED and key not in sent:
+                continue
             setattr(spare, key, value)
         db.flush()
         _recompute_spare_vectors(wing)

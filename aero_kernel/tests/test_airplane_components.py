@@ -172,6 +172,22 @@ async def test_every_absent_field_is_named_in_catalogue_order() -> None:
     assert "`components.battery.mass_g`" in error.message
 
 
+async def test_components_without_any_powertrain_part_give_the_hint_of_absent_components() -> None:
+    """Components that carry only the materials table (gh-1428) are, for the powertrain, absent."""
+    result = await compute_all(Components.model_validate({"schema_version": 3}))
+    for quantity in result.quantities:
+        assert quantity.error is not None
+        assert quantity.error.code == "missing_input"
+        assert quantity.error.input_path == "components"
+        assert (
+            quantity.error.hint
+            == "Push the fitted motor, battery and propeller as AircraftInput.components."
+        )
+        assert quantity.error.detail == {
+            "inputs": ["components.motor", "components.battery", "components.propeller"]
+        }
+
+
 async def test_a_missing_part_is_named_as_a_part() -> None:
     document = complete_components().model_dump()
     document["propeller"] = None

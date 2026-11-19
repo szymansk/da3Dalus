@@ -324,7 +324,28 @@ class TestSnapshot:
         assert message in validate_structural_material_record(record)
 
     def test_a_record_without_strength_is_fine_and_a_non_material_is_not(self):
-        record = {"name": "n", "component_type": "material", "specs": {"density_kg_m3": 1}}
+        record = {"name": "n", "component_type": "material", "specs": {}}
         assert validate_structural_material_record(record) is None
         record["component_type"] = "servo"
         assert "must be 'material'" in validate_structural_material_record(record)
+
+
+class TestUncitedProperties:
+    def record(self, **specs) -> dict:
+        return {"name": "n", "component_type": "material", "specs": specs}
+
+    def test_a_property_without_a_source_is_refused(self):
+        error = validate_structural_material_record(self.record(density_kg_m3=1500.0))
+        assert "density_kg_m3" in error and "no source" in error
+
+    def test_a_property_with_a_sibling_source_is_accepted(self):
+        record = self.record(density_kg_m3=1500.0, density_kg_m3_source="data sheet, 'Density'")
+        assert validate_structural_material_record(record) is None
+
+    def test_the_committed_records_carry_no_uncited_property(self):
+        for record in json.loads(SNAPSHOT.read_text(encoding="utf-8")):
+            assert set(record["specs"]) == {
+                "bending_strength_mpa",
+                "bending_strength_basis",
+                "bending_strength_source",
+            }

@@ -68,9 +68,7 @@
     "specs": {
       "bending_strength_mpa": 1830.0,
       "bending_strength_basis": "minimum (the data sheet's table is headed 'Minimum Properties')",
-      "bending_strength_source": "Goodwinds Rods & Tubes specifications, table 'Minimum Properties - Carbon Rods > .156\"': Flexural Strength 265 ksi / 1.83 GPa, fibre volume 62%, matrix bisphenol epoxy vinyl ester; test method not stated. The same values are printed in the TAP Plastics data sheet 'Pultruded Carbon Rods & Tubes' (.240\" carbon rod)",
-      "fiber_orientation": "UD",
-      "density_kg_m3": 1500.0
+      "bending_strength_source": "Goodwinds Rods & Tubes specifications, table 'Minimum Properties - Carbon Rods > .156\"': Flexural Strength 265 ksi / 1.83 GPa, fibre volume 62%, matrix bisphenol epoxy vinyl ester; test method not stated. The same values are printed in the TAP Plastics data sheet 'Pultruded Carbon Rods & Tubes' (.240\" carbon rod)"
     }
   },
   {
@@ -82,9 +80,7 @@
     "specs": {
       "bending_strength_mpa": 1370.0,
       "bending_strength_basis": "minimum (the data sheet's table is headed 'Minimum Properties')",
-      "bending_strength_source": "Goodwinds Rods & Tubes specifications, table 'Carbon tube - Minimum Properties': Flexural Strength 200 ksi / 1.37 GPa, fibre volume 60%, matrix bisphenol epoxy vinyl ester; test method not stated. The same values are printed in the TAP Plastics data sheet 'Pultruded Carbon Rods & Tubes' (carbon tube)",
-      "fiber_orientation": "UD",
-      "density_kg_m3": 1500.0
+      "bending_strength_source": "Goodwinds Rods & Tubes specifications, table 'Carbon tube - Minimum Properties': Flexural Strength 200 ksi / 1.37 GPa, fibre volume 60%, matrix bisphenol epoxy vinyl ester; test method not stated. The same values are printed in the TAP Plastics data sheet 'Pultruded Carbon Rods & Tubes' (carbon tube)"
     }
   }
 ]
