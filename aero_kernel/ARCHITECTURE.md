@@ -944,11 +944,15 @@ caller's responsibility.
     angle of attack is read from one alpha sweep at that speed on the branch before the first C_L peak
     (`alpha_for_lift_coefficient`) and refined by secant steps on AeroBuildup's lift until it equals `m g` to
     `opt_level_lift_tolerance` (`config.yaml`); a level the lift curve does not reach, a missing peak or a point
-    that does not settle in `LEVEL_MAX_STEPS` is `not_converged`. The drag is `kernel_drag`. The regime warnings
+    that does not settle in `LEVEL_MAX_STEPS` is `not_converged`. The secant is bracketed by the two sweep samples
+    that enclose the root (`_next_alpha`: a step outside the bracket, or with a zero slope, is replaced by its
+    middle), so the search cannot cross the peak onto the branch after the stall, whatever the slope near the
+    peak, and the wing limit (`limit = wing_lift`) is a function of the lift alone: a lift above the sampled peak is
+    the limit unless the curve's own maximum (the parabola through the three samples around the peak says whether
+    it can be, then a golden section within two sweep steps locates it, `opt_alpha_margin_deg`) reaches it (#1426). The drag is `kernel_drag`. The regime warnings
     are those of the slowest and of the fastest point (Reynolds number and Mach number rise strictly with V in a
     fixed air state, so the regime bands are met first at one of the two extremes and the two bound every point
-    between them), the drag notice is declared once. A converged point must lie at or below the angle of the
-    sweep's first C_L peak, else `not_converged`; the step limit is `opt_level_max_steps` (`config.yaml`,
+    between them), the drag notice is declared once. The step limit is `opt_level_max_steps` (`config.yaml`,
     termination only). The fit itself (least
     squares in `C_L^2`, residual) is the formula's, in `formulas/parabolic_polar_fit.py`; its window and point
     count are the parameters of the rule `parabolic-polar-fit`.

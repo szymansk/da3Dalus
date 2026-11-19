@@ -6,6 +6,7 @@ from aero_kernel.solvers.roll_math import (
     alpha_for_lift_coefficient,
     body_rates,
     control_effectiveness,
+    enclosing_sample,
     stability_rolling_moment,
 )
 from aero_kernel.tests.formula_builders import close
@@ -55,3 +56,11 @@ def test_alpha_for_lift_takes_the_crossing_nearest_the_peak_on_a_non_monotonic_c
     alphas = [0.0, 1.0, 2.0, 3.0, 4.0]
     cl = [0.5, 0.3, 0.6, 0.8, 0.7]
     assert close(alpha_for_lift_coefficient(alphas, cl, 3, 0.5) or math.nan, 1.0 + 2.0 / 3.0, 1e-12)
+
+
+def test_the_enclosing_sample_is_the_upper_one_of_the_pair_nearest_the_peak() -> None:
+    cl = [-0.1, 0.2, 0.4, 0.6, 0.8, 0.7]
+    assert enclosing_sample(cl, 4, 0.5) == 3  # between samples 2 and 3
+    assert enclosing_sample(cl, 4, 0.8) == 4  # a sample on the level belongs to the pair below it
+    assert enclosing_sample(cl, 4, 0.9) is None
+    assert enclosing_sample(cl, 4, -0.5) is None
