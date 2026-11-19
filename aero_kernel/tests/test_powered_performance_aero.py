@@ -36,8 +36,10 @@ from aero_kernel.tests.formula_builders import solvers_with
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
 
-def avistar(values: dict[str, float] | None = None) -> AircraftInput:
-    """The Avistar Elite at sea level with its own drive train (one table, marked test values)."""
+def with_avistar_drive(
+    member: FleetMember, values: dict[str, float] | None = None
+) -> AircraftInput:
+    """A fleet airframe at sea level with the Avistar Elite's drive train (one table, marked test values)."""
     components = components_of(
         "axi_4120_14",
         "thunder_power_prolitex_4s_6000",
@@ -50,8 +52,13 @@ def avistar(values: dict[str, float] | None = None) -> AircraftInput:
         },
     ).model_dump()
     components["propeller"]["table"] = apc_13x8e_table()
-    base = aircraft_input(FleetMember.AVISTAR_ELITE, {"altitude": 0.0, **(values or {})})
+    base = aircraft_input(member, {"altitude": 0.0, **(values or {})})
     return base.model_copy(update={"components": Components.model_validate(components)})
+
+
+def avistar(values: dict[str, float] | None = None) -> AircraftInput:
+    """The Avistar Elite at sea level with its own drive train."""
+    return with_avistar_drive(FleetMember.AVISTAR_ELITE, values)
 
 
 async def run(aircraft: AircraftInput, *slugs: str) -> dict[str, QuantityResult]:
@@ -123,3 +130,20 @@ async def test_the_sustained_turns_are_consistent_with_each_other_and_say_which_
     assert 0.0 < radius < 100.0
     for slug in ("max-sustained-turn-rate", "min-sustained-turn-radius"):
         assert "powered_limit_declared" in codes(got, slug)
+
+
+@pytest.mark.parametrize(
+    "member",
+    [FleetMember.BRYAN, FleetMember.CHEKKER, FleetMember.SUPER_TRIDENT],
+    ids=lambda m: m.name,
+)
+async def test_the_level_speed_computes_where_the_scan_from_two_m_s_ended_in_the_solver(
+    member: FleetMember,
+) -> None:
+    """gh-1419: at 2 m/s the sweep of these three airframes shows no lift peak, which ended the formula as
+    ``not_converged``. The scan now starts at the clean stall speed, so it computes. The bounds are the
+    range of the other 13 airframes with this drive train (31.5 to 39.0 m/s, the table ends near 42 m/s)."""
+    got = await run(with_avistar_drive(member), "max-level-speed", "stall-speed")
+    v_max, v_s = value(got, "max-level-speed"), value(got, "stall-speed")
+    assert v_s < v_max < 42.0
+    assert 25.0 < v_max < 42.0

@@ -94,6 +94,11 @@ class PolarOpti(StubOpti):
         return LevelFlightPoint(point=point, warnings=self.warnings)
 
 
+def stall_speed(mass: float) -> float:
+    """The clean stall speed in m/s of the stub polar: ``V_S = sqrt(2 m g / (rho S C_L,max))``."""
+    return math.sqrt(2.0 * mass * G / (RHO * AREA * CL_MAX))
+
+
 def limits(ctx: Context) -> list[str]:
     """The ``limit`` of every ``powered_limit_declared`` notice of the context."""
     return [str(w.detail["limit"]) for w in ctx.warnings if w.code == "powered_limit_declared"]
@@ -121,6 +126,7 @@ def bound_inputs(slug: str, mass: float = 3.4, n_lim: float = 6.0, **extra: Any)
         "dynamic-viscosity": MU,
         "speed-of-sound": SOUND,
         "limit-load-factor": n_lim,
+        "stall-speed": stall_speed(mass),
         "components": complete_components_with_table(),
         "motor-voltage-constant": KV,
         "motor-no-load-current": I0,

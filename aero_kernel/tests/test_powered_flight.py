@@ -20,6 +20,10 @@ from aero_kernel.tests.formula_builders import close
 
 pytestmark = pytest.mark.asyncio
 
+START = (
+    2.0  # the start of the scans of these tests of the search itself (a parameter of the search)
+)
+
 
 def flight(slug: str = "max-level-speed", mass: float = 3.4) -> pf.PoweredFlight:
     return pf.PoweredFlight(pb.bound_inputs(slug, mass=mass), pb.context(slug, pb.PolarOpti()))
@@ -28,9 +32,11 @@ def flight(slug: str = "max-level-speed", mass: float = 3.4) -> pf.PoweredFlight
 # --- the numerical searches ------------------------------------------------------------------------
 
 
-async def test_the_scan_runs_from_the_configured_start_to_the_limit_in_steps() -> None:
-    speeds = list(pf.scan_speeds())
+async def test_the_scan_runs_from_the_given_start_to_the_limit_in_steps() -> None:
+    speeds = list(pf.scan_speeds(START))
     assert (speeds[0], speeds[1], speeds[-1], len(speeds)) == (2.0, 4.0, 150.0, 75)
+    from_stall = list(pf.scan_speeds(9.5))
+    assert (from_stall[0], from_stall[1], from_stall[-1]) == (9.5, 11.5, 149.5)
 
 
 async def test_illinois_finds_the_cube_root_of_two() -> None:
@@ -107,7 +113,7 @@ async def test_the_maximum_over_the_speed_is_found_between_the_scan_points() -> 
     async def f(v: float) -> float | pf.Unflyable:
         return -((v - 21.3) ** 2)
 
-    optimum = await pf.maximise_over_speed(f, flight())
+    optimum = await pf.maximise_over_speed(f, flight(), START)
     assert close(optimum.v, 21.3, 5e-4)
     assert not optimum.on_wing_limit
 
@@ -116,7 +122,7 @@ async def test_an_objective_without_a_value_below_a_speed_gives_an_optimum_on_th
     async def f(v: float) -> float | pf.Unflyable:
         return pf.Unflyable.WING if v < 12.3 else -v
 
-    optimum = await pf.maximise_over_speed(f, flight())
+    optimum = await pf.maximise_over_speed(f, flight(), START)
     assert 12.3 <= optimum.v < 12.32
     assert optimum.on_wing_limit
 
@@ -126,7 +132,7 @@ async def test_the_speeds_skipped_below_the_first_value_are_declared_with_the_an
         return pf.Unflyable.WING if v < 12.3 else -((v - 20.0) ** 2)
 
     airplane = flight()
-    await pf.maximise_over_speed(f, airplane)
+    await pf.maximise_over_speed(f, airplane, START)
     await airplane.answer(20.0, 1.0)
     (skipped,) = [w for w in airplane.ctx.warnings if w.code == "powered_speeds_skipped"]
     assert skipped.detail["count"] == 6  # 2, 4, ... 12 m/s
@@ -139,7 +145,7 @@ async def test_a_scan_with_no_value_names_what_stopped_every_speed() -> None:
         return pf.Unflyable.WING
 
     with pytest.raises(FormulaError) as caught:
-        await pf.maximise_over_speed(never, flight())
+        await pf.maximise_over_speed(never, flight(), START)
     assert caught.value.code == "no_feasible_speed"
     assert "wing cannot carry" in caught.value.message
     assert "thrust" not in caught.value.message  # no drag was ever short of thrust
@@ -150,7 +156,7 @@ async def test_a_thrust_that_is_never_enough_is_named_as_such() -> None:
         return pf.Unflyable.THRUST
 
     with pytest.raises(FormulaError) as caught:
-        await pf.maximise_over_speed(short, flight())
+        await pf.maximise_over_speed(short, flight(), START)
     assert "thrust at full throttle is below" in caught.value.message
     assert "wing" not in caught.value.message
 
@@ -168,7 +174,7 @@ async def test_an_optimum_on_the_table_edge_is_the_declared_table_failure() -> N
         return v
 
     with pytest.raises(FormulaError) as caught:
-        await pf.maximise_over_speed(f, flight())
+        await pf.maximise_over_speed(f, flight(), START)
     assert caught.value.code == "outside_propeller_table"
     assert "optimum lies on the end of the table" in caught.value.message
 
@@ -179,7 +185,7 @@ async def test_an_optimum_bracketed_below_the_table_edge_is_returned() -> None:
             raise table_end(v)
         return -((v - 7.3) ** 2)
 
-    optimum = await pf.maximise_over_speed(f, flight())
+    optimum = await pf.maximise_over_speed(f, flight(), START)
     assert close(optimum.v, 7.3, 1e-3)
 
 
@@ -188,7 +194,7 @@ async def test_a_table_that_ends_before_any_value_is_the_failure_with_the_table_
         raise table_end(v)
 
     with pytest.raises(FormulaError) as caught:
-        await pf.maximise_over_speed(f, flight())
+        await pf.maximise_over_speed(f, flight(), START)
     assert caught.value.code == "no_feasible_speed"
     assert "propeller table ends" in caught.value.message
 
@@ -198,7 +204,7 @@ async def test_another_failure_before_feasible_speeds_is_not_relabelled() -> Non
         raise FormulaError(ErrorCategory.INVALID_INPUT, "missing_input", "absent", "give it")
 
     with pytest.raises(FormulaError) as caught:
-        await pf.maximise_over_speed(f, flight())
+        await pf.maximise_over_speed(f, flight(), START)
     assert caught.value.code == "missing_input"
 
 
@@ -312,7 +318,7 @@ async def test_a_thrust_above_the_drag_up_to_the_scan_limit_is_not_converged(
     with pytest.raises(FormulaError) as caught:
         await max_level_speed(pb.bound_inputs("max-level-speed"), ctx)
     assert caught.value.category is ErrorCategory.NOT_CONVERGED
-    assert math.isclose(caught.value.detail["v_ms"], 150.0)  # type: ignore[index]
+    assert 148.0 < caught.value.detail["v_ms"] <= 150.0  # type: ignore[index]  # the last scan speed
 
 
 async def test_a_dive_whose_drag_never_reaches_weight_plus_thrust_is_not_converged(
@@ -379,7 +385,7 @@ async def test_the_sustained_load_factor_is_resolved_far_below_the_speed_resolut
 
 
 async def test_a_zero_lift_point_that_does_not_exist_surfaces_and_is_not_skipped() -> None:
-    ctx = pb.context("dive-speed", pb.PolarOpti(cd0=0.3, zero_lift_floor=9.0))
+    ctx = pb.context("dive-speed", pb.PolarOpti(cd0=0.3, zero_lift_floor=12.0))
     with pytest.raises(FormulaError) as caught:
         await dive_speed(pb.bound_inputs("dive-speed"), ctx)
     assert caught.value.category is ErrorCategory.NOT_CONVERGED
@@ -387,7 +393,7 @@ async def test_a_zero_lift_point_that_does_not_exist_surfaces_and_is_not_skipped
 
 
 async def test_a_sweep_without_a_peak_surfaces_from_the_level_speed_scan() -> None:
-    ctx = pb.context("max-level-speed", pb.PolarOpti(no_peak_below=6.0))
+    ctx = pb.context("max-level-speed", pb.PolarOpti(no_peak_below=12.0))
     with pytest.raises(FormulaError) as caught:
         await max_level_speed(pb.bound_inputs("max-level-speed"), ctx)
     assert caught.value.category is ErrorCategory.NOT_CONVERGED
@@ -466,9 +472,11 @@ async def test_a_crossing_below_the_table_edge_is_returned_although_the_table_en
 
 
 async def test_the_speeds_the_wing_cannot_fly_are_declared_in_the_result() -> None:
+    """A stall speed below the one the solver finds (another method): the scan starts at 8 m/s, and the
+    speed 8 m/s, where the stub wing (stalls at 9.52 m/s) cannot carry the weight, is skipped and declared."""
     ctx = pb.context("max-level-speed", pb.PolarOpti())
-    await max_level_speed(pb.bound_inputs("max-level-speed"), ctx)
+    await max_level_speed(pb.bound_inputs("max-level-speed", **{"stall-speed": 8.0}), ctx)
     (skipped,) = [w for w in ctx.warnings if w.code == "powered_speeds_skipped"]
-    assert skipped.detail["v_min_ms"] == 2.0
+    assert skipped.detail["v_min_ms"] == 8.0
     assert skipped.detail["reasons"] == ["wing"]
-    assert skipped.detail["count"] == 4  # 2, 4, 6, 8 m/s: the stub stalls near 9.5 m/s
+    assert skipped.detail["count"] == 1

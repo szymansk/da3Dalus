@@ -31,6 +31,7 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
+  v_s: stall-speed
 outputs: {v_max: max-level-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
@@ -48,7 +49,7 @@ subject to:   L(V, alpha) = m * g
               motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[max-level-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[max-level-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]] · [[stall-speed]]
 
 **Kind: an optimisation problem**, the same shape as climb and turn: the highest speed at which full-throttle thrust still equals drag in level flight. Thrust and rpm from [[motor-propeller-equilibrium]] (route declared, `Q-PT-6`).
 
@@ -64,11 +65,13 @@ subject to:   L(V, alpha) = m * g
 
 **Multi-start.** The problem has a spurious branch below the stall, where the polar's post-stall drag rise also satisfies `T ≥ D`; on BRYAN one start converged there (5.9 m/s at α = 16.7°). Solve from several starting speeds and keep the largest feasible `V` with no stall-side bound active.
 
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. Level flight carries `m g`, so it cannot be flown below the stall speed: the scan starts at `v_s`; a speed where the wing cannot carry the lift is still skipped and declared (`powered_speeds_skipped`), and a solver failure at a speed from `v_s` upward still ends the formula (`not_converged`).
+
 ## Implementations (1)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/max_level_speed.py` | DEVIATES | 🟢 | the highest root of `T_full(V) - D(V)` (upward scan of the speed from 2 m/s in 2 m/s steps, Illinois regula falsi), the drag from the level-flight point (`n = 1`) before the stall, so the spurious post-stall branch of the entry's multi-start rule cannot occur. If the thrust is still above the drag where the table ends, the value is `outside_propeller_table`; if it is never above the drag, `no_feasible_speed`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
+| `aero_kernel/formulas/max_level_speed.py` | DEVIATES | 🟢 | the highest root of `T_full(V) - D(V)` (upward scan of the speed from the clean stall speed in 2 m/s steps, Illinois regula falsi), the drag from the level-flight point (`n = 1`) before the stall, so the spurious post-stall branch of the entry's multi-start rule cannot occur. If the thrust is still above the drag where the table ends, the value is `outside_propeller_table`; if it is never above the drag, `no_feasible_speed`. **Deviation:** the entry's optimisation is solved by what it reduces to: `alpha` (lift equals `n m g`) and `n_prop` (torque balance) are eliminated by the kernel's two existing solves (`OptiAdapter.level_flight_point` with a load factor, and `full_throttle_thrust`, the composition of the four embedded relations), leaving a one-dimensional search over `V`. The torque balance is a bisection on the propeller table and cannot enter an IPOPT problem, so no IPOPT problem is posed. The numerical settings are `powered_*` in `config.yaml`. Route B only (a missing `R_m`, `I_0` or propeller table is `missing_input`); the speed beyond the propeller table is the declared failure `outside_propeller_table` (no extrapolation). Warnings of the iterates are not forwarded, only those of the answer. |
 
 No register node is mapped to this entry.
 

@@ -31,6 +31,7 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
+  v_s: stall-speed
 outputs: {v_x: best-angle-of-climb-speed, gamma_max: max-climb-angle}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
@@ -50,7 +51,7 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is in degrees
 ```
 
-**Produces** [[best-angle-of-climb-speed]] · [[max-climb-angle]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[best-angle-of-climb-speed]] · [[max-climb-angle]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]] · [[stall-speed]]
 
 **Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n_prop² · D_prop⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
 
@@ -73,6 +74,8 @@ gamma in radians inside sin and cos; the output gamma_max = (180/pi) * gamma is 
 **Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
 
 **When the answer is vertical, `V_x` is not unique.** With thrust above weight the climb angle reaches 90° over a whole speed range (BRYAN: from about 3 m/s — hanging on the propeller). Then the result is "climbs vertically", with the range if wanted, and no single `V_x`.
+
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A climb at the angle `gamma` carries `m g cos(gamma)` and can be flown down to `v_s sqrt(cos gamma)`. The steepest angle the drive train can hold is `sin gamma_T = T_0 / (m g)` with `T_0` the thrust at no airspeed (the largest it gives), so the scan starts at `v_s (1 - (T_0 / m g)^2)^(1/4)`; the best angle may therefore lie below the level stall speed (the Avistar Elite: 10.0 m/s against 11.4 m/s). Where that is below `powered_climb_scan_floor` of `v_s` the scan starts at the floor, a constant chosen by the implementer without a source (`config.yaml`), declared with the answer (`powered_limit_declared`, limit `scan_floor`).
 
 ## Implementations (1)
 

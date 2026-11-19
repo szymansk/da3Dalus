@@ -18,6 +18,13 @@ root or maximum over ``V`` (and a root over ``gamma`` or a bound over ``n`` insi
 upward scan of the airspeed, Illinois regula falsi for roots and golden section for a maximum; their
 numerical settings are in ``config.yaml`` (``powered_*``).
 
+The scan starts at a speed tied to the airplane (gh-1419), not at a fixed speed: the clean stall speed
+``v_s`` (the input of the entries, ``stall-speed``). Level flight and turns carry at least ``m g``, so they
+cannot fly below ``v_s``; the dive's zero-lift drag at ``v_s`` is ``C_D0 / C_L,max`` of the weight, so its root
+lies above ``v_s``; a climb at the angle ``gamma`` carries ``m g cos(gamma)`` and can fly down to
+``v_s sqrt(cos gamma)`` (:meth:`PoweredFlight.climb_scan_start`). A failure of the solver at a speed the scan
+reaches is a failure of the formula; the speeds below the start are not evaluated.
+
 What the searches assume (stated in the canon entries, #1414): one maximum of the objective over the speed
 (golden section), one hump of ``T - D`` over the speed for the level speed, and features no narrower than the
 scan step (two features closer together than the step can be missed).
@@ -113,9 +120,8 @@ def no_feasible_speed(what: str) -> FormulaError:
     )
 
 
-def never_flyable(reasons: set[Unflyable]) -> FormulaError:
-    """``no_feasible_speed`` naming what stopped the state at every speed of the scan."""
-    start = config().powered_speed_scan_start.value
+def never_flyable(reasons: set[Unflyable], start: float) -> FormulaError:
+    """``no_feasible_speed`` naming what stopped the state at every speed of the scan from ``start``."""
     limit = config().powered_speed_scan_limit.value
     why = " and ".join(sorted(_SKIP_TEXT[r] for r in reasons)) or "no speed was evaluated"
     return no_feasible_speed(
@@ -151,6 +157,8 @@ class PoweredFlight:
         self.x, self.ctx = x, ctx
         self.components: Components = components_of(x)
         self.weight = number(x, "m") * number(x, "g")
+        self.v_s = number(x, "v_s")
+        self._floor_start: float | None = None
         self.lowest_level_speed: float | None = None
         self._thrust: dict[float, float] = {}
         self._skipped: list[tuple[float, Unflyable]] = []
@@ -176,6 +184,27 @@ class PoweredFlight:
                 number(x, "d_prop"),
             )
         return self._thrust[v]
+
+    def climb_scan_start(self) -> float:
+        """The lowest speed in m/s a climb can fly: the stall speed at the steepest angle the thrust holds.
+
+        A steady climb at ``gamma`` carries ``m g cos(gamma)``, so its stall speed is ``v_s sqrt(cos
+        gamma)``. The angle cannot exceed ``gamma_T`` with ``sin(gamma_T) = T_0 / (m g)`` (``T_0`` the
+        thrust at no airspeed, the largest the drive train gives; ``T - D >= m g sin(gamma)``), so no
+        climb flies below ``v_s (1 - (T_0 / m g)^2)^(1/4)``. Where that is below the floor
+        ``powered_climb_scan_floor`` of ``v_s`` (``T_0`` near or above ``m g``: the climb can be vertical
+        and needs no lift) the start is the floor, declared with the answer.
+
+        Raises:
+            FormulaError: The failures of :meth:`thrust` at no airspeed.
+        """
+        ratio = min(1.0, self.thrust(0.0) / self.weight)
+        fraction = (1.0 - ratio * ratio) ** 0.25
+        floor = config().powered_climb_scan_floor.value
+        if fraction >= floor:
+            return self.v_s * fraction
+        self._floor_start = self.v_s * floor
+        return self._floor_start
 
     async def drag(self, v: float, n_load: float) -> float | None:
         """The drag in N at speed ``v`` and lift ``n m g``; ``None`` where the wing cannot carry that lift.
@@ -244,7 +273,21 @@ class PoweredFlight:
         forward_warnings(self.ctx, found.warnings)
         declare_route(self.ctx)
         self._declare_skipped()
+        self._declare_floor()
         return found.point
+
+    def _declare_floor(self) -> None:
+        """Declare that a climb with a vertical option was scanned only from the floor (ADR 0020)."""
+        if self._floor_start is None:
+            return
+        self.ctx.warn(
+            "powered_limit_declared",
+            "The thrust at no airspeed is close to or above the weight, so the climb can be steep or "
+            "vertical and needs little or no lift: it has no stall speed of its own. The scan was "
+            f"started at {self._floor_start:.4g} m/s, {config().powered_climb_scan_floor.value:g} of the clean "
+            "stall speed, and speeds below it were not evaluated.",
+            {"limit": "scan_floor", "v_ms": self._floor_start, "v_s_ms": self.v_s},
+        )
 
     def _declare_skipped(self) -> None:
         """One notice for the speeds the search skipped: the count, the range and the reasons (ADR 0020)."""
@@ -267,10 +310,9 @@ class PoweredFlight:
         )
 
 
-def scan_speeds() -> Iterator[float]:
+def scan_speeds(start: float) -> Iterator[float]:
     """The speeds of the upward scan: start, start + step, ... up to the limit (``config.yaml``)."""
     settings = config()
-    start = settings.powered_speed_scan_start.value
     step = settings.powered_speed_scan_step.value
     limit = settings.powered_speed_scan_limit.value
     k = 0
@@ -426,8 +468,8 @@ def table_failure(speed: float, what: str) -> FormulaError:
     )
 
 
-async def maximise_over_speed(f: Objective, flight: PoweredFlight) -> Optimum:
-    """The maximum of ``f`` over the airspeed: upward scan, then golden section around the best point.
+async def maximise_over_speed(f: Objective, flight: PoweredFlight, start: float) -> Optimum:
+    """The maximum of ``f`` over the airspeed: upward scan from ``start``, then golden section.
 
     The upward scan skips the speeds without a value before its first value (declared with the answer) and
     ends at the first speed without one after it, so the feasible speeds are taken as one interval. The
@@ -448,7 +490,7 @@ async def maximise_over_speed(f: Objective, flight: PoweredFlight) -> Optimum:
     reasons: set[Unflyable] = set()
     table_edge: float | None = None
     guarded = _table_as_result(f)
-    for v in scan_speeds():
+    for v in scan_speeds(start):
         found = await guarded(v)
         if isinstance(found, Unflyable):
             reasons.add(found)
@@ -465,10 +507,10 @@ async def maximise_over_speed(f: Objective, flight: PoweredFlight) -> Optimum:
         below[v] = previous_kind
         previous_kind = None
     if not values:
-        raise never_flyable(reasons)
+        raise never_flyable(reasons, start)
     best = max(range(len(values)), key=values.__getitem__)
     step = config().powered_speed_scan_step.value
-    low = max(speeds[best] - step, config().powered_speed_scan_start.value)
+    low = max(speeds[best] - step, start)
     result = await golden_maximum(guarded, low, speeds[best] + step)
     if result.above is Unflyable.TABLE:
         raise table_failure(
@@ -715,7 +757,7 @@ async def sustained_turn(
             return Unflyable.THRUST
         return objective(v, found.n)
 
-    v = (await maximise_over_speed(at_speed, flight)).v
+    v = (await maximise_over_speed(at_speed, flight, flight.v_s)).v
     limit = await sustained_load_factor(flight, v, n_lim)
     if isinstance(
         limit, Unflyable

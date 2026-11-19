@@ -85,7 +85,7 @@ async def dive_speed(x: Inputs, ctx: Context) -> dict[str, float]:
     """
     flight = PoweredFlight(x, ctx)
     previous: tuple[float, float] | None = None
-    for v in scan_speeds():
+    for v in scan_speeds(flight.v_s):
         surplus = await _surplus(flight, v)
         if surplus > 0.0:
             if previous is None:

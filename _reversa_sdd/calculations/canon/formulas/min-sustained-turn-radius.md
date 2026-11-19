@@ -32,6 +32,7 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
+  v_s: stall-speed
 outputs: {r_min: min-sustained-turn-radius, v_r: min-sustained-turn-radius-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
@@ -52,7 +53,7 @@ subject to:   L(V, alpha) = n * m * g
               1 <= n <= n_lim
 ```
 
-**Produces** [[min-sustained-turn-radius]] · [[min-sustained-turn-radius-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[min-sustained-turn-radius]] · [[min-sustained-turn-radius-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]] · [[stall-speed]]
 
 **Kind: an optimisation problem**, the same shape as the extremal closures and the climb. Variables: airspeed `V`, angle of attack `alpha`, load factor `n`, propeller speed `n_prop`. A **sustained** turn: level, at constant speed, so thrust equals drag; the drag comes from AeroBuildup at the turn's `alpha`, so the induced drag of the higher lift is in it. Thrust and rpm as in the climb ([[motor-propeller-equilibrium]], route declared per `Q-PT-6`).
 
@@ -74,6 +75,8 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 **Source.** 🟢 Radius and rate of the coordinated level turn: Sadraey §12.6.2 (coordinated turn, pp. 705–707): centrifugal force `F_C = m·U₁²/R_t` (Eq. 12.129), yaw rate `R₁ = ψ̇·cos φ = g·sin φ/U₁` (Eq. 12.134), hence the rate of turn `ψ̇ = g·tan φ/U₁`, and the load factor `n = L/W = 1/cos φ` (Eq. 12.135–12.136). Eliminating the bank angle with `tan φ = sqrt(n² − 1)` gives `ω = g·sqrt(n² − 1)/V` and `r = V/ω = V²/(g·sqrt(n² − 1))` — **derived from** these equations; Sadraey does not print the `n` form. Load factor as the vector sum of weight and centrifugal force, and the accelerated stall when the demanded C_L exceeds C_L,max: Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21. Motor model: Drela `motor1` §1.1.
 
 **Validity in the RC/UAV regime (ADR 0028).** The kinematics are exact, with the load factor as the vector sum of weight and centrifugal force (Lennon, Ch. 21). The tightest sustained turn is flown slowly and at high `C_L`, so it sits at the lowest chord Reynolds number of manoeuvring flight — often in the bubble-sensitive band below 7·10⁴, where section C_L,max falls sharply (Lennon Ch. 1–3, see [[stall-speed]]). There the transition location sets the result: Anderson §20.3.2 shows laminar separation on both surfaces at Re_c = 10⁵ disappearing when the flow is turbulent. AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴, C_L 1.0 (Sharpe 2024 §7.2.4). Thrust at that low speed comes from the propeller table near static conditions, with its Re₀.₇₅ ≈ 15–100 k and rpm-block limits. Propeller slipstream over the wing is not modelled [no source].
+
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A sustained turn carries `n m g` with `n >= 1`, so it cannot be flown below the stall speed: the scan starts at `v_s`; a speed where the wing cannot carry the lift is skipped and declared, a solver failure from `v_s` upward still ends the formula.
 
 ## Implementations (1)
 

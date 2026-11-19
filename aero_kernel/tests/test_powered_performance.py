@@ -167,8 +167,9 @@ async def test_the_best_angle_of_climb_lies_on_the_stall_corner_and_says_so(mass
     assert gamma_edge is not None
     assert close(got["v_x"], v_edge, 3e-4)
     assert close(math.radians(got["gamma_max"]), gamma_edge, 2e-3)
-    declared = pb.limits(ctx)
-    assert declared == ["wing"]
+    ratio = min(1.0, pb.thrust(0.0) / (mass * pb.G))
+    floor_binds = (1.0 - ratio * ratio) ** 0.25 < 0.5  # the scan floor of the climbs (gh-1419)
+    assert pb.limits(ctx) == (["scan_floor", "wing"] if floor_binds else ["wing"])
 
 
 async def test_a_thrust_above_the_weight_climbs_vertically_and_declares_it() -> None:
@@ -176,9 +177,10 @@ async def test_a_thrust_above_the_weight_climbs_vertically_and_declares_it() -> 
     ctx = pb.context("best-angle-of-climb")
     got = await best_angle_of_climb(pb.bound_inputs("best-angle-of-climb", mass=mass), ctx)
     assert got["gamma_max"] == 90.0
-    warnings = [w for w in ctx.warnings if w.code == "powered_limit_declared"]
-    assert len(warnings) == 1
-    assert pb.limits(ctx) == ["gamma_90_deg"]
+    assert pb.limits(ctx) == [
+        "scan_floor",
+        "gamma_90_deg",
+    ]  # a climb that can be vertical: floor start
     weight = mass * pb.G
 
     def excess(v: float) -> float:
