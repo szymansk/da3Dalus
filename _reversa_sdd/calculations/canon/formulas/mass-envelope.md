@@ -37,6 +37,7 @@ outputs:
   m_max_level: max-mass-level-flight
   m_max_to: max-mass-lift-off
 embeds:
+  - stall-speed.clean
   - stall-speed.takeoff
   - motor-propeller-equilibrium
   - advance-ratio-from-speed
@@ -61,7 +62,7 @@ m_max,TO:     maximize m   s.t.  at V_TO(m), take-off configuration:  L = m g,  
 
 **Produces** [[max-mass-level-flight]] · [[max-mass-lift-off]]  ·  **from** [[airplane]] · [[components]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[aircraft-mass]] · [[motor-efficiency]]
 
-**Embeds** `stall-speed.takeoff` (the stall problem at each mass, for `V_TO(m)`) and the four propulsion relations; the level-flight drag and the full-throttle thrust are those of `max-level-speed`, evaluated at each mass.
+**Embeds** `stall-speed.clean` (the stall problem at each mass, where the speed scan of the level problem starts, gh-1419) and `stall-speed.takeoff` (the stall problem at each mass, for `V_TO(m)`), and the four propulsion relations; the level-flight drag and the full-throttle thrust are those of `max-level-speed`, evaluated at each mass.
 
 **Kind: an optimisation problem family, swept over the mass** (maintainer, 2026-10-02 —
 replaces the payload question: payload is *"how much mass may be added"*). Everything that

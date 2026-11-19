@@ -4,7 +4,8 @@ The entry poses two problems over the mass ``m``; the kernel solves them by what
 that exist (ARCHITECTURE ch. 8.5, 8.12):
 
 - ``m_max,level``: the largest mass for which some speed has ``T(V) - D(V) >= 0`` in level flight with
-  ``L = m g``. The best excess over the speed, ``G(m) = max_V (T - D)``, falls with the mass and is zero at
+  ``L = m g`` (the speed scan starts at the clean stall speed of that mass, the stall solve at the mass,
+  as in ``max-level-speed`` since gh-1419). The best excess over the speed, ``G(m) = max_V (T - D)``, falls with the mass and is zero at
   ``m_max,level``; the mass is its root. At that mass the thrust equals the drag at the best speed and no
   climb is left;
 - ``m_max,TO``: the root of ``H(m) = T(V_TO) - D(V_TO)`` over the mass, with
@@ -159,16 +160,20 @@ class Envelope:
         self.steps = round(settings.mass_envelope_max_steps.value)
         self._levels: dict[float, tuple[PoweredFlight, Optimum]] = {}  # the best excess per mass
 
-    def at(self, mass: float, *, takeoff: bool = False) -> Inputs:
-        """``x`` of the shared powered-flight code at ``mass`` and, for the take-off, its configuration."""
-        found: dict[str, Value | None] = {**self.x, "m": mass}
+    def at(self, mass: float, v_s: float, *, takeoff: bool = False) -> Inputs:
+        """``x`` of the shared powered-flight code at ``mass`` with its clean stall speed ``v_s`` in m/s.
+
+        For the take-off the configuration is the take-off airplane (and ``v_s`` is its stall speed, which
+        the lift-off state does not scan from).
+        """
+        found: dict[str, Value | None] = {**self.x, "m": mass, "v_s": v_s}
         if takeoff:
             found["airplane"] = self.x["airplane_to"]
         return found
 
-    def flight(self, mass: float, *, takeoff: bool = False) -> PoweredFlight:
+    def flight(self, mass: float, v_s: float, *, takeoff: bool = False) -> PoweredFlight:
         """The thrust and drag of the airplane at ``mass``."""
-        return PoweredFlight(self.at(mass, takeoff=takeoff), self.ctx)
+        return PoweredFlight(self.at(mass, v_s, takeoff=takeoff), self.ctx)
 
     def airplane(self, *, takeoff: bool) -> AirplaneGeometry:
         """The geometry of the configuration."""
@@ -196,13 +201,14 @@ class Envelope:
     async def best_excess(self, mass: float) -> tuple[PoweredFlight, Optimum]:
         """The largest ``T - D`` over the speed in level flight at ``mass``, and the speed of it (kept per mass)."""
         if mass not in self._levels:
-            flight = self.flight(mass)
+            v_s = (await self.stall(mass, takeoff=False)).solution.v_s
+            flight = self.flight(mass, v_s)
 
             async def excess(v: float) -> float | Unflyable:
                 drag = await flight.drag(v, LEVEL_FLIGHT)
                 return Unflyable.WING if drag is None else flight.thrust(v) - drag
 
-            self._levels[mass] = (flight, await maximise_over_speed(excess, flight))
+            self._levels[mass] = (flight, await maximise_over_speed(excess, flight, v_s))
         return self._levels[mass]
 
     async def level_function(self, mass: float) -> float:
@@ -211,8 +217,9 @@ class Envelope:
 
     async def takeoff_function(self, mass: float) -> float:
         """``H(m)``: thrust minus drag at ``V_TO(m)`` in the take-off configuration, in N."""
-        v_to = self.reserve * (await self.stall(mass, takeoff=True)).solution.v_s
-        flight = self.flight(mass, takeoff=True)
+        v_s = (await self.stall(mass, takeoff=True)).solution.v_s
+        v_to = self.reserve * v_s
+        flight = self.flight(mass, v_s, takeoff=True)
         return flight.thrust(v_to) - await flight.required_drag(v_to, LEVEL_FLIGHT)
 
     async def value(
@@ -314,7 +321,7 @@ class Envelope:
         stall = await self.stall(root, takeoff=True)
         forward_warnings(self.ctx, stall.warnings)
         warn_flap_validity(self.ctx, self.airplane(takeoff=True), stall.solution.diagnostics)
-        flight = self.flight(root, takeoff=True)
+        flight = self.flight(root, stall.solution.v_s, takeoff=True)
         await flight.answer(self.reserve * stall.solution.v_s, LEVEL_FLIGHT, declare=False)
 
 

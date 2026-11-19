@@ -69,11 +69,13 @@ class EnvelopeOpti(pb.PolarOpti):
         *,
         stall_alpha: float = UPRIGHT_PEAK[0],
         stall_fails_above: float = math.inf,
+        stall_scale: float = 1.0,
         **kwargs: Any,
     ):
         super().__init__(cd0=cd0, **kwargs)
         self.stall_alpha = stall_alpha
         self.stall_fails_above = stall_fails_above
+        self.stall_scale = stall_scale
         self.stall_airplanes: list[AirplaneGeometry] = []
         self.level_airplanes: list[AirplaneGeometry] = []
 
@@ -103,7 +105,7 @@ class EnvelopeOpti(pb.PolarOpti):
                 "not_converged", "the optimum of the stall problem lies on the bound of alpha"
             )
         solution = StallSolution(
-            v_s=v_stall(mass_kg),
+            v_s=v_stall(mass_kg) * self.stall_scale,
             cl_max=pb.CL_MAX,
             alpha_s=self.stall_alpha,
             polar=lift_curve((UPRIGHT_PEAK[0], pb.CL_MAX), True),
@@ -244,7 +246,9 @@ async def test_only_the_warnings_of_the_two_answers_are_forwarded_and_the_route_
     assert len(opti.evaluations) > 100  # many evaluations along the searches
     assert codes.count("induced_drag_viscous_factor_removed") == 2  # level answer, take-off answer
     assert codes.count("powertrain_route_winding_resistance") == 1
-    assert pb.limits(ctx) == ["wing"]  # the draggy polar's best excess is at the stall corner
+    assert (
+        pb.limits(ctx) == []
+    )  # the scan starts at the stall speed, so the stall corner is its first point
 
 
 async def test_the_embedded_relations_requested_are_those_of_the_canon_that_exist() -> None:
@@ -263,7 +267,9 @@ async def test_the_take_off_stall_and_drag_are_solved_on_the_take_off_configurat
     await run(opti, **swapped)
     assert any(a is takeoff for a in opti.stall_airplanes)  # the take-off stall solves
     assert any(a is takeoff for a in opti.level_airplanes)  # the take-off drag
-    assert all(a is takeoff for a in opti.stall_airplanes)  # only the take-off stall is solved
+    assert any(
+        a is not takeoff for a in opti.stall_airplanes
+    )  # the clean stall starts the speed scan
     assert any(a is not takeoff for a in opti.level_airplanes)  # the clean level flight
 
 
@@ -303,7 +309,7 @@ async def test_a_stall_off_the_first_lift_peak_is_the_embedded_check_failing() -
     with pytest.raises(FormulaError) as caught:
         await run(EnvelopeOpti(stall_alpha=5.0))
     assert caught.value.code == "postcondition_violated"
-    assert caught.value.detail["embedded"] == "stall-speed.takeoff"
+    assert caught.value.detail["embedded"] == "stall-speed.clean"  # the level problem solves first
     assert caught.value.detail["mass_kg"] == M0
 
 
@@ -470,3 +476,13 @@ async def test_a_stall_solve_that_fails_above_the_current_mass_surfaces_with_the
     assert "at the mass 4.42 kg:" in caught.value.message
     assert "bound of alpha" in caught.value.message
     assert close(float(str(caught.value.detail["mass_kg"])), 4.42, 1e-3)
+
+
+async def test_a_best_excess_at_the_stall_corner_above_a_skipped_speed_is_declared() -> None:
+    """A stall speed below the speed the wing can fly (here 0.8 of it) leaves speeds to skip; the best excess
+    lies at the corner above them and the notice says the wing, not the thrust, ends the speed range."""
+    got, ctx = await run(EnvelopeOpti(stall_scale=0.8))
+    assert close(
+        got["m_max_level"], level_root(), 1e-3
+    )  # the same root: the skipped speeds carry no value
+    assert pb.limits(ctx) == ["wing"]

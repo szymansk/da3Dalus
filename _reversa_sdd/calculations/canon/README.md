@@ -841,6 +841,7 @@ outputs:
   m_max_level: max-mass-level-flight
   m_max_to: max-mass-lift-off
 embeds:
+  - stall-speed.clean
   - stall-speed.takeoff
   - motor-propeller-equilibrium
   - advance-ratio-from-speed

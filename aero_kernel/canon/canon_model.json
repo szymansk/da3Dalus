@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:f5eee03b62b90edb647f9c63f286920fb79208fc0dcb43f6062335aa7cb881a9",
+  "content_hash": "sha256:36036f2a7e406bb18a51b42380a423b35e101de9ff25b143d0671d8c5a3d9837",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -235,6 +235,13 @@
           "unit": "1",
           "value": 1e-15
         },
+        "powered_climb_scan_floor": {
+          "basis": "numerical",
+          "guards": "Powered performance at full throttle (best-rate-of-climb, best-angle-of-climb): the start of the climb scan as a fraction of the clean stall speed, used where the stall speed at the steepest angle the thrust holds is below it or the static thrust is unknown (the climb can be steep or vertical and needs little or no lift, so it has no stall speed of its own). Elsewhere the scan starts at v_s (1 - (T_0/mg)^2)^(1/4). Declared with the answer (powered_limit_declared, limit scan_floor).",
+          "source": "chosen by the implementer, no source; a declared implementer's choice that awaits the maintainer's decision. What it rests on: a climb at the angle gamma carries m g cos(gamma) and can be flown down to v_s sqrt(cos gamma), which is zero for a vertical climb, so physics gives no lower bound there; the number is a compromise between the speeds below the stall speed that a climb can fly and the speeds at which the solver adapter's angle sweep still shows a lift peak. Measured on the 36 reference airframes with the Avistar drive train (gh-1419): the floor binds only where the static thrust is above 0.97 of the weight (29 of the 35 airframes with a stall speed), and there the optimum is not at the floor; the best angle of climb is vertical, reported at the upper edge of the vertical speed range (v/v_s 1.4 to 7.8 on the 28 that compute), and the best rate of climb is at v/v_s 1.6 to 7.8. The airframes with a non-vertical best angle, which the floor does not touch, have v_opt/v_s between 0.88 (Avistar Elite) and 1.27 (6 airframes, median 1.12). So 0.5 is below every measured optimum but is not derived from them, and it is not tied to a Reynolds number: one of the 35 airframes (MILES_MAGISTER, floor start 3.5 m/s) ends not_converged because the sweep shows no lift peak at that start (open decision of the maintainer, PR of gh-1419)",
+          "unit": "1",
+          "value": 0.5
+        },
         "powered_load_factor_tolerance": {
           "basis": "numerical",
           "guards": "Powered performance at full throttle, sustained turn: the relative width of the interval of the load factor at which the bisection of the highest feasible load factor at one airspeed stops.",
@@ -269,13 +276,6 @@
           "source": "termination of the scan only: about Mach 0.44, beyond the Mach 0.3 where the incompressible solver stops being exact (Anderson sec. 1.10.3), so every value below it is reported with the Mach notice of the solver adapter and none is cut off by this limit in the RC and UAV regime",
           "unit": "m/s",
           "value": 150.0
-        },
-        "powered_speed_scan_start": {
-          "basis": "numerical",
-          "guards": "Powered performance at full throttle (max-level-speed, dive-speed, the climbs, the sustained turns): the first speed of the upward scan that brackets a root or an optimum. Below the stall the wing cannot carry the weight, so the points under the stall speed are skipped, not evaluated further.",
-          "source": "a search start, no physical claim: below the level-flight stall speed of the aircraft this was run on (Avistar Elite 11.4 m/s); the points below the stall are skipped and the skipped range is declared in the result",
-          "unit": "m/s",
-          "value": 2.0
         },
         "powered_speed_scan_step": {
           "basis": "numerical",
@@ -811,7 +811,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -850,7 +851,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -862,7 +864,14 @@
             "v_x": "calc:best-angle-of-climb-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -887,7 +896,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -926,7 +936,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -938,7 +949,14 @@
             "v_y": "calc:best-rate-of-climb-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -1392,7 +1410,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -1430,7 +1449,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "procedure",
           "optional": [
@@ -1441,7 +1461,14 @@
             "v_d": "calc:dive-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -2106,6 +2133,7 @@
           "cost": "minutes",
           "direction": "analysis",
           "embeds": [
+            "calc:stall-speed.clean",
             "calc:stall-speed.takeoff",
             "calc:motor-propeller-equilibrium.default",
             "calc:advance-ratio-from-speed.default",
@@ -2116,6 +2144,7 @@
             "calc:advance-ratio-from-speed.default",
             "calc:motor-propeller-equilibrium.default",
             "calc:propeller-table-lookup.default",
+            "calc:stall-speed.clean",
             "calc:stall-speed.takeoff",
             "calc:thrust-at-airspeed-from-coefficient.default"
           ],
@@ -2187,7 +2216,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -2225,7 +2255,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -2236,7 +2267,14 @@
             "v_max": "calc:max-level-speed"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
+            }
+          ],
           "tool": "OPT",
           "uncertainty": null,
           "variables": [
@@ -2341,7 +2379,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -2381,7 +2420,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -2399,6 +2439,12 @@
               "id": "limit_load_factor_above_one",
               "on_violation": "error",
               "parameter": "n_lim"
+            },
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
             }
           ],
           "tool": "OPT",
@@ -2461,7 +2507,8 @@
                 "p_mot_max": "calc:motor-max-power",
                 "r_m": "calc:motor-circuit-resistance",
                 "rho": "calc:air-density",
-                "u_bat": "calc:battery-voltage"
+                "u_bat": "calc:battery-voltage",
+                "v_s": "calc:stall-speed"
               },
               "given": null,
               "id": "default",
@@ -2501,7 +2548,8 @@
             "p_mot_max": "calc:motor-max-power",
             "r_m": "calc:motor-circuit-resistance",
             "rho": "calc:air-density",
-            "u_bat": "calc:battery-voltage"
+            "u_bat": "calc:battery-voltage",
+            "v_s": "calc:stall-speed"
           },
           "kind": "optimization",
           "optional": [
@@ -2519,6 +2567,12 @@
               "id": "limit_load_factor_above_one",
               "on_violation": "error",
               "parameter": "n_lim"
+            },
+            {
+              "applications": null,
+              "id": "stall_speed_usable",
+              "on_violation": "error",
+              "parameter": "v_s"
             }
           ],
           "tool": "OPT",

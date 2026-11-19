@@ -36,8 +36,10 @@ from aero_kernel.tests.formula_builders import solvers_with
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
 
 
-def avistar(values: dict[str, float] | None = None) -> AircraftInput:
-    """The Avistar Elite at sea level with its own drive train (one table, marked test values)."""
+def with_avistar_drive(
+    member: FleetMember, values: dict[str, float] | None = None
+) -> AircraftInput:
+    """A fleet airframe at sea level with the Avistar Elite's drive train (one table, marked test values)."""
     components = components_of(
         "axi_4120_14",
         "thunder_power_prolitex_4s_6000",
@@ -50,8 +52,13 @@ def avistar(values: dict[str, float] | None = None) -> AircraftInput:
         },
     ).model_dump()
     components["propeller"]["table"] = apc_13x8e_table()
-    base = aircraft_input(FleetMember.AVISTAR_ELITE, {"altitude": 0.0, **(values or {})})
+    base = aircraft_input(member, {"altitude": 0.0, **(values or {})})
     return base.model_copy(update={"components": Components.model_validate(components)})
+
+
+def avistar(values: dict[str, float] | None = None) -> AircraftInput:
+    """The Avistar Elite at sea level with its own drive train."""
+    return with_avistar_drive(FleetMember.AVISTAR_ELITE, values)
 
 
 async def run(aircraft: AircraftInput, *slugs: str) -> dict[str, QuantityResult]:
@@ -123,3 +130,75 @@ async def test_the_sustained_turns_are_consistent_with_each_other_and_say_which_
     assert 0.0 < radius < 100.0
     for slug in ("max-sustained-turn-rate", "min-sustained-turn-radius"):
         assert "powered_limit_declared" in codes(got, slug)
+
+
+@pytest.mark.parametrize(
+    "member",
+    [FleetMember.BRYAN, FleetMember.CHEKKER, FleetMember.SUPER_TRIDENT],
+    ids=lambda m: m.name,
+)
+async def test_the_level_speed_computes_where_the_scan_from_two_m_s_ended_in_the_solver(
+    member: FleetMember,
+) -> None:
+    """gh-1419: at 2 m/s the sweep of these three airframes shows no lift peak, which ended the formula as
+    ``not_converged``. The scan now starts at the clean stall speed, so it computes. The bounds are the
+    range of the other 13 airframes with this drive train (31.5 to 39.0 m/s, the table ends near 42 m/s)."""
+    got = await run(with_avistar_drive(member), "max-level-speed", "stall-speed")
+    v_max, v_s = value(got, "max-level-speed"), value(got, "stall-speed")
+    assert v_s < v_max < 42.0
+    assert 25.0 < v_max < 42.0
+
+
+async def test_the_climbs_of_a_real_airframe_with_a_non_vertical_optimum_compute_from_the_new_start() -> (
+    None
+):
+    """gh-1419: ULTRA_STICK_120 (T_0 / W below 1): the climb scan starts at the stall speed at the steepest angle
+    the static thrust holds, both climbs compute, and the best angle is flown above the stall speed."""
+    got = await run(
+        with_avistar_drive(FleetMember.ULTRA_STICK_120),
+        "stall-speed",
+        "best-angle-of-climb-speed",
+        "max-climb-angle",
+        "best-rate-of-climb-speed",
+        "max-rate-of-climb",
+    )
+    v_s, v_x = value(got, "stall-speed"), value(got, "best-angle-of-climb-speed")
+    assert v_s < v_x < 20.0  # measured 14.6 m/s against 11.5 m/s
+    assert 5.0 < value(got, "max-climb-angle") < 15.0  # measured 10.2 deg
+    assert 2.0 < value(got, "max-rate-of-climb") < 4.0  # measured 3.0 m/s
+
+
+async def test_a_real_airframe_that_can_climb_vertically_starts_its_climb_scan_at_the_declared_floor() -> (
+    None
+):
+    """RV7 with the Avistar drive train has a static thrust above its weight: the climb needs no lift, the scan
+    starts at the floor (declared), and the answer is the vertical climb."""
+    got = await run(
+        with_avistar_drive(FleetMember.RV7), "best-angle-of-climb-speed", "max-climb-angle"
+    )
+    assert math.isclose(value(got, "max-climb-angle"), 90.0)
+    declared = [
+        w.detail.get("limit")
+        for w in got["max-climb-angle"].warnings
+        if w.code == "powered_limit_declared"
+    ]
+    assert "scan_floor" in declared
+
+
+async def test_a_climb_scan_start_below_the_stall_speed_can_still_end_in_the_solver_miles_magister() -> (
+    None
+):
+    """The limitation of gh-1419, recorded and not hidden: MILES_MAGISTER (static thrust above weight, floor start at
+    half the stall speed, 3.5 m/s) is a case where the sweep shows no lift peak at the start, which ends the climbs
+    as ``not_converged`` (an open decision of the maintainer, gh-1419)."""
+    got = await run(
+        with_avistar_drive(FleetMember.MILES_MAGISTER),
+        "best-angle-of-climb-speed",
+        "best-rate-of-climb-speed",
+    )
+    for slug in ("best-angle-of-climb-speed", "best-rate-of-climb-speed"):
+        error = got[slug].error
+        assert got[slug].status is QuantityStatus.ERROR
+        assert error is not None
+        assert error.code == "not_converged"
+        assert "no peak" in error.message

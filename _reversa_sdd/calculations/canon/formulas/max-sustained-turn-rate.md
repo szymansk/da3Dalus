@@ -32,12 +32,14 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
+  v_s: stall-speed
 outputs: {omega_max: max-sustained-turn-rate, v_omega: max-sustained-turn-rate-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
 preconditions:
   - {id: limit_load_factor_above_one, parameter: n_lim, on_violation: error}
+  - {id: stall_speed_usable, parameter: v_s, on_violation: error}
 ---
 
 # Fastest sustained turn at full throttle
@@ -52,7 +54,7 @@ subject to:   L(V, alpha) = n * m * g
               1 <= n <= n_lim
 ```
 
-**Produces** [[max-sustained-turn-rate]] · [[max-sustained-turn-rate-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[max-sustained-turn-rate]] · [[max-sustained-turn-rate-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]] · [[stall-speed]]
 
 **The problem is not convex (BRYAN, 2026-10-03).** The fastest sustained turn sits at the stall
 corner. Past the first `C_L` peak the post-stall plateau offers a second local optimum: from a
@@ -80,6 +82,8 @@ The last two are **declared active bounds**, named in the result like `gamma = 9
 **Source.** 🟢 Turn rate and radius of the coordinated level turn: Sadraey §12.6.2 (coordinated turn, pp. 705–707): centrifugal force `F_C = m·U₁²/R_t` (Eq. 12.129), yaw rate `R₁ = ψ̇·cos φ = g·sin φ/U₁` (Eq. 12.134), hence the rate of turn `ψ̇ = g·tan φ/U₁`, and the load factor `n = L/W = 1/cos φ` (Eq. 12.135–12.136). Eliminating the bank angle with `tan φ = sqrt(n² − 1)` gives `ω = g·sqrt(n² − 1)/V` and `r = V/ω = V²/(g·sqrt(n² − 1))` — **derived from** these equations; Sadraey does not print the `n` form. Load factor as the vector sum of weight and centrifugal force for models: Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21. Induced drag `C_L²/(π·e·AR)`: Anderson §6.7.2. Motor model: Drela `motor1` §1.1.
 
 **Validity in the RC/UAV regime (ADR 0028).** The kinematics of a coordinated level turn are exact; the load factor is the vector sum of weight and centrifugal force (Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21). The fastest sustained turn sits at the stall corner, so the answer is only as good as C_L,max at the turn's own Reynolds number; Lennon (Ch. 1–3) documents a 46 % loss of section C_L,max at low model Reynolds number (see [[stall-speed]]). AeroBuildup does not claim accurate stall onset (AeroSandbox docs, AeroBuildup "Limitations"), and NeuralFoil's confidence drops near Re 8·10⁴ and C_L 1.0 (Sharpe 2024 §7.2.4). Induced drag rises with `C_L²` (Anderson §6.7.2), so at high load factor the thrust limit binds through the propeller table, with its Re₀.₇₅ and rpm-block limits. A demanded C_L above C_L,max gives an accelerated stall (Lennon Ch. 21), which is the "wing" termination.
+
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A sustained turn carries `n m g` with `n >= 1`, so it cannot be flown below the stall speed: the scan starts at `v_s`; a speed where the wing cannot carry the lift is skipped and declared, a solver failure from `v_s` upward still ends the formula. The input `v_s` has the precondition `stall_speed_usable` (positive, finite, at most the scan limit `powered_speed_scan_limit`).
 
 ## Implementations (1)
 

@@ -952,7 +952,7 @@ caller's responsibility.
     the level problem, `outside_propeller_table` of the lift-off problem; the edge is bisected and declared
     (`powered_limit_declared`, `limit = evaluation_edge`). Every other failure surfaces with the mass named
     (`detail.mass_kg`). The embedded optimisations are shared functions; the embedded stall check runs on every
-    stall solve (`postcondition_violated`, `detail.embedded`); the four propulsion relations go through
+    stall solve (`postcondition_violated`, `detail.embedded`); the speed scan of the level problem starts at the clean stall speed of the mass (gh-1419), so the clean stall is solved at each mass too; the four propulsion relations go through
     `Context.embedded`.
   - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
     polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is

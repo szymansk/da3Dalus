@@ -18,6 +18,13 @@ root or maximum over ``V`` (and a root over ``gamma`` or a bound over ``n`` insi
 upward scan of the airspeed, Illinois regula falsi for roots and golden section for a maximum; their
 numerical settings are in ``config.yaml`` (``powered_*``).
 
+The scan starts at a speed tied to the airplane (gh-1419), not at a fixed speed: the clean stall speed
+``v_s`` (the input of the entries, ``stall-speed``). Level flight and turns carry at least ``m g``, so they
+cannot fly below ``v_s``; the dive's zero-lift drag at ``v_s`` is ``C_D0 / C_L,max`` of the weight, so its root
+lies above ``v_s`` only if ``C_D0 / C_L,max < 1 + T(v_s) / (m g)`` (else it lies below: a declared failure); a climb at the angle ``gamma`` carries ``m g cos(gamma)`` and can fly down to
+``v_s sqrt(cos gamma)`` (:meth:`PoweredFlight.climb_scan_start`). A failure of the solver at a speed the scan
+reaches is a failure of the formula; the speeds below the start are not evaluated.
+
 What the searches assume (stated in the canon entries, #1414): one maximum of the objective over the speed
 (golden section), one hump of ``T - D`` over the speed for the level speed, and features no narrower than the
 scan step (two features closer together than the step can be missed).
@@ -36,7 +43,7 @@ names, the formula declares it with the notice ``powered_limit_declared``.
 """
 
 import math
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -48,6 +55,7 @@ from aero_kernel.formulas.motor_propeller_equilibrium import declare_route
 from aero_kernel.formulas.propeller_table_lookup import components_of
 from aero_kernel.formulas.propulsion import LEVEL_FLIGHT, full_throttle_thrust, optional
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
+from aero_kernel.registry import CheckResult, precondition
 from aero_kernel.solvers.opti import WING_LIFT_LIMIT, LevelPoint
 from pydantic import JsonValue
 
@@ -69,6 +77,7 @@ __all__ = [
     "maximise_over_speed",
     "no_feasible_speed",
     "scan_speeds",
+    "stall_speed_usable",
     "sustained_load_factor",
     "sustained_turn",
     "vertical_upper_edge",
@@ -113,9 +122,8 @@ def no_feasible_speed(what: str) -> FormulaError:
     )
 
 
-def never_flyable(reasons: set[Unflyable]) -> FormulaError:
-    """``no_feasible_speed`` naming what stopped the state at every speed of the scan."""
-    start = config().powered_speed_scan_start.value
+def never_flyable(reasons: set[Unflyable], start: float) -> FormulaError:
+    """``no_feasible_speed`` naming what stopped the state at every speed of the scan from ``start``."""
     limit = config().powered_speed_scan_limit.value
     why = " and ".join(sorted(_SKIP_TEXT[r] for r in reasons)) or "no speed was evaluated"
     return no_feasible_speed(
@@ -126,6 +134,31 @@ def never_flyable(reasons: set[Unflyable]) -> FormulaError:
 def _not_converged(message: str, hint: str, **detail: JsonValue) -> FormulaError:
     return FormulaError(
         ErrorCategory.NOT_CONVERGED, "not_converged", message, hint, detail=dict(detail)
+    )
+
+
+@precondition("max-level-speed", "stall_speed_usable")
+@precondition("dive-speed", "stall_speed_usable")
+@precondition("best-rate-of-climb", "stall_speed_usable")
+@precondition("best-angle-of-climb", "stall_speed_usable")
+@precondition("max-sustained-turn-rate", "stall_speed_usable")
+@precondition("min-sustained-turn-radius", "stall_speed_usable")
+def stall_speed_usable(x: Mapping[str, object]) -> CheckResult:
+    """The clean stall speed the scans start from must be positive, finite and inside the scan.
+
+    The one implementation of the check of the six powered-performance entries (gh-1419). The scan runs from the
+    stall speed to ``powered_speed_scan_limit``: a stall speed beyond the limit leaves nothing to scan.
+    """
+    v_s = number(x, "v_s")
+    limit = config().powered_speed_scan_limit.value
+    if math.isfinite(v_s) and 0.0 < v_s <= limit:
+        return CheckResult(state="held", message=f"the stall speed {v_s:.4g} m/s starts the scan")
+    return CheckResult(
+        state="violated",
+        message=(
+            f"the clean stall speed {v_s:g} m/s is not a speed the scan can start from (it must be "
+            f"positive, finite and at most the scan limit of {limit:g} m/s); check the airplane and its mass"
+        ),
     )
 
 
@@ -151,6 +184,10 @@ class PoweredFlight:
         self.x, self.ctx = x, ctx
         self.components: Components = components_of(x)
         self.weight = number(x, "m") * number(x, "g")
+        self.v_s = number(x, "v_s")
+        self._floor_start: float | None = None
+        self._floor_reason = ""
+        self._static_thrust: float | None = None
         self.lowest_level_speed: float | None = None
         self._thrust: dict[float, float] = {}
         self._skipped: list[tuple[float, Unflyable]] = []
@@ -176,6 +213,42 @@ class PoweredFlight:
                 number(x, "d_prop"),
             )
         return self._thrust[v]
+
+    def climb_scan_start(self) -> float:
+        """The lowest speed in m/s a climb can fly: the stall speed at the steepest angle the thrust holds.
+
+        A steady climb at ``gamma`` carries ``m g cos(gamma)``, so its stall speed is ``v_s sqrt(cos
+        gamma)``. The angle cannot exceed ``gamma_T`` with ``sin(gamma_T) = T_0 / (m g)`` (``T_0`` the
+        thrust at no airspeed, the largest the drive train gives; ``T - D >= m g sin(gamma)``), so no
+        climb flies below ``v_s (1 - (T_0 / m g)^2)^(1/4)``. Where that is below the floor
+        ``powered_climb_scan_floor`` of ``v_s`` (``T_0`` near or above ``m g``: the climb can be vertical
+        and needs no lift) the start is the floor, declared with the answer.
+
+        Raises:
+            FormulaError: The failures of :meth:`thrust` at no airspeed.
+        """
+        floor = config().powered_climb_scan_floor.value
+        try:
+            self._static_thrust = self.thrust(0.0)
+        except FormulaError as error:
+            if error.code != TABLE_FAILURE:
+                raise
+            self._floor_reason = (
+                "the propeller table has no static thrust (no point at no airspeed, no extrapolation), so "
+                "the steepest climb angle the thrust holds is not known"
+            )
+            self._floor_start = self.v_s * floor
+            return self._floor_start
+        ratio = min(1.0, self._static_thrust / self.weight)
+        fraction = (1.0 - ratio * ratio) ** 0.25
+        if fraction >= floor:
+            return self.v_s * fraction
+        self._floor_reason = (
+            "the thrust at no airspeed is close to or above the weight, so the climb can be steep or "
+            "vertical and needs little or no lift: it has no stall speed of its own"
+        )
+        self._floor_start = self.v_s * floor
+        return self._floor_start
 
     async def drag(self, v: float, n_load: float) -> float | None:
         """The drag in N at speed ``v`` and lift ``n m g``; ``None`` where the wing cannot carry that lift.
@@ -251,7 +324,37 @@ class PoweredFlight:
         if declare:
             declare_route(self.ctx)
             self._declare_skipped()
+            self._declare_floor()
         return found.point
+
+    def _declare_floor(self) -> None:
+        """Declare that a climb with a vertical option was scanned only from the floor (ADR 0020)."""
+        if self._floor_start is not None:
+            self.ctx.warn(
+                "powered_limit_declared",
+                f"The climb scan was started at the floor: {self._floor_reason}. The scan was started at "
+                f"{self._floor_start:.4g} m/s, {config().powered_climb_scan_floor.value:g} of the clean "
+                "stall speed, and speeds below it were not evaluated.",
+                {"limit": "scan_floor", "v_ms": self._floor_start, "v_s_ms": self.v_s},
+            )
+        if self._static_thrust is None:
+            return
+        larger = [(v, t) for v, t in self._thrust.items() if t > self._static_thrust * (1.0 + 1e-9)]
+        if larger:
+            v_top, t_top = max(larger, key=lambda item: item[1])
+            self.ctx.warn(
+                "powered_limit_declared",
+                f"The climb scan started from the thrust at no airspeed ({self._static_thrust:.4g} N), "
+                f"but the drive train gives more at {v_top:.4g} m/s ({t_top:.4g} N), so the steepest "
+                "climb angle the thrust holds, and with it the lowest speed a climb can fly, was "
+                "underestimated: climbs at speeds below the scan start were not evaluated.",
+                {
+                    "limit": "static_thrust_not_largest",
+                    "v_ms": v_top,
+                    "thrust_n": t_top,
+                    "static_thrust_n": self._static_thrust,
+                },
+            )
 
     def _declare_skipped(self) -> None:
         """One notice for the speeds the search skipped: the count, the range and the reasons (ADR 0020)."""
@@ -274,15 +377,21 @@ class PoweredFlight:
         )
 
 
-def scan_speeds() -> Iterator[float]:
-    """The speeds of the upward scan: start, start + step, ... up to the limit (``config.yaml``)."""
+def scan_speeds(start: float) -> Iterator[float]:
+    """The speeds of the upward scan: ``start``, then the multiples of the step above it, up to the limit.
+
+    The speeds after ``start`` are the multiples of ``powered_speed_scan_step`` (``config.yaml``), not
+    ``start + k * step``: a speed away from the start is then the same whatever the aircraft, and the end of
+    the propeller table falls between the same two scan speeds as for any other start.
+    """
     settings = config()
-    start = settings.powered_speed_scan_start.value
     step = settings.powered_speed_scan_step.value
     limit = settings.powered_speed_scan_limit.value
-    k = 0
-    while start + k * step <= limit:
-        yield start + k * step
+    if start <= limit:
+        yield start
+    k = math.floor(start / step) + 1
+    while k * step <= limit:
+        yield k * step
         k += 1
 
 
@@ -433,8 +542,8 @@ def table_failure(speed: float, what: str) -> FormulaError:
     )
 
 
-async def maximise_over_speed(f: Objective, flight: PoweredFlight) -> Optimum:
-    """The maximum of ``f`` over the airspeed: upward scan, then golden section around the best point.
+async def maximise_over_speed(f: Objective, flight: PoweredFlight, start: float) -> Optimum:
+    """The maximum of ``f`` over the airspeed: upward scan from ``start``, then golden section.
 
     The upward scan skips the speeds without a value before its first value (declared with the answer) and
     ends at the first speed without one after it, so the feasible speeds are taken as one interval. The
@@ -455,7 +564,7 @@ async def maximise_over_speed(f: Objective, flight: PoweredFlight) -> Optimum:
     reasons: set[Unflyable] = set()
     table_edge: float | None = None
     guarded = _table_as_result(f)
-    for v in scan_speeds():
+    for v in scan_speeds(start):
         found = await guarded(v)
         if isinstance(found, Unflyable):
             reasons.add(found)
@@ -472,10 +581,10 @@ async def maximise_over_speed(f: Objective, flight: PoweredFlight) -> Optimum:
         below[v] = previous_kind
         previous_kind = None
     if not values:
-        raise never_flyable(reasons)
+        raise never_flyable(reasons, start)
     best = max(range(len(values)), key=values.__getitem__)
     step = config().powered_speed_scan_step.value
-    low = max(speeds[best] - step, config().powered_speed_scan_start.value)
+    low = max(speeds[best] - step, start)
     result = await golden_maximum(guarded, low, speeds[best] + step)
     if result.above is Unflyable.TABLE:
         raise table_failure(
@@ -638,14 +747,12 @@ async def vertical_upper_edge(flight: PoweredFlight, v: float) -> float:
         return flight.thrust(speed) - drag - flight.weight
 
     low = (v, await excess(v))
-    step, limit = config().powered_speed_scan_step.value, config().powered_speed_scan_limit.value
-    speed = v + step
-    while speed <= limit:
+    limit = config().powered_speed_scan_limit.value
+    for speed in list(scan_speeds(v))[1:]:  # the shared grid after the start
         value = await excess(speed)
         if value < 0.0:
             return await illinois_root(excess, low, (speed, value), flight.weight)
         low = (speed, value)
-        speed += step
     raise _not_converged(
         f"the climb is still vertical at the scan limit of {limit:g} m/s",
         "report the case; the scan limit ends the search",
@@ -722,7 +829,7 @@ async def sustained_turn(
             return Unflyable.THRUST
         return objective(v, found.n)
 
-    v = (await maximise_over_speed(at_speed, flight)).v
+    v = (await maximise_over_speed(at_speed, flight, flight.v_s)).v
     limit = await sustained_load_factor(flight, v, n_lim)
     if isinstance(
         limit, Unflyable

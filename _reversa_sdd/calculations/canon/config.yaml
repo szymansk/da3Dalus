@@ -241,12 +241,12 @@ opt_roll_max_refinements:
   basis: numerical
   source: "termination of the refinement only: the Illinois regula falsi converges superlinearly on a smooth bracketed root, so a handful of steps reach the target tolerance; 40 is far beyond that and bounds a non-smooth roll rate"
 
-powered_speed_scan_start:
-  value: 2.0
-  unit: m/s
-  guards: "Powered performance at full throttle (max-level-speed, dive-speed, the climbs, the sustained turns): the first speed of the upward scan that brackets a root or an optimum. Below the stall the wing cannot carry the weight, so the points under the stall speed are skipped, not evaluated further."
+powered_climb_scan_floor:
+  value: 0.5
+  unit: "1"
+  guards: "Powered performance at full throttle (best-rate-of-climb, best-angle-of-climb): the start of the climb scan as a fraction of the clean stall speed, used where the stall speed at the steepest angle the thrust holds is below it or the static thrust is unknown (the climb can be steep or vertical and needs little or no lift, so it has no stall speed of its own). Elsewhere the scan starts at v_s (1 - (T_0/mg)^2)^(1/4). Declared with the answer (powered_limit_declared, limit scan_floor)."
   basis: numerical
-  source: "a search start, no physical claim: below the level-flight stall speed of the aircraft this was run on (Avistar Elite 11.4 m/s); the points below the stall are skipped and the skipped range is declared in the result"
+  source: "chosen by the implementer, no source; a declared implementer's choice that awaits the maintainer's decision. What it rests on: a climb at the angle gamma carries m g cos(gamma) and can be flown down to v_s sqrt(cos gamma), which is zero for a vertical climb, so physics gives no lower bound there; the number is a compromise between the speeds below the stall speed that a climb can fly and the speeds at which the solver adapter's angle sweep still shows a lift peak. Measured on the 36 reference airframes with the Avistar drive train (gh-1419): the floor binds only where the static thrust is above 0.97 of the weight (29 of the 35 airframes with a stall speed), and there the optimum is not at the floor; the best angle of climb is vertical, reported at the upper edge of the vertical speed range (v/v_s 1.4 to 7.8 on the 28 that compute), and the best rate of climb is at v/v_s 1.6 to 7.8. The airframes with a non-vertical best angle, which the floor does not touch, have v_opt/v_s between 0.88 (Avistar Elite) and 1.27 (6 airframes, median 1.12). So 0.5 is below every measured optimum but is not derived from them, and it is not tied to a Reynolds number: one of the 35 airframes (MILES_MAGISTER, floor start 3.5 m/s) ends not_converged because the sweep shows no lift peak at that start (open decision of the maintainer, PR of gh-1419)"
 
 powered_speed_scan_step:
   value: 2.0

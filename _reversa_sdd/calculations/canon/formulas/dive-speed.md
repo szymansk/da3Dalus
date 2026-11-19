@@ -30,10 +30,13 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
   eta_mot: motor-efficiency
+  v_s: stall-speed
 outputs: {v_d: dive-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
 optional: [r_m, i_0]
+preconditions:
+  - {id: stall_speed_usable, parameter: v_s, on_violation: error}
 ---
 
 # Dive speed — terminal speed in a vertical dive
@@ -46,7 +49,7 @@ solve for V, alpha, n_prop:   L(V, alpha) = 0
                              motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[components]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[dynamic-viscosity]] · [[speed-of-sound]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]] · [[stall-speed]]
 
 **Kind: a procedure — a closure by a prescribed value**, not an extremum: the speed at which a vertical dive stops accelerating. Lift is zero, so drag balances weight plus thrust. It is a property of the aircraft and an **upper bound**, and a model reaches it from ordinary flying height.
 
@@ -65,6 +68,8 @@ solve for V, alpha, n_prop:   L(V, alpha) = 0
 **What it is for.** The right-hand edge of the envelope, and the speed of the pull-out case: fully pulled at `V_D` the wing could produce `(V_D / V_S)²` g. BRYAN, power off, no propeller drag: **31.6 m/s** at α = −5.9° — a full pull there could demand about 35 g. This is the power-off value; the confirmed reading is full throttle, which equals it only beyond the zero-thrust advance ratio (above) — no full-throttle number is recorded here. Whether the aircraft survives the pull-out is decided by the pilot below [[maneuvering-speed]], not above it.
 
 **Termination.** A failed solve returns no value (ADR 0020).
+
+**Remark (gh-1419, undated):** the scan of the speed starts at a speed tied to the airplane, not at a fixed 2 m/s: the clean stall speed is read as the input `v_s` <- [[stall-speed]] (application `clean`; the same reading as in [[endurance-and-range-optimum]], one producer, ADR 0022). At a speed far below the stall speed the solver adapter's angle sweep can show no lift peak (very low Reynolds number); that is a failure of the solver, not a stall, and it ended the formula at a speed the aircraft cannot fly. A solver failure from `v_s` upward still ends the formula. The scan starts at `v_s`; the root `D = m g + T` lies above it only if `C_D0 / C_L,max < 1 + T(v_s) / (m g)` (the zero-lift drag at `v_s` is `C_D0 / C_L,max` of the weight). Where the surplus `D - m g - T` is already positive at `v_s` the terminal speed of the dive lies below the clean stall speed, where the scan does not look: the declared failure `no_feasible_speed` says so. The input `v_s` has the precondition `stall_speed_usable` (positive, finite, at most the scan limit).
 
 ## Implementations (4)
 
