@@ -19,7 +19,7 @@ data:
 
 # Battery capacity (rated pack energy) · `E_bat`
 
-Rated pack energy — the full nominal energy; a usable fraction is not modelled —, derived: `E_bat = Q_bat / 1000 · U_bat` — the rated charge [[battery-charge-capacity]] (mAh, as the catalogue stores it) in Ah times the nominal pack voltage [[battery-voltage]] (cells × `U_cell`, [[cell-voltage-nominal]]). Nothing is read in Wh (maintainer, 2026-10-25, #1235). 0 means 'not configured'.
+Rated pack energy — the full nominal energy; a usable fraction is not modelled —, derived: `E_bat = Q_bat / 1000 · U_bat` — the rated charge [[battery-charge-capacity]] (mAh, as the catalogue stores it) in Ah times the nominal pack voltage [[battery-voltage]] (cells × `U_cell`, [[cell-voltage-nominal]]). Nothing is read in Wh (maintainer, 2026-10-25, #1235). 0 means 'not configured'. *Remark (gh-1415, undated):* the kernel never produces 0: input validation requires the capacity, the cell count and the cell voltage to be positive, and an absent battery or battery field is `missing_input`, so `battery-capacity` is always above 0 where it is computed.
 
 **Unit.** `Wh`
 

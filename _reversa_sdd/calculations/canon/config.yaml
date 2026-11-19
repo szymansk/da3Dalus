@@ -192,6 +192,20 @@ powertrain_balance_tolerance:
   basis: numerical
   source: "a numerical margin: far below the table's own resolution (APC rpm blocks 1000 rpm apart, coefficients to four decimals) and far above double-precision noise; it decides when the bisection of a monotone torque balance has converged, no domain threshold"
 
+endurance_speed_ratio:
+  value: 1.1
+  unit: "1"
+  guards: "Greatest endurance and greatest range: the ratio of neighbouring speeds of the scan that starts at the stall speed and ends where the drive train cannot hold the speed (thrust demand ratio above 1, or no balance on the propeller table). The optimum is then refined inside the two cells around the best scan speed."
+  basis: numerical
+  source: "a search resolution, no physical claim: the battery power of level flight is a smooth curve with one minimum, so a ten-percent cell isolates it, and each cell costs one level-flight solve (about 0.9 s on the Avistar Elite, measured gh-1415); a finer scan only costs time"
+
+endurance_speed_tolerance:
+  value: 0.01
+  unit: "1"
+  guards: "Greatest endurance and greatest range: the relative width of the speed interval at which the golden-section refinement stops; the optimal speed is then known to this fraction of itself."
+  basis: numerical
+  source: "a search resolution: at a minimum the battery power (and its quotient with the speed) changes with the square of the speed error, so a one-percent speed error moves the optimum value by a much smaller fraction (second order; checked against a brute-force scan in gh-1415). No domain threshold"
+
 avl_roll_reference_deflection:
   value: 5.0
   unit: deg

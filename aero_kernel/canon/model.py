@@ -691,6 +691,8 @@ class KernelConfig(BaseModel):
     powered_optimum_tolerance: ConfigValue
     powered_load_factor_tolerance: ConfigValue
     powered_search_max_steps: ConfigValue
+    endurance_speed_ratio: ConfigValue
+    endurance_speed_tolerance: ConfigValue
 
     @model_validator(mode="after")
     def _check_mix_steps(self) -> Self:

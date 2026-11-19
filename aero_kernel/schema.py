@@ -112,6 +112,7 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "hinge_moment_pitch_untrimmed": WarningSeverity.NOTICE,
     "powered_limit_declared": WarningSeverity.NOTICE,
     "powered_speeds_skipped": WarningSeverity.NOTICE,
+    "optimum_at_domain_bound": WarningSeverity.WARNING,
 }
 
 

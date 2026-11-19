@@ -84,6 +84,9 @@ IMPLEMENTED = {
     "calc:max-sustained-turn-rate",
     "calc:min-sustained-turn-radius",
     "calc:battery-mass-from-capacity",
+    "calc:endurance-and-range",
+    "calc:endurance-and-range-optimum",
+    "calc:cruise-target-performance",
 }
 
 

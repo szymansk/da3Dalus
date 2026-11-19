@@ -632,6 +632,12 @@
         "butterfly_mix_steps": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "endurance_speed_ratio": {
+          "$ref": "#/$defs/ConfigValue"
+        },
+        "endurance_speed_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_active_bound_fraction": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -751,7 +757,9 @@
         "powered_root_tolerance",
         "powered_optimum_tolerance",
         "powered_load_factor_tolerance",
-        "powered_search_max_steps"
+        "powered_search_max_steps",
+        "endurance_speed_ratio",
+        "endurance_speed_tolerance"
       ],
       "title": "KernelConfig",
       "type": "object"

@@ -53,9 +53,12 @@ def test_exactly_on_the_last_block_the_top_block_alone_decides() -> None:
     assert caught.value.code == "outside_propeller_table"
 
 
-def test_a_balance_between_an_uncovered_and_a_covered_grid_point_is_reported_as_not_found() -> None:
-    """The 1000 rpm block covers J up to 0.2 only: at 5 m/s its grid point is uncovered and the
-    true balance near 1300 rpm lies between it and the next one; it is not searched."""
+def test_a_balance_where_the_table_has_no_data_is_reported_as_not_found() -> None:
+    """The 1000 rpm block covers J up to 0.2 only. At 5 m/s the whole interval from 1000 to 2000 rpm is
+    uncovered by the interpolation (it needs both blocks, and J there is above 0.45), so the coverage
+    edge of the pair is the 2000 rpm grid point itself: the true balance near 1300 rpm lies where the
+    table has no data. (Pinned by gh-1413 as 'not searched'; since gh-1417 the search does locate a
+    coverage edge, but here there is none, so the failure stays and its message says why.)"""
     components = small_table((5.0, 5.0), (0.2, 0.5, 0.8))
     with pytest.raises(FormulaError) as caught:
         equilibrium(
@@ -63,9 +66,10 @@ def test_a_balance_between_an_uncovered_and_a_covered_grid_point_is_reported_as_
             components, 5.0, RHO, 162.0, 1.2, 0.082, U_BAT, D_PROP,
         )  # fmt: skip
     assert caught.value.code == "outside_propeller_table"
-    assert "no balance found on the rpm grid points the table covers" in caught.value.message
+    assert "no balance found where the table covers the advance ratio" in caught.value.message
     assert caught.value.detail["covered_grid_points"] == 2
     assert caught.value.detail["grid_points"] == 3
+    assert caught.value.detail["coverage_edges"] == 0
 
 
 def test_a_propeller_driven_by_the_airstream_is_the_truthful_windmilling_failure() -> None:

@@ -46,7 +46,7 @@ from aero_kernel.context import Context, Inputs
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.motor_propeller_equilibrium import declare_route
 from aero_kernel.formulas.propeller_table_lookup import components_of
-from aero_kernel.formulas.propulsion import full_throttle_thrust, optional
+from aero_kernel.formulas.propulsion import LEVEL_FLIGHT, full_throttle_thrust, optional
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.solvers.opti import WING_LIFT_LIMIT, LevelPoint
 from pydantic import JsonValue
@@ -74,7 +74,6 @@ __all__ = [
     "vertical_upper_edge",
 ]
 
-LEVEL_FLIGHT = 1.0  # the load factor of level flight: L = W (definition of n = L / W)
 VERTICAL_FLIGHT = 0.0  # the load factor of a flight path without lift: L = 0
 RIGHT_ANGLE = 0.5 * math.pi  # the bound gamma <= pi/2 of the climb problems (rad)
 TABLE_FAILURE = "outside_propeller_table"  # the error code of the end of the propeller table

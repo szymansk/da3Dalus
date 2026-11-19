@@ -147,6 +147,7 @@ class TestKernelWarning:
             "hinge_moment_pitch_untrimmed": WarningSeverity.NOTICE,
             "powered_limit_declared": WarningSeverity.NOTICE,
             "powered_speeds_skipped": WarningSeverity.NOTICE,
+            "optimum_at_domain_bound": WarningSeverity.WARNING,
         }
 
     def test_carries_world_and_json_detail(self) -> None:

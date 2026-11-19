@@ -592,6 +592,8 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "outside_propeller_table": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "no_thrust_at_full_throttle": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "no_feasible_speed": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "no_level_flight_speed": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "non_positive_battery_power": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "propeller_windmilling": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "empty_fit_window": ErrorCategory.INVALID_INPUT,
         "invalid_fit_points": ErrorCategory.INVALID_INPUT,
