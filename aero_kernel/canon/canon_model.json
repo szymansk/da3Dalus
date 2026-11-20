@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:e37233399b655484b2d3673a058e5a207959cd3ca17c8ce8f2f03317b02338d9",
+  "content_hash": "sha256:d0ef489a35fd5aef9535e532d911c35e16b5f65c439e88b5208b01754e568e8a",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -3282,7 +3282,20 @@
             "v_y": "calc:spanwise-shear-force"
           },
           "postconditions": [],
-          "preconditions": [],
+          "preconditions": [
+            {
+              "applications": null,
+              "id": "flight_speed_positive",
+              "on_violation": "error",
+              "parameter": "v"
+            },
+            {
+              "applications": null,
+              "id": "air_density_positive",
+              "on_violation": "error",
+              "parameter": "rho"
+            }
+          ],
           "tool": "AVL",
           "uncertainty": null,
           "variables": [],
