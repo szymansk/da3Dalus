@@ -26,6 +26,10 @@ MODELS: dict[str, type[BaseModel]] = {
     "WingXSec": geometry.WingXSec,
     "ControlSurface": geometry.ControlSurface,
     "SpareDetail": geometry.SpareDetail,
+    "RodSection": geometry.RodSection,
+    "TubeSection": geometry.TubeSection,
+    "RectangularSection": geometry.RectangularSection,
+    "CappedSection": geometry.CappedSection,
     "TrailingEdgeDevice": geometry.TrailingEdgeDevice,
     "Servo": geometry.Servo,
     "Turbulator": geometry.Turbulator,
@@ -124,8 +128,9 @@ def type_signature(node: dict[str, Any], defs: dict[str, Any]) -> Signature:
         if "properties" in target:
             return frozenset({("ref", name)})
         return type_signature(target, defs)
-    if "anyOf" in node:
-        return union_of([type_signature(b, defs) for b in node["anyOf"]])
+    branches_of: list[dict[str, Any]] = node.get("anyOf") or node.get("oneOf") or []
+    if branches_of:
+        return union_of([type_signature(b, defs) for b in branches_of])
     if "const" in node:
         return frozenset({("enum", frozenset({node["const"]}))})
     if "enum" in node:
@@ -365,12 +370,22 @@ def full_document() -> dict[str, Any]:
         "spare_support_dimension_width": 0.006, "spare_support_dimension_height": 0.004,
         "spare_position_factor": 0.25, "spare_length": 0.4, "spare_start": 0.0,
         "spare_mode": "normal", "spare_vector": [0, 1, 0], "spare_origin": [0, 0, 0],
+        "material": "birch_ply",
+        "section": {"shape": "tube", "outer_diameter": 0.016, "wall_thickness": 0.001},
     }  # fmt: skip
+    section_spars = [
+        spar | {"section": section}
+        for section in (
+            {"shape": "rod", "diameter": 0.01},
+            {"shape": "rectangular", "width": 0.02, "height": 0.003},
+            {"shape": "capped", "width": 0.004, "height": 0.0147, "flange_thickness": 0.001},
+        )
+    ]
     rib = {
         "xyz_le": [0, 0, 0], "chord": 0.2, "twist": 1, "dihedral": 0, "airfoil": "naca0012",
         "control_surface": {"name": "Aileron", "hinge_point": 0.8, "symmetric": False, "deflection": 0},
         "x_sec_type": "root", "tip_type": "flat", "number_interpolation_points": 3,
-        "spare_list": [spar], "trailing_edge_device": device,
+        "spare_list": [spar, *section_spars], "trailing_edge_device": device,
         "turbulator": {"form": "thread", "height_mm": 0.3, "position_root": 0.3, "position_tip": 0.3, "enabled": True},
     }  # fmt: skip
     tip = {"xyz_le": [0, 1, 0], "chord": 0.1, "twist": 0, "airfoil": "naca0012"}

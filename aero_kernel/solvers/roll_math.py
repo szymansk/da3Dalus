@@ -16,6 +16,7 @@ __all__ = [
     "alpha_for_lift_coefficient",
     "body_rates",
     "control_effectiveness",
+    "enclosing_sample",
     "stability_rolling_moment",
 ]
 
@@ -99,14 +100,33 @@ def stability_rolling_moment(
     return cl_body * trig.cosd(alpha_deg) + cn_body * trig.sind(alpha_deg)
 
 
+def enclosing_sample(cl: Sequence[float], peak_index: int, wanted: float) -> int | None:
+    """The index ``k`` of the sample pair ``(k - 1, k)`` on the pre-stall branch that encloses ``wanted``.
+
+    Scans from the first C_L peak downwards in angle, so the crossing nearest the peak is found even
+    if the curve is not monotonic far below it.
+
+    Args:
+        cl: The lift coefficient per sample.
+        peak_index: Index of the first C_L peak.
+        wanted: The lift coefficient to enclose.
+
+    Returns:
+        The index of the upper sample of the first pair with ``cl[k - 1] <= wanted <= cl[k]``, or
+        ``None`` if no pair up to the peak encloses ``wanted``.
+    """
+    for k in range(peak_index, 0, -1):
+        if cl[k - 1] <= wanted <= cl[k]:
+            return k
+    return None
+
+
 def alpha_for_lift_coefficient(
     alphas_deg: Sequence[float], cl: Sequence[float], peak_index: int, wanted: float
 ) -> float | None:
     """The angle of attack on the pre-stall branch at which the sweep reaches a lift coefficient.
 
-    Scans from the first C_L peak downwards in angle and interpolates linearly between the two
-    samples that enclose ``wanted``, so the crossing nearest the peak is found even if the curve
-    is not monotonic far below it.
+    Interpolates linearly between the two samples that enclose ``wanted`` (:func:`enclosing_sample`).
 
     Args:
         alphas_deg: The sweep angles, rising.
@@ -117,13 +137,13 @@ def alpha_for_lift_coefficient(
     Returns:
         The angle in degrees, or ``None`` if no sample pair up to the peak encloses ``wanted``.
     """
-    for k in range(peak_index, 0, -1):
-        if cl[k - 1] <= wanted <= cl[k]:
-            span = cl[k] - cl[k - 1]
-            fraction = (
-                0.0
-                if math.isclose(span, 0.0, abs_tol=config().opt_zero_span.value)
-                else (wanted - cl[k - 1]) / span
-            )
-            return alphas_deg[k - 1] + fraction * (alphas_deg[k] - alphas_deg[k - 1])
-    return None
+    k = enclosing_sample(cl, peak_index, wanted)
+    if k is None:
+        return None
+    span = cl[k] - cl[k - 1]
+    fraction = (
+        0.0
+        if math.isclose(span, 0.0, abs_tol=config().opt_zero_span.value)
+        else (wanted - cl[k - 1]) / span
+    )
+    return alphas_deg[k - 1] + fraction * (alphas_deg[k] - alphas_deg[k - 1])
