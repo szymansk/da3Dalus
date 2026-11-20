@@ -710,6 +710,7 @@ class KernelConfig(BaseModel):
     mass_envelope_step: ConfigValue
     mass_envelope_max_steps: ConfigValue
     mass_envelope_curve_points: ConfigValue
+    mass_envelope_edge_tolerance: ConfigValue
     endurance_speed_ratio: ConfigValue
     endurance_speed_tolerance: ConfigValue
 

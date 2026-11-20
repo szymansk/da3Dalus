@@ -966,7 +966,10 @@ caller's responsibility.
     equally spaced masses from the current mass up to `m_max,level`, closed by the root) call
     `highest_level_speed` and `best_climb`, the functions `max-level-speed` and `best-rate-of-climb` themselves
     run, at the sample mass with its clean stall solve: same scan grid and start, no search of its own. A sample
-    inside a window of speeds with an excess narrower than the scan step fails with the mass named. The embedded
+    inside a window of speeds with an excess narrower than the scan step fails with the mass named. The last
+    curve point is the root condition at a sign-change root (stated in the entry) and a computed sample at an
+    `evaluation_edge` root; the warnings of the samples are forwarded as one summary per code with the masses
+    (`Context.scratch`). The embedded
     stall check runs on every stall solve (`postcondition_violated`, `detail.embedded`); the four propulsion
     relations go through `Context.embedded`.
   - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver

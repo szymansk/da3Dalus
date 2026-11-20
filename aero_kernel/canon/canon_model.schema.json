@@ -641,6 +641,9 @@
         "mass_envelope_curve_points": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "mass_envelope_edge_tolerance": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "mass_envelope_max_steps": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -770,6 +773,7 @@
         "mass_envelope_step",
         "mass_envelope_max_steps",
         "mass_envelope_curve_points",
+        "mass_envelope_edge_tolerance",
         "endurance_speed_ratio",
         "endurance_speed_tolerance"
       ],

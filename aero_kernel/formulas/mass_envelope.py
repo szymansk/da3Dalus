@@ -60,6 +60,7 @@ from aero_kernel.formulas.powered_flight import (
     PoweredFlight,
     Unflyable,
     declare_limit,
+    finish_climb,
     illinois_root,
     maximise_over_speed,
     no_feasible_speed,
@@ -68,7 +69,7 @@ from aero_kernel.formulas.stall_speed import first_extremum_check
 from aero_kernel.formulas.values import air_state, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import CheckResult, formula, precondition
-from aero_kernel.schema import Curve
+from aero_kernel.schema import Curve, KernelWarning
 from aero_kernel.solvers.opti import Stall
 
 __all__ = ["current_mass_positive", "mass_envelope", "takeoff_speed_above_stall_speed"]
@@ -76,6 +77,7 @@ __all__ = ["current_mass_positive", "mass_envelope", "takeoff_speed_above_stall_
 Root = tuple[float, float]  # a mass in kg and the function value there in N
 LEVEL_NOT_HELD = frozenset({"no_feasible_speed"})  # the level problem has no speed inside the table
 TAKEOFF_NOT_HELD = frozenset({"outside_propeller_table"})  # the lift-off speed is beyond the table
+ROUTE_NOTICE = "powertrain_route_winding_resistance"  # declared once by the answers, not per sample
 
 
 @precondition("mass-envelope", "takeoff_speed_above_stall_speed")
@@ -155,6 +157,14 @@ def _named_at(error: FormulaError, mass: float) -> FormulaError:
     )
 
 
+class _DataEndError(Exception):
+    """An iterate of a refinement could not be evaluated because the data end (internal, never escapes)."""
+
+    def __init__(self, mass: float, reason: str) -> None:
+        super().__init__(reason)
+        self.mass, self.reason = mass, reason
+
+
 class Envelope:
     """The scan of one call: flights and stall solves at a mass, the two root searches over the mass."""
 
@@ -168,6 +178,10 @@ class Envelope:
         self.steps = round(settings.mass_envelope_max_steps.value)
         self.points = round(settings.mass_envelope_curve_points.value)
         self._levels: dict[float, tuple[PoweredFlight, Optimum]] = {}  # the best excess per mass
+        self._stalls: dict[
+            tuple[float, bool], Stall
+        ] = {}  # one stall solve per mass and configuration
+        self.edge_root = False  # whether the last level-flight root was the edge of the data
 
     def at(self, mass: float, v_s: float, *, takeoff: bool = False) -> Inputs:
         """``x`` of the shared powered-flight code at ``mass`` with its clean stall speed ``v_s`` in m/s.
@@ -180,9 +194,11 @@ class Envelope:
             found["airplane"] = self.x["airplane_to"]
         return found
 
-    def flight(self, mass: float, v_s: float, *, takeoff: bool = False) -> PoweredFlight:
-        """The thrust and drag of the airplane at ``mass``."""
-        return PoweredFlight(self.at(mass, v_s, takeoff=takeoff), self.ctx)
+    def flight(
+        self, mass: float, v_s: float, *, takeoff: bool = False, ctx: Context | None = None
+    ) -> PoweredFlight:
+        """The thrust and drag of the airplane at ``mass`` (on ``ctx``, this call's context by default)."""
+        return PoweredFlight(self.at(mass, v_s, takeoff=takeoff), ctx or self.ctx)
 
     def airplane(self, *, takeoff: bool) -> AirplaneGeometry:
         """The geometry of the configuration."""
@@ -193,19 +209,26 @@ class Envelope:
         return value
 
     async def stall(self, mass: float, *, takeoff: bool) -> Stall:
-        """The stall problem at ``mass`` with the embedded check of ``stall-speed`` on its optimum."""
-        stall = await self.ctx.solvers.opti.stall(
-            self.airplane(takeoff=takeoff), mass, self.gravity, LEVEL_FLIGHT, air_state(self.x)
-        )
-        solution = stall.solution
-        checked = first_extremum_check(
-            solution.polar, solution.alpha_s, solution.cl_max, upright=True
-        )
-        if checked.state != "held":
-            raise _stall_off_peak(
-                checked, mass, "stall-speed.takeoff" if takeoff else "stall-speed.clean"
+        """The stall problem at ``mass`` with the embedded check of ``stall-speed`` on its optimum.
+
+        Solved once per mass and configuration within the call (the roots and the curves meet at the same
+        masses: the current mass, the root, the iterates).
+        """
+        key = (mass, takeoff)
+        if key not in self._stalls:
+            stall = await self.ctx.solvers.opti.stall(
+                self.airplane(takeoff=takeoff), mass, self.gravity, LEVEL_FLIGHT, air_state(self.x)
             )
-        return stall
+            solution = stall.solution
+            checked = first_extremum_check(
+                solution.polar, solution.alpha_s, solution.cl_max, upright=True
+            )
+            if checked.state != "held":
+                raise _stall_off_peak(
+                    checked, mass, "stall-speed.takeoff" if takeoff else "stall-speed.clean"
+                )
+            self._stalls[key] = stall
+        return self._stalls[key]
 
     async def best_excess(self, mass: float) -> tuple[PoweredFlight, Optimum]:
         """The largest ``T - D`` over the speed in level flight at ``mass``, and the speed of it (kept per mass)."""
@@ -250,8 +273,10 @@ class Envelope:
         f: Callable[[float], Awaitable[float]],
         what: str,
         not_held: Collection[str],
-    ) -> float:
-        """The mass at which ``f`` is zero: the upward scan of the mass to a bracket, then Illinois regula falsi.
+    ) -> tuple[float, bool]:
+        """The mass at which ``f`` is zero, and whether it is the edge of the data instead of a sign change.
+
+        The upward scan of the mass to a bracket, then Illinois regula falsi (:meth:`refine`).
 
         Raises:
             FormulaError: ``no_feasible_speed`` where ``f`` is not positive at the current mass;
@@ -270,9 +295,35 @@ class Envelope:
             if found is None:
                 return await self.edge(f, low, mass, what, reason, not_held)
             if found <= 0.0:
-                return await illinois_root(f, low, (mass, found), self.mass * self.gravity)
+                return await self.refine(f, low, (mass, found), what, not_held)
             low = (mass, found)
         raise _no_bracket(what, low[0], self.steps)
+
+    async def refine(
+        self,
+        f: Callable[[float], Awaitable[float]],
+        low: Root,
+        high: Root,
+        what: str,
+        not_held: Collection[str],
+    ) -> tuple[float, bool]:
+        """Illinois regula falsi between two masses with opposite signs, every iterate through :meth:`value`.
+
+        A failure at an iterate carries its mass (not the current mass). An iterate that cannot be
+        evaluated because the data end is not a sign: the data end lies between the low mass and that
+        iterate, and the edge search takes it from there (the same outcome as in the scan).
+        """
+
+        async def checked(mass: float) -> float:
+            found, reason = await self.value(f, mass, not_held)
+            if found is None:
+                raise _DataEndError(mass, reason)
+            return found
+
+        try:
+            return await illinois_root(checked, low, high, self.mass * self.gravity), False
+        except _DataEndError as end:
+            return await self.edge(f, low, end.mass, what, end.reason, not_held)
 
     async def edge(
         self,
@@ -282,14 +333,14 @@ class Envelope:
         what: str,
         reason: str,
         not_held: Collection[str],
-    ) -> float:
+    ) -> tuple[float, bool]:
         """The last mass at which ``f`` evaluates (and is positive) below the first mass that does not.
 
-        The edge is bisected to ``powered_root_tolerance`` of the mass; a sign change found on the way is
-        refined as a root. The answer at the edge is declared (``powered_limit_declared``).
+        The edge is bisected to ``mass_envelope_edge_tolerance`` of the mass; a sign change found on the way
+        is refined as a root. The answer at the edge is declared (``powered_limit_declared``).
         """
         settings = config()
-        tolerance = settings.powered_root_tolerance.value
+        tolerance = settings.mass_envelope_edge_tolerance.value
         limit = round(settings.powered_search_max_steps.value)
         for _ in range(limit):
             if high - low[0] <= tolerance * low[0]:
@@ -301,52 +352,104 @@ class Envelope:
                     "sign change of the force balance.",
                     {"mass_kg": low[0], "first_unevaluable_mass_kg": high},
                 )
-                return low[0]
+                return low[0], True
             mid = 0.5 * (low[0] + high)
             found, reason = await self.value(f, mid, not_held)
             if found is None:
                 high = mid
             elif found <= 0.0:
-                return await illinois_root(f, low, (mid, found), self.mass * self.gravity)
+                return await self.refine(f, low, (mid, found), what, not_held)
             else:
                 low = (mid, found)
         raise _no_bracket(what, low[0], limit)
 
-    async def sample(self, mass: float) -> tuple[float, float, float]:
-        """``V_S``, ``V_max`` and ``ROC_max`` at one sample mass, from the functions of the two formulas.
+    async def sample(self, mass: float) -> tuple[float, float, float, tuple[KernelWarning, ...]]:
+        """``V_S``, ``V_max`` and ``ROC_max`` at one sample mass, and the warnings that sample produced.
 
-        Every failure surfaces with the mass named (:func:`_named_at`): a sample is not "not held".
+        The values come from the functions of the two formulas. Their answer states are evaluated once
+        more, as each formula does, on a scratch context, so the warnings of the stall solve, of the level
+        answer and of the climb answer (regime, flap, the limits declared) are returned for the summary
+        of :meth:`curves` instead of being dropped. Every failure surfaces with the mass named.
         """
+        sub = self.ctx.scratch()
         try:
-            v_s = (await self.stall(mass, takeoff=False)).solution.v_s
-            flight = self.flight(mass, v_s)
+            stall = await self.stall(mass, takeoff=False)
+            v_s = stall.solution.v_s
+            forward_warnings(sub, stall.warnings)
+            warn_flap_validity(sub, self.airplane(takeoff=False), stall.solution.diagnostics)
+            flight = self.flight(mass, v_s, ctx=sub)
             v_max = await highest_level_speed(flight)
-            optimum, _ = await best_climb(flight)
+            await flight.answer(v_max, LEVEL_FLIGHT)
+            optimum, gamma = await best_climb(flight)
+            await finish_climb(flight, optimum, gamma)
         except FormulaError as error:
             raise _named_at(error, mass) from error
-        return v_s, v_max, optimum.value
+        return v_s, v_max, optimum.value, sub.warnings
 
-    async def curves(self, root: float) -> tuple[tuple[Curve, Curve], Curve]:
-        """The speed range and the best rate of climb over the masses of the sweep, closed by the root.
+    async def curves(
+        self, root: float, *, edge: bool
+    ) -> tuple[tuple[Curve, Curve], Curve, tuple[float, ...]]:
+        """The speed range and the best rate of climb over the masses of the sweep, and the masses.
 
-        The samples are equally spaced from the current mass up to (not including) ``m_max,level``. At the
-        root the thrust equals the drag at the best speed only: ``V_max`` is that speed (the speed of the
-        best excess the root search found) and the rate of climb is zero.
+        The samples are equally spaced from the current mass up to (not including) ``m_max,level``, each
+        computed by :meth:`sample`. The last point is the root:
+
+        - where the root is the edge of the data (``edge``), the thrust still exceeds the drag there, so it
+          is computed like every other sample;
+        - where the root is a sign change of the best excess, the thrust equals the drag at the best speed
+          there: that is the root condition itself, so ``V_max`` is the speed of the best excess the root
+          search found and the rate of climb is zero (within the tolerance of the root); only the stall
+          speed is computed.
+
+        The warnings of all the samples are forwarded as one summary (:meth:`forward_samples`).
         """
         masses = [self.mass + (root - self.mass) * k / self.points for k in range(self.points)]
         samples = [await self.sample(mass) for mass in masses]
-        v_s_root = (await self.stall(root, takeoff=False)).solution.v_s
-        v_best = (await self.best_excess(root))[1].v
         masses.append(root)
-        stall = [x[0] for x in samples] + [v_s_root]
-        top = [x[1] for x in samples] + [v_best]
-        climb = [x[2] for x in samples] + [0.0]
+        if edge:
+            samples.append(await self.sample(root))
+        else:
+            v_s_root = (await self.stall(root, takeoff=False)).solution.v_s
+            v_best = (await self.best_excess(root))[1].v
+            samples.append((v_s_root, v_best, 0.0, ()))
+        self.forward_samples(masses, [x[3] for x in samples])
         grid = tuple(masses)
-        speed_range = (Curve(x=grid, y=tuple(stall)), Curve(x=grid, y=tuple(top)))
-        return speed_range, Curve(x=grid, y=tuple(climb))
+        speed_range = (
+            Curve(x=grid, y=tuple(x[0] for x in samples)),
+            Curve(x=grid, y=tuple(x[1] for x in samples)),
+        )
+        return speed_range, Curve(x=grid, y=tuple(x[2] for x in samples)), grid
+
+    def forward_samples(self, masses: list[float], found: list[tuple[KernelWarning, ...]]) -> None:
+        """Forward the warnings of the curve samples: one per code, with the masses it occurred at (ADR 0020).
+
+        The message and the detail of the first occurrence are kept; ``detail.masses_kg`` lists the sample
+        masses and ``detail.by_mass`` the detail at each. The route notice is left out: the answers declare it once. The warnings of the iterates of the root searches
+        are not forwarded (as in ``max-level-speed``); those of the answers are forwarded as they happen.
+        """
+        by_code: dict[str, list[tuple[float, KernelWarning]]] = {}
+        for mass, warnings in zip(masses, found, strict=True):
+            for warning in warnings:
+                if warning.code == ROUTE_NOTICE:
+                    continue
+                by_code.setdefault(warning.code, []).append((mass, warning))
+        for code, hits in by_code.items():
+            first = hits[0][1]
+            self.ctx.warn(
+                code,
+                f"{first.message} (curve samples: occurred at {len(hits)} of {len(masses)} masses)",
+                {
+                    **first.detail,
+                    "masses_kg": [mass for mass, _ in hits],
+                    "by_mass": [{"mass_kg": mass, **w.detail} for mass, w in hits],
+                },
+            )
 
     async def declare_level(self, root: float) -> None:
-        """Evaluate and declare the level-flight answer at ``m_max,level``."""
+        """Evaluate and declare the level-flight answer at ``m_max,level``, with its clean stall warnings."""
+        stall = await self.stall(root, takeoff=False)
+        forward_warnings(self.ctx, stall.warnings)
+        warn_flap_validity(self.ctx, self.airplane(takeoff=False), stall.solution.diagnostics)
         flight, optimum = await self.best_excess(root)
         point = await flight.answer(optimum.v, LEVEL_FLIGHT)
         if optimum.on_wing_limit:
@@ -393,11 +496,11 @@ async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float | Curve | tu
             ``missing_input``), each with the mass of the scan named.
     """
     scan = Envelope(x, ctx)
-    m_level = await scan.root(scan.level_function, "level flight", LEVEL_NOT_HELD)
+    m_level, edge = await scan.root(scan.level_function, "level flight", LEVEL_NOT_HELD)
     await scan.declare_level(m_level)
-    m_to = await scan.root(scan.takeoff_function, "the lift-off", TAKEOFF_NOT_HELD)
+    m_to, _ = await scan.root(scan.takeoff_function, "the lift-off", TAKEOFF_NOT_HELD)
     await scan.declare_takeoff(m_to)
-    speed_range, roc_curve = await scan.curves(m_level)
+    speed_range, roc_curve, _ = await scan.curves(m_level, edge=edge)
     return {
         "speed_range": speed_range,
         "roc_curve": roc_curve,

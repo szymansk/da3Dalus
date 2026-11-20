@@ -50,7 +50,7 @@ input `m_max_level`). Its `V_max(m)` is the upper edge of the speed range that [
 produces (input `v_range`); this entry reads it and solves no level-speed problem of its own. Only the
 stall problem in landing configuration (`stall-speed.landing`) is embedded.
 
-**Maintainer decision (2026-11-19, gh-1420):** the trimmable CG range is its own entry until the kernel has a trim solve; the two performance curves it reads stay outputs of [[mass-envelope]].
+**Maintainer decision (2026-11-19, gh-1420):** the trimmable CG range is its own entry until the kernel has a trim solve. The curves it reads belong to [[mass-envelope]]: `climb-rate-over-mass` is a curve result there, `speed-range-over-mass` (a curve pair) is not requestable yet, pending the maintainer.
 
 **Canonical form**
 
@@ -103,7 +103,7 @@ clean airfoil with a Hoerner drag factor (no flap separation, δ range of the fi
 
 None in aero_kernel; no register node is mapped to this entry.
 
-Blocked, and why (new text, gh-1420, undated): the entry needs two things the kernel does not have. First, a trim solve: a pitching-moment evaluation at a given centre of gravity and elevator angle, and a root in the centre of gravity for each mass. Second, a curve result: its output is a curve pair, and a curve is not a result of the kernel yet (ARCHITECTURE ch. 8.3; gh-1424 adds it). It also reads the speed range of [[mass-envelope]] as a curve result, which the kernel returns from gh-1424 on.
+Blocked, and why (new text, gh-1420, undated): the entry needs two things the kernel does not have. First, a trim solve: a pitching-moment evaluation at a given centre of gravity and elevator angle, and a root in the centre of gravity for each mass. Second, a curve result: its output is a curve pair, and a curve is not a result of the kernel yet (ARCHITECTURE ch. 8.3; gh-1424 adds it). It also depends on `speed-range-over-mass`, a curve pair that is not requestable yet: until the maintainer decides how the speed range is expressed (as a curve pair result or as two curve quantities) this entry has no input it can read as a result, which blocks it in addition to the missing trim solve.
 
 ## Approval
 

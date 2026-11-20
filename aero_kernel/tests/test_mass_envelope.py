@@ -73,12 +73,17 @@ class EnvelopeOpti(pb.PolarOpti):
         stall_alpha: float = UPRIGHT_PEAK[0],
         stall_fails_above: float = math.inf,
         stall_scale: float = 1.0,
+        lift_cap_mass: float = math.inf,
+        stall_warning_above: float = math.inf,
         **kwargs: Any,
     ):
         super().__init__(cd0=cd0, **kwargs)
         self.stall_alpha = stall_alpha
         self.stall_fails_above = stall_fails_above
         self.stall_scale = stall_scale
+        self.lift_cap_mass = lift_cap_mass
+        self.stall_warning_above = stall_warning_above
+        self.stall_masses: list[float] = []
         self.stall_airplanes: list[AirplaneGeometry] = []
         self.level_airplanes: list[AirplaneGeometry] = []
 
@@ -92,6 +97,16 @@ class EnvelopeOpti(pb.PolarOpti):
         n_load: float,
     ) -> LevelFlightPoint:
         self.level_airplanes.append(airplane)
+        if (
+            mass_kg > self.lift_cap_mass
+        ):  # the data end: the wing cannot carry this mass at any speed
+            raise FormulaError(
+                ErrorCategory.NOT_CONVERGED,
+                "not_converged",
+                f"the airplane does not reach the lift of {mass_kg:.4g} kg below its first C_L peak",
+                "check mass and speed",
+                detail={"limit": "wing_lift", "v_ms": v_ms},
+            )
         return await super().level_flight_point(airplane, mass_kg, gravity, air, v_ms, n_load)
 
     async def stall(
@@ -103,6 +118,7 @@ class EnvelopeOpti(pb.PolarOpti):
         air: AirState,
     ) -> Stall:
         self.stall_airplanes.append(airplane)
+        self.stall_masses.append(mass_kg)
         if mass_kg > self.stall_fails_above:
             raise failure(
                 "not_converged", "the optimum of the stall problem lies on the bound of alpha"
@@ -113,7 +129,18 @@ class EnvelopeOpti(pb.PolarOpti):
             alpha_s=self.stall_alpha,
             polar=lift_curve((UPRIGHT_PEAK[0], pb.CL_MAX), True),
         )
-        return Stall(solution=solution, warnings=())
+        regime = (
+            (
+                KernelWarning.of(
+                    "reynolds_outside_band",
+                    "the stub's chord Reynolds number is low",
+                    detail={"re": 3.0e4},
+                ),
+            )
+            if mass_kg > self.stall_warning_above
+            else ()
+        )
+        return Stall(solution=solution, warnings=regime)
 
 
 def inputs(mass: float = M0, **extra: Any) -> dict[str, Any]:
@@ -161,7 +188,7 @@ def root_over_mass(f: Callable[[float], float], low: float, high: float) -> floa
     return pb.bisect(f, low, high)
 
 
-def climb_angle(v: float, mass: float) -> float | None:
+def climb_angle(v: float, mass: float, cd0: float = CD0) -> float | None:
     """The steepest steady climb angle in rad at ``v`` (bisection on ``T - D(cos g) - m g sin g``), or ``None``.
 
     ``pb.climb_angle`` is the one of the stub's default polar; this is the same bisection for ``CD0``.
@@ -170,7 +197,7 @@ def climb_angle(v: float, mass: float) -> float | None:
     gamma_wing = math.acos(min(1.0, pb.CL_MAX * q_s / weight)) + 1e-9
 
     def excess(gamma: float) -> float:
-        d = pb.drag(v, math.cos(gamma), mass, CD0)
+        d = pb.drag(v, math.cos(gamma), mass, cd0)
         assert d is not None
         return pb.thrust(v) - d - weight * math.sin(gamma)
 
@@ -181,7 +208,7 @@ def climb_angle(v: float, mass: float) -> float | None:
     return pb.bisect(excess, gamma_wing, 0.5 * math.pi)
 
 
-def best_climb_rate(mass: float) -> float:
+def best_climb_rate(mass: float, cd0: float = CD0) -> float:
     """The largest ``V sin(gamma)``: a grid of 0.1 m/s from 5 to 33 m/s, then 0.002 m/s around the best.
 
     The best climb can lie on the edge of the speeds that have one (below the level stall speed), where a
@@ -189,7 +216,7 @@ def best_climb_rate(mass: float) -> float:
     """
 
     def rate(v: float) -> float:
-        gamma = climb_angle(v, mass)
+        gamma = climb_angle(v, mass, cd0)
         return 0.0 if gamma is None else v * math.sin(gamma)
 
     best_v = max((5.0 + 0.1 * k for k in range(280)), key=rate)
@@ -247,11 +274,12 @@ async def test_only_the_warnings_of_the_two_answers_are_forwarded_and_the_route_
     _, ctx = await run(opti)
     codes = [w.code for w in ctx.warnings]
     assert len(opti.evaluations) > 100  # many evaluations along the searches
-    assert codes.count("induced_drag_viscous_factor_removed") == 2  # level answer, take-off answer
+    # the level answer, the take-off answer, and the one summary of the curve samples (ADR 0020)
+    assert codes.count("induced_drag_viscous_factor_removed") == 3
     assert codes.count("powertrain_route_winding_resistance") == 1
-    assert (
-        pb.limits(ctx) == []
-    )  # the scan starts at the stall speed, so the stall corner is its first point
+    # the scan starts at the stall speed, so the stall corner is its first point: no wing notice; the
+    # samples' climb scans declare their floor start (one summary)
+    assert "wing" not in pb.limits(ctx)
 
 
 async def test_the_embedded_relations_requested_are_those_of_the_canon_that_exist() -> None:
@@ -406,8 +434,9 @@ async def test_where_the_data_end_with_the_state_still_held_the_last_mass_that_e
     code: str, not_held: frozenset[str]
 ) -> None:
     sweep = scan()
-    got = await sweep.root(with_edge(8.0, 10.0, code), "level flight", not_held)
-    assert close(got, 8.0, 2e-5)  # the edge, bisected to powered_root_tolerance
+    got, edge = await sweep.root(with_edge(8.0, 10.0, code), "level flight", not_held)
+    assert edge  # the root is the edge of the data, not a sign change
+    assert close(got, 8.0, 2e-5)  # the edge, bisected to mass_envelope_edge_tolerance
     assert got <= 8.0  # the last mass that evaluates
     declared = [w for w in sweep.ctx.warnings if w.code == "powered_limit_declared"]
     assert [w.detail["limit"] for w in declared] == ["evaluation_edge"]
@@ -423,9 +452,10 @@ async def test_a_sign_change_below_the_edge_is_refined_as_a_root(
     code: str, not_held: frozenset[str]
 ) -> None:
     sweep = scan()
-    got = await sweep.root(
+    got, edge = await sweep.root(
         with_edge(8.0, 7.7, code), "level flight", not_held
     )  # f(7.47) > 0 > f(8.0)
+    assert not edge
     assert close(got, 7.7, 1e-4)
     assert not [w for w in sweep.ctx.warnings if w.code == "powered_limit_declared"]
 
@@ -488,7 +518,7 @@ async def test_a_best_excess_at_the_stall_corner_above_a_skipped_speed_is_declar
     assert close(
         got["m_max_level"], level_root(), 1e-3
     )  # the same root: the skipped speeds carry no value
-    assert pb.limits(ctx) == ["wing"]
+    assert pb.limits(ctx)[0] == "wing"  # the level answer's; the samples' summary follows
 
 
 @pytest.fixture(autouse=True)
@@ -572,3 +602,129 @@ async def test_a_sample_in_a_window_narrower_than_the_scan_step_fails_with_its_m
         await run()
     assert caught.value.code == "no_feasible_speed"
     assert "at the mass 5.824 kg:" in caught.value.message
+
+
+# --- the refinement goes through the same wrapper as the scan ----------------------------------------------
+
+
+def with_hole(low: float, high: float, code: str, level: float = 7.0) -> Callable[[float], Any]:
+    """``f(m) = level - m`` (linear: its regula falsi iterate is the root), which fails with ``code`` for
+    ``low < m < high``, a band that holds no mass of the scan (3.4, 4.42, 5.746, 7.47 kg) but the iterate."""
+
+    async def f(mass: float) -> float:
+        if low < mass < high:
+            raise failure(code, "failed inside the bracket")
+        return level - mass
+
+    return f
+
+
+async def test_a_failure_at_a_refinement_mass_carries_that_mass() -> None:
+    """The iterate (7.0 kg) is neither the current mass nor a scan mass; its failure names it."""
+    with pytest.raises(FormulaError) as caught:
+        await scan().root(with_hole(6.5, 7.3, "not_converged"), "level flight", LEVEL_NOT_HELD)
+    assert caught.value.code == "not_converged"
+    assert "at the mass 7 kg:" in caught.value.message
+    assert close(float(str(caught.value.detail["mass_kg"])), 7.0, 1e-3)
+
+
+@pytest.mark.parametrize(
+    ("code", "not_held"),
+    [("no_feasible_speed", LEVEL_NOT_HELD), ("outside_propeller_table", TAKEOFF_NOT_HELD)],
+)
+async def test_a_data_end_at_a_refinement_mass_closes_the_bracket_like_in_the_scan(
+    code: str, not_held: frozenset[str]
+) -> None:
+    """Not "not held at the current mass": the edge below the iterate is bisected (6.5 kg) and declared."""
+    sweep = scan()
+    got, edge = await sweep.root(with_hole(6.5, 7.3, code), "level flight", not_held)
+    assert edge
+    assert close(got, 6.5, 2e-5)
+    assert [
+        w.detail["limit"] for w in sweep.ctx.warnings if w.code == "powered_limit_declared"
+    ] == ["evaluation_edge"]
+
+
+async def test_a_stall_solve_that_fails_at_a_refinement_mass_of_the_real_search_carries_it() -> (
+    None
+):
+    """A stall solve that does not converge above 6.0 kg: the level scan reaches 7.47 kg, but the stall solve
+    of the first iterate is what the stub fails first at a mass that is not a scan mass? No: scan masses are
+    3.4, 4.42, 5.746, 7.47; the failure is placed above 6.0 kg so the scan mass 7.47 fails first, named."""
+    with pytest.raises(FormulaError) as caught:
+        await run(EnvelopeOpti(stall_fails_above=6.0))
+    assert caught.value.code == "not_converged"
+    assert "at the mass 7.47" in caught.value.message
+
+
+# --- the last point of the curves --------------------------------------------------------------------------
+
+
+async def test_at_an_edge_root_the_last_curve_point_is_computed_not_asserted() -> None:
+    """Where the level problem ends at the edge of the data (the wing carries no mass above 8 kg), the best
+    excess is still positive at the root: the closing climb rate is the computed one and V_max the computed
+    highest level speed, not zero and not the speed of the best excess."""
+    opti = EnvelopeOpti(cd0=0.2, lift_cap_mass=8.0)
+    got, ctx = await run(opti)
+    root = got["m_max_level"]
+    assert close(root, 8.0, 2e-5)
+    assert root <= 8.0
+    stall_curve, level_curve = got["speed_range"]
+    climb = got["roc_curve"]
+    assert climb.x[-1] == root
+    assert climb.y[-1] > 0.5  # m/s: the thrust still exceeds the drag at 8 kg
+    assert close(climb.y[-1], best_climb_rate(root, 0.2), 5e-3)
+    assert close(level_curve.y[-1], pb.max_level_speed(root, 0.2), 1e-4)
+    assert level_curve.y[-1] != best_excess(root, 0.2)[1]  # not the speed of the best excess
+    assert close(stall_curve.y[-1], v_stall(root), 1e-9)
+    assert "evaluation_edge" in pb.limits(ctx)
+
+
+async def test_at_a_sign_change_root_the_closing_values_are_the_root_condition() -> None:
+    """Where the root is a sign change the thrust equals the drag at the best speed: V_max is that speed and
+    the climb rate zero by the root condition (the entry says so); only the stall speed is computed."""
+    got, _ = await run()
+    _, level_curve = got["speed_range"]
+    climb = got["roc_curve"]
+    assert climb.y[-1] == 0.0
+    assert close(level_curve.y[-1], best_excess(got["m_max_level"])[1], 1e-3)
+
+
+# --- the warnings of the curve samples --------------------------------------------------------------------
+
+
+async def test_a_sample_with_a_regime_warning_makes_the_curves_carry_it_with_the_mass() -> None:
+    """ADR 0020: the warning of a sample's stall solve is not dropped; one warning per code, the masses
+    at which it occurred in its detail."""
+    _, ctx = await run(EnvelopeOpti(stall_warning_above=5.0))
+    found = [w for w in ctx.warnings if w.code == "reynolds_outside_band"]
+    summary = [w for w in found if "masses_kg" in w.detail]
+    assert len(summary) == 1  # de-duplicated by code
+    masses = summary[0].detail["masses_kg"]
+    assert isinstance(masses, list)
+    assert all(isinstance(m, float) and m > 5.0 for m in masses)  # only the samples above 5 kg
+    assert len(masses) >= 1
+    by_mass = summary[0].detail["by_mass"]
+    assert isinstance(by_mass, list)
+    assert len(by_mass) == len(masses)
+    assert summary[0].detail["re"] == 3.0e4
+    assert "curve samples" in summary[0].message
+
+
+async def test_the_stall_warnings_of_the_level_root_are_forwarded_with_the_scalar() -> None:
+    _, ctx = await run(EnvelopeOpti(stall_warning_above=0.0))  # every stall solve warns
+    plain = [
+        w for w in ctx.warnings if w.code == "reynolds_outside_band" and "masses_kg" not in w.detail
+    ]
+    assert len(plain) >= 2  # the level root's and the take-off root's, forwarded as they happen
+
+
+# --- one stall solve per mass ---------------------------------------------------------------------------------
+
+
+async def test_a_stall_is_solved_once_per_mass_and_configuration() -> None:
+    opti = EnvelopeOpti()
+    await run(opti)
+    keyed = list(zip(opti.stall_masses, opti.stall_airplanes, strict=True))
+    seen = {(m, id(a)) for m, a in keyed}
+    assert len(seen) == len(keyed)  # no mass of a configuration was solved twice
