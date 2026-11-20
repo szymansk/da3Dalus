@@ -26,6 +26,9 @@ outputs:
   l_y: spanwise-lift-distribution
   v_y: spanwise-shear-force
   m_y: spanwise-bending-moment
+preconditions:
+  - {id: flight_speed_positive, parameter: v, on_violation: error}
+  - {id: air_density_positive, parameter: rho, on_violation: error}
 ---
 
 # Spanwise lift, shear force and bending moment of the main wing
@@ -98,9 +101,13 @@ has no source; Anderson qualitative). Mach ≤ 0.3: no correction
 Scholz Wing Design §7.3 (load distribution `L′ = c·C_l` for structural sizing); AVL user guide and
 source (`aoutput.f:267` ff., `getvm.f:21-118`).
 
-## Implementations (0)
+## Implementations (1)
 
-None in aero_kernel yet; no register node is mapped to this entry.
+| node | claimed | verified | deviation |
+|---|---|---|---|
+| `aero_kernel/formulas/spanwise_loads.py` | EXACT | 🟢 | one AVL run (`aero_kernel/solvers/avl.py`, `spanwise_loads`) on the declared mesh (10 chordwise, 24 spanwise strips, core ratio 0.25 — the neutral point's), `C_L = n·m·g / (q·S_ref)` with the kernel's `S_ref`, controls undeflected (a deflected device is refused), then `FS` and `VM` read for the first surface only (the right half, written root → tip, left half by `YDUPLICATE`); the adapter returns the rows per `q` and the formula scales them. The root row is at `y = 0`, so the root-row moment is already the centreline moment (see the remark below). Declared as `spanwise_loads_scope` (`notice`). The three outputs are `curve` results over `wing-station` (gh-1424): `l(y)` at the strip centres, `V(y)` and `M(y)` at the root, the strip centres and the tip (#1398) |
+
+No register node is mapped to this entry.
 
 ## Approval
 
@@ -121,3 +128,20 @@ None in aero_kernel yet; no register node is mapped to this entry.
 > The design load case — does the spar hold `n_lim` — is `spar-break-load-factor` (n_break against n_lim
 > in the evaluation, A10); a direct evaluation at `n = n_lim` is #1139. The implementation checklist item
 > holds vacuously: there is no aero_kernel formula yet.
+
+Implementation remark (2026-11-20, #1398). **The root row is the centreline.** The mesh puts the root station of a
+mirrored main wing at `y = 0` (`avl_mesh._root`: a root stored off the centreline is carried to it), so
+`VM`'s root row is the moment about the centreline and the term `V(y_root)·y_root` of the canonical form
+is zero for every wing the kernel meshes; the adapter checks that the table starts at `y = 0` and treats
+anything else as a defect. A main wing that is not mirrored is refused (`unsupported_configuration`):
+the form speaks of one half of a symmetric load. **Not in the implementation:** a regime warning (the
+inputs carry no `μ` and no `a`, so the chord Reynolds and Mach numbers of the operating point cannot be
+formed; the entry is approved and its inputs are unchanged, the gap goes to the maintainer, #1398) and a refined-mesh check (the mesh is the neutral
+point's, from the BRYAN study; measured agreement with an independent vortex lattice is in the
+evidence sheet).
+
+Implementation remark (2026-11-20, #1398): the operating point must give a dynamic pressure, so the input `v` has the precondition `flight_speed_positive` and `rho` the precondition `air_density_positive` (both positive, a violation is an error, nothing is substituted). They state what the implementation checks; the inputs of the entry are unchanged. The mass needs no rule here: the quantity `aircraft-mass` is `positive` for every formula.
+
+Implementation remark (2026-11-20, #1398): **the grid of the three curves.** `l(y)` is given at the centres of the strips of the main wing (the first at half the width of the first strip, 0.0146 m on a 1.4 m span with 24 strips); `V(y)` and `M(y)` are given at the root (`y = 0`), at every strip centre and at the tip. The mesh carries the root of a mirrored wing to `y = 0` (a wing stored off the centreline is extended inward to the centreline), so the first strip stands for the load from `y = 0` to its outer edge; a consumer who integrates `l` from `y = 0` has to count that first strip as reaching `y = 0`. The abscissa is the `y` coordinate. With dihedral, AVL's strip force is the force normal to the strip per unit length of the strip (`WSTRIP` in `amake.f` is the length in the y-z plane) and `V`, `M` integrate over that length, so the sum of `l` times the strip length is the root shear, while the sum of `l` times the `y` width is `cos(dihedral)` of it (aero test, 20 deg).
+
+Implementation remark (2026-11-20, #1398): **pitch untrimmed means the wing's share of the load is not fixed.** The solution fixes the total `C_L` of the airplane; the tail carries roughly a constant (negative) load, so at a low lift coefficient the wing carries more than `n m g` and at a high one slightly less. On BRYAN at `n = 1` and its maneuvering speed (`C_L` about 0.15) the half wing carries 1.39 times half the weight. The scope notice therefore reports the wing's share `2 V(0) / (n m g)` of the same solution (`detail.wing_share`). A bending moment taken at one operating point and scaled linearly with `n` overstates the moment at a high load factor.

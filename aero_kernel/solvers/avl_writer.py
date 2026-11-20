@@ -21,9 +21,11 @@ from aero_kernel.solvers.avl_mesh import (
 from pydantic import BaseModel, ConfigDict
 
 __all__ = [
+    "LOADS_FILES",
     "AvlOutput",
     "HingeOutput",
     "LateralOutput",
+    "LoadsOutput",
     "RollOutput",
     "airfoil_file",
     "airfoil_file_name",
@@ -31,6 +33,7 @@ __all__ = [
     "avl_geometry",
     "avl_hinge_commands",
     "avl_lateral_commands",
+    "avl_loads_commands",
     "avl_roll_commands",
     "body_file_name",
     "control_order",
@@ -38,6 +41,7 @@ __all__ = [
     "parse_flap_echo",
     "parse_hinge_output",
     "parse_lateral_output",
+    "parse_loads_output",
     "parse_roll_output",
 ]
 
@@ -46,6 +50,11 @@ CHORD_SPACING = 1
 # One strip per neighbouring section pair; the spacing is moot for a single strip.
 _STRIP = "1   1"
 GEOMETRY_FILE = "airplane.avl"
+# The two files the spanwise-loads dialogue writes: strip forces (OPER ``FS``) and strip shear and
+# bending moment (OPER ``VM``).
+STRIP_FORCES_FILE = "strips.txt"
+SHEAR_MOMENT_FILE = "shearmoment.txt"
+LOADS_FILES = (STRIP_FORCES_FILE, SHEAR_MOMENT_FILE)
 # Source and doublet nodes along a body axis, and their spacing: cosine (1.0), as for the strips. The
 # primer's own example uses 15 nodes (avl_doc.txt:947-949); a fuselage of 20-60 sections is resolved
 # by 20 cosine-spaced nodes, the line being smooth between the sections.
@@ -145,6 +154,32 @@ class AvlOutput(BaseModel):
 
     x_np: float
     cl: float
+
+
+class LoadsOutput(BaseModel):
+    """The spanwise loads of the first surface of a run, normalised by AVL (per ``q``).
+
+    The first surface is the right half of the main wing as the mesh writes it (root to tip); the
+    mirrored half is a separate surface that is not read.
+
+    Attributes:
+        cl: The total lift coefficient AVL trimmed to.
+        y_strip: The strip positions ``Y`` in m (leading edge of the strip, root to tip).
+        c_cl: ``c * c_cl`` per strip in m: the normal force per unit span divided by ``q``.
+        y_station: ``Y`` in m of the rows of the shear and bending table: the root, every strip,
+            the tip.
+        shear: ``Vz / q`` in m^2 per row (``Vz / (q Sref)`` times ``Sref``).
+        moment: ``Mx / q`` in m^3 per row, about the surface root for the first row.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    cl: float
+    y_strip: tuple[float, ...]
+    c_cl: tuple[float, ...]
+    y_station: tuple[float, ...]
+    shear: tuple[float, ...]
+    moment: tuple[float, ...]
 
 
 def airfoil_file_name(index: int) -> str:
@@ -290,6 +325,14 @@ def avl_lateral_commands(
     """
     held = "".join(f"d{index} d{index} {flap_deg!r}\n" for index, _ in enumerate(order, start=1))
     return f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\n{held}x\nst\n\n\nquit\n"
+
+
+def avl_loads_commands(cl: float, core_ratio: float) -> str:
+    """The OPER dialogue of the spanwise loads: vortex core ratio, ``C_L`` constraint, run, ``FS``, ``VM``."""
+    return (
+        f"oper\no\nc\n{core_ratio}\n\na c {cl!r}\nx\n"
+        f"fs {STRIP_FORCES_FILE}\nvm {SHEAR_MOMENT_FILE}\n\nquit\n"
+    )
 
 
 def control_order(surfaces: Sequence[MeshSurface]) -> tuple[str, ...]:
@@ -481,4 +524,86 @@ def parse_roll_output(text: str, roll_index: int = 1) -> RollOutput | None:
         control=float(echo.group(1)),
         cl_p=cl_p,
         cl_delta=cl_delta,
+    )
+
+
+def _numbers(line: str) -> list[float] | None:
+    """The numbers of a table row, or ``None`` if the line holds anything else."""
+    cells = line.split()
+    try:
+        return [float(cell.replace("D", "E").replace("d", "e")) for cell in cells]
+    except ValueError:
+        return None
+
+
+def _first_strip_table(text: str) -> tuple[list[float], list[float]] | None:
+    """``Yle`` and ``c_cl`` of the strips of the first surface of an AVL strip-force file."""
+    start = text.find("Strip Forces referred to Strip Area, Chord")
+    if start < 0:
+        return None
+    y: list[float] = []
+    c_cl: list[float] = []
+    lines = text[start:].splitlines()[2:]  # the title and the column header
+    for line in lines:
+        row = _numbers(line)
+        if row is None or len(row) < 7:
+            break
+        y.append(row[2])
+        c_cl.append(row[6])
+    return (y, c_cl) if y else None
+
+
+def _first_shear_table(text: str, b_ref: float, s_ref: float) -> tuple[list[float], ...] | None:
+    """The ``Y``, ``Vz / q`` and ``Mx / q`` rows of the first surface of an AVL shear-moment file.
+
+    The file normalises ``Y`` by ``B_ref / 2``, the shear by ``q S_ref`` and the moment by
+    ``q B_ref S_ref`` (``getvm.f``).
+    """
+    start = text.find("Mx/(q*Bref*Sref)")
+    if start < 0:
+        return None
+    y: list[float] = []
+    shear: list[float] = []
+    moment: list[float] = []
+    for line in text[start:].splitlines()[1:]:
+        row = _numbers(line)
+        if row is None or len(row) != 3:
+            break
+        y.append(row[0] * b_ref / 2.0)
+        shear.append(row[1] * s_ref)
+        moment.append(row[2] * s_ref * b_ref)
+    return (y, shear, moment) if y else None
+
+
+def parse_loads_output(
+    stdout: str, strips: str, shear_moment: str, b_ref: float, s_ref: float
+) -> LoadsOutput | None:
+    """Read ``CLtot`` of the run and the first surface of the strip-force and shear-moment files.
+
+    ``CLtot`` comes from the run's own output (five decimals); the shear-moment file prints it with
+    three.
+
+    Args:
+        stdout: The text AVL printed for the run.
+        strips: The text of the ``FS`` file.
+        shear_moment: The text of the ``VM`` file.
+        b_ref: The reference span ``B_ref`` of the run in m.
+        s_ref: The reference area ``S_ref`` of the run in m^2.
+
+    Returns:
+        The values, or ``None`` if a file is missing a table or the output its ``CLtot`` (the run did
+        not complete).
+    """
+    cl = _first(stdout, "CLtot")
+    forces = _first_strip_table(strips)
+    table = _first_shear_table(shear_moment, b_ref, s_ref)
+    if cl is None or forces is None or table is None:
+        return None
+    return LoadsOutput(
+        cl=cl,
+        y_strip=tuple(forces[0]),
+        c_cl=tuple(forces[1]),
+        y_station=tuple(table[0]),
+        shear=tuple(table[1]),
+        moment=tuple(table[2]),
     )
