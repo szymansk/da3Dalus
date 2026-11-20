@@ -704,6 +704,7 @@ async def test_a_sample_with_a_regime_warning_makes_the_curves_carry_it_with_the
     assert isinstance(masses, list)
     assert all(isinstance(m, float) and m > 5.0 for m in masses)  # only the samples above 5 kg
     assert len(masses) >= 1
+    assert len(set(masses)) == len(masses)  # once per mass, although the answers repeat a notice
     by_mass = summary[0].detail["by_mass"]
     assert isinstance(by_mass, list)
     assert len(by_mass) == len(masses)

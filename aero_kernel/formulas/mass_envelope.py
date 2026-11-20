@@ -432,7 +432,11 @@ class Envelope:
             for warning in warnings:
                 if warning.code == ROUTE_NOTICE:
                     continue
-                by_code.setdefault(warning.code, []).append((mass, warning))
+                hits = by_code.setdefault(warning.code, [])
+                if not any(
+                    seen == mass for seen, _ in hits
+                ):  # once per mass: the answers repeat a notice
+                    hits.append((mass, warning))
         for code, hits in by_code.items():
             first = hits[0][1]
             self.ctx.warn(
