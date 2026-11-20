@@ -164,6 +164,17 @@ class Context:
         """
         self._warnings.append(KernelWarning.of(code, message, origin=self._origin, detail=detail))
 
+    def scratch(self) -> "Context":
+        """A context with the same solvers, relations and world and its own, empty warnings.
+
+        For a formula that runs the same code as other formulas at many states and reports what it found
+        as one summary (``mass-envelope``: the warnings of its curve samples). Requests for embedded
+        relations are recorded on the scratch context, not on this one.
+        """
+        return Context(
+            origin=self._origin, solvers=self.solvers, world=self.world, relations=self._relations
+        )
+
     @property
     def warnings(self) -> tuple[KernelWarning, ...]:
         """The warnings reported so far, in order."""

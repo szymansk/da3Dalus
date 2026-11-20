@@ -707,6 +707,10 @@ class KernelConfig(BaseModel):
     powered_optimum_tolerance: ConfigValue
     powered_load_factor_tolerance: ConfigValue
     powered_search_max_steps: ConfigValue
+    mass_envelope_step: ConfigValue
+    mass_envelope_max_steps: ConfigValue
+    mass_envelope_curve_points: ConfigValue
+    mass_envelope_edge_tolerance: ConfigValue
     endurance_speed_ratio: ConfigValue
     endurance_speed_tolerance: ConfigValue
 
@@ -717,6 +721,16 @@ class KernelConfig(BaseModel):
         if steps < 1.0 or steps != round(steps):
             msg = "butterfly_mix_steps must be a whole number of at least 1"
             raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_mass_scan(self) -> Self:
+        """Require whole numbers of mass-scan steps and curve points, at least one each."""
+        for name in ("mass_envelope_max_steps", "mass_envelope_curve_points"):
+            count = getattr(self, name).value
+            if count < 1.0 or count != round(count):
+                msg = f"{name} must be a whole number of at least 1"
+                raise ValueError(msg)
         return self
 
 
