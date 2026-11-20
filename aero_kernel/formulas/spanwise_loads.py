@@ -12,6 +12,7 @@ from aero_kernel.context import Context, Inputs
 from aero_kernel.formulas.values import airplane_of, forward_warnings, number
 from aero_kernel.registry import CheckResult, formula, precondition
 from aero_kernel.schema import Curve
+from pydantic import JsonValue
 
 __all__ = ["air_density_positive", "flight_speed_positive", "spanwise_loads"]
 
@@ -69,13 +70,26 @@ async def spanwise_loads(x: Inputs, ctx: Context) -> dict[str, Curve]:
     cl = number(x, "n_load") * number(x, "m") * number(x, "g") / (q * reference.s_ref)
     found = await ctx.solvers.avl.spanwise_loads(airplane, cl)
     forward_warnings(ctx, found.warnings)
+    detail: dict[str, JsonValue] = {"cl": cl, "q_pa": q}
+    load = number(x, "n_load") * number(x, "m") * number(x, "g")
+    share = ""
+    if abs(load) > 0.0:
+        wing_share = 2.0 * q * found.shear[0] / load  # both halves' normal force over n m g
+        detail["wing_share"] = wing_share
+        share = f" The main wing carries {wing_share:.3f} of n m g in this solution."
     ctx.warn(
         "spanwise_loads_scope",
         "The loads are those of the right half of the main wing from one vortex lattice solution at "
         "L = n m g with the controls undeflected: aerodynamic load only (no inertial relief, "
         "which is conservative for upward load and not for downward load or heavy masses near the "
-        "tip), the pitch not trimmed, normal force only, attached flow.",
-        {"cl": cl, "q_pa": q},
+        "tip), normal force only, attached flow. The pitch is not trimmed, so the share of the "
+        "load the wing carries depends on the lift coefficient: the tail load is roughly constant, "
+        "so at a low lift coefficient the wing carries more than half of n m g per half wing "
+        "(a download on the tail) and at a high one slightly less." + share + " The lift curve "
+        "starts at the centre of the first strip; the shear and the moment start at y = 0, and a "
+        "wing stored off the centreline is carried to y = 0 by the mesh, so the first strip stands "
+        "for the load from y = 0 to its outer edge.",
+        detail,
     )
     return {
         "l_y": Curve(x=found.y_strip, y=tuple(q * value for value in found.c_cl)),

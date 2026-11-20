@@ -203,3 +203,44 @@ async def test_scaling_by_the_dynamic_pressure_keeps_shear_as_the_integral_of_th
     assert all(close(a, b, 1e-12) for a, b in zip(out["m_y"].y, by_hand, strict=True))
     assert out["v_y"].y[0] > 0.0
     assert out["m_y"].y[0] > 0.0
+
+
+# --- the share of the load the wing carries (pitch untrimmed) -----------------------------------------
+
+
+async def test_the_scope_notice_reports_the_share_of_the_load_the_wing_carries() -> None:
+    """Hand value: the stub's root shear per q is 0.05 m^2, both halves carry 2 q 0.05 in N."""
+    ctx = context(StubAvl())
+    await spanwise_loads(inputs(), ctx)
+    scope = ctx.warnings[-1]
+    share = 2.0 * Q * 0.05 / (MASS * GRAVITY)
+    assert close(float(scope.detail["wing_share"]), share, 1e-12)  # type: ignore[arg-type]  # JSON detail
+    assert f"{share:.3f}" in scope.message
+    assert "depends on the lift coefficient" in scope.message
+    assert "centre of the first strip" in scope.message
+
+
+async def test_a_share_above_one_is_reported_where_the_wing_carries_more_than_the_load() -> None:
+    avl = StubAvl()
+    avl.loads = avl.loads.model_copy(update={"shear": (0.4, 0.3, 0.1, 0.0)})
+    ctx = context(avl)
+    await spanwise_loads(inputs(), ctx)
+    assert float(ctx.warnings[-1].detail["wing_share"]) > 1.0  # type: ignore[arg-type]  # JSON detail
+
+
+async def test_a_load_factor_of_zero_has_no_share_to_report() -> None:
+    ctx = context(StubAvl())
+    await spanwise_loads(inputs(n_load=0.0), ctx)
+    assert "wing_share" not in ctx.warnings[-1].detail
+
+
+@pytest.mark.parametrize("mass", [0.0, -1.5])
+async def test_a_mass_that_is_not_positive_is_refused_by_the_general_rule_before_the_formula(
+    mass: float,
+) -> None:
+    """The canon quantity ``aircraft-mass`` is ``positive``: a zero or negative mass would zero or
+    flip the sign of the load, and never reaches the adapter."""
+    avl = StubAvl()
+    result = await curves(avl, **{"aircraft-mass": mass})
+    assert all(q.status is QuantityStatus.ERROR for q in result.quantities)
+    assert avl.loads_calls == []

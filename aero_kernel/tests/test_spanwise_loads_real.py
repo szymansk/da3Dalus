@@ -214,3 +214,62 @@ async def test_the_main_wing_is_read_whatever_its_place_in_the_document() -> Non
     one, two = await asyncio.gather(loads(first, 1.0), loads(second, 1.0))
     assert one["m_y"].x[-1] == two["m_y"].x[-1] == 0.7  # the main wing's semi-span, not the tail's
     assert math.isclose(one["m_y"].y[0], two["m_y"].y[0], rel_tol=1e-9)
+
+
+def dihedral_wing(angle_deg: float) -> AirplaneGeometry:
+    """The 1.4 m span, 0.2 m chord test wing (NACA 0012) with a straight dihedral of ``angle_deg``."""
+    rise = math.tan(math.radians(angle_deg))
+    sections = [
+        {"xyz_le": [0.0, y, y * rise], "chord": 0.2, "twist": 0.0, "airfoil": "naca0012"}
+        for y in (0.0, 0.4, 0.7)
+    ]
+    wing = {"name": "Main", "surface_type": "main_wing", "x_secs": sections}
+    return AirplaneGeometry.model_validate(
+        {"name": "dihedral", "xyz_ref": [0.05, 0.0, 0.0], "wings": {"Main": wing}}
+    )
+
+
+async def test_the_lift_per_metre_is_the_normal_force_per_unit_strip_length_on_a_dihedral_wing() -> (
+    None
+):
+    """AVL's strip force is the force normal to the strip per unit length of the strip (``CNC`` times
+    the strip width ``WSTRIP``, which is the arc length in the y-z plane, ``Avl/src/amake.f``,
+    ``getvm.f``). On a straight dihedral of 20 deg the strip length is the y width over cos(20 deg):
+    the sum of l times the strip length is the root shear, and the sum of l times the y width is
+    cos(20 deg) of it (0.940). The abscissa of the curves is the y coordinate, not the arc length."""
+    angle = 20.0
+    out = await loads(dihedral_wing(angle), 1.0)
+    l_y, v_y = out["l_y"], out["v_y"]
+    width_y = l_y.x[1] - l_y.x[0]  # 24 equal strips
+    over_y = sum(l_y.y) * width_y
+    over_length = over_y / math.cos(math.radians(angle))
+    assert math.isclose(over_length, v_y.y[0], rel_tol=0.01)
+    assert math.isclose(over_y, v_y.y[0] * math.cos(math.radians(angle)), rel_tol=0.01)
+    assert math.isclose(v_y.x[-1], 0.7, abs_tol=1e-3)  # y of the tip, not the arc length 0.745 m
+
+
+async def bryan_scope() -> tuple[float, float]:
+    """BRYAN at n = 1 and its maneuvering speed (measured 15.74 m/s): the wing's share of the load
+    and the root shear over half the weight, from the scope notice and the curves."""
+    mass, speed = 0.151, 15.7389
+    airplane = AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN))
+    async with SolverRuntime(max_workers=1) as runtime:
+        ctx = Context(
+            origin="t",
+            solvers=solvers_with(avl=AvlAdapter(runtime), geometry=GeometryAdapter(runtime)),
+        )
+        out = await spanwise_loads(
+            {"airplane": airplane, "m": mass, "g": GRAVITY, "n_load": 1.0, "rho": RHO, "v": speed},
+            ctx,
+        )
+    scope = next(w for w in ctx.warnings if w.code == "spanwise_loads_scope")
+    return float(scope.detail["wing_share"]), out["v_y"].y[0] / (mass * GRAVITY / 2.0)  # type: ignore[arg-type]  # JSON detail
+
+
+async def test_bryan_at_its_maneuvering_speed_reports_a_wing_share_above_one() -> None:
+    """Untrimmed pitch: the tail load is roughly constant, so at the low lift coefficient of n = 1
+    at V_A the wing carries more than n m g (measured 1.39); the notice says so and the share is
+    twice the root shear over n m g."""
+    share, ratio = await bryan_scope()
+    assert share > 1.0
+    assert math.isclose(share, ratio, rel_tol=1e-9)
