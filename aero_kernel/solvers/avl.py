@@ -805,7 +805,7 @@ class AvlAdapter(SolverAdapter):
         if abs(output.cl - cl) > config().avl_cl_tolerance.value:
             msg = f"the vortex lattice trimmed to C_L {output.cl}, not the requested {cl}"
             raise RuntimeError(msg)
-        if output.y_station[0] != 0.0:  # the root of a mirrored wing is printed as 0.0000
+        if abs(output.y_station[0]) > 0.0:  # the root of a mirrored wing is printed as 0.0000
             msg = f"the shear and bending table starts at y = {output.y_station[0]} m, not the centreline"
             raise RuntimeError(msg)
         return AvlLoads(
