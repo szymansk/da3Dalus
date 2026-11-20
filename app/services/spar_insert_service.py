@@ -23,6 +23,11 @@ cleared first, then the plan's spares are appended in invariant order. This make
 the front spar deterministically land at ``sort_index = 0`` and never silently
 corrupts an existing index-0 spar by shifting it to a non-zero slot.
 
+**Section and material (gh-1428).** The replaced spars take their ``section`` and ``material``
+with them: the new spars are written without either (the solver's shape is not written back, the
+inserter writes no section), so after an insert the plan's segments have spars with no section
+and no material, and the kernel gives them no capacity until a section is stated again.
+
 Units: the plan is solved in mm; the dry-run response exposes piece dimensions in
 **metres** (project convention). On commit, the metre values are handed to
 ``wing_service.create_spare`` which converts back to mm for DB storage (gh-402).
@@ -220,7 +225,8 @@ def _clear_plan_spares(db, wing, segment_index: int) -> None:
 
     Inserting a fresh plan replaces existing spares in each target segment so the
     front spar deterministically lands at sort_index 0 and existing indices are
-    never silently corrupted.
+    never silently corrupted. The replaced spars' ``section`` and ``material`` go with them
+    (gh-1428); the new spars carry none.
     """
     x_secs = wing.x_secs
     if segment_index < 0 or segment_index >= len(x_secs):  # pragma: no cover - guarded upstream

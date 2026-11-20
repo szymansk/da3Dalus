@@ -272,6 +272,8 @@ def clone_aeroplane_subgraph(
                         spare_mode=spare.spare_mode,
                         spare_vector=copy.deepcopy(spare.spare_vector),
                         spare_origin=copy.deepcopy(spare.spare_origin),
+                        section=copy.deepcopy(spare.section),
+                        material=spare.material,
                     )
                     db.add(new_spare)
 

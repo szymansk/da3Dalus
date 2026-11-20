@@ -39,6 +39,9 @@ _NEEDED_OPTIONAL = (
 )
 
 
+_PART_PATHS = ("components.motor", "components.battery", "components.propeller")
+
+
 def _components_of(x: Inputs) -> Components:
     """The pushed components bound to the parameter ``components``."""
     value = x["components"]
@@ -101,11 +104,19 @@ async def airplane_components(x: Inputs, ctx: Context) -> dict[str, float]:
     absent = _absent_fields(components)
     if absent:
         names = ", ".join(f"`{path}`" for path in absent)
+        # Components that carry no powertrain part at all (only the materials table, gh-1428) are
+        # absent for the powertrain: the hint is the one of an unsupplied `components` (engine).
+        no_part = all(part in absent for part in _PART_PATHS)
+        hint = (
+            "Push the fitted motor, battery and propeller as AircraftInput.components."
+            if no_part
+            else "Push the catalogue values with the components; the kernel does not estimate them."
+        )
         raise FormulaError(
             ErrorCategory.INVALID_INPUT,
             "missing_input",
             f"airplane-components needs {names}, which the pushed components do not carry.",
-            "Push the catalogue values with the components; the kernel does not estimate them.",
+            hint,
             detail={"inputs": list[JsonValue](absent)},
             parameter="components",
         )
