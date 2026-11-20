@@ -140,6 +140,12 @@ class WingXSecSpareModel(Base):
     spare_mode = Column(String, nullable=True)
     spare_vector = Column(JSON, nullable=True)
     spare_origin = Column(JSON, nullable=True)
+    # gh-1428: the spar itself (not its pocket). ``section`` is the cross-section tagged by
+    # ``shape`` with every dimension in mm (like the other dimensional columns, gh-402);
+    # ``material`` is the name of a ``material`` component (the key the document and the
+    # kernel's components table use). Both NULL: the spar has no stated section/material.
+    section = Column(JSON, nullable=True)
+    material = Column(String, nullable=True)
 
     detail = relationship("WingXSecDetailModel", back_populates="spares")
 

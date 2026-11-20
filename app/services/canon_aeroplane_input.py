@@ -35,12 +35,15 @@ from sqlalchemy.orm import Session
 from app import schemas
 from app.core.exceptions import ValidationError
 from app.models.aeroplanemodel import AeroplaneModel
+from app.models.component import ComponentModel
 from app.services import aeroplane_service
 from app.services.create_wing_configuration import _resolve_airfoil_reference
 from app.services.operating_point_generator_service import _load_effective_mass_kg
 from app.services.wing_service import _convert_spare_to_meters
 
 MASS_SLUG = "aircraft-mass"
+# The version of the kernel's components contract this module writes (components.py, gh-1427).
+COMPONENTS_SCHEMA_VERSION = 3
 AIRPLANE_PATH = "airplane"
 
 # The members of the document that are maps by name (format ch. 3): the next path element is a key.
@@ -163,12 +166,102 @@ def effective_mass_kg(db: Session, aeroplane: AeroplaneModel) -> float | None:
     return _load_effective_mass_kg(db, aeroplane.id, None)
 
 
-def kernel_input(document: dict[str, Any], values: dict[str, float]) -> AircraftInput:
+def spar_material_names(document: dict[str, Any]) -> list[str]:
+    """The distinct material names the spars of a geometry document name, in order of first use."""
+    names: dict[str, None] = {}
+    for wing in document.get("wings", {}).values():
+        for x_sec in wing["x_secs"]:
+            for spar in x_sec.get("spare_list") or []:
+                if spar.get("material"):
+                    names[spar["material"]] = None
+    return list(names)
+
+
+def _strength_pa(specs: dict[str, Any]) -> float | None:
+    """The published bending strength of a material component in Pa, or ``None`` if it has none."""
+    strength_mpa = specs.get("bending_strength_mpa")
+    return None if strength_mpa is None else float(strength_mpa) * 1.0e6
+
+
+def _strength_source(specs: dict[str, Any]) -> str | None:
+    """The citation of the strength with its basis as the source states it, or ``None``."""
+    source = specs.get("bending_strength_source")
+    if not source:
+        return None
+    basis = specs.get("bending_strength_basis")
+    return f"{source} [{basis}]" if basis else str(source)
+
+
+def materials_table(db: Session, names: Sequence[str]) -> dict[str, dict[str, Any]]:
+    """The kernel's materials table for the named material components, keyed by name.
+
+    The strength is the published breaking strength in bending and nothing else: the component's
+    ``allowable_bending_stress_mpa`` has a safety factor folded in and is never passed on. A
+    material without a published strength is passed without one (the kernel then declares the
+    failure); a name no material component carries is left out (the kernel declares an unknown
+    key). Nothing is substituted.
+
+    Args:
+        db: The session.
+        names: The material names the spars name.
+
+    Returns:
+        ``{name: {"name", "bending_strength_pa"?, "source"?}}``.
+
+    Raises:
+        ValidationError: If several material components carry one name, since the name is the
+            key and the strength would be ambiguous.
+    """
+    table: dict[str, dict[str, Any]] = {}
+    for name in names:
+        rows = (
+            db.query(ComponentModel)
+            .filter(ComponentModel.component_type == "material", ComponentModel.name == name)
+            .all()
+        )
+        if len(rows) > 1:
+            raise ValidationError(
+                message=f"Several material components are named {name!r}; the name must be unique.",
+                details={"material": name, "count": len(rows)},
+            )
+        if not rows:
+            continue
+        specs = rows[0].specs or {}
+        entry: dict[str, Any] = {"name": name}
+        if (strength := _strength_pa(specs)) is not None:
+            entry["bending_strength_pa"] = strength
+        if (source := _strength_source(specs)) is not None:
+            entry["source"] = source
+        table[name] = entry
+    return table
+
+
+def components_document(db: Session, document: dict[str, Any]) -> dict[str, Any] | None:
+    """The kernel's components document for the materials the spars name, or ``None`` without any.
+
+    The application pushes no motor, battery or propeller here; the document carries only the
+    ``materials`` table (components contract ``schema_version`` 3).
+    """
+    names = spar_material_names(document)
+    if not names:
+        return None
+    return {
+        "schema_version": COMPONENTS_SCHEMA_VERSION,
+        "materials": materials_table(db, names),
+    }
+
+
+def kernel_input(
+    document: dict[str, Any],
+    values: dict[str, float],
+    components: dict[str, Any] | None = None,
+) -> AircraftInput:
     """Parse a geometry document and the input values as the kernel's input.
 
     Args:
         document: The geometry document as JSON data.
         values: Input values by canon slug.
+        components: The components document (materials), or ``None``.
 
     Returns:
         The kernel's input.
@@ -178,7 +271,10 @@ def kernel_input(document: dict[str, Any], values: dict[str, float]) -> Aircraft
             input path.
     """
     try:
-        return AircraftInput.model_validate({"airplane": document, "values": values})
+        payload: dict[str, Any] = {"airplane": document, "values": values}
+        if components is not None:
+            payload["components"] = components
+        return AircraftInput.model_validate(payload)
     except PydanticValidationError as exc:
         raise _rejected(_errors_at((), exc)) from exc
 
@@ -205,4 +301,4 @@ def stored_aircraft_input(
     document = geometry_document(aeroplane, db)
     mass = effective_mass_kg(db, aeroplane)
     own = {} if mass is None else {MASS_SLUG: mass}
-    return kernel_input(document, {**own, **values})
+    return kernel_input(document, {**own, **values}, components_document(db, document))
