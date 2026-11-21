@@ -154,7 +154,7 @@ def addendum() -> str:
         "",
         "| Befund | Frage | Empfehlung |",
         "|---|---|---|",
-        "| P7b-F03 | `_band_text` ignoriert, ob eine Grenze exklusiv ist: Für B > 5 lautet der Text „≥ 5“. Der empfohlene Test würde diesen Wortlaut festschreiben. | Wortlaut zuerst festlegen („> 5“ für exklusive Grenzen), dann testen. Einfache Alternative: Test nur mit inklusiver Grenze. |",
+        "| P7b-F03 | Keine Entscheidung nötig, sondern ein Textfehler: Die Regel nach Drela ist B > 5 (B = 5 ist neutral), und die Einstufung rechnet richtig. Nur der Satz der Bewertung schreibt „≥ 5“, bei B = 5 also „5 liegt unter dem Band ≥ 5“. | Ticket #1440. Der Test zu P7b-F03 wird mit dieser Korrektur geschrieben und erwartet „> 5“. |",
         "| P3-F04 | Vorbedingung `stall_speed_usable` auch für `endurance-and-range-optimum`, wie bei den sechs Leistungsformeln? | Ja, eine Zeile im Kanon; kein eigener Mechanismus. Einfache Alternative: lassen, da nicht erreichbar. |",
         "| P7a-F05 | Soll der Importer `taxonomy.yaml` wie die anderen Kanon-Dateien prüfen? | Ja, ein Aufruf von `_scan_front_matter`. Einfache Alternative: lassen und in §8.9 vermerken. |",
         "| P8-F13 | Ergänzung: Der Test läuft derzeit nirgends, weil der nächtliche Lauf vorher abbricht (#1437). Ob er rot oder grün ist, ist unbekannt. | Nach #1437 einmal ausführen und das Ergebnis in gh-1142 festhalten. |",
