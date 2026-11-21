@@ -68,7 +68,7 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | WP-P1 | 16 | vergeben |  |  |  |  |  |  |
 | WP-P2 | 17 | läuft (5/17) | 4 | 1 | 0 | 0 | 0 | 0 |
 | WP-P3 | 18 | vergeben |  |  |  |  |  |  |
-| WP-P4a | 13 | läuft (9/13) | 6 | 2 | 1 | 0 | 0 | 0 |
+| WP-P4a | 13 | fertig | 6 | 6 | 1 | 0 | 0 | 0 |
 | WP-P4b | 5 | fertig | 0 | 5 | 0 | 0 | 0 | 0 |
 | WP-P5 | 19 | fertig | 5 | 12 | 2 | 0 | 0 | 0 |
 | WP-P6a | 20 | vergeben |  |  |  |  |  |  |
@@ -93,3 +93,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — Schritt 1 fertig: Tickets #1434, #1435, #1436; P3-F04 und P7a-F05 ohne Ticket an den Maintainer. WP-P8b geprüft: P8-F09 mittel→hoch, P8-F13 mittel→niedrig. Nebenbefund: nächtlicher CI-Lauf seit ≥10 Tagen rot.
 - 2026-11-21 — WP-P7b geprüft: 9 bestätigt, 9 gelesen bestätigt, 1 Fehlerspur; P7b-F02 hoch→mittel, P7b-F06 mittel→hoch; keine Aero-Kandidaten.
 - 2026-11-21 — WP-P5 geprüft: 5 bestätigt, 12 gelesen bestätigt, 2 widerlegt (P4-F12, P4-F13 durch test_induced_drag.py); P5-F02 mittel→hoch; P5-F08: ARCHITECTURE.md:645 nennt die Mischung bereits zulässig.
+- 2026-11-21 — WP-P4a geprüft: 6 bestätigt, 6 gelesen bestätigt, 1 widerlegt (P4-F11); P4-F01/F02/F03 bleiben hoch; ein Aero-Kandidat für P4-F04/F05.

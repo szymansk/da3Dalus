@@ -1,0 +1,11 @@
+diff --git a/aero_kernel/formulas/vertical_tail_volume.py b/aero_kernel/formulas/vertical_tail_volume.py
+index f90042d..5d07c7c 100644
+--- a/aero_kernel/formulas/vertical_tail_volume.py
++++ b/aero_kernel/formulas/vertical_tail_volume.py
+@@ -31,5 +31,5 @@ async def vertical_tail_volume(x: Inputs, ctx: Context) -> dict[str, float]:
+     """
+     airplane = airplane_of(x)
+     key = tail_key(airplane, ("vertical_tail", "v_tail"), "vertical tail")
+-    fin = await ctx.solvers.geometry.fin_area(airplane, key)
++    fin = await ctx.solvers.geometry.horizontal_tail_area(airplane, key)
+     return {"v_v": fin * number(x, "l_v_cg") / (number(x, "s_ref") * number(x, "b_ref"))}

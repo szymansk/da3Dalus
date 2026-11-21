@@ -1,0 +1,12 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..f99b0f5 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -1272,7 +1272,6 @@ def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
+     model, note = aero_model(request.model_key, airplane, NEURALFOIL_MODEL_SIZE)
+     aero = model(request.v_ms, alpha, request.air, p=p_body, r=r_body)
+     opti.subject_to(aero["L"] == request.mass_kg * request.gravity)
+-    opti.subject_to(stability_rolling_moment(aero["Cl"], aero["Cn"], alpha, asb.numpy) == 0)
+     solved = _ipopt(opti, "steady-roll", ROLL_HINT)
+     p_opt, alpha_opt = float(solved(p_stability)), float(solved(alpha))
+     _reject_active_bound("p", p_opt, (-p_limit, p_limit), "steady-roll")
