@@ -72,7 +72,7 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | WP-P4b | 5 | fertig | 0 | 5 | 0 | 0 | 0 | 0 |
 | WP-P5 | 19 | fertig | 5 | 12 | 2 | 0 | 0 | 0 |
 | WP-P6a | 20 | vergeben |  |  |  |  |  |  |
-| WP-P6b | 16 | vergeben |  |  |  |  |  |  |
+| WP-P6b | 16 | fertig | 8 | 8 | 0 | 0 | 0 | 0 |
 | WP-P7a | 18 | fertig | 9 | 8 | 0 | 0 | 0 | 1 |
 | WP-P7b | 19 | fertig | 9 | 9 | 0 | 0 | 0 | 1 |
 | WP-P8a | 11 | fertig | 1 | 10 | 0 | 0 | 0 | 0 |
@@ -94,3 +94,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — WP-P7b geprüft: 9 bestätigt, 9 gelesen bestätigt, 1 Fehlerspur; P7b-F02 hoch→mittel, P7b-F06 mittel→hoch; keine Aero-Kandidaten.
 - 2026-11-21 — WP-P5 geprüft: 5 bestätigt, 12 gelesen bestätigt, 2 widerlegt (P4-F12, P4-F13 durch test_induced_drag.py); P5-F02 mittel→hoch; P5-F08: ARCHITECTURE.md:645 nennt die Mischung bereits zulässig.
 - 2026-11-21 — WP-P4a geprüft: 6 bestätigt, 6 gelesen bestätigt, 1 widerlegt (P4-F11); P4-F01/F02/F03 bleiben hoch; ein Aero-Kandidat für P4-F04/F05.
+- 2026-11-21 — WP-P6b geprüft: 8 bestätigt, 8 gelesen bestätigt; P6b-F10 mittel→hoch (Bref/Sref-Tausch, empfohlener Momenten-Assert fängt ihn nicht); P6b-F08-Patch wird heute getötet (nur Snapshot-Tests).
