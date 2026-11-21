@@ -67,7 +67,7 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 |---|---|---|---|---|---|---|---|---|
 | WP-P1 | 16 | fertig | 7 | 8 | 0 | 0 | 0 | 1 |
 | WP-P2 | 17 | fertig | 4 | 13 | 0 | 0 | 0 | 0 |
-| WP-P3 | 18 | vergeben |  |  |  |  |  |  |
+| WP-P3 | 18 | fertig | 12 | 5 | 0 | 0 | 0 | 1 |
 | WP-P4a | 13 | fertig | 6 | 6 | 1 | 0 | 0 | 0 |
 | WP-P4b | 5 | fertig | 0 | 5 | 0 | 0 | 0 | 0 |
 | WP-P5 | 19 | fertig | 5 | 12 | 2 | 0 | 0 | 0 |
@@ -96,3 +96,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — WP-P4a geprüft: 6 bestätigt, 6 gelesen bestätigt, 1 widerlegt (P4-F11); P4-F01/F02/F03 bleiben hoch; ein Aero-Kandidat für P4-F04/F05.
 - 2026-11-21 — WP-P6b geprüft: 8 bestätigt, 8 gelesen bestätigt; P6b-F10 mittel→hoch (Bref/Sref-Tausch, empfohlener Momenten-Assert fängt ihn nicht); P6b-F08-Patch wird heute getötet (nur Snapshot-Tests).
 - 2026-11-21 — WP-P2 geprüft: 4 bestätigt, 13 gelesen bestätigt; P2-F02, P2-F04 mittel→hoch, P2-F03, P2-F06 mittel→niedrig. Ticket #1437 für den roten nächtlichen CI-Lauf.
+- 2026-11-21 — WP-P1 geprüft: 7 bestätigt, 8 gelesen bestätigt, 1 Fehlerspur; P1-F13 mittel→niedrig; P1-F08 nur an der Formel bestätigt, empfohlener Engine-Test nicht umsetzbar.

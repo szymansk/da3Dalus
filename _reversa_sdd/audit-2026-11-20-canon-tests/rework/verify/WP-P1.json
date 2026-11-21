@@ -269,7 +269,7 @@
       "killed": false,
       "killed_by": "",
       "aero_candidates": [],
-      "evidence": "test_vertical_tail_volume.py:70 `assert quantity.status is not QuantityStatus.OK`, test_spiral_parameter.py:96 and test_tail_arms.py:156 the same. Run in the copy, all three are status not_applicable with reason code condition_not_met ('The aircraft does not satisfy `has_vertical_tail`.'), which the asserts do not pin. The fourth site, test_parabolic_polar_fit.py:342, is an error case (precondition_violated), not a 'does not apply' case.",
+      "evidence": "test_vertical_tail_volume.py:70 `assert quantity.status is not QuantityStatus.OK`, test_spiral_parameter.py:96 and test_tail_arms.py:156 the same. Run in the copy, all three are status not_applicable with reason code condition_not_met ('The aircraft does not satisfy `has_vertical_tail`.'), which the asserts do not pin. The fourth site, test_parabolic_polar_fit.py:340, is an error case (precondition_violated), not a 'does not apply' case.",
       "duplicate_of": "",
       "severity_proposed": "low",
       "severity_reason": "Severity low in the input, verified by reading and by running the three scenarios, no mutation.",
