@@ -266,7 +266,7 @@
   "package": "P4",
   "wp": "WP-P4a",
   "id": "P4-F08",
-  "state": "waiting_for_decision",
+  "state": "production_defect",
   "severity": "medium",
   "severity_review": "medium",
   "severity_reason": "A production-behaviour gap (a specified log line is not written) confirmed by reading; it changes no value, error or warning.",
@@ -295,7 +295,7 @@
   "recommended_test_note": "The test is writable but fails on today's code by construction (the line does not exist) and contradicts the existing test; the route text after 'route ' is not specified in the recommendation. Needs the decision first.",
   "hand_value_check": "",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "#1442",
   "maintainer_note": "",
   "probe_id": ""
  },

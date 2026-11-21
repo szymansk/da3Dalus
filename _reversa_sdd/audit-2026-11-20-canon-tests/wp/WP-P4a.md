@@ -90,7 +90,7 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 | Finding | State | Reason |
 |---|---|---|
 | P4-F07 | production_defect | #1441 |
-| P4-F08 | waiting_for_decision | maintainer decision open (README section 6); do not write its test |
+| P4-F08 | production_defect | #1442 |
 | P4-F11 | refuted | killed by `aero_kernel/tests/test_aileron_deflection_required_engine.py::test_a_target_above_the_aerobuildup_maximum_is_an_error_with_the_avl_value` |
 | P4-F15 | dropped | Drop: the default decides speed only, never a value, and the app does not use it (app/services/canon_service.py `_new_kernel` passes max_workers=KERNEL_WORKERS and max_concurrency=KERNEL_WORKERS, 'every setting passed explicitly'). The clai |
 | P4-F16 | dropped | Drop: the docstring itself says 'Routing is a guess: a miss costs a build, never a value'; the cost is bounded by max_workers spawns per runtime. No other finding of this package touches test_runtime_routing.py. |
