@@ -97,3 +97,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — WP-P6b geprüft: 8 bestätigt, 8 gelesen bestätigt; P6b-F10 mittel→hoch (Bref/Sref-Tausch, empfohlener Momenten-Assert fängt ihn nicht); P6b-F08-Patch wird heute getötet (nur Snapshot-Tests).
 - 2026-11-21 — WP-P2 geprüft: 4 bestätigt, 13 gelesen bestätigt; P2-F02, P2-F04 mittel→hoch, P2-F03, P2-F06 mittel→niedrig. Ticket #1437 für den roten nächtlichen CI-Lauf.
 - 2026-11-21 — WP-P1 geprüft: 7 bestätigt, 8 gelesen bestätigt, 1 Fehlerspur; P1-F13 mittel→niedrig; P1-F08 nur an der Formel bestätigt, empfohlener Engine-Test nicht umsetzbar.
+- 2026-11-21 — WP-P3 geprüft: 12 bestätigt, 5 gelesen bestätigt, 1 Fehlerspur; P3-F07, P3-F08 mittel→hoch; P3-F03 hoch→mittel (Code laut gh-1429 noch nicht erreichbar); Testempfehlungen P3-F10, F12, F15 korrigiert.
