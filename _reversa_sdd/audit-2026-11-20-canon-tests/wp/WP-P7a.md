@@ -154,7 +154,7 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 | Finding | State | Reason |
 |---|---|---|
 | P7a-F04 | waiting_for_decision | maintainer decision open (README section 6); do not write its test |
-| P7a-F05 | production_defect | no written requirement names taxonomy.yaml; design question for the maintainer |
+| P7a-F05 | dropped | maintainer 2026-11-21: taxonomy.yaml feeds the tag checks and the navigator, not the calculation; the missing scan is accepted, no ticket |
 | P7a-F15 | dropped | Drop: the reviewer found identical bytes for seeds 0..3, and every CI run of `python -m aero_kernel.importer --check` is a fresh interpreter with a random hash seed that compares the content hash with the committed model, so a seed dependen |
 | P7a-F18 | dropped | Drop as a gap: test_an_explicit_default_embed_equals_the_bare_one (test_importer_hardening.py:382) applies the identical change `mutate(TWICE, "weight-from-mass,", "weight-from-mass.default,")` and asserts `bare.model_dump() == explicit.mod |
 | P7a-F19 | dropped | Drop: BOM and tab already fail loudly at import, CRLF changes nothing; none of it can reach a flight-relevant value. P7a-F05 (defect track) is in the same file should the maintainer want it bundled instead. |

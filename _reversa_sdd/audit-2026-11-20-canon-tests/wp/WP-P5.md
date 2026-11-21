@@ -150,6 +150,6 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 | P4-F12 | refuted | killed by `aero_kernel/tests/test_induced_drag.py::test_an_override_outside_the_range_is_refused[0.0-non_positive_value]` |
 | P4-F13 | refuted | killed by `aero_kernel/tests/test_induced_drag.py::test_an_override_inside_the_range_is_accepted[1.0]` |
 | P5-F06 | waiting_for_decision | maintainer decision open (README section 6); do not write its test |
-| P5-F08 | waiting_for_decision | maintainer decision open (README section 6); do not write its test |
+| P5-F08 | production_defect | #1439 |
 | P5-F15 | dropped | Drop: each of these tests changes one field of a builder that is otherwise valid (make_warning: 'Build a valid notice, with fields overridden'), so a refusal for another reason is hardly possible, and matching pydantic's wording ties the te |
 | P5-F17 | dropped | Drop: no risk for the purpose of the software; the branch only words an import defect. Cheap to add if the implementer is in the file anyway, but no other finding of this package touches test_config.py. |

@@ -21,10 +21,10 @@ Die 179 Befunde des Reviews wurden einen Tag später unabhängig nachgeprüft. D
 |---|---:|---|
 | offen | 110 | bestätigt; wird im Arbeitspaket bearbeitet |
 | gebündelt | 24 | bestätigt, aber klein; wird mit einem anderen Befund derselben Testdatei erledigt |
-| wartet auf Entscheidung | 7 | sachlich bestätigt; der Test hängt an einer offenen Entscheidung |
-| gestrichen | 29 | zutreffend, aber ohne Risiko für Flugfähigkeit, Reichweite oder Nutzlast |
+| wartet auf Entscheidung | 5 | sachlich bestätigt; der Test hängt an einer offenen Entscheidung |
+| gestrichen | 30 | zutreffend, aber ohne Risiko für Flugfähigkeit, Reichweite oder Nutzlast |
 | widerlegt | 4 | ein vorhandener Test fängt den Fehler bereits |
-| Produktionsfehler | 5 | kein Testbefund; als Bug-Ticket oder Frage geführt |
+| Produktionsfehler | 6 | kein Testbefund; als Bug-Ticket oder Frage geführt |
 
 Zu bearbeiten bleiben 134 Befunde:
 
@@ -85,43 +85,44 @@ Bei 10 zu bearbeitenden Befunden ist die Testempfehlung des Reviews falsch oder 
 
 ### Produktionsfehler
 
-Alle fünf ließen sich nachstellen (`rework/defects/`).
+Die fünf aus dem Review ließen sich alle nachstellen (`rework/defects/`). P5-F08 kam am 21. November durch Entscheidung des Maintainers hinzu.
 
 | Befund | Fehler | Stand |
 |---|---|---|
 | P8-F08 | Unerwartete Ausnahme verlässt die API als Klartext-500 statt in der Fehlerhülle; gilt app-weit, nicht nur für `/canon/compute` | Ticket #1434 |
 | P1-F11 | `lift-coefficient` bei Fluggeschwindigkeit 0 endet als `internal` | Ticket #1435 |
 | P7b-F08 | `@relation` für einen unbekannten Slug wird nicht gemeldet | Ticket #1436 |
+| P5-F08 | Die Validierung nimmt Flaperons zusammen mit getrennten Klappen und Querrudern an. Entschieden: Flaperons sind selbst die Mischung aus Klappe und Querruder, die Kombination ist sinnlos (Flaperons XOR Querruder + Klappen) | Ticket #1439; `ARCHITECTURE.md:645` wird mit der Korrektur umformuliert |
+| P4-F07 | `has_vertical_tail` nutzt noch die vorläufige Grundrissregel. Die Architektur (§8.5) hält die Entscheidung D9 vom 17. Oktober bereits fest: Es gilt `surface_type`. Keine neue Entscheidung nötig | Ticket #1441; rund 17 Tests in `test_graph_conditions.py` werden mit der Korrektur auf die entschiedene Regel umgestellt |
 | P3-F04 | `endurance-and-range-optimum` kehrt bei Überziehgeschwindigkeit exakt 0 nicht zurück | kein Ticket: über die API nicht erreichbar (`stall-speed` ist keine Eingabe, der Erzeuger liefert nie 0). Entscheidung unten |
-| P7a-F05 | `taxonomy.yaml` wird vom Importer nicht auf `# ESCALATED:` und YAML-1.1-Wahrheitswerte geprüft | kein Ticket: keine geschriebene Anforderung nennt die Datei. Entscheidung unten |
+| P7a-F05 | `taxonomy.yaml` wird vom Importer nicht auf `# ESCALATED:` und YAML-1.1-Wahrheitswerte geprüft | gestrichen (Maintainer, 21. November): Die Datei speist die Tag-Prüfungen und den Navigator, nicht die Rechnung; keine geschriebene Anforderung nennt sie. Kein Ticket |
 
 Nebenbefund außerhalb des Kanons: Ticket #1437 (nächtlicher CI-Lauf rot, 20 Aero-Tests schlagen dort ohne Traceback fehl; zwei davon lokal auf demselben Stand grün).
 
 ### Entscheidungen des Maintainers
 
-Die sieben Fragen aus Abschnitt 6 sind unverändert offen; die Befunde sind sachlich bestätigt. Aus der Nachprüfung kommt hinzu:
+Von den sieben Fragen aus Abschnitt 6 ist P5-F08 entschieden (21. November: die Mischung ist sinnlos, Regel wird gebaut, Ticket #1439), und P4-F07 war bereits entschieden (D9, Ticket #1441). Die übrigen fünf sind offen; die Befunde sind sachlich bestätigt. Aus der Nachprüfung kommt hinzu:
 
 | Befund | Frage | Empfehlung |
 |---|---|---|
-| P5-F08 | Ergänzung zur bestehenden Frage: `aero_kernel/ARCHITECTURE.md:645` sagt bereits „a mixed set (flaps, ailerons and flaperons) needs no special rule (KISS, D10)“. Das widerspricht der Lesart „Flaperons XOR Querruder + Klappen“. | Architektur gilt: Mischung ist zulässig, ein Test hält das fest. |
-| P7b-F03 | `_band_text` ignoriert, ob eine Grenze exklusiv ist: Für B > 5 lautet der Text „≥ 5“. Der empfohlene Test würde diesen Wortlaut festschreiben. | Wortlaut zuerst festlegen („> 5“ für exklusive Grenzen), dann testen. Einfache Alternative: Test nur mit inklusiver Grenze. |
+| P7b-F03 | Keine Entscheidung nötig, sondern ein Textfehler: Die Regel nach Drela ist B > 5 (B = 5 ist neutral), und die Einstufung rechnet richtig. Nur der Satz der Bewertung schreibt „≥ 5“, bei B = 5 also „5 liegt unter dem Band ≥ 5“. | Ticket #1440. Der Test zu P7b-F03 wird mit dieser Korrektur geschrieben und erwartet „> 5“. |
 | P3-F04 | Vorbedingung `stall_speed_usable` auch für `endurance-and-range-optimum`, wie bei den sechs Leistungsformeln? | Ja, eine Zeile im Kanon; kein eigener Mechanismus. Einfache Alternative: lassen, da nicht erreichbar. |
-| P7a-F05 | Soll der Importer `taxonomy.yaml` wie die anderen Kanon-Dateien prüfen? | Ja, ein Aufruf von `_scan_front_matter`. Einfache Alternative: lassen und in §8.9 vermerken. |
+| P7a-F05 | Entschieden am 21. November: bleibt, wie es ist. `taxonomy.yaml` hat keinen Einfluss auf die Rechnung. | Befund gestrichen, kein Ticket. |
 | P8-F13 | Ergänzung: Der Test läuft derzeit nirgends, weil der nächtliche Lauf vorher abbricht (#1437). Ob er rot oder grün ist, ist unbekannt. | Nach #1437 einmal ausführen und das Ergebnis in gh-1142 festhalten. |
 
 ### Arbeitspakete nach der Nachprüfung
 
 | Welle | Paket | Inhalt | zu bearbeiten (hoch / mittel / niedrig) | ausgeschieden | Brief |
 |---:|---|---|---|---|---|
-| 1 | WP-P4a | Cache-Schlüssel, Engine-Provenienz, Regelgrenzen | 7 (3 / 3 / 1) | 2 wartet auf Entscheidung, 3 gestrichen, 1 widerlegt | `wp/WP-P4a.md` |
+| 1 | WP-P4a | Cache-Schlüssel, Engine-Provenienz, Regelgrenzen | 7 (3 / 3 / 1) | 1 wartet auf Entscheidung, 3 gestrichen, 1 widerlegt, 1 Produktionsfehler | `wp/WP-P4a.md` |
 | 1 | WP-P7b | Bewertung (Evaluator, Regeltabelle, Drela-Bänder) | 12 (4 / 5 / 3) | 6 gestrichen, 1 Produktionsfehler | `wp/WP-P7b.md` |
 | 1 | WP-P6a | Opti-Adapter: Fakes, die Zielfunktion und Nebenbedingungen aufzeichnen | 16 (3 / 7 / 6) | 3 gestrichen, 1 widerlegt | `wp/WP-P6a.md` |
 | 1 | WP-P6b | AVL: Referenzgrößen, Leitwerks-Stationen, Rumpfkörper | 14 (1 / 8 / 5) | 1 wartet auf Entscheidung, 1 gestrichen | `wp/WP-P6b.md` |
 | 1 | WP-P3 | Antrieb, Leistung, Flugzeit, Holm | 14 (4 / 6 / 4) | 3 gestrichen, 1 Produktionsfehler | `wp/WP-P3.md` |
 | 2 | WP-P1 | Geschlossene Formeln: Vorbedingungen beidseitig | 13 (1 / 7 / 5) | 2 gestrichen, 1 Produktionsfehler | `wp/WP-P1.md` |
 | 2 | WP-P2 | Aerodynamik- und Stabilitätsformeln | 14 (2 / 2 / 10) | 3 gestrichen | `wp/WP-P2.md` |
-| 2 | WP-P5 | Validierung, Geometrie, Geräte | 13 (2 / 6 / 5) | 2 wartet auf Entscheidung, 2 gestrichen, 2 widerlegt | `wp/WP-P5.md` |
-| 2 | WP-P7a | Importer, check_canon, Navigator-Build | 13 (0 / 9 / 4) | 1 wartet auf Entscheidung, 3 gestrichen, 1 Produktionsfehler | `wp/WP-P7a.md` |
+| 2 | WP-P5 | Validierung, Geometrie, Geräte | 13 (2 / 6 / 5) | 1 wartet auf Entscheidung, 2 gestrichen, 2 widerlegt, 1 Produktionsfehler | `wp/WP-P5.md` |
+| 2 | WP-P7a | Importer, check_canon, Navigator-Build | 13 (0 / 9 / 4) | 1 wartet auf Entscheidung, 4 gestrichen | `wp/WP-P7a.md` |
 | 3 | WP-P8a | Referenzflotte: Relationen, schnelle Kette, Golden-Recorder | 8 (0 / 5 / 3) | 3 gestrichen | `wp/WP-P8a.md` |
 | 3 | WP-P8b | App-Anbindung: Fehlerhülle und Eingabeprüfung über den Endpunkt | 5 (1 / 1 / 3) | 1 wartet auf Entscheidung, 1 Produktionsfehler | `wp/WP-P8b.md` |
 | 3 | WP-P4b | Test-Isolation und zeitabhängige Tests | 5 (0 / 0 / 5) | — | `wp/WP-P4b.md` |
@@ -221,7 +222,7 @@ Jeder ist durch eine überlebende Mutation belegt. P4-F01, P5-F01 und P6b-F01 ha
 
 ## 6. Was vor der Arbeit entschieden werden muss
 
-> Die sieben Fragen gelten weiter. Ergänzungen und vier neue Fragen stehen im Nachtrag oben; dort steht auch der Stand der Produktionsfehler (Tickets #1434 bis #1436).
+> Sechs der sieben Fragen gelten weiter; P5-F08 ist entschieden. Ergänzungen und vier neue Fragen stehen im Nachtrag oben; dort steht auch der Stand der Produktionsfehler (Tickets #1434 bis #1436).
 
 Diese Punkte sind keine Testaufgaben, solange die Entscheidung fehlt. Die Arbeitspakete lassen sie aus und melden sie als offen.
 
@@ -229,7 +230,7 @@ Diese Punkte sind keine Testaufgaben, solange die Entscheidung fehlt. Die Arbeit
 |---|---|---|
 | P4-F07 | ARCHITECTURE §8.5 sagt, `has_vertical_tail` folgt aus `surface_type`. Der Code nutzt noch die vorläufige Grundrissregel, und rund 17 Tests halten sie fest. Ein als `vertical_tail` typisierter Mittelfin ergibt heute `False`. | Spezifikation gilt (Memory: Geometrie ist typisiert, nie abgeleitet). Bug-Ticket, Code und die betroffenen Tests anpassen. |
 | P4-F08 | §8.5, §8.14 und Q33 verlangen eine INFO-Zeile „optional input absent“. Der Code schreibt sie nirgends, ein Test hält ihr Fehlen fest. | Spezifikation gilt, Zeile bauen. Alternative: Satz aus drei Stellen der Architektur streichen. |
-| P5-F08 | „Flaperons XOR Querruder + Klappen“ ist entschieden (D9/D10), hat aber weder Regel noch Test. Ein Flügel mit allen dreien validiert ohne Meldung. | Regel in `rules.yaml` aufnehmen, dann Test. Einfache Alternative: Mischung als zulässig erklären und das mit einem Test festhalten. |
+| P5-F08 (entschieden 21.11., Ticket #1439) | „Flaperons XOR Querruder + Klappen“ ist entschieden (D9/D10), hat aber weder Regel noch Test. Ein Flügel mit allen dreien validiert ohne Meldung. | Regel in `rules.yaml` aufnehmen, dann Test. Einfache Alternative: Mischung als zulässig erklären und das mit einem Test festhalten. |
 | P7a-F04 | §8.9 Stufe 4 (Differenz zum eingecheckten Modell, Markierung brechender Änderungen) ist nicht gebaut. | Aus §8.9 streichen und auf den Traceability-Test Q11 verweisen, solange kein Bedarf besteht (ADR 0021). |
 | P6b-F11 | Eine abgeschnittene AVL-Tabelle kommt als kürzere Kurve zurück statt als Fehler. Woran wird die Vollständigkeit gemessen: an `# Spanwise = N` oder an `N_SPAN`? | Gegen `# Spanwise = N` der Ausgabe zählen, Abweichung ist ein Fehler. |
 | P5-F06 | `non_positive_exponent` wird von `validate.py` gemeldet, steht aber in keiner Kanon-Regel. | In die Regel `positive-lengths` aufnehmen oder eigene Regel (Memory: jede Eingabeprüfung steht im Kanon). |
@@ -254,15 +255,15 @@ Zwölf Pakete. Jedes hat einen eigenen Brief unter `wp/`, der ohne dieses Schrei
 
 | Welle | Paket | Inhalt | zu bearbeiten (hoch / mittel / niedrig) | ausgeschieden | Brief |
 |---:|---|---|---|---|---|
-| 1 | WP-P4a | Cache-Schlüssel, Engine-Provenienz, Regelgrenzen | 7 (3 / 3 / 1) | 2 wartet auf Entscheidung, 3 gestrichen, 1 widerlegt | `wp/WP-P4a.md` |
+| 1 | WP-P4a | Cache-Schlüssel, Engine-Provenienz, Regelgrenzen | 7 (3 / 3 / 1) | 1 wartet auf Entscheidung, 3 gestrichen, 1 widerlegt, 1 Produktionsfehler | `wp/WP-P4a.md` |
 | 1 | WP-P7b | Bewertung (Evaluator, Regeltabelle, Drela-Bänder) | 12 (4 / 5 / 3) | 6 gestrichen, 1 Produktionsfehler | `wp/WP-P7b.md` |
 | 1 | WP-P6a | Opti-Adapter: Fakes, die Zielfunktion und Nebenbedingungen aufzeichnen | 16 (3 / 7 / 6) | 3 gestrichen, 1 widerlegt | `wp/WP-P6a.md` |
 | 1 | WP-P6b | AVL: Referenzgrößen, Leitwerks-Stationen, Rumpfkörper | 14 (1 / 8 / 5) | 1 wartet auf Entscheidung, 1 gestrichen | `wp/WP-P6b.md` |
 | 1 | WP-P3 | Antrieb, Leistung, Flugzeit, Holm | 14 (4 / 6 / 4) | 3 gestrichen, 1 Produktionsfehler | `wp/WP-P3.md` |
 | 2 | WP-P1 | Geschlossene Formeln: Vorbedingungen beidseitig | 13 (1 / 7 / 5) | 2 gestrichen, 1 Produktionsfehler | `wp/WP-P1.md` |
 | 2 | WP-P2 | Aerodynamik- und Stabilitätsformeln | 14 (2 / 2 / 10) | 3 gestrichen | `wp/WP-P2.md` |
-| 2 | WP-P5 | Validierung, Geometrie, Geräte | 13 (2 / 6 / 5) | 2 wartet auf Entscheidung, 2 gestrichen, 2 widerlegt | `wp/WP-P5.md` |
-| 2 | WP-P7a | Importer, check_canon, Navigator-Build | 13 (0 / 9 / 4) | 1 wartet auf Entscheidung, 3 gestrichen, 1 Produktionsfehler | `wp/WP-P7a.md` |
+| 2 | WP-P5 | Validierung, Geometrie, Geräte | 13 (2 / 6 / 5) | 1 wartet auf Entscheidung, 2 gestrichen, 2 widerlegt, 1 Produktionsfehler | `wp/WP-P5.md` |
+| 2 | WP-P7a | Importer, check_canon, Navigator-Build | 13 (0 / 9 / 4) | 1 wartet auf Entscheidung, 4 gestrichen | `wp/WP-P7a.md` |
 | 3 | WP-P8a | Referenzflotte: Relationen, schnelle Kette, Golden-Recorder | 8 (0 / 5 / 3) | 3 gestrichen | `wp/WP-P8a.md` |
 | 3 | WP-P8b | App-Anbindung: Fehlerhülle und Eingabeprüfung über den Endpunkt | 5 (1 / 1 / 3) | 1 wartet auf Entscheidung, 1 Produktionsfehler | `wp/WP-P8b.md` |
 | 3 | WP-P4b | Test-Isolation und zeitabhängige Tests | 5 (0 / 0 / 5) | — | `wp/WP-P4b.md` |

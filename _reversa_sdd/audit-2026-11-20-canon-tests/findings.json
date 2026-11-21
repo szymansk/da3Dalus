@@ -229,7 +229,7 @@
   "package": "P4",
   "wp": "WP-P4a",
   "id": "P4-F07",
-  "state": "waiting_for_decision",
+  "state": "production_defect",
   "severity": "medium",
   "severity_review": "medium",
   "severity_reason": "A production-behaviour gap (spec and code disagree on a `when` fact) confirmed by reading and execution, not by a mutation.",
@@ -258,7 +258,7 @@
   "recommended_test_note": "The parametrised test is writable as described and would fail on today's code for vertical_tail at x = 0.1 (today False) — that is a failing test against production, so it needs the decision and a production change first. The existing planform tests (fin() without surface_type expected True) contradict the spec rule and need the same decision.",
   "hand_value_check": "",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "#1441",
   "maintainer_note": "",
   "probe_id": ""
  },
@@ -628,7 +628,7 @@
   "recommended_test_note": "Executed against the unmutated code; both expected texts are produced verbatim: '... `static-margin-target` = 20 deg lies above the band ≤ 15 — bad: Large trim changes with speed.' and '... = 4 lies below the band ≥ 5 — bad: Negative: unstable.'",
   "hand_value_check": "formula_doubtful",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "#1440",
   "maintainer_note": "",
   "probe_id": "P7b-M06"
  },
@@ -4791,7 +4791,7 @@
   "package": "P5",
   "wp": "WP-P5",
   "id": "P5-F08",
-  "state": "waiting_for_decision",
+  "state": "production_defect",
   "severity": "medium",
   "severity_review": "medium",
   "severity_reason": "A production-behaviour gap (no validation test of the mixed layout) confirmed only by reading.",
@@ -4820,7 +4820,7 @@
   "recommended_test_note": "Depends on the decision. The 'admissible' variant as written passes today (errors == (), warnings == ()) and would pin the accept path.",
   "hand_value_check": "",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "#1439",
   "maintainer_note": "",
   "probe_id": ""
  },
@@ -5309,7 +5309,7 @@
   "package": "P7a",
   "wp": "WP-P7a",
   "id": "P7a-F05",
-  "state": "production_defect",
+  "state": "dropped",
   "severity": "medium",
   "severity_review": "medium",
   "severity_reason": "Not assessed; the input severity is carried over for the defect track.",
@@ -5339,7 +5339,7 @@
   "hand_value_check": "",
   "hand_value_correction": "",
   "ticket": "",
-  "maintainer_note": "no written requirement names taxonomy.yaml; design question for the maintainer",
+  "maintainer_note": "maintainer 2026-11-21: taxonomy.yaml feeds the tag checks and the navigator, not the calculation; the missing scan is accepted, no ticket",
   "probe_id": ""
  },
  {
