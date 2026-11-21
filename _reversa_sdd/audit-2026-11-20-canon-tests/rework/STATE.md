@@ -91,3 +91,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — WP-P7a geprüft: 9 bestätigt, 8 gelesen bestätigt, 1 Fehlerspur; P7a-F01 hoch→mittel; keine Aero-Kandidaten.
 - 2026-11-21 — Schritt 2b fertig: Handwerte der hohen Befunde nachgerechnet; P6b-F01 falsch, P6b-F03/F05 unvollständig, P7b-F03 Wortlaut der exklusiven Grenze fraglich.
 - 2026-11-21 — Schritt 1 fertig: Tickets #1434, #1435, #1436; P3-F04 und P7a-F05 ohne Ticket an den Maintainer. WP-P8b geprüft: P8-F09 mittel→hoch, P8-F13 mittel→niedrig. Nebenbefund: nächtlicher CI-Lauf seit ≥10 Tagen rot.
+- 2026-11-21 — WP-P7b geprüft: 9 bestätigt, 9 gelesen bestätigt, 1 Fehlerspur; P7b-F02 hoch→mittel, P7b-F06 mittel→hoch; keine Aero-Kandidaten.
