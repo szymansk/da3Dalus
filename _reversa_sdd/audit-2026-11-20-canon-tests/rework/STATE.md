@@ -85,7 +85,8 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | P5-F08 | **entschieden 2026-11-21:** Flaperons sind die Mischung aus Klappe und Querruder; Flaperons zusammen mit Klappen und Querrudern sind sinnlos. Regel wird gebaut: Ticket #1439 |
 | P4-F07 | war bereits entschieden (D9 vom 2026-10-17, ARCHITECTURE §8.5): Ticket #1441 |
 | P4-F08 | **entschieden 2026-11-21:** die Spezifikation gilt, die `INFO`-Zeile „optional input absent“ wird gebaut: Ticket #1442 |
-| P7a-F04, P6b-F11, P5-F06, P8-F13 | offen (README Abschnitt 6) |
+| P7a-F04 | **entschieden 2026-11-21:** nur die kleine Fassung von Stufe 4 (Bericht nennt geänderte Eingaben, Ausgaben, Einheiten): Task-Ticket #1443 |
+| P6b-F11, P5-F06, P8-F13 | offen (README Abschnitt 6) |
 | P7b-F03 | keine Entscheidung nötig: Textfehler bei exklusiver Grenze, Ticket #1440; der Befund bleibt offen und wird mit der Korrektur getestet (erwartet „> 5“) |
 | P7a-F05 | **entschieden 2026-11-21:** bleibt, wie es ist (`taxonomy.yaml` speist Tag-Prüfungen und Navigator, nicht die Rechnung); Befund gestrichen, kein Ticket |
 | P3-F04 | offen (README Nachtrag) |
@@ -115,3 +116,4 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 - 2026-11-21 — P4-F07: bereits entschieden (D9), Ticket #1441.
 - P7a-F05 vom Maintainer gestrichen (taxonomy.yaml ohne Einfluss auf die Rechnung)
 - P4-F08 entschieden: Logzeile wird gebaut, Ticket #1442
+- P7a-F04 entschieden: kleine Fassung, Ticket #1443
