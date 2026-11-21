@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/avl_writer.py b/aero_kernel/solvers/avl_writer.py
+index 78c283c..fb8b386 100644
+--- a/aero_kernel/solvers/avl_writer.py
++++ b/aero_kernel/solvers/avl_writer.py
+@@ -271,7 +271,7 @@ def avl_geometry(
+             lines += [
+                 "SECTION",
+                 "#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace",
+-                f"{section.x!r} {section.y!r} {section.z!r} {section.chord!r} {section.twist!r}   {_STRIP}",
++                f"{section.x!r} {section.y!r} {section.z!r} {section.twist!r} {section.chord!r}   {_STRIP}",
+                 "AFIL"
+                 if section.chord_range is None
+                 else "AFIL {} {}".format(*section.chord_range),

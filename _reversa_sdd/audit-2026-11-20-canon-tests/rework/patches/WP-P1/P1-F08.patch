@@ -1,0 +1,10 @@
+diff --git a/aero_kernel/formulas/maneuvering_speed.py b/aero_kernel/formulas/maneuvering_speed.py
+index 381f996..38c8405 100644
+--- a/aero_kernel/formulas/maneuvering_speed.py
++++ b/aero_kernel/formulas/maneuvering_speed.py
+@@ -34,5 +34,4 @@ async def maneuvering_speed(x: Inputs, ctx: Context) -> dict[str, float]:
+         airplane_of(x), number(x, "m"), number(x, "g"), number(x, "n_lim"), air_state(x)
+     )
+     forward_warnings(ctx, stall.warnings)
+-    warn_flap_validity(ctx, airplane_of(x), stall.solution.diagnostics)
+     return {"v_a": stall.solution.v_s}

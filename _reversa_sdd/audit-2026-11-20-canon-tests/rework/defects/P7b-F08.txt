@@ -1,0 +1,25 @@
+aero_kernel imported from: /private/tmp/claude-501/-Users-szymanski-Projects-da3Dalus-cad-modelling-service/f61e5dfe-bbac-4dc3-a375-00d069aa35d6/scratchpad/rework/copies/DEFECTS/aero_kernel
+model.formula('calc:no-such-formula') -> None
+
+[A  only @relation('no-such-formula')]
+  registry.slugs()      = []
+  relation_of(SLUG)     = <function plain at 0x10a59a3e0>
+  report.ok             = True
+  findings              = []
+
+[A' control: @formula('no-such-formula')]
+  registry.slugs()      = ['calc:no-such-formula']
+  relation_of(SLUG)     = None
+  report.ok             = False
+  findings              = [('unknown_formula', 'calc:no-such-formula', None)]
+
+[A'' control: @precondition('no-such-formula', 'a')]
+  registry.slugs()      = ['calc:no-such-formula']
+  relation_of(SLUG)     = None
+  report.ok             = False
+  findings              = [('unknown_formula', 'calc:no-such-formula', None)]
+
+[B  loading a Build with the relation-only registry (build.py runs the check)]
+  load_build returned a Build; report.ok = True
+[B' control: loading a Build with the unknown @formula registry]
+  load_build raised: CanonLoadError The canon model could not be loaded: the implementations do not match the model.

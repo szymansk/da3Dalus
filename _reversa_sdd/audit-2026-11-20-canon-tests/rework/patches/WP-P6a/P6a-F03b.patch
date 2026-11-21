@@ -1,0 +1,22 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..d039b2f 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -2364,7 +2364,7 @@ class OptiAdapter(SolverAdapter):
+             lift_tolerance=config().opt_level_lift_tolerance.value,
+         )
+         point = await self.runtime.run_cpu(level_point_worker, work)
+-        warnings = _flap_warnings(flaps)
++        warnings = []
+         warnings += await self._regime_warnings(airplane, v_ms, air)
+         warnings.append(induced_drag_notice(request.k_e_d0))
+         logger.debug("point at %.4f m/s, n = %.4f: %.2f deg", v_ms, n_load, point.alpha_deg)
+@@ -2439,7 +2439,7 @@ class OptiAdapter(SolverAdapter):
+         """
+         request, flaps = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
+         solution = await self.runtime.run_cpu(min_sink_worker, request)
+-        warnings = _flap_warnings(flaps)
++        warnings = []
+         warnings += await self._regime_warnings(airplane, solution.v_mp, air)
+         warnings.append(induced_drag_notice(request.k_e_d0))
+         if solution.stall_limited:

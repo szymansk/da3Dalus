@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..d32d8f0 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -2235,7 +2235,7 @@ class OptiAdapter(SolverAdapter):
+         """
+         request, flaps = self._request(airplane, mass_kg, gravity, n_load, air, upright_only=True)
+         solution = await self.runtime.run_cpu(best_glide_worker, request)
+-        warnings = _flap_warnings(flaps)
++        warnings = []
+         warnings += await self._regime_warnings(airplane, solution.v_md, air)
+         warnings.append(induced_drag_notice(request.k_e_d0))
+         logger.debug("minimum-drag speed %.4f m/s at %.2f deg", solution.v_md, solution.alpha_md)

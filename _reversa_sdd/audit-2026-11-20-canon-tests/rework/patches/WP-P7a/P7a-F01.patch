@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/importer/pipeline.py b/aero_kernel/importer/pipeline.py
+index 6f727e1..df37196 100644
+--- a/aero_kernel/importer/pipeline.py
++++ b/aero_kernel/importer/pipeline.py
+@@ -45,7 +45,7 @@ class ImportResult(BaseModel):
+ def _status(front: dict[str, object]) -> str:
+     """Return a formula entry's own ``status`` (stage 1 of the approval)."""
+     status = front.get("status")
+-    return status if isinstance(status, str) else "draft"
++    return "draft"
+ 
+ 
+ def import_canon(canon_dir: Path, repo_root: Path | None = None) -> ImportResult:

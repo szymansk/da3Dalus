@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/minimum_drag_speed_closed_form.py b/aero_kernel/formulas/minimum_drag_speed_closed_form.py
+index 5b02e7f..eb33076 100644
+--- a/aero_kernel/formulas/minimum_drag_speed_closed_form.py
++++ b/aero_kernel/formulas/minimum_drag_speed_closed_form.py
+@@ -21,7 +21,7 @@ def parabola_defined(x: Inputs) -> CheckResult:
+     substituted (ADR 0020). The bounds are algebraic, not tuned thresholds.
+     """
+     values = {name: number(x, name) for name in ("cd0", "k", "rho", "w_s")}
+-    if all(value > 0.0 for value in values.values()):
++    if values["k"] >= 0.0 and all(v != 0.0 for n, v in values.items() if n != "k"):
+         return CheckResult(state="held", message="C_D0, k, rho and W/S are greater than zero")
+     return CheckResult(
+         state="violated",

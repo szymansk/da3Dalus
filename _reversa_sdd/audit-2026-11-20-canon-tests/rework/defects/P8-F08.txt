@@ -1,0 +1,20 @@
+app imported from: /private/tmp/claude-501/-Users-szymanski-Projects-da3Dalus-cad-modelling-service/f61e5dfe-bbac-4dc3-a375-00d069aa35d6/scratchpad/rework/copies/DEFECTS/app
+exception handlers registered: ['HTTPException', 'IntegrityError', 'RequestValidationError', 'ServiceException', 'WebSocketRequestValidationError']
+
+[A  kernel raises RuntimeError (not a ServiceException)]
+  status      : 500
+  content-type: text/plain; charset=utf-8
+  body        : Internal Server Error
+  envelope    : no (the body is not JSON)
+
+[A' control: unknown aircraft (NotFoundError, a ServiceException)]
+  status      : 404
+  content-type: application/json
+  body        : {"error":{"code":"not_found","message":"Fleet aircraft not found","details":{"id":"nonexistent","entity":"Fleet aircraft"}}}
+  envelope    : True
+
+[A'' control: request validation error]
+  status      : 422
+  content-type: application/json
+  body        : {"error":{"code":"validation_error","message":"Ungültige Eingabedaten","details":[{"type":"missing","loc":["body","aircraft"],"msg":"Field required","input":{"quantities":3}},{"type":"list_type","loc":["body","quantities"],"msg":"Input should be a valid list","input":3}]}}
+  envelope    : True

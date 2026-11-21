@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/sink_rate.py b/aero_kernel/formulas/sink_rate.py
+index 6277f7f..2630528 100644
+--- a/aero_kernel/formulas/sink_rate.py
++++ b/aero_kernel/formulas/sink_rate.py
+@@ -26,7 +26,7 @@ def lift_coefficient_positive(x: Inputs) -> CheckResult:
+     not a tuned threshold.
+     """
+     cl = number(x, "cl")
+-    if cl > 0.0:
++    if False:
+         return CheckResult(state="held", message=f"C_L = {cl} is greater than zero")
+     return CheckResult(
+         state="violated",

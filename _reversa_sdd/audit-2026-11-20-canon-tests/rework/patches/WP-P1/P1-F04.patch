@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/max_lift_to_drag_parabolic.py b/aero_kernel/formulas/max_lift_to_drag_parabolic.py
+index 0784758..264112d 100644
+--- a/aero_kernel/formulas/max_lift_to_drag_parabolic.py
++++ b/aero_kernel/formulas/max_lift_to_drag_parabolic.py
+@@ -21,7 +21,7 @@ def parabola_defined(x: Inputs) -> CheckResult:
+     substituted (ADR 0020). The bounds are algebraic, not tuned thresholds.
+     """
+     cd0, e_osw, ar = number(x, "cd0"), number(x, "e_osw"), number(x, "ar")
+-    if cd0 > 0.0 and e_osw > 0.0 and ar > 0.0:
++    if cd0 > 0.0 and e_osw != 0.0 and ar > 0.0:
+         return CheckResult(state="held", message="C_D0, e and AR are greater than zero")
+     return CheckResult(
+         state="violated",

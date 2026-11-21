@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/canon/model.py b/aero_kernel/canon/model.py
+index 6f99127..d5850cc 100644
+--- a/aero_kernel/canon/model.py
++++ b/aero_kernel/canon/model.py
+@@ -1076,7 +1076,7 @@ class CanonModel(BaseModel):
+         target = rule.applies_to
+         if target.quantity is not None:
+             found = content.quantities.get(target.quantity)
+-            if found is not None and found.role in ("input", "target"):
++            if found is not None:
+                 return None
+             return f"rule {slug}: {target.quantity} is not an input or target quantity"
+         if target.formula in content.formulas:

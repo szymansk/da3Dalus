@@ -1,0 +1,13 @@
+diff --git a/app/services/canon_service.py b/app/services/canon_service.py
+index af53383..4e8918d 100644
+--- a/app/services/canon_service.py
++++ b/app/services/canon_service.py
+@@ -126,8 +126,6 @@ class _KernelLoop:
+ 
+ def _settle(done: concurrent.futures.Future[_T], finished: asyncio.Task[_T]) -> None:
+     """Pass the outcome of the kernel task on to the caller's future, unless the caller left."""
+-    if done.cancelled():
+-        return
+     if finished.cancelled():
+         done.cancel()
+     elif (error := finished.exception()) is not None:

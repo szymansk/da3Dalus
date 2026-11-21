@@ -1,0 +1,13 @@
+diff --git a/scripts/check_canon.py b/scripts/check_canon.py
+index d6d783d..ad25b34 100644
+--- a/scripts/check_canon.py
++++ b/scripts/check_canon.py
+@@ -481,7 +481,7 @@ _SCALE_CONVERSION = re.compile(
+ )
+ _ANGLE_SLOT = BASES.index("ANG")
+ #: verdicts of the statement check that fail the run
+-STATEMENT_ERRORS = ("MISMATCH", "ANGLE", "ADDS_UNLIKE", "SCALE")
++STATEMENT_ERRORS = ("MISMATCH", "ADDS_UNLIKE", "SCALE")
+ #: marks of a unit in degrees / in radians, and what a defined name carries of them
+ _IN_DEGREES = re.compile(r"deg|°")
+ _IN_RADIANS = re.compile(r"\brad\b")

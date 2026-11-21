@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/reference_fleet.py b/aero_kernel/reference_fleet.py
+index d69280a..2606df1 100644
+--- a/aero_kernel/reference_fleet.py
++++ b/aero_kernel/reference_fleet.py
+@@ -203,7 +203,7 @@ class FleetMember(Enum):
+     )
+     AVISTAR_ELITE = (
+         "avistar_elite/avistar_elite.airplane.json",
+-        3.70,  # gross weight, AIAA 2020-0780 Table 1
++        3.07,  # gross weight, AIAA 2020-0780 Table 1
+         (0.3764702506313111, 1.5878121072598528, 0.23709999999999998),
+     )
+     ULTRA_STICK_120 = (

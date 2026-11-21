@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/motor_propeller_equilibrium.py b/aero_kernel/formulas/motor_propeller_equilibrium.py
+index 157ec37..7271e82 100644
+--- a/aero_kernel/formulas/motor_propeller_equilibrium.py
++++ b/aero_kernel/formulas/motor_propeller_equilibrium.py
+@@ -190,7 +190,7 @@ def equilibrium(
+     n_top = min(blocks[-1].rpm / RPM_PER_HZ, k_v * u_bat / RPM_PER_HZ)
+     grid = [b.rpm / RPM_PER_HZ for b in blocks if b.rpm / RPM_PER_HZ < n_top] + [n_top]
+     points = scan_grid(state, grid)
+-    for low, high in reversed(covered_pairs(points)):
++    for low, high in covered_pairs(points):
+         if low.residual is None or high.residual is None or not low.residual > 0.0 >= high.residual:
+             continue
+         n_balance = bisect_root(residual, low.n, high.n, balance_tolerance())

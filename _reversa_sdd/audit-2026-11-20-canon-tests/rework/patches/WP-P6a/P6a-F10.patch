@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..dae6c79 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -694,7 +694,7 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
+     polar = sweep_polar(
+         problem.airplane,
+         request.air,
+-        optimum.speed,
++        problem.v_bracket,
+         angles,
+         NEURALFOIL_MODEL_SIZE,
+         request.k_e_d0,

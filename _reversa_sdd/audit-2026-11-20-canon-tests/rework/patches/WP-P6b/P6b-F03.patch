@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/avl_hinge.py b/aero_kernel/solvers/avl_hinge.py
+index f92ff16..a68181c 100644
+--- a/aero_kernel/solvers/avl_hinge.py
++++ b/aero_kernel/solvers/avl_hinge.py
+@@ -267,7 +267,7 @@ def _with_breaks(stations: Sequence[float], breaks: Sequence[float], sliver: flo
+     first, last = stations[0], stations[-1]
+     inner = sorted({round(b, MESH_DECIMALS) for b in breaks if first < b < last})
+     kept = [s for s in stations if s in (first, last) or all(abs(s - b) >= sliver for b in inner)]
+-    return sorted({*kept, *inner})
++    return sorted(kept)
+ 
+ 
+ def _control_for(

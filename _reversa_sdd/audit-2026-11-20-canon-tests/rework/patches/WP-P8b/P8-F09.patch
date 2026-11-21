@@ -1,0 +1,13 @@
+diff --git a/app/services/canon_service.py b/app/services/canon_service.py
+index af53383..d9436db 100644
+--- a/app/services/canon_service.py
++++ b/app/services/canon_service.py
+@@ -191,7 +191,7 @@ def _aircraft_input(request: CanonComputeRequest, db: Session) -> AircraftInput:
+     member = FleetMember.from_fleet_id(request.aircraft.fleet)
+     if member is None:
+         raise NotFoundError(entity="Fleet aircraft", resource_id=request.aircraft.fleet)
+-    return aircraft_input(member, request.values)
++    return aircraft_input(member, {k: v for k, v in request.values.items() if v > 0})
+ 
+ 
+ def _kernel_request(request: CanonComputeRequest) -> ComputeRequest:

@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/validate.py b/aero_kernel/validate.py
+index dffaffe..0c33c1f 100644
+--- a/aero_kernel/validate.py
++++ b/aero_kernel/validate.py
+@@ -883,7 +883,7 @@ def _mass_warnings(aircraft: AircraftInput) -> list[KernelWarning]:
+     stored = aircraft.airplane.total_mass_kg
+     if passed is None or stored is None or not (math.isfinite(passed) and math.isfinite(stored)):
+         return []
+-    if passed == stored:
++    if passed >= stored:
+         return []
+     message = (
+         f"The passed aircraft-mass is {passed} kg but the geometry's total_mass_kg is "

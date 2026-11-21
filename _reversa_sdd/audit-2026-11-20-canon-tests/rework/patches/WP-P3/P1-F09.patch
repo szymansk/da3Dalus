@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/advance_ratio_from_speed.py b/aero_kernel/formulas/advance_ratio_from_speed.py
+index 7d22213..f30ed0a 100644
+--- a/aero_kernel/formulas/advance_ratio_from_speed.py
++++ b/aero_kernel/formulas/advance_ratio_from_speed.py
+@@ -28,7 +28,7 @@ def advance_ratio(v: float, n_prop: float, d_prop: float) -> float:
+             advance ratio of a stopped propeller is undefined.
+     """
+     swept = n_prop * d_prop
+-    if not swept > 0.0:
++    if not n_prop > 0.0:
+         raise FormulaError(
+             ErrorCategory.INVALID_INPUT,
+             "non_positive_value",

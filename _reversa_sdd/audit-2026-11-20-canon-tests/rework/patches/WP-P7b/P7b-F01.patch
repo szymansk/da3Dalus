@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/evaluation/evaluator.py b/aero_kernel/evaluation/evaluator.py
+index 2df5eb8..24c7666 100644
+--- a/aero_kernel/evaluation/evaluator.py
++++ b/aero_kernel/evaluation/evaluator.py
+@@ -199,7 +199,7 @@ def _judge(rule: Rule, quantity: QuantityResult | None, facts: WhenFacts) -> Rul
+     if quantity.status is not QuantityStatus.OK:
+         return _verdict(
+             rule,
+-            RuleStatus.NOT_AVAILABLE,
++            RuleStatus.NOT_APPLICABLE,
+             f"`{rule.quantity.slug}` has no value (status {quantity.status.value}).",
+         )
+     if quantity.surfaces is not None:

@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/spar_capacity.py b/aero_kernel/spar_capacity.py
+index 9025beb..87371ca 100644
+--- a/aero_kernel/spar_capacity.py
++++ b/aero_kernel/spar_capacity.py
+@@ -238,7 +238,7 @@ def _axis(wing: Wing, index: int, position: int, spar: SpareDetail) -> tuple[flo
+         raise _not_determinable(wing, index, position, f"mode {mode!r}: the axis is not spanwise")
+     offset = 0.0 if spar.spare_origin is None else spar.spare_origin[1]
+     if mode == "normal" or spar.spare_origin is None:
+-        return root.xyz_le[1] + offset, slope
++        return offset, slope
+     return offset, slope
+ 
+ 

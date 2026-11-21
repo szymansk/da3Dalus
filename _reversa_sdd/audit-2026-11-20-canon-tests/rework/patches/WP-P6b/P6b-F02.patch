@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/avl.py b/aero_kernel/solvers/avl.py
+index 6b0941e..f70a0b8 100644
+--- a/aero_kernel/solvers/avl.py
++++ b/aero_kernel/solvers/avl.py
+@@ -710,7 +710,7 @@ class AvlAdapter(SolverAdapter):
+ 
+         join = self.join_tolerance_m()
+         declared = mesh_surfaces(airplane, N_SPAN, number, join_tolerance_m=join)
+-        refined = mesh_surfaces(airplane, N_SPAN * REFINE_FACTOR, number, join_tolerance_m=join)
++        refined = mesh_surfaces(airplane, N_SPAN, number, join_tolerance_m=join)
+         contours = await self._contours(tuple(numbers))
+         first = await self._run(declared, contours, N_CHORD, N_SPAN, cl, reference)
+         warnings: list[KernelWarning] = []

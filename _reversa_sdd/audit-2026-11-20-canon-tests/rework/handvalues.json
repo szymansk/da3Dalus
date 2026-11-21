@@ -1,0 +1,720 @@
+{
+ "results": [
+  {
+   "id": "P1-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "closed form of the probe",
+     "stated": "sqrt(2 (m g/S_ref) / (rho sqrt(0.03/0.05)))",
+     "recomputed": "V_md,probe = sqrt(2 (W/S)/(rho sqrt(C_D0/k))) with W/S = m g/S_ref: identical",
+     "arithmetic": "canonical form compared term by term; C_L,md = sqrt(0.03/0.05) = 0.7745967",
+     "source": "_reversa_sdd/calculations/canon/formulas/minimum-drag-speed-closed-form.md#Canonical form; _reversa_sdd/calculations/canon/formulas/wing-loading.md#Canonical form",
+     "verdict": "ok",
+     "note": "No literal number is stated. For the inputs of (a) the value would be 7.951879096 m/s = sqrt(2*30/(1.225*sqrt(0.03/0.05)))."
+    },
+    {
+     "what": "inputs of the 'held' case (a)",
+     "stated": "W/S 30, rho 1.225, C_D0 0.03, k 0.05 -> held",
+     "recomputed": "all four > 0 -> held",
+     "arithmetic": "30>0, 1.225>0, 0.03>0, 0.05>0",
+     "source": "_reversa_sdd/calculations/canon/formulas/minimum-drag-speed-closed-form.md#Preconditions on the bindings",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "error of case (c), k < 0",
+     "stated": "error.code 'upstream_failed' or 'precondition_violated'",
+     "recomputed": "not a number; per canon a negative fitted slope gives a negative Oswald factor and induced-drag-factor's precondition oswald_factor_positive is the first error, so at the probe the failure is an upstream one",
+     "arithmetic": "-",
+     "source": "_reversa_sdd/calculations/canon/formulas/induced-drag-factor.md#Preconditions on the bindings",
+     "verdict": "ok",
+     "note": "The implementer should pin ONE code after running it once (expected by the canon: upstream failure, origin induced-drag-factor); 'A or B' is a weak assert but not a wrong value."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P1-F02",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "sink rate",
+     "stated": "V * (0.03 + 0.05 C_L^2)/C_L",
+     "recomputed": "w_sink = V * C_D,par/C_L with C_D,par = C_D0 + k C_L^2: identical",
+     "arithmetic": "canonical forms substituted",
+     "source": "_reversa_sdd/calculations/canon/formulas/sink-rate.md#Canonical form; _reversa_sdd/calculations/canon/formulas/drag-polar.md#Canonical form",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "lift coefficient",
+     "stated": "C_L = m g/(0.5 rho V^2 S_ref)",
+     "recomputed": "C_L = n m g/(q S_ref), q = 0.5 rho V^2, n = 1 (default load factor): identical",
+     "arithmetic": "canonical form with n = 1",
+     "source": "_reversa_sdd/calculations/canon/formulas/lift-coefficient-required.md#Canonical form; quantities/load-factor.md",
+     "verdict": "ok",
+     "note": "Numeric value depends on S_ref of the test airplane (not stated; the test computes it from the same expression). For any S_ref <= 0.6 m^2: C_L >= 0.40, E = C_L/C_D >= 10.5 > 5, so no small_glide_angle warning interferes. rho must be the kernel's ISA sea-level density (1.225 to 4 digits), read from the result rather than typed, for a 1e-9 comparison."
+    },
+    {
+     "what": "held cases (a)",
+     "stated": "held for C_L = 0.5 and 1e-12",
+     "recomputed": "both > 0 -> held",
+     "arithmetic": "0.5>0; 1e-12>0",
+     "source": "_reversa_sdd/calculations/canon/formulas/sink-rate.md#Preconditions on the bindings",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "case (c) n = -1",
+     "stated": "precondition_violated, lift_coefficient_positive",
+     "recomputed": "C_L = -m g/(q S) < 0 -> lift_coefficient_positive violated; C_D,par = 0.03+0.05 C_L^2 > 0 so the other precondition holds",
+     "arithmetic": "sign of n carried through C_L,req",
+     "source": "_reversa_sdd/calculations/canon/formulas/sink-rate.md#Preconditions on the bindings",
+     "verdict": "ok",
+     "note": ""
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P3-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "drag of case 1 at 19 m/s",
+     "stated": "D = 0.06 V^2 = 21.7 N",
+     "recomputed": "21.66 N",
+     "arithmetic": "0.06*19^2 = 21.66",
+     "source": "aero_kernel/tests/endurance_builders.py SpeedOpti.drag",
+     "verdict": "ok",
+     "note": "rounded"
+    },
+    {
+     "what": "case 1: drag exceeds full-throttle thrust at every speed >= 19 m/s",
+     "stated": "no_level_flight_speed",
+     "recomputed": "T_full(19) = 20.97 N < 21.66 N (r_T = 1.033); T_full falls and D rises with V; checked on 19.0..44.9 m/s in 0.1 steps, above 45 m/s the table holds no balance",
+     "arithmetic": "route B torque balance (I(n)-I_0)/K_v' = C_P rho n^2 D^5/(2 pi) solved by bisection on the published APC 13x8E table (K_v 900, R_m 0.082, I_0 1.2, 14.8 V, rho 1.225, D 0.3302 m), T = C_T rho n^2 D^4; own script, not the kernel and not powertrain_reference",
+     "source": "_reversa_sdd/calculations/canon/formulas/motor-propeller-equilibrium.md#Canonical form; _reversa_sdd/calculations/canon/formulas/motor-propeller-part-load.md (r_T); _reversa_sdd/calculations/canon/formulas/endurance-and-range-optimum.md (constraint r_T <= 1, no_level_flight_speed)",
+     "verdict": "ok",
+     "note": "Margin is only 3.3 %: do not change a or the stall speed of the case."
+    },
+    {
+     "what": "mutant value t_max of case 1 (not an expectation of the test)",
+     "stated": "280.8 s",
+     "recomputed": "280.78 s",
+     "arithmetic": "part load at 19 m/s, D = 21.66 N: n = 8881.75 rpm, I = I_0 + Q K_v' = 63.079 A, U_m = I R_m + 2 pi n/K_v' = 15.041 V, P_bat = 948.77 W, 3600*74/948.77",
+     "source": "_reversa_sdd/calculations/canon/formulas/motor-propeller-part-load.md#Canonical form (route B)",
+     "verdict": "ok",
+     "note": "U_m = 15.04 V > 14.8 V confirms the point is beyond full throttle."
+    },
+    {
+     "what": "case 2: upper edge of the domain",
+     "stated": "about 43.3 m/s",
+     "recomputed": "r_T = 1 at 43.19 m/s (9000/V^2 = T_full(V) = 4.825 N); lower crossing at 21.67 m/s",
+     "arithmetic": "bisection of 9000/V^2 - T_full(V) with the same own drive-train script; scan grid 6*1.1^k: 40.365 inside, 44.401 outside",
+     "source": "same as above",
+     "verdict": "ok",
+     "note": "43.3 is the first evaluated speed outside within the 1 % search tolerance (0.26 % above the exact crossing); 'about' is right. P_bat falls with V on this stub (D V = 9000/V), so the optimum is at the upper edge, bound full_throttle."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P3-F02",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "positive case",
+     "stated": "3600*74/60 = 4440 s",
+     "recomputed": "4440.0 s",
+     "arithmetic": "3600*74/60",
+     "source": "_reversa_sdd/calculations/canon/formulas/endurance-and-range.md#Canonical form (t = 3600 E_bat/P_bat)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "rejected values",
+     "stated": "p_bat in [0.0, -1e-9, -60.0] -> non_positive_battery_power",
+     "recomputed": "all three are <= 0",
+     "arithmetic": "-",
+     "source": "aero_kernel/formulas/motor_propeller_part_load.py:293-309 (the canon entry states no precondition id for it)",
+     "verdict": "ok",
+     "note": "No number to recompute; detail key is p_bat_w in production."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P3-F03",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "case 1: extent of the second-segment spar (standard mode, no origin, spare_start 0.1, spare_length 0.2, ribs y = 0, 0.5, 1.0)",
+     "stated": "0.55 absent; 0.6, 0.65, 0.8 present; 0.85 absent",
+     "recomputed": "present on y in [0.6, 0.8]: 0.55 False, 0.6 True, 0.65 True, 0.8 True, 0.85 False",
+     "arithmetic": "axis from the root rib of ITS segment (y = 0.5), straight wing so dy per metre of axis = 1; [0.5+0.1, 0.5+0.1+0.2] = [0.6, 0.8]; in floats 0.5+0.1 == 0.6 and 0.5+(0.1+0.2) == 0.8 exactly, so the inclusive ends hold",
+     "source": "docs/geometry-format/AIRPLANE-GEOMETRY.md#5.1 (Segment ownership; Spanwise extent, as the creator builds it)",
+     "verdict": "ok",
+     "note": "All five stations lie in the second segment (0.5 <= y < 1.0), so segment ownership does not interfere."
+    },
+    {
+     "what": "case 2, mode normal: first station with the spar",
+     "stated": "0.5+0.2+0.05 = 0.75",
+     "recomputed": "0.75",
+     "arithmetic": "origin is an OFFSET from the segment root for normal: 0.5 + 0.2 = 0.7; vector [0,1,0] gives 1 m of y per metre of axis; + spare_start 0.05; no spare_length so open ended to the tip",
+     "source": "docs/geometry-format/AIRPLANE-GEOMETRY.md#5.1 (Segment ownership; Spanwise extent, as the creator builds it)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "case 2, mode standard: first station with the spar",
+     "stated": "0.2+0.05 = 0.25, i.e. the whole segment from 0.5",
+     "recomputed": "0.25 (< 0.5, so present on the whole segment 0.5..1.0)",
+     "arithmetic": "origin is an ABSOLUTE point for standard: 0.2 + 0.05",
+     "source": "docs/geometry-format/AIRPLANE-GEOMETRY.md#5.1 (Segment ownership; Spanwise extent, as the creator builds it)",
+     "verdict": "ok",
+     "note": ""
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P2-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "stall speed of the stub along the crow path",
+     "stated": "V_S0(s) = sqrt(2 m g/(rho 0.28 (1.25-0.18 s)))",
+     "recomputed": "same; S = 1.4*0.2 = 0.28 m^2; C_L,max(s) = 1.19 + 0.002(30+30 s) - 0.006(40 s) = 1.25 - 0.18 s",
+     "arithmetic": "stall relation V = sqrt(2 m g/(rho S C_L,max)); stub of test_butterfly_approach.py (cl_max_of, landing 30 deg, crow flap 60 deg, crow aileron 40 deg up); check at s = 0.7: 1.19+0.102-0.168 = 1.124 = 1.25-0.126",
+     "source": "_reversa_sdd/calculations/canon/formulas/butterfly-approach.md#Canonical form (delta_f(s), delta_a(s)); aero_kernel/tests/test_butterfly_approach.py:86-103",
+     "verdict": "ok",
+     "note": "m 1.5 kg, g 9.80665, rho 1.225: V_S0(0) = 8.283596 m/s -> 'Re 82836'; V_S0(0.7) = 8.735560 m/s -> 'Re 87356'. The two messages differ, so the set has two elements."
+    },
+    {
+     "what": "bracket of the crossing",
+     "stated": "crossing between mix 0.6 and 0.7",
+     "recomputed": "s = 0.6456 exact root; V_S0(0.6) = 8.6664 < V_app = 8.6978 < V_S0(0.7) = 8.7356",
+     "arithmetic": "V_S0(s)/V_S0(0) = 1.05 -> 1.25-0.18 s = 1.25/1.05^2 -> s = (1.25-1.25/1.1025)/0.18 = 0.64563",
+     "source": "butterfly-approach.md#Canonical form (s_max: V_S0(s_max) = V_app) and #Implementation notes (mix grid 10 steps; caveats of the landing stall and of the sample that closes the bracket)",
+     "verdict": "ok",
+     "note": "closing sample is s = 0.7, as stated."
+    },
+    {
+     "what": "second test, v_app = 0.9 V_S0(0)",
+     "stated": "s_max = 0 path: exactly one regime warning (landing stall) plus the fit-range warning",
+     "recomputed": "s_max = 0 because V_S0(0) >= V_app; the closing sample is then the landing stall itself, one message 'Re 82836'",
+     "arithmetic": "0.9 V_S0(0) = 7.4552 < V_S0(0) = 8.2836",
+     "source": "butterfly-approach.md#Implementation notes ('V_S0(0) >= V_app gives s_max = 0'; 'Caveats forwarded')",
+     "verdict": "ok",
+     "note": "The canon text does not spell out which sample 'closes the bracket' when s_max = 0; one warning follows only if the closing index is 0 (production: reference = [stalls[0], stalls[closing]], duplicates dropped by (code, message))."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P4-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "np-q per world",
+     "stated": "10.0 / 20.0 / 30.0",
+     "recomputed": "10.0 / 20.0 / 30.0",
+     "arithmetic": "values of the fixture formula unc per world (VALUE)",
+     "source": "aero_kernel/tests/test_engine_worlds.py:28-29, 78-94",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "join-q per world",
+     "stated": "18.0 / 28.0 / 38.0 (10+1+7 etc.)",
+     "recomputed": "18.0 / 28.0 / 38.0",
+     "arithmetic": "join = down + side = (unc + 1.0) + 7.0: 10+1+7, 20+1+7, 30+1+7",
+     "source": "aero_kernel/tests/test_engine_worlds.py:52-54, 96-111",
+     "verdict": "ok",
+     "note": "Exact in binary floating point."
+    },
+    {
+     "what": "call count of unc",
+     "stated": "exactly 3 in total over two calls",
+     "recomputed": "3 (one per world on call 1, none on call 2 if every world has its own cache entry)",
+     "arithmetic": "3 worlds x 1",
+     "source": "requirement stated in the finding (cache key carries the world assignment)",
+     "verdict": "ok",
+     "note": "Not a physical number."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P4-F02",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "weight of the fixture aircraft",
+     "stated": "2.0 * 9.81",
+     "recomputed": "19.62 N",
+     "arithmetic": "m g with the fixture aircraft: aircraft-mass 2.0 kg, gravity 9.81 m/s^2",
+     "source": "_reversa_sdd/calculations/canon/formulas/weight-from-mass.md (W = m g); aero_kernel/tests/engine_builders.py:485-496",
+     "verdict": "ok",
+     "note": "The new stub must return num(x,'m')*num(x,'g') like the existing _weight; compare with the same product, not the literal 19.62."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P4-F03",
+   "has_numbers": false,
+   "checks": [],
+   "overall": "no_numbers",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P5-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "detail of the notice",
+     "stated": "{'aircraft_mass_kg': 2.5, 'geometry_total_mass_kg': 2.0}",
+     "recomputed": "inputs echoed: 2.5 and 2.0",
+     "arithmetic": "no arithmetic; the minimal document's own aircraft-mass is 1.5, so the test must set values['aircraft-mass'] = 2.5 explicitly",
+     "source": "aero_kernel/tests/test_validate.py:671-691 (existing mirror case with 1.5 / 2.0)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "mirror of the exact comparison",
+     "stated": "total_mass_kg = math.nextafter(1.5, 1.0)",
+     "recomputed": "1.4999999999999998, one ulp BELOW the passed mass 1.5 of the minimal document",
+     "arithmetic": "math.nextafter(1.5, 1.0)",
+     "source": "Python float semantics",
+     "verdict": "ok",
+     "note": "Gives the case 'passed mass above stored mass' at the smallest distance; expect ['conflicting_mass']."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P6a-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "mean aerodynamic chord of the 0.2 / 0.1 m panel",
+     "stated": "MAC 0.1556 m",
+     "recomputed": "0.155556 m",
+     "arithmetic": "(2/3) c_r (1+l+l^2)/(1+l), l = 0.5: (2/3)*0.2*1.75/1.5",
+     "source": "trapezoid MAC (standard planform relation); _reversa_sdd/calculations/canon/rules.yaml#reynolds-mach-regime (per surface at its MAC)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "kinematic viscosity",
+     "stated": "nu = 1.7894e-5 / 1.225 = 1.4607e-5 m^2/s",
+     "recomputed": "1.460735e-5 m^2/s",
+     "arithmetic": "1.7894e-5/1.225",
+     "source": "aero_kernel/tests/solver_builders.py:10 (AIR); _reversa_sdd/calculations/canon/formulas/air-density-isa.md (mu sea level 1.7894e-5)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "Re at the slowest point, 6 m/s",
+     "stated": "6.4e4 -> reynolds_bubble_sensitive",
+     "recomputed": "63 895 (between 3e4 and 7e4 -> bubble sensitive)",
+     "arithmetic": "6*0.155556/1.460735e-5",
+     "source": "_reversa_sdd/calculations/canon/rules.yaml#reynolds-mach-regime (re_band_min 3e4, re_bubble_max 7e4)",
+     "verdict": "ok",
+     "note": "8.7 % below the 7e4 edge; with the mean geometric chord 0.15 instead of the MAC it would be 61 613, same verdict."
+    },
+    {
+     "what": "Re at the fastest point, 120 m/s",
+     "stated": "1.28e6 > 1e6 -> reynolds_above_band",
+     "recomputed": "1 277 896",
+     "arithmetic": "120*0.155556/1.460735e-5",
+     "source": "_reversa_sdd/calculations/canon/rules.yaml#reynolds-mach-regime (re_band_max 1e6)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "Mach at 120 m/s",
+     "stated": "120/340.294 = 0.353 > 0.3 -> mach_above_limit",
+     "recomputed": "0.3526362498 (above mach_limit 0.3, below mach_validity 0.6, so the notice, not the error)",
+     "arithmetic": "120/340.294",
+     "source": "_reversa_sdd/calculations/canon/rules.yaml#reynolds-mach-regime (mach_limit 0.3, mach_validity 0.6)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "middle point 12 m/s raises nothing",
+     "stated": "(implied: no code from 12 m/s)",
+     "recomputed": "Re 127 790, Mach 0.035: inside the band",
+     "arithmetic": "12*0.155556/1.460735e-5",
+     "source": "_reversa_sdd/calculations/canon/rules.yaml#reynolds-mach-regime",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "order of the codes",
+     "stated": "[bubble_sensitive, above_band, mach_above_limit, induced_drag_viscous_factor_removed]",
+     "recomputed": "not derivable from the canon; it is the order of the unmutated code (slowest point first, then fastest: surfaces, Mach last; drag notice last)",
+     "arithmetic": "-",
+     "source": "aero_kernel/solvers/opti.py:2296-2302; aero_kernel/solvers/regime.py (Returns: surfaces in order, Mach last)",
+     "verdict": "ok",
+     "note": "Order is an implementation property, not a requirement; the set of codes is the requirement."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P6a-F02",
+   "has_numbers": false,
+   "checks": [],
+   "overall": "no_numbers",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P6a-F03",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "no regime warning at 18 m/s",
+     "stated": "at 18 m/s (no regime warning)",
+     "recomputed": "Re at MAC 191 684 (7e4 < Re < 1e6); Re at the tip chord 0.1 m: 123 228 > 3e4 (no device warning); Mach 0.0529",
+     "arithmetic": "18*0.155556/1.460735e-5; 18*0.1/1.460735e-5; 18/340.294",
+     "source": "_reversa_sdd/calculations/canon/rules.yaml#reynolds-mach-regime",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "averaged hinge",
+     "stated": "rel_chord_root 0.74 / rel_chord_tip 0.76 -> detail used == 0.75",
+     "recomputed": "0.75",
+     "arithmetic": "(0.74+0.76)/2; plain mean of root and tip hinge, not chord-weighted",
+     "source": "_reversa_sdd/calculations/canon/formulas/airplane-configuration.md ('the hinge is the mean of the segment's root and tip hinge')",
+     "verdict": "ok",
+     "note": "In binary floats (0.74+0.76)/2 need not be exactly 0.75: compare with a tolerance (1e-12), not ==."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P6b-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "order and meaning of the header line",
+     "stated": "'#Sref Cref Bref' = area, reference chord (MAC), span",
+     "recomputed": "Sref = reference area, Cref = reference chord (pitching moment), Bref = reference span (roll, yaw)",
+     "arithmetic": "-",
+     "source": ".claude/skills/avl-advisor/assets/avl_doc.txt:268-270 (skill avl-advisor)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "normalisation claimed in the finding",
+     "stated": "hinge moment = q S_ref c_ref Chinge; Clp, p'b/2V and VM use Bref",
+     "recomputed": "Chinge is formed with DFAC = 1/(SREF*CREF); Cl = M_x/(Q Sref Bref)",
+     "arithmetic": "-",
+     "source": "Avl/src/aero.f:417-420; avl_doc.txt:1580-1582 (skill avl-advisor)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "hinge test line",
+     "stated": "'0.16 0.2 0.8'",
+     "recomputed": "'0.16 0.2 0.8'",
+     "arithmetic": "monkeypatched MainWingProperties(s_ref=0.16, c_mac=0.2, b_ref=0.8), written with repr()",
+     "source": "aero_kernel/tests/test_solvers_avl_hinge.py:50, 81; aero_kernel/solvers/avl_writer.py:251-252",
+     "verdict": "ok",
+     "note": "Exact string works here only because the reference is the literal monkeypatched one."
+    },
+    {
+     "what": "roll test reference (rolling_airplane: ribs y = 0, 0.2, 0.4, chord 0.2, symmetric)",
+     "stated": "S = 2*0.4*chord, c = chord, b = 0.8",
+     "recomputed": "S = 0.16 m^2, c = 0.2 m, b = 0.8 m",
+     "arithmetic": "2*0.4*0.2 = 0.16; b = 2*0.4",
+     "source": "aero_kernel/tests/test_solvers_avl_roll.py:72-77; test_solvers_roll_devices.py:20-29",
+     "verdict": "ok",
+     "note": "Values right, but 'the same assert' (string equality) fails: in the fast tier the reference comes from the stand-in planform integration, which returns s_ref = 0.16000000000000003, so the line reads '0.16000000000000003 0.2 0.8'. Parse the three numbers and compare with a tolerance."
+    },
+    {
+     "what": "lateral test reference (with_fuselage = np_builders CONVENTIONAL: main wing half span 0.7 m, chord 0.2 m)",
+     "stated": "rectangular wing: S = 2*0.4*chord, c = chord, b = 0.8",
+     "recomputed": "S = 0.28 m^2, c = 0.2 m, b = 1.4 m",
+     "arithmetic": "2*0.7*0.2 = 0.28; b = 2*0.7 = 1.4",
+     "source": "aero_kernel/tests/np_builders.py:23-27 (MAIN = half_span 0.7, chord 0.2); test_solvers_avl_lateral.py:57",
+     "verdict": "wrong",
+     "note": "The half span of this airplane is 0.7 m, not 0.4 m. An implementer who asserts 0.16 / 0.2 / 0.8 gets a red test on correct code. The stand-in returns s_ref = 0.27999999999999997, so again compare numerically."
+    }
+   ],
+   "overall": "wrong",
+   "corrected_text": "Add the assert to test_solvers_avl_roll.py::test_roll_file_and_commands_reach_avl with S = 0.16 m^2, c = 0.2 m, b = 0.8 m (rolling_airplane: half span 0.4 m, chord 0.2 m) and to test_solvers_avl_lateral.py::test_one_run_at_the_lift_coefficient_with_the_moment_reference_at_the_cg with S = 0.28 m^2, c = 0.2 m, b = 1.4 m (np_builders MAIN: half span 0.7 m, chord 0.2 m). In these two tests the reference is not monkeypatched to literals (the fast tier's stand-in returns 0.16000000000000003 and 0.27999999999999997), so split the line after '#Sref    Cref    Bref' into three floats and compare each with rel 1e-9 instead of comparing the string. Only test_solvers_avl_hinge.py may assert the exact string '0.16 0.2 0.8'.",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P6b-F03",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "wing strip width",
+     "stated": "half span 0.4 m, n_wing 12, strip 0.033333 m",
+     "recomputed": "0.0333333 m; uniform, because in the elevator role the main wing is not driven",
+     "arithmetic": "0.4/12",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail)",
+     "verdict": "ok",
+     "note": "Sine-to-tip stations apply only to a main wing that carries a device of the role."
+    },
+    {
+     "what": "wing stations inside the tail span",
+     "stated": "0.033333, 0.066667, 0.1, 0.133333; 0.133333 < 0.15 - 0.3*0.033333 = 0.14 stays",
+     "recomputed": "0.033333, 0.066667, 0.1, 0.133333 (next one 0.166667 > 0.15); limit 0.15 - 0.01 = 0.14",
+     "arithmetic": "k*0.4/12 for k = 1..4; 0.3*0.0333333 = 0.01",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "break at the device start and sliver",
+     "stated": "0.07 added; 0.066667 dropped because |0.066667 - 0.07| = 0.0033 < 0.01",
+     "recomputed": "|0.066667-0.07| = 0.003333 < 0.01 dropped; |0.033333-0.07| = 0.0367 and |0.1-0.07| = 0.03 stay; the device end 0.15 is the tip",
+     "arithmetic": "differences against the sliver 0.3*strip = 0.01",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail)",
+     "verdict": "ok",
+     "note": "The sliver rule next to a BREAK (same 0.3 strip widths as at the tip) is written in the code only (avl_hinge._with_breaks, SLIVER_STEPS); the architecture text states it for the tip."
+    },
+    {
+     "what": "stations of 'Tail right aft'",
+     "stated": "[0.0, 0.033333, 0.07, 0.1, 0.133333, 0.15] to 1e-6",
+     "recomputed": "[0.0, 0.033333, 0.07, 0.1, 0.133333, 0.15]",
+     "arithmetic": "root + kept wing stations + break + tip, sorted",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "stations carrying the control c01",
+     "stated": "exactly [0.07, 0.1, 0.133333, 0.15], x_hinge 0",
+     "recomputed": "stations with 0.07 <= y <= 0.15: [0.07, 0.1, 0.133333, 0.15]; x_hinge 0 because the aft piece starts at the hinge line",
+     "arithmetic": "device runs from rib 1 (y 0.07) to the tip rib (y 0.15), ends inclusive",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail) ('the aft one carrying the control, hinge at its own leading edge')",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "rudder case",
+     "stated": "'Add the same for a rudder that starts at the second rib of a three-rib fin'",
+     "recomputed": "no rib positions and no expected stations are given",
+     "arithmetic": "-",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail) ('the strip width of the main wing elsewhere')",
+     "verdict": "underspecified",
+     "note": "Missing: the three rib heights and the expected stations. The number of strips on a fin is not in the architecture text; the code takes max(2, round(height / wing strip)) (avl_hinge._rest_stations), so an expectation built on it rests on production for that one count."
+    }
+   ],
+   "overall": "underspecified",
+   "corrected_text": "(All stated tail values are right; only the last sentence lacks values.) Add the same for a rudder: conventional() with the fin replaced by wing_document('Fin', 'vertical_tail', [(0.6, 0.0, 0.0, 0.12), (0.6, 0.0, 0.055, 0.11), (0.6, 0.0, 0.12, 0.1)], {1: device('rudder', 'rudder', 0.6)}, symmetric=False), role 'rudder'. Fin height 0.12 m at the wing strip 0.033333 m gives round(3.6) = 4 strips, stations z = 0, 0.03, 0.06, 0.09, 0.12; the break 0.055 is added and 0.06 dropped (|0.06 - 0.055| = 0.005 < 0.01), 0.03 stays (0.025): expected z of the aft piece [0.0, 0.03, 0.055, 0.09, 0.12] to 1e-6, the control on exactly [0.055, 0.09, 0.12]. The strip count 4 follows the code's rounding rule, which the architecture text does not state; confirm it with the maintainer or state it in the test's docstring.",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P6b-F05",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "parent half-width at x = 0.25",
+     "stated": "a = 0.02 + 0.25*0.04 = 0.03",
+     "recomputed": "0.03",
+     "arithmetic": "0.02 + 0.25*(0.06-0.02)",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "ok",
+     "note": "The canopy (a 0.01) is narrower, so the envelope's largest half-width is the parent's."
+    },
+    {
+     "what": "bottom at x = 0.25",
+     "stated": "z - b = 0.005 - 0.025 = -0.02",
+     "recomputed": "-0.02",
+     "arithmetic": "z = 0 + 0.25*0.02 = 0.005; b = 0.02 + 0.25*0.02 = 0.025",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "ok",
+     "note": "The merged section itself has z = 0.095, b = 0.115 (envelope from -0.02 to the canopy top 0.21); xyz[2] - b is still the parent's bottom."
+    },
+    {
+     "what": "parent half-width at x = 0.75",
+     "stated": "a = 0.05",
+     "recomputed": "0.05",
+     "arithmetic": "0.02 + 0.75*0.04",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "bottom at x = 0.75",
+     "stated": "0.015 - 0.035 = -0.02",
+     "recomputed": "-0.02",
+     "arithmetic": "z = 0.75*0.02 = 0.015; b = 0.02 + 0.75*0.02 = 0.035",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "tolerance of station.a",
+     "stated": "rel 1e-6",
+     "recomputed": "reachable, margin a factor 8",
+     "arithmetic": "the envelope is sampled on a z grid (2000 points over 0.23 m); the unmutated code returns a = 0.029999996250 and 0.049999993750, relative error 1.25e-7",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit) (step 3: 'on a grid in z'); checked by running merged_bodies",
+     "verdict": "ok",
+     "note": "Do not tighten below 1e-6: 'returns exactly these' holds to 1.25e-7, not to machine precision. Bottom: -0.02 to 1e-17."
+    },
+    {
+     "what": "second case, exponents n = 2 and n = 4",
+     "stated": "'pins the interpolation of the exponents through the area of the parent-only half'",
+     "recomputed": "no station, no sections and no expected area are given",
+     "arithmetic": "-",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "underspecified",
+     "note": "Missing: the geometry and the expected number. What can be stated by hand: midway between n = 2 and n = 4 the interpolated exponent is 3, and the quadrant area fraction is f(n) = Gamma(1+1/n)^2 / Gamma(1+2/n): f(2) = 0.785398, f(3) = 0.883319, f(4) = 0.927037. With a canopy on top the refit moves the centre to the middle of the envelope, so 'the parent-only half' of the refitted section is not the parent's own lower half; the expected area must be derived for the concrete geometry."
+    }
+   ],
+   "overall": "underspecified",
+   "corrected_text": "(All stated values of the first case are right; only the second case lacks values.) Second case: state the sections and the expected area explicitly, e.g. parent sections with equal a, b, z and n = 2 at x = 0 and n = 4 at x = 1, canopy stations at x = 0.5; the interpolated parent exponent there is 3, its lower half (below the parent's centre) has the area 2 a b f(3) with f(3) = Gamma(4/3)^2 / Gamma(5/3) = 0.883319 (against 0.785398 for n = 2 taken from the lower neighbour). Compare the area of the merged outline below the parent's centre z with that value, not the refitted section's own lower half, because the refit puts the centre in the middle of the envelope.",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P7a-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "mapped inputs of weight-from-mass",
+     "stated": "'| weight-from-mass | approved | 2 of 2 |  |'",
+     "recomputed": "2 of 2",
+     "arithmetic": "inputs {m: aircraft-mass, g: gravity}: aircraft-mass carries data geometry:total_mass_kg, gravity gets default:gravity (the mini canon's defaults.yaml has a gravity entry)",
+     "source": "aero_kernel/tests/importer_builders.py:45-66, 96; canon README 'Two-stage approval' (#1251)",
+     "verdict": "ok",
+     "note": "Row format '| formula | stage 1 | mapped of total | missing |' is the report's (importer/report.py:74-78); an empty 'missing' cell gives the two spaces."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P7b-F01",
+   "has_numbers": false,
+   "checks": [],
+   "overall": "no_numbers",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P7b-F02",
+   "has_numbers": false,
+   "checks": [],
+   "overall": "no_numbers",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P7b-F03",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "text of a value above an upper-only band",
+     "stated": "'... = 20 deg lies above the band ≤ 15 — bad: Large trim changes with speed.'",
+     "recomputed": "direction right: an upper limit of 15 is '≤ 15', and 20 > 15 lies above; default above_severity is bad",
+     "arithmetic": "20 > 15",
+     "source": "aero_kernel/evaluation/rules.py (Band, defaults); _reversa_sdd/calculations/evaluation/drela.yaml (turn-sideslip band max 15)",
+     "verdict": "ok",
+     "note": "The unmutated evaluator renders exactly this string."
+    },
+    {
+     "what": "text of a value below a lower-only band with min_inclusive False",
+     "stated": "'= 4 lies below the band ≥ 5 — bad: Negative: unstable.'",
+     "recomputed": "direction right (4 < 5 lies below a lower limit), but a band with min_inclusive False is B > 5, so the band reads '> 5', not '≥ 5'",
+     "arithmetic": "Band.position: value == min and not min_inclusive -> BELOW; Drela rule 9: B > 5 stable, B = 5 neutral",
+     "source": "aero_kernel/evaluation/rules.py:87-96; _reversa_sdd/calculations/evaluation/drela.yaml:91 (band {min: 5.0, min_inclusive: false}); _reversa_sdd/calculations/canon/formulas/spiral-parameter.md:87",
+     "verdict": "formula_doubtful",
+     "note": "Who disagrees with whom: production (_band_text, evaluator.py:289-295, ignores min_inclusive/max_inclusive) and the recommendation both say '≥ 5'; the rule's own semantics say '> 5'. Rendered with the unmutated code at the value 5.0: '= 5 lies below the band ≥ 5', a self-contradicting sentence in the LLM-facing text. The recommended assert would freeze that. Either use an inclusive band in this test (band={'min': 5.0}) so that '≥ 5' is right, or have the maintainer decide the wording of an exclusive bound first (then '> 5', and the production text changes)."
+    }
+   ],
+   "overall": "formula_doubtful",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P7b-F04",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "band of the two circling rules",
+     "stated": "band.min == 5.0, min_inclusive False, max None, slug spiral-parameter-mp (Drela rule 9: B > 5 stable, B = 5 neutral)",
+     "recomputed": "min 5.0 exclusive, no max, slug spiral-parameter-mp",
+     "arithmetic": "read from the rule source",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:110-142; _reversa_sdd/calculations/canon/formulas/spiral-parameter.md:87 ('Drela: B > 5 spirally stable, ≈ 5 neutral, 3–4 no difficulty')",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "severity and basis of spiral-stability-circling-aileron",
+     "stated": "below_severity CAUTION, 'maintainer 2026-10-26' in below_basis, when == ('has_vertical_tail', 'has_aileron')",
+     "recomputed": "as stated",
+     "arithmetic": "read from the rule source",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:116-122",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "spiral-stability-circling-rudder-only",
+     "stated": "below_severity BAD, when_not == ('has_aileron',)",
+     "recomputed": "as stated (below_severity not written, default bad)",
+     "arithmetic": "read from the rule source",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:127-134",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "levels of turn-sideslip",
+     "stated": "level_of(5.0) below-typical-limit; 5.0001 and 15.0 within-typical-limit-range; 15.1 None (Drela rule 11: 5...15 deg)",
+     "recomputed": "5.0: first level max 5 inclusive -> below-typical-limit; 5.0001: second level (5 exclusive, 15 inclusive); 15.0 within; 15.1 in no level",
+     "arithmetic": "interval membership",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:169-176; _reversa_sdd/calculations/canon/formulas/turn-sideslip.md:60 (Eq. 11: (beta_turn)max ≈ 5 ... 15 deg)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "level of spiral-stability",
+     "stated": "level_of(3.0) == level_of(4.0) == manageable-for-experienced-pilot; level_of(4.5) None (Drela: B = 3...4)",
+     "recomputed": "3.0 and 4.0 inside [3, 4] inclusive; 4.5 outside",
+     "arithmetic": "interval membership",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:98-104",
+     "verdict": "ok",
+     "note": ""
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  }
+ ]
+}

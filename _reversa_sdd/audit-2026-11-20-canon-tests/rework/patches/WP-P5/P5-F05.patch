@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/body_axis.py b/aero_kernel/body_axis.py
+index f34f4f2..55f6491 100644
+--- a/aero_kernel/body_axis.py
++++ b/aero_kernel/body_axis.py
+@@ -134,7 +134,7 @@ def aerobuildup_bodies(airplane: AirplaneGeometry) -> AeroBuildupBodies:
+     exact = _straightened(bodies, 0.0)
+     if not exact.straightenings:  # every axis exactly straight: no tolerance to read
+         return exact
+-    result = _straightened(bodies, config().opt_body_axis_tolerance.value)
++    result = _straightened(bodies, 0.0)
+     for found in result.straightenings:
+         logger.debug(
+             "straightened the axis of %s: largest shift %.6g m at section %d (x = %.6g m)",

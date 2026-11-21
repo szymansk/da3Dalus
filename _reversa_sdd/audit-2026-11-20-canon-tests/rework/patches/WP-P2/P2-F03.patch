@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/asb_airplane.py b/aero_kernel/solvers/asb_airplane.py
+index 3420320..0358909 100644
+--- a/aero_kernel/solvers/asb_airplane.py
++++ b/aero_kernel/solvers/asb_airplane.py
+@@ -369,7 +369,7 @@ def _v_tail_surface(asb: Any, wing: Any) -> SurfaceProperties:  # noqa: ANN401
+     panels = _v_tail_panels(asb, wing)
+     true_area = sum(area for area, _span, _cos2 in panels)
+     span = sum(span for _area, span, _cos2 in panels)
+-    effective = sum(area * cos2 for area, _span, cos2 in panels)
++    effective = sum(area for area, _span, cos2 in panels)
+     c_mac = float(wing.mean_aerodynamic_chord())
+     centre_x = float(wing.aerodynamic_center()[0])
+     if not all(math.isfinite(v) and v > 0.0 for v in (effective, true_area, span, c_mac)):

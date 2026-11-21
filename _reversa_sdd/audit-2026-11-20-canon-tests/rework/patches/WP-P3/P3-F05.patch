@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/powered_flight.py b/aero_kernel/formulas/powered_flight.py
+index c4d2056..5152e47 100644
+--- a/aero_kernel/formulas/powered_flight.py
++++ b/aero_kernel/formulas/powered_flight.py
+@@ -713,7 +713,7 @@ async def sustained_load_factor(
+         if found is None:
+             low = middle
+         else:
+-            high, stop = middle, found
++            high = middle
+     return TurnLimit(low, str(stop))
+ 
+ 

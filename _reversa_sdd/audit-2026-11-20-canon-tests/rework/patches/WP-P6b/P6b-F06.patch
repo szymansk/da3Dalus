@@ -1,0 +1,15 @@
+diff --git a/aero_kernel/solver_bodies.py b/aero_kernel/solver_bodies.py
+index 3244b1f..bcc456a 100644
+--- a/aero_kernel/solver_bodies.py
++++ b/aero_kernel/solver_bodies.py
+@@ -357,8 +357,8 @@ def _refit(
+         xyz=(parent.xyz[0], centre_y, (top + bottom) / 2.0),
+         a=a,
+         b=b,
+-        n=n_upper,
+-        n_lower=n_lower,
++        n=n_lower,
++        n_lower=n_upper,
+     )
+     area = upper + lower
+     fitted_area = 2.0 * a * b * (quadrant_area_fraction(n_upper) + quadrant_area_fraction(n_lower))

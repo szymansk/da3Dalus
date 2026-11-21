@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/butterfly_approach.py b/aero_kernel/formulas/butterfly_approach.py
+index ea59ab3..07c19ff 100644
+--- a/aero_kernel/formulas/butterfly_approach.py
++++ b/aero_kernel/formulas/butterfly_approach.py
+@@ -287,7 +287,7 @@ async def butterfly_approach(x: Inputs, ctx: Context) -> dict[str, float | Curve
+     speeds = list(curve.y)
+     approach = [v_app * v_s / speeds[0] for v_s in speeds]
+     found = _crossing(mixes, speeds, v_app)
+-    worst = max(range(len(configurations)), key=lambda k: _largest_deflection(configurations[k]))
++    worst = len(configurations) - 1
+     warn_flap_validity(ctx, configurations[worst], stalls[worst].solution.diagnostics)
+     if found is not None and found[1] == 0:
+         _forward_caveats(ctx, stalls, [], 0)

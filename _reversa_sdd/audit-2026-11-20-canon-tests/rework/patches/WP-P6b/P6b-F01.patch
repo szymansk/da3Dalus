@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/avl.py b/aero_kernel/solvers/avl.py
+index 6b0941e..c84fa10 100644
+--- a/aero_kernel/solvers/avl.py
++++ b/aero_kernel/solvers/avl.py
+@@ -536,7 +536,7 @@ class AvlAdapter(SolverAdapter):
+                 [c.claf for c in contours],
+                 n_chord=n_chord,
+                 s_ref=reference.s_ref,
+-                c_ref=reference.c_mac,
++                c_ref=reference.b_ref,
+                 b_ref=reference.b_ref,
+                 xyz_ref=xyz_ref,
+                 bodies=bodies,

@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/endurance_and_range_optimum.py b/aero_kernel/formulas/endurance_and_range_optimum.py
+index 158260e..bb1729f 100644
+--- a/aero_kernel/formulas/endurance_and_range_optimum.py
++++ b/aero_kernel/formulas/endurance_and_range_optimum.py
+@@ -113,7 +113,7 @@ class _Domain:
+             if bound is None:
+                 raise
+             return bound
+-        return speed if speed.point.r_t <= 1.0 else _FULL_THROTTLE
++        return speed
+ 
+     def inside(self, v: float) -> SpeedPoint | None:
+         """The evaluated point at ``v`` if ``v`` is inside the domain."""
