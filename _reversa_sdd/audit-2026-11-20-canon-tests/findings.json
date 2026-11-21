@@ -5272,7 +5272,7 @@
   "package": "P7a",
   "wp": "WP-P7a",
   "id": "P7a-F04",
-  "state": "waiting_for_decision",
+  "state": "production_defect",
   "severity": "medium",
   "severity_review": "medium",
   "severity_reason": "Production-behaviour gap (a specified stage does not exist) confirmed by reading only.",
@@ -5301,7 +5301,7 @@
   "recommended_test_note": "Cannot be written before the maintainer decides to build or strike stage 4; there is no report section whose wording the test could pin.",
   "hand_value_check": "",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "#1443",
   "maintainer_note": "",
   "probe_id": ""
  },
