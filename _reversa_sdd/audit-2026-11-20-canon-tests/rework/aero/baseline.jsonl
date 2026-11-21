@@ -1,0 +1,1 @@
+{"test": "aero_kernel/tests/test_parabolic_polar_fit_fleet.py::test_the_fit_and_its_probes_against_the_goldens[FleetMember.BRYAN]", "state": "passed", "seconds": 59.0, "tail": ".                                                                        [100%]\n1 passed in 58.17s"}

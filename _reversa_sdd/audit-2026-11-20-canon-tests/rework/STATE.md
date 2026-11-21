@@ -43,7 +43,7 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 | 2 | Unabhängige Prüfung je Paket (12 Prüfer) | fertig | 179 geprüft: 73 bestätigt (Mutation), 97 gelesen bestätigt, 4 widerlegt, 5 Fehlerspur |
 | 2b | Handwerte der 21 hohen Befunde nachrechnen | fertig | 13 richtig, 1 falsch (P6b-F01), 2 unvollständig (P6b-F03, P6b-F05), 1 Formel fraglich (P7b-F03), 4 ohne Zahl; `handvalues.json` |
 | 3 | Aero-Gegenprobe der überlebenden Mutationen | läuft | 19 Mutationen, 32 Aero-Tests; Start: `python3 rework/aero/run_queue.py <Kopie AERO> <rework> 21600`; Fortschritt in `aero/results.jsonl`; sauber anhalten mit Datei `aero/STOP` |
-| 4 | Zusammenführen: Duplikate, Schweregrade, niedrige Befunde filtern | offen | wartet auf 1–3 |
+| 4 | Zusammenführen: Duplikate, Schweregrade, niedrige Befunde filtern | läuft | `python3 rework/build.py` erzeugt `findings.json`, `wp/*.md`, `rework/summary.json`; Zwischenstand ohne Aero-Ergebnis eingecheckt. Nach Ende von Schritt 3 erneut ausführen. Duplikate über Paketgrenzen: keine gefunden (Abgleich nach Produktionsstelle) |
 | 5 | Ablage erneuern: `findings.json`, Briefe, Schreiben, Dashboard | offen | wartet auf 4 |
 | 6 | Abarbeiten der Arbeitspakete | nicht Teil dieses Laufs | braucht Freigabe |
 
@@ -100,3 +100,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — WP-P3 geprüft: 12 bestätigt, 5 gelesen bestätigt, 1 Fehlerspur; P3-F07, P3-F08 mittel→hoch; P3-F03 hoch→mittel (Code laut gh-1429 noch nicht erreichbar); Testempfehlungen P3-F10, F12, F15 korrigiert.
 - 2026-11-21 — WP-P6a geprüft: 10 bestätigt, 9 gelesen bestätigt, 1 widerlegt (P6a-F11); P6a-F04/F05/F06/F10 mittel→hoch vorbehaltlich Aero. Schritt 2 vollständig. Aero-Liste aero/queue.json geschrieben.
 - 2026-11-21 — Schritt 3 gestartet (Hintergrundlauf, wiederaufnehmbar).
+- 2026-11-21 — Schritt 4 begonnen: build.py führt Prüfung, Handwerte und Fehlerspur zusammen; Zwischenstand (Aero offen): 110 offen, 24 gebündelt, 29 gestrichen, 4 widerlegt, 7 warten, 5 Fehlerspur.
