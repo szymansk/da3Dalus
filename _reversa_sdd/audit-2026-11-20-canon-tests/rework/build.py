@@ -15,8 +15,10 @@ from pathlib import Path
 HERE = Path(__file__).parent
 AUDIT = HERE.parent
 
-DECISIONS = {"P4-F07", "P4-F08", "P5-F08", "P7a-F04", "P6b-F11", "P5-F06", "P8-F13"}
-TICKETS = {"P8-F08": "#1434", "P1-F11": "#1435", "P7b-F08": "#1436"}
+DECISIONS = {"P4-F07", "P4-F08", "P7a-F04", "P6b-F11", "P5-F06", "P8-F13"}
+# Decided by the maintainer on 2026-11-21: the missing rule is a production defect with a ticket.
+DECIDED_DEFECTS = {"P5-F08"}
+TICKETS = {"P8-F08": "#1434", "P1-F11": "#1435", "P7b-F08": "#1436", "P5-F08": "#1439"}
 DEFECT_TO_MAINTAINER = {
     "P3-F04": "latent: not reachable through the API (stall-speed is no input, its producer never returns 0); "
     "maintainer decides whether to add the precondition stall_speed_usable",
@@ -82,7 +84,7 @@ def load() -> list[dict]:
                 tier_gap = f"fast; aero {a['outcome']}"
             if v["verdict"] == "REFUTED":
                 state, severity = "refuted", "none"
-            elif v["verdict"] == "SEPARATE_DEFECT_TRACK":
+            elif v["verdict"] == "SEPARATE_DEFECT_TRACK" or f["id"] in DECIDED_DEFECTS:
                 state, severity = "production_defect", f["severity"]
             elif f["id"] in DECISIONS:
                 state = "waiting_for_decision"

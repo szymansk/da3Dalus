@@ -78,10 +78,13 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | WP-P8a | 11 | fertig | 1 | 10 | 0 | 0 | 0 | 0 |
 | WP-P8b | 7 | fertig | 2 | 4 | 0 | 0 | 0 | 1 |
 
-## Offene Entscheidungen des Maintainers
+## Entscheidungen des Maintainers
 
-Unverändert sieben (README Abschnitt 6): P4-F07, P4-F08, P5-F08, P7a-F04, P6b-F11, P5-F06, P8-F13. Die
-Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidung“ markiert.
+| Befund | Stand |
+|---|---|
+| P5-F08 | **entschieden 2026-11-21:** Flaperons sind die Mischung aus Klappe und Querruder; Flaperons zusammen mit Klappen und Querrudern sind sinnlos. Regel wird gebaut: Ticket #1439 |
+| P4-F07, P4-F08, P7a-F04, P6b-F11, P5-F06, P8-F13 | offen (README Abschnitt 6) |
+| P7b-F03, P3-F04, P7a-F05 | offen (README Nachtrag) |
 
 ## Verlauf
 
@@ -103,3 +106,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — Schritt 4 begonnen: build.py führt Prüfung, Handwerte und Fehlerspur zusammen; Zwischenstand (Aero offen): 110 offen, 24 gebündelt, 29 gestrichen, 4 widerlegt, 7 warten, 5 Fehlerspur.
 - 2026-11-21 — Schritte 3 und 4 fertig; findings.json, Briefe und README-Nachtrag neu erzeugt. Offen: Dashboard.
 - 2026-11-21 — Schritt 5 fertig. Überarbeitung abgeschlossen; Schritt 6 (Abarbeiten) braucht Freigabe und die Entscheidungen. Eingefrorene Kopien gelöscht.
+- 2026-11-21 — Entscheidung P5-F08 (Flaperons XOR Querruder + Klappen): Ticket #1439, Befund aus der Warteliste in die Fehlerspur; Schreiben und Brief WP-P5 neu erzeugt.

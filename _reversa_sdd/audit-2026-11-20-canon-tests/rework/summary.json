@@ -2,11 +2,11 @@
  "total": 179,
  "state": {
   "open": 110,
-  "waiting_for_decision": 7,
+  "waiting_for_decision": 6,
   "refuted": 4,
   "bundled": 24,
   "dropped": 29,
-  "production_defect": 5
+  "production_defect": 6
  },
  "verdict": {
   "CONFIRMED": 73,
@@ -126,8 +126,8 @@
    "low": 5,
    "refuted": 2,
    "dropped": 2,
-   "waiting_for_decision": 2,
-   "production_defect": 0
+   "waiting_for_decision": 1,
+   "production_defect": 1
   },
   "WP-P7a": {
    "wave": 2,
