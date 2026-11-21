@@ -13,7 +13,7 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 1. Diese Datei lesen. Der erste Schritt, der nicht `fertig` ist, ist der Einstiegspunkt.
 2. Arbeitskopie des Zweigs: `.worktrees/canon-test-audit` (fehlt sie:
    `git worktree add .worktrees/canon-test-audit docs/canon-test-audit-2026-11-20`).
-3. Eingefrorene Kopien liegen im Scratchpad der ursprünglichen Sitzung (siehe „Orte“). Sind sie weg:
+3. Die eingefrorenen Kopien sind nach Abschluss gelöscht. Werden sie wieder gebraucht:
    je Einheit `git archive 72c4b5c6 | tar -x -C <Ordner>`, dann `git init`, `git add -A`, ein Commit.
 4. Schritt 2 ist je Arbeitspaket wiederaufnehmbar: der Prüfer schreibt `verify/<WP>.json` nach jedem
    Befund. Ein Paket ist fertig, wenn jede ID aus `input/<WP>.json` in `verify/<WP>.json` steht. Für ein
@@ -44,7 +44,7 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 | 2b | Handwerte der 21 hohen Befunde nachrechnen | fertig | 13 richtig, 1 falsch (P6b-F01), 2 unvollständig (P6b-F03, P6b-F05), 1 Formel fraglich (P7b-F03), 4 ohne Zahl; `handvalues.json` |
 | 3 | Aero-Gegenprobe der überlebenden Mutationen | fertig | 19 Mutationen gegen 32 Aero-Tests (alle unverändert grün): 17 gefangen, 2 überleben (P6a-F09, P6b-F03); `aero/results.jsonl`, `aero/baseline.jsonl` |
 | 4 | Zusammenführen: Duplikate, Schweregrade, niedrige Befunde filtern | fertig | `python3 rework/build.py`: 134 zu bearbeiten (21 hoch, 59 mittel, 54 niedrig), 29 gestrichen, 4 widerlegt, 7 warten, 5 Produktionsfehler; keine Duplikate über Paketgrenzen; `rework/summary.json` |
-| 5 | Ablage erneuern: `findings.json`, Briefe, Schreiben, Dashboard | läuft | fertig: `findings.json`, `wp/*.md` (build.py), Nachtrag im README (`python3 rework/addendum.py`). Offen: Dashboard https://claude.ai/artifact/M7Q9tmDTkgPCQyG3ub1BM9 (neue Befund-Datei hochladen, Seite ersetzen; vorbereitete Seite: Scratchpad `rework/index_doc_v2.json`, erzeugt von `rework/dash_patch.py`) |
+| 5 | Ablage erneuern: `findings.json`, Briefe, Schreiben, Dashboard | fertig | `findings.json`, `wp/*.md`, README-Nachtrag; Dashboard https://claude.ai/artifact/M7Q9tmDTkgPCQyG3ub1BM9 aktualisiert (Datenquelle `findings` auf Version 2, Seite mit Reiter „Nachprüfung“). Die Seite ist nur per Skript gegen die Daten geprüft, nicht im Browser gesehen |
 | 6 | Abarbeiten der Arbeitspakete | nicht Teil dieses Laufs | braucht Freigabe |
 
 ## Schritt 1 — Produktionsfehler
@@ -102,3 +102,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — Schritt 3 gestartet (Hintergrundlauf, wiederaufnehmbar).
 - 2026-11-21 — Schritt 4 begonnen: build.py führt Prüfung, Handwerte und Fehlerspur zusammen; Zwischenstand (Aero offen): 110 offen, 24 gebündelt, 29 gestrichen, 4 widerlegt, 7 warten, 5 Fehlerspur.
 - 2026-11-21 — Schritte 3 und 4 fertig; findings.json, Briefe und README-Nachtrag neu erzeugt. Offen: Dashboard.
+- 2026-11-21 — Schritt 5 fertig. Überarbeitung abgeschlossen; Schritt 6 (Abarbeiten) braucht Freigabe und die Entscheidungen. Eingefrorene Kopien gelöscht.
