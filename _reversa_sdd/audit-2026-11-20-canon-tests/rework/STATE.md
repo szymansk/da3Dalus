@@ -42,9 +42,9 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 | 1 | Fünf Produktionsfehler nachstellen, Bug-Tickets | fertig | alle 5 nachgestellt; 3 Tickets, 2 an den Maintainer (siehe unten) |
 | 2 | Unabhängige Prüfung je Paket (12 Prüfer) | fertig | 179 geprüft: 73 bestätigt (Mutation), 97 gelesen bestätigt, 4 widerlegt, 5 Fehlerspur |
 | 2b | Handwerte der 21 hohen Befunde nachrechnen | fertig | 13 richtig, 1 falsch (P6b-F01), 2 unvollständig (P6b-F03, P6b-F05), 1 Formel fraglich (P7b-F03), 4 ohne Zahl; `handvalues.json` |
-| 3 | Aero-Gegenprobe der überlebenden Mutationen | läuft | 19 Mutationen, 32 Aero-Tests; Start: `python3 rework/aero/run_queue.py <Kopie AERO> <rework> 21600`; Fortschritt in `aero/results.jsonl`; sauber anhalten mit Datei `aero/STOP` |
-| 4 | Zusammenführen: Duplikate, Schweregrade, niedrige Befunde filtern | läuft | `python3 rework/build.py` erzeugt `findings.json`, `wp/*.md`, `rework/summary.json`; Zwischenstand ohne Aero-Ergebnis eingecheckt. Nach Ende von Schritt 3 erneut ausführen. Duplikate über Paketgrenzen: keine gefunden (Abgleich nach Produktionsstelle) |
-| 5 | Ablage erneuern: `findings.json`, Briefe, Schreiben, Dashboard | offen | wartet auf 4 |
+| 3 | Aero-Gegenprobe der überlebenden Mutationen | fertig | 19 Mutationen gegen 32 Aero-Tests (alle unverändert grün): 17 gefangen, 2 überleben (P6a-F09, P6b-F03); `aero/results.jsonl`, `aero/baseline.jsonl` |
+| 4 | Zusammenführen: Duplikate, Schweregrade, niedrige Befunde filtern | fertig | `python3 rework/build.py`: 134 zu bearbeiten (21 hoch, 59 mittel, 54 niedrig), 29 gestrichen, 4 widerlegt, 7 warten, 5 Produktionsfehler; keine Duplikate über Paketgrenzen; `rework/summary.json` |
+| 5 | Ablage erneuern: `findings.json`, Briefe, Schreiben, Dashboard | läuft | fertig: `findings.json`, `wp/*.md` (build.py), Nachtrag im README (`python3 rework/addendum.py`). Offen: Dashboard https://claude.ai/artifact/M7Q9tmDTkgPCQyG3ub1BM9 (neue Befund-Datei hochladen, Seite ersetzen; vorbereitete Seite: Scratchpad `rework/index_doc_v2.json`, erzeugt von `rework/dash_patch.py`) |
 | 6 | Abarbeiten der Arbeitspakete | nicht Teil dieses Laufs | braucht Freigabe |
 
 ## Schritt 1 — Produktionsfehler
@@ -101,3 +101,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — WP-P6a geprüft: 10 bestätigt, 9 gelesen bestätigt, 1 widerlegt (P6a-F11); P6a-F04/F05/F06/F10 mittel→hoch vorbehaltlich Aero. Schritt 2 vollständig. Aero-Liste aero/queue.json geschrieben.
 - 2026-11-21 — Schritt 3 gestartet (Hintergrundlauf, wiederaufnehmbar).
 - 2026-11-21 — Schritt 4 begonnen: build.py führt Prüfung, Handwerte und Fehlerspur zusammen; Zwischenstand (Aero offen): 110 offen, 24 gebündelt, 29 gestrichen, 4 widerlegt, 7 warten, 5 Fehlerspur.
+- 2026-11-21 — Schritte 3 und 4 fertig; findings.json, Briefe und README-Nachtrag neu erzeugt. Offen: Dashboard.

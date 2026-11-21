@@ -7,7 +7,7 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Production code under test:** aero_kernel/solvers/opti.py, regime.py, asb_airplane.py
 - **Requirement sources:** ARCHITECTURE §8.8, ADR 0020, ADR 0028
 - **Test files you may change:** `aero_kernel/tests/test_solvers_flap_devices.py`, `aero_kernel/tests/test_solvers_opti.py`, `aero_kernel/tests/test_solvers_opti_glide.py`, `aero_kernel/tests/test_solvers_opti_level.py`, `aero_kernel/tests/test_solvers_opti_level_point.py`, `aero_kernel/tests/test_solvers_opti_real.py`, `aero_kernel/tests/test_solvers_opti_roll.py`, `aero_kernel/tests/test_solvers_opti_sweep.py`
-- **Findings to work on:** 16 (7 high, 3 medium, 6 low)
+- **Findings to work on:** 16 (3 high, 7 medium, 6 low)
 
 ## P6a-F01 · high · untested_warning
 
@@ -41,7 +41,7 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F03.patch` (from the audit folder; aero_kernel/solvers/opti.py:2238  best_glide: `warnings = _flap_warnings(flaps)` -> `warnings = []`). Today every fast test stays green; after your change at least one fast test must fail under it.
 - **Test to write:** Fast, one test per entry point (best_glide, min_sink, level_flight_point) with a canned worker: airplane(device=('flap', 10.0), hinge=0.75) at 18 m/s (no regime warning). Expected warnings exactly: (control_surface_fit_range_unknown with detail == {'flaps': [{'wing': 'Main', 'device': 'flap-1', 'deflection_deg': 10.0}]}, induced_drag_viscous_factor_removed). With rel_chord_root 0.74 / rel_chord_tip 0.76 additionally hinge_line_averaged first, detail used == 0.75.
 
-## P6a-F04 · high · over_mocked
+## P6a-F04 · medium · over_mocked
 
 - **Test file:** `aero_kernel/tests/test_solvers_opti.py` · existing test `test_an_interior_optimum_is_accepted` (line 352)
 - **Production:** `aero_kernel/solvers/opti.py:645`
@@ -49,10 +49,10 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Evidence:** class FakeOpti: ... def subject_to(self, _: object) -> None: return None / def minimize(self, _: object) -> None: return None ... assert (outcome.value.v_s, outcome.value.alpha_s) == (8.0, 15.75)  -- the asserted numbers are the fake solver's own return.
 - **Verified:** CONFIRMED (MUTATION_RERUN). All 1448 fast tests stay green under the mutation. The fast fakes discard the constraint: test_solvers_opti.py `def subject_to(self, _: object) -> None: return None`, and the glide fake's `def __eq__(self, other: object) -> bool:  # ... builds a constraint / return True`.
 - **Verifier's note:** Input severity was medium; raised by the rule, to be lowered again if an aero candidate fails.
-- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F04.patch` (from the audit folder; aero_kernel/solvers/opti.py:645  `opti.subject_to(aero["L"] == problem.lift)` -> `opti.subject_to(aero["L"] == 2.0 * problem.lift)`). Today every fast test stays green; after your change at least one fast test must fail under it.
+- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F04.patch` (from the audit folder; aero_kernel/solvers/opti.py:645  `opti.subject_to(aero["L"] == problem.lift)` -> `opti.subject_to(aero["L"] == 2.0 * problem.lift)`). Today every fast test stays green; after your change at least one fast test must fail under it. The aero tier catches it (aero_kernel/tests/test_solvers_opti_real.py::test_the_lift_balance_holds_at_the_optimum); the new test belongs in the fast tier.
 - **Test to write:** Fast, test_solvers_opti.py: reuse the recording Expr / FakeOpti of test_solvers_opti_glide.install_optimum but record subject_to as well (make Expr.__eq__ return a ('eq', name, other) record). For stall_worker with mass 1.5 kg, g 9.81, n 1: assert the minimised expression is the speed variable itself (name 'speed') and the one constraint is ('eq', 'L', 1.5 * 9.81 = 14.715); for n = -1 the constraint value is -14.715. Do the same constraint assert in the glide and min-sink worker tests. (P6a-M01b: objective replaced by aero['L'] also survived.)
 
-## P6a-F05 · high · over_mocked
+## P6a-F05 · medium · over_mocked
 
 - **Test file:** `aero_kernel/tests/test_solvers_opti_roll.py` · existing test `test_the_worker_rotates_about_the_stability_axis` (line 363)
 - **Production:** `aero_kernel/solvers/opti.py:1274`
@@ -60,10 +60,10 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Evidence:** def subject_to(self, _: object) -> None: return None ... assert (outcome.value.p_rad_s, outcome.value.alpha_deg) == (2.0, 4.0)
 - **Verified:** CONFIRMED (MUTATION_RERUN). All 1448 fast tests stay green under the mutation. The roll fake discards every constraint: test_solvers_opti_roll.py `def subject_to(self, _: object) -> None: return None`, and its AeroBuildup returns `{"L": 0.0, "Cl": cl, "Cn": cn}` as plain floats.
 - **Verifier's note:** Input severity was medium; raised by the rule, to be lowered again if an aero candidate fails.
-- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F05.patch` (from the audit folder; aero_kernel/solvers/opti.py:1275  removed `opti.subject_to(stability_rolling_moment(aero["Cl"], aero["Cn"], alpha, asb.numpy) == 0)`). Today every fast test stays green; after your change at least one fast test must fail under it.
+- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F05.patch` (from the audit folder; aero_kernel/solvers/opti.py:1275  removed `opti.subject_to(stability_rolling_moment(aero["Cl"], aero["Cn"], alpha, asb.numpy) == 0)`). Today every fast test stays green; after your change at least one fast test must fail under it. The aero tier catches it (aero_kernel/tests/test_solvers_opti_roll_real.py::test_a_positive_command_rolls_right_and_the_solution_is_an_equilibrium); the new test belongs in the fast tier.
 - **Test to write:** Fast, test_solvers_opti_roll.py: let Boundary record subject_to arguments and let the fake AeroBuildup return recording expressions for L, Cl, Cn (as in the glide fake). Assert exactly two constraints: L == 0.15 * 9.81 = 1.4715 N, and (Cl*cos(alpha) + Cn*sin(alpha)) == 0 built from the model's Cl and Cn and the alpha variable. (P6a-M05: constraint L == m survived too.)
 
-## P6a-F06 · high · missing_requirement_test
+## P6a-F06 · medium · missing_requirement_test
 
 - **Test file:** `aero_kernel/tests/test_solvers_opti_roll.py` · existing test `test_steady_roll_end_to_end_with_stub` (line 66)
 - **Production:** `aero_kernel/solvers/opti.py:2504`
@@ -71,19 +71,8 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Evidence:** assert (request.v_ms, request.delta_deg) == (SPEED, 20.0) / assert request.airplane == plane  -- request.model_key is not asserted.
 - **Verified:** CONFIRMED (MUTATION_RERUN). All 1448 fast tests stay green under the mutation. test_steady_roll_end_to_end_with_stub asserts `assert (request.v_ms, request.delta_deg) == (SPEED, 20.0)` and `assert request.airplane == plane`, never request.model_key; grep 'model_key' finds nothing in test_solvers_opti_roll.py. On the unmutated copy the request's key equals adapter._model_key(plane, 20.0) (sha256:310fb3...) and differs from the roll-0 key (sha256:448347...).
 - **Verifier's note:** test_solvers_opti_roll_real.py does not reach it: its roll() helper opens a new SolverRuntime per call, so the worker cache is empty. The candidates fail only if the roll job is routed to the worker slot that holds the clean (or other-deflection) function; the parent's routing prefers that slot for an equal key. Input severity was medium; raised by the rule, to be lowered again if an aero candidate fails.
-- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F06.patch` (from the audit folder; aero_kernel/solvers/opti.py:2504  steady_roll: `model_key=self._model_key(airplane, delta_a_deg),` -> `model_key=self._model_key(airplane, 0.0),`). Today every fast test stays green; after your change at least one fast test must fail under it.
+- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F06.patch` (from the audit folder; aero_kernel/solvers/opti.py:2504  steady_roll: `model_key=self._model_key(airplane, delta_a_deg),` -> `model_key=self._model_key(airplane, 0.0),`). Today every fast test stays green; after your change at least one fast test must fail under it. The aero tier catches it (aero_kernel/tests/test_roll_rate_fleet.py::test_roll_rate_goldens_per_world[FleetMember.BRYAN]); the new test belongs in the fast tier.
 - **Test to write:** Fast, test_solvers_opti_roll.py: after steady_roll(plane, MASS, GRAVITY, AIR, SPEED, 20.0) assert request.model_key == model_key(plane, roll_deg=20.0, model_size=opti_module.NEURALFOIL_MODEL_SIZE, tool_versions=adapter.tool_versions()) and that it differs from the key with roll_deg=0.0 (as test_solvers_opti_zero_lift does for the clean key).
-
-## P6a-F10 · high · over_mocked
-
-- **Test file:** `aero_kernel/tests/test_solvers_opti.py` · existing test `test_an_interior_optimum_is_accepted` (line 352)
-- **Production:** `aero_kernel/solvers/opti.py:696`
-- **Gap:** The published stall polar could be swept at the bracketing speed instead of V_S (wrong Reynolds number, so cl_max read from it is not the C_L at the stall): the fast sweep fake ignores its arguments. The aero tier catches it only indirectly through the 1e-6 lift balance.
-- **Evidence:** def sweep(*_: object) -> Polar: return polar  ... monkeypatch.setattr(opti_module, "sweep_polar", sweep)
-- **Verified:** CONFIRMED (MUTATION_RERUN). All 1448 fast tests stay green under the mutation. The fast fake ignores what the published polar is swept at: test_solvers_opti.py `def sweep(*_: object) -> Polar: return polar` installed for both sweep_polar and sweep_lift, while production reads the result from that polar: `cl_max = polar.cl[polar.alpha_deg.index(optimum.alpha)]`.
-- **Verifier's note:** Input severity was medium; raised by the rule, to be lowered again if an aero candidate fails. The difference between V_bracket and V_S is one Reynolds refinement, so the aero kill is likely but not certain at rel 1e-6 / 1e-4.
-- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F10.patch` (from the audit folder; aero_kernel/solvers/opti.py:696  stall_worker: published polar swept at `problem.v_bracket` instead of `optimum.speed`). Today every fast test stays green; after your change at least one fast test must fail under it.
-- **Test to write:** Fast, test_solvers_opti.py: let the sweep_polar fake record its arguments; with install_solution(monkeypatch, 8.0, 15.75) assert it was called once with velocity 8.0 (the optimum, not the bracketing speed sqrt(2 * 14.715 / (1.225 * 0.28 * 1.19)) = 8.49 m/s), with 15.75 among the angles and K_E_D0 as viscous factor. Aero: assert solution.polar.conditions.v_ms == solution.v_s.
 
 ## P6a-F07 · medium · untested_error_path
 
@@ -104,7 +93,7 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Evidence:** @pytest.mark.parametrize("n_load", [-0.5, math.nan, math.inf])  -- no admissible n_load = 0 through OptiAdapter.level_flight_point.
 - **Verified:** CONFIRMED (MUTATION_RERUN). All 1448 fast tests stay green under the mutation. The adapter test tries inadmissible values only: `@pytest.mark.parametrize("n_load", [-0.5, math.nan, math.inf])`; n_load = 0 is exercised on the worker (`level_point_worker(point_request(18.0, 0.0))`), and every fast dive-speed test replaces level_flight_point by a stub (powered_builders.py:54).
 - **Verifier's note:** The aero candidate asserts error.code == 'outside_propeller_table'; under the mutation the dive's first point is refused as invalid_input instead.
-- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F08.patch` (from the audit folder; aero_kernel/solvers/opti.py:2350  level_flight_point: `n_load >= 0.0` -> `n_load > 0.0`). Today every fast test stays green; after your change at least one fast test must fail under it.
+- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F08.patch` (from the audit folder; aero_kernel/solvers/opti.py:2350  level_flight_point: `n_load >= 0.0` -> `n_load > 0.0`). Today every fast test stays green; after your change at least one fast test must fail under it. The aero tier catches it (aero_kernel/tests/test_powered_performance_aero.py::test_the_dive_speed_is_the_declared_table_failure_on_the_avistar); the new test belongs in the fast tier.
 - **Test to write:** Fast, test_solvers_opti_level_point.py: with a canned level_point_worker, level_flight_point(airplane(), MASS, GRAVITY, AIR, 18.0, 0.0) returns the canned point and the worker's request has n_load == 0.0.
 
 ## P6a-F09 · medium · weak_assertion
@@ -117,6 +106,17 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Verifier's note:** The aero candidate is the only aero test that reaches the inverted branch; it fails only if NACA 2412's C_L falls below the first trough between -15 deg and the trough (then the optimum moves to the bound and is refused). I could not decide that by reading; a pass there does not refute the finding.
 - **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F09.patch` (from the audit folder; aero_kernel/solvers/opti.py:547  inverted window `low, high = alpha_peak - peak_margin_deg, ALPHA_MAX_DEG` -> `low, high = ALPHA_MIN_DEG, alpha_peak + peak_margin_deg`). Today every fast test stays green; after your change at least one fast test must fail under it.
 - **Test to write:** Aero, test_solvers_opti_real.py, trainer at n = -1: (a) V_S == sqrt(2 * 1.5 * 9.81 / (rho * 0.28 * |cl_max|)) rel 1e-6; (b) first_extremum over the polar scanned from alpha = 0 downwards (maximum=False) lies within ALPHA_STEP_DEG of alpha_s. Fast, test_solvers_opti.py: record opti.variable kwargs in the stall fake and assert for n = -1 with lift_curve(INVERTED_TROUGH, upright=False) the alpha bounds (-10.0 - 0.25, 25.0), for n = +1 (-15.0, 15.75 + 0.25), and the V bounds (1.0, 0.6 * 340.294).
+
+## P6a-F10 · medium · over_mocked
+
+- **Test file:** `aero_kernel/tests/test_solvers_opti.py` · existing test `test_an_interior_optimum_is_accepted` (line 352)
+- **Production:** `aero_kernel/solvers/opti.py:696`
+- **Gap:** The published stall polar could be swept at the bracketing speed instead of V_S (wrong Reynolds number, so cl_max read from it is not the C_L at the stall): the fast sweep fake ignores its arguments. The aero tier catches it only indirectly through the 1e-6 lift balance.
+- **Evidence:** def sweep(*_: object) -> Polar: return polar  ... monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+- **Verified:** CONFIRMED (MUTATION_RERUN). All 1448 fast tests stay green under the mutation. The fast fake ignores what the published polar is swept at: test_solvers_opti.py `def sweep(*_: object) -> Polar: return polar` installed for both sweep_polar and sweep_lift, while production reads the result from that polar: `cl_max = polar.cl[polar.alpha_deg.index(optimum.alpha)]`.
+- **Verifier's note:** Input severity was medium; raised by the rule, to be lowered again if an aero candidate fails. The difference between V_bracket and V_S is one Reynolds refinement, so the aero kill is likely but not certain at rel 1e-6 / 1e-4.
+- **Acceptance mutation:** `git apply rework/patches/WP-P6a/P6a-F10.patch` (from the audit folder; aero_kernel/solvers/opti.py:696  stall_worker: published polar swept at `problem.v_bracket` instead of `optimum.speed`). Today every fast test stays green; after your change at least one fast test must fail under it. The aero tier catches it (aero_kernel/tests/test_solvers_opti_real.py::test_the_lift_balance_holds_at_the_optimum); the new test belongs in the fast tier.
+- **Test to write:** Fast, test_solvers_opti.py: let the sweep_polar fake record its arguments; with install_solution(monkeypatch, 8.0, 15.75) assert it was called once with velocity 8.0 (the optimum, not the bracketing speed sqrt(2 * 14.715 / (1.225 * 0.28 * 1.19)) = 8.49 m/s), with 15.75 among the angles and K_E_D0 as viscous factor. Aero: assert solution.polar.conditions.v_ms == solution.v_s.
 
 ## P6a-F13 · low · missing_requirement_test
 

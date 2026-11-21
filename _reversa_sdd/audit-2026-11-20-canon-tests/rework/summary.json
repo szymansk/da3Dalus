@@ -20,19 +20,20 @@
   "low": 79
  },
  "severity_active": {
-  "high": 31,
-  "medium": 49,
+  "high": 21,
+  "medium": 59,
   "low": 54
  },
  "moves": {
-  "high->medium": 3,
-  "medium->high": 13,
+  "high->medium": 6,
+  "medium->high": 6,
   "low->medium": 5,
   "medium->low": 9
  },
  "tier_gap": {
   "both (no aero test reaches the code)": 54,
-  "aero_pending": 19
+  "fast_only": 17,
+  "both (aero candidates stay green)": 2
  },
  "recommended_test_ok": {
   "yes": 110,
@@ -65,8 +66,8 @@
   "WP-P6a": {
    "wave": 1,
    "active": 16,
-   "high": 7,
-   "medium": 3,
+   "high": 3,
+   "medium": 7,
    "low": 6,
    "refuted": 1,
    "dropped": 3,
@@ -76,8 +77,8 @@
   "WP-P6b": {
    "wave": 1,
    "active": 14,
-   "high": 4,
-   "medium": 5,
+   "high": 1,
+   "medium": 8,
    "low": 5,
    "refuted": 0,
    "dropped": 1,
@@ -98,8 +99,8 @@
   "WP-P1": {
    "wave": 2,
    "active": 13,
-   "high": 2,
-   "medium": 6,
+   "high": 1,
+   "medium": 7,
    "low": 5,
    "refuted": 0,
    "dropped": 2,
@@ -109,8 +110,8 @@
   "WP-P2": {
    "wave": 2,
    "active": 14,
-   "high": 3,
-   "medium": 1,
+   "high": 2,
+   "medium": 2,
    "low": 10,
    "refuted": 0,
    "dropped": 3,
@@ -142,8 +143,8 @@
   "WP-P8a": {
    "wave": 3,
    "active": 8,
-   "high": 1,
-   "medium": 4,
+   "high": 0,
+   "medium": 5,
    "low": 3,
    "refuted": 0,
    "dropped": 3,
@@ -174,10 +175,8 @@
   }
  },
  "high": [
-  "P1-F01",
   "P1-F02",
   "P2-F01",
-  "P2-F02",
   "P2-F04",
   "P3-F01",
   "P3-F02",
@@ -191,19 +190,11 @@
   "P6a-F01",
   "P6a-F02",
   "P6a-F03",
-  "P6a-F04",
-  "P6a-F05",
-  "P6a-F06",
-  "P6a-F10",
-  "P6b-F01",
   "P6b-F03",
-  "P6b-F05",
-  "P6b-F10",
   "P7b-F01",
   "P7b-F03",
   "P7b-F04",
   "P7b-F06",
-  "P8-F05",
   "P8-F09"
  ]
 }

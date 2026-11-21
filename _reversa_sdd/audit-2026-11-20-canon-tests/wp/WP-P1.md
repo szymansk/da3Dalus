@@ -7,18 +7,7 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Production code under test:** aero_kernel/formulas/ (parabolic polar, sink rate, spiral parameter, maneuvering speed)
 - **Requirement sources:** canon entries, canon_model.json preconditions
 - **Test files you may change:** `aero_kernel/tests/test_formulas_end_to_end.py`, `aero_kernel/tests/test_maneuvering_speed_engine.py`, `aero_kernel/tests/test_parabolic_closed_forms.py`, `aero_kernel/tests/test_parabolic_polar_fit.py`, `aero_kernel/tests/test_spiral_parameter.py`, `aero_kernel/tests/test_vertical_tail_volume.py`
-- **Findings to work on:** 13 (2 high, 6 medium, 5 low)
-
-## P1-F01 · high · missing_edge_case
-
-- **Test file:** `aero_kernel/tests/test_parabolic_closed_forms.py` · existing test `test_minimum_drag_speed_precondition_refuses_an_undefined_parabola` (line 153)
-- **Production:** `aero_kernel/formulas/minimum_drag_speed_closed_form.py:24`
-- **Gap:** The precondition parabola_defined of minimum-drag-speed-closed-form can be violated for every input (the probe quantity would never be produced) and the fast tier stays green: there is no 'held' case and no fast engine run of minimum-drag-speed-probe.
-- **Evidence:** The only assert on the check: `assert v_md_parabola_defined(x).state == "violated"` (four violated cases, no held case).
-- **Verified:** CONFIRMED (MUTATION_RERUN). Mutation survived: 627 + 56 fast tests green. No fast test asserts a held state and none requests minimum-drag-speed-probe through the engine (grep: only test_parabolic_polar_fit_fleet.py, aero, requests it). The only assert on the check is `assert v_md_parabola_defined(x).state == "violated"`. Unmutated, evaluate() with the stub parabola returns minimum-drag-speed-probe ok = 4.402051477464504 m/s, so the mutation turns a caller-visible value into an error.
-- **Verifier's note:** Aero candidates fail at `assert all(q.status is QuantityStatus.OK for q in result.quantities), result` in the fleet file's run().
-- **Acceptance mutation:** `git apply rework/patches/WP-P1/P1-F01.patch` (from the audit folder; aero_kernel/formulas/minimum_drag_speed_closed_form.py:24  `if all(value > 0.0 for value in values.values()):` -> `if False:`). Today every fast test stays green; after your change at least one fast test must fail under it.
-- **Test to write:** Fast, test_parabolic_closed_forms.py: (a) v_md_parabola_defined(x).state == 'held' for W/S 30 N/m^2, rho 1.225, C_D0 0.03, k 0.05; (b) through evaluate() on the shipped build with StubOpti (stub parabola C_D0 0.03, k 0.05, like test_parabolic_polar_fit.run) request minimum-drag-speed-probe and assert status OK and value == sqrt(2 (m g/S_ref) / (rho sqrt(0.03/0.05))) to 1e-9; (c) with a falling polar (k < 0) assert error.code == 'upstream_failed' or 'precondition_violated' explicitly.
+- **Findings to work on:** 13 (1 high, 7 medium, 5 low)
 
 ## P1-F02 · high · missing_edge_case
 
@@ -29,6 +18,17 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Verified:** CONFIRMED (MUTATION_RERUN). Mutation survived: 627 + 56 fast tests green. `sink-rate` occurs in no test file besides test_parabolic_closed_forms.py (and formula_builders.py); the only assert on this check is `assert lift_coefficient_positive(x).state == "violated"`. Unmutated, evaluate() returns sink-rate ok = 2.0736946702938845 m/s for the stub parabola at 10 m/s, so the mutation removes a caller-visible value.
 - **Acceptance mutation:** `git apply rework/patches/WP-P1/P1-F02.patch` (from the audit folder; aero_kernel/formulas/sink_rate.py:29  `if cl > 0.0:` -> `if False:`). Today every fast test stays green; after your change at least one fast test must fail under it.
 - **Test to write:** Fast: (a) lift_coefficient_positive held for C_L = 0.5 and for 1e-12; (b) engine test: evaluate(shipped_build, m 1.5 kg, altitude 0, flight-speed 10 m/s, StubOpti parabola C_D0 0.03, k 0.05) requesting sink-rate, lift-coefficient, drag-coefficient-parabolic: assert sink-rate OK, unit m/s, value == V * (0.03 + 0.05 C_L^2)/C_L with C_L = m g/(0.5 rho V^2 S_ref) to 1e-9; (c) a negative load-factor (-1) must give error.code 'precondition_violated' with detail.precondition 'lift_coefficient_positive'.
+
+## P1-F01 · medium · missing_edge_case
+
+- **Test file:** `aero_kernel/tests/test_parabolic_closed_forms.py` · existing test `test_minimum_drag_speed_precondition_refuses_an_undefined_parabola` (line 153)
+- **Production:** `aero_kernel/formulas/minimum_drag_speed_closed_form.py:24`
+- **Gap:** The precondition parabola_defined of minimum-drag-speed-closed-form can be violated for every input (the probe quantity would never be produced) and the fast tier stays green: there is no 'held' case and no fast engine run of minimum-drag-speed-probe.
+- **Evidence:** The only assert on the check: `assert v_md_parabola_defined(x).state == "violated"` (four violated cases, no held case).
+- **Verified:** CONFIRMED (MUTATION_RERUN). Mutation survived: 627 + 56 fast tests green. No fast test asserts a held state and none requests minimum-drag-speed-probe through the engine (grep: only test_parabolic_polar_fit_fleet.py, aero, requests it). The only assert on the check is `assert v_md_parabola_defined(x).state == "violated"`. Unmutated, evaluate() with the stub parabola returns minimum-drag-speed-probe ok = 4.402051477464504 m/s, so the mutation turns a caller-visible value into an error.
+- **Verifier's note:** Aero candidates fail at `assert all(q.status is QuantityStatus.OK for q in result.quantities), result` in the fleet file's run().
+- **Acceptance mutation:** `git apply rework/patches/WP-P1/P1-F01.patch` (from the audit folder; aero_kernel/formulas/minimum_drag_speed_closed_form.py:24  `if all(value > 0.0 for value in values.values()):` -> `if False:`). Today every fast test stays green; after your change at least one fast test must fail under it. The aero tier catches it (aero_kernel/tests/test_parabolic_polar_fit_fleet.py::test_the_fit_and_its_probes_against_the_goldens[FleetMember.BRYAN]); the new test belongs in the fast tier.
+- **Test to write:** Fast, test_parabolic_closed_forms.py: (a) v_md_parabola_defined(x).state == 'held' for W/S 30 N/m^2, rho 1.225, C_D0 0.03, k 0.05; (b) through evaluate() on the shipped build with StubOpti (stub parabola C_D0 0.03, k 0.05, like test_parabolic_polar_fit.run) request minimum-drag-speed-probe and assert status OK and value == sqrt(2 (m g/S_ref) / (rho sqrt(0.03/0.05))) to 1e-9; (c) with a falling polar (k < 0) assert error.code == 'upstream_failed' or 'precondition_violated' explicitly.
 
 ## P1-F03 · medium · missing_edge_case
 

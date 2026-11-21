@@ -7,7 +7,7 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Production code under test:** aero_kernel/formulas/butterfly_approach.py, stall_break.py, solvers/stall_math.py
 - **Requirement sources:** canon entries, ADR 0020, ARCHITECTURE §8.13
 - **Test files you may change:** `aero_kernel/tests/test_aileron_deflection_required_engine.py`, `aero_kernel/tests/test_butterfly_approach.py`, `aero_kernel/tests/test_hinge_moment_engine.py`, `aero_kernel/tests/test_minimum_drag_speed_engine.py`, `aero_kernel/tests/test_neutral_point.py`, `aero_kernel/tests/test_stall_break.py`, `aero_kernel/tests/test_stall_math.py`, `aero_kernel/tests/test_stall_speed_engine.py`, `aero_kernel/tests/test_v_tail_neutral_point.py`
-- **Findings to work on:** 14 (3 high, 1 medium, 10 low)
+- **Findings to work on:** 14 (2 high, 2 medium, 10 low)
 
 ## P2-F01 · high · untested_warning
 
@@ -19,17 +19,6 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Acceptance mutation:** `git apply rework/patches/WP-P2/P2-F01.patch` (from the audit folder; aero_kernel/formulas/butterfly_approach.py:155  `if warning.code != FIT_RANGE and key not in seen:` -> `if False and warning.code != FIT_RANGE and key not in seen:`). Today every fast test stays green; after your change at least one fast test must fail under it.
 - **Test to write:** Fast, test_butterfly_approach.py, with the existing Noisy stub (its stall emits reynolds_bubble_sensitive with message 'Re <v_s*1e4>' per mix) and default inputs (v_app = 1.05 V_S0(0), crossing between mix 0.6 and 0.7): assert the forwarded regime messages are exactly {f'Re {V_S0(0)*1e4:.0f}', f'Re {V_S0(0.7)*1e4:.0f}'} with V_S0(s) = sqrt(2 m g/(rho 0.28 (1.25-0.18 s))). Second test with v_app = 0.9 V_S0(0) (s_max = 0 path): exactly one regime warning, that of the landing stall, plus the fit-range warning.
 
-## P2-F02 · high · missing_requirement_test
-
-- **Test file:** `aero_kernel/tests/test_stall_math.py` · no test exists
-- **Production:** `aero_kernel/solvers/stall_math.py:52-53`
-- **Gap:** first_extremum_from_zero may scan a peak from the first sample (-15 deg) instead of from alpha = 0 (K32): a local maximum at negative alpha (lift recovering past the negative stall) would become C_L,max. No fast test calls the function with a maximum below zero; the upward start is only implied by aero goldens.
-- **Evidence:** test_stall_math.py imports only first_extremum: 'from aero_kernel.solvers.stall_math import first_extremum'; production: 'start = min(range(len(alphas_deg)), key=lambda k: abs(alphas_deg[k]))'
-- **Verified:** CONFIRMED (MUTATION_RERUN). The upright scan from the first sample instead of from alpha = 0 leaves 1986 fast tests green. No fast test calls first_extremum_from_zero directly: test_stall_math.py has `from aero_kernel.solvers.stall_math import first_extremum` only; the single direct call is in the aero tier (test_stall_speed_fleet.py:189, upright=False). Not equivalent: for alphas (-4..4) and cl (-0.4,-0.3,-0.5,-0.2,0.0,0.3,0.6,0.5,0.4) the original returns index 6, the mutant index 1.
-- **Verifier's note:** The aero candidates fail only if a real polar has a local C_L maximum between -15 deg and 0 (lift recovering past the negative stall); I could not establish that by reading, so they are the tests that would notice, not tests known to fail.
-- **Acceptance mutation:** `git apply rework/patches/WP-P2/P2-F02.patch` (from the audit folder; aero_kernel/solvers/stall_math.py:53  `scan = list(range(start, len(alphas_deg))) if upright` -> `scan = list(range(0, len(alphas_deg))) if upright`). Today every fast test stays green; after your change at least one fast test must fail under it.
-- **Test to write:** Fast, test_stall_math.py: alphas = (-4,-3,-2,-1,0,1,2,3,4), cl = (-0.4,-0.3,-0.5,-0.2,0.0,0.3,0.6,0.5,0.4): a local maximum at -3 deg and the first peak from zero at +2 deg. Assert first_extremum_from_zero(alphas, cl, upright=True) == 6 and, mirrored series, upright=False gives the trough below zero, not the one above; also an alpha grid without 0.0 (nearest sample) and an empty series -> None.
-
 ## P2-F04 · high · weak_assertion
 
 - **Test file:** `aero_kernel/tests/test_butterfly_approach.py` · existing test `test_the_validity_follows_the_largest_deflection_not_full_crow` (line 386)
@@ -40,6 +29,17 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Acceptance mutation:** `git apply rework/patches/WP-P2/P2-F04.patch` (from the audit folder; aero_kernel/formulas/butterfly_approach.py:290  `worst = max(range(len(configurations)), key=lambda k: _largest_deflection(configurations[k]))` -> `worst = len(configurations) - 1`). Today every fast test stays green; after your change at least one fast test must fail under it.
 - **Test to write:** Fast, same file: delta_f_ldg = 60, delta_f_crow = 20, delta_a_crow = 10 (full crow: flap 20, aileron -10, both below 30). Assert the single flap_deflection_beyond_validity warning has detail['flaps'] == [{'wing': 'Main', 'device': 'device 0', 'deflection_deg': 60.0}] (the landing flap at s = 0). Add a CrowStub variant whose diagnostics differ per mix and assert flap_confidence_low carries the confidence of mix 0.
 - **Correction:** (no) The expected detail is right (verified: [{'wing': 'Main', 'device': 'device 0', 'deflection_deg': 60.0}]) and it would fail under the mutation, but as written the call raises: with delta_f_ldg=60, delta_f_crow=20, delta_a_crow=10 and the default v_app = 1.05*V_S0(30 deg flap) the stall speed never reaches v_app, so butterfly_approach raises FormulaError unsupported_configuration (fully mixable). The warning is on the context before the raise, so either wrap the call in pytest.raises(FormulaError) or pass v_app = 1.02 * V_S0 of the 60 deg landing flap (C_L 1.31 -> 1.17 over the mix, V_S0 rises by 5.8 %). The second half (per-mix diagnostics, flap_confidence_low of mix 0) needs a stub that sets StallSolution.diagnostics; not researched here.
+
+## P2-F02 · medium · missing_requirement_test
+
+- **Test file:** `aero_kernel/tests/test_stall_math.py` · no test exists
+- **Production:** `aero_kernel/solvers/stall_math.py:52-53`
+- **Gap:** first_extremum_from_zero may scan a peak from the first sample (-15 deg) instead of from alpha = 0 (K32): a local maximum at negative alpha (lift recovering past the negative stall) would become C_L,max. No fast test calls the function with a maximum below zero; the upward start is only implied by aero goldens.
+- **Evidence:** test_stall_math.py imports only first_extremum: 'from aero_kernel.solvers.stall_math import first_extremum'; production: 'start = min(range(len(alphas_deg)), key=lambda k: abs(alphas_deg[k]))'
+- **Verified:** CONFIRMED (MUTATION_RERUN). The upright scan from the first sample instead of from alpha = 0 leaves 1986 fast tests green. No fast test calls first_extremum_from_zero directly: test_stall_math.py has `from aero_kernel.solvers.stall_math import first_extremum` only; the single direct call is in the aero tier (test_stall_speed_fleet.py:189, upright=False). Not equivalent: for alphas (-4..4) and cl (-0.4,-0.3,-0.5,-0.2,0.0,0.3,0.6,0.5,0.4) the original returns index 6, the mutant index 1.
+- **Verifier's note:** The aero candidates fail only if a real polar has a local C_L maximum between -15 deg and 0 (lift recovering past the negative stall); I could not establish that by reading, so they are the tests that would notice, not tests known to fail.
+- **Acceptance mutation:** `git apply rework/patches/WP-P2/P2-F02.patch` (from the audit folder; aero_kernel/solvers/stall_math.py:53  `scan = list(range(start, len(alphas_deg))) if upright` -> `scan = list(range(0, len(alphas_deg))) if upright`). Today every fast test stays green; after your change at least one fast test must fail under it. The aero tier catches it (aero_kernel/tests/test_stall_speed_fleet.py::test_bryan_regression_goldens_with_the_xlarge_model); the new test belongs in the fast tier.
+- **Test to write:** Fast, test_stall_math.py: alphas = (-4,-3,-2,-1,0,1,2,3,4), cl = (-0.4,-0.3,-0.5,-0.2,0.0,0.3,0.6,0.5,0.4): a local maximum at -3 deg and the first peak from zero at +2 deg. Assert first_extremum_from_zero(alphas, cl, upright=True) == 6 and, mirrored series, upright=False gives the trough below zero, not the one above; also an alpha grid without 0.0 (nearest sample) and an empty series -> None.
 
 ## P2-F05 · medium · missing_edge_case
 

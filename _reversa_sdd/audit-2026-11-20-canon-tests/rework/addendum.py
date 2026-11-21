@@ -1,0 +1,202 @@
+"""Write the rework addendum into ../README.md between the rework markers (idempotent).
+
+Usage: python addendum.py     (after build.py)
+"""
+
+from __future__ import annotations
+
+import collections
+import json
+import re
+from pathlib import Path
+
+HERE = Path(__file__).parent
+AUDIT = HERE.parent
+F = json.loads((AUDIT / "findings.json").read_text())
+VERIFIED = {r["id"]: r for p in sorted((HERE / "verify").glob("WP-*.json")) for r in json.loads(p.read_text())["results"]}
+ACTIVE = [f for f in F if f["state"] in ("open", "bundled")]
+SEV = {"high": "hoch", "medium": "mittel", "low": "niedrig"}
+STATE = [
+    ("open", "offen", "bestätigt; wird im Arbeitspaket bearbeitet"),
+    ("bundled", "gebündelt", "bestätigt, aber klein; wird mit einem anderen Befund derselben Testdatei erledigt"),
+    ("waiting_for_decision", "wartet auf Entscheidung", "sachlich bestätigt; der Test hängt an einer offenen Entscheidung"),
+    ("dropped", "gestrichen", "zutreffend, aber ohne Risiko für Flugfähigkeit, Reichweite oder Nutzlast"),
+    ("refuted", "widerlegt", "ein vorhandener Test fängt den Fehler bereits"),
+    ("production_defect", "Produktionsfehler", "kein Testbefund; als Bug-Ticket oder Frage geführt"),
+]
+WAVE = {"WP-P4a": 1, "WP-P7b": 1, "WP-P6a": 1, "WP-P6b": 1, "WP-P3": 1, "WP-P1": 2, "WP-P2": 2, "WP-P5": 2, "WP-P7a": 2, "WP-P8a": 3, "WP-P8b": 3, "WP-P4b": 3}
+TITLE = {
+    "WP-P4a": "Cache-Schlüssel, Engine-Provenienz, Regelgrenzen",
+    "WP-P7b": "Bewertung (Evaluator, Regeltabelle, Drela-Bänder)",
+    "WP-P6a": "Opti-Adapter: Fakes, die Zielfunktion und Nebenbedingungen aufzeichnen",
+    "WP-P6b": "AVL: Referenzgrößen, Leitwerks-Stationen, Rumpfkörper",
+    "WP-P3": "Antrieb, Leistung, Flugzeit, Holm",
+    "WP-P1": "Geschlossene Formeln: Vorbedingungen beidseitig",
+    "WP-P2": "Aerodynamik- und Stabilitätsformeln",
+    "WP-P5": "Validierung, Geometrie, Geräte",
+    "WP-P7a": "Importer, check_canon, Navigator-Build",
+    "WP-P8a": "Referenzflotte: Relationen, schnelle Kette, Golden-Recorder",
+    "WP-P8b": "App-Anbindung: Fehlerhülle und Eingabeprüfung über den Endpunkt",
+    "WP-P4b": "Test-Isolation und zeitabhängige Tests",
+}
+
+
+def n(rows: list[dict], **want: str) -> int:
+    return sum(all(r[k] == v for k, v in want.items()) for r in rows)
+
+
+def wp_table() -> list[str]:
+    rows = ["| Welle | Paket | Inhalt | zu bearbeiten (hoch / mittel / niedrig) | ausgeschieden | Brief |", "|---:|---|---|---|---|---|"]
+    for wp, wave in WAVE.items():
+        mine = [f for f in F if f["wp"] == wp]
+        act = [f for f in mine if f in ACTIVE]
+        gone = ", ".join(f"{n(mine, state=s)} {label}" for s, label, _ in STATE[2:] if n(mine, state=s)) or "—"
+        rows.append(f"| {wave} | {wp} | {TITLE[wp]} | {len(act)} ({n(act, severity='high')} / {n(act, severity='medium')} / {n(act, severity='low')}) | {gone} | `wp/{wp}.md` |")
+    return rows
+
+
+def addendum() -> str:
+    c = collections.Counter(f["verdict"] for f in F)
+    aero = [f for f in F if f["aero_outcome"]]
+    killed = [f for f in aero if f["aero_outcome"] == "killed"]
+    would_be_high = sorted(f["id"] for f in killed if VERIFIED[f["id"]]["severity_proposed"] == "high")
+    high = sorted((f for f in ACTIVE if f["severity"] == "high"), key=lambda f: f["id"])
+    fixes = sorted(f["id"] for f in ACTIVE if f["recommended_test_ok"] == "no" or f["hand_value_correction"])
+    unclear = sorted(f["id"] for f in ACTIVE if f["recommended_test_ok"] == "unclear" and not f["hand_value_correction"])
+    up = sorted(f["id"] for f in ACTIVE if f["severity"] == "high" and f["severity_review"] != "high")
+    down = sorted(f["id"] for f in ACTIVE if f["severity_review"] == "high" and f["severity"] != "high")
+    wave1 = sum(1 for f in high if WAVE[f["wp"]] == 1)
+    out = [
+        "## Nachtrag vom 21. November 2026: Nachprüfung der Befunde",
+        "",
+        "Die 179 Befunde des Reviews wurden einen Tag später unabhängig nachgeprüft. Dieser Abschnitt ist der gültige Stand; "
+        "die Abschnitte 1 bis 6 beschreiben das Review, wie es am 20. November abgegeben wurde. `findings.json` und die zwölf Briefe "
+        "unter `wp/` sind neu erzeugt und enthalten das Ergebnis der Nachprüfung.",
+        "",
+        "**Vorgehen.** Zwölf Prüfer, keiner davon der ursprüngliche Reviewer, je einer pro Arbeitspaket, auf einer eingefrorenen Kopie von "
+        "`72c4b5c6`. Hohe und mittlere Befunde: Mutation erneut gesetzt oder neu geschrieben, gegen alle schnellen Testdateien, die die Stelle "
+        "erreichen können, nicht nur gegen die Liste des Reviewers. Niedrige Befunde: gelesen und nach Zweck gefiltert. Die fünf Produktionsfehler "
+        "wurden getrennt mit eigenen Skripten nachgestellt, die Handwerte der 21 hohen Befunde nachgerechnet, und 19 überlebende Mutationen "
+        "liefen zusätzlich gegen gezielt gewählte Aero-Tests.",
+        "",
+        "### Ergebnis",
+        "",
+        f"{c['CONFIRMED']} Befunde sind durch eine überlebende Mutation bestätigt, {c['CONFIRMED_BY_READING']} durch Lesen, "
+        f"{c['REFUTED']} sind widerlegt, {c['SEPARATE_DEFECT_TRACK']} sind Produktionsfehler und keine Testlücken.",
+        "",
+        "| Stand | Befunde | Bedeutung |",
+        "|---|---:|---|",
+        *[f"| {label} | {n(F, state=s)} | {text} |" for s, label, text in STATE],
+        "",
+        f"Zu bearbeiten bleiben {len(ACTIVE)} Befunde:",
+        "",
+        "| Schwere | im Review gemeldet | nach der Nachprüfung zu bearbeiten |",
+        "|---|---:|---:|",
+        *[f"| {SEV[s]} | {n(F, severity_review=s)} | {n(ACTIVE, severity=s)} |" for s in SEV],
+        "",
+        "Die Zahl der hohen Befunde ist zufällig gleich geblieben, die Menge nicht: "
+        f"neu hoch sind {', '.join(up)}; nicht mehr hoch sind {', '.join(down)}. "
+        "Regel für alle Pakete: Hoch ist ein Befund nur, wenn ein falscher Wert oder ein fehlender Fehler oder eine fehlende Warnung den "
+        "Aufrufer des Kerns erreicht, die Mutation alle schnellen Tests überlebt und kein Aero-Test sie fängt.",
+        "",
+        "### Gegenprobe in der Aero-Stufe",
+        "",
+        f"Für {len(aero)} überlebende Mutationen nannten die Prüfer Aero-Tests, die den Fehler fangen müssten. Jeder dieser Tests lief zuerst "
+        f"unverändert (alle grün), dann mit der Mutation. Ergebnis: {len(killed)} Mutationen werden von einem Aero-Test gefangen, "
+        f"{len(aero) - len(killed)} überleben auch dort ({', '.join(sorted(f['id'] for f in aero if f['aero_outcome'] != 'killed'))}). "
+        f"Für die übrigen {c['CONFIRMED'] - len(aero)} bestätigten Mutationen fand der Prüfer keinen Aero-Test, der die Stelle erreicht; das ist gelesen, nicht gemessen.",
+        "",
+        f"Die {len(killed)} gefangenen Lücken bestehen nur in der schnellen Stufe und sind deshalb höchstens mittel. Ohne den Aero-Test wären "
+        f"{len(would_be_high)} davon hoch: {', '.join(would_be_high)}. **Dieser Schutz wirkt heute nicht:** Die PR-CI schließt die Aero-Stufe aus, "
+        "und der nächtliche Lauf ist seit mindestens dem 11. November jeden Tag rot und bricht nach 50 Minuten bei 22 % ab (Ticket #1437). "
+        "Solange #1437 offen ist, sind diese Befunde wie hohe zu behandeln.",
+        "",
+        f"### Die {len(high)} hohen Befunde nach der Nachprüfung",
+        "",
+        "| ID | Paket | Stelle | Was unbemerkt falsch sein könnte |",
+        "|---|---|---|---|",
+        *[f"| {f['id']} | {f['wp']} | `{f['production_ref']}` | {f['claim'].replace('|', '/')} |" for f in high],
+        "",
+        "### Widerlegte Befunde",
+        "",
+        "| ID | Gefangen von |",
+        "|---|---|",
+        *[f"| {f['id']} | " + (f"`{f['killed_by']}`" if f["killed_by"] else "`aero_kernel/tests/test_geometry_properties.py` (Aero-Stufe, durch Lesen festgestellt)") + " |" for f in F if f["state"] == "refuted"],
+        "",
+        "In drei Fällen lag der fangende Test in einer Datei, die der Reviewer nicht ausgeführt hatte; im vierten (P6a-F11) liegt er in der Aero-Stufe.",
+        "",
+        "### Korrigierte Testempfehlungen",
+        "",
+        f"Bei {len(fixes)} zu bearbeitenden Befunden ist die Testempfehlung des Reviews falsch oder unvollständig: {', '.join(fixes)}. "
+        "Die Briefe tragen dort eine Zeile **Correction**, die den ursprünglichen Text ersetzt. "
+        f"Bei {len(unclear)} weiteren hat der Prüfer die Empfehlung nicht bis zum Ende nachvollzogen (in den Briefen als `unclear` mit Grund vermerkt). "
+        "Von den 21 Handwerten der hohen Befunde waren 13 richtig, einer falsch (P6b-F01: Referenzwerte des Seitenleitwerks-Tests), zwei unvollständig "
+        "(P6b-F03, P6b-F05) und einer fraglich (P7b-F03, siehe Entscheidungen); vier Befunde enthalten keine Zahl.",
+        "",
+        "### Produktionsfehler",
+        "",
+        "Alle fünf ließen sich nachstellen (`rework/defects/`).",
+        "",
+        "| Befund | Fehler | Stand |",
+        "|---|---|---|",
+        "| P8-F08 | Unerwartete Ausnahme verlässt die API als Klartext-500 statt in der Fehlerhülle; gilt app-weit, nicht nur für `/canon/compute` | Ticket #1434 |",
+        "| P1-F11 | `lift-coefficient` bei Fluggeschwindigkeit 0 endet als `internal` | Ticket #1435 |",
+        "| P7b-F08 | `@relation` für einen unbekannten Slug wird nicht gemeldet | Ticket #1436 |",
+        "| P3-F04 | `endurance-and-range-optimum` kehrt bei Überziehgeschwindigkeit exakt 0 nicht zurück | kein Ticket: über die API nicht erreichbar (`stall-speed` ist keine Eingabe, der Erzeuger liefert nie 0). Entscheidung unten |",
+        "| P7a-F05 | `taxonomy.yaml` wird vom Importer nicht auf `# ESCALATED:` und YAML-1.1-Wahrheitswerte geprüft | kein Ticket: keine geschriebene Anforderung nennt die Datei. Entscheidung unten |",
+        "",
+        "Nebenbefund außerhalb des Kanons: Ticket #1437 (nächtlicher CI-Lauf rot, 20 Aero-Tests schlagen dort ohne Traceback fehl; zwei davon lokal auf demselben Stand grün).",
+        "",
+        "### Entscheidungen des Maintainers",
+        "",
+        "Die sieben Fragen aus Abschnitt 6 sind unverändert offen; die Befunde sind sachlich bestätigt. Aus der Nachprüfung kommt hinzu:",
+        "",
+        "| Befund | Frage | Empfehlung |",
+        "|---|---|---|",
+        "| P5-F08 | Ergänzung zur bestehenden Frage: `aero_kernel/ARCHITECTURE.md:645` sagt bereits „a mixed set (flaps, ailerons and flaperons) needs no special rule (KISS, D10)“. Das widerspricht der Lesart „Flaperons XOR Querruder + Klappen“. | Architektur gilt: Mischung ist zulässig, ein Test hält das fest. |",
+        "| P7b-F03 | `_band_text` ignoriert, ob eine Grenze exklusiv ist: Für B > 5 lautet der Text „≥ 5“. Der empfohlene Test würde diesen Wortlaut festschreiben. | Wortlaut zuerst festlegen („> 5“ für exklusive Grenzen), dann testen. Einfache Alternative: Test nur mit inklusiver Grenze. |",
+        "| P3-F04 | Vorbedingung `stall_speed_usable` auch für `endurance-and-range-optimum`, wie bei den sechs Leistungsformeln? | Ja, eine Zeile im Kanon; kein eigener Mechanismus. Einfache Alternative: lassen, da nicht erreichbar. |",
+        "| P7a-F05 | Soll der Importer `taxonomy.yaml` wie die anderen Kanon-Dateien prüfen? | Ja, ein Aufruf von `_scan_front_matter`. Einfache Alternative: lassen und in §8.9 vermerken. |",
+        "| P8-F13 | Ergänzung: Der Test läuft derzeit nirgends, weil der nächtliche Lauf vorher abbricht (#1437). Ob er rot oder grün ist, ist unbekannt. | Nach #1437 einmal ausführen und das Ergebnis in gh-1142 festhalten. |",
+        "",
+        "### Arbeitspakete nach der Nachprüfung",
+        "",
+        *wp_table(),
+        "",
+        f"Die Wellen bleiben. Welle 1 enthält {wave1} der {len(high)} hohen Befunde. Vor Welle 1 sollte #1437 behoben sein, weil die Abnahme der "
+        "17 nur in der schnellen Stufe offenen Lücken und der Schutz durch die Aero-Stufe daran hängen. WP-P4b ist weiterhin klein und früh sinnvoll: "
+        "Die beiden Log-Tests sind in jedem gemeinsamen Lauf von App- und Kern-Tests rot; vier Prüfer sind unabhängig darauf gestoßen.",
+        "",
+        "Jede Abnahme-Mutation liegt jetzt als Patch vor (`rework/patches/<WP>/<Befund>.patch`) und wird mit `git apply` in einer Wegwerf-Kopie eingespielt.",
+        "",
+        "### Grenzen der Nachprüfung",
+        "",
+        f"- **{c['CONFIRMED_BY_READING']} Befunde sind nur durch Lesen bestätigt**, darunter alle niedrigen. Dort ist nichts gemessen.",
+        "- **Die Prüfer irren auch.** Ihre Urteile sind nicht ein drittes Mal geprüft. Widerlegungen sind belegt (fangender Test genannt), Bestätigungen durch den gespeicherten Patch nachvollziehbar.",
+        "- **Aero-Gegenprobe:** höchstens drei vom Prüfer gewählte Tests je Mutation. „Überlebt auch dort“ heißt: Diese Tests fangen sie nicht.",
+        "- **Duplikate:** Ein Abgleich nach Produktionsstelle fand keine doppelten Befunde über Paketgrenzen. Ähnliche Befunde derselben Datei sind als gebündelt geführt.",
+        "- **Gestrichene Befunde** sind nicht falsch, sondern nach Zweck aussortiert; sie stehen mit Grund am Ende jedes Briefs und in `findings.json` (`state: dropped`).",
+        "- **Drei herabgestufte Befunde** (P4-F14, P4-F15, P4-F16) habe ich gegen den Wortlaut der Regel auf niedrig gesetzt, wie vom Prüfer angeregt: Kein Wert, Fehler oder Warnhinweis ist betroffen.",
+        "",
+        "Stand der Bearbeitung und Wiedereinstieg: `rework/STATE.md`.",
+    ]
+    return "\n".join(out)
+
+
+def main() -> None:
+    readme = AUDIT / "README.md"
+    text = readme.read_text()
+    block = "<!-- rework:begin -->\n" + addendum() + "\n<!-- rework:end -->\n\n"
+    if "<!-- rework:begin -->" in text:
+        text = re.sub(r"<!-- rework:begin -->.*?<!-- rework:end -->\n\n", lambda _m: block, text, flags=re.S)
+    else:
+        text = text.replace("## 1. Urteil", block + "## 1. Urteil", 1)
+    head, tail = text.split("## 7. Arbeitspakete", 1)
+    tail = re.sub(r"\| Welle [^\n]*\n(\|[^\n]*\n)+", lambda _m: "\n".join(wp_table()) + "\n", tail, count=1)
+    text = head + "## 7. Arbeitspakete" + tail
+    readme.write_text(text)
+    print(addendum()[:1500])
+
+
+if __name__ == "__main__":
+    main()
