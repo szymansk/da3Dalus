@@ -474,6 +474,247 @@
    "overall": "wrong",
    "corrected_text": "Add the assert to test_solvers_avl_roll.py::test_roll_file_and_commands_reach_avl with S = 0.16 m^2, c = 0.2 m, b = 0.8 m (rolling_airplane: half span 0.4 m, chord 0.2 m) and to test_solvers_avl_lateral.py::test_one_run_at_the_lift_coefficient_with_the_moment_reference_at_the_cg with S = 0.28 m^2, c = 0.2 m, b = 1.4 m (np_builders MAIN: half span 0.7 m, chord 0.2 m). In these two tests the reference is not monkeypatched to literals (the fast tier's stand-in returns 0.16000000000000003 and 0.27999999999999997), so split the line after '#Sref    Cref    Bref' into three floats and compare each with rel 1e-9 instead of comparing the string. Only test_solvers_avl_hinge.py may assert the exact string '0.16 0.2 0.8'.",
    "production_agrees": "yes"
+  },
+  {
+   "id": "P6b-F03",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "wing strip width",
+     "stated": "half span 0.4 m, n_wing 12, strip 0.033333 m",
+     "recomputed": "0.0333333 m; uniform, because in the elevator role the main wing is not driven",
+     "arithmetic": "0.4/12",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail)",
+     "verdict": "ok",
+     "note": "Sine-to-tip stations apply only to a main wing that carries a device of the role."
+    },
+    {
+     "what": "wing stations inside the tail span",
+     "stated": "0.033333, 0.066667, 0.1, 0.133333; 0.133333 < 0.15 - 0.3*0.033333 = 0.14 stays",
+     "recomputed": "0.033333, 0.066667, 0.1, 0.133333 (next one 0.166667 > 0.15); limit 0.15 - 0.01 = 0.14",
+     "arithmetic": "k*0.4/12 for k = 1..4; 0.3*0.0333333 = 0.01",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "break at the device start and sliver",
+     "stated": "0.07 added; 0.066667 dropped because |0.066667 - 0.07| = 0.0033 < 0.01",
+     "recomputed": "|0.066667-0.07| = 0.003333 < 0.01 dropped; |0.033333-0.07| = 0.0367 and |0.1-0.07| = 0.03 stay; the device end 0.15 is the tip",
+     "arithmetic": "differences against the sliver 0.3*strip = 0.01",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail)",
+     "verdict": "ok",
+     "note": "The sliver rule next to a BREAK (same 0.3 strip widths as at the tip) is written in the code only (avl_hinge._with_breaks, SLIVER_STEPS); the architecture text states it for the tip."
+    },
+    {
+     "what": "stations of 'Tail right aft'",
+     "stated": "[0.0, 0.033333, 0.07, 0.1, 0.133333, 0.15] to 1e-6",
+     "recomputed": "[0.0, 0.033333, 0.07, 0.1, 0.133333, 0.15]",
+     "arithmetic": "root + kept wing stations + break + tip, sorted",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "stations carrying the control c01",
+     "stated": "exactly [0.07, 0.1, 0.133333, 0.15], x_hinge 0",
+     "recomputed": "stations with 0.07 <= y <= 0.15: [0.07, 0.1, 0.133333, 0.15]; x_hinge 0 because the aft piece starts at the hinge line",
+     "arithmetic": "device runs from rib 1 (y 0.07) to the tip rib (y 0.15), ends inclusive",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail) ('the aft one carrying the control, hinge at its own leading edge')",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "rudder case",
+     "stated": "'Add the same for a rudder that starts at the second rib of a three-rib fin'",
+     "recomputed": "no rib positions and no expected stations are given",
+     "arithmetic": "-",
+     "source": "aero_kernel/ARCHITECTURE.md ch. 8.x, AVL adapter (lines 983-985: tail on the wing stations, station within 0.3 strip widths of the tip dropped) and hinge moments (lines 1006-1018: ends of a run are stations; main wing stations inside the span on a horizontal tail) ('the strip width of the main wing elsewhere')",
+     "verdict": "underspecified",
+     "note": "Missing: the three rib heights and the expected stations. The number of strips on a fin is not in the architecture text; the code takes max(2, round(height / wing strip)) (avl_hinge._rest_stations), so an expectation built on it rests on production for that one count."
+    }
+   ],
+   "overall": "underspecified",
+   "corrected_text": "(All stated tail values are right; only the last sentence lacks values.) Add the same for a rudder: conventional() with the fin replaced by wing_document('Fin', 'vertical_tail', [(0.6, 0.0, 0.0, 0.12), (0.6, 0.0, 0.055, 0.11), (0.6, 0.0, 0.12, 0.1)], {1: device('rudder', 'rudder', 0.6)}, symmetric=False), role 'rudder'. Fin height 0.12 m at the wing strip 0.033333 m gives round(3.6) = 4 strips, stations z = 0, 0.03, 0.06, 0.09, 0.12; the break 0.055 is added and 0.06 dropped (|0.06 - 0.055| = 0.005 < 0.01), 0.03 stays (0.025): expected z of the aft piece [0.0, 0.03, 0.055, 0.09, 0.12] to 1e-6, the control on exactly [0.055, 0.09, 0.12]. The strip count 4 follows the code's rounding rule, which the architecture text does not state; confirm it with the maintainer or state it in the test's docstring.",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P6b-F05",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "parent half-width at x = 0.25",
+     "stated": "a = 0.02 + 0.25*0.04 = 0.03",
+     "recomputed": "0.03",
+     "arithmetic": "0.02 + 0.25*(0.06-0.02)",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "ok",
+     "note": "The canopy (a 0.01) is narrower, so the envelope's largest half-width is the parent's."
+    },
+    {
+     "what": "bottom at x = 0.25",
+     "stated": "z - b = 0.005 - 0.025 = -0.02",
+     "recomputed": "-0.02",
+     "arithmetic": "z = 0 + 0.25*0.02 = 0.005; b = 0.02 + 0.25*0.02 = 0.025",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "ok",
+     "note": "The merged section itself has z = 0.095, b = 0.115 (envelope from -0.02 to the canopy top 0.21); xyz[2] - b is still the parent's bottom."
+    },
+    {
+     "what": "parent half-width at x = 0.75",
+     "stated": "a = 0.05",
+     "recomputed": "0.05",
+     "arithmetic": "0.02 + 0.75*0.04",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "bottom at x = 0.75",
+     "stated": "0.015 - 0.035 = -0.02",
+     "recomputed": "-0.02",
+     "arithmetic": "z = 0.75*0.02 = 0.015; b = 0.02 + 0.75*0.02 = 0.035",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "tolerance of station.a",
+     "stated": "rel 1e-6",
+     "recomputed": "reachable, margin a factor 8",
+     "arithmetic": "the envelope is sampled on a z grid (2000 points over 0.23 m); the unmutated code returns a = 0.029999996250 and 0.049999993750, relative error 1.25e-7",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit) (step 3: 'on a grid in z'); checked by running merged_bodies",
+     "verdict": "ok",
+     "note": "Do not tighten below 1e-6: 'returns exactly these' holds to 1.25e-7, not to machine precision. Bottom: -0.02 to 1e-17."
+    },
+    {
+     "what": "second case, exponents n = 2 and n = 4",
+     "stated": "'pins the interpolation of the exponents through the area of the parent-only half'",
+     "recomputed": "no station, no sections and no expected area are given",
+     "arithmetic": "-",
+     "source": "aero_kernel/solver_bodies.py module docstring, steps 2-4 (interpolation linear in x of xyz, a, b, n, n_lower; envelope; refit)",
+     "verdict": "underspecified",
+     "note": "Missing: the geometry and the expected number. What can be stated by hand: midway between n = 2 and n = 4 the interpolated exponent is 3, and the quadrant area fraction is f(n) = Gamma(1+1/n)^2 / Gamma(1+2/n): f(2) = 0.785398, f(3) = 0.883319, f(4) = 0.927037. With a canopy on top the refit moves the centre to the middle of the envelope, so 'the parent-only half' of the refitted section is not the parent's own lower half; the expected area must be derived for the concrete geometry."
+    }
+   ],
+   "overall": "underspecified",
+   "corrected_text": "(All stated values of the first case are right; only the second case lacks values.) Second case: state the sections and the expected area explicitly, e.g. parent sections with equal a, b, z and n = 2 at x = 0 and n = 4 at x = 1, canopy stations at x = 0.5; the interpolated parent exponent there is 3, its lower half (below the parent's centre) has the area 2 a b f(3) with f(3) = Gamma(4/3)^2 / Gamma(5/3) = 0.883319 (against 0.785398 for n = 2 taken from the lower neighbour). Compare the area of the merged outline below the parent's centre z with that value, not the refitted section's own lower half, because the refit puts the centre in the middle of the envelope.",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P7a-F01",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "mapped inputs of weight-from-mass",
+     "stated": "'| weight-from-mass | approved | 2 of 2 |  |'",
+     "recomputed": "2 of 2",
+     "arithmetic": "inputs {m: aircraft-mass, g: gravity}: aircraft-mass carries data geometry:total_mass_kg, gravity gets default:gravity (the mini canon's defaults.yaml has a gravity entry)",
+     "source": "aero_kernel/tests/importer_builders.py:45-66, 96; canon README 'Two-stage approval' (#1251)",
+     "verdict": "ok",
+     "note": "Row format '| formula | stage 1 | mapped of total | missing |' is the report's (importer/report.py:74-78); an empty 'missing' cell gives the two spaces."
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P7b-F01",
+   "has_numbers": false,
+   "checks": [],
+   "overall": "no_numbers",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P7b-F02",
+   "has_numbers": false,
+   "checks": [],
+   "overall": "no_numbers",
+   "corrected_text": "",
+   "production_agrees": "not_checked"
+  },
+  {
+   "id": "P7b-F03",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "text of a value above an upper-only band",
+     "stated": "'... = 20 deg lies above the band ≤ 15 — bad: Large trim changes with speed.'",
+     "recomputed": "direction right: an upper limit of 15 is '≤ 15', and 20 > 15 lies above; default above_severity is bad",
+     "arithmetic": "20 > 15",
+     "source": "aero_kernel/evaluation/rules.py (Band, defaults); _reversa_sdd/calculations/evaluation/drela.yaml (turn-sideslip band max 15)",
+     "verdict": "ok",
+     "note": "The unmutated evaluator renders exactly this string."
+    },
+    {
+     "what": "text of a value below a lower-only band with min_inclusive False",
+     "stated": "'= 4 lies below the band ≥ 5 — bad: Negative: unstable.'",
+     "recomputed": "direction right (4 < 5 lies below a lower limit), but a band with min_inclusive False is B > 5, so the band reads '> 5', not '≥ 5'",
+     "arithmetic": "Band.position: value == min and not min_inclusive -> BELOW; Drela rule 9: B > 5 stable, B = 5 neutral",
+     "source": "aero_kernel/evaluation/rules.py:87-96; _reversa_sdd/calculations/evaluation/drela.yaml:91 (band {min: 5.0, min_inclusive: false}); _reversa_sdd/calculations/canon/formulas/spiral-parameter.md:87",
+     "verdict": "formula_doubtful",
+     "note": "Who disagrees with whom: production (_band_text, evaluator.py:289-295, ignores min_inclusive/max_inclusive) and the recommendation both say '≥ 5'; the rule's own semantics say '> 5'. Rendered with the unmutated code at the value 5.0: '= 5 lies below the band ≥ 5', a self-contradicting sentence in the LLM-facing text. The recommended assert would freeze that. Either use an inclusive band in this test (band={'min': 5.0}) so that '≥ 5' is right, or have the maintainer decide the wording of an exclusive bound first (then '> 5', and the production text changes)."
+    }
+   ],
+   "overall": "formula_doubtful",
+   "corrected_text": "",
+   "production_agrees": "yes"
+  },
+  {
+   "id": "P7b-F04",
+   "has_numbers": true,
+   "checks": [
+    {
+     "what": "band of the two circling rules",
+     "stated": "band.min == 5.0, min_inclusive False, max None, slug spiral-parameter-mp (Drela rule 9: B > 5 stable, B = 5 neutral)",
+     "recomputed": "min 5.0 exclusive, no max, slug spiral-parameter-mp",
+     "arithmetic": "read from the rule source",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:110-142; _reversa_sdd/calculations/canon/formulas/spiral-parameter.md:87 ('Drela: B > 5 spirally stable, ≈ 5 neutral, 3–4 no difficulty')",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "severity and basis of spiral-stability-circling-aileron",
+     "stated": "below_severity CAUTION, 'maintainer 2026-10-26' in below_basis, when == ('has_vertical_tail', 'has_aileron')",
+     "recomputed": "as stated",
+     "arithmetic": "read from the rule source",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:116-122",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "spiral-stability-circling-rudder-only",
+     "stated": "below_severity BAD, when_not == ('has_aileron',)",
+     "recomputed": "as stated (below_severity not written, default bad)",
+     "arithmetic": "read from the rule source",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:127-134",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "levels of turn-sideslip",
+     "stated": "level_of(5.0) below-typical-limit; 5.0001 and 15.0 within-typical-limit-range; 15.1 None (Drela rule 11: 5...15 deg)",
+     "recomputed": "5.0: first level max 5 inclusive -> below-typical-limit; 5.0001: second level (5 exclusive, 15 inclusive); 15.0 within; 15.1 in no level",
+     "arithmetic": "interval membership",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:169-176; _reversa_sdd/calculations/canon/formulas/turn-sideslip.md:60 (Eq. 11: (beta_turn)max ≈ 5 ... 15 deg)",
+     "verdict": "ok",
+     "note": ""
+    },
+    {
+     "what": "level of spiral-stability",
+     "stated": "level_of(3.0) == level_of(4.0) == manageable-for-experienced-pilot; level_of(4.5) None (Drela: B = 3...4)",
+     "recomputed": "3.0 and 4.0 inside [3, 4] inclusive; 4.5 outside",
+     "arithmetic": "interval membership",
+     "source": "_reversa_sdd/calculations/evaluation/drela.yaml:98-104",
+     "verdict": "ok",
+     "note": ""
+    }
+   ],
+   "overall": "ok",
+   "corrected_text": "",
+   "production_agrees": "yes"
   }
  ]
 }
