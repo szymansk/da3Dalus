@@ -15,10 +15,10 @@ from pathlib import Path
 HERE = Path(__file__).parent
 AUDIT = HERE.parent
 
-DECISIONS = {"P4-F07", "P4-F08", "P7a-F04", "P6b-F11", "P5-F06", "P8-F13"}
+DECISIONS = {"P4-F08", "P7a-F04", "P6b-F11", "P5-F06", "P8-F13"}
 # Decided by the maintainer on 2026-11-21: the missing rule is a production defect with a ticket.
-DECIDED_DEFECTS = {"P5-F08"}
-TICKETS = {"P8-F08": "#1434", "P1-F11": "#1435", "P7b-F08": "#1436", "P5-F08": "#1439", "P7b-F03": "#1440"}
+DECIDED_DEFECTS = {"P5-F08", "P4-F07"}
+TICKETS = {"P8-F08": "#1434", "P1-F11": "#1435", "P7b-F08": "#1436", "P5-F08": "#1439", "P7b-F03": "#1440", "P4-F07": "#1441"}
 DEFECT_TO_MAINTAINER = {
     "P3-F04": "latent: not reachable through the API (stall-speed is no input, its producer never returns 0); "
     "maintainer decides whether to add the precondition stall_speed_usable",

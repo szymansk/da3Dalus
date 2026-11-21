@@ -83,7 +83,8 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | Befund | Stand |
 |---|---|
 | P5-F08 | **entschieden 2026-11-21:** Flaperons sind die Mischung aus Klappe und Querruder; Flaperons zusammen mit Klappen und Querrudern sind sinnlos. Regel wird gebaut: Ticket #1439 |
-| P4-F07, P4-F08, P7a-F04, P6b-F11, P5-F06, P8-F13 | offen (README Abschnitt 6) |
+| P4-F07 | war bereits entschieden (D9 vom 2026-10-17, ARCHITECTURE §8.5): Ticket #1441 |
+| P4-F08, P7a-F04, P6b-F11, P5-F06, P8-F13 | offen (README Abschnitt 6) |
 | P7b-F03 | keine Entscheidung nötig: Textfehler bei exklusiver Grenze, Ticket #1440; der Befund bleibt offen und wird mit der Korrektur getestet (erwartet „> 5“) |
 | P3-F04, P7a-F05 | offen (README Nachtrag) |
 
@@ -109,3 +110,4 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 - 2026-11-21 — Schritt 5 fertig. Überarbeitung abgeschlossen; Schritt 6 (Abarbeiten) braucht Freigabe und die Entscheidungen. Eingefrorene Kopien gelöscht.
 - 2026-11-21 — Entscheidung P5-F08 (Flaperons XOR Querruder + Klappen): Ticket #1439, Befund aus der Warteliste in die Fehlerspur; Schreiben und Brief WP-P5 neu erzeugt.
 - 2026-11-21 — P7b-F03: keine Entscheidung, sondern Textfehler; Ticket #1440.
+- 2026-11-21 — P4-F07: bereits entschieden (D9), Ticket #1441.
