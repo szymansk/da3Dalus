@@ -71,7 +71,7 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | WP-P4a | 13 | fertig | 6 | 6 | 1 | 0 | 0 | 0 |
 | WP-P4b | 5 | fertig | 0 | 5 | 0 | 0 | 0 | 0 |
 | WP-P5 | 19 | fertig | 5 | 12 | 2 | 0 | 0 | 0 |
-| WP-P6a | 20 | vergeben |  |  |  |  |  |  |
+| WP-P6a | 20 | fertig | 10 | 9 | 1 | 0 | 0 | 0 |
 | WP-P6b | 16 | fertig | 8 | 8 | 0 | 0 | 0 | 0 |
 | WP-P7a | 18 | fertig | 9 | 8 | 0 | 0 | 0 | 1 |
 | WP-P7b | 19 | fertig | 9 | 9 | 0 | 0 | 0 | 1 |
@@ -98,3 +98,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — WP-P2 geprüft: 4 bestätigt, 13 gelesen bestätigt; P2-F02, P2-F04 mittel→hoch, P2-F03, P2-F06 mittel→niedrig. Ticket #1437 für den roten nächtlichen CI-Lauf.
 - 2026-11-21 — WP-P1 geprüft: 7 bestätigt, 8 gelesen bestätigt, 1 Fehlerspur; P1-F13 mittel→niedrig; P1-F08 nur an der Formel bestätigt, empfohlener Engine-Test nicht umsetzbar.
 - 2026-11-21 — WP-P3 geprüft: 12 bestätigt, 5 gelesen bestätigt, 1 Fehlerspur; P3-F07, P3-F08 mittel→hoch; P3-F03 hoch→mittel (Code laut gh-1429 noch nicht erreichbar); Testempfehlungen P3-F10, F12, F15 korrigiert.
+- 2026-11-21 — WP-P6a geprüft: 10 bestätigt, 9 gelesen bestätigt, 1 widerlegt (P6a-F11); P6a-F04/F05/F06/F10 mittel→hoch vorbehaltlich Aero. Schritt 2 vollständig. Aero-Liste aero/queue.json geschrieben.
