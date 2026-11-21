@@ -1,0 +1,15 @@
+diff --git a/aero_kernel/formulas/propeller_table_lookup.py b/aero_kernel/formulas/propeller_table_lookup.py
+index 632f0c5..3f0e5af 100644
+--- a/aero_kernel/formulas/propeller_table_lookup.py
++++ b/aero_kernel/formulas/propeller_table_lookup.py
+@@ -116,10 +116,6 @@ def table_lookup(components: Components, j: float, n_prop: float) -> Coefficient
+         return _in_block(blocks[-1], j)
+     upper = bisect_right([b.rpm for b in blocks], rpm)
+     low, high = blocks[upper - 1], blocks[upper]
+-    if (
+-        rpm <= low.rpm
+-    ):  # exactly on an inner block: the upper block has no weight and no range check
+-        return _in_block(low, j)
+     fraction = (rpm - low.rpm) / (high.rpm - low.rpm)
+     at_low, at_high = _in_block(low, j), _in_block(high, j)
+     return Coefficients(

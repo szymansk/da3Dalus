@@ -64,6 +64,73 @@
    "recommended_test_ok": "yes",
    "recommended_test_note": "Run as a script on the frozen copy: fails under the mutation as described. `Polar.model_copy(update={'cl': ...})` builds the second polar; counted_build(counter, **{'polar-twin': ..., 'polar-reader': ...}) takes the stubs.",
    "note": "In the shipped canon the only polar is polar-stall (produced by stall-speed, read by stall-break). No aero test requests a stall-break quantity twice through a cache with a changed polar, hence no aero candidate."
+  },
+  {
+   "id": "P4-F04",
+   "verdict": "CONFIRMED",
+   "method": "MUTATION_RERUN",
+   "mutation": "aero_kernel/engine.py:616-619  `_hit`: removed `self.tool_versions.update(self.solvers.tool_versions_of(tool))` and `self.solver_settings.update(self.solvers.settings_of(tool))`",
+   "patch_file": "patches/WP-P4a/P4-F04.patch",
+   "tests_run": "aero_kernel/tests/test_engine*.py test_cache*.py test_curve_result.py test_hinge_moment_engine.py test_airplane_components.py test_schema.py test_package.py test_time_budget.py test_api.py test_request.py test_build.py test_graph*.py (893 passed, 1 deselected); separately app/tests/test_canon_service.py app/tests/test_canon_endpoint.py (41 passed)",
+   "baseline_green": true,
+   "killed": false,
+   "killed_by": "",
+   "aero_candidates": [
+    "aero_kernel/tests/test_cached_kernel_fleet.py::test_bryan_stall_speed_is_served_from_the_cache_the_second_time"
+   ],
+   "evidence": "Mutation survives all 934 fast tests. Own reproduction with two_tool_build(), StubAtmosphere({}, {'aerosandbox': '1.2.3'}) and VersionedAvl('1.0') on one RecordingCache: the cached second call reports tool_versions {} and solver_settings {} under the mutation, and {'aerosandbox': '1.2.3', 'avl-binary': '1.0'} / {'avl_nspan': 7} on the original. The only fast miss-versus-hit comparison of the provenance is `assert second.provenance.rules_used == first.provenance.rules_used`.",
+   "duplicate_of": "",
+   "severity_proposed": "medium",
+   "severity_reason": "Confirmed gap in the provenance contract of a cached call; no nominal quantity value changes.",
+   "low_triage": "n/a",
+   "bundle_with": "",
+   "recommended_test_ok": "yes",
+   "recommended_test_note": "The expected values {'aerosandbox': '1.2.3', 'avl-binary': '1.0'} and {'avl_nspan': 7} are what the original prints for both calls; under the mutation the second differs. model_dump_json equality of the whole provenance also holds on the original only if nothing else differs between the calls; the two explicit dict asserts are the safe part.",
+   "note": "The aero tier already has the assert the fast tier lacks: test_cached_kernel_fleet.py `assert second.provenance == first.provenance` (real AeroSandbox version on the first call)."
+  },
+  {
+   "id": "P4-F05",
+   "verdict": "CONFIRMED",
+   "method": "MUTATION_RERUN",
+   "mutation": "aero_kernel/engine.py:524-528  `default_warnings = self._take_defaults(defaults)` moved behind the claim and skipped when `lease.entry is not None`",
+   "patch_file": "patches/WP-P4a/P4-F05.patch",
+   "tests_run": "aero_kernel/tests/test_engine*.py test_cache*.py test_curve_result.py test_hinge_moment_engine.py test_airplane_components.py test_schema.py test_package.py test_time_budget.py test_api.py test_request.py test_build.py test_graph*.py (893 passed, 1 deselected); separately app/tests/test_canon_service.py app/tests/test_canon_endpoint.py (41 passed)",
+   "baseline_green": true,
+   "killed": false,
+   "killed_by": "",
+   "aero_candidates": [
+    "aero_kernel/tests/test_cached_kernel_fleet.py::test_bryan_stall_speed_is_served_from_the_cache_the_second_time"
+   ],
+   "evidence": "Mutation survives all 934 fast tests. Own reproduction on the engine_builders canon with one DedupedCache, quantities density-q and margin-q: on the cached second call the mutation gives provenance.defaults_used == () and no 'default used' log line; the original gives both defaults and both lines again. The `default_target_used` notice survives the mutation (it is stored in the entry). ARCHITECTURE Q31: `one INFO line for gravity and one INFO line for the target, each with call_id, also on a second, cached call`. test_engine_defaults.py::go never passes `cache=`.",
+   "duplicate_of": "",
+   "severity_proposed": "medium",
+   "severity_reason": "Confirmed gap in provenance and log of a cached call (Q31); quantity values and warnings are unchanged.",
+   "low_triage": "n/a",
+   "bundle_with": "",
+   "recommended_test_ok": "yes",
+   "recommended_test_note": "Checked on the frozen copy: the two log texts and (DENSITY, MARGIN) are exactly what the original produces on both calls, both quantities are from_cache True on the second, margin-q carries one default_target_used. Fails under the mutation on defaults_used and on the line count.",
+   "note": "Aero candidate fails only if the BRYAN stall-speed call takes a default (gravity is not in its values, so it should); it is the same test as for P4-F04."
+  },
+  {
+   "id": "P4-F06",
+   "verdict": "CONFIRMED",
+   "method": "MUTATION_RERUN",
+   "mutation": "aero_kernel/cache.py:302  `text = await asyncio.shield(running)` -> `text = await running`",
+   "patch_file": "patches/WP-P4a/P4-F06.patch",
+   "tests_run": "aero_kernel/tests/test_engine*.py test_cache*.py (incl. test_cache_dedup.py, test_cached_kernel.py) test_curve_result.py test_hinge_moment_engine.py test_airplane_components.py test_schema.py test_package.py test_time_budget.py test_api.py test_request.py test_build.py test_graph*.py (893 passed, 1 deselected); separately app/tests/test_canon_service.py app/tests/test_canon_endpoint.py (41 passed)",
+   "baseline_green": true,
+   "killed": false,
+   "killed_by": "",
+   "aero_candidates": [],
+   "evidence": "Mutation survives all 934 fast tests, including test_a_cancelled_waiter_does_not_cancel_the_run. Own reproduction with two waiters a and b on one key: after a.cancel() and lease.release(entry(5.0)), b raises CancelledError under the mutation and returns outputs {'v': 5.0} on the original. The test has one waiter and looks only at the store afterwards: `served = (await cache.claim(KEY)).entry` / `assert served.outputs == {\"v\": 5.0}`.",
+   "duplicate_of": "",
+   "severity_proposed": "medium",
+   "severity_reason": "Confirmed gap on a concurrency error path (one cancelled call cancels another waiting call); no nominal value changes.",
+   "low_triage": "n/a",
+   "bundle_with": "",
+   "recommended_test_ok": "yes",
+   "recommended_test_note": "The recommended two-waiter sequence is the reproduction above: on the original `(await b).entry.outputs == {'v': 5.0}` and a.cancelled() is True; under the mutation `await b` raises CancelledError.",
+   "note": "No aero test cancels a waiter."
   }
  ]
 }
