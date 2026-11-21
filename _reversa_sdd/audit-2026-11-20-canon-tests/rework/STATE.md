@@ -54,7 +54,7 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 | P8-F08 | ja | #1434 (gilt app-weit, nicht nur für `/canon/compute`) |
 | P3-F04 | ja, nur mit Test-Stub | kein Ticket: latent, über die API nicht erreichbar (`stall-speed` ist keine Eingabe, der Erzeuger liefert nie 0). Entscheidung Maintainer: Vorbedingung `stall_speed_usable` ergänzen oder lassen |
 | P1-F11 | ja | #1435 |
-| P7a-F05 | ja | kein Ticket: keine geschriebene Anforderung nennt `taxonomy.yaml`; Entwurfsfrage an den Maintainer |
+| P7a-F05 | ja | kein Ticket: keine geschriebene Anforderung nennt `taxonomy.yaml`; vom Maintainer am 2026-11-21 gestrichen |
 | P7b-F08 | ja | #1436 |
 
 Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfassung `defects/result.json`.
@@ -86,7 +86,8 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | P4-F07 | war bereits entschieden (D9 vom 2026-10-17, ARCHITECTURE §8.5): Ticket #1441 |
 | P4-F08, P7a-F04, P6b-F11, P5-F06, P8-F13 | offen (README Abschnitt 6) |
 | P7b-F03 | keine Entscheidung nötig: Textfehler bei exklusiver Grenze, Ticket #1440; der Befund bleibt offen und wird mit der Korrektur getestet (erwartet „> 5“) |
-| P3-F04, P7a-F05 | offen (README Nachtrag) |
+| P7a-F05 | **entschieden 2026-11-21:** bleibt, wie es ist (`taxonomy.yaml` speist Tag-Prüfungen und Navigator, nicht die Rechnung); Befund gestrichen, kein Ticket |
+| P3-F04 | offen (README Nachtrag) |
 
 ## Verlauf
 
@@ -111,3 +112,4 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 - 2026-11-21 — Entscheidung P5-F08 (Flaperons XOR Querruder + Klappen): Ticket #1439, Befund aus der Warteliste in die Fehlerspur; Schreiben und Brief WP-P5 neu erzeugt.
 - 2026-11-21 — P7b-F03: keine Entscheidung, sondern Textfehler; Ticket #1440.
 - 2026-11-21 — P4-F07: bereits entschieden (D9), Ticket #1441.
+- P7a-F05 vom Maintainer gestrichen (taxonomy.yaml ohne Einfluss auf die Rechnung)

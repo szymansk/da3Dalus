@@ -22,7 +22,11 @@ TICKETS = {"P8-F08": "#1434", "P1-F11": "#1435", "P7b-F08": "#1436", "P5-F08": "
 DEFECT_TO_MAINTAINER = {
     "P3-F04": "latent: not reachable through the API (stall-speed is no input, its producer never returns 0); "
     "maintainer decides whether to add the precondition stall_speed_usable",
-    "P7a-F05": "no written requirement names taxonomy.yaml; design question for the maintainer",
+}
+# Dropped by the maintainer, each with the decision.
+MAINTAINER_DROPPED = {
+    "P7a-F05": "maintainer 2026-11-21: taxonomy.yaml feeds the tag checks and the navigator, not the "
+    "calculation; the missing scan is accepted, no ticket",
 }
 # Severity overrides of the consolidation, each with its reason (the verifier asked for them or the
 # rule needs one reading for all packages).
@@ -84,6 +88,8 @@ def load() -> list[dict]:
                 tier_gap = f"fast; aero {a['outcome']}"
             if v["verdict"] == "REFUTED":
                 state, severity = "refuted", "none"
+            elif f["id"] in MAINTAINER_DROPPED:
+                state = "dropped"
             elif v["verdict"] == "SEPARATE_DEFECT_TRACK" or f["id"] in DECIDED_DEFECTS:
                 state, severity = "production_defect", f["severity"]
             elif f["id"] in DECISIONS:
@@ -130,7 +136,7 @@ def load() -> list[dict]:
                     "hand_value_check": h["overall"] if h else "",
                     "hand_value_correction": h["corrected_text"] if h else "",
                     "ticket": TICKETS.get(f["id"], ""),
-                    "maintainer_note": DEFECT_TO_MAINTAINER.get(f["id"], ""),
+                    "maintainer_note": DEFECT_TO_MAINTAINER.get(f["id"]) or MAINTAINER_DROPPED.get(f["id"], ""),
                     "probe_id": f["probe_id"],
                 }
             )
@@ -195,7 +201,7 @@ def brief(wp: str, findings: list[dict]) -> str:
                 "refuted": f"killed by `{f['killed_by']}`" if f["killed_by"] else f["verifier_evidence"][:200],
                 "production_defect": f["ticket"] or f["maintainer_note"],
                 "waiting_for_decision": "maintainer decision open (README section 6); do not write its test",
-                "dropped": (f["verifier_note"] or f["severity_reason"])[:240],
+                "dropped": (f["maintainer_note"] or f["verifier_note"] or f["severity_reason"])[:240],
             }[f["state"]]
             lines.append(f"| {f['id']} | {f['state']} | {reason.replace('|', '/')} |")
         lines.append("")
