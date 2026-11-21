@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/powered_flight.py b/aero_kernel/formulas/powered_flight.py
+index c4d2056..4232701 100644
+--- a/aero_kernel/formulas/powered_flight.py
++++ b/aero_kernel/formulas/powered_flight.py
+@@ -577,7 +577,7 @@ async def maximise_over_speed(f: Objective, flight: PoweredFlight, start: float)
+         raise never_flyable(reasons, start)
+     best = max(range(len(values)), key=values.__getitem__)
+     step = config().powered_speed_scan_step.value
+-    low = max(speeds[best] - step, start)
++    low = speeds[best] - step
+     result = await golden_maximum(guarded, low, speeds[best] + step)
+     if result.above is Unflyable.TABLE:
+         raise table_failure(

@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/motor_propeller_part_load.py b/aero_kernel/formulas/motor_propeller_part_load.py
+index fbe154f..6a838ec 100644
+--- a/aero_kernel/formulas/motor_propeller_part_load.py
++++ b/aero_kernel/formulas/motor_propeller_part_load.py
+@@ -297,7 +297,7 @@ def energy_over_power(e_bat_wh: float, p_bat_w: float, v: float) -> float:
+         FormulaError: ``non_positive_battery_power`` if the drive train draws no power at ``v``
+             (``P_bat <= 0``): no flight time follows, and a value would be a substitute.
+     """
+-    if not p_bat_w > 0.0:
++    if p_bat_w == 0.0:
+         raise FormulaError(
+             ErrorCategory.UNSUPPORTED_CONFIGURATION,
+             "non_positive_battery_power",

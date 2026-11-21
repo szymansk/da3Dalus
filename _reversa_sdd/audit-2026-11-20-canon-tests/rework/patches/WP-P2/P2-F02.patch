@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/stall_math.py b/aero_kernel/solvers/stall_math.py
+index 10115b7..083296c 100644
+--- a/aero_kernel/solvers/stall_math.py
++++ b/aero_kernel/solvers/stall_math.py
+@@ -50,7 +50,7 @@ def first_extremum_from_zero(
+     if not alphas_deg:
+         return None
+     start = min(range(len(alphas_deg)), key=lambda k: abs(alphas_deg[k]))
+-    scan = list(range(start, len(alphas_deg))) if upright else list(range(start, -1, -1))
++    scan = list(range(0, len(alphas_deg))) if upright else list(range(start, -1, -1))
+     found = first_extremum([cl[k] for k in scan], maximum=upright)
+     return None if found is None else scan[found]
+ 

@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/avl_contour.py b/aero_kernel/solvers/avl_contour.py
+index eccdce3..1010a79 100644
+--- a/aero_kernel/solvers/avl_contour.py
++++ b/aero_kernel/solvers/avl_contour.py
+@@ -43,7 +43,7 @@ def repanel(
+     leading_edge = int(np.argmin(unit[:, 0]))
+     upper = unit[: leading_edge + 1]
+     lower = unit[leading_edge:]
+-    stations = 0.5 * (1.0 - np.cos(np.pi * np.arange(points_per_side) / (points_per_side - 1)))
++    stations = np.arange(points_per_side) / (points_per_side - 1)
+ 
+     def side(part: np.ndarray) -> np.ndarray:
+         ordered = part[np.argsort(part[:, 0], kind="stable")]

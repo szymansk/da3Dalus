@@ -1,0 +1,91 @@
+diff --git a/_reversa_sdd/calculations/evaluation/drela.yaml b/_reversa_sdd/calculations/evaluation/drela.yaml
+index bece97f..02aa2e3 100644
+--- a/_reversa_sdd/calculations/evaluation/drela.yaml
++++ b/_reversa_sdd/calculations/evaluation/drela.yaml
+@@ -111,14 +111,14 @@ rules:
+     title: Spiral stability while circling (aircraft with ailerons)
+     quantity: {slug: spiral-parameter-mp}
+     unit: "1"
+-    band: {min: 5.0, min_inclusive: false}
++    band: {min: 4.0, min_inclusive: false}
+     source: "Drela rule (9), Eqs. 8-9, evaluated at the minimum-sink speed (maintainer 2026-10-26, #1309)"
+     when: [has_vertical_tail, has_aileron]
+     below: >-
+       B < 5 is spirally unstable and B = 5 spirally neutral. At the circling condition (V_mp, where
+       C_L is about sqrt(3) times that at V_md, so B is about 0.58 times B at V_md) the aircraft
+       tends to tighten the turn on its own.
+-    below_severity: caution
++    below_severity: bad
+     below_basis: "maintainer 2026-10-26: an aircraft with ailerons can counter-bank against the spiral (Drela himself says so), so a value below the threshold is a caution, not a defect"
+     note: >-
+       The same band as spiral-stability, applied to B at V_mp. The control layout is the typed
+@@ -128,7 +128,7 @@ rules:
+     title: Spiral stability while circling (rudder/elevator aircraft)
+     quantity: {slug: spiral-parameter-mp}
+     unit: "1"
+-    band: {min: 5.0, min_inclusive: false}
++    band: {min: 4.0, min_inclusive: false}
+     source: "Drela rule (9), Eqs. 8-9, evaluated at the minimum-sink speed (maintainer 2026-10-26, #1309)"
+     when: [has_vertical_tail]
+     when_not: [has_aileron]
+@@ -168,10 +168,10 @@ rules:
+       sideslip is excessive, mainly because the fuselage is partly broadside to the oncoming flow.
+     levels:
+       - id: below-typical-limit
+-        max: 5.0
++        max: 6.0
+         meaning: Below the lower end of the typical range of the maximum tolerable sideslip.
+       - id: within-typical-limit-range
+-        min: 5.0
++        min: 6.0
+         min_inclusive: false
+         max: 15.0
+         meaning: >-
+diff --git a/aero_kernel/evaluation/rule_table.json b/aero_kernel/evaluation/rule_table.json
+index fdefe39..c0be580 100644
+--- a/aero_kernel/evaluation/rule_table.json
++++ b/aero_kernel/evaluation/rule_table.json
+@@ -137,7 +137,7 @@
+       },
+       "unit": "1",
+       "band": {
+-        "min": 5.0,
++        "min": 4.0,
+         "min_inclusive": false,
+         "max_inclusive": true
+       },
+@@ -149,7 +149,7 @@
+       ],
+       "when_not": [],
+       "below": "B < 5 is spirally unstable and B = 5 spirally neutral. At the circling condition (V_mp, where C_L is about sqrt(3) times that at V_md, so B is about 0.58 times B at V_md) the aircraft tends to tighten the turn on its own.",
+-      "below_severity": "caution",
++      "below_severity": "bad",
+       "above_severity": "bad",
+       "below_basis": "maintainer 2026-10-26: an aircraft with ailerons can counter-bank against the spiral (Drela himself says so), so a value below the threshold is a caution, not a defect",
+       "note": "The same band as spiral-stability, applied to B at V_mp. The control layout is the typed has_aileron fact of the geometry (D9/D10)."
+@@ -162,7 +162,7 @@
+       },
+       "unit": "1",
+       "band": {
+-        "min": 5.0,
++        "min": 4.0,
+         "min_inclusive": false,
+         "max_inclusive": true
+       },
+@@ -220,14 +220,14 @@
+       },
+       "levels": [
+         {
+-          "max": 5.0,
++          "max": 6.0,
+           "min_inclusive": true,
+           "max_inclusive": true,
+           "id": "below-typical-limit",
+           "meaning": "Below the lower end of the typical range of the maximum tolerable sideslip."
+         },
+         {
+-          "min": 5.0,
++          "min": 6.0,
+           "max": 15.0,
+           "min_inclusive": false,
+           "max_inclusive": true,

@@ -1,0 +1,15 @@
+diff --git a/app/services/wing_service.py b/app/services/wing_service.py
+index 3d12684..414ab39 100644
+--- a/app/services/wing_service.py
++++ b/app/services/wing_service.py
+@@ -61,9 +61,7 @@ def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareD
+         update={
+             "spare_support_dimension_width": spare.spare_support_dimension_width * _MM_TO_M,
+             "spare_support_dimension_height": spare.spare_support_dimension_height * _MM_TO_M,
+-            "spare_length": spare.spare_length * _MM_TO_M
+-            if spare.spare_length is not None
+-            else None,
++            "spare_length": spare.spare_length,
+             "spare_start": spare.spare_start * _MM_TO_M,
+             "spare_origin": [v * _MM_TO_M for v in spare.spare_origin]
+             if spare.spare_origin is not None

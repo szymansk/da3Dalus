@@ -1,0 +1,20 @@
+diff --git a/aero_kernel/engine.py b/aero_kernel/engine.py
+index f3a7b06..34d8a90 100644
+--- a/aero_kernel/engine.py
++++ b/aero_kernel/engine.py
+@@ -589,10 +589,13 @@ class _Call:
+             run = await self._compute(node, formula, call)
+             if run.outcome.status is QuantityStatus.OK:
+                 stored = self._entry_of(node, run, clock)
++                lease.release(stored)
+                 return run.timed(stored.own_s)
++            lease.release(None)
+             return run
+-        finally:
+-            lease.release(stored)
++        except Exception:
++            lease.release(None)
++            raise
+ 
+     def _entry_of(self, node: Node, run: _NodeRun, clock: "_Clock") -> Entry:
+         """The entry of an ``ok`` run: its exposed outputs, warnings, thresholds read and time.

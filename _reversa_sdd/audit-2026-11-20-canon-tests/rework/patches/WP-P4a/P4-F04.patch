@@ -1,0 +1,15 @@
+diff --git a/aero_kernel/engine.py b/aero_kernel/engine.py
+index f3a7b06..83eaba2 100644
+--- a/aero_kernel/engine.py
++++ b/aero_kernel/engine.py
+@@ -614,10 +614,6 @@ class _Call:
+         The provenance lists what the value was computed with: the tool's versions and settings
+         (equal, they are in the key) and the thresholds the node read.
+         """
+-        tool = self.build.model.tool_of(node.id.formula, world)
+-        self.tool_versions.update(self.solvers.tool_versions_of(tool))
+-        with unrecorded_rule_reads():
+-            self.solver_settings.update(self.solvers.settings_of(tool))
+         self.solvers.rules.replay(entry.rules_used)
+         outputs: dict[str, object] = {}
+         for produce in node.produces:

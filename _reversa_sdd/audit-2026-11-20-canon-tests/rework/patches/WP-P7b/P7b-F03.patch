@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/evaluation/evaluator.py b/aero_kernel/evaluation/evaluator.py
+index 2df5eb8..1566d35 100644
+--- a/aero_kernel/evaluation/evaluator.py
++++ b/aero_kernel/evaluation/evaluator.py
+@@ -293,7 +293,7 @@ def _band_text(band: Band) -> str:
+         return f"{band.min:g}…{band.max:g}"
+     if band.min is not None:
+         return f"≥ {band.min:g}"
+-    return f"≤ {band.max:g}"
++    return f"≥ {band.max:g}"
+ 
+ 
+ def _unit(rule: Rule) -> str:

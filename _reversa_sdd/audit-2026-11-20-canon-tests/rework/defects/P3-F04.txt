@@ -1,0 +1,25 @@
+
+[control_v_s_6] stall-speed = 6.0 m/s, stub solves level flight from 0.0 m/s
+  aero_kernel imported from: /private/tmp/claude-501/-Users-szymanski-Projects-da3Dalus-cad-modelling-service/f61e5dfe-bbac-4dc3-a375-00d069aa35d6/scratchpad/rework/copies/DEFECTS/aero_kernel
+  canon preconditions of the entry: []
+  returned after 0.05 s: {'t_max': 4507.844720007962, 'r_max': 49498.5667866306}
+
+[v_s_0] stall-speed = 0.0 m/s, stub solves level flight from 1.0 m/s
+  aero_kernel imported from: /private/tmp/claude-501/-Users-szymanski-Projects-da3Dalus-cad-modelling-service/f61e5dfe-bbac-4dc3-a375-00d069aa35d6/scratchpad/rework/copies/DEFECTS/aero_kernel
+  canon preconditions of the entry: []
+  after 5 s: still inside _Domain.scan, line 138; v = 0.0; scan speeds so far = 9639; first = [0.0, 0.0, 0.0]; last = 0.0; solver calls = 1; speeds inside the domain = 0
+  DID NOT RETURN: killed by the hard timeout after 20.0 s (the 2 s asyncio.timeout never fired)
+
+[v_s_minus_3] stall-speed = -3.0 m/s, stub solves level flight from 1.0 m/s
+  aero_kernel imported from: /private/tmp/claude-501/-Users-szymanski-Projects-da3Dalus-cad-modelling-service/f61e5dfe-bbac-4dc3-a375-00d069aa35d6/scratchpad/rework/copies/DEFECTS/aero_kernel
+  canon preconditions of the entry: []
+  undeclared ValueError after 2.99 s (7437 solver calls, last speed -inf): FormulaError detail.v_ms must be finite, got -inf
+
+[v_s_nan] stall-speed = nan m/s, stub solves level flight from 1.0 m/s
+  aero_kernel imported from: /private/tmp/claude-501/-Users-szymanski-Projects-da3Dalus-cad-modelling-service/f61e5dfe-bbac-4dc3-a375-00d069aa35d6/scratchpad/rework/copies/DEFECTS/aero_kernel
+  canon preconditions of the entry: []
+  undeclared ValueError after 0.00 s (0 solver calls, last speed None): FormulaError detail.stall_speed_ms must be finite, got nan
+
+[reachability through the engine]
+  canon role of stall-speed: output
+  compute with values['stall-speed'] = 0.0 -> input_errors: [('invalid_input', 'not_an_input')] | quantities: 0

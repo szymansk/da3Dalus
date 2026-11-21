@@ -1,0 +1,13 @@
+aero_kernel imported from: /private/tmp/claude-501/-Users-szymanski-Projects-da3Dalus-cad-modelling-service/f61e5dfe-bbac-4dc3-a375-00d069aa35d6/scratchpad/rework/copies/DEFECTS/aero_kernel
+canon: flight-speed positive = None | lift-coefficient-required preconditions = []
+
+flight-speed = 10.0 m/s   input_errors = []
+  dynamic-pressure: status=ok value=61.25000000000001
+  lift-coefficient: status=ok value=0.8577244897959184
+
+flight-speed = 0.0 m/s   input_errors = []
+  dynamic-pressure: status=ok value=0.0
+  lift-coefficient: status=error value=None
+    error: category=internal code=internal retryable=False escalate=True
+    message: Internal error (ZeroDivisionError) while computing `lift-coefficient`.
+    hint: Report it; attach input and provenance.

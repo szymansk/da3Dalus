@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/evaluation/evaluator.py b/aero_kernel/evaluation/evaluator.py
+index 2df5eb8..15c194b 100644
+--- a/aero_kernel/evaluation/evaluator.py
++++ b/aero_kernel/evaluation/evaluator.py
+@@ -252,7 +252,7 @@ def _judge_value(rule: Rule, quantity: QuantityResult) -> RuleVerdict:
+         ends = (quantity.value, quantity.value)
+         extra = {"value": quantity.value}
+         text = f"{quantity.value:.4g}{_unit(rule)}"
+-    positions = {rule.band.position(end) for end in ends}
++    positions = {rule.band.position(float(f"{end:.4g}")) for end in ends}
+     levels = {rule.level_of(end) for end in ends}
+     level = next(iter(levels)) if len(levels) == 1 else None
+     if level is not None:

@@ -1,0 +1,13 @@
+diff --git a/scripts/build_canon_navigator.py b/scripts/build_canon_navigator.py
+index a12e36a..6c0eda6 100644
+--- a/scripts/build_canon_navigator.py
++++ b/scripts/build_canon_navigator.py
+@@ -708,7 +708,7 @@ def to_ascii(html: str) -> str:
+ 
+     def convert(chunk: str, kind: str) -> str:
+         if kind == "script":
+-            return "".join(c if ord(c) < 128 else "\\u%04x" % ord(c) for c in chunk)
++            return "".join(c if ord(c) < 128 else "?" for c in chunk)
+         if kind == "style":
+             return "".join(c if ord(c) < 128 else "\\%04x " % ord(c) for c in chunk)
+         return "".join(c if ord(c) < 128 else "&#%d;" % ord(c) for c in chunk)

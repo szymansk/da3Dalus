@@ -1,0 +1,17 @@
+diff --git a/aero_kernel/engine.py b/aero_kernel/engine.py
+index f3a7b06..eac4f3c 100644
+--- a/aero_kernel/engine.py
++++ b/aero_kernel/engine.py
+@@ -523,9 +523,10 @@ class _Call:
+ 
+         world = assignment.get(node.id.formula_slug) if node.worlds else None
+         # taken on a hit too: the defaults are part of the provenance and logged (ch. 8.11)
+-        default_warnings = self._take_defaults(defaults)
+-        call = _FormulaCall(implementation, inputs, world, tuple(default_warnings))
+         lease = await self._claim(node, key, world, inputs)
++        hit = lease is not None and lease.entry is not None
++        default_warnings = [] if hit else self._take_defaults(defaults)
++        call = _FormulaCall(implementation, inputs, world, tuple(default_warnings))
+         if lease is None:
+             return await self._compute(node, formula, call)
+         return await self._through_cache(node, formula, call, lease, clock)
