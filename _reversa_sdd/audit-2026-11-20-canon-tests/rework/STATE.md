@@ -41,7 +41,7 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 | 0 | Vorbereitung: Arbeitskopie, 14 Kopien, Eingaben, Auftrag | fertig | 2026-11-21 |
 | 1 | Fünf Produktionsfehler nachstellen, Bug-Tickets | läuft | — |
 | 2 | Unabhängige Prüfung je Paket (12 Prüfer) | läuft | siehe Tabelle unten |
-| 2b | Handwerte der 21 hohen Befunde nachrechnen | läuft | — |
+| 2b | Handwerte der 21 hohen Befunde nachrechnen | fertig | 13 richtig, 1 falsch (P6b-F01), 2 unvollständig (P6b-F03, P6b-F05), 1 Formel fraglich (P7b-F03), 4 ohne Zahl; `handvalues.json` |
 | 3 | Aero-Gegenprobe der überlebenden Mutationen | offen | wartet auf Schritt 2 |
 | 4 | Zusammenführen: Duplikate, Schweregrade, niedrige Befunde filtern | offen | wartet auf 1–3 |
 | 5 | Ablage erneuern: `findings.json`, Briefe, Schreiben, Dashboard | offen | wartet auf 4 |
@@ -72,7 +72,7 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 | WP-P7a | 18 | fertig | 9 | 8 | 0 | 0 | 0 | 1 |
 | WP-P7b | 19 | vergeben |  |  |  |  |  |  |
 | WP-P8a | 11 | fertig | 1 | 10 | 0 | 0 | 0 | 0 |
-| WP-P8b | 7 | vergeben |  |  |  |  |  |  |
+| WP-P8b | 7 | fertig | 2 | 4 | 0 | 0 | 0 | 1 |
 
 ## Offene Entscheidungen des Maintainers
 
@@ -85,3 +85,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 - 2026-11-21 — WP-P4b geprüft: 5 gelesen bestätigt; P4-F09, P4-F10, P4-F17 von mittel auf niedrig.
 - 2026-11-21 — WP-P8a geprüft: 1 bestätigt, 10 gelesen bestätigt; P8-F05 mittel→hoch (nur schnelle Stufe, Aero-Kandidat offen), P8-F03/F04 mittel→niedrig.
 - 2026-11-21 — WP-P7a geprüft: 9 bestätigt, 8 gelesen bestätigt, 1 Fehlerspur; P7a-F01 hoch→mittel; keine Aero-Kandidaten.
+- 2026-11-21 — Schritt 2b fertig: Handwerte der hohen Befunde nachgerechnet; P6b-F01 falsch, P6b-F03/F05 unvollständig, P7b-F03 Wortlaut der exklusiven Grenze fraglich.
