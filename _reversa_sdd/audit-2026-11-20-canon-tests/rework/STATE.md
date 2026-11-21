@@ -59,20 +59,20 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 
 ## Schritt 2 — Prüfung je Paket
 
-| Paket | Befunde | Stand | bestätigt | gelesen bestätigt | widerlegt | äquivalent | nicht geprüft |
-|---|---|---|---|---|---|---|---|
-| WP-P1 | 16 | vergeben | | | | | |
-| WP-P2 | 17 | vergeben | | | | | |
-| WP-P3 | 18 | vergeben | | | | | |
-| WP-P4a | 13 | vergeben | | | | | |
-| WP-P4b | 5 | vergeben | | | | | |
-| WP-P5 | 19 | vergeben | | | | | |
-| WP-P6a | 20 | vergeben | | | | | |
-| WP-P6b | 16 | vergeben | | | | | |
-| WP-P7a | 18 | vergeben | | | | | |
-| WP-P7b | 19 | vergeben | | | | | |
-| WP-P8a | 11 | vergeben | | | | | |
-| WP-P8b | 7 | vergeben | | | | | |
+| Paket | Befunde | Stand | bestätigt | gelesen bestätigt | widerlegt | äquivalent | nicht geprüft | Fehlerspur |
+|---|---|---|---|---|---|---|---|---|
+| WP-P1 | 16 | vergeben |  |  |  |  |  |  |
+| WP-P2 | 17 | vergeben |  |  |  |  |  |  |
+| WP-P3 | 18 | vergeben |  |  |  |  |  |  |
+| WP-P4a | 13 | vergeben |  |  |  |  |  |  |
+| WP-P4b | 5 | fertig | 0 | 5 | 0 | 0 | 0 | 0 |
+| WP-P5 | 19 | läuft (2/19) | 0 | 0 | 2 | 0 | 0 | 0 |
+| WP-P6a | 20 | vergeben |  |  |  |  |  |  |
+| WP-P6b | 16 | vergeben |  |  |  |  |  |  |
+| WP-P7a | 18 | vergeben |  |  |  |  |  |  |
+| WP-P7b | 19 | vergeben |  |  |  |  |  |  |
+| WP-P8a | 11 | vergeben |  |  |  |  |  |  |
+| WP-P8b | 7 | vergeben |  |  |  |  |  |  |
 
 ## Offene Entscheidungen des Maintainers
 
@@ -82,3 +82,4 @@ Befunde werden sachlich geprüft und bleiben danach als „wartet auf Entscheidu
 ## Verlauf
 
 - 2026-11-21 — Schritt 0 fertig. Schritte 1, 2, 2b vergeben (14 Subagents).
+- 2026-11-21 — WP-P4b geprüft: 5 gelesen bestätigt; P4-F09, P4-F10, P4-F17 von mittel auf niedrig.

@@ -1,0 +1,48 @@
+{
+  "wp": "WP-P5",
+  "base_sha": "72c4b5c6",
+  "results": [
+    {
+      "id": "P4-F12",
+      "verdict": "REFUTED",
+      "method": "MUTATION_RERUN",
+      "mutation": "aero_kernel/rules.py:178  `entry.positive and overrides[key] <= 0` -> `entry.positive and overrides[key] < 0`",
+      "patch_file": "patches/WP-P5/P4-F12.patch",
+      "tests_run": "aero_kernel/tests/test_validate_rules.py test_induced_drag.py test_tail_efficiency.py test_config.py test_engine_cache.py test_cache_world_tools.py test_validate_values.py test_errors.py test_importer_validation_rules.py test_engine.py test_validate.py test_cache_key.py (646 tests)",
+      "baseline_green": true,
+      "killed": true,
+      "killed_by": "aero_kernel/tests/test_induced_drag.py::test_an_override_outside_the_range_is_refused[0.0-non_positive_value]",
+      "aero_candidates": [],
+      "evidence": "The reviewer's file list did not include test_induced_drag.py, which calls rule_override_errors on the shipped model with 0.0 for aerobuildup-induced-drag.k_e_d0. Under the mutation it fails at `(error,) = rule_override_errors({key: value}, shipped_build().model)` with 'ValueError: not enough values to unpack (expected 1, got 0)'.",
+      "duplicate_of": "",
+      "severity_proposed": "none",
+      "severity_reason": "Verdict is REFUTED: a fast test already kills the mutation.",
+      "low_triage": "n/a",
+      "bundle_with": "",
+      "recommended_test_ok": "unclear",
+      "recommended_test_note": "Not needed: test_induced_drag.py::test_an_override_outside_the_range_is_refused already asserts code non_positive_value and input_path rule_overrides.<key> for 0.0 and -0.5, and test_an_override_inside_the_range_is_accepted covers 1e-6.",
+      "note": "The existing test lives in test_induced_drag.py, not in test_validate_rules.py; that is placement only."
+    },
+    {
+      "id": "P4-F13",
+      "verdict": "REFUTED",
+      "method": "MUTATION_RERUN",
+      "mutation": "aero_kernel/rules.py:184  `overrides[key] > entry.at_most` -> `overrides[key] >= entry.at_most`",
+      "patch_file": "patches/WP-P5/P4-F13.patch",
+      "tests_run": "aero_kernel/tests/test_validate_rules.py test_induced_drag.py test_tail_efficiency.py test_config.py test_engine_cache.py test_cache_world_tools.py test_validate_values.py test_errors.py test_importer_validation_rules.py test_engine.py test_validate.py test_cache_key.py (646 tests)",
+      "baseline_green": true,
+      "killed": true,
+      "killed_by": "aero_kernel/tests/test_induced_drag.py::test_an_override_inside_the_range_is_accepted[1.0]",
+      "aero_candidates": [],
+      "evidence": "The claim 'no test in the suite produces value_above_maximum through rule_override_errors' is false: test_induced_drag.py parametrises (1.2, 'value_above_maximum') and accepts 1.0. Under the mutation: `assert rule_override_errors({key: value}, shipped_build().model) == ()` fails with 'Left contains one more item: KernelError(code='value_above_maximum' ...'.",
+      "duplicate_of": "",
+      "severity_proposed": "none",
+      "severity_reason": "Verdict is REFUTED: a fast test already kills the mutation.",
+      "low_triage": "n/a",
+      "bundle_with": "",
+      "recommended_test_ok": "unclear",
+      "recommended_test_note": "Not needed: boundary 1.0 accepted and 1.2 refused with code and input_path are already pinned in test_induced_drag.py. Only the message text '<= 1.0' is unasserted.",
+      "note": "Removal of the whole branch would also be killed by test_an_override_outside_the_range_is_refused[1.2-value_above_maximum] (by reading, same test)."
+    }
+  ]
+}

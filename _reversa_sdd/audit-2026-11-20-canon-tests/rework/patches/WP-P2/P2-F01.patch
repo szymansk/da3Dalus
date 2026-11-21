@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/butterfly_approach.py b/aero_kernel/formulas/butterfly_approach.py
+index ea59ab3..9b95a7f 100644
+--- a/aero_kernel/formulas/butterfly_approach.py
++++ b/aero_kernel/formulas/butterfly_approach.py
+@@ -152,7 +152,7 @@ def _forward_caveats(
+     for solve in reference:
+         for warning in solve.warnings:
+             key = (warning.code, warning.message)
+-            if warning.code != FIT_RANGE and key not in seen:
++            if False and warning.code != FIT_RANGE and key not in seen:
+                 seen.add(key)
+                 forward_warnings(ctx, (warning,))
+     worst = _worst_fit_range([w for s in (*stalls, *glides) for w in s.warnings])
