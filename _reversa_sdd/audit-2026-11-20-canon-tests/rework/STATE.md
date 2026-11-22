@@ -150,7 +150,7 @@ AERONCA_CHAMP: Massenband 0,332–0,39 kg `not_converged`, 0,273 und ab 0,41 kg 
 gehängt; Register-Eintrag bleibt bei `ROOT_ERRORS_AWAITING_AN_ISSUE`, bis der Maintainer #1423 als Eigentümer bestätigt.
 Offen danach: P8-F18 Teile 2 und 3, P5-F06 (mit #1445), P7b-F03 (mit #1440) und die Fragen an den Maintainer
 (P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F03, P1-F08, P8-F06, ULTRA_STICK_120-Masse, #1423 als Eigentümer für AERONCA_CHAMP).
-PR #1473 nach grüner CI + Sonar mergen, dann Worktree entfernen.
+PR #1473 **gemergt** (86beb0b8, CI + Sonar grün), Worktree entfernt. Fragen an den Maintainer laufen einzeln; erste gestellt: P1-F08.
 
 ## Verlauf
 
@@ -195,3 +195,4 @@ PR #1473 nach grüner CI + Sonar mergen, dann Worktree entfernen.
 - Alle zwölf Pakete gemergt (PR #1461–#1472); main in der schnellen Stufe grün (5565); Abnahmelauf über alle Patches gestartet
 - Abnahmelauf auf main: 82 von 82 Mutationen getötet (P3-F07 von Hand nachgestellt, Patch erneuert)
 - Restliste: PR #1473 offen, GEE_BEE_R3 und AERONCA_CHAMP geklärt
+- PR #1473 gemergt; erste Maintainer-Frage P1-F08 gestellt
