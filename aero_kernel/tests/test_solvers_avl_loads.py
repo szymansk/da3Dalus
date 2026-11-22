@@ -1,6 +1,7 @@
 """The AVL adapter's spanwise loads against a fake executable through the real ``run_process`` (fast tier)."""
 
 import json
+import math
 import stat
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers.avl import AvlLoads
+from aero_kernel.tests.formula_builders import all_near
 from aero_kernel.tests.np_builders import CONVENTIONAL, airplane_with
 from aero_kernel.tests.solver_builders import airplane
 from aero_kernel.tests.test_avl_writer_loads import SHEAR_MOMENT, STRIPS
@@ -61,6 +63,12 @@ async def test_the_rows_of_the_first_surface_come_back_in_metres_per_dynamic_pre
     assert found.c_cl == (0.1392, 0.1391, 0.1389)
     assert found.y_station[0] == 0.0
     assert found.warnings == ()
+    # the airplane's references (S 0.28 m^2, b 1.4 m: half span 0.7 m, chord 0.2 m) undo the
+    # normalisations; the hand values are those of test_avl_writer_loads.py: y = (2Y/Bref) Bref/2,
+    # V/q = Vz/(q Sref) Sref, M/q = Mx/(q Bref Sref) Bref Sref (a swap of Sref and Bref fails all)
+    assert all_near(found.y_station, (0.0, 0.0208 * 0.7, 0.7), 1e-12)
+    assert math.isclose(found.shear[0], 0.298353 * 0.28, rel_tol=1e-9)
+    assert math.isclose(found.moment[0], 0.0669065 * 0.28 * 1.4, rel_tol=1e-9)
 
 
 async def test_the_run_is_one_solution_at_the_lift_coefficient_asked_for(fake: Path) -> None:

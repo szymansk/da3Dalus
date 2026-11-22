@@ -2,6 +2,7 @@
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry
+from aero_kernel.solvers.avl_mesh import MeshSection, MeshSurface
 from aero_kernel.solvers.avl_writer import (
     AvlOutput,
     airfoil_file,
@@ -41,6 +42,18 @@ def test_the_file_has_the_kernels_references_at_mach_zero_and_the_origin_as_refe
     assert lines[lines.index("#Mach") + 1] == "0.0"
     assert lines[lines.index("#Sref    Cref    Bref") + 1] == f"{S_REF!r} {C_REF!r} {B_REF!r}"
     assert lines[lines.index("#Xref    Yref    Zref") + 1] == "0.0 0.0 0.0"
+
+
+def test_a_section_line_is_x_y_z_chord_twist_in_metres_and_degrees() -> None:
+    """Five distinct values pin the order of the SECTION line: AVL reads Xle Yle Zle Chord Ainc,
+    then one spanwise strip with spacing 1."""
+    station = MeshSection(x=0.01, y=0.2, z=0.03, chord=0.15, twist=1.5, airfoil=0)
+    surface = MeshSurface(name="W", symmetric=False, sections=(station, station))
+    lines = avl_geometry(
+        [surface], [1.0], n_chord=10, s_ref=S_REF, c_ref=C_REF, b_ref=B_REF
+    ).splitlines()
+    header = "#Xle    Yle    Zle     Chord   Ainc  Nspanwise  Sspace"
+    assert lines[lines.index(header) + 1] == "0.01 0.2 0.03 0.15 1.5   1   1"
 
 
 def test_the_file_has_no_body_and_no_control() -> None:
