@@ -6,8 +6,8 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 
 - **Production code under test:** app/services/canon_service.py, app/api/…/canon
 - **Requirement sources:** ADR 0019, ADR 0020
-- **Test files you may change:** `app/tests/test_canon_aeroplane_input.py`, `app/tests/test_canon_endpoint.py`, `app/tests/test_canon_service.py`
-- **Findings to work on:** 5 (1 high, 1 medium, 3 low)
+- **Test files you may change:** `app/tests/test_canon_aeroplane_input.py`, `app/tests/test_canon_endpoint.py`, `app/tests/test_canon_service.py`, `app/tests/test_canon_stall_speed_integration.py`
+- **Findings to work on:** 6 (1 high, 1 medium, 4 low)
 
 ## P8-F09 · high · over_mocked
 
@@ -67,9 +67,19 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Acceptance mutation:** `git apply rework/patches/WP-P8b/P8-F12.patch` (from the audit folder; app/services/canon_service.py:129-130  `if done.cancelled(): return` -> (removed)). Today every fast test stays green; after your change at least one fast test must fail under it.
 - **Test to write:** Same test: install loop.set_exception_handler on the kernel loop (or use caplog on the 'asyncio' logger) and assert no 'Exception in callback' / InvalidStateError record was emitted after the cancelled caller's kernel task finished.
 
+## P8-F13 · low · misleading_name
+
+- **Test file:** `app/tests/test_canon_stall_speed_integration.py` · existing test `test_stall_speed_closes_in_reynolds_number` (line 108)
+- **Production:** `app/services/assumption_compute_service.py`
+- **Gap:** The docstring declares the test 'expected to fail' as the measurement for gh-1142, yet it has no xfail and is slow + requires_aerosandbox, so it runs only nightly. Either the nightly run is permanently red or the docstring is wrong; it tests the legacy app computation, not the canon kernel its file name suggests, and labels G = 9.81 as the canon's gravity (canon default 9.80665).
+- **Evidence:** "This test is therefore expected to fail, and **its failure message is the measurement gh-1142 asks for**" ... assert spread <= TOLERANCE
+- **Verified:** CONFIRMED_BY_READING (READING). Each stated fact holds: docstring `This test is therefore expected to fail, and **its failure message is the measurement gh-1142 asks for**`; decorators are only `@pytest.mark.slow` and `@pytest.mark.requires_aerosandbox`, no xfail anywhere in the file; it imports `from app.services.assumption_compute_service import _coarse_alpha_sweep, _fine_sweep_cl_max` and nothing from aero_kernel; `#: Approved canon quantity ``gravity`` (m/s^2).` / `G = 9.81` while aero_kernel/canon/canon_model.json namespaces.calc.defaults.gravity.value is 9.80665. Only the nightly tier runs it (.github/workflows/test.yml: fast and full exclude `slow`).
+- **Verifier's note:** The open half of the finding (does the test fail or pass when run) is NOT settled. Obstacle: it is a slow + requires_aerosandbox test, which this verification must not run, and CI gives no answer: the scheduled nightly run on exactly 72c4b5c6 (run 44721669112, 2026-11-20) ends in both Python jobs with `Process completed with exit code 124` (the 3000 s timeout) at about 22 % inside aero_kernel/tests, and its log contains no app/tests line at all; the five nightly runs before it also failed. So the nightly is red for another reason and this test is currently never executed anywhere, which means the gh-1142 measurement its docstring promises is not being produced. Severity lowered from medium by the common rule. keep: the hygiene part is cosmetic, but the recommended kernel-side fixed-point check would protect stall-speed, a value the caller sees; what happens to the existing test stays the maintainer's decision (blocked_by_decision).
+- **Test to write:** Do not remove or weaken it. Run it once through the lock and record the outcome in gh-1142. Add the kernel-side counterpart in the aero tier: for BRYAN, take stall-speed and max-lift-coefficient from compute(), re-run sweep_lift at exactly that speed and assert max C_L of the first peak equals max-lift-coefficient within 1e-3 (the kernel's stall solve is the fixed point the canon precondition demands).
+- **Correction:** (unclear) The kernel-side counterpart needs the aero tier and could not be tried here; sweep_lift exists (aero_kernel/solvers/aerobuildup.py:97), but whether 'max C_L of the first peak' agrees with max-lift-coefficient within 1e-3 is unverified. 'Record the outcome in gh-1142' is not a test.
+
 ## Not part of this package's work
 
 | Finding | State | Reason |
 |---|---|---|
 | P8-F08 | production_defect | #1434 |
-| P8-F13 | waiting_for_decision | maintainer decision open (README section 6); do not write its test |

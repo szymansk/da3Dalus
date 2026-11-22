@@ -19,20 +19,20 @@ Die 179 Befunde des Reviews wurden einen Tag später unabhängig nachgeprüft. D
 
 | Stand | Befunde | Bedeutung |
 |---|---:|---|
-| offen | 111 | bestätigt; wird im Arbeitspaket bearbeitet |
+| offen | 112 | bestätigt; wird im Arbeitspaket bearbeitet |
 | gebündelt | 24 | bestätigt, aber klein; wird mit einem anderen Befund derselben Testdatei erledigt |
-| wartet auf Entscheidung | 1 | sachlich bestätigt; der Test hängt an einer offenen Entscheidung |
+| wartet auf Entscheidung | 0 | sachlich bestätigt; der Test hängt an einer offenen Entscheidung |
 | gestrichen | 30 | zutreffend, aber ohne Risiko für Flugfähigkeit, Reichweite oder Nutzlast |
 | widerlegt | 4 | ein vorhandener Test fängt den Fehler bereits |
 | Produktionsfehler | 9 | kein Testbefund; als Bug-Ticket oder Frage geführt |
 
-Zu bearbeiten bleiben 135 Befunde:
+Zu bearbeiten bleiben 136 Befunde:
 
 | Schwere | im Review gemeldet | nach der Nachprüfung zu bearbeiten |
 |---|---:|---:|
 | hoch | 21 | 21 |
 | mittel | 79 | 60 |
-| niedrig | 79 | 54 |
+| niedrig | 79 | 55 |
 
 Die Zahl der hohen Befunde ist zufällig gleich geblieben, die Menge nicht: neu hoch sind P2-F04, P3-F07, P3-F08, P5-F02, P7b-F06, P8-F09; nicht mehr hoch sind P1-F01, P3-F03, P6b-F01, P6b-F05, P7a-F01, P7b-F02. Regel für alle Pakete: Hoch ist ein Befund nur, wenn ein falscher Wert oder ein fehlender Fehler oder eine fehlende Warnung den Aufrufer des Kerns erreicht, die Mutation alle schnellen Tests überlebt und kein Aero-Test sie fängt.
 
@@ -81,7 +81,7 @@ In drei Fällen lag der fangende Test in einer Datei, die der Reviewer nicht aus
 
 ### Korrigierte Testempfehlungen
 
-Bei 10 zu bearbeitenden Befunden ist die Testempfehlung des Reviews falsch oder unvollständig: P1-F08, P2-F03, P2-F04, P2-F06, P3-F10, P3-F12, P6b-F01, P6b-F03, P6b-F05, P7a-F12. Die Briefe tragen dort eine Zeile **Correction**, die den ursprünglichen Text ersetzt. Bei 18 weiteren hat der Prüfer die Empfehlung nicht bis zum Ende nachvollzogen (in den Briefen als `unclear` mit Grund vermerkt). Von den 21 Handwerten der hohen Befunde waren 13 richtig, einer falsch (P6b-F01: Referenzwerte des Seitenleitwerks-Tests), zwei unvollständig (P6b-F03, P6b-F05) und einer fraglich (P7b-F03, siehe Entscheidungen); vier Befunde enthalten keine Zahl.
+Bei 10 zu bearbeitenden Befunden ist die Testempfehlung des Reviews falsch oder unvollständig: P1-F08, P2-F03, P2-F04, P2-F06, P3-F10, P3-F12, P6b-F01, P6b-F03, P6b-F05, P7a-F12. Die Briefe tragen dort eine Zeile **Correction**, die den ursprünglichen Text ersetzt. Bei 19 weiteren hat der Prüfer die Empfehlung nicht bis zum Ende nachvollzogen (in den Briefen als `unclear` mit Grund vermerkt). Von den 21 Handwerten der hohen Befunde waren 13 richtig, einer falsch (P6b-F01: Referenzwerte des Seitenleitwerks-Tests), zwei unvollständig (P6b-F03, P6b-F05) und einer fraglich (P7b-F03, siehe Entscheidungen); vier Befunde enthalten keine Zahl.
 
 ### Produktionsfehler
 
@@ -104,7 +104,7 @@ Nebenbefund außerhalb des Kanons: Ticket #1437 (nächtlicher CI-Lauf rot, 20 Ae
 
 ### Entscheidungen des Maintainers
 
-Von den sieben Fragen aus Abschnitt 6 ist P5-F08 entschieden (21. November: die Mischung ist sinnlos, Regel wird gebaut, Ticket #1439), P4-F07 war bereits entschieden (D9, Ticket #1441), und P4-F08 ist entschieden (21. November: die Logzeile wird gebaut, Ticket #1442). P7a-F04 ist entschieden (21. November: kleine Fassung, Ticket #1443). P6b-F11 ist entschieden (21. November: gegen die Kopfzeile zählen, Ticket #1444). P5-F06 brauchte keine Entscheidung (Ticket #1445). Offen ist noch P8-F13; die Befunde sind sachlich bestätigt. Aus der Nachprüfung kommt hinzu:
+Von den sieben Fragen aus Abschnitt 6 ist P5-F08 entschieden (21. November: die Mischung ist sinnlos, Regel wird gebaut, Ticket #1439), P4-F07 war bereits entschieden (D9, Ticket #1441), und P4-F08 ist entschieden (21. November: die Logzeile wird gebaut, Ticket #1442). P7a-F04 ist entschieden (21. November: kleine Fassung, Ticket #1443). P6b-F11 ist entschieden (21. November: gegen die Kopfzeile zählen, Ticket #1444). P5-F06 brauchte keine Entscheidung (Ticket #1445). P8-F13 ist entschieden (messen und löschen, PR #1446). Aus Abschnitt 6 ist damit nichts mehr offen; die Befunde sind sachlich bestätigt. Aus der Nachprüfung kommt hinzu:
 
 | Befund | Frage | Empfehlung |
 |---|---|---|
@@ -112,7 +112,7 @@ Von den sieben Fragen aus Abschnitt 6 ist P5-F08 entschieden (21. November: die 
 | P5-F06 | Keine Entscheidung nötig: Die Kanon-Regel `positive-lengths` beschreibt den Exponenten bereits im Kriterium, nur ihre Code-Liste nennt `non_positive_exponent` nicht. Nach der Vorgabe vom 25. Oktober (jede Eingabeprüfung hat ihre Kanon-Regel) ist das eine Lücke im Kanon. | Ticket #1445 (ein Wort in `rules.yaml`). Der Befund bleibt offen; sein Test (Rückrichtung Code → Regel) wird mit der Korrektur geschrieben. |
 | P3-F04 | Vorbedingung `stall_speed_usable` auch für `endurance-and-range-optimum`, wie bei den sechs Leistungsformeln? | Ja, eine Zeile im Kanon; kein eigener Mechanismus. Einfache Alternative: lassen, da nicht erreichbar. |
 | P7a-F05 | Entschieden am 21. November: bleibt, wie es ist. `taxonomy.yaml` hat keinen Einfluss auf die Rechnung. | Befund gestrichen, kein Ticket. |
-| P8-F13 | Ergänzung: Der Test läuft derzeit nirgends, weil der nächtliche Lauf vorher abbricht (#1437). Ob er rot oder grün ist, ist unbekannt. | Nach #1437 einmal ausführen und das Ergebnis in gh-1142 festhalten. |
+| P8-F13 | Entschieden am 21. November: einmal messen, dann löschen. Gemessen am 22. November: Abweichung 2,8 % (V_S 8,264 gegen 8,495 m/s), festgehalten in #1142. | Der App-Test wird mit PR #1446 entfernt. Offen bleibt nur der Kernel-seitige Schlusstest (`stall-speed` gegen `max-lift-coefficient`) in WP-P8a. |
 
 ### Arbeitspakete nach der Nachprüfung
 
@@ -128,7 +128,7 @@ Von den sieben Fragen aus Abschnitt 6 ist P5-F08 entschieden (21. November: die 
 | 2 | WP-P5 | Validierung, Geometrie, Geräte | 14 (2 / 7 / 5) | 2 gestrichen, 2 widerlegt, 1 Produktionsfehler | `wp/WP-P5.md` |
 | 2 | WP-P7a | Importer, check_canon, Navigator-Build | 13 (0 / 9 / 4) | 4 gestrichen, 1 Produktionsfehler | `wp/WP-P7a.md` |
 | 3 | WP-P8a | Referenzflotte: Relationen, schnelle Kette, Golden-Recorder | 8 (0 / 5 / 3) | 3 gestrichen | `wp/WP-P8a.md` |
-| 3 | WP-P8b | App-Anbindung: Fehlerhülle und Eingabeprüfung über den Endpunkt | 5 (1 / 1 / 3) | 1 wartet auf Entscheidung, 1 Produktionsfehler | `wp/WP-P8b.md` |
+| 3 | WP-P8b | App-Anbindung: Fehlerhülle und Eingabeprüfung über den Endpunkt | 6 (1 / 1 / 4) | 1 Produktionsfehler | `wp/WP-P8b.md` |
 | 3 | WP-P4b | Test-Isolation und zeitabhängige Tests | 5 (0 / 0 / 5) | — | `wp/WP-P4b.md` |
 
 Die Wellen bleiben. Welle 1 enthält 15 der 21 hohen Befunde. Vor Welle 1 sollte #1437 behoben sein, weil die Abnahme der 17 nur in der schnellen Stufe offenen Lücken und der Schutz durch die Aero-Stufe daran hängen. WP-P4b ist weiterhin klein und früh sinnvoll: Die beiden Log-Tests sind in jedem gemeinsamen Lauf von App- und Kern-Tests rot; vier Prüfer sind unabhängig darauf gestoßen.
@@ -269,7 +269,7 @@ Zwölf Pakete. Jedes hat einen eigenen Brief unter `wp/`, der ohne dieses Schrei
 | 2 | WP-P5 | Validierung, Geometrie, Geräte | 14 (2 / 7 / 5) | 2 gestrichen, 2 widerlegt, 1 Produktionsfehler | `wp/WP-P5.md` |
 | 2 | WP-P7a | Importer, check_canon, Navigator-Build | 13 (0 / 9 / 4) | 4 gestrichen, 1 Produktionsfehler | `wp/WP-P7a.md` |
 | 3 | WP-P8a | Referenzflotte: Relationen, schnelle Kette, Golden-Recorder | 8 (0 / 5 / 3) | 3 gestrichen | `wp/WP-P8a.md` |
-| 3 | WP-P8b | App-Anbindung: Fehlerhülle und Eingabeprüfung über den Endpunkt | 5 (1 / 1 / 3) | 1 wartet auf Entscheidung, 1 Produktionsfehler | `wp/WP-P8b.md` |
+| 3 | WP-P8b | App-Anbindung: Fehlerhülle und Eingabeprüfung über den Endpunkt | 6 (1 / 1 / 4) | 1 Produktionsfehler | `wp/WP-P8b.md` |
 | 3 | WP-P4b | Test-Isolation und zeitabhängige Tests | 5 (0 / 0 / 5) | — | `wp/WP-P4b.md` |
 
 **Schnitt.** Jeder Befund gehört dem Paket, dem seine Testdatei gehört. Die Pakete ändern deshalb keine gemeinsamen Testdateien und können parallel in eigenen Worktrees laufen. Zwei Stellen überschneiden sich im Produktivcode, falls ein Test einen Fehler aufdeckt: `solver_bodies.py` (WP-P5 und WP-P6b) und `validate.py` / `rules.py` (WP-P5 und WP-P4a). Diese Paare nacheinander mergen.

@@ -6458,7 +6458,7 @@
   "package": "P8",
   "wp": "WP-P8b",
   "id": "P8-F13",
-  "state": "waiting_for_decision",
+  "state": "open",
   "severity": "low",
   "severity_review": "medium",
   "severity_reason": "Test hygiene by the common rule: misleading docstring, file name and constant label, and tier placement; no kernel value, error or warning is involved (the test exercises the legacy app computation).",
@@ -6487,7 +6487,7 @@
   "recommended_test_note": "The kernel-side counterpart needs the aero tier and could not be tried here; sweep_lift exists (aero_kernel/solvers/aerobuildup.py:97), but whether 'max C_L of the first peak' agrees with max-lift-coefficient within 1e-3 is unverified. 'Record the outcome in gh-1142' is not a test.",
   "hand_value_check": "",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "PR #1446 (app test removed; only the kernel-side closure check remains to write)",
   "maintainer_note": "",
   "probe_id": ""
  },
