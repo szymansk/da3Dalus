@@ -107,12 +107,12 @@ grüner CI mergen. Stände: `offen` → `läuft` (Subagent gestartet) → `Beric
 | 1 | WP-P6b | #1452 | test/gh-1452-p6b-avl | PR #1465 (4fa7515a: 14 Fälle, 9 von 9 Mutationen; nachgeprüft). Rest: P6b-F12 |
 | 1 | WP-P3 | #1453 | test/gh-1453-p3-powertrain-performance | PR #1463 (ac2f5bd5: 16 Tests, 12 von 12 Mutationen; nachgeprüft). Rest: P3-F16 (Aero), P1-F09 zum Teil (Frage an den Produktivcode) |
 | 2 | WP-P1 | #1454 | test/gh-1454-p1-closed-form-preconditions | PR #1464 (588ae063: 12 Tests + 40 Fälle, 8 von 8 Mutationen; nachgeprüft). Rest: P1-F15 in test_tail_arms.py, P1-F13 Aero-Teil |
-| 2 | WP-P2 | #1455 | test/gh-1455-p2-aero-stability | Bericht 36fcf1d5, **zurückgegeben**: neun bestehende Tests in test_aileron_deflection_required_engine.py gelöscht (20 → 11). Subagent stellt wieder her; danach erneut prüfen (Namen je Datei vorher/nachher) |
+| 2 | WP-P2 | #1455 | test/gh-1455-p2-aero-stability | PR #1468 (36fcf1d5 + 3b810783: 19 Tests, 5 von 5 Mutationen; nach Rückgabe wiederhergestellt, Namen je Datei geprüft: nur die fünf vorgeschriebenen Umbenennungen fehlen) |
 | 2 | WP-P5 | #1456 | test/gh-1456-p5-validation-geometry | läuft |
 | 2 | WP-P7a | #1457 | test/gh-1457-p7a-importer | PR #1467 (bb4e5411: 27 Fälle, 9 von 9 Mutationen; nachgeprüft). Rest: P7a-F17 in test_importer_abscissa.py |
 | 3 | WP-P8a | #1458 | test/gh-1458-p8a-reference-fleet | läuft |
 | 3 | WP-P8b | #1459 | test/gh-1459-p8b-app-layer | läuft |
-| 3 | WP-P4b | #1460 | test/gh-1460-p4b-test-isolation | läuft |
+| 3 | WP-P4b | #1460 | test/gh-1460-p4b-test-isolation | PR #1469 (049468e4: 5 Tests robust, gemeinsamer Lauf 2 rot → grün, nachgeprüft). Rest: P4-F17 |
 
 Ein Paket im Stand `läuft` ohne laufenden Subagent (nach einem Neustart): Zweig und Worktree prüfen
 (`git -C .worktrees/gh-<N> log --oneline -3`, `status`); liegt kein Commit vor, Subagent neu starten.
@@ -126,6 +126,7 @@ P1-F13 Aero-Teil (`GeometryAdapter.fin_area` gegen 0,0339411 m²); P1-F15 in `te
 P1-F09 Rest (`advance_ratio` bei zwei negativen Argumenten und bei NaN-Geschwindigkeit: Frage an den Maintainer);
 P6a-F09/F10 Aero-Hälften (`test_solvers_opti_real.py`); P6b-F12 (aufgezeichnete Ausgaben des echten AVL je Leser: wo liegen die Dateien? Frage); P6b-F03: Rundungsregel der Streifenzahl am Seitenleitwerk steht nicht in ARCHITECTURE (Frage);
 P7a-F17 in `test_importer_abscissa.py`; P8-F13 Kernel-seitiger Schlusstest (Aero);
+P4-F17 (Zeit-Asserts in test_runtime*.py: Rendezvous-Mechanismus und Marge, Frage);
 P1-F08: ist der Aufruf `warn_flap_validity` in `maneuvering-speed` über die Engine erreichbar? (ADR 0021, Frage).
 
 **#1437 (nächtlicher CI-Lauf):** Zweig `fix/gh-1437-nightly-ci`, Worktree `.worktrees/gh-1437`. Diagnose-Commit
@@ -169,3 +170,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - WP-P3 → PR #1463, WP-P1 → PR #1464; Restliste angelegt
 - WP-P6b → PR #1465, WP-P6a → PR #1466 (Nummern nach Ausgabe prüfen)
 - WP-P7a → PR #1467; WP-P2 zurückgegeben (neun Tests gelöscht); Welle 3 vergeben
+- WP-P2 → PR #1468 (nach Wiederherstellung), WP-P4b → PR #1469
