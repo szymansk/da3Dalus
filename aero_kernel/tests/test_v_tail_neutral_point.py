@@ -154,10 +154,12 @@ def developed_half_length(rise: float) -> float:
 
 
 @pytest.mark.parametrize("rise", RISES)
-async def test_the_horizontal_and_fin_shares_add_up_to_the_true_area_for_every_angle(
+async def test_the_stand_in_shares_add_up_to_the_true_area_for_every_angle(
     rise: float,
 ) -> None:
-    """Trace test: S_h,eff + S_v,eff = S_tot, which catches a single cos or sin factor (a projection)."""
+    """Self-check of the test stand-in (asb_fakes), not of production: its fin share is defined as
+    the complement of the horizontal one, so the sum holds by construction. The production angle
+    sweep is test_solvers_asb_airplane.py::test_the_v_tail_shares_follow_the_panel_angle (P2-F03)."""
     wing = (v_tail_airplane(rise, ROOT_Y).wings or {})["vee"]
     true_area = 2.0 * CHORD * developed_half_length(rise)
     shares = stand_in_horizontal_tail_area(wing) + stand_in_fin_area(wing)
@@ -165,7 +167,7 @@ async def test_the_horizontal_and_fin_shares_add_up_to_the_true_area_for_every_a
 
 
 @pytest.mark.parametrize("rise", RISES)
-async def test_the_aspect_ratio_is_the_developed_one_of_the_panel_pair_laid_flat(
+async def test_the_stand_in_aspect_ratio_is_the_developed_one_of_the_panel_pair_laid_flat(
     rise: float,
 ) -> None:
     """A = (total developed span)^2 / S_tot over both halves and the root extension."""

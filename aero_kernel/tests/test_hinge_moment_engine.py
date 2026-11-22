@@ -19,8 +19,15 @@ from aero_kernel.schema import (
     ReasonCode,
     WarningSeverity,
 )
+from aero_kernel.solvers.air import AirState
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
-from aero_kernel.tests.formula_builders import StubAtmosphere, near, solvers_with
+from aero_kernel.tests.formula_builders import (
+    STUB_SPEED_OF_SOUND,
+    STUB_VISCOSITY,
+    StubAtmosphere,
+    near,
+    solvers_with,
+)
 from aero_kernel.tests.hinge_builders import conventional, device, v_tail_plane
 from aero_kernel.tests.np_builders import StubAvl
 
@@ -113,6 +120,18 @@ async def test_each_role_is_one_adapter_call_at_the_lift_of_the_operating_point(
     expected = 2.0 * MASS * GRAVITY / (0.5 * RHO * 20.0**2 * s_ref)
     assert all(math.isclose(c["cl"], expected, rel_tol=1e-12) for c in avl.hinge_calls)
     assert all(c["speed"] == 20.0 for c in avl.hinge_calls)
+
+
+async def test_the_air_state_handed_to_the_adapter_is_the_one_of_the_operating_altitude() -> None:
+    """The air state drives the Reynolds warnings of the surfaces: density, viscosity, sound speed."""
+    avl = StubAvl()
+    await run(conventional(), avl)
+    assert len(avl.hinge_calls) == 4
+    for call in avl.hinge_calls:
+        air = cast("AirState", call["air"])
+        assert air.density == RHO  # the stub atmosphere's density at 0 m
+        assert air.dynamic_viscosity == STUB_VISCOSITY
+        assert air.speed_of_sound == STUB_SPEED_OF_SOUND
 
 
 async def test_the_airplane_is_handed_to_avl_with_its_devices_at_rest() -> None:

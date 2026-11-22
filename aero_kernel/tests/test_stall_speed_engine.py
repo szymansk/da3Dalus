@@ -181,6 +181,50 @@ async def test_the_inverted_application_solves_at_minus_one_g() -> None:
     assert opti.calls[0][3] == -1.0
 
 
+INVERTED_POSTCONDITIONS = {"alpha_range_past_inverted_stall", "optimum_at_first_cl_trough"}
+
+
+def boundary_trough_answer() -> StallSolution:
+    """An inverted stall at the first sample of a sweep whose C_L only falls towards -15 deg.
+
+    C_L = 0.04 alpha - 0.1 rises with alpha, so scanning down from alpha = 0 it falls monotonically
+    (-0.1 at 0, -0.7 at -15 deg): there is no trough inside the range, the boundary sample is passed
+    off as C_L,min. V_S closes the lift balance at that C_L (sqrt(2 m g / (rho S 0.7)), S = 0.28).
+    """
+    alphas = tuple(-15.0 + 0.25 * k for k in range(161))
+    cl = tuple(0.04 * a - 0.1 for a in alphas)
+    flat = lift_curve(UPRIGHT_PEAK, upright=True)
+    polar = flat.model_copy(update={"alpha_deg": alphas, "cl": cl, "cd": (0.05,) * len(alphas)})
+    return StallSolution(
+        v_s=math.sqrt(2 * MASS * 9.80665 / (RHO * 0.28 * 0.7)),
+        cl_max=-0.7,
+        alpha_s=-15.0,
+        polar=polar,
+    )
+
+
+async def test_an_inverted_stall_at_the_boundary_of_the_sweep_is_a_postcondition_error() -> None:
+    """The two postconditions scoped to the inverted application refuse a boundary 'trough'."""
+    result, _ = await run(
+        "inverted-max-lift-coefficient", stub=StubOpti(answer=boundary_trough_answer())
+    )
+    (only,) = result.quantities
+    assert only.status is QuantityStatus.ERROR
+    assert only.value is None
+    assert only.error is not None
+    assert only.error.code == "postcondition_violated"
+    assert only.error.detail["postcondition"] in INVERTED_POSTCONDITIONS
+
+
+async def test_the_inverted_postconditions_are_not_checked_for_the_upright_application() -> None:
+    """The same answer asked as 'stall-speed' (n = +1) is judged by the upright checks only."""
+    result, _ = await run("stall-speed", stub=StubOpti(answer=boundary_trough_answer()))
+    (only,) = result.quantities
+    assert only.error is not None
+    assert only.error.code == "postcondition_violated"
+    assert only.error.detail["postcondition"] not in INVERTED_POSTCONDITIONS
+
+
 async def test_requesting_the_polar_is_not_implemented_and_the_formula_runs_once() -> None:
     result, opti = await run("polar-stall", "stall-speed")
     quantities = by_slug(result)
