@@ -60,6 +60,12 @@ def test_a_rule_names_exactly_one_existing_target(target: dict[str, str]) -> Non
         build(applies_to=target)
 
 
+def test_a_rule_may_not_guard_an_output_quantity() -> None:
+    """P7b-F09: ``weight`` has role output; a rule guards only an input or target quantity."""
+    with pytest.raises(ValidationError, match="weight is not an input or target quantity"):
+        build(applies_to={"quantity": "weight"})
+
+
 def test_a_pending_parameter_is_allowed_but_stays_pending() -> None:
     pending = {**PARAMETER, "status": "pending"}
     rule = build(parameters={"limit": pending}).namespaces["calc"].rules["a-rule"]

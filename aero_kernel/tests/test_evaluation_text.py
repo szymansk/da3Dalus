@@ -174,3 +174,19 @@ def test_inside_and_unjudged_verdicts_are_not_logged(caplog: pytest.LogCaptureFi
     with caplog.at_level(logging.DEBUG, logger=LOGGER):
         evaluate_rules(table, result_of(ok(SM, 0.1), not_applicable("q-gone")), facts())
     assert records(caplog) == []
+
+
+def test_an_upper_only_band_is_worded_as_a_maximum() -> None:
+    """P7b-F03: the limit "at most 15 deg" is stated as "≤ 15", never as "≥ 15"."""
+    text = verdict_text(20.0, unit="deg", band={"max": 15.0}, below=None)
+    assert text == (
+        "Static margin (rule `static-margin`, Drela, Lab 11 Notes, Eq. (2)): "
+        "`static-margin-target` = 20 deg lies above the band ≤ 15 — bad: "
+        "Large trim changes with speed."
+    )
+
+
+def test_a_lower_only_inclusive_band_is_worded_as_a_minimum() -> None:
+    """P7b-F03: the band "at least 5" (inclusive) is stated as "≥ 5"."""
+    text = verdict_text(4.0, band={"min": 5.0}, above=None)
+    assert "= 4 lies below the band ≥ 5 — bad: Negative: unstable." in text

@@ -1,5 +1,10 @@
 """The evaluator: a pure function from a rule table and a kernel result to verdicts."""
 
+import logging
+from collections.abc import Callable
+
+import pytest
+from aero_kernel.errors import ErrorCategory, KernelError
 from aero_kernel.evaluation.evaluator import (
     RuleStatus,
     RuleVerdict,
@@ -11,7 +16,14 @@ from aero_kernel.evaluation.rules import Severity, shipped_rule_table
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.graph import WhenFacts
 from aero_kernel.reference_fleet import FleetMember, reference_document
-from aero_kernel.schema import ComputeResult, CurveResult, QuantityResult, QuantityStatus
+from aero_kernel.schema import (
+    ComputeResult,
+    CurveResult,
+    QuantityResult,
+    QuantityStatus,
+    Reason,
+    ReasonCode,
+)
 from aero_kernel.tests.evaluation_builders import (
     facts,
     not_applicable,
@@ -24,6 +36,27 @@ from aero_kernel.tests.evaluation_builders import (
 )
 
 SM = "static-margin-target"
+LOGGER = "aero_kernel.evaluation"
+
+
+def errored(slug: str) -> QuantityResult:
+    """A quantity the kernel could not compute: status error with its KernelError."""
+    error = KernelError(
+        code="internal",
+        category=ErrorCategory.INTERNAL,
+        message="the formula failed",
+        hint="a hint",
+    )
+    return QuantityResult(slug=slug, status=QuantityStatus.ERROR, error=error)
+
+
+def skipped(slug: str) -> QuantityResult:
+    """A quantity the kernel left out of this run: status skipped with its Reason."""
+    return QuantityResult(
+        slug=slug,
+        status=QuantityStatus.SKIPPED,
+        reason=Reason(code=ReasonCode.LONG_RUN_NOT_INCLUDED, message="Long run left out."),
+    )
 
 
 def judge(
@@ -282,3 +315,91 @@ def test_judge_result_applies_the_shipped_table_to_a_fleet_geometry() -> None:
     assert [v.rule_id for v in verdicts] == [r.id for r in shipped_rule_table().rules]
     judged = {v.rule_id: v for v in verdicts}
     assert judged["horizontal-tail-volume"].value == 0.5
+
+
+@pytest.mark.parametrize(
+    ("builder", "word"), [(errored, "status error"), (skipped, "status skipped")]
+)
+def test_a_quantity_without_a_value_is_not_available_not_not_applicable(
+    builder: Callable[[str], QuantityResult], word: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """P7b-F01: an error or skipped quantity is a missing value, never "the rule does not apply"."""
+    with caplog.at_level(logging.DEBUG, logger=LOGGER):
+        verdict = judge(result_of(builder(SM)))
+    assert verdict.status is RuleStatus.NOT_AVAILABLE
+    assert verdict.value is None
+    assert verdict.interval is None
+    assert verdict.severity is None
+    assert word in verdict.explanation
+    assert "not applicable" not in verdict.explanation
+    assert [r for r in caplog.records if r.name == LOGGER] == []
+
+
+LEVELS = [
+    {"id": "weak", "min": 0.0, "max": 0.05, "meaning": "Weakly stable."},
+    {"id": "firm", "min": 0.05, "min_inclusive": False, "max": 0.15, "meaning": "Firmly stable."},
+]
+
+
+def test_an_interval_across_two_levels_has_no_level() -> None:
+    """P7b-F06: ends in "weak" (0.03) and "firm" (0.10): one level only if both ends share it."""
+    verdict = judge(
+        result_of(spread(SM, 0.03, 0.10)), levels=LEVELS, band={"min": 0.0, "max": 0.15}
+    )
+    assert verdict.status is RuleStatus.INSIDE
+    assert verdict.level is None
+    assert "Level" not in verdict.explanation
+
+
+def test_an_interval_within_one_level_has_that_level() -> None:
+    """Both ends (0.06, 0.10) lie in "firm" (0.05 < x <= 0.15)."""
+    verdict = judge(result_of(spread(SM, 0.06, 0.10)), levels=LEVELS)
+    assert verdict.level == "firm"
+    assert "Level firm: Firmly stable." in verdict.explanation
+
+
+def test_an_interval_outside_every_level_has_no_level() -> None:
+    """Both ends (0.2, 0.3) lie above the last level (max 0.15)."""
+    verdict = judge(result_of(spread(SM, 0.2, 0.3)), levels=LEVELS)
+    assert verdict.level is None
+    assert "Level" not in verdict.explanation
+
+
+def test_a_pending_excluded_term_is_not_available(pending_horizontal_tail: None) -> None:
+    """P7b-F14: a pending term in when_not has no fact yet, the same as one in when."""
+    verdict = judge(result_of(ok(SM, 0.1)), when_not=["has_horizontal_tail"])
+    assert verdict.status is RuleStatus.NOT_AVAILABLE
+    assert "#1187" in verdict.explanation
+
+
+def test_values_on_the_band_edges_are_inside() -> None:
+    """P7b-F07: band 0.05..0.15 includes both ends; the evaluator hands exact ends to the band."""
+    for edge in (0.05, 0.15):
+        verdict = judge(result_of(ok(SM, edge)))
+        assert verdict.status is RuleStatus.INSIDE
+        assert verdict.severity is None
+    interval = judge(result_of(spread(SM, 0.05, 0.15)))
+    assert interval.status is RuleStatus.INSIDE
+    assert interval.severity is None
+
+
+def test_an_interval_end_just_above_the_band_is_partly() -> None:
+    """0.1500001 > 0.15 although it prints as 0.15 at four digits: only the above meaning."""
+    verdict = judge(result_of(spread(SM, 0.05, 0.1500001)))
+    assert verdict.status is RuleStatus.PARTLY
+    assert "Large trim changes with speed." in verdict.explanation
+    assert "Negative: unstable." not in verdict.explanation
+
+
+def test_a_value_just_below_the_band_is_below_although_it_prints_as_the_edge() -> None:
+    """0.04999999 < 0.05 although it prints as 0.05 at four digits: no rounding before judging."""
+    assert judge(result_of(ok(SM, 0.04999999))).status is RuleStatus.BELOW
+
+
+def test_an_interval_starting_on_an_exclusive_edge_is_partly() -> None:
+    """With min 0.05 exclusive, the end 0.05 is below, the end 0.10 inside: partly."""
+    verdict = judge(
+        result_of(spread(SM, 0.05, 0.10)), band={"min": 0.05, "max": 0.15, "min_inclusive": False}
+    )
+    assert verdict.status is RuleStatus.PARTLY
+    assert "Negative: unstable." in verdict.explanation
