@@ -123,3 +123,4 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 - P5-F06: keine Entscheidung nötig, Ticket #1445
 - P8-F13 entschieden: gemessen (2,8 %, #1142), App-Test entfernt mit PR #1446
 - P3-F04 entschieden: Vorbedingung wird ergänzt, Ticket #1447. Alle Maintainer-Entscheidungen getroffen
+- Dashboard-Daten auf Stand der Entscheidungen (datasets/findings Version 4, findings_v4.json)
