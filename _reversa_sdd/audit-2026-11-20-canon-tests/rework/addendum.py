@@ -162,7 +162,7 @@ def addendum() -> str:
         "| P5-F06 | Keine Entscheidung nötig: Die Kanon-Regel `positive-lengths` beschreibt den Exponenten bereits im Kriterium, nur ihre Code-Liste nennt `non_positive_exponent` nicht. Nach der Vorgabe vom 25. Oktober (jede Eingabeprüfung hat ihre Kanon-Regel) ist das eine Lücke im Kanon. | Ticket #1445 (ein Wort in `rules.yaml`). Der Befund bleibt offen; sein Test (Rückrichtung Code → Regel) wird mit der Korrektur geschrieben. |",
         "| P3-F04 | Vorbedingung `stall_speed_usable` auch für `endurance-and-range-optimum`, wie bei den sechs Leistungsformeln? | Ja, eine Zeile im Kanon; kein eigener Mechanismus. Einfache Alternative: lassen, da nicht erreichbar. |",
         "| P7a-F05 | Entschieden am 21. November: bleibt, wie es ist. `taxonomy.yaml` hat keinen Einfluss auf die Rechnung. | Befund gestrichen, kein Ticket. |",
-        "| P8-F13 | Entschieden am 21. November: einmal messen, dann löschen. Gemessen am 22. November: Abweichung 2,8 % (V_S 8,264 gegen 8,495 m/s), festgehalten in #1142. | Der App-Test wird mit PR #1446 entfernt. Offen bleibt nur der Kernel-seitige Schlusstest (`stall-speed` gegen `max-lift-coefficient`) in WP-P8a. |",
+        "| P8-F13 | Entschieden am 21. November: einmal messen, dann löschen. Gemessen am 22. November: Abweichung 2,8 % (V_S 8,264 gegen 8,495 m/s), festgehalten in #1142. | Der App-Test wird mit PR #1446 entfernt. Offen bleibt nur der Kernel-seitige Schlusstest (`stall-speed` gegen `max-lift-coefficient`) in WP-P8b. |",
         "",
         "### Arbeitspakete nach der Nachprüfung",
         "",
