@@ -167,7 +167,7 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 
 | Finding | State | Reason |
 |---|---|---|
-| P3-F04 | production_defect | latent: not reachable through the API (stall-speed is no input, its producer never returns 0); maintainer decides whether to add the precondition stall_speed_usable |
+| P3-F04 | production_defect | #1447 |
 | P3-F13 | dropped | Drop reason: the assertions are right for the production rule ('close to or above the weight'), and the truly vertical floor case (T_0 > W, mass 0.8) is asserted in test_powered_performance.py::test_a_thrust_above_the_weight_climbs_vertical |
 | P3-F15 | dropped | Drop reason: E_bat is derived from three inputs that are each checked > 0 at the input and cannot be overridden through values, so a non-positive capacity cannot reach the three endurance formulas. |
 | P3-F17 | dropped | Drop reason: the mapping is `fields` handed unchanged to Components.model_validate in a test builder; there is no production mapping that could be wrong, and the values of each part are pinned by hand in test_airplane_components.py (HAND ta |

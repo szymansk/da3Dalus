@@ -2737,7 +2737,7 @@
   "recommended_test_note": "Not assessed (defect track).",
   "hand_value_check": "",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "#1447",
   "maintainer_note": "latent: not reachable through the API (stall-speed is no input, its producer never returns 0); maintainer decides whether to add the precondition stall_speed_usable",
   "probe_id": ""
  },
