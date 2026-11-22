@@ -1,0 +1,13 @@
+diff --git a/scripts/build_canon_navigator.py b/scripts/build_canon_navigator.py
+index a12e36a..a9cb7dd 100644
+--- a/scripts/build_canon_navigator.py
++++ b/scripts/build_canon_navigator.py
+@@ -370,7 +370,7 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
+     pred = {q: set() for q in quantities}
+     for a, b, _ in data["edges"]:
+         pred[b].add(a)
+-    mvp = closure(set(MVP_RESULTS), pred)
++    mvp = set(MVP_RESULTS)
+ 
+     produced_by: dict = {}
+     for slug, f in formulas.items():

@@ -1,0 +1,13 @@
+diff --git a/scripts/build_canon_navigator.py b/scripts/build_canon_navigator.py
+index a12e36a..151c7c8 100644
+--- a/scripts/build_canon_navigator.py
++++ b/scripts/build_canon_navigator.py
+@@ -382,7 +382,7 @@ def kernel_status(data: dict, kernel_dir: pathlib.Path) -> None:
+         if not fs:
+             status[q] = "input"
+         elif any(formulas[f]["impl"] for f in fs):
+-            status[q] = "done" if d["type"] in ("scalar", "airplane") else "nonscalar"
++            status[q] = "nonscalar" if d["type"] in ("scalar", "airplane") else "done"
+         else:
+             status[q] = "open"
+     data["status"] = status

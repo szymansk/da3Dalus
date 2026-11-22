@@ -1,0 +1,13 @@
+diff --git a/scripts/build_canon_navigator.py b/scripts/build_canon_navigator.py
+index a12e36a..a779f32 100644
+--- a/scripts/build_canon_navigator.py
++++ b/scripts/build_canon_navigator.py
+@@ -225,7 +225,7 @@ def entry_issues(text: str) -> list:
+     status = _front(text, "source_status")
+     # An approved entry has passed the gates: a missing source adopted on the maintainer's authority,
+     # or an approximation approved as a declared rating, is a legitimate outcome (canon README).
+-    if status in ("NO_SOURCE_FOUND", "PARTIAL") and _front(text, "status") != "approved":
++    if status in ("NO_SOURCE_FOUND", "PARTIAL") and _front(text, "status") == "approved":
+         m = re.search(r"^\*\*Source\.\*\*(.*?)(?=\n\n\*\*|\n## |\Z)", body, re.S | re.M)
+         title = (
+             "No published source found." if status == "NO_SOURCE_FOUND" else "Only partly sourced."

@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/spiral_parameter.py b/aero_kernel/formulas/spiral_parameter.py
+index 3d31d19..f05a8e6 100644
+--- a/aero_kernel/formulas/spiral_parameter.py
++++ b/aero_kernel/formulas/spiral_parameter.py
+@@ -17,7 +17,7 @@ def _spiral(arm: float, dihedral_deg: float, span: float, cl: float, speed: str)
+     Raises:
+         FormulaError: ``invalid_input`` for a lift coefficient that is not positive.
+     """
+-    if math.isnan(cl) or cl <= 0.0:
++    if speed == "V_md" and (math.isnan(cl) or cl <= 0.0):
+         raise FormulaError(
+             ErrorCategory.INVALID_INPUT,
+             "invalid_input",

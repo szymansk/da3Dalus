@@ -1,0 +1,13 @@
+diff --git a/scripts/check_canon.py b/scripts/check_canon.py
+index d6d783d..d30381a 100644
+--- a/scripts/check_canon.py
++++ b/scripts/check_canon.py
+@@ -451,7 +451,7 @@ def check_authoring(canon: Canon) -> list[Finding]:
+             add("README", "examples", f"example names no entry: {slug!r}")
+             continue
+         keys = EXAMPLE_KEYS_FORMULA if slug in canon.formulas else EXAMPLE_KEYS_QUANTITY
+-        for key in dict.fromkeys([*example, *keys]):
++        for key in keys:
+             if entry.front.get(key) != example.get(key):
+                 add("README", "examples", f"{slug}: {key} differs from the entry's front matter")
+     return findings

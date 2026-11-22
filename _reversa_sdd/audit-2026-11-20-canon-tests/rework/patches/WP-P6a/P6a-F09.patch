@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..7fb1b5c 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -544,7 +544,7 @@ def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG
+     if upright:
+         low, high = ALPHA_MIN_DEG, alpha_peak + peak_margin_deg
+     else:
+-        low, high = alpha_peak - peak_margin_deg, ALPHA_MAX_DEG
++        low, high = ALPHA_MIN_DEG, alpha_peak + peak_margin_deg
+     return _Bracketed(
+         airplane=airplane,
+         lift=lift,

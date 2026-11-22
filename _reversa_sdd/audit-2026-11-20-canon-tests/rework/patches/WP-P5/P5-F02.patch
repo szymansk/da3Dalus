@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/validate.py b/aero_kernel/validate.py
+index dffaffe..30dd951 100644
+--- a/aero_kernel/validate.py
++++ b/aero_kernel/validate.py
+@@ -1107,7 +1107,7 @@ def validate_aircraft(aircraft: AircraftInput, rules: Rules | None = None) -> Va
+ 
+         rules = Rules(shipped_build().model, aircraft.rule_overrides)
+     airplane = aircraft.airplane
+-    errors = _non_finite(airplane, "airplane", skip=frozenset({"wings", "fuselages"}))
++    errors = _non_finite(airplane, "airplane", skip=frozenset({"wings", "fuselages", "xyz_ref"}))
+     errors += _wing_findings(airplane.wings or {}, rules)
+     errors += _fuselage_findings(airplane.fuselages or {}, rules)
+     errors += _attachment_findings(airplane.fuselages or {}, rules)

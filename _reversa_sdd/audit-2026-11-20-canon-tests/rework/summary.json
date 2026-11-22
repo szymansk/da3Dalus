@@ -1,0 +1,199 @@
+{
+ "total": 179,
+ "state": {
+  "open": 112,
+  "production_defect": 9,
+  "refuted": 4,
+  "bundled": 24,
+  "dropped": 30
+ },
+ "verdict": {
+  "CONFIRMED": 73,
+  "CONFIRMED_BY_READING": 97,
+  "REFUTED": 4,
+  "SEPARATE_DEFECT_TRACK": 5
+ },
+ "severity_review": {
+  "high": 21,
+  "medium": 79,
+  "low": 79
+ },
+ "severity_active": {
+  "high": 21,
+  "medium": 60,
+  "low": 55
+ },
+ "moves": {
+  "high->medium": 6,
+  "medium->high": 6,
+  "low->medium": 5,
+  "medium->low": 10
+ },
+ "tier_gap": {
+  "both (no aero test reaches the code)": 54,
+  "fast_only": 17,
+  "both (aero candidates stay green)": 2
+ },
+ "recommended_test_ok": {
+  "yes": 110,
+  "unclear": 19,
+  "no": 7
+ },
+ "per_wp": {
+  "WP-P4a": {
+   "wave": 1,
+   "active": 7,
+   "high": 3,
+   "medium": 3,
+   "low": 1,
+   "refuted": 1,
+   "dropped": 3,
+   "waiting_for_decision": 0,
+   "production_defect": 2
+  },
+  "WP-P7b": {
+   "wave": 1,
+   "active": 12,
+   "high": 4,
+   "medium": 5,
+   "low": 3,
+   "refuted": 0,
+   "dropped": 6,
+   "waiting_for_decision": 0,
+   "production_defect": 1
+  },
+  "WP-P6a": {
+   "wave": 1,
+   "active": 16,
+   "high": 3,
+   "medium": 7,
+   "low": 6,
+   "refuted": 1,
+   "dropped": 3,
+   "waiting_for_decision": 0,
+   "production_defect": 0
+  },
+  "WP-P6b": {
+   "wave": 1,
+   "active": 14,
+   "high": 1,
+   "medium": 8,
+   "low": 5,
+   "refuted": 0,
+   "dropped": 1,
+   "waiting_for_decision": 0,
+   "production_defect": 1
+  },
+  "WP-P3": {
+   "wave": 1,
+   "active": 14,
+   "high": 4,
+   "medium": 6,
+   "low": 4,
+   "refuted": 0,
+   "dropped": 3,
+   "waiting_for_decision": 0,
+   "production_defect": 1
+  },
+  "WP-P1": {
+   "wave": 2,
+   "active": 13,
+   "high": 1,
+   "medium": 7,
+   "low": 5,
+   "refuted": 0,
+   "dropped": 2,
+   "waiting_for_decision": 0,
+   "production_defect": 1
+  },
+  "WP-P2": {
+   "wave": 2,
+   "active": 14,
+   "high": 2,
+   "medium": 2,
+   "low": 10,
+   "refuted": 0,
+   "dropped": 3,
+   "waiting_for_decision": 0,
+   "production_defect": 0
+  },
+  "WP-P5": {
+   "wave": 2,
+   "active": 14,
+   "high": 2,
+   "medium": 7,
+   "low": 5,
+   "refuted": 2,
+   "dropped": 2,
+   "waiting_for_decision": 0,
+   "production_defect": 1
+  },
+  "WP-P7a": {
+   "wave": 2,
+   "active": 13,
+   "high": 0,
+   "medium": 9,
+   "low": 4,
+   "refuted": 0,
+   "dropped": 4,
+   "waiting_for_decision": 0,
+   "production_defect": 1
+  },
+  "WP-P8a": {
+   "wave": 3,
+   "active": 8,
+   "high": 0,
+   "medium": 5,
+   "low": 3,
+   "refuted": 0,
+   "dropped": 3,
+   "waiting_for_decision": 0,
+   "production_defect": 0
+  },
+  "WP-P8b": {
+   "wave": 3,
+   "active": 6,
+   "high": 1,
+   "medium": 1,
+   "low": 4,
+   "refuted": 0,
+   "dropped": 0,
+   "waiting_for_decision": 0,
+   "production_defect": 1
+  },
+  "WP-P4b": {
+   "wave": 3,
+   "active": 5,
+   "high": 0,
+   "medium": 0,
+   "low": 5,
+   "refuted": 0,
+   "dropped": 0,
+   "waiting_for_decision": 0,
+   "production_defect": 0
+  }
+ },
+ "high": [
+  "P1-F02",
+  "P2-F01",
+  "P2-F04",
+  "P3-F01",
+  "P3-F02",
+  "P3-F07",
+  "P3-F08",
+  "P4-F01",
+  "P4-F02",
+  "P4-F03",
+  "P5-F01",
+  "P5-F02",
+  "P6a-F01",
+  "P6a-F02",
+  "P6a-F03",
+  "P6b-F03",
+  "P7b-F01",
+  "P7b-F03",
+  "P7b-F04",
+  "P7b-F06",
+  "P8-F09"
+ ]
+}

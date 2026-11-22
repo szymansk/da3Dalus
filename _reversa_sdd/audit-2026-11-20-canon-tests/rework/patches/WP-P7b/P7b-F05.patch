@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/evaluation/rules.py b/aero_kernel/evaluation/rules.py
+index 62293c4..782102d 100644
+--- a/aero_kernel/evaluation/rules.py
++++ b/aero_kernel/evaluation/rules.py
+@@ -92,7 +92,7 @@ class Band(BaseModel):
+         ):
+             return Position.BELOW
+         if self.max is not None and (
+-            value > self.max or (value == self.max and not self.max_inclusive)
++            value > self.max
+         ):
+             return Position.ABOVE
+         return Position.INSIDE

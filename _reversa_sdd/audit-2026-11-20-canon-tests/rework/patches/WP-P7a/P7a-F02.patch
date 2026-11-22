@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/importer/data_sources.py b/aero_kernel/importer/data_sources.py
+index b68ffca..8fb07db 100644
+--- a/aero_kernel/importer/data_sources.py
++++ b/aero_kernel/importer/data_sources.py
+@@ -256,7 +256,7 @@ def check_data_sources(model: CanonModel, catalogue: Catalogue) -> list[Finding]
+     defaults = frozenset(content.defaults)
+     findings: list[Finding] = []
+     for slug, quantity in sorted(content.quantities.items()):
+-        for field, sources in (("data", quantity.data), ("consistency", quantity.consistency)):
++        for field, sources in (("data", quantity.data),):
+             for source in sources or []:
+                 message = location_problem(source, catalogue, defaults)
+                 if message is not None:

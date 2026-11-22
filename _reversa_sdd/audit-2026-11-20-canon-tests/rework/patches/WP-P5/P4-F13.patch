@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/rules.py b/aero_kernel/rules.py
+index 9447342..ea59384 100644
+--- a/aero_kernel/rules.py
++++ b/aero_kernel/rules.py
+@@ -181,7 +181,7 @@ def rule_override_errors(
+                 f"Value at rule_overrides.{key} is {overrides[key]}; it must be > 0.",
+                 f"Give `{key}` a value > 0.",
+             )
+-        elif entry.at_most is not None and overrides[key] > entry.at_most:
++        elif entry.at_most is not None and overrides[key] >= entry.at_most:
+             code, message, hint = (
+                 "value_above_maximum",
+                 f"Value at rule_overrides.{key} is {overrides[key]}; it must be <= {entry.at_most}.",

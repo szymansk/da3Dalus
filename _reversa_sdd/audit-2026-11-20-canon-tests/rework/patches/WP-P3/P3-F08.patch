@@ -1,0 +1,10 @@
+diff --git a/aero_kernel/formulas/static_thrust_to_weight.py b/aero_kernel/formulas/static_thrust_to_weight.py
+index b5544c1..c8807cb 100644
+--- a/aero_kernel/formulas/static_thrust_to_weight.py
++++ b/aero_kernel/formulas/static_thrust_to_weight.py
+@@ -46,5 +46,4 @@ async def static_thrust_to_weight(x: Inputs, ctx: Context) -> dict[str, float]:
+         number(x, "u_bat"),
+         number(x, "d_prop"),
+     )
+-    declare_route(ctx)
+     return {"t0_w": t_static / number(x, "w")}

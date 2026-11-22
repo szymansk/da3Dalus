@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/rules.py b/aero_kernel/rules.py
+index 9447342..fd98662 100644
+--- a/aero_kernel/rules.py
++++ b/aero_kernel/rules.py
+@@ -175,7 +175,7 @@ def rule_override_errors(
+                 f"Value at rule_overrides.{key} is {overrides[key]}; it must be a finite number.",
+                 "Give the override a finite value.",
+             )
+-        elif entry.positive and overrides[key] <= 0:
++        elif entry.positive and overrides[key] < 0:
+             code, message, hint = (
+                 "non_positive_value",
+                 f"Value at rule_overrides.{key} is {overrides[key]}; it must be > 0.",

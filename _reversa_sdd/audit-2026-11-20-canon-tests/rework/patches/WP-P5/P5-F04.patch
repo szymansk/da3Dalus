@@ -1,0 +1,11 @@
+diff --git a/aero_kernel/devices.py b/aero_kernel/devices.py
+index 384e5ab..cc65829 100644
+--- a/aero_kernel/devices.py
++++ b/aero_kernel/devices.py
+@@ -164,6 +164,5 @@ def flap_deflections(airplane: AirplaneGeometry) -> list[tuple[str, str, float]]
+         for key, wing in (airplane.wings or {}).items()
+         for index, section in enumerate(wing.x_secs)
+         if (device := section.trailing_edge_device) is not None
+-        and device.role in FLAP_ROLES
+         and device.deflection_deg
+     ]

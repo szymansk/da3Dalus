@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..05a7e77 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -2394,7 +2394,7 @@ class OptiAdapter(SolverAdapter):
+                 control surface.
+         """
+         self.require_available()
+-        refuse_deflected_devices(airplane, "AeroBuildup", flaps_supported=False)
++        refuse_deflected_devices(airplane, "AeroBuildup", flaps_supported=True)
+         if not _admissible(v_ms, positive=True):
+             raise _invalid(f"V = {v_ms} is not admissible", "give a finite speed above 0", "v_s")
+         angles = tuple(alphas_deg)

@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/cache.py b/aero_kernel/cache.py
+index 81c85ca..70b1695 100644
+--- a/aero_kernel/cache.py
++++ b/aero_kernel/cache.py
+@@ -299,7 +299,7 @@ class DedupedCache:
+             if running.get_loop() is not asyncio.get_running_loop():
+                 msg = "a CachedKernel serves one event loop; it was called from a second one"
+                 raise RuntimeError(msg)
+-            text = await asyncio.shield(running)
++            text = await running
+             if text is not None:
+                 logger.debug("cache hit after waiting %s", _short(key))
+                 return _Lease(Entry.from_json(text))

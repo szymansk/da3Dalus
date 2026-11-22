@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solver_bodies.py b/aero_kernel/solver_bodies.py
+index 3244b1f..3e76e3e 100644
+--- a/aero_kernel/solver_bodies.py
++++ b/aero_kernel/solver_bodies.py
+@@ -201,7 +201,7 @@ def _lerp(
+         n_lower = mix(_lower(low), _lower(high))
+     return FuselageXSecSuperEllipse(
+         xyz=xyz,
+-        a=mix(low.a, high.a),
++        a=low.a,
+         b=mix(low.b, high.b),
+         n=mix(low.n, high.n),
+         n_lower=n_lower,

@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..1c96dfa 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -2296,7 +2296,7 @@ class OptiAdapter(SolverAdapter):
+         polar = await self.runtime.run_cpu(level_polar_worker, work)
+         warnings = _flap_warnings(flaps)
+         seen: set[tuple[str, str]] = set()
+-        for speed in (min(polar.v_ms), max(polar.v_ms)):
++        for speed in (min(polar.v_ms),):
+             for warning in await self._regime_warnings(airplane, speed, air):
+                 if (warning.code, warning.message) not in seen:
+                     seen.add((warning.code, warning.message))

@@ -1,0 +1,12 @@
+diff --git a/aero_kernel/importer/tag_rules.py b/aero_kernel/importer/tag_rules.py
+index 45127c7..69c0474 100644
+--- a/aero_kernel/importer/tag_rules.py
++++ b/aero_kernel/importer/tag_rules.py
+@@ -176,7 +176,6 @@ def _group_agrees(slug: str, quantity: Quantity, taxonomy: Taxonomy) -> list[Fin
+             f"{name} {have!r}",
+         )
+         for name, wanted, have in (
+-            ("stage", group.stage, quantity.stage),
+             ("module", group.module, quantity.module),
+         )
+         if wanted is not None and wanted != have

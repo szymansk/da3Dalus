@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/stall_break.py b/aero_kernel/formulas/stall_break.py
+index c332f43..0ee909f 100644
+--- a/aero_kernel/formulas/stall_break.py
++++ b/aero_kernel/formulas/stall_break.py
+@@ -92,7 +92,7 @@ async def stall_break(x: Inputs, ctx: Context) -> dict[str, float]:
+     alpha_s, cl_max, fraction = number(x, "alpha_s"), number(x, "cl_max"), number(x, "f")
+     if not 0.0 < fraction < 1.0:
+         raise _invalid("f", f"the break fraction f = {fraction} is not in (0, 1)", "give 0 < f < 1")
+-    if not (math.isfinite(cl_max) and cl_max > 0.0):
++    if cl_max == 0.0:
+         raise _invalid("cl_max", f"C_L,max = {cl_max} is not positive", "give C_L,max > 0")
+     if alpha_s not in polar.alpha_deg:
+         raise _invalid(

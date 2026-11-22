@@ -1,0 +1,15 @@
+diff --git a/aero_kernel/engine.py b/aero_kernel/engine.py
+index f3a7b06..5985a84 100644
+--- a/aero_kernel/engine.py
++++ b/aero_kernel/engine.py
+@@ -1392,7 +1392,9 @@ def _merge_worlds(
+     if chosen.error is None:
+         return chosen
+     worlds_ok = {
+-        key: result.value for key, result, _ in results if result.status is QuantityStatus.OK
++        key: result.value
++        for key, result, _ in results
++        if result.status is QuantityStatus.OK and not _excluded(result)
+     }
+     error = chosen.error
+     if _alike_in_every_world(results):

@@ -1,0 +1,170 @@
+[
+ {
+  "id": "P1-F01",
+  "patch": "patches/WP-P1/P1-F01.patch",
+  "tests": [
+   "aero_kernel/tests/test_parabolic_polar_fit_fleet.py::test_the_fit_and_its_probes_against_the_goldens[FleetMember.BRYAN]",
+   "aero_kernel/tests/test_parabolic_polar_fit_fleet.py::test_the_closed_forms_are_consistent_with_the_fit[FleetMember.BRYAN]",
+   "aero_kernel/tests/test_parabolic_polar_fit_fleet.py::test_the_fit_and_its_probes_against_the_goldens[FleetMember.ULTRA_STICK_120]"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P2-F02",
+  "patch": "patches/WP-P2/P2-F02.patch",
+  "tests": [
+   "aero_kernel/tests/test_stall_speed_fleet.py::test_bryan_regression_goldens_with_the_xlarge_model",
+   "aero_kernel/tests/test_stall_speed_fleet.py::test_wiesel_regression_goldens_and_no_inverted_trough",
+   "aero_kernel/tests/test_solvers_opti_real.py::test_the_polar_contains_alpha_s_and_the_optimum_is_the_first_peak"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P6a-F04",
+  "patch": "patches/WP-P6a/P6a-F04.patch",
+  "tests": [
+   "aero_kernel/tests/test_solvers_opti_real.py::test_the_lift_balance_holds_at_the_optimum",
+   "aero_kernel/tests/test_solvers_opti_glide_real.py::test_a_parabolic_polar_gives_the_closed_form_answers",
+   "aero_kernel/tests/test_solvers_opti_min_sink_real.py::test_a_parabolic_polar_gives_the_closed_form_answers"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P6a-F05",
+  "patch": "patches/WP-P6a/P6a-F05.patch",
+  "tests": [
+   "aero_kernel/tests/test_solvers_opti_roll_real.py::test_a_positive_command_rolls_right_and_the_solution_is_an_equilibrium",
+   "aero_kernel/tests/test_roll_rate_fleet.py::test_roll_rate_goldens_per_world"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P6a-F06",
+  "patch": "patches/WP-P6a/P6a-F06.patch",
+  "tests": [
+   "aero_kernel/tests/test_roll_rate_fleet.py::test_roll_rate_goldens_per_world",
+   "aero_kernel/tests/test_aileron_deflection_required_fleet.py::test_the_aerobuildup_deflection_reproduces_the_target_through_roll_rate",
+   "aero_kernel/tests/test_roll_rate_fleet.py::test_rv7_roll_on_approach_is_evaluated_on_the_landing_configuration"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P6a-F10",
+  "patch": "patches/WP-P6a/P6a-F10.patch",
+  "tests": [
+   "aero_kernel/tests/test_solvers_opti_real.py::test_the_lift_balance_holds_at_the_optimum",
+   "aero_kernel/tests/test_solvers_opti_real.py::test_the_trainer_with_the_xlarge_model_regression"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P6b-F01",
+  "patch": "patches/WP-P6b/P6b-F01.patch",
+  "tests": [
+   "aero_kernel/tests/test_solvers_avl_hinge_real.py::test_a_flap_on_a_wing_of_high_aspect_ratio_agrees_with_thin_airfoil_theory"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P6b-F03",
+  "patch": "patches/WP-P6b/P6b-F03.patch",
+  "tests": [
+   "aero_kernel/tests/test_solvers_avl_hinge_real.py::test_the_fleet_aircraft_have_hinge_moments_with_the_sign_of_the_physics"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P6b-F05",
+  "patch": "patches/WP-P6b/P6b-F05.patch",
+  "tests": [
+   "aero_kernel/tests/test_solvers_asb_airplane_real.py::test_bryans_canopy_reaches_aerosandbox_merged_into_the_fuselage",
+   "aero_kernel/tests/test_neutral_point_fleet.py::test_the_np_and_sm_intervals_per_world_are_the_regression_goldens[FleetMember.BRYAN]",
+   "aero_kernel/tests/test_minimum_drag_speed_fleet.py::test_regression_goldens_with_the_xlarge_model[FleetMember.BRYAN]"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P6b-F10",
+  "patch": "patches/WP-P6b/P6b-F10.patch",
+  "tests": [
+   "aero_kernel/tests/test_spanwise_loads_real.py::test_the_load_of_the_half_wing_is_half_the_weight_and_the_curves_agree_with_each_other",
+   "aero_kernel/tests/test_spanwise_loads_real.py::test_the_elliptic_wing_has_the_closed_form_root_load",
+   "aero_kernel/tests/test_spanwise_loads_real.py::test_the_root_shear_and_moment_agree_with_the_independent_vortex_lattice"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P8-F05",
+  "patch": "patches/WP-P8a/P8-F05.patch",
+  "tests": [
+   "aero_kernel/tests/test_powered_performance_aero.py::test_the_best_rate_of_climb_lies_between_the_hand_bounds"
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "P3-F06",
+  "patch": "patches/WP-P3/P3-F06.patch",
+  "tests": [
+   "aero_kernel/tests/test_powered_performance_aero.py::test_a_real_airframe_that_can_climb_vertically_starts_its_climb_scan_at_the_declared_floor",
+   "aero_kernel/tests/test_powered_performance_aero.py::test_the_climbs_of_a_real_airframe_with_a_non_vertical_optimum_compute_from_the_new_start"
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "P4-F04",
+  "patch": "patches/WP-P4a/P4-F04.patch",
+  "tests": [
+   "aero_kernel/tests/test_cached_kernel_fleet.py::test_bryan_stall_speed_is_served_from_the_cache_the_second_time"
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "P4-F05",
+  "patch": "patches/WP-P4a/P4-F05.patch",
+  "tests": [
+   "aero_kernel/tests/test_cached_kernel_fleet.py::test_bryan_stall_speed_is_served_from_the_cache_the_second_time"
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "P6a-F08",
+  "patch": "patches/WP-P6a/P6a-F08.patch",
+  "tests": [
+   "aero_kernel/tests/test_powered_performance_aero.py::test_the_dive_speed_is_the_declared_table_failure_on_the_avistar"
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "P6a-F09",
+  "patch": "patches/WP-P6a/P6a-F09.patch",
+  "tests": [
+   "aero_kernel/tests/test_solvers_opti_real.py::test_inverted_flight_finds_the_negative_lift_coefficient"
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "P6b-F02",
+  "patch": "patches/WP-P6b/P6b-F02.patch",
+  "tests": [
+   "aero_kernel/tests/test_neutral_point_fleet.py::test_chekker_declares_the_avl_mesh_as_not_converged_and_wiesel_converges",
+   "aero_kernel/tests/test_neutral_point_fleet.py::test_the_v_tail_aircraft_has_the_three_worlds_and_declares_its_unconverged_mesh"
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "P6b-F04",
+  "patch": "patches/WP-P6b/P6b-F04.patch",
+  "tests": [
+   "aero_kernel/tests/test_mvp_chain_fleet.py::test_the_chain_per_world_is_the_regression_golden[FleetMember.RV7]"
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "P6b-F09",
+  "patch": "patches/WP-P6b/P6b-F09.patch",
+  "tests": [
+   "aero_kernel/tests/test_mvp_chain_fleet.py::test_the_chain_per_world_is_the_regression_golden[FleetMember.BRYAN]"
+  ],
+  "severity": "medium"
+ }
+]

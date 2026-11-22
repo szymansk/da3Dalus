@@ -1,0 +1,15 @@
+diff --git a/aero_kernel/engine.py b/aero_kernel/engine.py
+index f3a7b06..798a0c8 100644
+--- a/aero_kernel/engine.py
++++ b/aero_kernel/engine.py
+@@ -192,7 +192,9 @@ _CACHED_TYPES = frozenset({"scalar", "polar", "per_control_surface", "curve"})
+ 
+ def _key_value(value: Value | None) -> JsonValue:
+     """The JSON form of a direct input value in the cache key (ch. 8.4)."""
+-    if isinstance(value, AirplaneGeometry | Polar | Components):
++    if isinstance(value, Polar):
++        return "polar"
++    if isinstance(value, AirplaneGeometry | Components):
+         return spell_non_finite(value.model_dump(mode="json"))
+     return value
+ 

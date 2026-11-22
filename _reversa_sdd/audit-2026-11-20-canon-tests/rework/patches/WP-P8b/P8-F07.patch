@@ -1,0 +1,13 @@
+diff --git a/app/services/canon_service.py b/app/services/canon_service.py
+index af53383..fea8e95 100644
+--- a/app/services/canon_service.py
++++ b/app/services/canon_service.py
+@@ -229,8 +229,6 @@ def _needs_confirmation(result: ComputeResult) -> list[str]:
+         q.slug
+         for q in result.quantities
+         if q.status is QuantityStatus.SKIPPED
+-        and q.reason is not None
+-        and q.reason.code is ReasonCode.LONG_RUN_NOT_INCLUDED
+     ]
+ 
+ 

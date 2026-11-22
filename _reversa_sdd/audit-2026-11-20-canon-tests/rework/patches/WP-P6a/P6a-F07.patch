@@ -1,0 +1,12 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..8d2a606 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -2479,7 +2479,6 @@ class OptiAdapter(SolverAdapter):
+             ValueError: If a non-zero command is given to an airplane without a roll device (a
+                 defect of the caller; the canon's ``has_aileron`` condition prevents it).
+         """
+-        self.require_available()
+         refuse_deflected_devices(airplane, "AeroBuildup", flaps_supported=True)
+         flaps = flap_segments(airplane)
+         for name, value, positive in (

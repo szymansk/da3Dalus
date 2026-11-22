@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/engine.py b/aero_kernel/engine.py
+index f3a7b06..2fcc89c 100644
+--- a/aero_kernel/engine.py
++++ b/aero_kernel/engine.py
+@@ -565,7 +565,7 @@ class _Call:
+         node_key = cache_key(
+             formula=node.id.formula,
+             application=node.id.application,
+-            world=key,
++            world=None,
+             inputs={name: _key_value(value) for name, value in inputs.items()},
+             build_digest=self.build.digest,
+             tool_versions=self.solvers.tool_versions_of(tool),

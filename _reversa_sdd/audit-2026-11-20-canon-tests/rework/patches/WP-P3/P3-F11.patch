@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/formulas/max_level_speed.py b/aero_kernel/formulas/max_level_speed.py
+index 68b34e5..ab6c48a 100644
+--- a/aero_kernel/formulas/max_level_speed.py
++++ b/aero_kernel/formulas/max_level_speed.py
+@@ -98,7 +98,7 @@ async def max_level_speed(x: Inputs, ctx: Context) -> dict[str, float]:
+         if last is not None and last[1] > 0.0 >= excess:
+             crossing = (last, (v, excess))
+         elif excess <= 0.0:
+-            reasons.add(Unflyable.THRUST)
++            pass
+         last = (v, excess)
+     if last is None or (crossing is None and last[1] <= 0.0):
+         raise never_flyable(reasons, flight.v_s)

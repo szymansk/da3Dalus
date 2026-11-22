@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..fd4972f 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -642,7 +642,7 @@ def _solve(
+     )
+     alpha = opti.variable(init_guess=init[1], lower_bound=problem.low, upper_bound=problem.high)
+     aero = model(speed, alpha, request.air)
+-    opti.subject_to(aero["L"] == problem.lift)
++    opti.subject_to(aero["L"] == 2.0 * problem.lift)
+     opti.minimize(objective(speed, aero))
+     solved = _ipopt(opti, what, SPEED_HINT)
+     v_opt, alpha_opt = float(solved(speed)), float(solved(alpha))

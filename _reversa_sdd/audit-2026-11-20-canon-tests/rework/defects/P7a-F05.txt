@@ -1,0 +1,26 @@
+aero_kernel imported from: /private/tmp/claude-501/-Users-szymanski-Projects-da3Dalus-cad-modelling-service/f61e5dfe-bbac-4dc3-a375-00d069aa35d6/scratchpad/rework/copies/DEFECTS/aero_kernel
+
+[baseline: real canon, unmodified]
+  edit: none
+  findings: 0; model built: True
+
+[A  taxonomy.yaml with an ESCALATED comment]
+  edit: taxonomy.yaml: 'modules:\n' -> 'modules:  # ESCALATED: undecided module list\n'
+  findings: 0; model built: True
+  taxonomy module envelope-targets.holds_targets = True
+
+[A' control: the same comment in defaults.yaml]
+  edit: defaults.yaml: '' -> '# ESCALATED: undecided default\n'
+  findings: 1; model built: False
+    defaults.yaml: ESCALATED: the entry is escalated and undecided (undecided default); the maintainer decides it before it is imported
+
+[B  taxonomy.yaml with a YAML 1.1 boolean]
+  edit: taxonomy.yaml: 'holds_targets: true' -> 'holds_targets: yes'
+  findings: 0; model built: True
+  taxonomy module envelope-targets.holds_targets = True
+
+[B' control: a YAML 1.1 boolean in rules.yaml]
+  edit: rules.yaml: '' -> 'zz-probe: yes\n'
+  findings: 2; model built: False
+    rules.yaml: yaml: YAML 1.1 reads ['yes'] as booleans; write true or false for a boolean field, and quote a string such as the newton unit ("N")
+    rules.yaml: zz-probe: must be a mapping {applies_to, kind, on_violation, criterion, parameters}

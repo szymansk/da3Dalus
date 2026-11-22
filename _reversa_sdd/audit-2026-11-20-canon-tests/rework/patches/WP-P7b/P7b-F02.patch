@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/evaluation/rules.py b/aero_kernel/evaluation/rules.py
+index 62293c4..17a6a2f 100644
+--- a/aero_kernel/evaluation/rules.py
++++ b/aero_kernel/evaluation/rules.py
+@@ -25,7 +25,7 @@ __all__ = [
+     "shipped_rule_table",
+ ]
+ 
+-_FROZEN = ConfigDict(extra="forbid", frozen=True)
++_FROZEN = ConfigDict()
+ _NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+ _RuleId = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")]
+ _Ticket = Annotated[str, StringConstraints(pattern=r"^#[1-9][0-9]*$")]

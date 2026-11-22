@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/avl.py b/aero_kernel/solvers/avl.py
+index 6b0941e..a7a54c5 100644
+--- a/aero_kernel/solvers/avl.py
++++ b/aero_kernel/solvers/avl.py
+@@ -979,7 +979,7 @@ class AvlAdapter(SolverAdapter):
+             drive_flaps=bool(flaps),
+             join_tolerance_m=self.join_tolerance_m(),
+         )
+-        if flaps:
++        if False:
+             # a held flap splits the wing at its hinge, as for the steady roll (Drela's rule 3)
+             main, *others = surfaces
+             surfaces = (*split_at_hinge(main, SPLIT_N_CHORD), *others)

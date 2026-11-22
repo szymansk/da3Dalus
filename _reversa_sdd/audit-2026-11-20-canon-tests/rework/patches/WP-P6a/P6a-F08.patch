@@ -1,0 +1,13 @@
+diff --git a/aero_kernel/solvers/opti.py b/aero_kernel/solvers/opti.py
+index f4a46ee..2a4ce14 100644
+--- a/aero_kernel/solvers/opti.py
++++ b/aero_kernel/solvers/opti.py
+@@ -2347,7 +2347,7 @@ class OptiAdapter(SolverAdapter):
+         request, flaps = self._request(airplane, mass_kg, gravity, 1.0, air, upright_only=True)
+         if not _admissible(v_ms, positive=True):
+             raise _invalid(f"V = {v_ms} is not admissible", "give a finite speed above 0", "v")
+-        if not (math.isfinite(n_load) and n_load >= 0.0):
++        if not (math.isfinite(n_load) and n_load > 0.0):
+             raise _invalid(
+                 f"n_load = {n_load} is not admissible",
+                 "give a finite load factor of 0 or more",
