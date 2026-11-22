@@ -5,7 +5,7 @@ from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.vertical_tail_volume import vertical_tail_volume
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.geometry_properties import MainWingProperties
-from aero_kernel.schema import QuantityStatus
+from aero_kernel.schema import QuantityStatus, ReasonCode
 from aero_kernel.tests.chain_builders import C_MAC, SM_TARGET, WORLD_X_NP, document, fin, run_chain
 from aero_kernel.tests.formula_builders import StubAtmosphere, StubGeometry, close, context_with
 from aero_kernel.tests.test_tail_arms import X_FIN_QC
@@ -63,11 +63,41 @@ async def test_a_v_tail_counts_its_fin_share_sin_squared_of_the_panel_angle() ->
     assert close(found["v_v"], 2.0 * (panel + extension) * 0.5 * arm / (S_REF * B_REF), 1e-12)
 
 
+class FixedFinGeometry(StubGeometry):
+    """A GEO adapter whose fin area is a given number: the plumbing is visible, no projection runs."""
+
+    async def fin_area(self, airplane: AirplaneGeometry, key: str) -> float:
+        """Record the key and answer 0.02 m^2."""
+        self.fin_keys.append(key)
+        return 0.02
+
+
+async def test_the_volume_multiplies_the_adapters_fin_area_and_asks_for_the_v_tail_key() -> None:
+    """Plumbing: S_V = 0.02 m^2 from the adapter, arm 0.4 m, S_ref 0.28 m^2, b_ref 1.4 m:
+    V_V = 0.02 * 0.4 / (0.28 * 1.4) = 0.008 / 0.392 = 1/49 = 0.0204082. The projection itself (sin^2 of
+    the panel angle) belongs to the GEO adapter and is tested there."""
+    sections = [
+        {"xyz_le": [0.62, 0.05, 0.0], "chord": 0.12, "twist": 0.0, "airfoil": "naca0012"},
+        {"xyz_le": [0.66, 0.25, 0.2], "chord": 0.06, "twist": 0.0, "airfoil": "naca0012"},
+    ]
+    vee = {"name": "vee", "symmetric": True, "surface_type": "v_tail", "x_secs": sections}
+    geometry = FixedFinGeometry()
+    found = await vertical_tail_volume(
+        {"airplane": document(vee, tail=False), "s_ref": S_REF, "b_ref": B_REF, "l_v_cg": 0.4},
+        context_with(StubAtmosphere({}), geometry=geometry),
+    )
+    assert close(found["v_v"], 1.0 / 49.0, 1e-12)
+    assert geometry.fin_keys == ["vee"]
+    assert geometry.horizontal_tail_keys == []
+
+
 async def test_without_a_vertical_tail_the_volume_does_not_apply() -> None:
     quantity = (await run_chain("vertical-tail-volume", airplane=document())).quantity(
         "vertical-tail-volume"
     )
-    assert quantity.status is not QuantityStatus.OK
+    assert quantity.status is QuantityStatus.NOT_APPLICABLE
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.CONDITION_NOT_MET
     assert quantity.interval is None
 
 
