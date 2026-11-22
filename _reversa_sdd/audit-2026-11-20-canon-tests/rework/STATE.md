@@ -160,6 +160,14 @@ Offen: 27 Fehler + 2 Errors im Teil `rest`, die nicht alle von AVL kommen (Liste
 `test_mass_envelope_aero.py`. Nächster Schritt: Lauf 45053284171 auswerten (alle neun Teile mit liblapack3), dann endgültige
 Aufteilung des Jobs (Coverage-Upload und 3.11/3.12-Matrix wiederherstellen), PR; für die verbleibenden App-Testfehler ein eigenes Ticket.
 
+**#1437 geschlossen (PR #1476, b1174db7):** nächtlicher Job in neun Teilen (`rest`, `aero-0…7`) für 3.11 und 3.12, `liblapack3`
+in `nightly` und `full`, Prüfschritt „AVL startet“, SIGABRT am Zeitlimit. Lauf 45053284171 (alle Teile, 3.12, mit liblapack3):
+Kern 5847 bestanden, 18 fehlgeschlagen → Bug **#1474** (9 Wertabweichungen Linux gegen macOS-Goldens, 7 Zeitlimits);
+Teil `rest` 13 fehlgeschlagen + 2 Errors und der Prozess endet nicht (Thread-Dump: `_python_exit` wartet auf einen Pool-Worker,
+vermutlich die CAD-Aufgabe von `test_ehawk_designer_workflow_stepwise`) → Bug **#1475** (priority:critical).
+Der nächtliche Lauf bleibt rot, bis #1474 und #1475 behoben sind; beide Tickets sind nicht begonnen.
+Verifikationslauf der Endfassung auf main: 45071176949 (18 Jobs, bis zu 5 h); Ergebnis nachtragen. Worktree `.worktrees/gh-1437` ist entfernt.
+
 ## Verlauf
 
 - 2026-11-21 — Schritt 0 fertig. Schritte 1, 2, 2b vergeben (14 Subagents).
@@ -205,3 +213,4 @@ Aufteilung des Jobs (Coverage-Upload und 3.11/3.12-Matrix wiederherstellen), PR;
 - Restliste: PR #1473 offen, GEE_BEE_R3 und AERONCA_CHAMP geklärt
 - PR #1473 gemergt; erste Maintainer-Frage P1-F08 gestellt
 - #1437: Ursache liblapack3 belegt, zweiter Diagnoselauf 45053284171 läuft
+- #1437 geschlossen (PR #1476); Folgetickets #1474, #1475
