@@ -105,8 +105,8 @@ grüner CI mergen. Stände: `offen` → `läuft` (Subagent gestartet) → `Beric
 | 1 | WP-P7b | #1450 | test/gh-1450-p7b-evaluation | PR #1462 (8a36220e: 30 Testfälle, 9 von 9 Mutationen; nachgeprüft: Dateien grün, P7b-F01 getötet) |
 | 1 | WP-P6a | #1451 | test/gh-1451-p6a-opti-fakes | läuft |
 | 1 | WP-P6b | #1452 | test/gh-1452-p6b-avl | läuft |
-| 1 | WP-P3 | #1453 | test/gh-1453-p3-powertrain-performance | läuft |
-| 2 | WP-P1 | #1454 | test/gh-1454-p1-closed-form-preconditions | läuft |
+| 1 | WP-P3 | #1453 | test/gh-1453-p3-powertrain-performance | PR #1463 (ac2f5bd5: 16 Tests, 12 von 12 Mutationen; nachgeprüft). Rest: P3-F16 (Aero), P1-F09 zum Teil (Frage an den Produktivcode) |
+| 2 | WP-P1 | #1454 | test/gh-1454-p1-closed-form-preconditions | PR #1464 (588ae063: 12 Tests + 40 Fälle, 8 von 8 Mutationen; nachgeprüft). Rest: P1-F15 in test_tail_arms.py, P1-F13 Aero-Teil |
 | 2 | WP-P2 | #1455 | test/gh-1455-p2-aero-stability | läuft |
 | 2 | WP-P5 | #1456 | test/gh-1456-p5-validation-geometry | läuft |
 | 2 | WP-P7a | #1457 | test/gh-1457-p7a-importer | läuft |
@@ -120,6 +120,11 @@ Ein Paket im Stand `läuft` ohne laufenden Subagent (nach einem Neustart): Zweig
 Zusätze zu den Briefen, die im Dispatch stehen müssen: P7b-F03 nur die obere Bandgrenze prüfen (untere exklusive
 Grenze gehört zu #1440); P5-F06 schlägt heute fehl und wird mit #1445 geschrieben; P8-F13 nur der Kernel-seitige
 Schlusstest; Befunde mit Ticket (#1439 bis #1447) bekommen keinen Test im Paket.
+
+**Restliste nach den Paketen (ein Nachlauf am Ende, Aero-Tests einzeln):** P3-F16 (Aero, Erwartungswerte neu herleiten);
+P1-F13 Aero-Teil (`GeometryAdapter.fin_area` gegen 0,0339411 m²); P1-F15 in `test_tail_arms.py:154`;
+P1-F09 Rest (`advance_ratio` bei zwei negativen Argumenten und bei NaN-Geschwindigkeit: Frage an den Maintainer);
+P1-F08: ist der Aufruf `warn_flap_validity` in `maneuvering-speed` über die Engine erreichbar? (ADR 0021, Frage).
 
 **#1437 (nächtlicher CI-Lauf):** Zweig `fix/gh-1437-nightly-ci`, Worktree `.worktrees/gh-1437`. Diagnose-Commit
 teilt den Lauf in `rest` und acht Aero-Teile (nur 3.12); Lauf 45030193951 gestartet 2026-11-22. Ziel: Dauer je Teil
@@ -159,3 +164,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - 2026-11-22 — PR #1433 und #1446 gemergt. Schritt 6 begonnen: Epic #1448, Tickets #1449–#1460, Welle 1 vergeben (5 Subagents). #1437: Diagnoselauf 45030193951
 - Schritt 6 in der Tabelle auf läuft
 - WP-P4a → PR #1461, WP-P7b → PR #1462; Welle 2 vergeben (4 Subagents)
+- WP-P3 → PR #1463, WP-P1 → PR #1464; Restliste angelegt
