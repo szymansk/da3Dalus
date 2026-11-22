@@ -225,7 +225,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.12"]
-        part: [rest, aero-0, aero-1, aero-2, aero-3, aero-4, aero-5, aero-6, aero-7]
+        part: [aero-2]
 
     steps:
       - name: Check out repository
@@ -252,6 +252,19 @@ jobs:
 
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
+
+      - name: Probe the AVL binary (diagnostic, gh-1437)
+        run: |
+          avl=$(poetry run python -c "from avl_binary import avl_path; print(avl_path())")
+          ls -l "$avl"; file "$avl"
+          ldd "$avl" || true
+          set +e
+          printf 'quit\n' | "$avl"; echo "exit before: $?"
+          if ldd "$avl" | grep -q "not found"; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq libgfortran5
+            ldd "$avl"
+            printf 'quit\n' | "$avl"; echo "exit after: $?"
+          fi
 
       - name: Run full suite (all markers)
         # No marker filter — exercises slow + e2e CAD pipelines too.
