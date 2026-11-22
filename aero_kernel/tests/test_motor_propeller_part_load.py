@@ -257,3 +257,28 @@ async def test_a_motor_that_cannot_turn_the_propeller_to_positive_thrust_is_refu
     with pytest.raises(FormulaError) as caught:
         await motor_propeller_part_load(x, context(LinearOpti(drag_0=0.05)))
     assert caught.value.code == "no_thrust_at_full_throttle"
+
+
+def test_with_two_thrust_drag_crossings_the_part_load_speed_is_the_lowest() -> None:
+    """Blocks 1200/2400/3600/4800 rpm, flat over J, C_T 0.05, 0.1, 0.02, 0.1, at V = 0.
+
+    With the drag 100 rho D^4 the thrust minus the drag changes sign downward (thrust passes the
+    drag) between 1200 and 2400 rpm and again between 3600 and 4800 rpm. The lowest crossing is
+    the part-load speed (the lower throttle). In the unit rho D^4 the thrust is C_T n^2 with n in 1/s
+    (blocks at 20, 40, 60, 80 1/s: 20, 160, 72, 640). Between the first two blocks
+    C_T = 0.05 + 0.05 (n - 20) / 20 = 0.0025 n, so 0.0025 n^3 = 100, n = 40000^(1/3) = 34.1995 1/s
+    = 2051.97 rpm.
+    """
+    from aero_kernel.formulas.motor_propeller_part_load import solve_part_load_speed
+    from aero_kernel.tests.test_powertrain_chain import context_for
+    from aero_kernel.tests.test_powertrain_edges import flat_table
+
+    components = flat_table(
+        (1200.0, 2400.0, 3600.0, 4800.0), (0.05, 0.1, 0.02, 0.1), (0.04, 0.04, 0.04, 0.04)
+    )
+    drag = 100.0 * RHO * D_PROP**4
+    got = solve_part_load_speed(
+        context_for("motor-propeller-part-load"), components, 0.0, RHO, D_PROP, drag
+    )
+    assert math.isclose(got, 40000.0 ** (1.0 / 3.0), rel_tol=1e-6)
+    assert math.isclose(got * 60.0, 2051.97, rel_tol=1e-5)

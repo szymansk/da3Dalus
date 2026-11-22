@@ -124,6 +124,20 @@ async def test_the_maximum_over_the_speed_is_found_between_the_scan_points() -> 
     assert not optimum.on_wing_limit
 
 
+async def test_the_refinement_never_looks_below_the_scan_start_when_the_start_is_the_best() -> None:
+    """f(v) = -v falls everywhere, so the best scan point is the start; the golden section must stay
+    in [start, start + step] (below the start a sweep may have no lift peak, gh-1419)."""
+    asked: list[float] = []
+
+    async def f(v: float) -> float | pf.Unflyable:
+        asked.append(v)
+        return -v
+
+    optimum = await pf.maximise_over_speed(f, flight(), 9.5)
+    assert min(asked) >= 9.5
+    assert 9.5 <= optimum.v < 9.51
+
+
 async def test_an_objective_without_a_value_below_a_speed_gives_an_optimum_on_that_corner() -> None:
     async def f(v: float) -> float | pf.Unflyable:
         return pf.Unflyable.WING if v < 12.3 else -v
@@ -305,6 +319,19 @@ async def test_the_sustained_load_factor_is_the_closed_form_one() -> None:
     assert expected is not None
     assert close(got.n, expected[0], 1e-5)
     assert got.limit == expected[1]
+
+
+async def test_a_turn_the_thrust_stops_before_the_wing_does_is_declared_thrust_limited() -> None:
+    """At 28 m/s and n_lim 10 the wing would stop the turn (C_L = 10 * 33.34 / 240.1 = 1.39 > 1.2) but
+    the thrust binds first, at n = 4.35: the limit the bisection met is "thrust", not the verdict at
+    n_lim ("wing")."""
+    got = await pf.sustained_load_factor(flight(), 28.0, 10.0)
+    expected = pb.sustained_n(28.0, 3.4, 10.0)
+    assert not isinstance(got, pf.Unflyable)
+    assert expected is not None
+    assert got.limit == "thrust"
+    assert close(got.n, expected[0], 1e-5)
+    assert close(got.n, 4.34764, 1e-5)
 
 
 # --- the declared failures at the end of a scan ----------------------------------------------------
