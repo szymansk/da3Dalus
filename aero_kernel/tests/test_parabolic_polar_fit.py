@@ -145,6 +145,33 @@ async def test_every_fit_declares_its_residual() -> None:
     assert not [w for w in ctx.warnings if w.code == "polar_fit_nonphysical"]
 
 
+async def test_the_residual_notice_carries_the_exact_measures_of_the_fit() -> None:
+    """Three points x = C_L^2 = (1, 2, 3), C_D = (1, 3, 2) at speeds (14, 8, 10) m/s.
+
+    The least-squares line is C_D = 1 + 0.5 x, the residuals are (-0.5, 1, -0.5): RMS =
+    sqrt((0.25 + 1 + 0.25) / 3) = sqrt(0.5), largest 1.0, largest relative max(0.5/1, 1/3, 0.5/2) =
+    0.5 (the smallest, 0.25, would show a min() for the max()); speeds 8 and 14 m/s.
+    """
+    opti = StubOpti()
+    opti.level_answer = lambda _levels: LevelPolar(
+        v_ms=(14.0, 8.0, 10.0),
+        alpha_deg=(5.0, 5.0, 5.0),
+        cl=(1.0, math.sqrt(2.0), math.sqrt(3.0)),
+        cd=(1.0, 3.0, 2.0),
+    )
+    ctx = context_with(StubAtmosphere({}), opti=opti)
+    await parabolic_polar_fit(fit_inputs(), ctx)
+    (warning,) = [w for w in ctx.warnings if w.code == "polar_fit_residual"]
+    assert warning.detail["points"] == 3
+    assert close(detail_of(warning, "rms"), math.sqrt(0.5), 1e-12)
+    assert close(detail_of(warning, "max_abs"), 1.0, 1e-12)
+    assert close(detail_of(warning, "max_relative"), 0.5, 1e-12)
+    assert close(detail_of(warning, "v_min_ms"), 8.0, 1e-12)
+    assert close(detail_of(warning, "v_max_ms"), 14.0, 1e-12)
+    assert close(detail_of(warning, "cl_min"), 1.0, 1e-12)
+    assert close(detail_of(warning, "cl_max"), math.sqrt(3.0), 1e-12)
+
+
 async def test_the_residual_is_the_scatter_of_the_solver_drag_about_the_parabola() -> None:
     """The solver drag is the parabola plus a constant 0.001 on every other point: RMS 0.0005 *sqrt(...)."""
     opti = StubOpti()
@@ -336,5 +363,16 @@ async def test_a_nonphysical_fit_stops_the_chain_at_the_induced_drag_factor() ->
     assert by_slug["oswald-efficiency"].value is not None
     assert by_slug["oswald-efficiency"].value < 0.0
     assert any(w.code == "polar_fit_nonphysical" for w in by_slug["oswald-efficiency"].warnings)
-    assert by_slug["induced-drag-factor"].status is QuantityStatus.ERROR
-    assert by_slug["max-lift-to-drag-probe"].status is not QuantityStatus.OK
+    factor, probe = by_slug["induced-drag-factor"], by_slug["max-lift-to-drag-probe"]
+    assert factor.status is QuantityStatus.ERROR
+    assert factor.error is not None
+    assert factor.error.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert factor.error.code == "precondition_violated"
+    assert factor.error.detail["precondition"] == "oswald_factor_positive"
+    # the probe binds e, AR and C_D0 directly (not k): its own check refuses e < 0, not an internal error
+    assert probe.status is QuantityStatus.ERROR
+    assert probe.value is None
+    assert probe.error is not None
+    assert probe.error.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert probe.error.code == "precondition_violated"
+    assert probe.error.detail["precondition"] == "parabola_defined"
