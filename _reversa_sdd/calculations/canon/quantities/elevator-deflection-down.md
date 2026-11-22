@@ -19,4 +19,4 @@ The elevator angle the aft CG edge is trimmed with (at `V_max`). Also the elevat
 
 **Unit.** `deg`
 
-**Used by.** [[control-surface-hinge-moments]] · [[mass-envelope]]
+**Used by.** [[cg-envelope]] · [[control-surface-hinge-moments]]

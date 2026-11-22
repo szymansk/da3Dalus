@@ -19,4 +19,4 @@ The elevator angle the front CG edge is trimmed with (stall, landing configurati
 
 **Unit.** `deg`
 
-**Used by.** [[control-surface-hinge-moments]] · [[mass-envelope]]
+**Used by.** [[cg-envelope]] · [[control-surface-hinge-moments]]

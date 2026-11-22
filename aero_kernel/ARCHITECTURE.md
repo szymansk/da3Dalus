@@ -949,6 +949,30 @@ caller's responsibility.
     is the wing, every other failure (a sweep without a peak, a zero-lift angle outside the sweep) is raised. The end of
     the propeller table is a bound of the search: an interior optimum is returned, one on the edge is
     `outside_propeller_table`, not an extrapolation.
+  - **Implementation note, `mass-envelope` (#1420).** The entry produces the two masses `max-mass-level-flight`
+    and `max-mass-lift-off` and the two curves `speed-range-over-mass` (`curve_pair`) and `climb-rate-over-mass`
+    (`curve`). `climb-rate-over-mass` is requestable (a `curve` result, gh-1424); `speed-range-over-mass` is a
+    `curve_pair`, computed and not requestable (`non_scalar_result`, ch. 8.3). The trimmable CG range is the separate draft entry `cg-envelope` (not
+    implemented: the kernel has no trim solve; maintainer, 2026-11-19). `formulas/mass_envelope.py` writes the
+    two root searches and the sample loop over the shared pieces of `powered_flight` (no new physics):
+    `m_max,level` is the root of the best excess thrust over the speed `G(m) = max_V (T - D)` (level flight,
+    `L = m g`), `m_max,TO` the root of `T - D` at `V_TO(m) = V_S,TO(m) V_TO / V_S,TO` in the take-off
+    configuration. The mass is scanned upward from the current mass, each step the factor
+    `1 + mass_envelope_step`, to a bracket (at most `mass_envelope_max_steps`, else `not_converged`), then
+    Illinois regula falsi; a state not held at the current mass is `no_feasible_speed` (no downward search). At a
+    mass above the current one the data ending closes the bracket without a sign change: `no_feasible_speed` of
+    the level problem, `outside_propeller_table` of the lift-off problem; the edge is bisected and declared
+    (`powered_limit_declared`, `limit = evaluation_edge`). Every other failure surfaces with the mass named
+    (`detail.mass_kg`). **One producer of `V_max` and `ROC_max`:** the curve samples (`mass_envelope_curve_points`
+    equally spaced masses from the current mass up to `m_max,level`, closed by the root) call
+    `highest_level_speed` and `best_climb`, the functions `max-level-speed` and `best-rate-of-climb` themselves
+    run, at the sample mass with its clean stall solve: same scan grid and start, no search of its own. A sample
+    inside a window of speeds with an excess narrower than the scan step fails with the mass named. The last
+    curve point is the root condition at a sign-change root (stated in the entry) and a computed sample at an
+    `evaluation_edge` root; the warnings of the samples are forwarded as one summary per code and declared limit
+    with the masses (`Context.scratch`). The embedded
+    stall check runs on every stall solve (`postcondition_violated`, `detail.embedded`); the four propulsion
+    relations go through `Context.embedded`.
   - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
     polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
     `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the
@@ -1817,7 +1841,7 @@ sampled grid and no `-static` chain.
   value. Never interval arithmetic. For `curve` and `curve_pair` min and max would be pointwise over the swept
   variable, which must be the same grid in every world (else `internal`); not built (gh-1424): a requested curve under more than one world is `not_implemented` (`uncertain_curve`) until a curve formula has worlds; for `airplane` and `polar` there is
   no min/max, only `worlds`.
-- Worlds follow **value edges**, not `embeds:`. A formula that reads an uncertain quantity (`mass-envelope`
+- Worlds follow **value edges**, not `embeds:`. A formula that reads an uncertain quantity (`cg-envelope`
   reads `neutral-point`) is in its subtree and runs once per assignment like any node; all its outputs
   carry the interval, also those that do not depend on it numerically (zero width). Splitting such
   outputs into separate formulas is a canon decision, not an engine rule.
@@ -1969,7 +1993,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q29 | Target not set | `roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
 | Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `notice` warning naming the route, no `missing_input` (gh-1411 implements the first half only: route A is not built, an absent `r_m` or `i_0` is `missing_input`, see the entries' Implementations) |
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `INFO` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`notice`) on `approach-speed` and its dependents, and no warning for `gravity` |
-| Q32 | Embedding (engine half built with the first embedder) | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
+| Q32 | Embedding (engine half built with the first embedder) | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `cg-envelope` (split off `mass-envelope`, #1420; not implemented) with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 | Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `warning` warning from the adapter and, since #1243, leaves the interval (`world_outside_validity`, ch. 8.13): with BRYAN and JAGUAR at 20° the roll rate is the AeroBuildup world alone |
 | Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a wing whose devices are flaperons only has `has_aileron` but not the butterfly condition — flaperons never count toward it (D10), with one flaperon or several; butterfly needs a device of role `flap` and one of role `aileron` or `elevon`, otherwise the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
@@ -2040,6 +2064,7 @@ model (part of `IMPORT_REPORT.md`).
 | `best-angle-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
 | `best-rate-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
 | `butterfly-approach` | optimization | OPT | law | 10 → 4 | 1 | – | – | seconds | later · implemented (#1402) |
+| `cg-envelope` | optimization | OPT | law | 7 → 1 | 1 | – | A11 | minutes (declared) | core chain · split off `mass-envelope`, not implemented: no trim in the kernel (#1420) |
 | `cg-for-target-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 | `cruise-target-performance` | procedure | OPT | law | 14 → 2 | 1 | – | – | seconds | later |
 | `dive-speed` | procedure | OPT | law | 5 → 1 | 1 | – | – | seconds | implemented for complete data, route B (#1414) |
@@ -2053,7 +2078,7 @@ model (part of `IMPORT_REPORT.md`).
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
 | `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | core chain · implemented (#1334) |
 | `maneuvering-speed` | optimization | OPT | law | 7 → 1 | 1 | – | – | seconds | later · implemented (#1381) |
-| `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
+| `mass-envelope` | optimization | OPT | law | 7 → 4 | 1 | – | – | minutes (declared) | core chain · implemented for complete data, route B (#1420); `climb-rate-over-mass` is a curve result (#1424), `speed-range-over-mass` is not requestable (curve_pair) |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe · implemented for complete data, route B (#1414) |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later · implemented (#1401) |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
