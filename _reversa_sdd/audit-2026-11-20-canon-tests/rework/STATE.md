@@ -45,7 +45,7 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 | 3 | Aero-Gegenprobe der überlebenden Mutationen | fertig | 19 Mutationen gegen 32 Aero-Tests (alle unverändert grün): 17 gefangen, 2 überleben (P6a-F09, P6b-F03); `aero/results.jsonl`, `aero/baseline.jsonl` |
 | 4 | Zusammenführen: Duplikate, Schweregrade, niedrige Befunde filtern | fertig | `python3 rework/build.py`: 134 zu bearbeiten (21 hoch, 59 mittel, 54 niedrig), 29 gestrichen, 4 widerlegt, 7 warten, 5 Produktionsfehler; keine Duplikate über Paketgrenzen; `rework/summary.json` |
 | 5 | Ablage erneuern: `findings.json`, Briefe, Schreiben, Dashboard | fertig | `findings.json`, `wp/*.md`, README-Nachtrag; Dashboard https://claude.ai/artifact/M7Q9tmDTkgPCQyG3ub1BM9 aktualisiert (Datenquelle `findings` auf Version 2, Seite mit Reiter „Nachprüfung“). Die Seite ist nur per Skript gegen die Daten geprüft, nicht im Browser gesehen |
-| 6 | Abarbeiten der Arbeitspakete | nicht Teil dieses Laufs | braucht Freigabe |
+| 6 | Abarbeiten der Arbeitspakete | läuft | Abschnitt „Schritt 6“ unten |
 
 ## Schritt 1 — Produktionsfehler
 
@@ -157,3 +157,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - P3-F04 entschieden: Vorbedingung wird ergänzt, Ticket #1447. Alle Maintainer-Entscheidungen getroffen
 - Dashboard-Daten auf Stand der Entscheidungen (datasets/findings Version 4, findings_v4.json)
 - 2026-11-22 — PR #1433 und #1446 gemergt. Schritt 6 begonnen: Epic #1448, Tickets #1449–#1460, Welle 1 vergeben (5 Subagents). #1437: Diagnoselauf 45030193951
+- Schritt 6 in der Tabelle auf läuft
