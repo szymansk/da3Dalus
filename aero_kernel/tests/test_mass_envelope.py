@@ -75,9 +75,18 @@ class EnvelopeOpti(pb.PolarOpti):
         stall_scale: float = 1.0,
         lift_cap_mass: float = math.inf,
         stall_warning_above: float = math.inf,
+        takeoff: AirplaneGeometry | None = None,
+        takeoff_cd0: float | None = None,
+        takeoff_stall_scale: float = 1.0,
         **kwargs: Any,
     ):
         super().__init__(cd0=cd0, **kwargs)
+        self.clean_cd0 = cd0
+        self.takeoff = (
+            takeoff  # the document that is the take-off configuration (told apart by identity)
+        )
+        self.takeoff_cd0 = cd0 if takeoff_cd0 is None else takeoff_cd0
+        self.takeoff_stall_scale = takeoff_stall_scale
         self.stall_alpha = stall_alpha
         self.stall_fails_above = stall_fails_above
         self.stall_scale = stall_scale
@@ -107,6 +116,7 @@ class EnvelopeOpti(pb.PolarOpti):
                 "check mass and speed",
                 detail={"limit": "wing_lift", "v_ms": v_ms},
             )
+        self.cd0 = self.takeoff_cd0 if airplane is self.takeoff else self.clean_cd0
         return await super().level_flight_point(airplane, mass_kg, gravity, air, v_ms, n_load)
 
     async def stall(
@@ -123,8 +133,9 @@ class EnvelopeOpti(pb.PolarOpti):
             raise failure(
                 "not_converged", "the optimum of the stall problem lies on the bound of alpha"
             )
+        scale = self.stall_scale * (self.takeoff_stall_scale if airplane is self.takeoff else 1.0)
         solution = StallSolution(
-            v_s=v_stall(mass_kg) * self.stall_scale,
+            v_s=v_stall(mass_kg) * scale,
             cl_max=pb.CL_MAX,
             alpha_s=self.stall_alpha,
             polar=lift_curve((UPRIGHT_PEAK[0], pb.CL_MAX), True),
@@ -277,9 +288,11 @@ async def test_only_the_warnings_of_the_two_answers_are_forwarded_and_the_route_
     # the level answer, the take-off answer, and the one summary of the curve samples (ADR 0020)
     assert codes.count("induced_drag_viscous_factor_removed") == 3
     assert codes.count("powertrain_route_winding_resistance") == 1
-    # the scan starts at the stall speed, so the stall corner is its first point: no wing notice; the
-    # samples' climb scans declare their floor start (one summary)
-    assert "wing" not in pb.limits(ctx)
+    # the scan starts at the stall speed, so the stall corner is its first point: the two answers declare
+    # no wing limit; the samples' climb scans declare theirs, one summary per limit
+    declared = [w for w in ctx.warnings if w.code == "powered_limit_declared"]
+    assert [w.detail["limit"] for w in declared if "masses_kg" not in w.detail] == []
+    assert sorted(str(w.detail["limit"]) for w in declared) == ["scan_floor", "wing"]
 
 
 async def test_the_embedded_relations_requested_are_those_of_the_canon_that_exist() -> None:
@@ -302,6 +315,44 @@ async def test_the_take_off_stall_and_drag_are_solved_on_the_take_off_configurat
         a is not takeoff for a in opti.stall_airplanes
     )  # the clean stall starts the speed scan
     assert any(a is not takeoff for a in opti.level_airplanes)  # the clean level flight
+
+
+TAKEOFF_CD0 = 0.6  # the take-off configuration of the stub: more drag ...
+TAKEOFF_STALL = 0.9  # ... and a lower stall speed (flaps)
+
+
+def lift_off_root(cd0: float, stall: float) -> float:
+    """The root over the mass of ``T - D`` at ``V_TO(m) = 1.3 stall V_S(m)`` with the drag of ``cd0``."""
+
+    def excess(mass: float) -> float:
+        v = RESERVE * stall * v_stall(mass)
+        drag = pb.drag(v, 1.0, mass, cd0)
+        assert drag is not None
+        return pb.thrust(v) - drag
+
+    return root_over_mass(excess, M0, 8.0)
+
+
+async def test_each_problem_is_solved_on_its_own_configuration() -> None:
+    """A take-off configuration that differs from the clean one (more drag, lower stall speed): the lift-off
+    mass is the root on the take-off stall and the take-off drag, the level mass and the stall curve stay the
+    clean ones."""
+    takeoff = AirplaneGeometry.model_validate(airplane_document())
+    opti = EnvelopeOpti(takeoff=takeoff, takeoff_cd0=TAKEOFF_CD0, takeoff_stall_scale=TAKEOFF_STALL)
+    swapped: dict[str, Any] = {"airplane-takeoff": takeoff}
+    got, _ = await run(opti, **swapped)
+    expected = lift_off_root(TAKEOFF_CD0, TAKEOFF_STALL)
+    for wrong in (  # a stall or a drag taken from the clean configuration gives another mass
+        lift_off_root(CD0, 1.0),
+        lift_off_root(CD0, TAKEOFF_STALL),
+        lift_off_root(TAKEOFF_CD0, 1.0),
+    ):
+        assert abs(expected - wrong) > 0.05  # kg
+    assert close(got["m_max_to"], expected, 1e-3)
+    assert close(got["m_max_level"], level_root(), 1e-3)  # the clean polar and the clean stall
+    stall_curve, _ = got["speed_range"]
+    for mass, v_s in zip(stall_curve.x, stall_curve.y, strict=True):
+        assert close(v_s, v_stall(mass), 1e-9)  # the clean stall speed, not the take-off one
 
 
 # --- the declared failures -------------------------------------------------------------------------
@@ -458,6 +509,26 @@ async def test_a_sign_change_below_the_edge_is_refined_as_a_root(
     assert not edge
     assert close(got, 7.7, 1e-4)
     assert not [w for w in sweep.ctx.warnings if w.code == "powered_limit_declared"]
+
+
+@pytest.mark.parametrize("edge", [6.1, 6.7, 8.0, 8.3, 8.9, 9.1])
+async def test_the_edge_declaration_names_why_the_data_end_wherever_the_bisection_stops(
+    edge: float,
+) -> None:
+    """The reason is the failure of the first mass that does not evaluate, whether the last step of the
+    bisection evaluated or not."""
+    sweep = scan()
+    got, found = await sweep.root(
+        with_edge(edge, 10.0, "no_feasible_speed"), "level flight", LEVEL_NOT_HELD
+    )
+    assert found
+    assert close(got, edge, 2e-5)
+    declared = [w for w in sweep.ctx.warnings if w.code == "powered_limit_declared"]
+    assert len(declared) == 1
+    assert "above it the data end (the data end here)" in declared[0].message
+    first_unevaluable = declared[0].detail["first_unevaluable_mass_kg"]
+    assert isinstance(first_unevaluable, float)
+    assert got < first_unevaluable <= got * (1.0 + 1.1e-5)
 
 
 @pytest.mark.parametrize(
@@ -702,14 +773,62 @@ async def test_a_sample_with_a_regime_warning_makes_the_curves_carry_it_with_the
     assert len(summary) == 1  # de-duplicated by code
     masses = summary[0].detail["masses_kg"]
     assert isinstance(masses, list)
-    assert all(isinstance(m, float) and m > 5.0 for m in masses)  # only the samples above 5 kg
-    assert len(masses) >= 1
-    assert len(set(masses)) == len(masses)  # once per mass, although the answers repeat a notice
-    by_mass = summary[0].detail["by_mass"]
-    assert isinstance(by_mass, list)
-    assert len(by_mass) == len(masses)
+    assert len(masses) == 1  # only the one sample above 5 kg
+    (mass,) = masses
+    assert isinstance(mass, float)
+    assert mass > 5.0
+    assert summary[0].detail["by_mass"] == [{"mass_kg": mass, "re": 3.0e4}]
+    assert "occurred at 1 of 4 masses" in summary[0].message
     assert summary[0].detail["re"] == 3.0e4
     assert "curve samples" in summary[0].message
+
+
+def limit_notice(limit: str, v: float) -> KernelWarning:
+    return KernelWarning.of(
+        "powered_limit_declared", f"declared {limit}", detail={"limit": limit, "v_ms": v}
+    )
+
+
+async def test_the_sample_summary_keeps_every_limit_declared_at_a_mass() -> None:
+    """ADR 0020: a sample can declare two limits under one code (the scan floor and the vertical climb);
+    neither is dropped, and a summary speaks only of the masses that declared its own limit."""
+    sweep = scan()
+    sweep.forward_samples(
+        [3.4, 4.4, 5.4],
+        [
+            (limit_notice("scan_floor", 5.0), limit_notice("gamma_90_deg", 5.0)),
+            (limit_notice("wing", 9.0),),
+            (limit_notice("wing", 10.0),),
+        ],
+    )
+    summaries = {str(w.detail["limit"]): w for w in sweep.ctx.warnings}
+    assert sorted(summaries) == ["gamma_90_deg", "scan_floor", "wing"]
+    assert summaries["scan_floor"].detail["masses_kg"] == [3.4]
+    assert summaries["gamma_90_deg"].detail["masses_kg"] == [3.4]
+    assert summaries["wing"].detail["masses_kg"] == [4.4, 5.4]
+    assert summaries["wing"].detail["by_mass"] == [
+        {"mass_kg": 4.4, "limit": "wing", "v_ms": 9.0},
+        {"mass_kg": 5.4, "limit": "wing", "v_ms": 10.0},
+    ]
+    assert summaries["wing"].message == "declared wing (curve samples: occurred at 2 of 3 masses)"
+    assert "occurred at 1 of 3 masses" in summaries["gamma_90_deg"].message
+
+
+async def test_the_sample_summary_keeps_distinct_details_of_one_code_at_one_mass() -> None:
+    """The stall solve, the level answer and the climb answer of one sample are different states: the same
+    code with a different detail is kept, an identical repetition is listed once."""
+    sweep = scan()
+    low = KernelWarning.of("reynolds_outside_band", "low Reynolds number", detail={"re": 3.0e4})
+    lower = KernelWarning.of("reynolds_outside_band", "low Reynolds number", detail={"re": 2.0e4})
+    sweep.forward_samples([3.4, 4.4], [(low, low, lower), (low,)])
+    (summary,) = sweep.ctx.warnings
+    assert summary.detail["masses_kg"] == [3.4, 4.4]
+    assert summary.detail["by_mass"] == [
+        {"mass_kg": 3.4, "re": 3.0e4},
+        {"mass_kg": 3.4, "re": 2.0e4},
+        {"mass_kg": 4.4, "re": 3.0e4},
+    ]
+    assert "occurred at 2 of 2 masses" in summary.message
 
 
 async def test_the_stall_warnings_of_the_level_root_are_forwarded_with_the_scalar() -> None:

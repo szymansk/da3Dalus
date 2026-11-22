@@ -36,13 +36,15 @@ reached in ``mass_envelope_max_steps`` steps is ``not_converged``.
 data end, namely ``no_feasible_speed`` of the level problem (no speed inside the propeller table at which
 the wing carries the weight) and ``outside_propeller_table`` of the lift-off problem (the lift-off speed is
 beyond the table). The edge between the last mass that evaluates and the first that does not is bisected to
-``powered_root_tolerance`` and the last mass that evaluates is the answer. Every other failure at any mass
+``mass_envelope_edge_tolerance`` and the last mass that evaluates is the answer. Every other failure at any mass
 (a stall solve that does not converge, a stall off the first lift peak, a missing input) is not "not held":
 it surfaces unchanged, with the mass in the message and in ``detail.mass_kg``.
 
-**Warnings forwarded** (ADR 0020): those of the answer of each root only, the level-flight state at
+**Warnings forwarded** (ADR 0020): those of the answer of each root, the level-flight state at
 ``m_max,level`` and the take-off state at ``m_max,TO`` (with the flap-validity declaration of its stall
-solve), the route notice and the skipped speeds once. The warnings of the iterates are not forwarded.
+solve), the route notice and the skipped speeds once, and those of the curve samples as one summary per
+code and declared limit (:meth:`Envelope.forward_samples`). The warnings of the iterates of the root
+searches are not forwarded.
 """
 
 import math
@@ -71,6 +73,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import CheckResult, formula, precondition
 from aero_kernel.schema import Curve, KernelWarning
 from aero_kernel.solvers.opti import Stall
+from pydantic import JsonValue
 
 __all__ = ["current_mass_positive", "mass_envelope", "takeoff_speed_above_stall_speed"]
 
@@ -181,7 +184,6 @@ class Envelope:
         self._stalls: dict[
             tuple[float, bool], Stall
         ] = {}  # one stall solve per mass and configuration
-        self.edge_root = False  # whether the last level-flight root was the edge of the data
 
     def at(self, mass: float, v_s: float, *, takeoff: bool = False) -> Inputs:
         """``x`` of the shared powered-flight code at ``mass`` with its clean stall speed ``v_s`` in m/s.
@@ -354,9 +356,9 @@ class Envelope:
                 )
                 return low[0], True
             mid = 0.5 * (low[0] + high)
-            found, reason = await self.value(f, mid, not_held)
+            found, why = await self.value(f, mid, not_held)
             if found is None:
-                high = mid
+                high, reason = mid, why  # the reason of the first mass that does not evaluate
             elif found <= 0.0:
                 return await self.refine(f, low, (mid, found), what, not_held)
             else:
@@ -421,30 +423,38 @@ class Envelope:
         return speed_range, Curve(x=grid, y=tuple(x[2] for x in samples)), grid
 
     def forward_samples(self, masses: list[float], found: list[tuple[KernelWarning, ...]]) -> None:
-        """Forward the warnings of the curve samples: one per code, with the masses it occurred at (ADR 0020).
+        """Forward the warnings of the curve samples as summaries with the masses they occurred at (ADR 0020).
 
-        The message and the detail of the first occurrence are kept; ``detail.masses_kg`` lists the sample
-        masses and ``detail.by_mass`` the detail at each. The route notice is left out: the answers declare it once. The warnings of the iterates of the root searches
-        are not forwarded (as in ``max-level-speed``); those of the answers are forwarded as they happen.
+        One summary per code and, for a declared limit, per ``detail.limit``: a sample can declare two
+        limits under one code (the floor of the climb scan and the vertical climb), and different samples
+        different ones. The message and the detail of the first occurrence are kept; ``detail.masses_kg``
+        lists the sample masses and ``detail.by_mass`` the detail of every occurrence. The stall solve, the
+        level answer and the climb answer of one sample are different states, so the same code with a
+        different message or detail at one mass is kept; only an identical repetition is listed once. The
+        route notice is left out: the answers declare it once. The warnings of the iterates of the root
+        searches are not forwarded (as in ``max-level-speed``); those of the answers are forwarded as they
+        happen.
         """
-        by_code: dict[str, list[tuple[float, KernelWarning]]] = {}
+        groups: dict[tuple[str, str], list[tuple[float, KernelWarning]]] = {}
         for mass, warnings in zip(masses, found, strict=True):
             for warning in warnings:
                 if warning.code == ROUTE_NOTICE:
                     continue
-                hits = by_code.setdefault(warning.code, [])
+                hits = groups.setdefault((warning.code, str(warning.detail.get("limit", ""))), [])
                 if not any(
-                    seen == mass for seen, _ in hits
-                ):  # once per mass: the answers repeat a notice
+                    seen == mass and w.message == warning.message and w.detail == warning.detail
+                    for seen, w in hits
+                ):
                     hits.append((mass, warning))
-        for code, hits in by_code.items():
+        for (code, _), hits in groups.items():
             first = hits[0][1]
+            at: list[JsonValue] = list(dict.fromkeys(mass for mass, _ in hits))  # each mass once
             self.ctx.warn(
                 code,
-                f"{first.message} (curve samples: occurred at {len(hits)} of {len(masses)} masses)",
+                f"{first.message} (curve samples: occurred at {len(at)} of {len(masses)} masses)",
                 {
                     **first.detail,
-                    "masses_kg": [mass for mass, _ in hits],
+                    "masses_kg": at,
                     "by_mass": [{"mass_kg": mass, **w.detail} for mass, w in hits],
                 },
             )
