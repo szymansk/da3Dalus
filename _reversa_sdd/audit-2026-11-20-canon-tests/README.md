@@ -225,7 +225,7 @@ Jeder ist durch eine überlebende Mutation belegt. P4-F01, P5-F01 und P6b-F01 ha
 
 ## 6. Was vor der Arbeit entschieden werden muss
 
-> Sechs der sieben Fragen gelten weiter; P5-F08 ist entschieden. Ergänzungen und vier neue Fragen stehen im Nachtrag oben; dort steht auch der Stand der Produktionsfehler (Tickets #1434 bis #1436).
+> Alle Fragen dieses Abschnitts sind seit dem 22. November entschieden; Ergebnis und Tickets stehen im Nachtrag oben.
 
 Diese Punkte sind keine Testaufgaben, solange die Entscheidung fehlt. Die Arbeitspakete lassen sie aus und melden sie als offen.
 
