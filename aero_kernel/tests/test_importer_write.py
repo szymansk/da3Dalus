@@ -119,6 +119,36 @@ def test_a_failing_write_leaves_the_old_files_and_no_temporary_file(
     assert sorted(path.name for path in out.iterdir()) == [REPORT, MODEL]
 
 
+def test_a_failure_while_writing_the_second_temporary_file_removes_the_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = tmp_path / "out"
+    import_to(write_canon(tmp_path), out)
+    before = {name: (out / name).read_bytes() for name in (MODEL, REPORT)}
+    changed = write_canon(
+        tmp_path / "changed",
+        {"defaults.yaml": MINI_CANON["defaults.yaml"].replace("9.80665", "9.8")},
+    )
+    real_mkstemp = tempfile.mkstemp
+    calls: list[int] = []
+
+    def second_refuses(*args: object, **kwargs: object) -> tuple[int, str]:
+        calls.append(1)
+        if len(calls) == 2:
+            msg = "disk full"
+            raise OSError(msg)
+        return real_mkstemp(*args, **kwargs)  # type: ignore[arg-type]  # pass-through spy
+
+    monkeypatch.setattr(tempfile, "mkstemp", second_refuses)
+    assert import_to(changed, out) == 1
+    assert len(calls) == 2
+    captured = capsys.readouterr()
+    assert "disk full" in captured.out + captured.err
+    assert "nothing written" in captured.out + captured.err
+    assert {name: (out / name).read_bytes() for name in (MODEL, REPORT)} == before
+    assert sorted(path.name for path in out.iterdir()) == [REPORT, MODEL]
+
+
 def test_an_unreadable_canon_directory_is_a_finding(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
