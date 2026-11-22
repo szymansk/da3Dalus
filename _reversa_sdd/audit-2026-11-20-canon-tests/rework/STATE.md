@@ -101,15 +101,15 @@ grüner CI mergen. Stände: `offen` → `läuft` (Subagent gestartet) → `Beric
 
 | Welle | Paket | Ticket | Zweig | Stand |
 |---:|---|---|---|---|
-| 1 | WP-P4a | #1449 | test/gh-1449-p4a-cache-engine-rules | läuft |
-| 1 | WP-P7b | #1450 | test/gh-1450-p7b-evaluation | läuft |
+| 1 | WP-P4a | #1449 | test/gh-1449-p4a-cache-engine-rules | PR #1461 (9d58ac1d: 7 Tests, 7 von 7 Mutationen; nachgeprüft: Dateien grün, P4-F03 getötet) |
+| 1 | WP-P7b | #1450 | test/gh-1450-p7b-evaluation | PR #1462 (8a36220e: 30 Testfälle, 9 von 9 Mutationen; nachgeprüft: Dateien grün, P7b-F01 getötet) |
 | 1 | WP-P6a | #1451 | test/gh-1451-p6a-opti-fakes | läuft |
 | 1 | WP-P6b | #1452 | test/gh-1452-p6b-avl | läuft |
 | 1 | WP-P3 | #1453 | test/gh-1453-p3-powertrain-performance | läuft |
-| 2 | WP-P1 | #1454 | — | offen |
-| 2 | WP-P2 | #1455 | — | offen |
-| 2 | WP-P5 | #1456 | — | offen |
-| 2 | WP-P7a | #1457 | — | offen |
+| 2 | WP-P1 | #1454 | test/gh-1454-p1-closed-form-preconditions | läuft |
+| 2 | WP-P2 | #1455 | test/gh-1455-p2-aero-stability | läuft |
+| 2 | WP-P5 | #1456 | test/gh-1456-p5-validation-geometry | läuft |
+| 2 | WP-P7a | #1457 | test/gh-1457-p7a-importer | läuft |
 | 3 | WP-P8a | #1458 | — | offen |
 | 3 | WP-P8b | #1459 | — | offen |
 | 3 | WP-P4b | #1460 | — | offen |
@@ -158,3 +158,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - Dashboard-Daten auf Stand der Entscheidungen (datasets/findings Version 4, findings_v4.json)
 - 2026-11-22 — PR #1433 und #1446 gemergt. Schritt 6 begonnen: Epic #1448, Tickets #1449–#1460, Welle 1 vergeben (5 Subagents). #1437: Diagnoselauf 45030193951
 - Schritt 6 in der Tabelle auf läuft
+- WP-P4a → PR #1461, WP-P7b → PR #1462; Welle 2 vergeben (4 Subagents)
