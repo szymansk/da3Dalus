@@ -951,7 +951,15 @@ async def test_every_debug_line_of_a_node_carries_formula_and_application(
 ) -> None:
     with caplog.at_level(logging.DEBUG, logger="aero_kernel.engine"):
         await run("weight")
-    node_lines = [r for r in caplog.records if r.levelno == logging.DEBUG]
+    # Select the engine's node lines explicitly: other aero_kernel loggers (registry, validate,
+    # graph) also log at DEBUG whenever the root logger is at DEBUG (e.g. app logging setup).
+    node_lines = [
+        r
+        for r in caplog.records
+        if r.name == "aero_kernel.engine"
+        and r.levelno == logging.DEBUG
+        and r.getMessage().startswith(("node started", "node finished"))
+    ]
     assert [r.getMessage().split(":")[0] for r in node_lines] == ["node started", "node finished"]
     for record in node_lines:
         assert (record.formula, record.application) == ("weight", "default")  # type: ignore[attr-defined]  # logging extra
@@ -1080,11 +1088,13 @@ async def test_one_info_line_per_call_and_debug_per_node_all_with_the_same_call_
 ) -> None:
     with caplog.at_level(logging.DEBUG, logger="aero_kernel.engine"):
         await run("weight", "double-weight")
-        info = [r for r in caplog.records if r.levelno == logging.INFO]
+        # Only the engine's own lines: other aero_kernel loggers carry no call_id (ch. 8.14).
+        engine_records = [r for r in caplog.records if r.name == "aero_kernel.engine"]
+        info = [r for r in engine_records if r.levelno == logging.INFO]
         assert len(info) == 1
-        debug = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        debug = [r for r in engine_records if r.levelno == logging.DEBUG]
     assert len(debug) >= 4  # start and end of two nodes
-    ids = {getattr(r, "call_id", None) for r in caplog.records}
+    ids = {getattr(r, "call_id", None) for r in engine_records}
     assert len(ids) == 1
     (call_id,) = ids
     assert isinstance(call_id, str)
