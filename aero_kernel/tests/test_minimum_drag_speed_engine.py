@@ -20,8 +20,14 @@ SLUGS = (
     "angle-of-attack-best-glide",
     "lift-coefficient-best-glide",
 )
-# Hand values (parabolic polar, 1.4 m x 0.2 m wing, S_ref = 0.28 m^2, sea level, m = 1.5 kg):
-# V_md = sqrt(2 W / (rho S)) (k / CD0)^(1/4) = 9.2666 * 1.13622 = 10.529 m/s; CL_md = sqrt(CD0 / k).
+# Plumbing, not optimum (P2-F06): the expectations below are the stub's own closed form; they pin
+# bindings, units and call counts of the engine path. The optimiser itself is checked against
+# closed-form answers in the aero tier (test_solvers_opti_glide_real.py,
+# test_solvers_opti_min_sink_real.py), because a fast fake optimiser only returns what it is given.
+# Independent hand value (parabolic polar, 1.4 m x 0.2 m wing, S_ref = 0.28 m^2, sea level,
+# m = 1.5 kg, CD0 = 0.03, k = 0.05): V_md = sqrt(2 W / (rho S)) (k / CD0)^(1/4)
+# = sqrt(2 * 1.5 * 9.80665 / (1.225 * 0.28)) * (5/3)^0.25 = 9.26134 * 1.13622 = 10.5229 m/s.
+V_MD_HAND = 10.5229
 V_MD = math.sqrt(2 * MASS * 9.80665 / (RHO * 0.28)) * (K / CD0) ** 0.25
 
 
@@ -39,11 +45,12 @@ def by_slug(result: ComputeResult) -> dict[str, QuantityResult]:
     return {q.slug: q for q in result.quantities}
 
 
-async def test_level_flight_best_glide_from_the_shipped_canon() -> None:
+async def test_the_best_glide_stub_plumbing_through_the_shipped_canon() -> None:
     result, opti = await run(*SLUGS)
     quantities = by_slug(result)
     assert all(q.status is QuantityStatus.OK for q in quantities.values()), result
     assert close(quantities["minimum-drag-speed"].value, V_MD, 1e-12)
+    assert close(quantities["minimum-drag-speed"].value, V_MD_HAND, 1e-4)  # independent literal
     assert quantities["minimum-drag-speed"].unit == "m/s"
     assert close(quantities["max-lift-to-drag-ratio"].value, 1 / (2 * math.sqrt(CD0 * K)), 1e-12)
     assert quantities["angle-of-attack-best-glide"].value == GLIDE_ALPHA
@@ -61,7 +68,7 @@ async def test_the_provenance_names_the_optimiser_tool_versions_and_settings() -
     assert result.provenance.solver_settings == OPT_SETTINGS
 
 
-async def test_a_heavier_airplane_flies_the_best_glide_faster_by_the_square_root() -> None:
+async def test_the_mass_reaches_the_best_glide_call_stub_plumbing_of_the_square_root_law() -> None:
     light, _ = await run("minimum-drag-speed")
     heavy_input = aircraft()  # the same airplane, 4 times the mass
     solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=StubOpti())
