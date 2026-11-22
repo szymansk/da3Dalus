@@ -101,18 +101,18 @@ grüner CI mergen. Stände: `offen` → `läuft` (Subagent gestartet) → `Beric
 
 | Welle | Paket | Ticket | Zweig | Stand |
 |---:|---|---|---|---|
-| 1 | WP-P4a | #1449 | test/gh-1449-p4a-cache-engine-rules | PR #1461 (9d58ac1d: 7 Tests, 7 von 7 Mutationen; nachgeprüft: Dateien grün, P4-F03 getötet) |
-| 1 | WP-P7b | #1450 | test/gh-1450-p7b-evaluation | PR #1462 (8a36220e: 30 Testfälle, 9 von 9 Mutationen; nachgeprüft: Dateien grün, P7b-F01 getötet) |
-| 1 | WP-P6a | #1451 | test/gh-1451-p6a-opti-fakes | PR #1466 (6f72a133: 23 Fälle, 11 von 11 Mutationen; nachgeprüft). Rest: Aero-Hälften von P6a-F09 und F10 |
-| 1 | WP-P6b | #1452 | test/gh-1452-p6b-avl | PR #1465 (4fa7515a: 14 Fälle, 9 von 9 Mutationen; nachgeprüft). Rest: P6b-F12 |
-| 1 | WP-P3 | #1453 | test/gh-1453-p3-powertrain-performance | PR #1463 (ac2f5bd5: 16 Tests, 12 von 12 Mutationen; nachgeprüft). Rest: P3-F16 (Aero), P1-F09 zum Teil (Frage an den Produktivcode) |
-| 2 | WP-P1 | #1454 | test/gh-1454-p1-closed-form-preconditions | PR #1464 (588ae063: 12 Tests + 40 Fälle, 8 von 8 Mutationen; nachgeprüft). Rest: P1-F15 in test_tail_arms.py, P1-F13 Aero-Teil |
-| 2 | WP-P2 | #1455 | test/gh-1455-p2-aero-stability | PR #1468 (36fcf1d5 + 3b810783: 19 Tests, 5 von 5 Mutationen; nach Rückgabe wiederhergestellt, Namen je Datei geprüft: nur die fünf vorgeschriebenen Umbenennungen fehlen) |
-| 2 | WP-P5 | #1456 | test/gh-1456-p5-validation-geometry | PR #1470 (e68bdce6: 24 Tests, 5 von 5 Mutationen; nachgeprüft). Rest: P5-F06 mit #1445 |
-| 2 | WP-P7a | #1457 | test/gh-1457-p7a-importer | PR #1467 (bb4e5411: 27 Fälle, 9 von 9 Mutationen; nachgeprüft). Rest: P7a-F17 in test_importer_abscissa.py |
-| 3 | WP-P8a | #1458 | test/gh-1458-p8a-reference-fleet | PR #1472 (24e5ab66: 250 schnelle Tests, 1 von 1 Mutation; nachgeprüft). Rest: P8-F06, P8-F03 (Recorder), P8-F18 Teil 1 |
-| 3 | WP-P8b | #1459 | test/gh-1459-p8b-app-layer | PR #1471 (070b0bf1: 3 neue + 3 verschärfte Tests, 4 von 4 Mutationen; nachgeprüft). Rest: P8-F13 (Aero) |
-| 3 | WP-P4b | #1460 | test/gh-1460-p4b-test-isolation | PR #1469 (049468e4: 5 Tests robust, gemeinsamer Lauf 2 rot → grün, nachgeprüft). Rest: P4-F17 |
+| 1 | WP-P4a | #1449 | test/gh-1449-p4a-cache-engine-rules | **gemergt** PR #1461 (9d58ac1d: 7 Tests, 7 von 7 Mutationen; nachgeprüft: Dateien grün, P4-F03 getötet) |
+| 1 | WP-P7b | #1450 | test/gh-1450-p7b-evaluation | **gemergt** PR #1462 (8a36220e: 30 Testfälle, 9 von 9 Mutationen; nachgeprüft: Dateien grün, P7b-F01 getötet) |
+| 1 | WP-P6a | #1451 | test/gh-1451-p6a-opti-fakes | **gemergt** PR #1466 (6f72a133: 23 Fälle, 11 von 11 Mutationen; nachgeprüft). Rest: Aero-Hälften von P6a-F09 und F10 |
+| 1 | WP-P6b | #1452 | test/gh-1452-p6b-avl | **gemergt** PR #1465 (4fa7515a: 14 Fälle, 9 von 9 Mutationen; nachgeprüft). Rest: P6b-F12 |
+| 1 | WP-P3 | #1453 | test/gh-1453-p3-powertrain-performance | **gemergt** PR #1463 (ac2f5bd5: 16 Tests, 12 von 12 Mutationen; nachgeprüft). Rest: P3-F16 (Aero), P1-F09 zum Teil (Frage an den Produktivcode) |
+| 2 | WP-P1 | #1454 | test/gh-1454-p1-closed-form-preconditions | **gemergt** PR #1464 (588ae063: 12 Tests + 40 Fälle, 8 von 8 Mutationen; nachgeprüft). Rest: P1-F15 in test_tail_arms.py, P1-F13 Aero-Teil |
+| 2 | WP-P2 | #1455 | test/gh-1455-p2-aero-stability | **gemergt** PR #1468 (36fcf1d5 + 3b810783: 19 Tests, 5 von 5 Mutationen; nach Rückgabe wiederhergestellt, Namen je Datei geprüft: nur die fünf vorgeschriebenen Umbenennungen fehlen) |
+| 2 | WP-P5 | #1456 | test/gh-1456-p5-validation-geometry | **gemergt** PR #1470 (e68bdce6: 24 Tests, 5 von 5 Mutationen; nachgeprüft). Rest: P5-F06 mit #1445 |
+| 2 | WP-P7a | #1457 | test/gh-1457-p7a-importer | **gemergt** PR #1467 (bb4e5411: 27 Fälle, 9 von 9 Mutationen; nachgeprüft). Rest: P7a-F17 in test_importer_abscissa.py |
+| 3 | WP-P8a | #1458 | test/gh-1458-p8a-reference-fleet | **gemergt** PR #1472 (24e5ab66: 250 schnelle Tests, 1 von 1 Mutation; nachgeprüft). Rest: P8-F06, P8-F03 (Recorder), P8-F18 Teil 1 |
+| 3 | WP-P8b | #1459 | test/gh-1459-p8b-app-layer | **gemergt** PR #1471 (070b0bf1: 3 neue + 3 verschärfte Tests, 4 von 4 Mutationen; nachgeprüft). Rest: P8-F13 (Aero) |
+| 3 | WP-P4b | #1460 | test/gh-1460-p4b-test-isolation | **gemergt** PR #1469 (049468e4: 5 Tests robust, gemeinsamer Lauf 2 rot → grün, nachgeprüft). Rest: P4-F17 |
 
 Ein Paket im Stand `läuft` ohne laufenden Subagent (nach einem Neustart): Zweig und Worktree prüfen
 (`git -C .worktrees/gh-<N> log --oneline -3`, `status`); liegt kein Commit vor, Subagent neu starten.
@@ -120,6 +120,11 @@ Ein Paket im Stand `läuft` ohne laufenden Subagent (nach einem Neustart): Zweig
 Zusätze zu den Briefen, die im Dispatch stehen müssen: P7b-F03 nur die obere Bandgrenze prüfen (untere exklusive
 Grenze gehört zu #1440); P5-F06 schlägt heute fehl und wird mit #1445 geschrieben; P8-F13 nur der Kernel-seitige
 Schlusstest; Befunde mit Ticket (#1439 bis #1447) bekommen keinen Test im Paket.
+
+**Stand 2026-11-22:** alle zwölf Pakete gemergt (PR #1461–#1472). Schnelle Stufe auf dem zusammengeführten `main`
+(47187715), Kern + `scripts/tests` + drei App-Canon-Dateien gemeinsam: 5565 bestanden. Abnahmelauf auf `main`:
+`scratchpad/accept.sh` spielt alle 82 Patches einzeln ein, Ergebnis in `scratchpad/accept.tsv` (flüchtig; bei Verlust neu laufen lassen).
+Tickets: #1449, #1450, #1455 durch den PR geschlossen; die übrigen neun bleiben offen bis die Restliste erledigt ist.
 
 **Restliste nach den Paketen (ein Nachlauf am Ende, Aero-Tests einzeln):** P3-F16 (Aero, Erwartungswerte neu herleiten);
 P1-F13 Aero-Teil (`GeometryAdapter.fin_area` gegen 0,0339411 m²); P1-F15 in `test_tail_arms.py:154`;
@@ -174,3 +179,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - WP-P2 → PR #1468 (nach Wiederherstellung), WP-P4b → PR #1469
 - WP-P5 → PR #1470, WP-P8b → PR #1471
 - WP-P8a → PR #1472. Alle zwölf Pakete als PR offen oder gemergt
+- Alle zwölf Pakete gemergt (PR #1461–#1472); main in der schnellen Stufe grün (5565); Abnahmelauf über alle Patches gestartet
