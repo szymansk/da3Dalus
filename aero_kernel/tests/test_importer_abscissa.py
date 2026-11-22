@@ -42,7 +42,7 @@ def test_an_unknown_abscissa_is_a_finding(tmp_path: Path) -> None:
     (message,) = findings(run(tmp_path, type_="curve", extra="abscissa: ghost\n"))
     assert message == (
         "quantities/profile.md: abscissa: abscissa ghost is no quantity of the canon"
-    ) or ("abscissa ghost is no quantity of the canon" in message)
+    )
 
 
 def test_a_non_scalar_abscissa_is_a_finding(tmp_path: Path) -> None:

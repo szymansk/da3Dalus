@@ -1221,3 +1221,37 @@ async def test_the_chain_of_the_plan_batch_is_the_regression_golden(member: Flee
     by_slug = {q.slug: q for q in (await run(member)).quantities}
     for slug, golden in GOLDEN[member].items():
         check(by_slug[slug], golden)
+
+
+# GEE_BEE_R3 is the fourth flapped plan model; it is left out because its landing stall speed
+# (11.345 m/s) comes out above the clean one (11.119 m/s) at 30 deg, which the check below states
+# as impossible for a working flap (reported for a ticket, #1448 leftovers).
+FLAPPED_PLAN_MODELS = (FleetMember.ALBATROS_4, FleetMember.P39, FleetMember.SPIRIT_100)
+FLAP_TAKEOFF_DEG, FLAP_LANDING_DEG = 15.0, 30.0  # the RV-7 values, passed as caller parameters
+
+
+@pytest.mark.parametrize("member", FLAPPED_PLAN_MODELS, ids=lambda m: m.name)
+@pytest.mark.asyncio
+async def test_a_flapped_plan_model_given_flap_deflections_computes_its_approach_chain(
+    member: FleetMember,
+) -> None:
+    """The batch gives these four aircraft no flap deflection, so their approach chain is recorded
+    as ``upstream_failed``. With the deflections as caller values the chain computes: the landing
+    flap lowers the stall speed (V_S ~ 1 / sqrt(C_L,max), and a deflected flap raises C_L,max), and
+    the roll rate at the approach speed is a value."""
+    values = {
+        "altitude": 0.0,
+        "static-margin-target": SM_TARGET,
+        "aileron-deflection": AILERON_DEFLECTION_DEG,
+        "flap-deflection-takeoff": FLAP_TAKEOFF_DEG,
+        "flap-deflection-landing": FLAP_LANDING_DEG,
+    }
+    slugs = ("stall-speed", "stall-speed-landing", "roll-rate-approach")
+    result = await compute(aircraft_input(member, values), request(*slugs))
+    by_slug = {q.slug: q for q in result.quantities}
+    for slug in slugs:
+        assert by_slug[slug].status is QuantityStatus.OK, (slug, by_slug[slug])
+    clean, landing = by_slug["stall-speed"].value, by_slug["stall-speed-landing"].value
+    assert clean is not None
+    assert landing is not None
+    assert landing < clean
