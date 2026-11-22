@@ -7,6 +7,7 @@ from aero_kernel.devices import (
     CROW_FLAP_ROLES,
     crow_configuration,
     devices_at_rest,
+    flap_deflections,
     has_flap,
     with_flaps_at,
 )
@@ -138,3 +139,31 @@ def test_the_crow_configuration_leaves_the_flaperon_where_landing_put_it() -> No
 def test_crow_roles_name_the_butterfly_layout_the_graph_tests() -> None:
     assert frozenset({"flap"}) == CROW_FLAP_ROLES
     assert frozenset({"aileron", "elevon"}) == CROW_AILERON_ROLES
+
+
+def test_flap_deflections_lists_only_flap_roles_off_rest_labelled_by_name_or_index() -> None:
+    """Sections 0..4: flap 'F' 20, unnamed flaperon -5, aileron 'A' 3, flap 'G' at rest, none.
+
+    Expected: the flap and the flaperon (a flap role), the unnamed one labelled by its section
+    index; the aileron is no flap and the flap at 0 deg is not deflected.
+    """
+
+    def tev(role: str, deflection: float, name: str | None = None) -> dict[str, Any]:
+        device: dict[str, Any] = {
+            "role": role,
+            "rel_chord_root": 0.25,
+            "rel_chord_tip": 0.25,
+            "deflection_deg": deflection,
+        }
+        if name is not None:
+            device["name"] = name
+        return device
+
+    model = airplane(
+        section(0.0, tev("flap", 20.0, "F")),
+        section(0.2, tev("flaperon", -5.0)),
+        section(0.4, tev("aileron", 3.0, "A")),
+        section(0.6, tev("flap", 0.0, "G")),
+        section(0.8),
+    )
+    assert flap_deflections(model) == [("Main", "F", 20.0), ("Main", "device 1", -5.0)]

@@ -3,7 +3,13 @@
 from pathlib import Path
 
 from aero_kernel.importer.pipeline import ImportResult, import_canon
-from aero_kernel.tests.importer_builders import MINI_CANON, MINI_TAXONOMY, write_canon
+from aero_kernel.tests.importer_builders import (
+    MINI_CANON,
+    MINI_TAXONOMY,
+    formula_text,
+    quantity_text,
+    write_canon,
+)
 
 WEIGHT = "quantities/weight.md"
 MASS = "quantities/aircraft-mass.md"
@@ -267,3 +273,48 @@ def test_a_group_must_agree_with_its_stage_and_module(tmp_path: Path) -> None:
         "quantities/weight.md: group: group 'air' belongs to module 'goals'; this quantity "
         "has module 'body'"
     ]
+
+
+def test_a_group_must_agree_with_its_stage(tmp_path: Path) -> None:
+    # Group 'wind' belongs to stage 'early'; the quantity is tagged with stage 'late'.
+    families = FAMILIES.replace(
+        "stages:\n", "stages:\n  - {id: late, label: Late, explanation: Later.}\n"
+    ).replace(
+        "groups:\n", "groups:\n  - {id: wind, label: Wind, explanation: Wind., stage: early}\n"
+    )
+    changes = retag(WEIGHT, "group/wind", "stage/late")
+    changes["taxonomy.yaml"] = MINI_TAXONOMY + families
+    result = run(tmp_path, changes)
+    assert findings(result) == [
+        "quantities/weight.md: group: group 'wind' belongs to stage 'early'; this quantity "
+        "has stage 'late'"
+    ]
+
+
+WEIGHT_USER = "quantities/weight-user.md"
+WEIGHT_USER_FORMULA = "formulas/weight-user.md"
+
+
+def consume_weight() -> dict[str, str | None]:
+    """A formula that reads ``weight``, which makes ``weight`` an intermediate quantity."""
+    return {
+        WEIGHT_USER: tag(
+            quantity_text("weight-user", "W_u", "N", "derived"), "point/cruise", "discipline/forces"
+        ),
+        WEIGHT_USER_FORMULA: formula_text(
+            "weight-user",
+            "kind: law\ntool: APP\ninputs: {w: weight}\noutputs: {x: weight-user}\n",
+        ),
+    }
+
+
+def test_an_intermediate_quantity_without_a_stage_is_a_finding(tmp_path: Path) -> None:
+    result = run(tmp_path, consume_weight())
+    assert findings(result) == [
+        "quantities/weight.md: stage: missing: an intermediate quantity needs a stage tag"
+    ]
+
+
+def test_an_intermediate_quantity_with_a_stage_is_complete(tmp_path: Path) -> None:
+    result = run(tmp_path, {**consume_weight(), **retag(WEIGHT, "stage/early")})
+    assert findings(result) == []

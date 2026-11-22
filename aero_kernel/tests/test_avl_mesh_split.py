@@ -72,6 +72,22 @@ def test_stations_off_the_device_take_the_cut_of_the_nearest_controlled_station(
     assert math.isclose(root.chord_range[1], 0.7)
 
 
+def test_stations_outboard_of_the_device_take_the_cut_of_its_outboard_end() -> None:
+    """Ribs at y = 0, 0.2, 0.4, 0.6 with the aileron on the second panel (y 0.2 .. 0.4), hinge
+    0.7 at its inboard and 0.8 at its outboard end. The root's nearest controlled station is
+    y = 0.2 (cut 0.7); the tip at y = 0.6 is nearest to y = 0.4 (cut 0.8), not to the first
+    controlled station (that would give 0.7 there too)."""
+    plane = wing_geometry((0.0, 0.2, 0.4, 0.6), 1, aileron(0.7, 0.8))
+    (main,) = mesh_surfaces(plane, 8, lambda _a: 0, drive_roll=True)
+    front, _ = split_at_hinge(main, (12, 8))
+    root, tip = front.sections[0], front.sections[-1]
+    assert (root.y, tip.y) == (0.0, 0.6)
+    assert root.chord_range is not None
+    assert tip.chord_range is not None
+    assert math.isclose(root.chord_range[1], 0.7)
+    assert math.isclose(tip.chord_range[1], 0.8)
+
+
 def test_the_file_has_two_surfaces_with_their_chordwise_counts_and_afil_ranges() -> None:
     front, aft = split_at_hinge(driven(), (12, 8))
     text = avl_geometry([front, aft], [1.0], n_chord=10, s_ref=0.16, c_ref=0.2, b_ref=0.8)

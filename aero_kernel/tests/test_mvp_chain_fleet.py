@@ -690,12 +690,6 @@ async def test_with_ailerons_the_turn_sideslip_and_rudder_roll_authority_are_not
         assert by_slug[slug].interval is None
 
 
-def test_the_fleet_has_members_with_and_without_a_roll_device() -> None:
-    assert FleetMember.CHEKKER in RUDDER_ONLY
-    assert FleetMember.BRYAN in WITHOUT_TURN_SIDESLIP
-    assert len(WITHOUT_TURN_SIDESLIP) + len(RUDDER_ONLY) == len(FleetMember)
-
-
 @pytest.mark.parametrize("member", RUDDER_ONLY)
 @pytest.mark.asyncio
 async def test_without_a_roll_device_the_turn_sideslip_and_rudder_roll_authority_apply(

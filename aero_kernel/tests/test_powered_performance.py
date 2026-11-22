@@ -79,6 +79,9 @@ async def test_a_drive_train_that_cannot_hold_level_flight_is_a_declared_failure
     with pytest.raises(FormulaError) as caught:
         await max_level_speed(pb.bound_inputs("max-level-speed"), ctx)
     assert caught.value.code == "no_feasible_speed"
+    # C_D0 = 2.0: every speed the wing can fly has D > T, so the thrust is the stated reason, not the wing
+    assert "thrust at full throttle is below" in caught.value.message
+    assert "wing cannot carry" not in caught.value.message
 
 
 async def test_a_thrust_that_outlasts_the_propeller_table_is_the_declared_table_failure() -> None:
@@ -196,6 +199,23 @@ async def test_the_best_rate_of_climb_vertical_is_declared_too() -> None:
     v_expected, roc_expected = brute_force(lambda v, gamma: v * math.sin(gamma), mass)
     assert abs(got["v_y"] - v_expected) <= 0.06
     assert close(got["roc_max"], roc_expected, 1e-3)
+    # T_0 = 40 N exceeds W = 7.8 N: the climb can be vertical, and the notice says so
+    assert "gamma_90_deg" in pb.limits(ctx)
+
+
+async def test_the_best_rate_of_climb_on_the_stall_corner_declares_the_wing() -> None:
+    # C_D0 = 0.3 makes the drag so high that the rate of climb is greatest at the slowest speed
+    # the wing can fly: the first valued scan point, the stall corner
+    ctx = pb.context("best-rate-of-climb", pb.PolarOpti(cd0=0.3))
+    await best_rate_of_climb(pb.bound_inputs("best-rate-of-climb", mass=6.0), ctx)
+    assert "wing" in pb.limits(ctx)
+    notice = next(
+        w
+        for w in ctx.warnings
+        if w.code == "powered_limit_declared" and w.detail["limit"] == "wing"
+    )
+    assert "cos_gamma" in notice.detail
+    assert "cl" in notice.detail
 
 
 async def test_a_wing_that_cannot_carry_the_weight_anywhere_has_no_feasible_speed() -> None:
@@ -248,6 +268,21 @@ async def test_the_fastest_sustained_turn_matches_the_closed_form_scan() -> None
     assert close(math.radians(got["omega_max"]), omega_expected, 2e-3)
     declared = pb.limits(ctx)
     assert declared == [limit_expected] or {*declared, limit_expected} == {"thrust", "wing"}
+
+
+async def test_the_turn_kinematics_by_hand() -> None:
+    # n = 2: sqrt(n^2 - 1) = sqrt(3) = 1.7320508 (the load factor of a 60 degree bank)
+    # omega = 9.80665 * 1.7320508 / 20 = 0.849281 rad/s = 48.660 deg/s
+    # r = 20^2 / (9.80665 * 1.7320508) = 400 / 16.98558 = 23.5493 m
+    from aero_kernel.formulas.max_sustained_turn_rate import turn_rate
+    from aero_kernel.formulas.min_sustained_turn_radius import turn_radius
+
+    omega = turn_rate(9.80665, 20.0, 2.0)
+    r = turn_radius(9.80665, 20.0, 2.0)
+    assert close(omega, 0.849281, 1e-5)
+    assert close(math.degrees(omega), 48.660, 1e-5)
+    assert close(r, 23.5493, 1e-5)
+    assert close(omega, 20.0 / r, 1e-12)  # omega = V / r
 
 
 async def test_the_tightest_sustained_turn_matches_the_closed_form_scan() -> None:

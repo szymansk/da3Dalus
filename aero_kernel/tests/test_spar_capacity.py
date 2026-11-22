@@ -547,3 +547,43 @@ def test_standard_mode_origin_is_an_absolute_point() -> None:
     wing_ = two_rib_wing(fields, tip=(0.0, 0.5, 0.0), tip_chord=0.2)
     assert isinstance(outcome_at(wing_, 0.24), NoSparAtStation)
     assert isinstance(outcome_at(wing_, 0.26), BendingCapacity)
+
+
+def test_a_partial_spar_of_an_outboard_segment_is_measured_from_the_root_rib_of_its_segment() -> (
+    None
+):
+    """Ribs at y = 0, 0.5, 1.0; the second segment's spar starts 0.1 m and is 0.2 m long.
+
+    Its axis begins at the root rib of the segment (y = 0.5), so it covers y = 0.6 to 0.8 and not
+    0.1 to 0.3 (the origin of the wing).
+    """
+    first = spar(section=RECTANGULAR, material="test")
+    second = spar(section=RECTANGULAR, material="test", spare_start=0.1, spare_length=0.2)
+    wing_ = wing([first], [second])
+    assert isinstance(outcome_at(wing_, 0.55), NoSparAtStation)
+    for y in (0.6, 0.65, 0.8):
+        assert isinstance(outcome_at(wing_, y), BendingCapacity), y
+    assert isinstance(outcome_at(wing_, 0.85), NoSparAtStation)
+
+
+def test_normal_mode_offset_and_standard_mode_point_differ_in_an_outboard_segment() -> None:
+    """The second segment starts at y = 0.5; the spar axis is the y direction with origin y 0.2, start 0.05.
+
+    Normal mode: the origin is an offset from the segment root, so the spar starts at
+    0.5 + 0.2 + 0.05 = 0.75. Standard mode: the origin is an absolute point, so it starts at
+    0.2 + 0.05 = 0.25, before the segment, and the spar is present over the whole segment.
+    """
+    first = spar(section=RECTANGULAR, material="test")
+    fields = {
+        "section": RECTANGULAR,
+        "material": "test",
+        "spare_vector": [0.0, 1.0, 0.0],
+        "spare_origin": [0.0, 0.2, 0.0],
+        "spare_start": 0.05,
+    }
+    normal = wing([first], [spar(**fields, spare_mode="normal")])
+    standard = wing([first], [spar(**fields, spare_mode="standard")])
+    assert isinstance(outcome_at(normal, 0.74), NoSparAtStation)
+    assert isinstance(outcome_at(normal, 0.76), BendingCapacity)
+    assert isinstance(outcome_at(standard, 0.51), BendingCapacity)
+    assert isinstance(outcome_at(standard, 0.74), BendingCapacity)

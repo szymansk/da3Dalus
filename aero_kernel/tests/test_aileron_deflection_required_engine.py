@@ -17,7 +17,17 @@ from aero_kernel.solvers.opti import SteadyRoll
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.np_builders import StubAvl
 from aero_kernel.tests.stall_stubs import StubOpti
-from aero_kernel.tests.test_roll_rate_engine import GRAVITY, MASS, RHO, only, plane, run
+from aero_kernel.tests.test_roll_rate_engine import (
+    GRAVITY,
+    MASS,
+    RHO,
+    deflections,
+    flap_and_aileron,
+    only,
+    plane,
+    run,
+    v_app,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -241,6 +251,36 @@ async def test_the_approach_application_uses_the_approach_speed() -> None:
     speeds = {call[4] for call in opti.roll_calls}
     assert len(speeds) == 1
     assert V_CRUISE not in speeds
+    # 1.3 V_S with V_S = sqrt(2 m g / (rho S C_L,max)) = sqrt(2 * 0.15 * 9.80665 / (1.225 * 0.16
+    # * 1.19)) = 3.5515 m/s: 1.3 * 3.5515 = 4.617 m/s (hand value, the helper recomputes it)
+    (speed,) = speeds
+    assert close(speed, 4.617, 1e-4)
+    assert close(speed, v_app(plane()), 1e-12)
+
+
+async def test_the_approach_application_rolls_the_landing_configuration_at_the_approach_lift() -> (
+    None
+):
+    """Both worlds read the airplane with the flap at the landing deflection and the aileron at rest.
+
+    The AVL world carries the speed as the lift coefficient of the operating point:
+    C_L = 2 m g / (rho V^2 S) = C_L,max / 1.3^2 = 1.19 / 1.69 = 0.70414 at V = 1.3 V_S.
+    """
+    opti, avl = SaturatingOpti(), LinearAvl()
+    result = await run(
+        "aileron-deflection-required-approach",
+        airplane=flap_and_aileron(),
+        delta=None,
+        opti=opti,
+        avl=avl,
+        extra={"roll-rate-target-approach": 100.0, "flap-deflection-landing": 30.0},
+    )
+    assert only(result).status is QuantityStatus.OK, result
+    assert opti.roll_calls
+    assert avl.roll_calls
+    for airplane in (*(call[0] for call in opti.roll_calls), *(call[0] for call in avl.roll_calls)):
+        assert deflections(airplane) == {"flap": 30.0, "aileron": 0.0}
+    assert all(close(call[1], 1.19 / 1.69, 1e-9) for call in avl.roll_calls)
 
 
 async def test_no_aileron_role_means_not_applicable() -> None:

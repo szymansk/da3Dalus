@@ -5,6 +5,7 @@ from itertools import pairwise
 
 import pytest
 from aero_kernel.solvers.avl_contour import repanel
+from aero_kernel.tests.formula_builders import all_near
 
 
 def ellipse(n: int, thickness: float = 0.12) -> list[tuple[float, float]]:
@@ -32,6 +33,16 @@ def test_the_contour_runs_trailing_edge_to_leading_edge_to_trailing_edge() -> No
     assert contour[0][0] == 1.0
     assert contour[79][0] == 0.0
     assert contour[-1][0] == 1.0
+
+
+def test_the_stations_are_cosine_spaced_on_both_sides() -> None:
+    """5 points per side: x = 0.5 (1 - cos(pi k / 4)) for k = 4..0 on the upper side, i.e.
+    1, 0.853553, 0.5, 0.146447, 0 (cos(pi/4) = 0.707107, cos(pi/2) = 0); the lower side ascends
+    through the same stations. Uniform spacing would give 1, 0.75, 0.5, 0.25, 0."""
+    contour = repanel(ellipse(50), 5)
+    expected = [1.0, 0.853553, 0.5, 0.146447, 0.0]
+    assert all_near([x for x, _ in contour[:5]], expected, 1e-6)
+    assert all_near([x for x, _ in contour[4:]], expected[::-1], 1e-6)
 
 
 def test_the_thickness_is_kept() -> None:

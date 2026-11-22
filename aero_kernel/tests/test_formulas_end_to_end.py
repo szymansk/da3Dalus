@@ -102,7 +102,32 @@ async def test_the_fleet_through_the_engine_with_a_stub_atmosphere(
     assert stub.asked == [ALTITUDE_M]
 
 
-async def test_a_missing_altitude_fails_density_and_pressure_but_not_weight() -> None:
+async def test_a_missing_altitude_takes_the_default_zero_metres_and_declares_it() -> None:
+    """No altitude: the canon default 0 m is taken, the ISA sea-level stub answers 1.225 kg/m^3.
+
+    q = 0.5 * 1.225 * 15^2 = 0.5 * 1.225 * 225 = 137.8125 Pa.
+    """
+    no_altitude = AircraftInput.model_validate(
+        {
+            "airplane": airplane_document(),
+            "values": {"aircraft-mass": 0.151, "flight-speed": 15.0},
+        }
+    )
+    stub = StubAtmosphere({0.0: 1.225})
+    solvers = solvers_with(atmosphere=stub)
+    result = await evaluate(shipped_build(), no_altitude, request(*SLUGS), solvers=solvers)
+    quantities = by_slug(result)
+    assert quantities["weight"].status is QuantityStatus.OK
+    assert quantities["air-density"].status is QuantityStatus.OK
+    assert close(quantities["air-density"].value, 1.225, 1e-12)
+    assert stub.asked == [0.0]
+    assert close(quantities["dynamic-pressure"].value, 137.8125, 1e-12)
+    defaults = {d.slug: d.value for d in result.provenance.defaults_used}
+    assert defaults == {"altitude": 0.0, "gravity": 9.80665}
+
+
+async def test_an_atmosphere_that_cannot_answer_fails_density_and_pressure_but_not_weight() -> None:
+    """The adapter has no value for the altitude (empty stub table): an error at the density, not at the weight."""
     no_altitude = AircraftInput.model_validate(
         {
             "airplane": airplane_document(),
@@ -113,8 +138,15 @@ async def test_a_missing_altitude_fails_density_and_pressure_but_not_weight() ->
     result = await evaluate(shipped_build(), no_altitude, request(*SLUGS), solvers=solvers)
     quantities = by_slug(result)
     assert quantities["weight"].status is QuantityStatus.OK
-    assert quantities["air-density"].status is QuantityStatus.ERROR
-    assert quantities["dynamic-pressure"].status is QuantityStatus.ERROR
+    density = quantities["air-density"]
+    assert density.status is QuantityStatus.ERROR
+    assert density.error is not None
+    assert density.error.category is ErrorCategory.INTERNAL
+    assert density.error.code == "internal"
+    pressure = quantities["dynamic-pressure"]
+    assert pressure.status is QuantityStatus.ERROR
+    assert pressure.error is not None
+    assert pressure.error.category is ErrorCategory.UPSTREAM_FAILED
 
 
 async def test_everything_else_is_still_not_implemented() -> None:

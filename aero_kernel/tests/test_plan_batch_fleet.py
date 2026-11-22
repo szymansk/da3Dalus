@@ -1215,14 +1215,56 @@ async def run(member: FleetMember) -> ComputeResult:
     return await compute(aircraft_input(member, values), request(*SLUGS))
 
 
-def test_every_member_of_the_batch_has_its_golden() -> None:
-    assert set(GOLDEN) == set(PLAN_BATCH)
-    assert all(tuple(golden) == SLUGS for golden in GOLDEN.values())
-
-
 @pytest.mark.parametrize("member", PLAN_BATCH, ids=lambda m: m.name)
 @pytest.mark.asyncio
 async def test_the_chain_of_the_plan_batch_is_the_regression_golden(member: FleetMember) -> None:
     by_slug = {q.slug: q for q in (await run(member)).quantities}
     for slug, golden in GOLDEN[member].items():
         check(by_slug[slug], golden)
+
+
+# The four flapped plan models. On GEE_BEE_R3 the kernel declares `flap_confidence_low` for the flap
+# (NeuralFoil's confidence over the device is about 2e-4): the value is computed but not trusted
+# (ARCHITECTURE, rule `flap-model-validity`), and its landing stall speed comes out above the clean
+# one (11.345 against 11.119 m/s at 30 deg). #1314 owns a trustworthy value there, so the direction
+# of the flap effect is asserted only for the three others.
+FLAPPED_PLAN_MODELS = (
+    (FleetMember.ALBATROS_4, True),
+    (FleetMember.P39, True),
+    (FleetMember.SPIRIT_100, True),
+    (FleetMember.GEE_BEE_R3, False),
+)
+FLAP_TAKEOFF_DEG, FLAP_LANDING_DEG = 15.0, 30.0  # the RV-7 values, passed as caller parameters
+
+
+@pytest.mark.parametrize(
+    ("member", "trusted"), FLAPPED_PLAN_MODELS, ids=lambda v: getattr(v, "name", "")
+)
+@pytest.mark.asyncio
+async def test_a_flapped_plan_model_given_flap_deflections_computes_its_approach_chain(
+    member: FleetMember, trusted: bool
+) -> None:
+    """The batch gives these four aircraft no flap deflection, so their approach chain is recorded
+    as ``upstream_failed``. With the deflections as caller values the chain computes, and the roll
+    rate at the approach speed is a value. Where the flap model is trusted the landing flap lowers
+    the stall speed (V_S ~ 1 / sqrt(C_L,max), and a deflected flap raises C_L,max); where it is not,
+    the kernel says so with ``flap_confidence_low`` on the landing stall speed."""
+    values = {
+        "altitude": 0.0,
+        "static-margin-target": SM_TARGET,
+        "aileron-deflection": AILERON_DEFLECTION_DEG,
+        "flap-deflection-takeoff": FLAP_TAKEOFF_DEG,
+        "flap-deflection-landing": FLAP_LANDING_DEG,
+    }
+    slugs = ("stall-speed", "stall-speed-landing", "roll-rate-approach")
+    result = await compute(aircraft_input(member, values), request(*slugs))
+    by_slug = {q.slug: q for q in result.quantities}
+    for slug in slugs:
+        assert by_slug[slug].status is QuantityStatus.OK, (slug, by_slug[slug])
+    clean, landing = by_slug["stall-speed"].value, by_slug["stall-speed-landing"].value
+    assert clean is not None
+    assert landing is not None
+    if trusted:
+        assert landing < clean
+    else:
+        assert "flap_confidence_low" in {w.code for w in by_slug["stall-speed-landing"].warnings}

@@ -227,3 +227,82 @@ def test_a_draft_embedded_formula_blocks_the_embedder(tmp_path: Path) -> None:
     row = next(r for r in derive_approval(model, stage1).formulas if r.formula == "weigh-twice")
     assert any("weight-from-mass" in blocker for blocker in row.embed_blockers)
     assert not row.fully_approved
+
+
+def approved(name: str) -> str:
+    """Return a mini-canon formula text whose own ``status`` (stage 1) is ``approved``."""
+    return MINI_CANON[name].replace("status: draft", "status: approved")
+
+
+def report_row(result: ImportResult, prefix: str) -> str:
+    """Return the one stage-2 table row of the report that starts with ``prefix``."""
+    assert result.report is not None
+    rows = [line for line in result.report.splitlines() if line.startswith(prefix)]
+    assert len(rows) == 1, rows
+    return rows[0]
+
+
+def test_a_formula_status_in_the_canon_document_reaches_the_report(tmp_path: Path) -> None:
+    # Stage 1 comes from the formula entry's own 'status:'; both inputs of weight-from-mass are
+    # mapped (aircraft-mass: geometry:total_mass_kg, gravity: default:gravity) -> "2 of 2".
+    overrides = {
+        **with_data(GRAVITY, "data: default:gravity"),
+        "formulas/weight-from-mass.md": approved("formulas/weight-from-mass.md"),
+    }
+    result = run(tmp_path, overrides)
+    assert result.findings == ()
+    assert report_row(result, "| weight-from-mass | approved") == (
+        "| weight-from-mass | approved | 2 of 2 |  |"
+    )
+    assert report_row(result, "| weighing | draft") == "| weighing | draft | 2 of 2 |  |"
+
+
+def test_a_formula_status_that_is_not_a_string_counts_as_draft(tmp_path: Path) -> None:
+    overrides = {
+        **with_data(GRAVITY, "data: default:gravity"),
+        "formulas/weight-from-mass.md": MINI_CANON["formulas/weight-from-mass.md"].replace(
+            "status: draft", "status: 5"
+        ),
+    }
+    result = run(tmp_path, overrides)
+    assert report_row(result, "| weight-from-mass | draft") == (
+        "| weight-from-mass | draft | 2 of 2 |  |"
+    )
+
+
+def test_an_approved_formula_lists_its_embedded_formulas_that_are_not_approved(
+    tmp_path: Path,
+) -> None:
+    overrides = {
+        **with_data(GRAVITY, "data: default:gravity"),
+        "formulas/weigh-twice.md": approved("formulas/weigh-twice.md"),
+    }
+    result = run(tmp_path, overrides)
+    assert report_row(result, "| weigh-twice | approved") == (
+        "| weigh-twice | approved | 2 of 2 |"
+        " embedded: weighing: not approved; embedded: weight-from-mass: not approved |"
+    )
+
+
+def test_a_consistency_default_must_exist_in_defaults_yaml(tmp_path: Path) -> None:
+    # README: a 'consistency:' source is validated the same way as 'data:'.
+    canon = write_canon(tmp_path, with_data(RATIO, "consistency: default:aircraft-mass"))
+    result = import_canon(canon, repo_root=tmp_path)
+    assert [str(f) for f in result.findings] == [
+        "quantities/ratio.md: consistency: default:aircraft-mass: "
+        "'aircraft-mass' is not a key of defaults.yaml"
+    ]
+
+
+def test_a_consistency_default_in_defaults_yaml_resolves(tmp_path: Path) -> None:
+    canon = write_canon(tmp_path, with_data(RATIO, "consistency: default:gravity"))
+    assert import_canon(canon, repo_root=tmp_path).findings == ()
+
+
+def test_a_consistency_geometry_path_must_exist_in_the_geometry_schema(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    canon = write_canon(tmp_path, with_data(RATIO, "consistency: geometry:total_mas_kg"))
+    result = import_canon(canon, repo_root=repo_root)
+    mismatches = [f for f in result.findings if f.file == RATIO and f.field == "consistency"]
+    assert len(mismatches) == 1
+    assert "the document has no property 'total_mas_kg'" in mismatches[0].message

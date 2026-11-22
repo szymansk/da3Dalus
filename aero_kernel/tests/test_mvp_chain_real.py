@@ -141,3 +141,25 @@ def test_a_flat_v_tail_is_the_horizontal_tail_in_asb_with_the_root_carried_to_th
         (a.x_le_mac, b.x_le_mac),
     ):
         assert close(got, want, 1e-9)
+
+
+@pytest.mark.parametrize(
+    ("rise", "fin", "horizontal"),
+    [
+        # Hand values, constant chord c = 0.1 m, panel from (y, z) = (0, 0) to (0.2, rise), both halves.
+        # rise 0.2: nu = 45 deg, true area 2 * 0.1 * 0.2 * sqrt(2) = 0.0565685 m^2, sin^2 = cos^2 = 1/2,
+        #   so fin = horizontal = 0.0282843 m^2.
+        (0.2, 0.0282843, 0.0282843),
+        # rise 0.1: slant sqrt(0.2^2 + 0.1^2) = 0.2236068, true area 2 * 0.1 * 0.2236068 = 0.0447214 m^2,
+        #   sin^2 = 0.1^2 / 0.05 = 0.2, cos^2 = 0.8: fin = 0.0089443 m^2, horizontal = 0.0357771 m^2.
+        (0.1, 0.0089443, 0.0357771),
+    ],
+    ids=["45-degrees", "shallow"],
+)
+def test_the_real_v_tail_shares_equal_the_hand_values(
+    rise: float, fin: float, horizontal: float
+) -> None:
+    """The production projection itself, against numbers worked out by hand (P1-F13)."""
+    airplane = v_tail_airplane(rise, 0.0)
+    assert close(fin_area(airplane, "vee"), fin, 1e-5)
+    assert close(horizontal_tail_area(airplane, "vee"), horizontal, 1e-5)

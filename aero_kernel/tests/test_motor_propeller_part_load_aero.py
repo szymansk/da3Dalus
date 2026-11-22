@@ -59,7 +59,14 @@ async def test_the_avistar_cruises_on_a_battery_power_the_drive_train_can_delive
     power, current = got["battery-power"].value, got["battery-current"].value
     assert power is not None
     assert current is not None
-    assert power > 0.0  # the drive train draws power to hold level flight
+    # Hand bounds from the drag recorded for this aircraft in test_powertrain_coverage_edge.py
+    # (AVISTAR_DRAG_N, real AeroBuildup, 3.70 kg). Drag has its minimum 2.2062 N at 17.58 m/s and
+    # rises to 2.3661 N at 22 m/s, so at 18 m/s 2.2062 N <= D <= 2.3661 N.
+    # Lower: the shaft delivers at least D V, and the battery at least the shaft power:
+    #   P_bat >= 2.2062 N * 18 m/s = 39.71 W.
+    # Upper: a generous drive-train efficiency floor of 0.3 (motor x ESC x propeller):
+    #   P_bat <= 2.3661 N * 18 m/s / 0.3 = 141.97 W.
+    assert 2.2062 * CRUISE_MS <= power <= 2.3661 * CRUISE_MS / 0.3
     assert abs(current - power / 14.8) <= 1e-9 * power  # U_bat = 4 x 3.7 V
     assert got["thrust-demand-ratio"].value is not None
     assert 0.0 < got["thrust-demand-ratio"].value < 1.0  # part load: below full throttle

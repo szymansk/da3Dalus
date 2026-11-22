@@ -1,9 +1,17 @@
-"""A fake ``aerosandbox`` that records how the geometry conversion builds its objects."""
+"""Fakes of ``aerosandbox`` that record what the kernel hands to it.
+
+Two groups: the geometry fakes record how the conversion builds its objects
+(:func:`install_fake_aerosandbox`); the optimiser fakes record the problem a worker states
+(:class:`RecordingBoundary`: variables with their bounds, constraints, objective, operating points),
+so a test compares what went to the solver instead of the fake's own return.
+"""
 
 import importlib.machinery
 import math
 import sys
 import types
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from itertools import pairwise
 from typing import Any
 
@@ -279,3 +287,193 @@ def stand_in_horizontal_tail_area(wing: Wing) -> float:
     if wing.surface_type == "v_tail":
         return stand_in_v_tail_surface(wing).area
     return stand_in_surface_properties(wing).area
+
+
+# --- the optimiser boundary: what a worker states to ``asb.Opti`` ----------------------------------
+
+
+class RecordedExpression:
+    """A symbolic expression of the faked optimiser: how it was built, and its value at the optimum.
+
+    Arithmetic builds a new expression that keeps its operands; ``==`` builds a
+    :class:`RecordedConstraint`, as a CasADi expression does.
+
+    Attributes:
+        name: The expression in text, e.g. ``"speed"`` or ``"(D_profile+0.9*D_induced)*speed"``.
+        value: Its value at the faked optimum.
+        operator: ``"*"`` or ``"+"`` of a compound expression, ``""`` of a leaf (variable or output).
+        operands: The two operands of a compound expression, in order; empty for a leaf.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        value: float = 0.0,
+        operator: str = "",
+        operands: "tuple[RecordedExpression | float, ...]" = (),
+    ) -> None:
+        self.name = name
+        self.value = value
+        self.operator = operator
+        self.operands = operands
+
+    # CasADi's ``==`` returns a constraint, not a bool; the fake mirrors that so the constraint a
+    # worker builds with ``aero["L"] == lift`` can be recorded.
+    def __eq__(self, other: object) -> "RecordedConstraint":  # pyright: ignore[reportIncompatibleMethodOverride]
+        return RecordedConstraint(left=self, right=other)
+
+    __hash__ = object.__hash__
+
+    def __mul__(self, other: "RecordedExpression | float") -> "RecordedExpression":
+        if isinstance(other, RecordedExpression):
+            return RecordedExpression(
+                f"{self.name}*{other.name}", self.value * other.value, "*", (self, other)
+            )
+        return RecordedExpression(f"{self.name}*{other}", self.value * other, "*", (self, other))
+
+    def __rmul__(self, other: float) -> "RecordedExpression":
+        return RecordedExpression(f"{other}*{self.name}", other * self.value, "*", (other, self))
+
+    def __add__(self, other: "RecordedExpression") -> "RecordedExpression":
+        return RecordedExpression(
+            f"({self.name}+{other.name})", self.value + other.value, "+", (self, other)
+        )
+
+
+@dataclass(frozen=True, eq=False)
+class RecordedConstraint:
+    """An equality constraint ``left == right`` as the worker built it.
+
+    Attributes:
+        left: The expression on the left.
+        right: What it is set equal to, exactly as the worker passed it (a number, or another
+            expression).
+    """
+
+    left: RecordedExpression
+    right: Any
+
+
+class RecordingOpti:
+    """A fake ``asb.Opti`` that records the problem and 'solves' it to given values.
+
+    Attributes:
+        variables: The keyword arguments of each ``variable(...)`` call (``init_guess``,
+            ``lower_bound``, ``upper_bound``) by the variable's name.
+        constraints: Every argument of ``subject_to``, in order.
+        objectives: Every argument of ``minimize``, in order.
+        solve_options: The keyword arguments of each ``solve(...)`` call.
+    """
+
+    def __init__(
+        self,
+        names: Sequence[str],
+        optimum: Mapping[str, float],
+        error: Exception | None = None,
+        on_minimize: Callable[[RecordedExpression], None] | None = None,
+    ) -> None:
+        """Create the problem.
+
+        Args:
+            names: The names the decision variables get, in the order the worker creates them.
+            optimum: The value of each variable and model output at the faked optimum (0 if absent).
+            error: Raised by ``solve`` instead of returning, to fake a failed solve.
+            on_minimize: Also called with every objective, for a test that collects them itself.
+        """
+        self._names = tuple(names)
+        self._optimum = dict(optimum)
+        self._error = error
+        self._on_minimize = on_minimize
+        self.variables: dict[str, dict[str, Any]] = {}
+        self.constraints: list[RecordedConstraint] = []
+        self.objectives: list[RecordedExpression] = []
+        self.solve_options: list[dict[str, Any]] = []
+
+    def expression(self, name: str) -> RecordedExpression:
+        """A leaf expression (a variable or a model output) with its value at the faked optimum."""
+        return RecordedExpression(name, self._optimum.get(name, 0.0))
+
+    def variable(self, **kwargs: Any) -> RecordedExpression:
+        """Record a decision variable; it is named by its position in ``names``."""
+        name = self._names[len(self.variables)]
+        self.variables[name] = kwargs
+        return self.expression(name)
+
+    def subject_to(self, constraint: RecordedConstraint) -> None:
+        """Record a constraint."""
+        self.constraints.append(constraint)
+
+    def minimize(self, expression: RecordedExpression) -> None:
+        """Record the objective."""
+        self.objectives.append(expression)
+        if self._on_minimize is not None:
+            self._on_minimize(expression)
+
+    def solve(self, **options: Any) -> Callable[[RecordedExpression], float]:
+        """Return the reader of the faked optimum, or raise the given error."""
+        self.solve_options.append(options)
+        if self._error is not None:
+            raise self._error
+
+        def solved(expression: RecordedExpression) -> float:
+            return expression.value
+
+        return solved
+
+
+class RecordingBoundary:
+    """The faked ``aerosandbox`` of an Opti worker: ``Opti``, ``OperatingPoint`` and ``AeroBuildup``.
+
+    Every ``Opti()`` the worker creates is a new :class:`RecordingOpti`; ``AeroBuildup(...).run()``
+    returns one leaf expression per name in ``outputs`` (valued at the faked optimum), so objective and
+    constraints are built from recorded expressions.
+
+    Attributes:
+        problems: The problems the worker created, in order.
+        operating_points: The keyword arguments of each ``OperatingPoint(...)`` call.
+    """
+
+    def __init__(
+        self,
+        names: Sequence[str],
+        optimum: Mapping[str, float],
+        outputs: Sequence[str],
+        error: Exception | None = None,
+        on_minimize: Callable[[RecordedExpression], None] | None = None,
+    ) -> None:
+        """Create the boundary.
+
+        Args:
+            names: The names of the decision variables, in the order the worker creates them.
+            optimum: The value of each variable and model output at the faked optimum.
+            outputs: The keys of the AeroBuildup result the worker may read.
+            error: Raised by every ``solve``, to fake a failed solve.
+            on_minimize: Also called with every objective, for a test that collects them itself.
+        """
+        self._names = tuple(names)
+        self._optimum = dict(optimum)
+        self._outputs = tuple(outputs)
+        self._error = error
+        self._on_minimize = on_minimize
+        self.problems: list[RecordingOpti] = []
+        self.operating_points: list[dict[str, Any]] = []
+
+    def _opti(self) -> RecordingOpti:
+        problem = RecordingOpti(self._names, self._optimum, self._error, self._on_minimize)
+        self.problems.append(problem)
+        return problem
+
+    def _operating_point(self, **kwargs: Any) -> types.SimpleNamespace:
+        self.operating_points.append(kwargs)
+        return types.SimpleNamespace(**kwargs)
+
+    def _aero_buildup(self, *_: object, **__: object) -> types.SimpleNamespace:
+        problem = self.problems[-1]
+        aero = {name: problem.expression(name) for name in self._outputs}
+        return types.SimpleNamespace(run=lambda: aero)
+
+    def namespace(self) -> types.SimpleNamespace:
+        """The object to return from the worker's ``load_aerosandbox``."""
+        return types.SimpleNamespace(
+            Opti=self._opti, OperatingPoint=self._operating_point, AeroBuildup=self._aero_buildup
+        )

@@ -37,8 +37,8 @@ from aero_kernel.solvers.opti import (
     StallSolution,
 )
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
-from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
-from aero_kernel.tests.stall_stubs import StubOpti, lift_curve
+from aero_kernel.tests.formula_builders import StubAtmosphere, close, near, solvers_with
+from aero_kernel.tests.stall_stubs import StubOpti, flap_confidence, lift_curve
 from aero_kernel.tests.test_stall_speed_engine import MASS, RHO
 
 pytestmark = pytest.mark.asyncio
@@ -253,8 +253,13 @@ async def test_a_stall_speed_that_never_reaches_the_approach_speed_has_no_larges
 async def test_an_approach_speed_at_or_below_the_landing_stall_speed_has_the_largest_mix_zero() -> (
     None
 ):
-    out = await run(CrowStub(), v_app=v_stall_landing())
+    stub = CrowStub()
+    out = await run(stub, v_app=v_stall_landing())
     assert out["s_max"] == 0.0
+    # exactly at the landing stall speed the formula takes the no-glide path: with '<=' instead of
+    # '<' it would read eleven glides at the stall speed and still return s_max = 0
+    assert out["gamma_curve"].x == ()
+    assert stub.glide_speeds == []
 
 
 async def test_the_preconditions_hold_for_a_crow_approach() -> None:
@@ -369,18 +374,51 @@ class Noisy(CrowStub):
         return Stall(solution=stall.solution, warnings=warnings)
 
 
+def v_s0(mix: float) -> float:
+    """V_S0(s) = sqrt(2 m g / (rho S C_L(s))) with S = 0.28 m^2 and C_L(s) = 1.25 - 0.18 s."""
+    return math.sqrt(2.0 * MASS * GRAVITY / (RHO * 0.28 * (1.25 - 0.18 * mix)))
+
+
+def regime_messages(context_: Context) -> list[str]:
+    return [w.message for w in context_.warnings if w.code == "reynolds_bubble_sensitive"]
+
+
 async def test_the_forwarded_caveats_are_the_reference_solves_and_the_worst_case_of_the_sweep() -> (
     None
 ):
     stub = Noisy()
     context_ = context(stub)
     await butterfly_approach(inputs(), context_)  # type: ignore[arg-type]
-    regime = [w for w in context_.warnings if w.code == "reynolds_bubble_sensitive"]
-    assert len(regime) <= 2  # the landing stall and the bracketing sample, not one per mix
+    # V_app = 1.05 V_S0(0): V_S0(s) = V_S0(0) sqrt(1.25 / (1.25 - 0.18 s)) reaches 1.05 where
+    # 1.25 - 0.18 s = 1.25 / 1.1025 = 1.13379, s = 0.6456: the closing sample is the mix 0.7.
+    # The reference solves are the landing stall (s = 0) and that sample; the stub's message is
+    # 'Re <v_s 1e4>' of the mix's own stall speed, so each mix has a message of its own.
+    assert sorted(regime_messages(context_)) == sorted(
+        [f"Re {v_s0(0.0) * 1e4:.0f}", f"Re {v_s0(0.7) * 1e4:.0f}"]
+    )
     (fit,) = [w for w in context_.warnings if w.code == "control_surface_fit_range_unknown"]
     flaps = {f["device"]: f["deflection_deg"] for f in fit.detail["flaps"]}  # type: ignore[index, union-attr]
     assert flaps == {"F": 60.0, "A": -40.0}  # the largest deflection of each device
-    assert fit.detail["min_confidence"] == pytest.approx(0.4)  # type: ignore[attr-defined]
+    assert near(float(str(fit.detail["min_confidence"])), 0.4, 1e-12)
+    # the lowest mean confidence of device F over the sweep: the stub gives 1 - flap / 100 and the
+    # flap peaks at 60 deg (full crow), so 0.4; the highest would be 0.7 (flap 30 deg at s = 0)
+    (record,) = fit.detail["devices"]  # type: ignore[misc]
+    assert (record["wing"], record["device"]) == ("Main", "F")  # type: ignore[index]
+    assert near(float(str(record["mean_confidence"])), 0.4, 1e-12)  # type: ignore[index]
+
+
+async def test_an_approach_speed_below_the_landing_stall_forwards_the_landing_stall_caveats() -> (
+    None
+):
+    """The early-return path (s_max = 0) forwards the regime caveat of the landing stall once."""
+    stub = Noisy()
+    context_ = context(stub)
+    out = await butterfly_approach(inputs(v_app=0.9 * v_stall_landing()), context_)  # type: ignore[arg-type]
+    assert out["s_max"] == 0.0
+    # one regime warning, that of the landing stall (reference solves 0 and 0 are the same)
+    assert regime_messages(context_) == [f"Re {v_s0(0.0) * 1e4:.0f}"]
+    (fit,) = [w for w in context_.warnings if w.code == "control_surface_fit_range_unknown"]
+    assert near(float(str(fit.detail["min_confidence"])), 0.4, 1e-12)
 
 
 async def test_the_validity_follows_the_largest_deflection_not_full_crow() -> None:
@@ -396,6 +434,59 @@ async def test_the_validity_follows_the_largest_deflection_not_full_crow() -> No
         context_,
     )  # type: ignore[arg-type]
     assert "flap_deflection_beyond_validity" in {w.code for w in context_.warnings}
+
+
+def landing_flap_above_crow_flap(**change: object) -> dict[str, object]:
+    """Landing flap 60 deg, full crow flap 20 deg with the aileron raised 10 deg.
+
+    C_L(s) = 1.19 + 0.002 (60 - 40 s) + 0.006 (-10 s) = 1.31 - 0.14 s. The approach speed is 2 %
+    above the landing stall speed V_S0(0) = sqrt(2 m g / (rho 0.28 1.31)); V_S0(1) is
+    sqrt(1.31 / 1.17) = 1.058 times V_S0(0), so the crossing exists and the call returns. At
+    s = 1 the flap (20 deg) and the aileron (10 deg) are both below the 30 deg limit: only the
+    landing flap at s = 0 is above it.
+    """
+    landing = 60.0
+    return inputs(
+        airplane=with_flaps_at(AirplaneGeometry.model_validate(document()), landing),
+        delta_f_ldg=landing,
+        delta_f_crow=20.0,
+        delta_a_crow=10.0,
+        v_app=1.02 * math.sqrt(2.0 * MASS * GRAVITY / (RHO * 0.28 * 1.31)),
+        **change,
+    )
+
+
+async def test_the_declared_flap_is_the_landing_flap_where_it_is_the_largest_deflection() -> None:
+    context_ = context(CrowStub())
+    out = await butterfly_approach(landing_flap_above_crow_flap(), context_)  # type: ignore[arg-type]
+    s_max = out["s_max"]
+    assert isinstance(s_max, float)
+    assert 0.0 < s_max < 1.0
+    (beyond,) = [w for w in context_.warnings if w.code == "flap_deflection_beyond_validity"]
+    assert beyond.detail["limit_deg"] == 30.0
+    # the landing flap (s = 0) is the only deflection above the limit; full crow is not judged
+    assert beyond.detail["flaps"] == [
+        {"wing": "Main", "device": "device 0", "deflection_deg": 60.0}
+    ]
+
+
+class ConfidencePerFlap(CrowStub):
+    """A stub whose NeuralFoil confidence is low (0.3) only where the flap is at 60 deg."""
+
+    async def stall(self, airplane: AirplaneGeometry, *args: Any) -> Stall:  # type: ignore[override]
+        stall = await super().stall(airplane, *args)
+        confidence = 0.3 if abs(device_angles(airplane)[0] - 60.0) < 1e-9 else 0.95
+        solution = stall.solution.model_copy(update={"diagnostics": flap_confidence(confidence)})
+        return Stall(solution=solution, warnings=())
+
+
+async def test_the_confidence_declared_is_that_of_the_mix_with_the_largest_deflection() -> None:
+    context_ = context(ConfidencePerFlap())
+    await butterfly_approach(landing_flap_above_crow_flap(), context_)  # type: ignore[arg-type]
+    # mix 0 (flap 60 deg) has confidence 0.3 and is the mix with the largest deflection; every
+    # other mix has 0.95, above the floor, so a declaration can only come from mix 0
+    (low,) = [w for w in context_.warnings if w.code == "flap_confidence_low"]
+    assert near(float(str(low.detail["mean_confidence"])), 0.3, 1e-12)
 
 
 async def test_the_flap_validity_is_declared_above_the_limit() -> None:

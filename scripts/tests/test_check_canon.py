@@ -277,6 +277,18 @@ def test_a_readme_example_that_drifted_from_its_entry_is_reported(tmp_path, type
     assert any("README" in m and "f" in m and "inputs" in m for m in msgs), msgs
 
 
+def test_a_readme_example_of_another_kind_than_its_entry_is_reported(tmp_path, typed_quantities):
+    # The entry has kind: law; the example claims kind: fit. 'kind' is not a machine-readable key,
+    # so only the example's own keys bring it into the comparison.
+    root = _canon(tmp_path, quantities=typed_quantities)
+    _readme_with_example(
+        root, "f", "kind: fit\ninputs: {a: speed-a, b: speed-b}\noutputs: {v: speed-v}\n"
+    )
+    assert _messages(_errors(root)) == [
+        "README examples: f: kind differs from the entry's front matter"
+    ]
+
+
 def test_a_readme_example_naming_an_unknown_entry_is_reported(tmp_path, typed_quantities):
     root = _canon(tmp_path, quantities=typed_quantities)
     _readme_with_example(root, "nope", "kind: law\n")
@@ -384,6 +396,7 @@ def _dimensional_canon(tmp_path):
         ("speed", "V_s", "m/s"),
         ("accel", "a", "m/s^2"),
         ("volume", "Vol", "m^3"),
+        ("distance-mm", "d_mm", "mm"),
     ):
         (root / "quantities" / f"{slug}.md").write_text(
             f"---\ncanon: {slug}\nsymbol: {symbol}\nunit: {unit}\n---\n", encoding="utf-8"
@@ -398,6 +411,8 @@ def _dimensional_canon(tmp_path):
         "cuberoot": ("distance", "d = cbrt(Vol)"),
         "procedure": ("speed", "minimize over V:  d"),
         "stranger": ("speed", "V_s = zz / t"),
+        "scaled": ("distance-mm", "d_mm = V_s * t"),
+        "broken": ("speed", "V_s = d /"),
     }
     for slug, (output, form) in forms.items():
         (root / "formulas" / f"{slug}.md").write_text(
@@ -420,6 +435,8 @@ def test_the_dimensional_check_classifies_each_canonical_form(tmp_path):
         "wrong": "MISMATCH",
         "procedure": "PROCEDURAL",
         "stranger": "UNKNOWN_SYMBOL",
+        "scaled": "SCALE",
+        "broken": "UNPARSEABLE",
     }
 
 
@@ -431,7 +448,7 @@ def test_the_dimensional_check_runs_from_an_extraction_json(tmp_path, capsys):
     extraction.write_text(json.dumps(check_canon.build_canon_json(root)), encoding="utf-8")
     assert check_canon.cli([str(extraction)]) == 0
     out = capsys.readouterr().out
-    assert "dimensional check over 9 canonical formulas" in out
+    assert "dimensional check over 11 canonical formulas" in out
     assert "MISMATCH" in out
 
 
@@ -479,7 +496,7 @@ def test_the_cli_runs_the_dimensional_check_over_a_canon_directory(tmp_path, cap
     (root / "README.md").write_text("# Canon\n", encoding="utf-8")
     check_canon.cli([str(root)])
     out = capsys.readouterr().out
-    assert "dimensional check over 9 canonical formulas" in out
+    assert "dimensional check over 11 canonical formulas" in out
     assert "MISMATCH" in out
     assert "ADDS_UNLIKE" in out
 
@@ -603,6 +620,38 @@ def test_a_statement_finding_fails_the_run(tmp_path, capsys):
     canon = _statement_canon(tmp_path, form, ROLL_IN, ROLL_OUT, ROLL_UNITS)
     assert check_canon.print_statements(check_canon.check_statements(canon)) == 1
     assert "f [MISMATCH] p = b_ref * V_app" in capsys.readouterr().out
+
+
+def test_the_statement_verdicts_that_fail_the_run_are_exactly_four() -> None:
+    assert check_canon.STATEMENT_ERRORS == ("MISMATCH", "ANGLE", "ADDS_UNLIKE", "SCALE")
+
+
+@pytest.mark.parametrize(
+    ("form", "verdict"),
+    [
+        ("p = b_ref * V_app", "MISMATCH"),
+        ("p_hat = p * b_ref / (2 * V_app)", "ANGLE"),
+        ("L = m * g + V", "ADDS_UNLIKE"),
+        ("x = x_mm", "SCALE"),
+    ],
+)
+def test_every_failing_statement_class_fails_the_run(tmp_path, capsys, form, verdict):
+    # One form per class: p [deg/s] against b_ref*V_app [m^2/s]; degrees against radians without a
+    # conversion; N + m/s; mm against m.
+    canon = _statement_canon(
+        tmp_path,
+        form,
+        REPRO_IN,
+        {**REPRO_OUT, "p_hat": "roll-helix"},
+        [
+            *REPRO_UNITS,
+            ("roll-helix", "p_hat", "1"),
+        ],
+    )
+    rows = check_canon.check_statements(canon)
+    assert [r.verdict for r in rows] == [verdict]
+    assert check_canon.print_statements(rows) == 1
+    assert f"f [{verdict}] {form}" in capsys.readouterr().out
 
 
 #: quantities of the review reproductions (#1384): (slug, symbol, unit)

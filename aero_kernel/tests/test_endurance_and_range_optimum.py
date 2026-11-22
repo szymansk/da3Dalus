@@ -205,3 +205,30 @@ async def test_the_bound_message_states_the_bound_and_the_speeds_and_no_judgemen
     assert "stall_speed" in message
     assert "14" in message
     assert "could be greater" not in message
+
+
+@pytest.mark.asyncio
+async def test_a_drag_the_full_throttle_thrust_never_holds_is_a_declared_failure() -> None:
+    # D = 0.06 V^2 is 0.06 * 19^2 = 21.66 N at the stall speed 19 m/s and only grows. The full-throttle
+    # thrust of the AT2814 / APC 13x8E drive train at that speed is far below it (r_T > 1 on the whole
+    # domain, canon constraint r_T(V) <= 1), so no speed is allowed: no_level_flight_speed.
+    with pytest.raises(FormulaError) as caught:
+        await endurance_and_range_optimum(
+            optimum_inputs(v_s=19.0), context_of(SLUG, SpeedOpti(a=0.06, b=0.0))
+        )
+    assert caught.value.code == "no_level_flight_speed"
+
+
+@pytest.mark.asyncio
+async def test_a_speed_above_the_full_throttle_edge_is_declared_as_that_bound() -> None:
+    # D = 9000 / V^2 falls with the speed, so the battery power keeps falling until the drive train
+    # runs out of thrust: r_T(V) = 1 at about 43.3 m/s (the full-throttle edge). The optimum lies on
+    # that edge: bound "full_throttle", and the postcondition r_T <= 1 holds there.
+    ctx = context_of(SLUG, SpeedOpti(a=0.0, b=9000.0))
+    await endurance_and_range_optimum(optimum_inputs(v_s=6.0), ctx)
+    bounds = [w for w in ctx.warnings if w.code == "optimum_at_domain_bound"]
+    # the range optimum (least power over speed) is on the edge; the endurance optimum is interior
+    assert {str(w.detail["objective"]) for w in bounds} == {"range"}
+    assert all(w.detail["bound"] == "full_throttle" for w in bounds)
+    assert all(40.0 < float(str(w.detail["edge_v_ms"])) < 46.0 for w in bounds)
+    assert "postcondition_violated" not in [w.code for w in ctx.warnings]

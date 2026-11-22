@@ -1,5 +1,6 @@
 """The one conversion of the geometry format to an AeroSandbox airplane (ADR 0022)."""
 
+import math
 from typing import Any
 
 import pytest
@@ -413,6 +414,26 @@ def test_the_two_shares_of_a_v_tail_add_up_to_its_planform_area() -> None:
     document = v_tail_document([(0.05, 0.0), (0.25, 0.2), (0.35, 0.3)])
     total = horizontal_tail_area(document, "VTail") + fin_area(document, "VTail")
     assert near(total, 3.0)  # the extension and two panels of the fake area 1.0
+
+
+@pytest.mark.parametrize("rise", [0.0, 0.05, 0.2, 0.5, 1.5])
+def test_the_v_tail_shares_follow_the_panel_angle(rise: float) -> None:
+    """Angle sweep on production (P2-F03): half span 0.2 m run, rise as given, nu = atan(rise / run).
+
+    The fake wing gives every panel the area 1.0 (a panel of its own two ribs and the root
+    extension, which has the angle of the root panel), so the two panels carry the area 2.0.
+    The horizontal share is 2 cos^2 nu, the fin share 2 sin^2 nu, each against its own closed form
+    (not their sum, which holds for any split), and the surface's effective area is the horizontal
+    one: dropping cos^2 in the V-tail surface would give 2.0 at every angle.
+    """
+    document = v_tail_document([(0.05, 0.0), (0.25, rise)])
+    nu = math.atan2(rise, 0.2)
+    expected_horizontal = 2.0 * math.cos(nu) ** 2
+    expected_fin = 2.0 * math.sin(nu) ** 2
+    assert near(horizontal_tail_area(document, "VTail"), expected_horizontal, 1e-12)
+    assert near(surface_properties(document, "VTail").area, expected_horizontal, 1e-12)
+    if rise > 0.0:  # a flat V-tail has no fin share and fin_area refuses it
+        assert near(fin_area(document, "VTail"), expected_fin, 1e-12)
 
 
 def test_a_vertical_v_tail_has_no_horizontal_area() -> None:

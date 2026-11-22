@@ -194,13 +194,24 @@ async def test_through_the_engine_an_embedder_reaches_a_relation_two_levels_down
     assert got["range-at-cruise-target"].unit == "m"
 
 
-def test_a_drive_train_that_draws_no_power_gives_no_flight_time() -> None:
+@pytest.mark.parametrize("p_bat", [0.0, -1.0e-9, -60.0])
+def test_a_drive_train_that_draws_no_power_gives_no_flight_time(p_bat: float) -> None:
+    # zero and every negative power (a table with a negative C_P at the balance) end the formula;
+    # a negative power would otherwise give a negative flight time
     from aero_kernel.formulas.motor_propeller_part_load import energy_over_power
 
     with pytest.raises(FormulaError) as caught:
-        energy_over_power(74.0, 0.0, 10.0)
+        energy_over_power(74.0, p_bat, 10.0)
     assert caught.value.code == "non_positive_battery_power"
+    assert caught.value.detail["p_bat_w"] == p_bat
+
+
+def test_a_positive_battery_power_gives_the_energy_over_the_power() -> None:
+    from aero_kernel.formulas.motor_propeller_part_load import energy_over_power
+
+    # 74 Wh = 266400 J at 60 W: 4440 s
     assert close(energy_over_power(74.0, 60.0, 10.0), 3600.0 * 74.0 / 60.0, 1e-12)
+    assert close(energy_over_power(74.0, 60.0, 10.0), 4440.0, 1e-12)
 
 
 @pytest.mark.asyncio

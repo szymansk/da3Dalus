@@ -83,7 +83,24 @@ class TestNonFinite:
     def test_non_finite_tuple_element_gets_an_index(self) -> None:
         document = _document()
         document["airplane"]["wings"]["Main wing"]["x_secs"][0]["xyz_le"][1] = math.nan
-        assert _paths(_validate(document)) == ['airplane.wings["Main wing"].x_secs[0].xyz_le[1]']
+        errors = _validate(document)
+        assert _codes(errors) == ["non_finite_number"]
+        assert _paths(errors) == ['airplane.wings["Main wing"].x_secs[0].xyz_le[1]']
+
+    @pytest.mark.parametrize("bad", [math.nan, math.inf, -math.inf])
+    @pytest.mark.parametrize("index", [0, 1, 2])
+    def test_a_non_finite_moment_reference_point_is_reported_at_its_element(
+        self, index: int, bad: float
+    ) -> None:
+        """airplane.xyz_ref is the moment reference point the ASB and AVL conversions read."""
+        document = _document()
+        reference = [0.0, 0.0, 0.0]
+        reference[index] = bad
+        document["airplane"]["xyz_ref"] = reference
+        errors = _validate(document)
+        assert _codes(errors) == ["non_finite_number"]
+        assert _paths(errors) == [f"airplane.xyz_ref[{index}]"]
+        assert errors[0].detail == {"value": str(bad)}
 
     def test_non_finite_value_is_reported_at_its_slug(self) -> None:
         document = _document()
@@ -136,6 +153,11 @@ class TestPositiveQuantities:
         document["airplane"]["wings"]["Main wing"]["x_secs"][1]["chord"] = -0.1
         assert _validate(document)[0].detail == {"value": -0.1}
 
+    def test_non_positive_chord_hint_names_the_bound(self) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["chord"] = 0.0
+        assert "> 0" in _validate(document)[0].hint
+
 
 class TestWingSections:
     def test_one_section_is_rejected(self) -> None:
@@ -144,11 +166,15 @@ class TestWingSections:
         errors = _validate(document)
         assert _paths(errors) == ['airplane.wings["Main wing"].x_secs']
         assert _codes(errors) == ["too_few_sections"]
+        assert errors[0].detail == {"value": 1.0}
 
     def test_no_section_is_rejected(self) -> None:
         document = _document()
         document["airplane"]["wings"]["Main wing"]["x_secs"] = []
-        assert _paths(_validate(document)) == ['airplane.wings["Main wing"].x_secs']
+        errors = _validate(document)
+        assert _paths(errors) == ['airplane.wings["Main wing"].x_secs']
+        assert _codes(errors) == ["too_few_sections"]
+        assert errors[0].detail == {"value": 0.0}
 
     def test_two_sections_are_accepted(self) -> None:
         assert _validate(_document()) == ()
@@ -641,6 +667,17 @@ class TestInlineAirfoil:
         errors = _validate(_with_airfoil({"coordinates": coordinates}))
         assert _codes(errors) == ["invalid_airfoil_contour"]
 
+    def test_the_point_minimum_comes_from_the_canon_parameter(self) -> None:
+        """Two points fail the count of 3; with the minimum overridden to 2 the count passes.
+
+        Both ends lie at the largest x and the contour has no extent in y, so the thickness is
+        0 and only non_positive_thickness remains.
+        """
+        document = _with_airfoil({"coordinates": [[1.0, 0.0], [1.0, 0.0]]})
+        assert _codes(_validate(document)) == ["invalid_airfoil_contour"]
+        document["rule_overrides"] = {"airfoil-resolvable.min_contour_points": 2.0}
+        assert _codes(_validate(document)) == ["non_positive_thickness"]
+
     def test_three_points_closed_with_zero_thickness_are_rejected(self) -> None:
         errors = _validate(_with_airfoil({"coordinates": [[1.0, 0.0], [0.0, 0.0], [1.0, 0.0]]}))
         assert _paths(errors) == [f"{_AIRFOIL_PATH}.coordinates"]
@@ -680,6 +717,19 @@ class TestConflictingMass:
         assert "1.5" in warning.message
         assert "2.0" in warning.message
 
+    def test_a_passed_mass_above_the_stored_one_warns_too(self) -> None:
+        """The notice is for any difference, not only for a what-if mass below the geometry's."""
+        document = _document()
+        document["values"]["aircraft-mass"] = 2.5
+        document["airplane"]["total_mass_kg"] = 2.0
+        result = _result(document)
+        assert result.errors == ()
+        (warning,) = result.warnings
+        assert warning.code == "conflicting_mass"
+        assert warning.severity is WarningSeverity.NOTICE
+        assert warning.origin == "aircraft-mass"
+        assert warning.detail == {"aircraft_mass_kg": 2.5, "geometry_total_mass_kg": 2.0}
+
     def test_equal_masses_do_not_warn(self) -> None:
         document = _document()
         document["airplane"]["total_mass_kg"] = 1.5
@@ -688,6 +738,11 @@ class TestConflictingMass:
     def test_the_comparison_is_exact(self) -> None:
         document = _document()
         document["airplane"]["total_mass_kg"] = math.nextafter(1.5, 2.0)
+        assert _codes_of_warnings(_result(document)) == ["conflicting_mass"]
+
+    def test_the_comparison_is_exact_below_the_passed_mass_too(self) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = math.nextafter(1.5, 1.0)
         assert _codes_of_warnings(_result(document)) == ["conflicting_mass"]
 
     def test_a_missing_mass_on_either_side_does_not_warn(self) -> None:
@@ -740,7 +795,12 @@ class TestFuselageSectionEquivalent:
         document = _document()
         for section in document["airplane"]["fuselages"]["Body"]["x_secs"]:
             section["n_lower"] = 3.0
-        assert len(_result(document).warnings) == 2
+        warnings = _result(document).warnings
+        assert [w.code for w in warnings] == ["fuselage_section_equivalent"] * 2
+        assert [w.detail["section"] for w in warnings] == [
+            'airplane.fuselages["Body"].x_secs[0]',
+            'airplane.fuselages["Body"].x_secs[1]',
+        ]
 
     def test_a_non_positive_exponent_is_an_error_and_no_warning(self) -> None:
         document = _document()
@@ -992,6 +1052,16 @@ class TestFuselageContour:
         assert _codes(errors) == ["invalid_fuselage_contour"]
         assert _paths(errors) == [f"{BODY}.x_secs[1].contour[2]"]
 
+    def test_a_vertex_touching_a_non_adjacent_segment_is_refused_at_its_point(self) -> None:
+        """Point 3 (0.02, 0) lies on segment 0 (area +0.0008 m^2, so counter-clockwise)."""
+        document = _with_contours(_document(), count=5)
+        section = document["airplane"]["fuselages"]["Body"]["x_secs"][1]
+        section["contour"] = [[0.0, 0.0], [0.04, 0.0], [0.04, 0.04], [0.02, 0.0], [0.0, 0.04]]
+        errors = _validate(document)
+        assert _codes(errors) == ["invalid_fuselage_contour"]
+        assert _paths(errors) == [f"{BODY}.x_secs[1].contour[2]"]
+        assert "crosses itself" in errors[0].message
+
     def test_an_asymmetric_concave_contour_is_admissible(self) -> None:
         document = _with_contours(_document(), count=6)
         document["airplane"]["fuselages"]["Body"]["x_secs"][1]["contour"] = [
@@ -1122,6 +1192,14 @@ class TestBodyAttachment:
         assert _paths(errors) == [f"{CANOPY}.x_secs[1].xyz[0]"]
         assert "0.6" in errors[0].message
 
+    def test_a_canopy_outside_its_parent_gets_the_range_hint(self) -> None:
+        (error,) = _validate(_with_canopy(_document(), x=(0.1, 0.6)))
+        assert "within the x range" in error.hint
+
+    def test_an_invalid_attachment_gets_the_attached_to_hint(self) -> None:
+        (error,) = _validate(_with_canopy(_document(), attached_to=None))
+        assert "attached_to" in error.hint
+
     def test_the_range_of_a_canopy_on_a_body_with_one_section_is_not_compared(self) -> None:
         """One section is no loft: too_few_sections is the one finding (one cause, one code)."""
         document = _with_canopy(_document(), x=(0.1, 0.6))
@@ -1182,6 +1260,14 @@ class TestCanopyMerge:
     def test_an_invalid_input_gets_no_merge_declaration(self) -> None:
         result = _result(_with_canopy(_document(), attached_to="Fuselage"))
         assert "canopy_merged_into_fuselage" not in _codes_of_warnings(result)
+
+    def test_an_invalid_input_gets_no_canopy_declaration_though_it_would_merge(self) -> None:
+        """The same canopy as in the merge test, but the wing's second chord is negative."""
+        document = _with_canopy(_document())
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["chord"] = -0.1
+        result = _result(document)
+        assert _codes(result.errors) == ["non_positive_length"]
+        assert [c for c in _codes_of_warnings(result) if c.startswith("canopy_")] == []
 
     def test_a_canopy_on_a_canopy_is_refused(self) -> None:
         document = _with_canopy(_document())
@@ -1258,6 +1344,7 @@ class TestSpinner:
         assert _paths(errors) == [f"{SPINNER}.x_secs[1].xyz[0]"]
         assert errors[0].category is ErrorCategory.INVALID_INPUT
         assert "-0.01" in errors[0].message
+        assert "back plate" in errors[0].hint
 
     def test_a_clamped_joint_exponent_is_a_warning(self) -> None:
         document = _with_spinner(_document())
@@ -1321,6 +1408,15 @@ class TestFuselageAxisStraightened:
         for section in document["airplane"]["fuselages"]["Body"]["x_secs"]:
             section["xyz"][2] = 0.1 * section["xyz"][0]
         assert _result(document).warnings == ()
+
+    def test_a_body_off_its_line_by_rounding_noise_is_not_declared(self) -> None:
+        """Centre z = 0, 1e-10, 0 at x = 0, 0.25, 0.5: 6.7e-11 m off the line, below 1e-9 m."""
+        document = _document()
+        sections = document["airplane"]["fuselages"]["Body"]["x_secs"]
+        sections.insert(1, {"xyz": [0.25, 0.0, 1e-10], "a": 0.05, "b": 0.05, "n": 2.0})
+        result = _result(document)
+        assert result.errors == ()
+        assert "fuselage_axis_straightened" not in _codes_of_warnings(result)
 
     def test_an_invalid_input_gets_no_straightening_declaration(self) -> None:
         document = _with_kinked_axis(_document())
