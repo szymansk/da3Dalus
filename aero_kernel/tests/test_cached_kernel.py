@@ -156,3 +156,58 @@ async def test_a_curve_is_served_from_the_cache_equal_to_the_computed_one(calls:
     assert first.curve is not None
     assert second.curve == first.curve
     assert calls.count["curve-producer"] == 1
+
+
+class Gate:
+    """A ``weight`` stub that announces its start and waits for the test to let it finish."""
+
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.proceed = asyncio.Event()
+        self.calls = 0
+
+    async def weight(self, x: Inputs, ctx: Context) -> Mapping[str, object]:
+        self.calls += 1
+        self.started.set()
+        await self.proceed.wait()
+        return {"w": num(x, "m") * num(x, "g")}
+
+
+@pytest.fixture
+def gate(monkeypatch: pytest.MonkeyPatch) -> Gate:
+    """Make a build whose ``weight`` waits on the gate the shipped one."""
+    the_gate = Gate()
+    build = make_build(registry_with({"weight": the_gate.weight}))
+    monkeypatch.setattr(api_module, "shipped_build", lambda: build)
+    return the_gate
+
+
+async def test_a_call_that_timed_out_leaves_no_claim_that_blocks_the_next(gate: Gate) -> None:
+    kernel = CachedKernel(max_entries=16)
+    request = ComputeRequest(quantities=("weight",), time_budget_s=0.05)
+    timed_out = only(await kernel.compute(aircraft(), request))
+    assert timed_out.error is not None
+    assert timed_out.error.code == "timeout"
+    gate.proceed.set()
+    async with asyncio.timeout(5):
+        again = await call(kernel, "weight")
+    assert again.error is None
+    assert again.value == 2.0 * 9.81  # mass 2 kg, gravity 9.81 m/s^2 of the fixture aircraft
+    assert not again.from_cache
+    assert gate.calls == 2
+
+
+async def test_a_cancelled_call_leaves_no_claim_that_blocks_the_next(gate: Gate) -> None:
+    kernel = CachedKernel(max_entries=16)
+    task = asyncio.create_task(call(kernel, "weight"))
+    await gate.started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    gate.proceed.set()
+    async with asyncio.timeout(5):
+        again = await call(kernel, "weight")
+    assert again.error is None
+    assert again.value == 2.0 * 9.81
+    assert not again.from_cache
+    assert gate.calls == 2
