@@ -1,12 +1,12 @@
 {
  "total": 179,
  "state": {
-  "open": 110,
+  "open": 111,
   "production_defect": 9,
   "refuted": 4,
   "bundled": 24,
   "dropped": 30,
-  "waiting_for_decision": 2
+  "waiting_for_decision": 1
  },
  "verdict": {
   "CONFIRMED": 73,
@@ -21,7 +21,7 @@
  },
  "severity_active": {
   "high": 21,
-  "medium": 59,
+  "medium": 60,
   "low": 54
  },
  "moves": {
@@ -37,7 +37,7 @@
  },
  "recommended_test_ok": {
   "yes": 110,
-  "unclear": 17,
+  "unclear": 18,
   "no": 7
  },
  "per_wp": {
@@ -120,13 +120,13 @@
   },
   "WP-P5": {
    "wave": 2,
-   "active": 13,
+   "active": 14,
    "high": 2,
-   "medium": 6,
+   "medium": 7,
    "low": 5,
    "refuted": 2,
    "dropped": 2,
-   "waiting_for_decision": 1,
+   "waiting_for_decision": 0,
    "production_defect": 1
   },
   "WP-P7a": {
