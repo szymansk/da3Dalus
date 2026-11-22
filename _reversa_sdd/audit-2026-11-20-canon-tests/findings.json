@@ -4717,7 +4717,7 @@
   "package": "P5",
   "wp": "WP-P5",
   "id": "P5-F06",
-  "state": "waiting_for_decision",
+  "state": "open",
   "severity": "medium",
   "severity_review": "medium",
   "severity_reason": "A gap in an internal contract (code without a canon rule), confirmed only by reading; no caller-visible value changes.",
@@ -4746,7 +4746,7 @@
   "recommended_test_note": "The reverse trace would fail today for non_positive_exponent, as the finding says; how to collect 'the code literals passed to _finding / KernelError' is left to the implementer (a regex over quoted literals intersected with the error catalogue reproduces the three codes). Which rule receives the code is the open decision.",
   "hand_value_check": "",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "#1445",
   "maintainer_note": "",
   "probe_id": ""
  },

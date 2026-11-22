@@ -6,8 +6,8 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 
 - **Production code under test:** aero_kernel/validate.py, devices.py, fuselage_contour.py, solver_bodies.py
 - **Requirement sources:** ARCHITECTURE §8.11, §8.1, §8.2, rules.yaml
-- **Test files you may change:** `aero_kernel/tests/test_body_axis.py`, `aero_kernel/tests/test_devices.py`, `aero_kernel/tests/test_dihedral.py`, `aero_kernel/tests/test_fuselage_contour.py`, `aero_kernel/tests/test_surface_chain.py`, `aero_kernel/tests/test_surface_properties.py`, `aero_kernel/tests/test_validate.py`
-- **Findings to work on:** 13 (2 high, 6 medium, 5 low)
+- **Test files you may change:** `aero_kernel/tests/test_body_axis.py`, `aero_kernel/tests/test_devices.py`, `aero_kernel/tests/test_dihedral.py`, `aero_kernel/tests/test_fuselage_contour.py`, `aero_kernel/tests/test_surface_chain.py`, `aero_kernel/tests/test_surface_properties.py`, `aero_kernel/tests/test_validate.py`, `aero_kernel/tests/test_validate_rules.py`
+- **Findings to work on:** 14 (2 high, 7 medium, 5 low)
 
 ## P5-F01 · high · missing_edge_case
 
@@ -62,6 +62,17 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 - **Verifier's note:** The aero test test_solvers_asb_airplane_real.py calls aerobuildup_bodies on the fleet, but would fail only if a fleet body lay off its line by between 0 and 1e-9 m; not expected.
 - **Acceptance mutation:** `git apply rework/patches/WP-P5/P5-F05.patch` (from the audit folder; aero_kernel/body_axis.py:137  `result = _straightened(bodies, config().opt_body_axis_tolerance.value)` -> `result = _straightened(bodies, 0.0)`). Today every fast test stays green; after your change at least one fast test must fail under it.
 - **Test to write:** Fast, test_body_axis.py: an airplane with one body whose centres are (x, z) = (0, 0), (0.5, 1e-10), (1.0, 0) m (largest distance to the least-squares line 2e-10 / 3 = 6.7e-11 m < 1e-9 m). Expect aerobuildup_bodies(plane).straightenings == () and .bodies == solver_bodies(plane); and validate_aircraft on the same input has no warning fuselage_axis_straightened.
+
+## P5-F06 · medium · missing_requirement_test
+
+- **Test file:** `aero_kernel/tests/test_validate_rules.py` · existing test `test_every_code_a_rule_names_is_a_code_the_kernel_reports` (line 177)
+- **Production:** `aero_kernel/validate.py:765`
+- **Gap:** A validation code can exist without a canon rule: non_positive_exponent is reported by validate.py but listed by no rule (positive-lengths states the exponent in its criterion and lists only non_positive_length). The trace test checks rule -> code only, and by a text search that any quoted occurrence in any source satisfies.
+- **Evidence:** missing = [(rule_id, code) for ... for code in rule.codes if f'"{code}"' not in sources]; computed here: codes built in validate.py / body_attachment.py that no rule names = ['non_positive_exponent', 'not_an_input', 'unknown_quantity'].
+- **Verified:** CONFIRMED_BY_READING (READING). validate.py:765 passes the literal `"non_positive_exponent",` to _not_positive, and the shipped rule positive-lengths has codes == ['non_positive_length'] while its criterion names 'every fuselage shape exponent'; recomputed on the shipped model: the catalogue codes that appear as literals in validate.py and in no rule's codes are ['non_positive_exponent', 'not_an_input', 'unknown_quantity'] (body_attachment.py: none). The trace test checks one direction only: `for code in rule.codes if f'"{code}"' not in sources`.
+- **Verifier's note:** blocked_by_decision: only the facts were verified, not the decision.
+- **Test to write:** Fast, test_validate_rules.py: collect the codes of every finding validate_aircraft can build (the code literals passed to _finding / KernelError in validate.py and the AttachmentCode literal) and assert each is in the union of rule.codes of the rules with applies_to.quantity in {airplane, components}; today it fails for non_positive_exponent, which is the canon finding to settle (add the code to positive-lengths or give the exponent its own rule). unknown_quantity and not_an_input belong to validate_values and are exempt by name.
+- **Correction:** (unclear) The reverse trace would fail today for non_positive_exponent, as the finding says; how to collect 'the code literals passed to _finding / KernelError' is left to the implementer (a regex over quoted literals intersected with the error catalogue reproduces the three codes). Which rule receives the code is the open decision.
 
 ## P5-F10 · medium · weak_assertion
 
@@ -149,7 +160,6 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 |---|---|---|
 | P4-F12 | refuted | killed by `aero_kernel/tests/test_induced_drag.py::test_an_override_outside_the_range_is_refused[0.0-non_positive_value]` |
 | P4-F13 | refuted | killed by `aero_kernel/tests/test_induced_drag.py::test_an_override_inside_the_range_is_accepted[1.0]` |
-| P5-F06 | waiting_for_decision | maintainer decision open (README section 6); do not write its test |
 | P5-F08 | production_defect | #1439 |
 | P5-F15 | dropped | Drop: each of these tests changes one field of a builder that is otherwise valid (make_warning: 'Build a valid notice, with fields overridden'), so a refusal for another reason is hardly possible, and matching pydantic's wording ties the te |
 | P5-F17 | dropped | Drop: no risk for the purpose of the software; the branch only words an import defect. Cheap to add if the implementer is in the file anyway, but no other finding of this package touches test_config.py. |
