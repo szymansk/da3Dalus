@@ -202,6 +202,19 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
 
+      - name: Install the system libraries of the AVL binary
+        # The avl-binary wheel links liblapack.so.3 dynamically; the runner image
+        # does not ship it, and AVL then exits 127 before reading its input (gh-1437).
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq liblapack3
+
+      - name: Check that AVL starts
+        run: |
+          avl=$(poetry run python -c "from avl_binary import avl_path; print(avl_path())")
+          if ldd "$avl" | grep "not found"; then exit 1; fi
+          printf 'quit\n' | "$avl" > /dev/null
+
       - name: Run PR-full test tier (CAD + AVL + ASB integration)
         # Adds back the heavy-tooling tests but still excludes the
         # nightly-only `slow` and `e2e` tiers.
@@ -217,14 +230,20 @@ jobs:
     # Runs on cron (default branch only) and on manual dispatch when
     # run_nightly=true. Independent of the `changes` filter so the
     # full matrix runs even on commits that only touch docs.
+    #
+    # Split into parts (gh-1437): one sequential job cannot finish. Measured
+    # on 2026-11-22 without coverage: everything outside aero_kernel/tests
+    # 62 min, the kernel slices 7 to 27 min, the slice that holds
+    # test_plan_batch_fleet.py 3 h 05 min.
     if: |
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' && inputs.run_nightly)
     runs-on: ubuntu-latest
+    timeout-minutes: 330
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.11", "3.12"]
         part: [rest, aero-0, aero-1, aero-2, aero-3, aero-4, aero-5, aero-6, aero-7]
 
     steps:
@@ -266,10 +285,15 @@ jobs:
           if ldd "$avl" | grep "not found"; then exit 1; fi
           printf 'quit\n' | "$avl" > /dev/null
 
-      - name: Run full suite (all markers)
+      - name: Run the part of the full suite (all markers)
         # No marker filter — exercises slow + e2e CAD pipelines too.
         # Memory-heavy slow tests must NOT be parallelised (per project
-        # convention); we run sequentially here.
+        # convention); each part runs sequentially.
+        #
+        # `rest` is everything outside aero_kernel/tests; `aero-N` is every
+        # eighth test file of the kernel. SIGABRT on the time limit makes
+        # faulthandler dump every thread, so a run that does not exit says
+        # what holds it.
         run: |
           if [ "${{ matrix.part }}" = "rest" ]; then
             targets="--ignore=aero_kernel/tests"
@@ -277,12 +301,13 @@ jobs:
             index="${{ matrix.part }}"; index="${index#aero-}"
             targets=$(ls aero_kernel/tests/test_*.py | awk -v n=8 -v i="$index" '(NR - 1) % n == i')
           fi
-          # Diagnostic (gh-1437): the `rest` part finished its tests after 73 min and then did not
-          # exit. SIGABRT makes faulthandler dump every thread, so the log names what holds it.
-          limit=17400; signal=TERM
-          if [ "${{ matrix.part }}" = "rest" ]; then limit=6000; signal=ABRT; fi
-          timeout --signal=$signal --kill-after=30s $limit \
-            poetry run pytest -v --tb=short -rfE --durations=40 $targets
+          timeout --signal=ABRT --kill-after=30s 18000 \
+            poetry run pytest -v --tb=short -rfE --durations=25 \
+              --cov=app \
+              --cov=cad_designer \
+              --cov=aero_kernel \
+              --cov-report=xml \
+              $targets
         env:
           QT_QPA_PLATFORM: offscreen
           PYTHONUNBUFFERED: "1"
@@ -292,7 +317,7 @@ jobs:
         if: always() && matrix.python-version == '3.12'
         uses: actions/upload-artifact@v5
         with:
-          name: coverage-xml-py3.12-nightly
+          name: coverage-xml-py3.12-nightly-${{ matrix.part }}
           path: coverage.xml
           if-no-files-found: ignore
 
