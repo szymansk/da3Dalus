@@ -88,7 +88,7 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | P7a-F04 | **entschieden 2026-11-21:** nur die kleine Fassung von Stufe 4 (Bericht nennt geänderte Eingaben, Ausgaben, Einheiten): Task-Ticket #1443 |
 | P6b-F11 | **entschieden 2026-11-21:** Zeilenzahl gegen die Kopfzeile der AVL-Ausgabe prüfen, sonst Fehler „did not complete“: Ticket #1444 |
 | P5-F06 | keine Entscheidung nötig: Code fehlt nur in der Liste der Regel `positive-lengths`, Ticket #1445; der Befund bleibt offen und wird mit der Korrektur getestet |
-| P8-F13 | offen (README Abschnitt 6) |
+| P8-F13 | **entschieden 2026-11-21:** einmal messen, dann löschen. Gemessen 2026-11-22: 2,8 % (Kommentar in #1142); App-Test entfernt mit PR #1446 (offen, nicht gemergt); der Kernel-seitige Schlusstest bleibt als Befund offen |
 | P7b-F03 | keine Entscheidung nötig: Textfehler bei exklusiver Grenze, Ticket #1440; der Befund bleibt offen und wird mit der Korrektur getestet (erwartet „> 5“) |
 | P7a-F05 | **entschieden 2026-11-21:** bleibt, wie es ist (`taxonomy.yaml` speist Tag-Prüfungen und Navigator, nicht die Rechnung); Befund gestrichen, kein Ticket |
 | P3-F04 | offen (README Nachtrag) |
@@ -121,3 +121,4 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 - P7a-F04 entschieden: kleine Fassung, Ticket #1443
 - P6b-F11 entschieden: gegen die Kopfzeile zählen, Ticket #1444
 - P5-F06: keine Entscheidung nötig, Ticket #1445
+- P8-F13 entschieden: gemessen (2,8 %, #1142), App-Test entfernt mit PR #1446

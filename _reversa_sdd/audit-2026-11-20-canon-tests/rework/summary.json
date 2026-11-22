@@ -1,12 +1,11 @@
 {
  "total": 179,
  "state": {
-  "open": 111,
+  "open": 112,
   "production_defect": 9,
   "refuted": 4,
   "bundled": 24,
-  "dropped": 30,
-  "waiting_for_decision": 1
+  "dropped": 30
  },
  "verdict": {
   "CONFIRMED": 73,
@@ -22,13 +21,13 @@
  "severity_active": {
   "high": 21,
   "medium": 60,
-  "low": 54
+  "low": 55
  },
  "moves": {
   "high->medium": 6,
   "medium->high": 6,
   "low->medium": 5,
-  "medium->low": 9
+  "medium->low": 10
  },
  "tier_gap": {
   "both (no aero test reaches the code)": 54,
@@ -37,7 +36,7 @@
  },
  "recommended_test_ok": {
   "yes": 110,
-  "unclear": 18,
+  "unclear": 19,
   "no": 7
  },
  "per_wp": {
@@ -153,13 +152,13 @@
   },
   "WP-P8b": {
    "wave": 3,
-   "active": 5,
+   "active": 6,
    "high": 1,
    "medium": 1,
-   "low": 3,
+   "low": 4,
    "refuted": 0,
    "dropped": 0,
-   "waiting_for_decision": 1,
+   "waiting_for_decision": 0,
    "production_defect": 1
   },
   "WP-P4b": {
