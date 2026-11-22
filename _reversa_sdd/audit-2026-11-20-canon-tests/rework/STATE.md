@@ -52,7 +52,7 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 | Befund | Nachgestellt | Ticket |
 |---|---|---|
 | P8-F08 | ja | #1434 (gilt app-weit, nicht nur für `/canon/compute`) |
-| P3-F04 | ja, nur mit Test-Stub | kein Ticket: latent, über die API nicht erreichbar (`stall-speed` ist keine Eingabe, der Erzeuger liefert nie 0). Entscheidung Maintainer: Vorbedingung `stall_speed_usable` ergänzen oder lassen |
+| P3-F04 | ja, nur mit Test-Stub | #1447 (latent, über die API nicht erreichbar; Vorbedingung `stall_speed_usable` wird ergänzt) |
 | P1-F11 | ja | #1435 |
 | P7a-F05 | ja | kein Ticket: keine geschriebene Anforderung nennt `taxonomy.yaml`; vom Maintainer am 2026-11-21 gestrichen |
 | P7b-F08 | ja | #1436 |
@@ -91,7 +91,7 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | P8-F13 | **entschieden 2026-11-21:** einmal messen, dann löschen. Gemessen 2026-11-22: 2,8 % (Kommentar in #1142); App-Test entfernt mit PR #1446 (offen, nicht gemergt); der Kernel-seitige Schlusstest bleibt als Befund offen |
 | P7b-F03 | keine Entscheidung nötig: Textfehler bei exklusiver Grenze, Ticket #1440; der Befund bleibt offen und wird mit der Korrektur getestet (erwartet „> 5“) |
 | P7a-F05 | **entschieden 2026-11-21:** bleibt, wie es ist (`taxonomy.yaml` speist Tag-Prüfungen und Navigator, nicht die Rechnung); Befund gestrichen, kein Ticket |
-| P3-F04 | offen (README Nachtrag) |
+| P3-F04 | **entschieden 2026-11-21:** Vorbedingung `stall_speed_usable` wird ergänzt: Ticket #1447 |
 
 ## Verlauf
 
@@ -122,3 +122,4 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 - P6b-F11 entschieden: gegen die Kopfzeile zählen, Ticket #1444
 - P5-F06: keine Entscheidung nötig, Ticket #1445
 - P8-F13 entschieden: gemessen (2,8 %, #1142), App-Test entfernt mit PR #1446
+- P3-F04 entschieden: Vorbedingung wird ergänzt, Ticket #1447. Alle Maintainer-Entscheidungen getroffen
