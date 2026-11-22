@@ -228,6 +228,35 @@ async def test_the_regime_warnings_are_those_of_the_slowest_and_the_fastest_poin
     assert result.warnings == (*slow, drag_notice())
 
 
+async def test_the_regime_warnings_of_the_fastest_point_are_carried_too(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both extremes are checked (ADR 0028), the slowest point first.
+
+    Stand-in MAC of chords 0.2 / 0.1 m: 0.1556 m; nu = 1.7894e-5 / 1.225 = 1.4607e-5 m^2/s.
+    Slowest point, 6 m/s: Re = 6 * 0.1556 / 1.4607e-5 = 6.4e4, bubble-sensitive (below 7e4).
+    Fastest point, 120 m/s: Re = 120 * 0.1556 / 1.4607e-5 = 1.28e6, above the band's 1e6, and
+    Mach = 120 / 340.294 = 0.353, above 0.3. The drag notice comes last.
+    """
+    monkeypatch.setattr(opti_module, "level_polar_worker", canned(polar_at((120.0, 12.0, 6.0))))
+    result = await OptiAdapter(InProcessRuntime()).level_polar(
+        airplane(), MASS, GRAVITY, AIR, LEVELS[:3]
+    )
+    assert [w.code for w in result.warnings] == [
+        "reynolds_bubble_sensitive",
+        "reynolds_above_band",
+        "mach_above_limit",
+        "induced_drag_viscous_factor_removed",
+    ]
+    bubble, above, mach, _notice = result.warnings
+    assert (bubble.detail["wing"], above.detail["wing"]) == ("Main", "Main")
+    # both are a ``notice`` (ARCHITECTURE ch. 8.8: Re_MAC > 1e6; 0.3 < M <= 0.6)
+    assert (above.severity, mach.severity) == ("notice", "notice")
+    found = mach.detail["mach"]
+    assert isinstance(found, float)
+    assert math.isclose(found, 120.0 / 340.294, rel_tol=1e-12)
+
+
 async def test_a_regime_warning_that_both_extremes_share_is_given_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

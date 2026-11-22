@@ -2,7 +2,9 @@
 
 import importlib.metadata
 import math
+from collections.abc import Sequence
 from itertools import pairwise
+from types import SimpleNamespace
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
@@ -11,6 +13,7 @@ from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import DeviceSpan, OptiAdapter, StallRequest, StallSolution
 from aero_kernel.solvers.regime import regime_by_surface
+from aero_kernel.tests.asb_fakes import RecordingBoundary
 from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
 from aero_kernel.tests.solver_builders import (
     AIR,
@@ -19,6 +22,7 @@ from aero_kernel.tests.solver_builders import (
     airplane,
     direct_aero_model,
 )
+from aero_kernel.tests.stall_stubs import INVERTED_TROUGH, UPRIGHT_PEAK, lift_curve, lift_curve_at
 
 pytestmark = pytest.mark.asyncio
 
@@ -90,6 +94,23 @@ async def test_an_inadmissible_input_is_invalid_input(
     with pytest.raises(FormulaError) as raised:
         await adapter.stall(plane, mass, gravity, n_load, AIR)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
+
+
+async def test_a_negative_load_factor_is_the_inverted_stall_not_an_inadmissible_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The stall takes a signed load factor (only 0 is refused): n = -1 reaches the worker as given."""
+    seen: list[StallRequest] = []
+
+    def worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
+        seen.append(request)
+        return WorkerOutcome(value=solution(), diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+    monkeypatch.setattr(opti_module, "stall_worker", worker)
+    result = await OptiAdapter(InProcessRuntime()).stall(airplane(), 1.5, 9.81, -1.0, AIR)
+    (request,) = seen
+    assert request.n_load == -1.0
+    assert result.solution == solution()
 
 
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -193,18 +214,20 @@ async def test_a_device_at_rest_is_no_obstacle(monkeypatch: pytest.MonkeyPatch) 
 async def test_a_regime_warning_names_the_wing_that_is_out_of_band(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Main chords 0.2 / 0.1 m are in the band at 8 m/s (Re 9.1e4 / 4.6e4); a tail tip of 2 mm
-    gives Re 1.0e3: only the tail is outside the band, and the warning says so."""
+    """At 8 m/s the stand-in MAC of Main (chords 0.2 / 0.1 m: 0.1556 m) gives Re = 8 * 0.1556 /
+    1.4607e-5 = 8.5e4, above the bubble-sensitive limit 7e4: no warning for Main. The tail (chords
+    0.05 m / 2 mm, MAC 0.033 m) gives Re 1.8e4, below the band's 3e4: the one warning, and it names
+    the tail."""
     monkeypatch.setattr(opti_module, "stall_worker", canned(solution(v_s=8.0)))
     adapter = OptiAdapter(InProcessRuntime())
     stall = await adapter.stall(airplane(tail_chords=(0.05, 0.002)), 1.5, 9.81, 1.0, AIR)
-    outside = [w for w in stall.warnings if w.code == "reynolds_outside_band"]
-    (warning,) = outside
+    assert [w.code for w in stall.warnings] == ["reynolds_outside_band"]
+    (warning,) = stall.warnings
+    assert warning.severity == "warning"
     assert warning.detail["wing"] == "Tail"
     assert "Tail" in warning.message
     sensitive = [w for w in stall.warnings if w.code == "reynolds_bubble_sensitive"]
-    assert [w.detail["wing"] for w in sensitive] == ["Main", "Tail"][: len(sensitive)]
-    assert all(w.detail["wing"] != "Main" for w in outside)
+    assert sensitive == []
 
 
 async def test_a_mach_warning_is_raised_once_not_per_wing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -216,10 +239,6 @@ async def test_a_mach_warning_is_raised_once_not_per_wing(monkeypatch: pytest.Mo
 
 def install_failing_solver(monkeypatch: pytest.MonkeyPatch, error: Exception) -> StallRequest:
     """Fake the AeroSandbox boundary of the worker so that `Opti.solve` raises ``error``."""
-    from types import SimpleNamespace
-
-    from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
-
     polar = lift_curve(UPRIGHT_PEAK, upright=True)
 
     class FakeOpti:
@@ -286,63 +305,57 @@ async def test_the_sweep_grid_spans_minus_15_to_25_deg_in_quarter_degree_steps()
     assert opti_module.ALPHA_STEP_DEG == 0.25
 
 
-def install_solution(monkeypatch: pytest.MonkeyPatch, v_s: float, alpha_s: float) -> StallRequest:
-    """Fake the solver boundary so that IPOPT 'returns' (v_s, alpha_s); records the bounds."""
-    from types import SimpleNamespace
+# The arguments of one ``sweep_polar`` call: airplane, air, speed in m/s, angles in deg, NeuralFoil
+# model size, viscous factor.
+PublishedSweep = tuple[object, object, float, tuple[float, ...], str, float]
 
-    from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
 
-    polar = lift_curve(UPRIGHT_PEAK, upright=True)
+def install_recording_solution(
+    monkeypatch: pytest.MonkeyPatch, v_s: float, alpha_s: float, n_load: float = 1.0
+) -> tuple[StallRequest, RecordingBoundary, list[PublishedSweep]]:
+    """Fake the solver boundary so that IPOPT 'returns' (v_s, alpha_s), and record the problem.
 
-    class Variable:
-        def __init__(self, name: str) -> None:
-            self.name = name
+    The lift sweeps answer the stub's curve of the branch (first peak at 15.75 deg upright, first
+    trough at -10 deg inverted); the converted airplane has S_ref = 0.28 m^2.
 
-    class FakeOpti:
-        def __init__(self) -> None:
-            self.count = 0
+    Returns:
+        The request, the boundary that records every problem the worker states (variables with
+        bounds, constraint, objective), and the arguments of every call of ``sweep_polar`` (the
+        published polar).
+    """
+    upright = n_load > 0.0
+    peak = UPRIGHT_PEAK if upright else INVERTED_TROUGH
+    polar = lift_curve(peak, upright=upright)
+    boundary = RecordingBoundary(("speed", "alpha"), {"speed": v_s, "alpha": alpha_s}, ("L",))
+    published: list[PublishedSweep] = []
+    converted = SimpleNamespace(s_ref=0.28)
 
-        def variable(self, **_: object) -> Variable:
-            self.count += 1
-            return Variable("speed" if self.count == 1 else "alpha")
-
-        def subject_to(self, _: object) -> None:
-            return None
-
-        def minimize(self, _: object) -> None:
-            return None
-
-        def solve(self, **_: object) -> object:
-            values = {"speed": v_s, "alpha": alpha_s}
-
-            def solved(variable: Variable) -> float:
-                return values[variable.name]
-
-            return solved
-
-    def operating_point(**_: object) -> None:
-        return None
-
-    def aerobuildup(*_: object, **__: object) -> SimpleNamespace:
-        return SimpleNamespace(run=lambda: {"L": 0.0})
+    def publish(
+        plane: object, air: object, speed: float, angles: Sequence[float], size: str, k: float
+    ) -> Polar:
+        published.append((plane, air, speed, tuple(angles), size, k))
+        return lift_curve_at(peak, upright, angles)
 
     def sweep(*_: object) -> Polar:
         return polar
 
     def convert(_: object) -> SimpleNamespace:
-        return SimpleNamespace(s_ref=0.28)
+        return converted
 
-    fake_asb = SimpleNamespace(
-        Opti=FakeOpti, OperatingPoint=operating_point, AeroBuildup=aerobuildup
-    )
-    monkeypatch.setattr(opti_module, "sweep_polar", sweep)
+    monkeypatch.setattr(opti_module, "sweep_polar", publish)
     monkeypatch.setattr(opti_module, "sweep_lift", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
-    monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake_asb)
+    monkeypatch.setattr(opti_module, "load_aerosandbox", boundary.namespace)
     monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
-    return StallRequest(
-        airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=1.0, air=AIR, k_e_d0=K_E_D0
+    request = StallRequest(
+        airplane=airplane(), mass_kg=1.5, gravity=9.81, n_load=n_load, air=AIR, k_e_d0=K_E_D0
     )
+    return request, boundary, published
+
+
+def install_solution(monkeypatch: pytest.MonkeyPatch, v_s: float, alpha_s: float) -> StallRequest:
+    """Fake the solver boundary so that IPOPT 'returns' (v_s, alpha_s) for the upright stall."""
+    return install_recording_solution(monkeypatch, v_s, alpha_s)[0]
 
 
 V_HIGH = opti_module.V_MAX_MACH * AIR.speed_of_sound
@@ -353,6 +366,61 @@ async def test_an_interior_optimum_is_accepted(monkeypatch: pytest.MonkeyPatch) 
     request = install_solution(monkeypatch, 8.0, 15.75)
     outcome = opti_module.stall_worker(request)
     assert (outcome.value.v_s, outcome.value.alpha_s) == (8.0, 15.75)
+
+
+@pytest.mark.parametrize(
+    ("n_load", "alpha_s", "lift"), [(1.0, 15.75, 14.715), (-1.0, -5.0, -14.715)]
+)
+async def test_the_stall_problem_minimises_the_speed_subject_to_the_lift_balance(
+    monkeypatch: pytest.MonkeyPatch, n_load: float, alpha_s: float, lift: float
+) -> None:
+    """min V s.t. L = n m g (canon K32): the objective is the speed variable itself, the one
+    constraint sets the model's lift to 1.5 kg * 9.81 m/s^2 = 14.715 N (negative when inverted)."""
+    request, boundary, _ = install_recording_solution(monkeypatch, 8.0, alpha_s, n_load)
+    opti_module.stall_worker(request)
+    (problem,) = boundary.problems
+    (objective,) = problem.objectives
+    assert (objective.name, objective.operator) == ("speed", "")
+    (constraint,) = problem.constraints
+    assert (constraint.left.name, constraint.left.operator) == ("L", "")
+    assert math.isclose(constraint.right, lift, rel_tol=1e-12)
+
+
+@pytest.mark.parametrize(
+    ("n_load", "alpha_s", "window"),
+    [(1.0, 15.75, (-15.0, 16.0)), (-1.0, -5.0, (-10.25, 25.0))],
+)
+async def test_the_window_of_alpha_ends_one_step_past_the_first_extremum_of_the_branch(
+    monkeypatch: pytest.MonkeyPatch, n_load: float, alpha_s: float, window: tuple[float, float]
+) -> None:
+    """Upright the window runs from the sweep's start (-15 deg) to the first peak plus one step
+    (15.75 + 0.25 = 16 deg); inverted from the first trough minus one step (-10 - 0.25 = -10.25 deg)
+    to the sweep's end (25 deg). The speed lies between 1 m/s and Mach 0.6 (0.6 * 340.294 =
+    204.1764 m/s) on both branches."""
+    request, boundary, _ = install_recording_solution(monkeypatch, 8.0, alpha_s, n_load)
+    opti_module.stall_worker(request)
+    (problem,) = boundary.problems
+    alpha, speed = problem.variables["alpha"], problem.variables["speed"]
+    assert (alpha["lower_bound"], alpha["upper_bound"]) == window
+    assert speed["lower_bound"] == 1.0
+    assert math.isclose(speed["upper_bound"], 204.1764, rel_tol=1e-12)
+
+
+async def test_the_published_polar_is_swept_at_the_stall_speed_with_the_stall_angle_among_its_samples(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The polar C_L,max is read from is swept once, at the optimum V_S = 8 m/s, not at the
+    bracketing speed sqrt(2 * 14.715 / (1.225 * 0.28 * 1.19)) = 8.49 m/s, over the grid plus alpha_S
+    (15.6 deg lies between two grid points), with the kernel's viscous factor."""
+    request, _, published = install_recording_solution(monkeypatch, 8.0, 15.6)
+    outcome = opti_module.stall_worker(request)
+    (call,) = published
+    _converted, air, speed, angles, model_size, viscous_factor = call
+    assert (air, speed) == (AIR, 8.0)
+    assert 15.6 in angles
+    assert len(angles) == 162  # the 161 grid points and alpha_S
+    assert (model_size, viscous_factor) == ("xlarge", K_E_D0)
+    assert outcome.value.alpha_s == 15.6
 
 
 @pytest.mark.parametrize(
