@@ -141,6 +141,17 @@ P1-F08: ist der Aufruf `warn_flap_validity` in `maneuvering-speed` über die Eng
 teilt den Lauf in `rest` und acht Aero-Teile (nur 3.12); Lauf 45030193951 gestartet 2026-11-22. Ziel: Dauer je Teil
 und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilung endgültig festlegen, PR.
 
+**Restliste, Stand nach PR #1473 (Zweig `test/gh-1448-review-leftovers`, Worktree `.worktrees/gh-1448-leftovers`):**
+erledigt im PR: P1-F15, P7a-F17, P3-F16, P1-F13 (Aero, eigene Handgeometrie statt 0,0339411 m², die zu keiner Fixture passt),
+P6a-F09/F10 (F09 wird nur in der schnellen Stufe getötet, der Aero-Test überlebt die Mutation wie vom Prüfer vorhergesagt),
+P8-F13 Kernel-Schlusstest, P8-F18 Teil 1 (vier Flugzeuge). GEE_BEE_R3: Landeklappe 30° ergibt V_S 11,345 über sauber 11,119 m/s;
+der Kern deklariert dort `flap_confidence_low` (Regel `flap-model-validity`, #1314 zuständig) — kein neuer Fehler, Test prüft die Warnung.
+AERONCA_CHAMP: Massenband 0,332–0,39 kg `not_converged`, 0,273 und ab 0,41 kg rechnet; gleiche Meldung wie #1423, als Kommentar an #1423
+gehängt; Register-Eintrag bleibt bei `ROOT_ERRORS_AWAITING_AN_ISSUE`, bis der Maintainer #1423 als Eigentümer bestätigt.
+Offen danach: P8-F18 Teile 2 und 3, P5-F06 (mit #1445), P7b-F03 (mit #1440) und die Fragen an den Maintainer
+(P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F03, P1-F08, P8-F06, ULTRA_STICK_120-Masse, #1423 als Eigentümer für AERONCA_CHAMP).
+PR #1473 nach grüner CI + Sonar mergen, dann Worktree entfernen.
+
 ## Verlauf
 
 - 2026-11-21 — Schritt 0 fertig. Schritte 1, 2, 2b vergeben (14 Subagents).
@@ -183,3 +194,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - WP-P8a → PR #1472. Alle zwölf Pakete als PR offen oder gemergt
 - Alle zwölf Pakete gemergt (PR #1461–#1472); main in der schnellen Stufe grün (5565); Abnahmelauf über alle Patches gestartet
 - Abnahmelauf auf main: 82 von 82 Mutationen getötet (P3-F07 von Hand nachgestellt, Patch erneuert)
+- Restliste: PR #1473 offen, GEE_BEE_R3 und AERONCA_CHAMP geklärt
