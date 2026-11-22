@@ -123,7 +123,9 @@ Schlusstest; Befunde mit Ticket (#1439 bis #1447) bekommen keinen Test im Paket.
 
 **Stand 2026-11-22:** alle zwölf Pakete gemergt (PR #1461–#1472). Schnelle Stufe auf dem zusammengeführten `main`
 (47187715), Kern + `scripts/tests` + drei App-Canon-Dateien gemeinsam: 5565 bestanden. Abnahmelauf auf `main`:
-`scratchpad/accept.sh` spielt alle 82 Patches einzeln ein, Ergebnis in `scratchpad/accept.tsv` (flüchtig; bei Verlust neu laufen lassen).
+alle 82 Patches einzeln eingespielt, schnelle Stufe je Patch: **82 von 82 getötet** (Ergebnis in `rework/accept-main-47187715.tsv`).
+81 direkt; P3-F07 stand als `patch_failed`, weil der Patch gegen einen älteren Stand der Datei geschrieben war (der Patch passte
+schon auf c08ac601 nicht). Von Hand nachgestellt: `test_the_best_rate_of_climb_vertical_is_declared_too` wird rot; der Patch ist neu erzeugt.
 Tickets: #1449, #1450, #1455 durch den PR geschlossen; die übrigen neun bleiben offen bis die Restliste erledigt ist.
 
 **Restliste nach den Paketen (ein Nachlauf am Ende, Aero-Tests einzeln):** P3-F16 (Aero, Erwartungswerte neu herleiten);
@@ -180,3 +182,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - WP-P5 → PR #1470, WP-P8b → PR #1471
 - WP-P8a → PR #1472. Alle zwölf Pakete als PR offen oder gemergt
 - Alle zwölf Pakete gemergt (PR #1461–#1472); main in der schnellen Stufe grün (5565); Abnahmelauf über alle Patches gestartet
+- Abnahmelauf auf main: 82 von 82 Mutationen getötet (P3-F07 von Hand nachgestellt, Patch erneuert)
