@@ -152,6 +152,14 @@ Offen danach: P8-F18 Teile 2 und 3, P5-F06 (mit #1445), P7b-F03 (mit #1440) und 
 (P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F03, P1-F08, P8-F06, ULTRA_STICK_120-Masse, #1423 als Eigentümer für AERONCA_CHAMP).
 PR #1473 **gemergt** (86beb0b8, CI + Sonar grün), Worktree entfernt. Fragen an den Maintainer laufen einzeln; erste gestellt: P1-F08.
 
+**#1437, Stand nach der Diagnose (Kommentar im Ticket, issuecomment-7083369713):** Ursache 1: dem AVL-Binary fehlt auf dem
+Runner `liblapack.so.3` (Exit 127); mit `apt-get install liblapack3` wird aero-2 grün (Lauf 45052390415), Korrektur ist im Zweig.
+Ursache 2: der Teil `rest` beendet seine Tests nach 73 min und der Prozess endet dann nicht (Grund offen; Lauf 45053284171 schickt
+nach 100 min SIGABRT, faulthandler gibt die Threads aus). Ursache 3: ein sequentieller Job über zwei Python-Versionen ist zu lang.
+Offen: 27 Fehler + 2 Errors im Teil `rest`, die nicht alle von AVL kommen (Liste im Ticket), und ein Timeout in
+`test_mass_envelope_aero.py`. Nächster Schritt: Lauf 45053284171 auswerten (alle neun Teile mit liblapack3), dann endgültige
+Aufteilung des Jobs (Coverage-Upload und 3.11/3.12-Matrix wiederherstellen), PR; für die verbleibenden App-Testfehler ein eigenes Ticket.
+
 ## Verlauf
 
 - 2026-11-21 — Schritt 0 fertig. Schritte 1, 2, 2b vergeben (14 Subagents).
@@ -196,3 +204,4 @@ PR #1473 **gemergt** (86beb0b8, CI + Sonar grün), Worktree entfernt. Fragen an 
 - Abnahmelauf auf main: 82 von 82 Mutationen getötet (P3-F07 von Hand nachgestellt, Patch erneuert)
 - Restliste: PR #1473 offen, GEE_BEE_R3 und AERONCA_CHAMP geklärt
 - PR #1473 gemergt; erste Maintainer-Frage P1-F08 gestellt
+- #1437: Ursache liblapack3 belegt, zweiter Diagnoselauf 45053284171 läuft
