@@ -244,3 +244,12 @@ async def test_the_fuselage_is_in_the_run_as_in_the_lateral_run_and_declared(fak
 async def test_an_airplane_without_a_fuselage_has_no_body_in_the_file(fake: Path) -> None:
     await hinge(role="elevator")
     assert "BODY" not in seen(fake)["geometry"]
+
+
+@pytest.mark.asyncio
+async def test_the_file_carries_the_reference_area_chord_and_span_in_that_order(fake: Path) -> None:
+    """The hinge moment is q S_ref c_ref C_hinge with the references the AVL file carries. The
+    three values are distinct (S 0.16 m^2, c 0.2 m, b 0.8 m), so any swap of two fails."""
+    await hinge()
+    lines = seen(fake)["geometry"].splitlines()
+    assert lines[lines.index("#Sref    Cref    Bref") + 1] == "0.16 0.2 0.8"

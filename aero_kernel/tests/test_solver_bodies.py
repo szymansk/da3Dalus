@@ -96,6 +96,46 @@ def test_the_stations_are_the_union_with_exact_duplicates_collapsed() -> None:
     assert [s.xyz[0] for s in found.x_secs] == [0.0, 0.3, 0.5, 0.6, 1.0]
 
 
+def test_an_inserted_station_interpolates_the_parent_width_height_and_centre() -> None:
+    """A tapered, climbing parent: x = 0 (a 0.02, b 0.02, z 0) to x = 1 (a 0.06, b 0.04, z 0.02),
+    all linear. A narrow canopy far above shows at the canopy's two stations 0.25 and 0.75; there
+    the parent is wider than the canopy, so the width is the interpolated parent's.
+    x = 0.25: a = 0.02 + 0.25 * 0.04 = 0.03, b = 0.02 + 0.25 * 0.02 = 0.025, z = 0.005, bottom
+    z - b = -0.02. x = 0.75: a = 0.05, b = 0.035, z = 0.015, bottom -0.02."""
+    parent = body([section(0.0, 0.02, 0.02, z=0.0), section(1.0, 0.06, 0.04, z=0.02)])
+    cap = body(
+        [section(0.25, 0.01, 0.01, z=0.2), section(0.75, 0.01, 0.01, z=0.2)], "canopy", "Rumpf"
+    )
+    found = merged(Rumpf=parent, Haube=cap)
+    first, second = found.x_secs[1], found.x_secs[2]
+    assert [s.xyz[0] for s in found.x_secs] == [0.0, 0.25, 0.75, 1.0]
+    assert math.isclose(first.a, 0.03, rel_tol=1e-6)
+    assert math.isclose(second.a, 0.05, rel_tol=1e-6)
+    assert math.isclose(first.xyz[2] - first.b, -0.02, abs_tol=1e-9)
+    assert math.isclose(second.xyz[2] - second.b, -0.02, abs_tol=1e-9)
+
+
+def test_an_inserted_station_interpolates_the_exponent_of_the_parent() -> None:
+    """The parent has equal a = 0.05, b = 0.04, z = 0 and the exponent 2 at x = 0 and 4 at x = 1;
+    at x = 0.5 its exponent is 3, so its area is 4 a b f(3), f(3) = Gamma(4/3)^2 / Gamma(5/3) =
+    0.883319 (n = 2 taken from the lower neighbour gives f = 0.785398). A canopy ellipse (a = b =
+    0.01, centre z = 0.05) touches the parent's top at z = 0.04 and adds pi * 0.01^2 on top of it:
+    envelope area = 4 * 0.05 * 0.04 * 0.883319 + pi * 0.0001 = 0.0070666 + 0.0003142."""
+    parent = body([section(0.0, 0.05, 0.04, n=2.0), section(1.0, 0.05, 0.04, n=4.0)])
+    cap = body(
+        [
+            section(0.4, 0.01, 0.01, z=0.05),
+            section(0.5, 0.01, 0.01, z=0.05),
+            section(0.6, 0.01, 0.01, z=0.05),
+        ],
+        "canopy",
+        "Rumpf",
+    )
+    station = next(s for s in merged(Rumpf=parent, Haube=cap).x_secs if s.xyz[0] == 0.5)
+    expected = 4.0 * 0.05 * 0.04 * 0.883319 + math.pi * 0.01**2
+    assert math.isclose(area(station), expected, rel_tol=2e-3)
+
+
 def test_the_parent_sections_away_from_the_canopy_are_copied_verbatim() -> None:
     document = fuselage_box()
     contour = [[0.05, 0.0], [0.0, 0.04], [-0.05, 0.0], [0.0, -0.04]]
@@ -117,10 +157,17 @@ def test_the_envelope_spans_from_the_parent_bottom_to_the_canopy_top() -> None:
     assert station.contour is None
 
 
-def _union_area(sections: list[FuselageXSecSuperEllipse], points: int = 200001) -> float:
-    """An independent fine-grid area of the envelope max(w_i) (no gap in these cases)."""
-    bottom = min(s.xyz[2] - s.b for s in sections)
-    top = max(s.xyz[2] + s.b for s in sections)
+def _union_area(
+    sections: list[FuselageXSecSuperEllipse],
+    points: int = 200001,
+    z_range: tuple[float, float] | None = None,
+) -> float:
+    """An independent fine-grid area of the envelope max(w_i) (no gap in these cases), optionally
+    only between two heights."""
+    bottom, top = z_range or (
+        min(s.xyz[2] - s.b for s in sections),
+        max(s.xyz[2] + s.b for s in sections),
+    )
     z = np.linspace(bottom, top, points)
     width = np.zeros_like(z)
     for s in sections:
@@ -139,6 +186,16 @@ def test_the_refit_keeps_the_area_of_the_envelope_with_its_notch() -> None:
     ]
     assert math.isclose(area(station), _union_area(parts), rel_tol=5e-5)
     assert station.n != station.n_lower
+    # the halves are split at the middle of the envelope (bottom -0.04, top 0.04 + 0.03): the upper
+    # exponent carries the area above it, the lower exponent the area below (not swapped)
+    middle = (0.07 - 0.04) / 2.0
+    above = _union_area(parts, z_range=(middle, 0.07))
+    below = _union_area(parts, z_range=(-0.04, middle))
+    quarter = 2.0 * station.a * station.b
+    assert math.isclose(quarter * quadrant_area_fraction(station.n), above, rel_tol=1e-4)
+    assert math.isclose(
+        quarter * quadrant_area_fraction(station.n_lower or 0.0), below, rel_tol=1e-4
+    )
 
 
 def test_a_canopy_floating_above_the_parent_has_its_gap_filled() -> None:
@@ -151,6 +208,14 @@ def test_a_canopy_floating_above_the_parent_has_its_gap_filled() -> None:
     box = 4.0 * quadrant_area_fraction(rectangle)
     expected = box * 0.05 * 0.04 + box * 0.03 * 0.02 + 2.0 * 0.03 * 0.01
     assert math.isclose(area(station), expected, rel_tol=2e-3)
+    # 2 a b f(n) is the area of one half over the full width. The halves split at the middle of
+    # the envelope, z = (-0.04 + 0.09) / 2 = 0.025 (height 0.13):
+    # below: 0.065 * 0.10 = 0.0065 m^2; above: 0.015 * 0.10 (parent) + 0.01 * 0.06 (the filled gap,
+    # the narrower side) + 0.04 * 0.06 (canopy) = 0.0045 m^2
+    quarter = 2.0 * station.a * station.b
+    assert math.isclose(quarter * quadrant_area_fraction(station.n), 0.0045, rel_tol=2e-3)
+    lower = station.n_lower or 0.0
+    assert math.isclose(quarter * quadrant_area_fraction(lower), 0.0065, rel_tol=2e-3)
 
 
 def test_several_canopies_on_one_parent_fold_into_one_envelope() -> None:

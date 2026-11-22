@@ -15,7 +15,7 @@ from aero_kernel.solvers.avl_hinge import (
 from aero_kernel.solvers.avl_mesh import MeshSurface
 from aero_kernel.solvers.avl_writer import control_order
 from aero_kernel.solvers.devices import roll_deflection
-from aero_kernel.tests.formula_builders import near
+from aero_kernel.tests.formula_builders import all_near, near
 from aero_kernel.tests.hinge_builders import (
     conventional,
     device,
@@ -333,13 +333,85 @@ def test_the_role_sets_are_those_of_the_conditions_and_the_roll_rule() -> None:
         round(roll_deflection(1, 1.0)),
         round(roll_deflection(-1, 1.0)),
     )
+    # the literals of every role: they decide the sign of every hinge moment
     assert COMMAND_SIGNS["aileron"] == (-1, 1)
+    assert COMMAND_SIGNS["elevator"] == (1, 1)
+    assert COMMAND_SIGNS["rudder"] == (1, -1)
+    assert COMMAND_SIGNS["flap"] == (1, 1)
 
 
-def test_a_device_without_a_name_is_keyed_like_the_geometry_format_derives_it() -> None:
-    """name, else label, else role; never a position."""
-    bare = device(None, "elevator", 0.6)
-    assert list(controls_by_key(mesh_of(conventional(tail={0: bare}), "elevator"))) == [
-        "Tail.elevator_right",
-        "Tail.elevator_left",
+def plane_with_tail_and_fin(tail: dict[str, object], fin: dict[str, object]) -> AirplaneGeometry:
+    """The wing of ``conventional()`` (half span 0.4 m, aileron on the outer panel) with a given
+    horizontal tail and fin document."""
+    main = wing_document(
+        "Main wing",
+        "main_wing",
+        [(0.0, y, 0.0, 0.2) for y in (0.0, 0.2, 0.4)],
+        {1: device("aileron", "aileron", 0.75)},
+    )
+    return AirplaneGeometry.model_validate(
+        {"name": "plane", "wings": {"Main": main, "Tail": tail, "Fin": fin}}
+    )
+
+
+def _stations_and_controlled(
+    mesh: HingeMesh, piece: str, name: str, axis: int
+) -> tuple[list[float], list[float]]:
+    """The stations of one surface piece along ``axis`` (1 = y, 2 = z), and those that carry the
+    control ``name`` (with its hinge position)."""
+    surface = next(s for s in mesh.surfaces if s.name == piece)
+    along = [s.y if axis == 1 else s.z for s in surface.sections]
+    on = [
+        (s.y if axis == 1 else s.z)
+        for s in surface.sections
+        if any(c.name == name for c in s.controls())
     ]
+    for station in surface.sections:
+        for control in station.controls():
+            assert near(control.x_hinge, 0.0)
+    return along, on
+
+
+def test_a_part_span_elevator_has_stations_at_its_ends_and_drops_the_slivers() -> None:
+    """Tail ribs at y = 0, 0.07, 0.15; the elevator starts at the middle rib (0.07 .. 0.15).
+
+    The wing's stations inside the tail span (wing strip 0.4 / 12 = 0.033333 m, tail tip at 0.15):
+    0.033333, 0.066667, 0.1, 0.133333 (0.133333 < 0.15 - 0.3 * 0.033333 = 0.14 stays). The break
+    0.07 is added and 0.066667 dropped, since |0.066667 - 0.07| = 0.00333 < 0.01 (the sliver of
+    0.3 strips). Expected stations: 0, 0.033333, 0.07, 0.1, 0.133333, 0.15; the control sits on
+    exactly 0.07 .. 0.15, the hinge at the leading edge of the aft piece."""
+    tail = wing_document(
+        "Tail",
+        "horizontal_tail",
+        [(0.6, 0.0, 0.0, 0.1), (0.6, 0.07, 0.0, 0.1), (0.6, 0.15, 0.0, 0.1)],
+        {1: device("elevator", "elevator", 0.6)},
+    )
+    fin = wing_document(
+        "Fin", "vertical_tail", [(0.6, 0.0, 0.0, 0.12), (0.6, 0.0, 0.12, 0.1)], symmetric=False
+    )
+    mesh = mesh_of(plane_with_tail_and_fin(tail, fin), "elevator")
+    along, on = _stations_and_controlled(mesh, "Tail right aft", "c01", 1)
+    assert all_near(along, [0.0, 1 / 30, 0.07, 0.1, 0.4 / 3, 0.15], 1e-6)
+    assert all_near(on, [0.07, 0.1, 0.4 / 3, 0.15], 1e-6)
+
+
+def test_a_part_span_rudder_has_stations_at_its_ends_and_drops_the_slivers() -> None:
+    """Fin ribs at z = 0, 0.055, 0.12; the rudder starts at the middle rib (0.055 .. 0.12).
+
+    The fin's strips follow the wing's width 0.4 / 12 = 0.033333 m: round(0.12 / 0.033333) =
+    round(3.6) = 4 strips (the rounding rule of the code, not stated in the architecture text),
+    stations 0, 0.03, 0.06, 0.09, 0.12. The break 0.055 is added and 0.06 dropped
+    (|0.06 - 0.055| = 0.005 < 0.01), 0.03 stays (|0.03 - 0.055| = 0.025). Expected stations:
+    0, 0.03, 0.055, 0.09, 0.12; the control on exactly 0.055, 0.09, 0.12."""
+    tail = wing_document("Tail", "horizontal_tail", [(0.6, 0.0, 0.0, 0.1), (0.6, 0.15, 0.0, 0.1)])
+    fin = wing_document(
+        "Fin",
+        "vertical_tail",
+        [(0.6, 0.0, 0.0, 0.12), (0.6, 0.0, 0.055, 0.11), (0.6, 0.0, 0.12, 0.1)],
+        {1: device("rudder", "rudder", 0.6)},
+        symmetric=False,
+    )
+    mesh = mesh_of(plane_with_tail_and_fin(tail, fin), "rudder")
+    along, on = _stations_and_controlled(mesh, "Fin aft", "c01", 2)
+    assert all_near(along, [0.0, 0.03, 0.055, 0.09, 0.12], 1e-6)
+    assert all_near(on, [0.055, 0.09, 0.12], 1e-6)
