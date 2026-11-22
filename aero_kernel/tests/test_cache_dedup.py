@@ -76,3 +76,20 @@ def test_a_claim_from_a_second_event_loop_while_a_run_is_in_flight_is_refused() 
     second_claim = cache.claim(KEY)
     with pytest.raises(RuntimeError, match="one event loop"):
         asyncio.run(second_claim)
+
+
+@pytest.mark.asyncio
+async def test_a_cancelled_waiter_does_not_cancel_the_other_waiters_of_the_key() -> None:
+    cache = DedupedCache(MemoryCache(max_entries=4))
+    lease = await cache.claim(KEY)
+    cancelled = asyncio.create_task(cache.claim(KEY))
+    other = asyncio.create_task(cache.claim(KEY))
+    await asyncio.sleep(0)
+    cancelled.cancel()
+    await asyncio.gather(cancelled, return_exceptions=True)
+    lease.release(entry(5.0))
+    served = (await other).entry
+    assert cancelled.cancelled()
+    assert not other.cancelled()
+    assert served is not None
+    assert served.outputs == {"v": 5.0}

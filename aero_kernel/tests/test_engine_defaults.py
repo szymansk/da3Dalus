@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import pytest
+from aero_kernel.cache import DedupedCache, MemoryCache
 from aero_kernel.context import Context, Inputs
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
@@ -37,17 +38,42 @@ async def go(
     overrides: Mapping[str, Impl] | None = None,
     geometry_mass_kg: float | None = None,
     wings: dict[str, Any] | None = None,
+    cache: DedupedCache | None = None,
 ) -> ComputeResult:
     return await evaluate(
         make_build(registry_with(overrides)),
         aircraft(values, wings, geometry_mass_kg),
         request(*slugs, long_runs=long_runs),
         solvers=NO_SOLVERS,
+        cache=cache,
     )
 
 
 def default_lines(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
     return [r for r in caplog.records if r.getMessage().startswith("default used")]
+
+
+async def test_a_cached_second_call_declares_and_logs_its_defaults_again(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Q31: one INFO line per default and call, also on a second, cached call."""
+    cache = DedupedCache(MemoryCache(max_entries=16))
+    for second_call in (False, True):
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger="aero_kernel"):
+            result = await go("density-q", "margin-q", cache=cache)
+        found = {q.slug: q for q in result.quantities}
+        assert result.provenance.defaults_used == (DENSITY, MARGIN)
+        assert sorted(r.getMessage() for r in default_lines(caplog)) == [
+            "default used: air-density = 1.225 kg/m^3 (us standard atmosphere)",
+            "default used: margin-target = 1.3 1 (test margin)",
+        ]
+        assert all(isinstance(getattr(r, "call_id", None), str) for r in default_lines(caplog))
+        assert [(w.code, w.severity) for w in found["margin-q"].warnings] == [
+            ("default_target_used", WarningSeverity.NOTICE)
+        ]
+        assert found["density-q"].from_cache is second_call
+        assert found["margin-q"].from_cache is second_call
 
 
 # --- an input default (a physical constant) ----------------------------------------------------
