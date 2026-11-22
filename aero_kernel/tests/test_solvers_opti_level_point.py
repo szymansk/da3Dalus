@@ -21,6 +21,7 @@ from aero_kernel.solvers.opti import (
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.solver_builders import AIR, K_E_D0, InProcessRuntime, airplane, drag_notice
 from aero_kernel.tests.stall_stubs import CD0, K
+from aero_kernel.tests.test_solvers_opti_glide import assert_flap_caveats_lead, flapped
 from aero_kernel.tests.test_solvers_opti_level import (
     AREA,
     GRAVITY,
@@ -114,6 +115,56 @@ async def test_the_adapter_hands_over_the_speed_and_adds_the_regime_and_the_drag
     assert given.lift_tolerance == 1e-6
     assert result.point == canned
     assert result.warnings == (drag_notice(),)  # 18 m/s: no regime warning on this stand-in
+
+
+def canned_point(seen: list[LevelPointRequest] | None = None) -> tuple[LevelPoint, object]:
+    """A point at 18 m/s and the worker that answers it, recording its requests in ``seen``."""
+    point = LevelPoint(v_ms=18.0, alpha_deg=3.0, cl=0.3, cd=0.05, lift_n=4.9, drag_n=0.8)
+
+    def worker(given: LevelPointRequest) -> WorkerOutcome[LevelPoint]:
+        if seen is not None:
+            seen.append(given)
+        return WorkerOutcome(value=point, diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+    return point, worker
+
+
+@pytest.mark.parametrize(("root", "tip", "averaged"), [(0.75, 0.75, False), (0.74, 0.76, True)])
+async def test_the_point_of_a_flapped_configuration_declares_the_flap_model(
+    monkeypatch: pytest.MonkeyPatch, root: float, tip: float, averaged: bool
+) -> None:
+    """A flap at 10 deg at 18 m/s (no regime warning): the unknown fit range of the flap model
+    leads, the drag notice ends; a hinge of 0.74 (root) / 0.76 (tip) is declared as averaged first."""
+    monkeypatch.setattr(opti_module, "level_point_worker", canned_point()[1])
+    result = await OptiAdapter(InProcessRuntime()).level_flight_point(
+        flapped(root, tip), MASS, GRAVITY, AIR, 18.0, 1.0
+    )
+    assert_flap_caveats_lead(result.warnings, averaged=averaged)
+
+
+async def test_a_load_factor_of_zero_is_admissible_and_reaches_the_worker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """n = 0 is the vertical dive of the dive speed (ch. 8.8, #1414): the lower end of the admissible
+    range, not an error."""
+    seen: list[LevelPointRequest] = []
+    point, worker = canned_point(seen)
+    monkeypatch.setattr(opti_module, "level_point_worker", worker)
+    result = await OptiAdapter(InProcessRuntime()).level_flight_point(
+        airplane(), MASS, GRAVITY, AIR, 18.0, 0.0
+    )
+    (given,) = seen
+    assert given.n_load == 0.0
+    assert result.point == point
+
+
+async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
+    adapter = OptiAdapter(InProcessRuntime())
+    plane = airplane()
+    with pytest.raises(FormulaError) as raised:
+        await adapter.level_flight_point(plane, 0.5, 9.80665, AIR, 18.0, 1.0)
+    assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 
 @pytest.mark.parametrize("speed", [0.0, -3.0, math.nan, math.inf])

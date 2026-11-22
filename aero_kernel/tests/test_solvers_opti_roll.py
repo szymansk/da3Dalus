@@ -16,6 +16,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import Polar
 from aero_kernel.solvers import opti as opti_module
+from aero_kernel.solvers.aero_model import model_key
 from aero_kernel.solvers.opti import (
     DeflectionDiagnostics,
     OptiAdapter,
@@ -23,6 +24,7 @@ from aero_kernel.solvers.opti import (
     RollSolution,
 )
 from aero_kernel.solvers.roll_math import control_effectiveness
+from aero_kernel.tests.asb_fakes import RecordedConstraint, RecordedExpression
 from aero_kernel.tests.solver_builders import AIR, InProcessRuntime, direct_aero_model
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
 from aero_kernel.tests.test_solvers_roll_devices import aileron, wing_geometry
@@ -73,6 +75,53 @@ async def test_steady_roll_end_to_end_with_stub(monkeypatch: pytest.MonkeyPatch)
     assert (request.v_ms, request.delta_deg) == (SPEED, 20.0)
     assert request.airplane == plane
     assert (roll.p_rad_s, roll.alpha_deg) == (1.2, 4.0)
+
+
+async def test_the_roll_job_is_keyed_by_the_airplane_with_its_aileron_command(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The model function a worker caches is that of the rolled airplane (ch. 8.10): its key holds
+    the command of 20 deg, so the job can never be served by the clean airplane's function."""
+    seen: list[RollRequest] = []
+    monkeypatch.setattr(opti_module, "steady_roll_worker", canned(solution(), seen))
+    plane = rolling_airplane()
+    adapter = OptiAdapter(InProcessRuntime())
+    await adapter.steady_roll(plane, MASS, GRAVITY, AIR, SPEED, 20.0)
+    (request,) = seen
+    rolled, clean = (
+        model_key(
+            plane,
+            roll_deg=roll_deg,
+            model_size=opti_module.NEURALFOIL_MODEL_SIZE,
+            tool_versions=adapter.tool_versions(),
+        )
+        for roll_deg in (20.0, 0.0)
+    )
+    assert request.model_key == rolled
+    assert request.model_key != clean
+
+
+async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
+    adapter = OptiAdapter(InProcessRuntime())
+    plane = rolling_airplane()
+    with pytest.raises(FormulaError) as raised:
+        await adapter.steady_roll(plane, 0.15, 9.81, AIR, 10.0, 20.0)
+    assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
+
+
+async def test_a_command_without_a_device_acting_as_aileron_is_a_defect_of_the_caller(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The only device is an elevator: a command of 20 deg has nothing to drive. The canon's
+    ``has_aileron`` condition prevents the call, so it is a ValueError, raised before any solve."""
+    called: list[RollRequest] = []
+    monkeypatch.setattr(opti_module, "steady_roll_worker", canned(solution(), called))
+    plane = wing_geometry((0.0, 0.2, 0.4), 1, {"name": "E", "role": "elevator"})
+    adapter = OptiAdapter(InProcessRuntime())
+    with pytest.raises(ValueError, match="needs a device acting as aileron"):
+        await adapter.steady_roll(plane, 0.15, 9.81, AIR, 10.0, 20.0)
+    assert called == []
 
 
 async def test_steady_roll_reports_min_confidence_and_max_effective_alpha(
@@ -216,6 +265,7 @@ class Boundary:
         self.values = {"alpha": alpha_opt, "p": p_opt}
         self.operating_points: list[dict[str, Any]] = []
         self.variables: list[dict[str, Any]] = []
+        self.constraints: list[RecordedConstraint] = []
         self.error: Exception | None = None
         self.numeric_runs = 0
         # (alpha, p_body) -> (Cl, Cn) of the fake airplane, for the secant start
@@ -230,11 +280,8 @@ class Boundary:
                 name = "alpha" if len(boundary.variables) == 1 else "p"
                 return Variable(name, kwargs["init_guess"])
 
-            def subject_to(self, _: object) -> None:
-                return None
-
-            def minimize(self, _: object) -> None:
-                return None
+            def subject_to(self, constraint: RecordedConstraint) -> None:
+                boundary.constraints.append(constraint)
 
             def solve(self, **_: object) -> object:
                 if boundary.error is not None:
@@ -250,17 +297,15 @@ class Boundary:
             return SimpleNamespace(**kwargs)
 
         def aero_buildup(airplane: Any, op_point: Any, model_size: str) -> SimpleNamespace:
-            def run() -> dict[str, float]:
-                if isinstance(op_point.alpha, float) and not isinstance(op_point.alpha, Variable):
-                    boundary.numeric_runs += 1
+            def run() -> dict[str, float] | dict[str, RecordedExpression]:
                 for wing in getattr(airplane, "wings", []):
                     neuralfoil_calls(wing)
-                cl, cn = (
-                    boundary.moments(op_point.alpha, op_point.p)
-                    if isinstance(op_point.alpha, float)
-                    and not isinstance(op_point.alpha, Variable)
-                    else (0.0, 0.0)
-                )
+                if isinstance(op_point.alpha, Variable):
+                    # the run inside the optimisation problem: expressions that record what the
+                    # constraints are built from
+                    return {name: RecordedExpression(name) for name in ("L", "Cl", "Cn")}
+                boundary.numeric_runs += 1
+                cl, cn = boundary.moments(op_point.alpha, op_point.p)
                 return {"L": 0.0, "Cl": cl, "Cn": cn}
 
             return SimpleNamespace(run=run)
@@ -385,6 +430,33 @@ def close_to(a: float, b: float) -> bool:
     return math.isclose(a, b, rel_tol=1e-12)
 
 
+async def test_the_roll_problem_is_the_lift_balance_and_a_vanishing_stability_axis_rolling_moment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exactly two constraints (canon ``roll-rate``): L = m g = 0.15 kg * 9.81 m/s^2 = 1.4715 N, and
+    Cl cos(alpha) + Cn sin(alpha) = 0, built from the model's body-axis Cl and Cn and the angle of
+    attack variable (which this fake represents by its start value)."""
+    boundary = Boundary(p_opt=2.0, alpha_opt=4.0)
+    request = install(monkeypatch, boundary)
+    opti_module.steady_roll_worker(request)
+    lift, moment = boundary.constraints
+    assert (lift.left.name, lift.left.operator) == ("L", "")
+    assert math.isclose(lift.right, 1.4715, rel_tol=1e-12)
+    assert moment.right == 0
+    assert moment.left.operator == "+"
+    alpha = math.radians(boundary.variables[0]["init_guess"])
+    for term, coefficient, factor in zip(
+        moment.left.operands, ("Cl", "Cn"), (math.cos(alpha), math.sin(alpha)), strict=True
+    ):
+        assert isinstance(term, RecordedExpression)
+        assert term.operator == "*"
+        model_output, angle_factor = term.operands
+        assert isinstance(model_output, RecordedExpression)
+        assert isinstance(angle_factor, float)
+        assert (model_output.name, model_output.operator) == (coefficient, "")
+        assert close_to(angle_factor, factor)
+
+
 async def test_the_start_value_of_alpha_carries_the_weight_on_the_rising_branch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -398,7 +470,9 @@ async def test_the_start_value_of_alpha_carries_the_weight_on_the_rising_branch(
     opti_module.steady_roll_worker(request)
     alpha_init = boundary.variables[0]["init_guess"]
     expected = UPRIGHT_PEAK[0] - (UPRIGHT_PEAK[1] - cl_needed) / 0.04
-    assert math.isclose(alpha_init, expected, abs_tol=0.25)
+    # the interpolation on the linear stub is exact: 15.75 - (1.19 - 0.0858) / 0.04 = -11.855 deg
+    assert math.isclose(expected, -11.855, abs_tol=5e-4)
+    assert math.isclose(alpha_init, expected, abs_tol=1e-9)
 
 
 @pytest.mark.parametrize(
@@ -516,6 +590,16 @@ async def test_the_worker_records_min_confidence_and_max_effective_alpha_over_al
         for a, b in zip(got, want, strict=True)
     )
     assert boundary.numeric_runs == 3  # two for the start of the roll rate, one recording pass
+    # the recording pass is made at the solved state: V = 10 m/s, alpha = 4 deg and the body rates
+    # of p = 2 rad/s about the stability axis, p cos(4 deg) = 1.995128 and p sin(4 deg) = 0.139513
+    recording = [op for op in boundary.operating_points if not isinstance(op["alpha"], Variable)][
+        -1
+    ]
+    assert (recording["alpha"], recording["velocity"]) == (4.0, 10.0)
+    assert math.isclose(recording["p"], 1.995128, rel_tol=1e-6)
+    assert math.isclose(recording["r"], 0.139513, rel_tol=1e-5)
+    assert math.isclose(recording["p"], 2.0 * math.cos(math.radians(4.0)), rel_tol=1e-9)
+    assert math.isclose(recording["r"], 2.0 * math.sin(math.radians(4.0)), rel_tol=1e-9)
 
 
 async def test_a_zero_deflection_runs_no_recording_pass(monkeypatch: pytest.MonkeyPatch) -> None:
