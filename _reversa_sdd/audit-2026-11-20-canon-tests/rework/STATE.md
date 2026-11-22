@@ -110,7 +110,7 @@ grüner CI mergen. Stände: `offen` → `läuft` (Subagent gestartet) → `Beric
 | 2 | WP-P2 | #1455 | test/gh-1455-p2-aero-stability | PR #1468 (36fcf1d5 + 3b810783: 19 Tests, 5 von 5 Mutationen; nach Rückgabe wiederhergestellt, Namen je Datei geprüft: nur die fünf vorgeschriebenen Umbenennungen fehlen) |
 | 2 | WP-P5 | #1456 | test/gh-1456-p5-validation-geometry | PR #1470 (e68bdce6: 24 Tests, 5 von 5 Mutationen; nachgeprüft). Rest: P5-F06 mit #1445 |
 | 2 | WP-P7a | #1457 | test/gh-1457-p7a-importer | PR #1467 (bb4e5411: 27 Fälle, 9 von 9 Mutationen; nachgeprüft). Rest: P7a-F17 in test_importer_abscissa.py |
-| 3 | WP-P8a | #1458 | test/gh-1458-p8a-reference-fleet | läuft |
+| 3 | WP-P8a | #1458 | test/gh-1458-p8a-reference-fleet | PR #1472 (24e5ab66: 250 schnelle Tests, 1 von 1 Mutation; nachgeprüft). Rest: P8-F06, P8-F03 (Recorder), P8-F18 Teil 1 |
 | 3 | WP-P8b | #1459 | test/gh-1459-p8b-app-layer | PR #1471 (070b0bf1: 3 neue + 3 verschärfte Tests, 4 von 4 Mutationen; nachgeprüft). Rest: P8-F13 (Aero) |
 | 3 | WP-P4b | #1460 | test/gh-1460-p4b-test-isolation | PR #1469 (049468e4: 5 Tests robust, gemeinsamer Lauf 2 rot → grün, nachgeprüft). Rest: P4-F17 |
 
@@ -127,6 +127,7 @@ P1-F09 Rest (`advance_ratio` bei zwei negativen Argumenten und bei NaN-Geschwind
 P6a-F09/F10 Aero-Hälften (`test_solvers_opti_real.py`); P6b-F12 (aufgezeichnete Ausgaben des echten AVL je Leser: wo liegen die Dateien? Frage); P6b-F03: Rundungsregel der Streifenzahl am Seitenleitwerk steht nicht in ARCHITECTURE (Frage);
 P7a-F17 in `test_importer_abscissa.py`; P8-F13 Kernel-seitiger Schlusstest (Aero);
 P4-F17 (Zeit-Asserts in test_runtime*.py: Rendezvous-Mechanismus und Marge, Frage);
+P8-F06 (Aero, Klammer gegen veröffentlichte Werte: gewollt? Frage); P8-F03 Golden-Recorder (Skript `scripts/canon_checks/reference_fleet/record_goldens.py`, JSON je Flugzeug + Differenzbericht: Entwurf im Bericht des Subagents, Frage wo die JSON liegen); AERONCA_CHAMP `not_converged` ohne Ticket im Fehlerregister (gleiche Art wie #1423? prüfen, dann Ticket); ULTRA_STICK_120 Masse 8,95 gegen 8,9448 kg aus 19,72 lbf (Frage);
 P1-F08: ist der Aufruf `warn_flap_validity` in `maneuvering-speed` über die Engine erreichbar? (ADR 0021, Frage).
 
 **#1437 (nächtlicher CI-Lauf):** Zweig `fix/gh-1437-nightly-ci`, Worktree `.worktrees/gh-1437`. Diagnose-Commit
@@ -172,3 +173,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - WP-P7a → PR #1467; WP-P2 zurückgegeben (neun Tests gelöscht); Welle 3 vergeben
 - WP-P2 → PR #1468 (nach Wiederherstellung), WP-P4b → PR #1469
 - WP-P5 → PR #1470, WP-P8b → PR #1471
+- WP-P8a → PR #1472. Alle zwölf Pakete als PR offen oder gemergt
