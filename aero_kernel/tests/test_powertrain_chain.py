@@ -127,6 +127,25 @@ async def test_a_propeller_that_does_not_turn_has_no_advance_ratio(n_prop: float
     assert caught.value.parameter == "n_prop"
 
 
+@pytest.mark.parametrize("d_prop", [0.0, -0.33, math.nan])
+def test_a_propeller_without_a_diameter_has_no_advance_ratio(d_prop: float) -> None:
+    # D_prop = 0 would divide by zero, a negative or undefined diameter has no meaning
+    with pytest.raises(FormulaError) as caught:
+        advance_ratio(5.0, 150.0, d_prop)
+    assert caught.value.code == "non_positive_value"
+
+
+def test_an_undefined_propeller_speed_has_no_advance_ratio() -> None:
+    with pytest.raises(FormulaError) as caught:
+        advance_ratio(5.0, math.nan, 0.3302)
+    assert caught.value.code == "non_positive_value"
+
+
+def test_the_advance_ratio_hand_value() -> None:
+    # J = V / (n D) = 10 / (150 * 0.3302) = 10 / 49.53 = 0.2018978
+    assert close(advance_ratio(10.0, 150.0, 0.3302), 0.2018978, 1e-6)
+
+
 @pytest.mark.asyncio
 async def test_the_thrust_is_the_definition_of_the_coefficient_read_backwards() -> None:
     # C_T 0.1, rho 1.225, n 100 1/s, D 0.3302 m: T = 0.1 * 1.225 * 1e4 * 0.3302^4 = 14.5604...
@@ -314,6 +333,9 @@ async def test_the_static_thrust_to_weight_is_the_hand_thrust_over_the_weight() 
     _, _, _, t_static = independent_balance(0.0)
     assert close(got["t0_w"], t_static / (3.4 * G), 1e-6)
     assert close(got["t0_w"], 32.9713 / (3.4 * G), 1e-5)  # the hand value
+    # the route notice (Q-PT-6, ADR 0020): R_m is the winding only, route B
+    assert [w.code for w in ctx.warnings] == ["powertrain_route_winding_resistance"]
+    assert ctx.warnings[0].detail == {"route": "B"}
     assert set(ctx.embedded_requests) == set(formula.embeds)  # the embedding test (ch. 8.12)
 
 
@@ -375,6 +397,9 @@ async def test_the_chain_through_the_engine_gives_the_independent_values() -> No
     assert close(
         got["static-thrust-to-weight"].value, independent_balance(0.0)[3] / (3.4 * G), 1e-5
     )
+    assert "powertrain_route_winding_resistance" in [
+        w.code for w in got["static-thrust-to-weight"].warnings
+    ]
 
 
 @pytest.mark.asyncio
