@@ -130,7 +130,14 @@ class StubAvl(AvlAdapter):
     ) -> AvlHinge:
         """Answer the hinge moments without AVL: 1e-3 N*m per degree, signed by the side, and record the call."""
         self.hinge_calls.append(
-            {"airplane": airplane, "cl": cl, "role": role, "delta": delta_deg, "speed": speed_ms}
+            {
+                "airplane": airplane,
+                "cl": cl,
+                "role": role,
+                "delta": delta_deg,
+                "speed": speed_ms,
+                "air": air,
+            }
         )
         if self.hinge_failure is not None:
             raise self.hinge_failure

@@ -243,6 +243,28 @@ async def test_a_skipped_long_run_asks_for_confirmation(monkeypatch: pytest.Monk
 
 
 @pytest.mark.asyncio
+async def test_only_long_run_skips_ask_for_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A dependent skipped for another reason and a not-applicable quantity are not offered.
+    dependent = QuantityResult(
+        slug="static-margin-measured",
+        status=QuantityStatus.SKIPPED,
+        reason=Reason(code=ReasonCode.DEPENDS_ON_SKIPPED, message="m"),
+    )
+    not_applicable = QuantityResult(
+        slug="flap-effect",
+        status=QuantityStatus.NOT_APPLICABLE,
+        reason=Reason(code=ReasonCode.CONDITION_NOT_MET, message="m"),
+    )
+    use_kernel(
+        monkeypatch, StubKernel(skipped_long_run("neutral-point"), dependent, not_applicable)
+    )
+    response = await canon_service.compute_canon(
+        request_of("neutral-point", "static-margin-measured", "flap-effect"), NO_DB
+    )
+    assert response.needs_confirmation == ["neutral-point"]
+
+
+@pytest.mark.asyncio
 async def test_the_kernel_logs_of_the_request_are_returned(kernel: StubKernel) -> None:
     response = await canon_service.compute_canon(request_of("stall-speed"), NO_DB)
     started = [r for r in response.logs if r.message == "node started"]
@@ -381,11 +403,19 @@ async def test_a_caller_that_leaves_does_not_break_the_kernel_loop() -> None:
         await asyncio.sleep(0.05)
         return ComputeResult(provenance=PROVENANCE)
 
+    kernel_loop_errors: list[dict[str, object]] = []
+    loop = canon_service._KERNEL_LOOP._running()
+    loop.set_exception_handler(lambda _loop, context: kernel_loop_errors.append(context))
     waiting = asyncio.create_task(canon_service._KERNEL_LOOP.run(slow()))
     await asyncio.sleep(0)
     waiting.cancel()
     await asyncio.gather(waiting, return_exceptions=True)
-    await asyncio.sleep(0.1)  # the kernel task finishes after its caller left
+    # settling the left caller's future must not raise inside the kernel loop (InvalidStateError)
+    try:
+        await asyncio.sleep(0.1)  # the kernel task finishes after its caller left
+        assert kernel_loop_errors == []
+    finally:
+        loop.set_exception_handler(None)
     assert (await canon_service._KERNEL_LOOP.run(slow())).quantities == ()
 
 

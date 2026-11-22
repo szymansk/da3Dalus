@@ -65,7 +65,10 @@ def test_anhedral_is_negative_and_a_tip_first_store_gives_the_same_value() -> No
 def test_a_root_off_the_centreline_weights_only_the_wing_that_exists() -> None:
     """The gap at the centreline carries no dihedral; the weighting starts at the root rib."""
     found = equivalent_dihedral_deg(wing([(0.1, 0.0, 0.2), (0.6, 0.0, 0.2), (1.0, 0.07, 0.2)]))
-    assert 0.0 < found < math.degrees(math.atan2(0.07, 0.4))
+    # chord 0.2: W1 = 0.2 (0.6^2 - 0.1^2) / 2 = 0.035 (flat), W2 = 0.2 (1.0^2 - 0.6^2) / 2 = 0.064
+    # at Gamma_2 = atan2(0.07, 0.4); Gamma_eq = Gamma_2 W2 / (W1 + W2) = 6.41697 deg.
+    # Weighting from y = 0 would give W1 = 0.036 and 6.35280 deg.
+    assert close(found, math.degrees(math.atan2(0.07, 0.4)) * 0.064 / 0.099, 1e-12)
 
 
 def test_an_unmirrored_main_wing_has_no_semi_span_and_is_refused() -> None:

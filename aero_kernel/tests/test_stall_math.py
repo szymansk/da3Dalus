@@ -5,7 +5,7 @@ import math
 import pytest
 from aero_kernel.schema import Polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
-from aero_kernel.solvers.stall_math import first_extremum
+from aero_kernel.solvers.stall_math import first_extremum, first_extremum_from_zero
 from pydantic import ValidationError
 
 ALPHAS = (-2.0, 0.0, 2.0, 4.0, 6.0)
@@ -99,3 +99,46 @@ def test_a_boundary_sample_is_never_an_extremum() -> None:
     assert first_extremum([1.0, 2.0, 3.0], maximum=False) is None
     assert first_extremum([1.0, 2.0, 3.0], maximum=True) is None
     assert first_extremum([3.0, 2.0, 1.0], maximum=False) is None
+
+
+# --- first_extremum_from_zero (canon K32: the scan starts at alpha = 0, P2-F02) ----------------
+
+
+def test_an_upright_scan_ignores_a_local_maximum_below_alpha_zero() -> None:
+    """The lift recovers past the negative stall: the maximum at -3 deg is not C_L,max.
+
+    Hand reading of the series (alpha: C_L): -4: -0.4, -3: -0.3, -2: -0.5, -1: -0.2, 0: 0.0,
+    1: 0.3, 2: 0.6, 3: 0.5, 4: 0.4. A scan from the first sample stops at -3 deg (index 1,
+    -0.3 >= -0.4 and -0.3 > -0.5); the scan from alpha = 0 rises through 0.3 to 0.6 and stops
+    at +2 deg (index 6, 0.6 > 0.5).
+    """
+    alphas = (-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0)
+    cl = (-0.4, -0.3, -0.5, -0.2, 0.0, 0.3, 0.6, 0.5, 0.4)
+    assert first_extremum_from_zero(alphas, cl, upright=True) == 6
+
+
+def test_an_inverted_scan_takes_the_trough_below_zero_not_the_one_above() -> None:
+    """Scanning down from alpha = 0 the series reads 0.0, -0.3, -0.6, -0.5, -0.4: trough at -2 deg.
+
+    The trough at +2 deg (-0.9, index 6) lies on the other side of zero and must not be taken.
+    """
+    alphas = (-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0)
+    cl = (-0.4, -0.5, -0.6, -0.3, 0.0, -0.2, -0.9, -0.1, 0.2)
+    assert first_extremum_from_zero(alphas, cl, upright=False) == 2
+
+
+def test_a_grid_without_alpha_zero_starts_at_the_nearest_sample() -> None:
+    """Nearest sample to 0 is +0.5 deg (index 2); from there C_L reads 0.4, 0.6, 0.9, 0.7.
+
+    The peak at 3.5 deg (index 4) is the answer; a scan from the first sample would stop at the
+    -1.5 deg bump (index 1, 0.5).
+    """
+    alphas = (-3.0, -1.5, 0.5, 2.0, 3.5, 5.0)
+    cl = (0.1, 0.5, 0.4, 0.6, 0.9, 0.7)
+    assert first_extremum_from_zero(alphas, cl, upright=True) == 4
+
+
+def test_an_empty_series_and_a_series_that_does_not_turn_have_no_extremum() -> None:
+    assert first_extremum_from_zero((), (), upright=True) is None
+    assert first_extremum_from_zero((0.0, 1.0, 2.0), (0.0, 0.5, 1.0), upright=True) is None
+    assert first_extremum_from_zero((-2.0, -1.0, 0.0), (0.0, -0.5, -1.0), upright=False) is None

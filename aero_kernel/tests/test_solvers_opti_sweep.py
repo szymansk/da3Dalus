@@ -80,6 +80,26 @@ async def test_a_deflected_control_surface_is_refused(monkeypatch: pytest.Monkey
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
+async def test_a_deflected_flap_is_refused_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The sweep returns a bare polar without warnings, so it cannot declare the flap model
+    (ch. 8.8): a deflected flap is refused, named, before any solver work."""
+    called: list[SweepRequest] = []
+
+    def worker(request: SweepRequest) -> WorkerOutcome[Polar]:
+        called.append(request)
+        polar = lift_curve(UPRIGHT_PEAK, upright=True)
+        return WorkerOutcome(value=polar, diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+    monkeypatch.setattr(opti_module, "sweep_worker", worker)
+    adapter = OptiAdapter(InProcessRuntime())
+    flapped = airplane(device=("flap", 10.0), hinge=0.75)
+    with pytest.raises(FormulaError) as raised:
+        await adapter.sweep(flapped, AIR, 10.0, ALPHAS)
+    assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert "flap-1" in raised.value.message
+    assert called == []
+
+
 async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OptiAdapter, "requirements", {"no-such-distribution": "no_such_xyz"})
     adapter = OptiAdapter(InProcessRuntime())

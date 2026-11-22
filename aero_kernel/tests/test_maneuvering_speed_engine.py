@@ -4,13 +4,23 @@ import math
 
 import pytest
 from aero_kernel.build import shipped_build
+from aero_kernel.context import Context
+from aero_kernel.devices import with_flaps_at
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.formulas.maneuvering_speed import maneuvering_speed
+from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import ComputeRequest, ComputeResult, KernelWarning, QuantityStatus
 from aero_kernel.solvers.opti import Stall
-from aero_kernel.tests.formula_builders import StubAtmosphere, close, solvers_with
-from aero_kernel.tests.stall_stubs import StubOpti
-from aero_kernel.tests.test_stall_speed_engine import MASS, RHO, aircraft
+from aero_kernel.tests.formula_builders import (
+    STUB_SPEED_OF_SOUND,
+    STUB_VISCOSITY,
+    StubAtmosphere,
+    close,
+    solvers_with,
+)
+from aero_kernel.tests.stall_stubs import StubOpti, flap_confidence
+from aero_kernel.tests.test_stall_speed_engine import MASS, RHO, aircraft, document
 
 pytestmark = pytest.mark.asyncio
 
@@ -77,3 +87,41 @@ async def test_the_regime_warnings_of_the_optimiser_arrive_on_the_manoeuvring_sp
     assert ("reynolds_bubble_sensitive", "maneuvering-speed", {"re": 6e4}) in [
         (w.code, w.origin, w.detail) for w in quantity.warnings
     ]
+
+
+async def test_a_manoeuvring_speed_on_a_deflected_flap_declares_its_validity() -> None:
+    """The formula called directly with a flap at 45 deg (above the 30 deg limit of the rule
+    flap-model-validity) and NeuralFoil's confidence 0.407 (below the floor 0.85) over the flap.
+
+    The engine never hands the formula a deflected flap (its only application binds the airplane at
+    rest), so the caveat is pinned on the formula itself: both declarations carry the origin.
+    """
+
+    class Diagnosed(StubOpti):
+        async def stall(self, *args: object) -> Stall:  # type: ignore[override]  # stub forwards
+            stalled = await super().stall(*args)  # type: ignore[arg-type]
+            solution = stalled.solution.model_copy(update={"diagnostics": flap_confidence(0.407)})
+            return Stall(solution=solution, warnings=())
+
+    airplane = with_flaps_at(AirplaneGeometry.model_validate(document(True)), 45.0)
+    x = {
+        "airplane": airplane,
+        "m": MASS,
+        "g": 9.80665,
+        "n_lim": 10.0,
+        "rho": RHO,
+        "mu": STUB_VISCOSITY,
+        "a": STUB_SPEED_OF_SOUND,
+    }
+    ctx = Context(origin="maneuvering-speed", solvers=solvers_with(opti=Diagnosed()))
+    await maneuvering_speed(x, ctx)
+    (beyond,) = [w for w in ctx.warnings if w.code == "flap_deflection_beyond_validity"]
+    assert beyond.origin == "maneuvering-speed"
+    assert beyond.detail["limit_deg"] == 30.0
+    assert beyond.detail["flaps"] == [
+        {"wing": "Main", "device": "device 0", "deflection_deg": 45.0}
+    ]
+    (low,) = [w for w in ctx.warnings if w.code == "flap_confidence_low"]
+    assert low.origin == "maneuvering-speed"
+    assert low.detail["mean_confidence"] == 0.407
+    assert low.detail["threshold"] == 0.85

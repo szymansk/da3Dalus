@@ -6,15 +6,18 @@ from types import SimpleNamespace
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
-from aero_kernel.schema import Polar
+from aero_kernel.schema import KernelWarning, Polar
 from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.opti import (
     BestGlideSolution,
+    MinSinkSolution,
     OptiAdapter,
     StallRequest,
 )
 from aero_kernel.solvers.regime import regime_by_surface
+from aero_kernel.tests.asb_fakes import RecordingBoundary
 from aero_kernel.tests.formula_builders import OPT_SETTINGS
 from aero_kernel.tests.planform_stand_in import canon_bands, stand_in_surface_sections
 from aero_kernel.tests.solver_builders import (
@@ -147,6 +150,69 @@ async def test_a_missing_aerosandbox_is_tool_unavailable(monkeypatch: pytest.Mon
     assert raised.value.category is ErrorCategory.TOOL_UNAVAILABLE
 
 
+def flapped(root: float = 0.75, tip: float = 0.75) -> AirplaneGeometry:
+    """The stand-in airplane with its flap 'flap-1' on Main at 10 deg, hinge at ``root`` / ``tip``."""
+    document = airplane(device=("flap", 10.0), hinge=root).model_dump(
+        mode="json", exclude_none=True
+    )
+    document["wings"]["Main"]["x_secs"][0]["trailing_edge_device"]["rel_chord_tip"] = tip
+    return AirplaneGeometry.model_validate(document)
+
+
+def assert_flap_caveats_lead(warnings: tuple[KernelWarning, ...], *, averaged: bool) -> None:
+    """The warnings of a flapped result at 18 m/s (no regime warning there), in order.
+
+    The averaged hinge (only where root and tip differ: (0.74 + 0.76) / 2 = 0.75), the flap model's
+    unknown fit range naming the flap, and last the drag notice. ADR 0020: the flap model is a
+    declared substitution.
+    """
+    expected = ["control_surface_fit_range_unknown", "induced_drag_viscous_factor_removed"]
+    if averaged:
+        expected.insert(0, "hinge_line_averaged")
+    assert [w.code for w in warnings] == expected
+    fit_range = warnings[-2]
+    assert fit_range.severity == "notice"
+    assert fit_range.detail == {
+        "flaps": [{"wing": "Main", "device": "flap-1", "deflection_deg": 10.0}]
+    }
+    assert warnings[-1] == drag_notice()
+    if averaged:
+        hinge = warnings[0]
+        assert hinge.severity == "notice"
+        assert (hinge.detail["wing"], hinge.detail["device"]) == ("Main", "flap-1")
+        used = hinge.detail["used"]
+        assert isinstance(used, float)
+        assert math.isclose(used, 0.75, rel_tol=1e-12)
+
+
+@pytest.mark.parametrize(("root", "tip", "averaged"), [(0.75, 0.75, False), (0.74, 0.76, True)])
+async def test_the_glide_of_a_flapped_configuration_declares_the_flap_model(
+    monkeypatch: pytest.MonkeyPatch, root: float, tip: float, averaged: bool
+) -> None:
+    monkeypatch.setattr(opti_module, "best_glide_worker", canned(glide(18.0)))
+    result = await OptiAdapter(InProcessRuntime()).best_glide(
+        flapped(root, tip), MASS, GRAVITY, 1.0, AIR
+    )
+    assert_flap_caveats_lead(result.warnings, averaged=averaged)
+
+
+@pytest.mark.parametrize(("root", "tip", "averaged"), [(0.75, 0.75, False), (0.74, 0.76, True)])
+async def test_the_minimum_sink_of_a_flapped_configuration_declares_the_flap_model(
+    monkeypatch: pytest.MonkeyPatch, root: float, tip: float, averaged: bool
+) -> None:
+    """The same declaration on the minimum-sink entry point (an interior optimum at 18 m/s)."""
+
+    def worker(_request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
+        found = MinSinkSolution(v_mp=18.0, alpha_mp=7.0, cl_mp=0.9)
+        return WorkerOutcome(value=found, diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+    monkeypatch.setattr(opti_module, "min_sink_worker", worker)
+    result = await OptiAdapter(InProcessRuntime()).min_sink(
+        flapped(root, tip), MASS, GRAVITY, 1.0, AIR
+    )
+    assert_flap_caveats_lead(result.warnings, averaged=averaged)
+
+
 async def test_the_glide_uses_the_adapters_versions_and_settings() -> None:
     adapter = OptiAdapter(InProcessRuntime())
     assert adapter.tool_versions() == {
@@ -167,8 +233,14 @@ def install_optimum(
     cl: float = 0.55,
     error: Exception | None = None,
     objective: list[object] | None = None,
+    problems: list[RecordingBoundary] | None = None,
 ) -> StallRequest:
-    """Fake AeroSandbox so that IPOPT 'returns' (v, alpha) with (profile, induced) drag and C_L there."""
+    """Fake AeroSandbox so that IPOPT 'returns' (v, alpha) with (profile, induced) drag and C_L there.
+
+    ``problems`` receives the boundary that records what the worker states to the optimiser
+    (variables with bounds, constraint, objective); ``objective`` receives every minimised
+    expression.
+    """
     polar = lift_curve(UPRIGHT_PEAK, upright=True)
     values: dict[str, float] = {
         "speed": v,
@@ -177,65 +249,15 @@ def install_optimum(
         "D_induced": drag[1],
         "CL": cl,
     }
-    recorded: list[object] = [] if objective is None else objective
-
-    class Expr:
-        """An expression that records its name and evaluates at the faked optimum."""
-
-        def __init__(self, name: str, value: float | None = None) -> None:
-            self.name = name
-            self.value = values.get(name, 0.0) if value is None else value
-
-        def __eq__(self, other: object) -> bool:  # `aero["L"] == lift` builds a constraint
-            return True
-
-        __hash__ = object.__hash__
-
-        def __mul__(self, other: "Expr | float") -> "Expr":  # a product records its factors' names
-            if isinstance(other, Expr):
-                return Expr(f"{self.name}*{other.name}", self.value * other.value)
-            return Expr(f"{self.name}*{other}", self.value * other)
-
-        def __rmul__(self, other: float) -> "Expr":
-            return Expr(f"{other}*{self.name}", other * self.value)
-
-        def __add__(self, other: "Expr") -> "Expr":
-            return Expr(f"({self.name}+{other.name})", self.value + other.value)
-
-    class FakeOpti:
-        def __init__(self) -> None:
-            self.count = 0
-
-        def variable(self, **_: object) -> Expr:
-            self.count += 1
-            return Expr("speed" if self.count == 1 else "alpha")
-
-        def subject_to(self, _: object) -> None:
-            return None
-
-        def minimize(self, expression: object) -> None:
-            recorded.append(expression)
-
-        def solve(self, **_: object) -> object:
-            if error is not None:
-                raise error
-
-            def solved(expression: Expr) -> float:
-                return expression.value
-
-            return solved
-
-    def operating_point(**_: object) -> None:
-        return None
-
-    def aerobuildup(*_: object, **__: object) -> SimpleNamespace:
-        aero = {
-            "L": Expr("L"),
-            "D_profile": Expr("D_profile"),
-            "D_induced": Expr("D_induced"),
-            "CL": Expr("CL"),
-        }
-        return SimpleNamespace(run=lambda: aero)
+    boundary = RecordingBoundary(
+        ("speed", "alpha"),
+        values,
+        ("L", "D_profile", "D_induced", "CL"),
+        error,
+        None if objective is None else objective.append,
+    )
+    if problems is not None:
+        problems.append(boundary)
 
     def sweep(*_: object) -> Polar:
         return polar
@@ -243,10 +265,9 @@ def install_optimum(
     def convert(_: object) -> SimpleNamespace:
         return SimpleNamespace(s_ref=0.28)
 
-    fake = SimpleNamespace(Opti=FakeOpti, OperatingPoint=operating_point, AeroBuildup=aerobuildup)
     monkeypatch.setattr(opti_module, "sweep_lift", sweep)
     monkeypatch.setattr(opti_module, "to_asb_airplane", convert)
-    monkeypatch.setattr(opti_module, "load_aerosandbox", lambda: fake)
+    monkeypatch.setattr(opti_module, "load_aerosandbox", boundary.namespace)
     monkeypatch.setattr(opti_module, "aero_model", direct_aero_model)
     request = StallRequest(
         airplane=airplane(), mass_kg=MASS, gravity=GRAVITY, n_load=1.0, air=AIR, k_e_d0=K_E_D0
@@ -271,6 +292,39 @@ async def test_the_worker_minimises_the_drag_not_the_speed(monkeypatch: pytest.M
     opti_module.best_glide_worker(request)
     (minimised,) = objective
     assert minimised.name == f"(D_profile+{K_E_D0}*D_induced)"  # type: ignore[attr-defined]
+
+
+def assert_the_one_constraint_is_the_lift_balance(boundary: RecordingBoundary) -> None:
+    """``L = n m g``: the model's lift set to 1.5 kg * 9.81 m/s^2 * 1 = 14.715 N, and nothing else."""
+    (problem,) = boundary.problems
+    (constraint,) = problem.constraints
+    assert (constraint.left.name, constraint.left.operator) == ("L", "")
+    assert math.isclose(constraint.right, 14.715, rel_tol=1e-12)
+
+
+async def test_the_glide_problem_is_constrained_by_the_lift_balance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    problems: list[RecordingBoundary] = []
+    request = install_optimum(monkeypatch, 12.0, 4.0, problems=problems)
+    opti_module.best_glide_worker(request)
+    (boundary,) = problems
+    assert_the_one_constraint_is_the_lift_balance(boundary)
+    (minimised,) = boundary.problems[0].objectives
+    assert minimised.name == f"(D_profile+{K_E_D0}*D_induced)"
+
+
+async def test_the_minimum_sink_problem_is_constrained_by_the_lift_balance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The minimum sink shares the solve of the best glide: min D V subject to the same balance."""
+    problems: list[RecordingBoundary] = []
+    request = install_optimum(monkeypatch, 9.0, 7.0, problems=problems)
+    opti_module.min_sink_worker(request)
+    (boundary,) = problems
+    assert_the_one_constraint_is_the_lift_balance(boundary)
+    (minimised,) = boundary.problems[0].objectives
+    assert minimised.name == f"(D_profile+{K_E_D0}*D_induced)*speed"
 
 
 V_HIGH = opti_module.V_MAX_MACH * AIR.speed_of_sound

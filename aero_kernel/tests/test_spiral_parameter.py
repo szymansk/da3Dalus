@@ -7,7 +7,7 @@ import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.spiral_parameter import spiral_parameter
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.schema import QuantityStatus
+from aero_kernel.schema import QuantityStatus, ReasonCode
 from aero_kernel.solvers.air import AirState
 from aero_kernel.tests.chain_builders import C_MAC, SM_TARGET, WORLD_X_NP, document, fin, run_chain
 from aero_kernel.tests.formula_builders import (
@@ -93,7 +93,9 @@ async def test_without_a_vertical_tail_the_parameter_does_not_apply() -> None:
     quantity = (await run_chain("spiral-parameter-md", airplane=document())).quantity(
         "spiral-parameter-md"
     )
-    assert quantity.status is not QuantityStatus.OK
+    assert quantity.status is QuantityStatus.NOT_APPLICABLE
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.CONDITION_NOT_MET
     assert quantity.interval is None
 
 
@@ -114,16 +116,37 @@ def inputs(plane: AirplaneGeometry, **overrides: float) -> dict[str, Any]:
 
 
 async def test_the_formula_is_the_closed_form_for_given_speeds() -> None:
+    """Literals, no helper: m = 1.5 kg, g = 9.80665, rho = 1.225, S_ref = 0.28 m^2, b_ref = 1.4 m,
+    arm 0.4 m, Gamma_eq = 6.4 deg.
+
+    At 12 m/s: q S = 0.5 * 1.225 * 144 * 0.28 = 24.696 N, C_L = 14.709975 / 24.696 = 0.595642,
+    B = 0.4 * 6.4 / (1.4 * 0.595642) = 3.069917. At 9 m/s: q S = 13.8915 N, C_L = 1.058919,
+    B = 2.56 / (1.4 * 1.058919) = 1.726828.
+    """
+    assert MASS == 1.5
     found = await spiral_parameter(inputs(polyhedral_airplane()), context_with(StubAtmosphere({})))
-    assert close(found["b_spiral_md"], spiral(0.4, 12.0), 1e-9)
-    assert close(found["b_spiral_mp"], spiral(0.4, 9.0), 1e-9)
+    assert close(found["b_spiral_md"], 3.069917, 1e-6)
+    assert close(found["b_spiral_mp"], 1.726828, 1e-6)
 
 
-@pytest.mark.parametrize("override", [{"m": 0.0}, {"v_md": math.inf}, {"g": -1.0}])
+@pytest.mark.parametrize(
+    ("override", "speed"),
+    [
+        ({"m": 0.0}, "V_md"),
+        ({"v_md": math.inf}, "V_md"),
+        ({"g": -1.0}, "V_md"),
+        ({"v_mp": math.inf}, "V_mp"),
+        ({"v_mp": math.nan}, "V_mp"),
+    ],
+)
 async def test_a_lift_coefficient_that_is_not_positive_is_invalid_input(
-    override: dict[str, float],
+    override: dict[str, float], speed: str
 ) -> None:
+    """V_mp = inf gives C_L,mp = 0 and V_mp = NaN gives C_L,mp = NaN while C_L,md stays positive."""
     given, ctx = inputs(polyhedral_airplane(), **override), context_with(StubAtmosphere({}))
     with pytest.raises(FormulaError) as raised:
         await spiral_parameter(given, ctx)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
+    assert raised.value.code == "invalid_input"
+    assert raised.value.parameter == "m"
+    assert speed in raised.value.message

@@ -12,6 +12,7 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers.avl import AvlAdapter, AvlLateral, Contour
+from aero_kernel.tests.formula_builders import all_near
 from aero_kernel.tests.np_builders import CONVENTIONAL, airplane_with
 from aero_kernel.tests.test_solvers_avl_flap import FLAP, device, wing
 
@@ -107,6 +108,9 @@ async def test_one_run_at_the_lift_coefficient_with_the_moment_reference_at_the_
     lines = seen["geometry"].splitlines()
     # x_cg replaces the x of the airplane's reference point; its y and z stay
     assert lines[lines.index("#Xref    Yref    Zref") + 1] == "0.12 0.0 0.01"
+    # np_builders MAIN: half span 0.7 m, chord 0.2 m, rectangular: S = 2 * 0.7 * 0.2, c = 0.2, b = 1.4
+    reference = [float(v) for v in lines[lines.index("#Sref    Cref    Bref") + 1].split()]
+    assert all_near(reference, [0.28, 0.2, 1.4], 1e-9)
     assert "BODY" in lines
     assert "BFIL" in lines
 
@@ -155,7 +159,17 @@ async def test_a_deflected_flap_is_held_by_the_flap_control_and_declared(fake: P
     found = await lateral(flapped())
     seen = json.loads((fake / "seen.json").read_text())
     assert f"a c 0.6\nd1 d1 {FLAP}\nx\nst\n" in seen["commands"]
-    assert "CONTROL" in seen["geometry"].splitlines()
+    lines = seen["geometry"].splitlines()
+    assert "CONTROL" in lines
+    # the wing is split at the hinge (Drela's rule 3): a front and an aft surface, 12 and 8 chordwise
+    names = [lines[i + 1] for i, line in enumerate(lines) if line == "SURFACE"]
+    counts = [lines[i + 1] for i, line in enumerate(lines) if line == "#Nchordwise  Cspace"]
+    assert names == ["Main front", "Main aft"]
+    assert counts == ["12   1", "8   1"]
+    # the hinge is the leading edge of the aft piece: every CONTROL line has x_hinge 0.0
+    controls = [lines[i + 1].split() for i, line in enumerate(lines) if line == "CONTROL"]
+    assert controls
+    assert all(float(c[2]) == 0.0 for c in controls)
     assert [w.code for w in found.warnings] == ["avl_flap_linearised"]
     assert (found.c_l_beta, found.c_n_beta) == (-0.05, 0.07)
 

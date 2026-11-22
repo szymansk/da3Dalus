@@ -1215,11 +1215,6 @@ async def run(member: FleetMember) -> ComputeResult:
     return await compute(aircraft_input(member, values), request(*SLUGS))
 
 
-def test_every_member_of_the_batch_has_its_golden() -> None:
-    assert set(GOLDEN) == set(PLAN_BATCH)
-    assert all(tuple(golden) == SLUGS for golden in GOLDEN.values())
-
-
 @pytest.mark.parametrize("member", PLAN_BATCH, ids=lambda m: m.name)
 @pytest.mark.asyncio
 async def test_the_chain_of_the_plan_batch_is_the_regression_golden(member: FleetMember) -> None:

@@ -14,6 +14,32 @@ from aero_kernel.tests.reference_fleet import (
     VALIDATION,
     WITH_PITCH_TAIL,
 )
+from aero_kernel.tests.test_mvp_chain_fleet import RUDDER_ONLY, WITHOUT_TURN_SIDESLIP
+from aero_kernel.tests.test_plan_batch_fleet import GOLDEN, SLUGS, Failed
+
+# Every error the plan-batch goldens pin that is not a consequence of another one, with the issue
+# that owns it (P8-F02). Recording a new one needs an entry here, so somebody decides it.
+ROOT_ERROR_ISSUES: dict[tuple[FleetMember, str], str] = {
+    # AVL's lateral run gives no derivatives
+    (FleetMember.MINI_FUNTANA, "internal"): "#1373",
+    # the neutral point of a tailless aircraft (ARCHITECTURE: "open: #1206 tailless")
+    (FleetMember.VOODOO, "unsupported_layout"): "#1206",
+    (FleetMember.WINDFREAK, "unsupported_layout"): "#1206",
+}
+# A pinned root error that no issue owns yet: the stall optimum on the alpha bound. #1423 describes
+# the same failure for AVISTAR_ELITE, not for this aircraft; the maintainer names the issue.
+ROOT_ERRORS_AWAITING_AN_ISSUE = {(FleetMember.AERONCA_CHAMP, "not_converged")}
+# Not a defect: the fleet gives these flapped aircraft no flap deflection (FLAP_DEFLECTIONS_DEG),
+# so the landing configuration lacks its input.
+FLAPS_WITHOUT_A_DEFLECTION = {
+    (member, "missing_input")
+    for member in (
+        FleetMember.ALBATROS_4,
+        FleetMember.GEE_BEE_R3,
+        FleetMember.P39,
+        FleetMember.SPIRIT_100,
+    )
+}
 
 
 @pytest.mark.parametrize("member", list(FleetMember))
@@ -91,3 +117,53 @@ def test_the_aircraft_input_overlays_the_callers_values_on_the_fleet_values() ->
     wings = aircraft.airplane.wings
     assert wings is not None
     assert FleetMember.RV7.main_wing_name in wings
+
+
+def test_every_member_of_the_batch_has_its_golden() -> None:
+    """Moved here from the aero-marked test_plan_batch_fleet.py: data only, so the PR run sees it."""
+    assert set(GOLDEN) == set(PLAN_BATCH)
+    assert all(tuple(golden) == SLUGS for golden in GOLDEN.values())
+
+
+def test_the_fleet_has_members_with_and_without_a_roll_device() -> None:
+    """Moved here from the aero-marked test_mvp_chain_fleet.py: data only."""
+    assert FleetMember.CHEKKER in RUDDER_ONLY
+    assert FleetMember.BRYAN in WITHOUT_TURN_SIDESLIP
+    assert len(WITHOUT_TURN_SIDESLIP) + len(RUDDER_ONLY) == len(FleetMember)
+
+
+def root_errors_of_the_plan_batch() -> set[tuple[FleetMember, str]]:
+    """``(member, code)`` of every pinned error that is not ``upstream_failed``, and of every cause."""
+    found: set[tuple[FleetMember, str]] = set()
+    for member, cells in GOLDEN.items():
+        failed = [golden for golden in cells.values() if isinstance(golden, Failed)]
+        codes = {golden.code for golden in failed}
+        codes |= {code for golden in failed for _quantity, code in golden.causes}
+        found |= {(member, code) for code in codes if code != "upstream_failed"}
+    return found
+
+
+def test_every_error_pinned_as_a_golden_is_registered() -> None:
+    """A golden may pin an error (the kernel's answer is recorded, never repaired), but only a known
+    one: `internal` for a new aircraft cannot be recorded without a line in the register."""
+    registered = set(ROOT_ERROR_ISSUES) | ROOT_ERRORS_AWAITING_AN_ISSUE | FLAPS_WITHOUT_A_DEFLECTION
+    assert root_errors_of_the_plan_batch() == registered
+
+
+@pytest.mark.parametrize("issue", sorted(set(ROOT_ERROR_ISSUES.values())))
+def test_a_registered_error_names_an_issue_number(issue: str) -> None:
+    assert issue.startswith("#")
+    assert issue[1:].isdigit()
+
+
+def test_the_internal_error_of_the_batch_is_the_one_of_bug_1373() -> None:
+    """13 lateral cells of MINI_FUNTANA, no other `internal` anywhere in the goldens."""
+    internal = {
+        (member, slug)
+        for member, cells in GOLDEN.items()
+        for slug, golden in cells.items()
+        if isinstance(golden, Failed) and golden.code == "internal"
+    }
+    assert {member for member, _slug in internal} == {FleetMember.MINI_FUNTANA}
+    assert len(internal) == 13
+    assert ROOT_ERROR_ISSUES[(FleetMember.MINI_FUNTANA, "internal")] == "#1373"

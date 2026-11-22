@@ -2,12 +2,16 @@
 
 import asyncio
 import json
+import math
 import stat
+import sys
+import types
 from pathlib import Path
 from typing import Any
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError, ToolRunTimeoutError
+from aero_kernel.geometry import InlineAirfoil
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import WarningSeverity
 from aero_kernel.solvers import avl as avl_module
@@ -15,6 +19,7 @@ from aero_kernel.solvers.avl import AvlAdapter, AvlNeutralPoint, Contour
 from aero_kernel.solvers.avl_writer import AvlOutput
 from aero_kernel.tests.np_builders import CONVENTIONAL, airplane_with
 from aero_kernel.tests.solver_builders import airplane
+from aero_kernel.tests.test_avl_contour import ellipse
 
 SCRIPT = """#!{python}
 import json, pathlib, re, sys
@@ -27,6 +32,8 @@ if config.get("sleep"):
     __import__("time").sleep(config["sleep"])
 n_chord = int(re.search(r"#Nchordwise  Cspace\\n(\\d+)", geometry).group(1))
 cl = float(re.search(r"a c (\\S+)", commands).group(1))
+with (here / "runs.jsonl").open("a") as runs:
+    runs.write(json.dumps(geometry) + "\\n")
 (here / "seen.json").write_text(json.dumps({{"n_chord": n_chord, "commands": commands, "geometry": geometry, "files": sorted(p.name for p in pathlib.Path('.').iterdir())}}))
 if str(n_chord) in config.get("overflow", []):
     print(" SDUPL: Vortex array overflow. Increase NVMAX currently")
@@ -91,6 +98,49 @@ async def test_avl_gets_the_declared_and_the_refined_mesh_and_the_requested_cl(f
     assert "a c 0.62" in seen["commands"]
     assert "af0.dat" in seen["files"]
     assert "airplane.avl" in seen["files"]
+
+
+class SymmetricLensAirfoil:
+    """A stand-in for ``asb.Airfoil`` that measures the thickness of a symmetric contour as twice
+    its largest ordinate (the maximum thickness of a lens is at its widest point)."""
+
+    def __init__(self, name: str, coordinates: Any = None) -> None:
+        self.name = name
+        self.coordinates = coordinates
+
+    def max_thickness(self) -> float:
+        return 2.0 * float(max(y for _, y in self.coordinates))
+
+
+def test_claf_follows_the_thickness_rule_of_the_airfoil(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLAF = 1 + 0.77 t/c (avl_doc.txt). The lens of ``ellipse`` is 12 % thick: 1 + 0.77 * 0.12 =
+    1.0924; the contour handed to AVL has 80 points per side, 159 in all."""
+    fake_asb = types.ModuleType("aerosandbox")
+    fake_asb.Airfoil = SymmetricLensAirfoil  # pyright: ignore[reportAttributeAccessIssue]
+    monkeypatch.setitem(sys.modules, "aerosandbox", fake_asb)
+    lens = InlineAirfoil(coordinates=tuple(ellipse(200)))
+    outcome = avl_module.contour_worker((lens,))
+    (contour,) = outcome.value
+    assert math.isclose(contour.claf, 1.0 + 0.77 * 0.12, rel_tol=2e-3)
+    assert len(contour.coordinates) == 159
+
+
+def sections_of_first_surface(geometry: str) -> int:
+    """The number of SECTION lines of the first SURFACE block of an AVL file."""
+    block = geometry.split("SURFACE\n")[1]
+    return block.splitlines().count("SECTION")
+
+
+@pytest.mark.asyncio
+async def test_the_refined_run_doubles_the_spanwise_strips_as_well_as_the_chordwise_ones(
+    fake: Path,
+) -> None:
+    """ARCHITECTURE 8.8: the same mesh refined by avl_refine_factor (2) in both counts. The main
+    wing of the conventional airplane has 24 spanwise strips declared, so 25 SECTION lines, and
+    48 strips refined, so 49 (one more section than strips)."""
+    await neutral(fake)
+    runs = [json.loads(line) for line in (fake / "runs.jsonl").read_text().splitlines()]
+    assert [sections_of_first_surface(geometry) for geometry in runs] == [25, 49]
 
 
 @pytest.mark.asyncio

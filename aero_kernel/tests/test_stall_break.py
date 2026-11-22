@@ -65,6 +65,16 @@ async def test_a_sample_exactly_on_the_level_is_the_crossing() -> None:
     assert close(first_crossing_below([10.0, 11.0, 12.0], [1.0, 0.9, 0.8], 10.0, 0.9), 11.0, 1e-12)
 
 
+async def test_a_sample_on_the_level_is_a_crossing_even_when_the_series_rises_again() -> None:
+    """The on-level sample at 11 deg is the crossing; a strict '<' would find none (0.95 > 0.9)."""
+    assert close(first_crossing_below([10.0, 11.0, 12.0], [1.0, 0.9, 0.95], 10.0, 0.9), 11.0, 1e-12)
+
+
+async def test_a_start_sample_already_below_the_level_makes_the_next_sample_the_crossing() -> None:
+    """Nothing falls (0.8 -> 0.85, both below 0.9): the bracket is not falling, share = 1, so 11 deg."""
+    assert close(first_crossing_below([10.0, 11.0], [0.8, 0.85], 10.0, 0.9), 11.0, 1e-12)
+
+
 async def test_the_first_crossing_wins_on_a_non_monotonic_branch() -> None:
     """The lift falls below the level, rebounds above it and falls again: the first fall counts."""
     alphas = [10.0, 11.0, 12.0, 13.0, 14.0]
@@ -154,6 +164,23 @@ async def test_a_half_step_sweep_that_agrees_within_one_step_is_silent() -> None
     assert context.warnings == ()
 
 
+@pytest.mark.parametrize(
+    ("shift", "warns"),
+    [(0.0, False), (0.24, False), (0.25, False), (0.26, True), (-0.26, True)],
+)
+async def test_the_resolution_tolerance_is_one_published_step_on_either_side(
+    shift: float, warns: bool
+) -> None:
+    """The finer sweep's peak moves by ``shift``; with 0.2 per degree after the peak and both
+    bracketing samples past it, its crossing moves by exactly ``shift`` (16.345 -> 16.345 + shift),
+    so the warning follows |shift| > 0.25 deg; at exactly 0.25 deg it stays silent."""
+    stub = StubOpti()
+    stub.sweep_answer = lambda alphas: lift_curve_at((ALPHA_S + shift, CL_MAX), True, alphas)
+    context = context_with(StubAtmosphere({}), opti=stub)
+    await stall_break(break_x(), context)
+    assert [w.code for w in context.warnings] == (["stall_break_resolution"] if warns else [])
+
+
 async def test_a_half_step_sweep_that_disagrees_is_a_declared_warning_with_both_values() -> None:
     stub = StubOpti()
     # the finer sweep puts the peak 0.4 deg further out, so its crossing is 0.4 deg further out
@@ -221,12 +248,17 @@ async def test_a_fraction_outside_zero_and_one_is_invalid_input(fraction: float)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
 
 
-async def test_a_non_positive_peak_is_invalid_input() -> None:
-    x = break_x(cl_max=0.0)
-    context = context_with(StubAtmosphere({}), opti=StubOpti())
+@pytest.mark.parametrize("cl_max", [0.0, -1.19, math.inf, math.nan])
+async def test_a_non_positive_or_non_finite_peak_is_invalid_input(cl_max: float) -> None:
+    """The guard is 'finite and > 0': zero, a negative, an infinite and a NaN peak all fail it."""
+    x = break_x(cl_max=cl_max)
+    stub = StubOpti()
+    context = context_with(StubAtmosphere({}), opti=stub)
     with pytest.raises(FormulaError) as raised:
         await stall_break(x, context)
     assert raised.value.category is ErrorCategory.INVALID_INPUT
+    assert raised.value.parameter == "cl_max"
+    assert stub.sweep_calls == []
 
 
 async def test_an_alpha_s_that_is_no_sample_of_the_polar_is_invalid_input() -> None:

@@ -69,6 +69,16 @@ def test_a_deflected_flap_is_the_geometry_of_its_strip_and_no_control_surface() 
     assert airfoils(airplane) == [None, None, deflected, deflected]
 
 
+def test_a_flap_deflected_beyond_its_stop_is_applied_as_given() -> None:
+    """Deflections are parameters; the stops are never read, checked or clamped (ch. 8.11): 40 deg
+    with a positive stop of 25 deg stays 40 deg in the contour and in the flap segment."""
+    model = geometry(
+        flap(deflection_deg=40.0, positive_deflection_deg=25.0, negative_deflection_deg=10.0)
+    )
+    assert airfoils(converted(model))[2] == ("deflected", NACA, 40.0, 0.8)
+    assert flap_segments(model)[0].deflection_deg == 40.0
+
+
 def test_the_rib_where_the_flap_state_changes_is_written_twice_offset_by_the_configured_gap() -> (
     None
 ):

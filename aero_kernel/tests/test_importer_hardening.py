@@ -314,9 +314,10 @@ def test_a_world_name_must_be_snake_case(tmp_path: Path) -> None:
 
 def test_a_quantity_slug_must_be_kebab_case(tmp_path: Path) -> None:
     result = run(tmp_path, mutate(FROM_MASS, "outputs: {w: weight}", "outputs: {w: Weight}"))
-    assert [(f.file, f.field) for f in result.findings] == [
-        (FROM_MASS, "outputs.w"),
-    ] or any(f.file == FROM_MASS for f in result.findings)
+    assert shown(result) == [
+        f"{FROM_MASS}: outputs.w: String should match pattern "
+        "'^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$' (got 'calc:Weight')"
+    ]
     assert result.model is None
 
 
@@ -923,7 +924,7 @@ def test_a_parameter_name_error_keeps_its_key_marker_in_the_field(tmp_path: Path
         f"{WEIGHING}: applications[1].bind.Mass.[key]: String should match pattern"
     )
     assert first.endswith("(got 'Mass')")
-    assert all("Mass" not in other for other in rest) or rest == []
+    assert rest == []
 
 
 def test_a_parameter_called_const_is_not_mistaken_for_the_constant_tag(tmp_path: Path) -> None:

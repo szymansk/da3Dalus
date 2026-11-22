@@ -3,6 +3,7 @@
 import hashlib
 import importlib.util
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from aero_kernel.tests.reference_fleet import (
     PLAN_BATCH,
     REFERENCE_DIR,
     FleetMember,
+    fleet_values,
     reference_document,
 )
 from aero_kernel.validate import validate_aircraft
@@ -295,6 +297,24 @@ def test_the_masses_are_the_recorded_ones() -> None:
     assert FLAP_DEFLECTIONS_DEG == {
         FleetMember.RV7: {"flap-deflection-takeoff": 15.0, "flap-deflection-landing": 30.0}
     }
+
+
+def test_the_masses_of_the_validation_aircraft_are_the_published_gross_weights() -> None:
+    """The two aircraft with a published source (P8-F05). Their copies carry no mass of their own.
+
+    AVISTAR_ELITE: 3.70 kg gross weight (AIAA 2020-0780 Table 1), which is the empty weight of
+    3.07 kg plus the 0.63 kg battery; 3.07 is the wrong one of the two published numbers.
+    ULTRA_STICK_120: 19.72 lbf (FASER Table 2, NTRS 20060022541) x 0.45359 kg/lb = 8.945 kg,
+    recorded as 8.95 (within the 0.01 lbf = 5 g to which the source states the weight).
+    """
+    assert FleetMember.AVISTAR_ELITE.mass_kg == 3.70
+    assert math.isclose(FleetMember.AVISTAR_ELITE.mass_kg, 3.07 + 0.63, rel_tol=1e-12)
+    assert FleetMember.ULTRA_STICK_120.mass_kg == 8.95
+    assert abs(FleetMember.ULTRA_STICK_120.mass_kg - 19.72 * 0.45359) < 0.01
+    for member in (FleetMember.AVISTAR_ELITE, FleetMember.ULTRA_STICK_120):
+        document = json.loads(member.json_path.read_text())
+        assert document.get("total_mass_kg", member.mass_kg) == member.mass_kg
+        assert fleet_values(member)["aircraft-mass"] == member.mass_kg
 
 
 # The plan batch's masses (maintainer, 2026-11-07; each source in the README). They equal the DB's

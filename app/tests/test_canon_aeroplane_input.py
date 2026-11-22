@@ -152,6 +152,8 @@ class TestStoredAircraftInput:
                 spare_support_dimension_height=6.0,
                 spare_position_factor=0.25,
                 spare_start=10.0,
+                spare_length=250.0,
+                spare_origin=[30.0, 10.0, 2.0],
                 spare_vector=[0.0, 1.0, 0.0],
             )
         )
@@ -161,6 +163,8 @@ class TestStoredAircraftInput:
         assert spar.spare_support_dimension_width == pytest.approx(0.004)
         assert spar.spare_support_dimension_height == pytest.approx(0.006)
         assert spar.spare_start == pytest.approx(0.010)
+        assert spar.spare_length == pytest.approx(0.250)
+        assert spar.spare_origin == pytest.approx((0.030, 0.010, 0.002))
         assert spar.spare_vector == (0.0, 1.0, 0.0)
 
     @pytest.mark.parametrize(("active", "expected"), [("ESTIMATE", 1.2), ("CALCULATED", 1.4)])

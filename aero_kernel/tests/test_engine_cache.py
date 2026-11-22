@@ -39,6 +39,8 @@ from aero_kernel.tests.engine_builders import (
 )
 from aero_kernel.tests.formula_builders import StubAtmosphere, solvers_with
 from aero_kernel.tests.graph_builders import formula, model_of, quantity
+from aero_kernel.tests.test_engine_worlds import Probe
+from aero_kernel.tests.test_engine_worlds import fixture_model as worlds_model
 from aero_kernel.tests.wing_builders import airplane_document, main_wing_document
 from pydantic import JsonValue
 
@@ -352,15 +354,16 @@ async def test_a_quantity_is_from_cache_only_if_its_own_node_hit() -> None:
 class VersionedAvl(AvlAdapter):
     """An AVL adapter that reports a given binary version and is never run."""
 
-    def __init__(self, version: str) -> None:
+    def __init__(self, version: str, nspan: int = 7) -> None:
         super().__init__(SolverRuntime())
         self.version = version
+        self.nspan = nspan
 
     def tool_versions(self) -> dict[str, str]:
         return {"avl-binary": self.version}
 
     def settings(self) -> dict[str, JsonValue]:
-        return {"avl_nspan": 7}
+        return {"avl_nspan": self.nspan}
 
 
 def two_tool_build(counter: Counted) -> Build:
@@ -443,3 +446,119 @@ async def test_a_non_finite_number_in_an_unread_geometry_field_does_not_break_th
     assert first.status is QuantityStatus.OK
     assert second.from_cache
     assert not without.from_cache  # NaN is not equated with a finite pocket width
+
+
+def worlds_build(probe: Probe) -> Build:
+    """The three-world fixture canon of the world tests (head -> unc -> down -> join <- side)."""
+    model = worlds_model()
+    registry = probe.registry()
+    return Build(
+        model=model,
+        graph=CanonGraph(model),
+        digest="sha256:" + "ab" * 32,
+        registry=registry,
+        report=registry.check_traceability(model),
+    )
+
+
+async def test_every_world_of_an_uncertain_node_has_its_own_cache_entry() -> None:
+    """The world assignment is part of the node key: the worlds share one tool (APP), nothing else
+    tells their entries apart, so a key without the world would serve the first world's value to all.
+
+    Hand values (fixture of test_engine_worlds): alpha/beta/gamma return 10/20/30; ``down`` adds 1,
+    ``side`` is 7, ``join`` = down + side = 10 + 1 + 7 = 18, 28 and 38.
+    """
+    probe = Probe()
+    build = worlds_build(probe)
+    cache = DedupedCache(MemoryCache(max_entries=64))
+    the_aircraft = AircraftInput.model_validate(
+        {"airplane": airplane_document(), "values": {"aircraft-mass": 2.0}}
+    )
+    expected_np = {"unc=alpha": 10.0, "unc=beta": 20.0, "unc=gamma": 30.0}
+    expected_join = {"unc=alpha": 18.0, "unc=beta": 28.0, "unc=gamma": 38.0}
+    for second_call in (False, True):
+        result = await evaluate(
+            build,
+            the_aircraft,
+            ComputeRequest(quantities=("np-q", "join-q")),
+            solvers=NO_SOLVERS,
+            cache=cache,
+        )
+        found = by_slug(result)
+        assert found["np-q"].interval is not None
+        assert found["join-q"].interval is not None
+        assert found["np-q"].interval.worlds == expected_np
+        assert found["join-q"].interval.worlds == expected_join
+        assert found["np-q"].from_cache is second_call
+        assert found["join-q"].from_cache is second_call
+    # one run per world over both calls: three in total
+    assert sorted(str(world) for name, world in probe.calls if name == "unc") == [
+        "alpha",
+        "beta",
+        "gamma",
+    ]
+
+
+def changed_polar() -> Polar:
+    """A_POLAR with every lift coefficient raised by 0.1 (0.1 -> 0.2, 0.2 -> 0.3)."""
+    return Polar(alpha_deg=(0.0, 1.0), cl=(0.2, 0.3), cd=(0.01, 0.01))
+
+
+async def test_a_changed_polar_a_node_reads_changes_its_key() -> None:
+    """The reader's key holds the polar it reads: another polar must not be served the old value."""
+    counter = Counted()
+
+    async def twin(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        counter.calls["polar-twin"] += 1
+        polar = A_POLAR if num(x, "m") == 2.0 else changed_polar()
+        return {"pol": polar, "s": 5.0}
+
+    async def reader(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        polar = x["pol"]
+        assert isinstance(polar, Polar)
+        return {"r": polar.cl[0]}
+
+    build = counted_build(counter, **{"polar-twin": twin, "polar-reader": reader})
+    store = RecordingCache()
+    first = by_slug(await run(build, store, "polar-read-q"))["polar-read-q"]
+    second = by_slug(
+        await run(build, store, "polar-read-q", the_aircraft=aircraft({"aircraft-mass": 3.0}))
+    )["polar-read-q"]
+    assert first.value == 0.1  # cl[0] of A_POLAR
+    assert second.value == 0.2  # cl[0] of the changed polar: 0.1 + 0.1
+    assert not second.from_cache
+    assert counter.calls["polar-reader"] == 2
+
+
+async def test_a_hit_reports_the_tool_versions_and_settings_of_the_computed_call() -> None:
+    counter = Counted()
+    build, store = two_tool_build(counter), RecordingCache()
+    the_aircraft = AircraftInput.model_validate(
+        {"airplane": airplane_document(), "values": {"aircraft-mass": 2.0}}
+    )
+    atmosphere = StubAtmosphere({}, {"aerosandbox": "1.2.3"})
+    solvers = solvers_with(atmosphere=atmosphere, avl=VersionedAvl("1.0"))
+    first = await run(build, store, "np-q", the_aircraft=the_aircraft, solvers=solvers)
+    second = await run(build, store, "np-q", the_aircraft=the_aircraft, solvers=solvers)
+    assert not by_slug(first)["np-q"].from_cache
+    assert by_slug(second)["np-q"].from_cache
+    assert first.provenance.tool_versions == {"aerosandbox": "1.2.3", "avl-binary": "1.0"}
+    assert first.provenance.solver_settings == {"avl_nspan": 7}
+    assert second.provenance.model_dump_json() == first.provenance.model_dump_json()
+
+
+async def test_a_changed_solver_setting_misses_the_cache_in_the_world_of_its_tool() -> None:
+    """The settings of a tool are part of its worlds' node keys (7, 7, 8 spanwise strips)."""
+    counter = Counted()
+    build, store = two_tool_build(counter), RecordingCache()
+    the_aircraft = AircraftInput.model_validate(
+        {"airplane": airplane_document(), "values": {"aircraft-mass": 2.0}}
+    )
+    atmosphere = StubAtmosphere({}, {"aerosandbox": "1.2.3"})
+    hits: list[bool] = []
+    for nspan in (7, 7, 8):
+        solvers = solvers_with(atmosphere=atmosphere, avl=VersionedAvl("1.0", nspan))
+        result = await run(build, store, "np-q", the_aircraft=the_aircraft, solvers=solvers)
+        hits.append(by_slug(result)["np-q"].from_cache)
+    assert hits == [False, True, False]
+    assert counter.calls == {"alpha": 1, "beta": 2}  # the ATM world is not touched by AVL settings

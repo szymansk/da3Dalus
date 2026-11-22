@@ -18,6 +18,7 @@ from aero_kernel.solvers import avl as avl_module
 from aero_kernel.solvers.avl import AvlAdapter, AvlRoll, Contour
 from aero_kernel.solvers.avl_mesh import MeshSurface
 from aero_kernel.solvers.avl_writer import RollOutput
+from aero_kernel.tests.formula_builders import all_near
 from aero_kernel.tests.test_solvers_roll_devices import aileron, wing_geometry
 
 SCRIPT = """#!{python}
@@ -118,6 +119,9 @@ async def test_roll_file_and_commands_reach_avl(fake: Path) -> None:
     lines = seen["geometry"].splitlines()
     assert lines[lines.index("#Xref    Yref    Zref") + 1] == "0.05 0.0 0.01"
     assert "CONTROL" in lines
+    # rolling_airplane: half span 0.4 m, chord 0.2 m, rectangular: S = 2 * 0.4 * 0.2, c = 0.2, b = 0.8
+    reference = [float(v) for v in lines[lines.index("#Sref    Cref    Bref") + 1].split()]
+    assert all_near(reference, [0.16, 0.2, 0.8], 1e-9)
 
 
 @pytest.mark.asyncio
@@ -273,6 +277,10 @@ async def test_the_wing_reaches_avl_as_a_front_and_an_aft_surface(fake: Path) ->
     counts = [lines[i + 1] for i, line in enumerate(lines) if line == "#Nchordwise  Cspace"]
     assert names == ["Main front", "Main aft"]
     assert counts == ["24   1", "16   1"]
+    # the refined run doubles the spanwise strips too: 2 * 24 = 48 strips, 49 SECTION lines on the
+    # front piece (one section more than strips)
+    front_block = geometry.split("SURFACE\n")[1]
+    assert front_block.splitlines().count("SECTION") == 49
 
 
 @pytest.mark.asyncio
@@ -285,6 +293,46 @@ async def test_more_than_fifty_chordwise_vortices_on_one_surface_are_refused(
         await roll()
     assert raised.value.code == "avl_array_limit"
     assert raised.value.detail["n_chord"] == 51
+
+
+@pytest.mark.asyncio
+async def test_exactly_fifty_chordwise_vortices_are_allowed_and_the_refined_hundred_is_unchecked(
+    fake: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The boundary of KCMAX = 50: the declared 50 pass (a ``>=`` would refuse them), the refined
+    2 * 50 = 100 are beyond the limit and stay unchecked."""
+    monkeypatch.setattr("aero_kernel.solvers.avl.SPLIT_N_CHORD", (50, 8))
+    configure(fake, {"50": 0.05})
+    found = await roll()
+    assert math.isclose(found.p_hat, 0.05, rel_tol=1e-12)
+    (warning,) = found.warnings
+    assert warning.code == "avl_refinement_unchecked"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("limit", "exact", "codes"),
+    [
+        ("AVL_MAX_STRIPS", 96, ["avl_refinement_unchecked"]),
+        ("AVL_MAX_VORTICES", 960, ["avl_refinement_unchecked"]),
+        ("AVL_MAX_SURFACES", 4, []),  # refining doubles the strips, not the surfaces
+    ],
+)
+async def test_a_lattice_exactly_at_a_fixed_array_is_written_and_one_below_is_refused(
+    fake: Path, monkeypatch: pytest.MonkeyPatch, limit: str, exact: int, codes: list[str]
+) -> None:
+    """The declared mesh has 24 strips on each of two pieces, mirrored: 96 strips; 12 and 8 chordwise
+    vortices: 24 * 2 * 12 + 24 * 2 * 8 = 960 vortices; two symmetric surfaces: 4 surfaces. At the
+    limit the declared run is written (a doubled strip count exceeds the first two and stays
+    unchecked); one below it, the declared mesh is refused."""
+    monkeypatch.setattr(f"aero_kernel.solvers.avl.{limit}", exact)
+    found = await roll()
+    assert math.isclose(found.p_hat, 0.05, rel_tol=1e-12)
+    assert [w.code for w in found.warnings] == codes
+    monkeypatch.setattr(f"aero_kernel.solvers.avl.{limit}", exact - 1)
+    with pytest.raises(FormulaError) as raised:
+        await roll()
+    assert raised.value.code == "avl_array_limit"
 
 
 @pytest.mark.asyncio
