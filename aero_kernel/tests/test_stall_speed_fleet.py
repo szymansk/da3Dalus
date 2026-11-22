@@ -361,3 +361,29 @@ async def test_wiesel_regression_goldens_and_no_inverted_trough() -> None:
     assert inverted.error is not None
     assert inverted.error.code == "not_converged"
     assert "no trough" in inverted.error.message
+
+
+async def test_the_kernel_stall_is_the_fixed_point_of_the_lift_sweep_at_its_own_speed() -> None:
+    """Closure of the stall solve (gh-1142): V_S fixes the Reynolds number, the Reynolds number fixes
+    C_L,max. Sweeping the lift at exactly the reported V_S and reading the first peak from alpha = 0
+    must give the reported C_L,max again, within 1e-3 (the sweep is sampled at 0.25 deg; the optimum
+    is refined between samples, so the sampled peak can only be a little lower)."""
+    from aero_kernel.solvers.aerobuildup import sweep_lift
+    from aero_kernel.solvers.asb_airplane import to_asb_airplane
+    from aero_kernel.solvers.opti import ALPHA_MAX_DEG, ALPHA_MIN_DEG, ALPHA_STEP_DEG
+    from aero_kernel.solvers.stall_math import first_extremum_from_zero
+
+    quantities = await stall(FleetMember.BRYAN)
+    v_s = quantities["stall-speed"].value
+    cl_max = quantities["max-lift-coefficient"].value
+    assert v_s is not None
+    assert cl_max is not None
+    airplane = to_asb_airplane(
+        AirplaneGeometry.model_validate(reference_document(FleetMember.BRYAN))
+    )
+    count = round((ALPHA_MAX_DEG - ALPHA_MIN_DEG) / ALPHA_STEP_DEG)
+    grid = [ALPHA_MIN_DEG + k * ALPHA_STEP_DEG for k in range(count + 1)]
+    curve = sweep_lift(airplane, sea_level_air(), v_s, grid, opti_module.NEURALFOIL_MODEL_SIZE)
+    peak = first_extremum_from_zero(curve.alpha_deg, curve.cl, upright=True)
+    assert peak is not None
+    assert abs(curve.cl[peak] - cl_max) <= 1e-3

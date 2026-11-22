@@ -153,7 +153,9 @@ async def test_the_missing_fuselage_is_inherited_in_every_world() -> None:
 @pytest.mark.asyncio
 async def test_without_a_vertical_tail_the_vertical_arm_does_not_apply() -> None:
     quantity = only(await run("vertical-tail-arm", airplane=document()))
-    assert quantity.status is not QuantityStatus.OK
+    assert quantity.status is QuantityStatus.NOT_APPLICABLE
+    assert quantity.reason is not None
+    assert quantity.reason.code == "condition_not_met"
     assert quantity.interval is None
 
 

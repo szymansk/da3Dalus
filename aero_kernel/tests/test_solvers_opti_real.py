@@ -123,6 +123,34 @@ async def test_inverted_flight_finds_the_negative_lift_coefficient() -> None:
     assert polar.alpha_deg[0] < solution.alpha_s < polar.alpha_deg[-1]
 
 
+async def test_the_inverted_stall_obeys_the_lift_balance_and_is_the_first_trough_from_zero() -> (
+    None
+):
+    """n = -1: V_S = sqrt(2 |n| m g / (rho S |C_L|)) with the C_L at alpha_S (hand: S = 2 * 0.7 m *
+    0.2 m = 0.28 m^2), and alpha_S is the first C_L trough scanned from alpha = 0 downwards."""
+    solution = await solve(-1.0)
+    air = sea_level()
+    reference_area = 0.28
+    balance = math.sqrt(
+        2.0 * MASS_KG * GRAVITY / (air.density * reference_area * abs(solution.cl_max))
+    )
+    assert math.isclose(solution.v_s, balance, rel_tol=1e-6)
+    polar = solution.polar
+    zero = polar.alpha_deg.index(0.0)
+    downwards = list(reversed(polar.cl[: zero + 1]))
+    trough = first_extremum(downwards, maximum=False)
+    assert trough is not None
+    sampled_trough_alpha = polar.alpha_deg[zero - trough]
+    assert abs(sampled_trough_alpha - solution.alpha_s) <= ALPHA_STEP_DEG + 1e-9
+
+
+async def test_the_published_polar_is_swept_at_the_stall_speed() -> None:
+    """The Reynolds number of the polar is that of V_S, not of the bracketing speed."""
+    solution = await solve(1.0)
+    assert solution.polar.conditions is not None
+    assert solution.polar.conditions.v_ms == solution.v_s
+
+
 async def test_an_airplane_too_heavy_for_the_speed_range_is_not_converged() -> None:
     with pytest.raises(FormulaError) as raised:
         await solve(1.0, mass=5000.0)
