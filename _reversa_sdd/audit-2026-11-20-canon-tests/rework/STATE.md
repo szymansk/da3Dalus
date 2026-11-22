@@ -11,8 +11,8 @@ Teilschritt fortgeschrieben, eingecheckt und nach `github` geschoben (Zweig
 ## Wiedereinstieg
 
 1. Diese Datei lesen. Der erste Schritt, der nicht `fertig` ist, ist der Einstiegspunkt.
-2. Arbeitskopie des Zweigs: `.worktrees/canon-test-audit` (fehlt sie:
-   `git worktree add .worktrees/canon-test-audit docs/canon-test-audit-2026-11-20`).
+2. Das Review ist seit 2026-11-22 auf `main` (PR #1433). Das Buch zu Schritt 6 läuft auf dem Zweig
+   `docs/canon-test-review-step6` in `.worktrees/canon-test-audit`.
 3. Die eingefrorenen Kopien sind nach Abschluss gelöscht. Werden sie wieder gebraucht:
    je Einheit `git archive 72c4b5c6 | tar -x -C <Ordner>`, dann `git init`, `git add -A`, ein Commit.
 4. Schritt 2 ist je Arbeitspaket wiederaufnehmbar: der Prüfer schreibt `verify/<WP>.json` nach jedem
@@ -93,6 +93,38 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 | P7a-F05 | **entschieden 2026-11-21:** bleibt, wie es ist (`taxonomy.yaml` speist Tag-Prüfungen und Navigator, nicht die Rechnung); Befund gestrichen, kein Ticket |
 | P3-F04 | **entschieden 2026-11-21:** Vorbedingung `stall_speed_usable` wird ergänzt: Ticket #1447 |
 
+## Schritt 6 — Abarbeiten (Freigabe des Maintainers 2026-11-22: „ja umsetzen“)
+
+Epic #1448. Je Paket ein Ticket, ein Worktree `.worktrees/gh-<N>`, ein Zweig `test/gh-<N>-<slug>`, ein Subagent
+(Vorlage README Abschnitt 7). Nach dem Bericht: Diff lesen, schnelle Stufe selbst laufen lassen, PR öffnen, nach
+grüner CI mergen. Stände: `offen` → `läuft` (Subagent gestartet) → `Bericht` (Zweig gepusht) → `PR #N` → `gemergt`.
+
+| Welle | Paket | Ticket | Zweig | Stand |
+|---:|---|---|---|---|
+| 1 | WP-P4a | #1449 | test/gh-1449-p4a-cache-engine-rules | läuft |
+| 1 | WP-P7b | #1450 | test/gh-1450-p7b-evaluation | läuft |
+| 1 | WP-P6a | #1451 | test/gh-1451-p6a-opti-fakes | läuft |
+| 1 | WP-P6b | #1452 | test/gh-1452-p6b-avl | läuft |
+| 1 | WP-P3 | #1453 | test/gh-1453-p3-powertrain-performance | läuft |
+| 2 | WP-P1 | #1454 | — | offen |
+| 2 | WP-P2 | #1455 | — | offen |
+| 2 | WP-P5 | #1456 | — | offen |
+| 2 | WP-P7a | #1457 | — | offen |
+| 3 | WP-P8a | #1458 | — | offen |
+| 3 | WP-P8b | #1459 | — | offen |
+| 3 | WP-P4b | #1460 | — | offen |
+
+Ein Paket im Stand `läuft` ohne laufenden Subagent (nach einem Neustart): Zweig und Worktree prüfen
+(`git -C .worktrees/gh-<N> log --oneline -3`, `status`); liegt kein Commit vor, Subagent neu starten.
+
+Zusätze zu den Briefen, die im Dispatch stehen müssen: P7b-F03 nur die obere Bandgrenze prüfen (untere exklusive
+Grenze gehört zu #1440); P5-F06 schlägt heute fehl und wird mit #1445 geschrieben; P8-F13 nur der Kernel-seitige
+Schlusstest; Befunde mit Ticket (#1439 bis #1447) bekommen keinen Test im Paket.
+
+**#1437 (nächtlicher CI-Lauf):** Zweig `fix/gh-1437-nightly-ci`, Worktree `.worktrees/gh-1437`. Diagnose-Commit
+teilt den Lauf in `rest` und acht Aero-Teile (nur 3.12); Lauf 45030193951 gestartet 2026-11-22. Ziel: Dauer je Teil
+und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilung endgültig festlegen, PR.
+
 ## Verlauf
 
 - 2026-11-21 — Schritt 0 fertig. Schritte 1, 2, 2b vergeben (14 Subagents).
@@ -124,3 +156,4 @@ Skripte und Ausgaben: `defects/<Befund>.py`, `defects/<Befund>.txt`, Zusammenfas
 - P8-F13 entschieden: gemessen (2,8 %, #1142), App-Test entfernt mit PR #1446
 - P3-F04 entschieden: Vorbedingung wird ergänzt, Ticket #1447. Alle Maintainer-Entscheidungen getroffen
 - Dashboard-Daten auf Stand der Entscheidungen (datasets/findings Version 4, findings_v4.json)
+- 2026-11-22 — PR #1433 und #1446 gemergt. Schritt 6 begonnen: Epic #1448, Tickets #1449–#1460, Welle 1 vergeben (5 Subagents). #1437: Diagnoselauf 45030193951
