@@ -83,6 +83,18 @@ class TestContourDefect:
         assert "crosses itself" in defect.message
         assert defect.point == 2
 
+    def test_a_vertex_touching_a_non_adjacent_segment_is_refused(self) -> None:
+        """Point 3 (0.02, 0) lies on segment 0 without crossing it: touching is refused too.
+
+        Shoelace: 2A = 0 + 0.0016 - 0.0008 + 0.0008 + 0 = 0.0016, A = +0.0008 m^2, so the
+        orientation rule cannot be what refuses it.
+        """
+        contour: Contour = [(0.0, 0.0), (0.04, 0.0), (0.04, 0.04), (0.02, 0.0), (0.0, 0.04)]
+        defect = contour_defect(contour, MIN_POINTS)
+        assert defect is not None
+        assert "crosses itself" in defect.message
+        assert defect.point == 2
+
     def test_a_crossing_with_the_implicit_closing_segment_is_refused(self) -> None:
         # the closing segment from the last point back to (0, 0) cuts through the outline
         contour: Contour = [(0.0, 0.0), (0.04, 0.0), (0.04, 0.03), (-0.01, 0.01), (0.03, 0.04)]

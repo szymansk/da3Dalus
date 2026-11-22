@@ -1,11 +1,14 @@
-"""Per-surface geometry: the one function for the main wing and the tail (ADR 0022, #1203 S3)."""
+"""The planform stand-in of the fast tier (``planform_stand_in``), pinned to hand values.
+
+The production values are AeroSandbox's and are pinned in the aero tier (test_geometry_properties).
+"""
 
 import math
 from bisect import bisect_right
 
 import pytest
 from aero_kernel.geometry import AirplaneGeometry, Wing
-from aero_kernel.tests.planform_stand_in import stand_in_surface_properties as surface_properties
+from aero_kernel.tests.planform_stand_in import stand_in_surface_properties
 from aero_kernel.tests.reference_fleet import WITH_PITCH_TAIL, FleetMember, reference_document
 
 SAMPLES = 100_001
@@ -57,7 +60,7 @@ def test_a_single_panel_tail_has_the_hand_values() -> None:
     the leading edge of the MAC lies at the chord-weighted station:
     x_le_MAC = 0.50 + 0.02 (c1 + 2 c2) / (3 (c1 + c2)) = 0.50 + 0.02 * 0.2 / 0.45 = 0.508889 m.
     """
-    properties = surface_properties(wing_of((0.0, 0.10, 0.50), (0.2, 0.05, 0.52)))
+    properties = stand_in_surface_properties(wing_of((0.0, 0.10, 0.50), (0.2, 0.05, 0.52)))
     assert math.isclose(properties.area, 0.03, rel_tol=1e-12)
     assert math.isclose(properties.span, 0.4, rel_tol=1e-12)
     assert math.isclose(properties.aspect_ratio, 0.16 / 0.03, rel_tol=1e-12)
@@ -66,7 +69,7 @@ def test_a_single_panel_tail_has_the_hand_values() -> None:
 
 
 def test_a_straight_untapered_wing_has_its_leading_edge_as_x_le_mac() -> None:
-    properties = surface_properties(wing_of((0.0, 0.2, 0.3), (0.5, 0.2, 0.3)))
+    properties = stand_in_surface_properties(wing_of((0.0, 0.2, 0.3), (0.5, 0.2, 0.3)))
     assert math.isclose(properties.x_le_mac, 0.3, rel_tol=1e-12)
     assert math.isclose(properties.c_mac, 0.2, rel_tol=1e-12)
 
@@ -84,7 +87,7 @@ def test_x_le_mac_equals_the_sampled_chord_weighted_leading_edge(
 ) -> None:
     """Independent of the panel formulas: a fine-grid integration of c x_le / c over the reference
     planform (0 ... max y, the root held inboard of the first section; the clipped side from 0)."""
-    properties = surface_properties(wing_of(*sections))
+    properties = stand_in_surface_properties(wing_of(*sections))
     expected = sampled_x_le_mac(sections, 0.0, max(y for y, _, _ in sections))
     assert math.isclose(properties.x_le_mac, expected, rel_tol=1e-7)
 
@@ -98,7 +101,7 @@ def test_the_fleet_tails_have_a_sane_mac_inside_their_own_chords(member: FleetMe
         for w in (airplane.wings or {}).values()
         if w.surface_type in ("horizontal_tail", "v_tail")
     ]
-    surface = surface_properties(tail)
+    surface = stand_in_surface_properties(tail)
     chords = [s.chord for s in tail.x_secs]
     assert min(chords) < surface.c_mac < max(chords)
     leading_edges = [s.xyz_le[0] for s in tail.x_secs]
@@ -106,7 +109,7 @@ def test_the_fleet_tails_have_a_sane_mac_inside_their_own_chords(member: FleetMe
     assert surface.aspect_ratio > 1.0
 
 
-def test_surface_properties_of_a_vertical_surface_is_unsupported() -> None:
+def test_the_stand_in_refuses_a_vertical_surface() -> None:
     from aero_kernel.errors import ErrorCategory, FormulaError
 
     fin = Wing.model_validate(
@@ -121,7 +124,7 @@ def test_surface_properties_of_a_vertical_surface_is_unsupported() -> None:
         }
     )
     with pytest.raises(FormulaError) as raised:
-        surface_properties(fin)
+        stand_in_surface_properties(fin)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
 
 
@@ -132,7 +135,7 @@ def test_a_root_beyond_the_centreline_is_clipped_at_y_zero() -> None:
     0.4 * (0.28 + 0.2) / 2 = 0.096, so area = 0.192 m^2, span = 0.8 m and
     c_MAC = 0.4 * (0.28^2 + 0.28*0.2 + 0.2^2) / 3 / 0.096 = 0.242222 m.
     """
-    properties = surface_properties(wing_of((-0.1, 0.3, 0.0), (0.4, 0.2, 0.0)))
+    properties = stand_in_surface_properties(wing_of((-0.1, 0.3, 0.0), (0.4, 0.2, 0.0)))
     assert math.isclose(properties.area, 0.192, rel_tol=1e-12)
     assert math.isclose(properties.span, 0.8, rel_tol=1e-12)
     assert math.isclose(properties.c_mac, 0.0232533333333 / 0.096, rel_tol=1e-9)
@@ -143,6 +146,6 @@ def test_a_root_off_the_centreline_is_carried_to_it_with_the_root_chord() -> Non
 
     Half area = 0.05 * 0.3 + 0.4 * 0.25 = 0.115, so area = 0.23 m^2 and span = 0.9 m.
     """
-    properties = surface_properties(wing_of((0.05, 0.3, 0.0), (0.45, 0.2, 0.0)))
+    properties = stand_in_surface_properties(wing_of((0.05, 0.3, 0.0), (0.45, 0.2, 0.0)))
     assert math.isclose(properties.area, 0.23, rel_tol=1e-12)
     assert math.isclose(properties.span, 0.9, rel_tol=1e-12)

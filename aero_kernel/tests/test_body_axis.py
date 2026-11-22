@@ -134,3 +134,14 @@ def test_a_mirrored_body_is_left_to_the_conversion_that_refuses_it() -> None:
     result = aerobuildup_bodies(plane)
     assert result.bodies == solver_bodies(plane)
     assert result.straightenings == ()
+
+
+def test_a_body_off_its_line_by_rounding_noise_is_left_alone_and_not_declared() -> None:
+    """Centres (x, z) = (0, 0), (0.5, 1e-10), (1, 0): the largest distance to the least-squares
+    line is 2e-10 / 3 = 6.7e-11 m, below opt_body_axis_tolerance (1e-9 m): unchanged, undeclared."""
+    plane = airplane(
+        Rumpf=body([section(x, 0.03, 0.03, z=z) for x, z in ((0.0, 0.0), (0.5, 1e-10), (1.0, 0.0))])
+    )
+    result = aerobuildup_bodies(plane)
+    assert result.straightenings == ()
+    assert result.bodies == solver_bodies(plane)
