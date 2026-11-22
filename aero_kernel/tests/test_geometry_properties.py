@@ -266,3 +266,21 @@ def test_a_rectangular_wing_has_its_leading_edge_as_x_le_mac() -> None:
     found = surface_properties(airplane, "Main")
     assert math.isclose(found.x_le_mac, 0.05, rel_tol=1e-12)
     assert math.isclose(found.aspect_ratio, 1.4**2 / 0.28, rel_tol=1e-12)
+
+
+def test_a_single_panel_tail_has_the_hand_values_of_the_real_adapter() -> None:
+    """Half panel y 0..0.2 m, chord 0.10 -> 0.05 m, leading edge x 0.50 -> 0.52 m, mirrored.
+
+    area = 2 * 0.2 * 0.075 = 0.03 m^2; span 0.4 m; AR = 0.16 / 0.03;
+    c_MAC = (2/3)(0.01 + 0.005 + 0.0025) / 0.15 = 0.077778 m.
+    x_le_MAC follows ASB's quarter-chord definition, so it is compared with an ``asb.Wing``
+    built here, not with the planform stand-in's chord-weighted 0.508889 m.
+    """
+    wing = wing_of(section(0.50, 0.0, 0.0, 0.10), section(0.52, 0.2, 0.0, 0.05))
+    airplane = AirplaneGeometry.model_validate({"name": "t", "wings": {"Main": wing}})
+    found = surface_properties(airplane, "Main")
+    assert math.isclose(found.area, 0.03, rel_tol=1e-9)
+    assert math.isclose(found.span, 0.4, rel_tol=1e-9)
+    assert math.isclose(found.aspect_ratio, 0.16 / 0.03, rel_tol=1e-9)
+    assert math.isclose(found.c_mac, 2 / 3 * 0.0175 / 0.15, rel_tol=1e-9)
+    assert math.isclose(found.x_le_mac, asb_surface(wing)[4], rel_tol=1e-9)

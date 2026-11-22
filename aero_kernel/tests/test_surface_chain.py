@@ -57,6 +57,7 @@ def test_a_fin_chain_that_folds_back_names_z() -> None:
     with pytest.raises(FormulaError, match="fold back in z") as raised:
         oriented_chain(fin, 2)
     assert raised.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert raised.value.code == "unsupported_configuration"
 
 
 def test_a_wing_chain_that_folds_back_names_y() -> None:
@@ -65,8 +66,20 @@ def test_a_wing_chain_that_folds_back_names_y() -> None:
         symmetric=True,
         surface_type="main_wing",
     )
-    with pytest.raises(FormulaError, match="fold back in y"):
+    with pytest.raises(FormulaError, match="fold back in y") as raised:
         oriented_chain(wing, 1)
+    assert raised.value.code == "unsupported_configuration"
+
+
+def test_two_sections_at_one_y_are_admissible_as_a_vertical_winglet_panel() -> None:
+    """Equal y is no fold-back: the chain (y, z) = (0, 0), (0.5, 0), (0.5, 0.1) is kept."""
+    wing = surface(
+        [(0.0, 0.0, 0.0, 0.2, 0.0), (0.0, 0.5, 0.0, 0.15, 0.0), (0.0, 0.5, 0.1, 0.1, 0.0)],
+        symmetric=True,
+        surface_type="main_wing",
+    )
+    chain = oriented_chain(wing, 1)
+    assert [p.y for p in chain] == [0.0, 0.5, 0.5]
 
 
 def test_a_ventral_fin_comes_out_with_z_ascending_and_the_other_fields_paired() -> None:
