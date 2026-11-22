@@ -21,10 +21,10 @@ Die 179 Befunde des Reviews wurden einen Tag später unabhängig nachgeprüft. D
 |---|---:|---|
 | offen | 110 | bestätigt; wird im Arbeitspaket bearbeitet |
 | gebündelt | 24 | bestätigt, aber klein; wird mit einem anderen Befund derselben Testdatei erledigt |
-| wartet auf Entscheidung | 3 | sachlich bestätigt; der Test hängt an einer offenen Entscheidung |
+| wartet auf Entscheidung | 2 | sachlich bestätigt; der Test hängt an einer offenen Entscheidung |
 | gestrichen | 30 | zutreffend, aber ohne Risiko für Flugfähigkeit, Reichweite oder Nutzlast |
 | widerlegt | 4 | ein vorhandener Test fängt den Fehler bereits |
-| Produktionsfehler | 8 | kein Testbefund; als Bug-Ticket oder Frage geführt |
+| Produktionsfehler | 9 | kein Testbefund; als Bug-Ticket oder Frage geführt |
 
 Zu bearbeiten bleiben 134 Befunde:
 
@@ -96,6 +96,7 @@ Die fünf aus dem Review ließen sich alle nachstellen (`rework/defects/`). P5-F
 | P4-F07 | `has_vertical_tail` nutzt noch die vorläufige Grundrissregel. Die Architektur (§8.5) hält die Entscheidung D9 vom 17. Oktober bereits fest: Es gilt `surface_type`. Keine neue Entscheidung nötig | Ticket #1441; rund 17 Tests in `test_graph_conditions.py` werden mit der Korrektur auf die entschiedene Regel umgestellt |
 | P4-F08 | Fehlt eine optionale Eingabe, schreibt der Kernel die in §8.5/§8.14/Q33 verlangte `INFO`-Zeile nicht; ein Test hält ihr Fehlen fest. Entschieden am 21. November: Die Spezifikation gilt, die Zeile wird gebaut | Ticket #1442; `test_an_absent_optional_input_adds_no_info_line` wird mit der Korrektur zum Test der Zeile |
 | P7a-F04 | Stufe 4 des Importers (§8.9, Diff gegen das eingecheckte Modell) ist nicht gebaut. Entschieden am 21. November: nur die kleine Fassung, der Bericht nennt geänderte Eingaben, Ausgaben und Einheiten je Eintrag; keine Zuordnung zu Implementierungen und Golden-Tests | Ticket #1443 (Task); §8.9 wird mit dem Ticket auf diesen Umfang umgeschrieben |
+| P6b-F11 | Eine AVL-Tabelle mit unlesbarer Zeile kommt als kürzere Lastkurve zurück, ohne Fehler (ADR 0020). Entschieden am 21. November: Zeilenzahl gegen die Kopfzeile `# Spanwise = N` der AVL-Ausgabe prüfen, sonst der vorhandene Fehler „did not complete“ | Ticket #1444; die Testvorlagen werden dabei vollständige Tabellen |
 | P3-F04 | `endurance-and-range-optimum` kehrt bei Überziehgeschwindigkeit exakt 0 nicht zurück | kein Ticket: über die API nicht erreichbar (`stall-speed` ist keine Eingabe, der Erzeuger liefert nie 0). Entscheidung unten |
 | P7a-F05 | `taxonomy.yaml` wird vom Importer nicht auf `# ESCALATED:` und YAML-1.1-Wahrheitswerte geprüft | gestrichen (Maintainer, 21. November): Die Datei speist die Tag-Prüfungen und den Navigator, nicht die Rechnung; keine geschriebene Anforderung nennt sie. Kein Ticket |
 
@@ -103,7 +104,7 @@ Nebenbefund außerhalb des Kanons: Ticket #1437 (nächtlicher CI-Lauf rot, 20 Ae
 
 ### Entscheidungen des Maintainers
 
-Von den sieben Fragen aus Abschnitt 6 ist P5-F08 entschieden (21. November: die Mischung ist sinnlos, Regel wird gebaut, Ticket #1439), P4-F07 war bereits entschieden (D9, Ticket #1441), und P4-F08 ist entschieden (21. November: die Logzeile wird gebaut, Ticket #1442). P7a-F04 ist entschieden (21. November: kleine Fassung, Ticket #1443). Die übrigen drei sind offen; die Befunde sind sachlich bestätigt. Aus der Nachprüfung kommt hinzu:
+Von den sieben Fragen aus Abschnitt 6 ist P5-F08 entschieden (21. November: die Mischung ist sinnlos, Regel wird gebaut, Ticket #1439), P4-F07 war bereits entschieden (D9, Ticket #1441), und P4-F08 ist entschieden (21. November: die Logzeile wird gebaut, Ticket #1442). P7a-F04 ist entschieden (21. November: kleine Fassung, Ticket #1443). P6b-F11 ist entschieden (21. November: gegen die Kopfzeile zählen, Ticket #1444). Die übrigen zwei sind offen; die Befunde sind sachlich bestätigt. Aus der Nachprüfung kommt hinzu:
 
 | Befund | Frage | Empfehlung |
 |---|---|---|
@@ -119,7 +120,7 @@ Von den sieben Fragen aus Abschnitt 6 ist P5-F08 entschieden (21. November: die 
 | 1 | WP-P4a | Cache-Schlüssel, Engine-Provenienz, Regelgrenzen | 7 (3 / 3 / 1) | 3 gestrichen, 1 widerlegt, 2 Produktionsfehler | `wp/WP-P4a.md` |
 | 1 | WP-P7b | Bewertung (Evaluator, Regeltabelle, Drela-Bänder) | 12 (4 / 5 / 3) | 6 gestrichen, 1 Produktionsfehler | `wp/WP-P7b.md` |
 | 1 | WP-P6a | Opti-Adapter: Fakes, die Zielfunktion und Nebenbedingungen aufzeichnen | 16 (3 / 7 / 6) | 3 gestrichen, 1 widerlegt | `wp/WP-P6a.md` |
-| 1 | WP-P6b | AVL: Referenzgrößen, Leitwerks-Stationen, Rumpfkörper | 14 (1 / 8 / 5) | 1 wartet auf Entscheidung, 1 gestrichen | `wp/WP-P6b.md` |
+| 1 | WP-P6b | AVL: Referenzgrößen, Leitwerks-Stationen, Rumpfkörper | 14 (1 / 8 / 5) | 1 gestrichen, 1 Produktionsfehler | `wp/WP-P6b.md` |
 | 1 | WP-P3 | Antrieb, Leistung, Flugzeit, Holm | 14 (4 / 6 / 4) | 3 gestrichen, 1 Produktionsfehler | `wp/WP-P3.md` |
 | 2 | WP-P1 | Geschlossene Formeln: Vorbedingungen beidseitig | 13 (1 / 7 / 5) | 2 gestrichen, 1 Produktionsfehler | `wp/WP-P1.md` |
 | 2 | WP-P2 | Aerodynamik- und Stabilitätsformeln | 14 (2 / 2 / 10) | 3 gestrichen | `wp/WP-P2.md` |
@@ -260,7 +261,7 @@ Zwölf Pakete. Jedes hat einen eigenen Brief unter `wp/`, der ohne dieses Schrei
 | 1 | WP-P4a | Cache-Schlüssel, Engine-Provenienz, Regelgrenzen | 7 (3 / 3 / 1) | 3 gestrichen, 1 widerlegt, 2 Produktionsfehler | `wp/WP-P4a.md` |
 | 1 | WP-P7b | Bewertung (Evaluator, Regeltabelle, Drela-Bänder) | 12 (4 / 5 / 3) | 6 gestrichen, 1 Produktionsfehler | `wp/WP-P7b.md` |
 | 1 | WP-P6a | Opti-Adapter: Fakes, die Zielfunktion und Nebenbedingungen aufzeichnen | 16 (3 / 7 / 6) | 3 gestrichen, 1 widerlegt | `wp/WP-P6a.md` |
-| 1 | WP-P6b | AVL: Referenzgrößen, Leitwerks-Stationen, Rumpfkörper | 14 (1 / 8 / 5) | 1 wartet auf Entscheidung, 1 gestrichen | `wp/WP-P6b.md` |
+| 1 | WP-P6b | AVL: Referenzgrößen, Leitwerks-Stationen, Rumpfkörper | 14 (1 / 8 / 5) | 1 gestrichen, 1 Produktionsfehler | `wp/WP-P6b.md` |
 | 1 | WP-P3 | Antrieb, Leistung, Flugzeit, Holm | 14 (4 / 6 / 4) | 3 gestrichen, 1 Produktionsfehler | `wp/WP-P3.md` |
 | 2 | WP-P1 | Geschlossene Formeln: Vorbedingungen beidseitig | 13 (1 / 7 / 5) | 2 gestrichen, 1 Produktionsfehler | `wp/WP-P1.md` |
 | 2 | WP-P2 | Aerodynamik- und Stabilitätsformeln | 14 (2 / 2 / 10) | 3 gestrichen | `wp/WP-P2.md` |

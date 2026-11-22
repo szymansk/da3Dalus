@@ -180,5 +180,5 @@ Every finding below was checked by an independent verifier on 2026-11-21 (`../re
 
 | Finding | State | Reason |
 |---|---|---|
-| P6b-F11 | waiting_for_decision | maintainer decision open (README section 6); do not write its test |
+| P6b-F11 | production_defect | #1444 |
 | P6b-F16 | dropped | drop from this package: the goldens are declared as regression by design and the same code path is validated on BRYAN and JAGUAR. The one uncovered case, the roll with a held flap, has no independent reference; that is worth a separate vali |

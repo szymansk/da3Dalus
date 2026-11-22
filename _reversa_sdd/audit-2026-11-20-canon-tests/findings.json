@@ -2338,7 +2338,7 @@
   "package": "P6b",
   "wp": "WP-P6b",
   "id": "P6b-F11",
-  "state": "waiting_for_decision",
+  "state": "production_defect",
   "severity": "medium",
   "severity_review": "medium",
   "severity_reason": "Production-behaviour gap (no error for a truncated table) confirmed by reading; no mutation possible because the check does not exist.",
@@ -2367,7 +2367,7 @@
   "recommended_test_note": "The test depends on the open decision (what the row count is compared with) and on the error text; as written it cannot be implemented before the maintainer decides. The fixtures STRIPS / SHEAR_MOMENT are themselves trimmed copies and would have to become full tables in the same change, otherwise the existing test fails under the new check.",
   "hand_value_check": "",
   "hand_value_correction": "",
-  "ticket": "",
+  "ticket": "#1444",
   "maintainer_note": "",
   "probe_id": ""
  },
