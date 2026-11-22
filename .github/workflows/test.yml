@@ -253,18 +253,18 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
 
-      - name: Probe the AVL binary (diagnostic, gh-1437)
+      - name: Install the system libraries of the AVL binary
+        # The avl-binary wheel links liblapack.so.3 dynamically; the runner image
+        # does not ship it, and AVL then exits 127 before reading its input (gh-1437).
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq liblapack3
+
+      - name: Check that AVL starts
         run: |
           avl=$(poetry run python -c "from avl_binary import avl_path; print(avl_path())")
-          ls -l "$avl"; file "$avl"
-          ldd "$avl" || true
-          set +e
-          printf 'quit\n' | "$avl"; echo "exit before: $?"
-          if ldd "$avl" | grep -q "not found"; then
-            sudo apt-get update -qq && sudo apt-get install -y -qq libgfortran5
-            ldd "$avl"
-            printf 'quit\n' | "$avl"; echo "exit after: $?"
-          fi
+          if ldd "$avl" | grep "not found"; then exit 1; fi
+          printf 'quit\n' | "$avl" > /dev/null
 
       - name: Run full suite (all markers)
         # No marker filter — exercises slow + e2e CAD pipelines too.
