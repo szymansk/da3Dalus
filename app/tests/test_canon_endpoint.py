@@ -298,6 +298,55 @@ def test_an_aircraft_reference_that_is_not_one_of_the_two_is_rejected(enveloped_
         "/canon/compute", json={"aircraft": aircraft, "quantities": ["stall-speed"]}
     )
     assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "validation_error"
+    assert any("aircraft" in item["loc"] for item in error["details"])
+
+
+@pytest.mark.integration
+def test_a_non_positive_caller_value_is_answered_with_the_kernels_input_error(client_and_db):
+    # Real kernel, no stub: a value outside the admissible range is a 200 with input_errors
+    # (KernelError shape), not the 422 envelope of a parse failure; 'fresh' runs the stateless
+    # compute, and validation precedes any solver.
+    client, _ = client_and_db
+    response = client.post(
+        "/canon/compute",
+        json={
+            "aircraft": {"fleet": "bryan"},
+            "quantities": ["wing-loading"],
+            "values": {"aircraft-mass": -1.0},
+            "fresh": True,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["quantities"] == []
+    (item,) = body["input_errors"]
+    assert item["code"] == "non_positive_value"
+    assert item["category"] == "invalid_input"
+    assert item["input_path"] == "values.aircraft-mass"
+    assert item["message"]
+    assert item["hint"]
+
+
+@pytest.mark.integration
+def test_an_unknown_quantity_is_a_per_quantity_error_not_an_http_error(client_and_db):
+    client, _ = client_and_db
+    response = client.post(
+        "/canon/compute",
+        json={
+            "aircraft": {"fleet": "bryan"},
+            "quantities": ["no-such-quantity"],
+            "fresh": True,
+        },
+    )
+    assert response.status_code == 200
+    (quantity,) = response.json()["quantities"]
+    assert quantity["slug"] == "no-such-quantity"
+    assert quantity["status"] == "error"
+    assert quantity["error"]["code"] == "unknown_quantity"
+    assert quantity["unit"] is None
+    assert quantity["value"] is None
 
 
 @pytest.mark.integration
