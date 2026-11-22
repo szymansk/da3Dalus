@@ -103,8 +103,8 @@ grüner CI mergen. Stände: `offen` → `läuft` (Subagent gestartet) → `Beric
 |---:|---|---|---|---|
 | 1 | WP-P4a | #1449 | test/gh-1449-p4a-cache-engine-rules | PR #1461 (9d58ac1d: 7 Tests, 7 von 7 Mutationen; nachgeprüft: Dateien grün, P4-F03 getötet) |
 | 1 | WP-P7b | #1450 | test/gh-1450-p7b-evaluation | PR #1462 (8a36220e: 30 Testfälle, 9 von 9 Mutationen; nachgeprüft: Dateien grün, P7b-F01 getötet) |
-| 1 | WP-P6a | #1451 | test/gh-1451-p6a-opti-fakes | läuft |
-| 1 | WP-P6b | #1452 | test/gh-1452-p6b-avl | läuft |
+| 1 | WP-P6a | #1451 | test/gh-1451-p6a-opti-fakes | PR #1466 (6f72a133: 23 Fälle, 11 von 11 Mutationen; nachgeprüft). Rest: Aero-Hälften von P6a-F09 und F10 |
+| 1 | WP-P6b | #1452 | test/gh-1452-p6b-avl | PR #1465 (4fa7515a: 14 Fälle, 9 von 9 Mutationen; nachgeprüft). Rest: P6b-F12 |
 | 1 | WP-P3 | #1453 | test/gh-1453-p3-powertrain-performance | PR #1463 (ac2f5bd5: 16 Tests, 12 von 12 Mutationen; nachgeprüft). Rest: P3-F16 (Aero), P1-F09 zum Teil (Frage an den Produktivcode) |
 | 2 | WP-P1 | #1454 | test/gh-1454-p1-closed-form-preconditions | PR #1464 (588ae063: 12 Tests + 40 Fälle, 8 von 8 Mutationen; nachgeprüft). Rest: P1-F15 in test_tail_arms.py, P1-F13 Aero-Teil |
 | 2 | WP-P2 | #1455 | test/gh-1455-p2-aero-stability | läuft |
@@ -124,6 +124,7 @@ Schlusstest; Befunde mit Ticket (#1439 bis #1447) bekommen keinen Test im Paket.
 **Restliste nach den Paketen (ein Nachlauf am Ende, Aero-Tests einzeln):** P3-F16 (Aero, Erwartungswerte neu herleiten);
 P1-F13 Aero-Teil (`GeometryAdapter.fin_area` gegen 0,0339411 m²); P1-F15 in `test_tail_arms.py:154`;
 P1-F09 Rest (`advance_ratio` bei zwei negativen Argumenten und bei NaN-Geschwindigkeit: Frage an den Maintainer);
+P6a-F09/F10 Aero-Hälften (`test_solvers_opti_real.py`); P6b-F12 (aufgezeichnete Ausgaben des echten AVL je Leser: wo liegen die Dateien? Frage); P6b-F03: Rundungsregel der Streifenzahl am Seitenleitwerk steht nicht in ARCHITECTURE (Frage);
 P1-F08: ist der Aufruf `warn_flap_validity` in `maneuvering-speed` über die Engine erreichbar? (ADR 0021, Frage).
 
 **#1437 (nächtlicher CI-Lauf):** Zweig `fix/gh-1437-nightly-ci`, Worktree `.worktrees/gh-1437`. Diagnose-Commit
@@ -165,3 +166,4 @@ und Tracebacks der 20 Aero-Fehler. Danach: Ursache der Fehler klären, Aufteilun
 - Schritt 6 in der Tabelle auf läuft
 - WP-P4a → PR #1461, WP-P7b → PR #1462; Welle 2 vergeben (4 Subagents)
 - WP-P3 → PR #1463, WP-P1 → PR #1464; Restliste angelegt
+- WP-P6b → PR #1465, WP-P6a → PR #1466 (Nummern nach Ausgabe prüfen)
