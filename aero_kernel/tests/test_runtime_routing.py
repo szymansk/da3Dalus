@@ -51,7 +51,7 @@ async def test_with_every_worker_full_a_miss_replaces_the_least_recently_used_wo
 
 
 async def test_a_job_without_a_key_takes_any_idle_worker() -> None:
-    async with SolverRuntime(max_workers=2, max_models_per_worker=1) as runtime:
+    async with SolverRuntime(max_workers=2, max_models_per_worker=1, max_concurrency=2) as runtime:
         holder = await pid(runtime, "A")
         busy = asyncio.create_task(pid(runtime, "A", seconds=1.0))
         await asyncio.sleep(0.2)
@@ -61,7 +61,7 @@ async def test_a_job_without_a_key_takes_any_idle_worker() -> None:
 
 async def test_a_key_whose_worker_is_busy_is_built_again_elsewhere_not_waited_for() -> None:
     """Routing is a guess: a busy holder costs a second build, never a wait or a value."""
-    async with SolverRuntime(max_workers=2, max_models_per_worker=1) as runtime:
+    async with SolverRuntime(max_workers=2, max_models_per_worker=1, max_concurrency=2) as runtime:
         holder = await pid(runtime, "A")
         busy = asyncio.create_task(pid(runtime, "A", seconds=1.0))
         await asyncio.sleep(0.2)

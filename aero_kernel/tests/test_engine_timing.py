@@ -102,7 +102,21 @@ async def test_a_failed_quantity_reports_the_time_spent_until_it_failed() -> Non
 
 
 async def test_a_quantity_open_when_the_budget_expired_has_no_timing() -> None:
-    quantities = await run("weight", "double-weight", budget=WEIGHT_S + DOUBLE_S / 4)
+    # `double` waits on an event nobody sets, so it is certainly open when the budget runs out;
+    # `weight` returns after WEIGHT_S, far inside the budget, on any machine.
+    never_set = asyncio.Event()
+
+    async def blocked(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        await never_set.wait()
+        return await _double(x, ctx)
+
+    result: ComputeResult = await evaluate(
+        make_build(registry_with({"weight": SLOW["weight"], "double": blocked})),
+        aircraft(),
+        ComputeRequest(quantities=("weight", "double-weight"), time_budget_s=0.5),
+        solvers=NO_SOLVERS,
+    )
+    quantities = {q.slug: q for q in result.quantities}
     assert quantities["weight"].timing is not None
     double = quantities["double-weight"]
     assert double.error is not None
