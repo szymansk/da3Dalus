@@ -166,7 +166,7 @@ Kern 5847 bestanden, 18 fehlgeschlagen → Bug **#1474** (9 Wertabweichungen Lin
 Teil `rest` 13 fehlgeschlagen + 2 Errors und der Prozess endet nicht (Thread-Dump: `_python_exit` wartet auf einen Pool-Worker,
 vermutlich die CAD-Aufgabe von `test_ehawk_designer_workflow_stepwise`) → Bug **#1475** (priority:critical).
 Der nächtliche Lauf bleibt rot, bis #1474 und #1475 behoben sind; beide Tickets sind nicht begonnen.
-Verifikationslauf der Endfassung auf main: 45071176949 (18 Jobs, bis zu 5 h); Ergebnis nachtragen. Worktree `.worktrees/gh-1437` ist entfernt.
+Verifikationslauf der Endfassung auf main 45071176949: 18 Jobs, längster 3 h 20 min, kein Job am Limit; dieselben 16 Kern-Tests rot auf 3.11 und 3.12 (#1474), `rest` 3.12 wie #1475; ein Job scheiterte an `poetry install` (Connection reset, kalter Cache, zum zweiten Mal — Retry um den Installationsschritt wäre die Abhilfe, nicht gemacht). Worktree `.worktrees/gh-1437` ist entfernt.
 
 ## Verlauf
 
@@ -214,3 +214,4 @@ Verifikationslauf der Endfassung auf main: 45071176949 (18 Jobs, bis zu 5 h); Er
 - PR #1473 gemergt; erste Maintainer-Frage P1-F08 gestellt
 - #1437: Ursache liblapack3 belegt, zweiter Diagnoselauf 45053284171 läuft
 - #1437 geschlossen (PR #1476); Folgetickets #1474, #1475
+- #1437: Verifikationslauf der Endfassung ausgewertet
