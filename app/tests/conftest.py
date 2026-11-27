@@ -20,7 +20,6 @@ unit-tested in ``test_marker_auto_tagging.py``.
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import uuid
 from datetime import datetime, timezone
@@ -170,29 +169,6 @@ def client_and_db() -> Tuple[TestClient, sessionmaker]:
     Base.metadata.drop_all(bind=engine)
 
 
-def terminate_cad_pool_workers() -> None:
-    """Shut the CAD pool down and kill every worker that is still alive (gh-1475).
-
-    ``cad_service.shutdown_executor`` uses ``shutdown(wait=False)``, which leaves a worker
-    that is still inside a CAD task running. Such a worker (a test that timed out while the
-    OCC kernel was still busy) keeps burning CPU through the later tests, and at interpreter
-    exit ``concurrent.futures.process._python_exit`` joins the pool's manager thread, which
-    waits for that worker: the pytest process never ends after the summary line.
-
-    This only reaps processes; the test whose task hung has already failed through its own
-    wait or ``pytest-timeout``.
-    """
-    # The pool is usually already gone here (the app lifespan shutdown of the TestClient runs
-    # earlier and drops the reference), so the workers are taken from the children of this
-    # process, not from ``cad_service._executor``.
-    cad_service.shutdown_executor()
-    workers = multiprocessing.active_children()
-    for worker in workers:
-        worker.kill()
-    for worker in workers:
-        worker.join(timeout=10)
-
-
 @pytest.fixture(autouse=True)
 def clean_cad_task_state():
     """Clear cad_service task state + process pool around every test.
@@ -216,7 +192,7 @@ def clean_cad_task_state():
     yield
     with cad_service.tasks_lock:
         cad_service.tasks.clear()
-    terminate_cad_pool_workers()
+    cad_service.shutdown_executor()
     _opg.shutdown_opg_executor()
 
 

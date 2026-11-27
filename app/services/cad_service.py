@@ -67,6 +67,7 @@ tasks_lock = Lock()
 _mp_context = multiprocessing.get_context("spawn")
 _executor: Optional[ProcessPoolExecutor] = None
 _executor_lock = Lock()
+_WORKER_GRACE_S = 5.0  # seconds a terminated CAD worker gets before it is killed
 
 
 def _get_executor() -> ProcessPoolExecutor:
@@ -84,15 +85,37 @@ def shutdown_executor() -> None:
     Called from the FastAPI lifespan shutdown hook and from the
     `clean_cad_task_state` test fixture so that worker processes do not
     leak between tests.
+
+    A worker that is still inside a CAD task is terminated (gh-1475):
+    ``shutdown(wait=False)`` alone leaves it running, and at interpreter exit
+    ``concurrent.futures`` joins the pool's manager thread, which waits for
+    that worker, so a process with a CAD task that never returns would not end.
     """
     global _executor
     with _executor_lock:
         if _executor is not None:
+            # No public accessor before Python 3.14 (`terminate_workers`); the mapping
+            # pid -> process is read before the shutdown clears it.
+            workers = list((getattr(_executor, "_processes", None) or {}).values())
             try:
                 _executor.shutdown(wait=False, cancel_futures=True)
             except Exception as exc:
                 logger.warning("Error shutting down cad executor: %s", exc)
+            _end_workers(workers)
             _executor = None
+
+
+def _end_workers(workers: list[Any]) -> None:
+    """Terminate the given pool workers, and kill those that do not end within the grace time."""
+    for worker in workers:
+        if worker.is_alive():
+            worker.terminate()
+    for worker in workers:
+        worker.join(timeout=_WORKER_GRACE_S)
+        if worker.is_alive():
+            logger.warning("CAD worker %s did not end on terminate; killing it", worker.pid)
+            worker.kill()
+            worker.join(timeout=_WORKER_GRACE_S)
 
 
 def get_aeroplane_with_wings(db: Session, aeroplane_uuid) -> AeroplaneModel:
