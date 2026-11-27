@@ -43,21 +43,17 @@ def test_the_recorded_speeds_are_ordered_stall_minimum_sink_minimum_drag(
     member: FleetMember,
 ) -> None:
     """V_S < V_mp < V_md: the minimum sink is flown at a higher C_L than the best glide
-    (C_L,mp = sqrt(3) C_L,md on a parabolic polar) and below C_L,max. AERONCA_CHAMP has no recorded
-    stall (`not_converged`), so only the second inequality is checked for it."""
+    (C_L,mp = sqrt(3) C_L,md on a parabolic polar) and below C_L,max. Every member of the batch has a
+    recorded stall speed (AERONCA_CHAMP since gh-1423)."""
     v_s = number(member, "stall-speed")
     v_mp, v_md = number(member, "minimum-sink-speed"), number(member, "minimum-drag-speed")
+    assert v_s is not None
     assert v_mp is not None
     assert v_md is not None
-    assert v_mp < v_md
-    assert (v_s is None) == (member is FleetMember.AERONCA_CHAMP)
-    if v_s is not None:
-        assert v_s < v_mp
+    assert v_s < v_mp < v_md
 
 
-@pytest.mark.parametrize(
-    "member", [m for m in PLAN_BATCH if m is not FleetMember.AERONCA_CHAMP], ids=lambda m: m.name
-)
+@pytest.mark.parametrize("member", PLAN_BATCH, ids=lambda m: m.name)
 def test_the_recorded_stall_speed_closes_the_lift_balance(member: FleetMember) -> None:
     """V_S = sqrt(2 m g / (rho S_ref C_L,max)) with the README's mass, g = 9.80665 m/s^2,
     rho = 1.225 kg/m^3 and S_ref the frozen AeroSandbox area of the member (asb_reference[0]),

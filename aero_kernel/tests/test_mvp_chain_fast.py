@@ -126,7 +126,8 @@ async def test_the_fast_chain_answers_each_cell_of_the_plan_batch_as_the_aero_ti
 
 async def test_only_the_solver_errors_of_two_aircraft_differ_from_the_aero_goldens() -> None:
     """The exception of the test above is narrow: 13 cells of MINI_FUNTANA (AVL's lateral run,
-    `internal`) and 6 of AERONCA_CHAMP (stall `not_converged` and the approach chain behind it)."""
+    `internal`). The 6 cells of AERONCA_CHAMP (stall `not_converged` and the approach chain behind
+    it) are values since gh-1423."""
     differing = {
         member: sum(
             isinstance(golden, Failed) and expected_with_fake_solvers(golden).status == OK
@@ -136,7 +137,6 @@ async def test_only_the_solver_errors_of_two_aircraft_differ_from_the_aero_golde
     }
     assert {member: count for member, count in differing.items() if count} == {
         FleetMember.MINI_FUNTANA: 13,
-        FleetMember.AERONCA_CHAMP: 6,
     }
 
 

@@ -10,8 +10,8 @@ above alpha = 0 with the largest fall behind it.
 Each value is checked twice. Against an independent brute force made in this file (its own
 AeroBuildup call and its own search for that maximum, no kernel function): the lift
 balance closes at that maximum. And against pinned numbers, which are **regression, not validation**
-(aero_kernel/CLAUDE.md): what this build computes (NeuralFoil xlarge, 0.25 deg sweep); they agree
-to 2e-8 with a root search over the speed made for gh-1423 with the same brute force.
+(aero_kernel/CLAUDE.md): what this build computes through compute() (NeuralFoil xlarge, 0.25 deg
+sweep).
 """
 
 from typing import Any
@@ -38,15 +38,15 @@ SWEEP_DEG = [-15.0 + 0.25 * k for k in range(161)]
 # 8 deg); AERONCA_CHAMP 0.37 kg had no value, 0.39 kg (nominal) was `not_converged`; CHEKKER 0.30 and
 # 0.32 kg had no value.
 FORMER_BAND = [
-    (FleetMember.AVISTAR_ELITE, 8.5, 16.39732, 1.34449, 16.435),
-    (FleetMember.AVISTAR_ELITE, 9.0, 16.88023, 1.34329, 16.473),
-    (FleetMember.AVISTAR_ELITE, 9.4, 17.25694, 1.34241, 16.498),
-    (FleetMember.AVISTAR_ELITE, 9.6, 17.44226, 1.34199, 16.509),
-    (FleetMember.AERONCA_CHAMP, 0.37, 5.87202, 1.32692, 18.326),
-    (FleetMember.AERONCA_CHAMP, 0.39, 6.02620, 1.32799, 18.253),
-    (FleetMember.CHEKKER, 0.30, 5.21088, 1.30128, 14.693),
-    (FleetMember.CHEKKER, 0.32, 5.37373, 1.30518, 14.657),
-    (FleetMember.CHEKKER, 0.345, 5.57032, 1.30958, 14.616),
+    (FleetMember.AVISTAR_ELITE, 8.5, 16.397315782753946, 1.344490145567799, 16.435016303718765),
+    (FleetMember.AVISTAR_ELITE, 9.0, 16.880231126083796, 1.3432905224604674, 16.472746983177135),
+    (FleetMember.AVISTAR_ELITE, 9.4, 17.256936432053788, 1.342408438753667, 16.498043421025738),
+    (FleetMember.AVISTAR_ELITE, 9.6, 17.44225716715156, 1.3419924758751638, 16.509206047860665),
+    (FleetMember.AERONCA_CHAMP, 0.37, 5.872019386717167, 1.3269178906452117, 18.32568582519362),
+    (FleetMember.AERONCA_CHAMP, 0.39, 6.026195759639523, 1.3279918908558153, 18.252740695814207),
+    (FleetMember.CHEKKER, 0.30, 5.2108804707013086, 1.3012849604340453, 14.692997392484294),
+    (FleetMember.CHEKKER, 0.32, 5.37373355413637, 1.3051820686692501, 14.657260515414952),
+    (FleetMember.CHEKKER, 0.345, 5.570319641368244, 1.3095806196219253, 14.61629436837216),
 ]
 
 

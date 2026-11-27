@@ -26,9 +26,9 @@ ROOT_ERROR_ISSUES: dict[tuple[FleetMember, str], str] = {
     (FleetMember.VOODOO, "unsupported_layout"): "#1206",
     (FleetMember.WINDFREAK, "unsupported_layout"): "#1206",
 }
-# A pinned root error that no issue owns yet: the stall optimum on the alpha bound. #1423 describes
-# the same failure for AVISTAR_ELITE, not for this aircraft; the maintainer names the issue.
-ROOT_ERRORS_AWAITING_AN_ISSUE = {(FleetMember.AERONCA_CHAMP, "not_converged")}
+# A pinned root error that no issue owns yet. None at present: the stall of AERONCA_CHAMP
+# (`not_converged`, the optimum on the alpha bound) computes since gh-1423.
+ROOT_ERRORS_AWAITING_AN_ISSUE: set[tuple[FleetMember, str]] = set()
 # Not a defect: the fleet gives these flapped aircraft no flap deflection (FLAP_DEFLECTIONS_DEG),
 # so the landing configuration lacks its input.
 FLAPS_WITHOUT_A_DEFLECTION = {
