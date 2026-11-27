@@ -115,14 +115,15 @@ def cl_max_at_stall_reynolds_number(
 def main_extremum_check(
     polar: Polar, alpha_s: float, cl_max: float, *, upright: bool
 ) -> CheckResult:
-    """The optimum is the main sampled C_L peak (trough) from alpha = 0: the highest (lowest) one.
+    """The optimum is at the main sampled C_L peak (trough) of the sweep at ``V_S``.
 
-    Two conditions (maintainer 2026-11-27, gh-1423: the stall is at the main maximum, not at the
-    first local one). ``alpha_S`` lies within one sweep step of a local extremum of the sweep at
-    ``V_S``, so it is a turning point and not a point on a flank; and ``C_L,max`` is not short of the
-    highest local maximum (lowest minimum) of that sweep by more than ``opt_peak_tolerance``. Which
-    of two extrema of equal height carries ``alpha_S`` is not checked: the lift value is the same,
-    and the sweep that bracketed the solve and this one may each name the other.
+    The main peak is the one :func:`main_extremum_from_zero` picks (maintainer 2026-11-27, gh-1423:
+    the record maximum of the scan from alpha = 0 with the largest fall behind it; neither the
+    first local maximum nor simply the highest). The check holds when ``alpha_S`` lies within one
+    sweep step of that extremum, or of another local extremum of the same height to
+    ``opt_peak_tolerance`` (two maxima of equal height are one lift value, and the sweep that
+    bracketed the solve and this one may each name the other), and ``C_L,max`` is not short of the
+    main extremum by more than that tolerance.
 
     The one implementation of the check ``optimum_at_main_cl_peak`` / ``_trough``: ``stall-speed``
     runs it on its polar, ``butterfly-approach`` on the polar of each crow mix (K32).
@@ -133,25 +134,32 @@ def main_extremum_check(
         return CheckResult(
             state="violated", message=f"the sweep at V_S has no C_L {what} inside its range"
         )
+    peak_alpha, peak_cl = polar.alpha_deg[index], polar.cl[index]
     window = ALPHA_STEP_DEG + config().opt_alpha_margin_deg.value
+    tolerance = config().opt_peak_tolerance.value
     turning = local_extrema_from_zero(polar.alpha_deg, polar.cl, upright=upright)
-    if all(abs(polar.alpha_deg[k] - alpha_s) > window for k in turning):
+    near = [k for k in turning if abs(polar.alpha_deg[k] - alpha_s) <= window]
+    if not near:
         return CheckResult(
             state="violated",
             message=(
                 f"alpha_S = {alpha_s} deg is not at a C_L {what} of the sweep (the main one is at "
-                f"{polar.alpha_deg[index]} deg): the optimum is on another branch"
+                f"{peak_alpha} deg): the optimum is on another branch"
             ),
         )
-    peak_cl = polar.cl[index]
-    beyond = (peak_cl - cl_max) if upright else (cl_max - peak_cl)
-    if beyond > config().opt_peak_tolerance.value:
+    if index not in near and all(abs(polar.cl[k] - peak_cl) > tolerance for k in near):
         return CheckResult(
             state="violated",
             message=(
-                f"C_L = {cl_max} lies {beyond:.2e} short of the main sampled {what} {peak_cl} at "
-                f"{polar.alpha_deg[index]} deg: the optimum is on a lower {what}"
+                f"C_L = {cl_max} at alpha_S = {alpha_s} deg is not the main sampled {what} "
+                f"{peak_cl} at {peak_alpha} deg: the optimum is on another {what}"
             ),
+        )
+    beyond = (peak_cl - cl_max) if upright else (cl_max - peak_cl)
+    if beyond > tolerance:
+        return CheckResult(
+            state="violated",
+            message=f"C_L = {cl_max} lies {beyond:.2e} short of the main sampled {what} {peak_cl}",
         )
     return CheckResult(state="held", message=f"the optimum is the main C_L {what}")
 

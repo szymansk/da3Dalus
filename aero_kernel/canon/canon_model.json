@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:dc0617dea3574ce18c10779bc484d4cf5489a98eade1d96b79fc588f54a77614",
+  "content_hash": "sha256:ba1c473606a2af24ee7e7fb29e59b1df25019df6d83d89d281c3e369a6288cc2",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -202,7 +202,7 @@
         },
         "opt_peak_tolerance": {
           "basis": "numerical",
-          "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled main peak (the highest local maximum of the sweep at V_S) by this much; both are samples of one curve, so it only absorbs numerical noise. Two maxima closer in height than this count as equally high.",
+          "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled main peak (the maximum the stall rule picks on the sweep at V_S) by this much; both are samples of one curve, so it only absorbs numerical noise. Two maxima closer in height than this count as equally high.",
           "source": "float noise between two samples of one sweep",
           "unit": "1",
           "value": 1e-06

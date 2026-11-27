@@ -4,11 +4,12 @@ Real AeroSandbox and IPOPT through the public compute(), sea level. With the sta
 peak a band of masses had no stall speed on AVISTAR_ELITE (8.50 to 9.44 kg), AERONCA_CHAMP (about
 0.365 to 0.384 kg, and its nominal 0.39 kg did not converge) and CHEKKER (about 0.295 to 0.336 kg):
 an early shoulder of the lift curve exists only in a range of Reynolds numbers, so the first peak
-jumped with the speed. The stall is at the main maximum (maintainer 2026-11-27): the highest local
-maximum of the sweep, whose lift coefficient is continuous in the speed.
+jumped with the speed. The stall is at the main maximum (maintainer 2026-11-27): scanning up from
+alpha = 0, the local maximum that is higher than every one before it and has the largest fall behind
+it.
 
 Each value is checked twice. Against an independent brute force made in this file (its own
-AeroBuildup call and its own search for the highest local maximum, no kernel function): the lift
+AeroBuildup call and its own search for that maximum, no kernel function): the lift
 balance closes at that maximum. And against pinned numbers, which are **regression, not validation**
 (aero_kernel/CLAUDE.md): what this build computes (NeuralFoil xlarge, 0.25 deg sweep); they agree
 to 2e-8 with a root search over the speed made for gh-1423 with the same brute force.
@@ -63,12 +64,14 @@ def number(quantity: QuantityResult) -> float:
     return quantity.value
 
 
-def highest_local_maximum(member: FleetMember, speed: float) -> tuple[float, float, float]:
+def main_maximum(member: FleetMember, speed: float) -> tuple[float, float, float]:
     """Brute force, independent of the kernel's search: ``(alpha, C_L, S_ref)`` at ``speed``.
 
     One AeroBuildup run over the 0.25 deg sweep at sea level (AeroSandbox's own ISA atmosphere, not
-    the kernel's air state), then the highest sample above alpha = 0 that is not lower than its
-    predecessor and higher than its successor; the ends of the sweep are no maxima.
+    the kernel's air state). Above alpha = 0 (index 60) every sample not lower than its predecessor
+    and higher than its successor is a local maximum; one that is higher than all before it is a
+    candidate; the candidate whose C_L falls furthest behind it, before a later sample lies above it
+    or the sweep ends, is the main maximum.
     """
     asb: Any = load_aerosandbox()
     airplane = to_asb_airplane(AirplaneGeometry.model_validate(reference_document(member)))
@@ -76,12 +79,14 @@ def highest_local_maximum(member: FleetMember, speed: float) -> tuple[float, flo
         atmosphere=asb.Atmosphere(altitude=0.0), velocity=speed, alpha=asb.numpy.array(SWEEP_DEG)
     )
     cl = [float(v) for v in asb.AeroBuildup(airplane, point, model_size="xlarge").run()["CL"]]
-    best: int | None = None
-    for k in range(61, 160):  # samples above alpha = 0 (index 60), without the last
-        turns = cl[k] >= cl[k - 1] and cl[k] > cl[k + 1]
-        if turns and (best is None or cl[k] > cl[best]):
-            best = k
-    assert best is not None
+    falls: dict[int, float] = {}
+    for k in range(61, 160):
+        if not (cl[k] >= cl[k - 1] and cl[k] > cl[k + 1]) or any(cl[j] >= cl[k] for j in falls):
+            continue
+        above = next((j for j in range(k + 1, 161) if cl[j] > cl[k]), 161)
+        falls[k] = cl[k] - min(cl[k:above])
+    assert falls
+    best = max(falls, key=lambda k: (falls[k], -k))
     return SWEEP_DEG[best], cl[best], float(airplane.s_ref)
 
 
@@ -93,7 +98,7 @@ def highest_local_maximum(member: FleetMember, speed: float) -> tuple[float, flo
 async def test_a_mass_of_the_former_band_stalls_at_the_main_maximum(
     member: FleetMember, mass_kg: float, v_s: float, cl_max: float, alpha_s: float
 ) -> None:
-    """The kernel's C_L,max is the highest local maximum of the brute-force sweep at the kernel's V_S
+    """The kernel's C_L,max is the main maximum of the brute-force sweep at the kernel's V_S
     (the optimum is refined between the 0.25 deg samples, so it may exceed the highest sample by a
     little, never fall short of it), its angle lies within one sweep step of that sample, and the
     lift balance closes there: 0.5 rho V_S^2 S_ref C_L,max = m g."""
@@ -101,7 +106,7 @@ async def test_a_mass_of_the_former_band_stalls_at_the_main_maximum(
     speed, lift_coefficient = number(got["stall-speed"]), number(got["max-lift-coefficient"])
     angle = number(got["angle-of-attack-stall"])
     assert got["approach-speed"].status is QuantityStatus.OK
-    peak_alpha, peak_cl, area = highest_local_maximum(member, speed)
+    peak_alpha, peak_cl, area = main_maximum(member, speed)
     assert -1e-6 <= lift_coefficient - peak_cl <= 1e-3
     assert abs(angle - peak_alpha) <= 0.25
     lift = 0.5 * RHO_SEA_LEVEL * speed * speed * area * lift_coefficient

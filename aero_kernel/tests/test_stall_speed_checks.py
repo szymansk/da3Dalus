@@ -249,16 +249,17 @@ def test_the_peak_check_holds_at_the_main_maximum_behind_a_shoulder() -> None:
 
 
 def test_the_peak_check_is_violated_on_a_shoulder_below_the_main_maximum() -> None:
-    """An optimum on the shoulder is a local maximum, but 1.34 - 1.21 = 0.13 short of the main one."""
+    """An optimum on the shoulder is a local maximum, but not the one with the largest fall behind it
+    (0.01 against 0.44 behind 1.34 at 16.5 deg)."""
     result = optimum_at_main_cl_peak(x_of(), y_of(shoulder_polar(), 8.0))
     assert result.state == "violated"
-    assert "short of the main sampled peak 1.34" in result.message
+    assert "is not the main sampled peak 1.34" in result.message
 
 
 def test_the_peak_check_is_violated_on_the_post_stall_maximum_below_the_main_one() -> None:
     result = optimum_at_main_cl_peak(x_of(), y_of(shoulder_polar(), 23.0))
     assert result.state == "violated"
-    assert "short of the main sampled peak 1.34" in result.message
+    assert "is not the main sampled peak 1.34" in result.message
 
 
 def test_the_peak_check_holds_on_either_of_two_maxima_of_equal_height() -> None:
@@ -279,7 +280,7 @@ def test_the_peak_check_is_violated_between_two_maxima_where_the_curve_has_none(
 
 
 def test_the_end_of_the_sweep_is_no_maximum_even_above_every_interior_one() -> None:
-    """The curve ends at 1.5, above the main maximum 1.34: the highest interior maximum still counts."""
+    """The curve ends at 1.5, above the main maximum 1.34: the end is no maximum, 16.5 deg still counts."""
     polar = shoulder_polar(end=1.5)
     assert optimum_at_main_cl_peak(x_of(), y_of(polar, 16.5)).state == "held"
     assert optimum_at_main_cl_peak(x_of(), y_of(polar, 25.0)).state == "violated"
@@ -304,4 +305,32 @@ def test_the_trough_check_holds_at_the_main_trough_and_is_violated_on_the_should
     assert optimum_at_main_cl_trough(x_of(-1.0), y_of(polar, -11.0, n=-1.0)).state == "held"
     result = optimum_at_main_cl_trough(x_of(-1.0), y_of(polar, -6.0, n=-1.0))
     assert result.state == "violated"
-    assert "short of the main sampled trough -0.7" in result.message
+    assert "is not the main sampled trough -0.7" in result.message
+
+
+def plateau_polar() -> Polar:
+    """The WINDFREAK shape on -5..25 deg: the stall at 9.5 deg (C_L 0.860, falling to 0.744 at 13 deg)
+    and a higher flat plateau behind it (0.885 at 22 deg, 0.874 at 25 deg)."""
+    knots = [(-5.0, -0.3), (9.5, 0.860), (13.0, 0.744), (22.0, 0.885), (25.0, 0.874)]
+    alphas = [a * STEP for a in range(-20, 101)]
+
+    def cl(alpha: float) -> float:
+        for (a0, c0), (a1, c1) in pairwise(knots):
+            if alpha <= a1:
+                return c0 + (c1 - c0) * (alpha - a0) / (a1 - a0)
+        return knots[-1][1]
+
+    return Polar(alpha_deg=tuple(alphas), cl=tuple(cl(a) for a in alphas), cd=(0.05,) * len(alphas))
+
+
+def test_the_peak_check_holds_at_the_stall_below_a_higher_plateau() -> None:
+    """The main peak is the maximum with the largest fall behind it (0.116 against 0.011), not the
+    highest one: C_L,max 0.860 is held although the plateau reaches 0.885."""
+    assert optimum_at_main_cl_peak(x_of(), y_of(plateau_polar(), 9.5)).state == "held"
+
+
+def test_the_peak_check_is_violated_on_the_higher_plateau_behind_the_stall() -> None:
+    result = optimum_at_main_cl_peak(x_of(), y_of(plateau_polar(), 22.0))
+    assert result.state == "violated"
+    assert "is not the main sampled peak" in result.message
+    assert "at 9.5 deg: the optimum is on another peak" in result.message

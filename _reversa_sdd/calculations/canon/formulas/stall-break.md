@@ -43,7 +43,7 @@ width       = alpha_break - alpha_S
 
 ### The procedure
 
-**Relation solved.** The crossing `C_L(alpha) = (1 - f) * C_L,max` on the falling branch past `alpha_S`, where `alpha_S` and `C_L,max` are the main peak of the same polar (the highest local maximum; maintainer 2026-11-27, #1423) ([[stall-speed]] publishes all three together).
+**Relation solved.** The crossing `C_L(alpha) = (1 - f) * C_L,max` on the falling branch past `alpha_S`, where `alpha_S` and `C_L,max` are the main peak of the same polar (the record maximum of the scan from α = 0 with the largest fall behind it; maintainer 2026-11-27, #1423) ([[stall-speed]] publishes all three together).
 
 **Method.** Forward scan of the sampled polar from the sample at `alpha_S`; the first sample with `C_L <= (1 - f) * C_L,max` and its predecessor bracket the crossing, which is interpolated linearly between them. The scan is a single pass, O(n).
 

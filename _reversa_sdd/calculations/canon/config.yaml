@@ -76,7 +76,7 @@ opt_probe_tolerance:
 opt_peak_tolerance:
   value: 0.000001
   unit: "1"
-  guards: "Stall speed, postcondition: C_L,max may fall short of the sampled main peak (the highest local maximum of the sweep at V_S) by this much; both are samples of one curve, so it only absorbs numerical noise. Two maxima closer in height than this count as equally high."
+  guards: "Stall speed, postcondition: C_L,max may fall short of the sampled main peak (the maximum the stall rule picks on the sweep at V_S) by this much; both are samples of one curve, so it only absorbs numerical noise. Two maxima closer in height than this count as equally high."
   basis: numerical
   source: "float noise between two samples of one sweep"
 

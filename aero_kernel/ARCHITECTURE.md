@@ -1003,34 +1003,49 @@ caller's responsibility.
     triggered by a failure) and not a fixed point; an optimum on the edge of the window is still an error.
   - **The stall is at the main C_L maximum (maintainer 2026-11-27, gh-1423).** The extremum every
     bracket of the OPT adapter reads (`_bracket`: stall, best glide, minimum sink, the steady roll's
-    window, the level-flight point) is the **highest local maximum of C_L of the sweep above alpha = 0**
-    (`stall_math.main_extremum_from_zero`), and the lowest local minimum below alpha = 0 for the inverted
-    stall; one function, one authority (ADR 0022). It replaces the *first* local maximum: several fleet
-    aircraft have a shoulder before the real maximum that exists only in a range of Reynolds numbers
-    (AVISTAR_ELITE: 3·10⁻⁴ deep at 8 deg, the maximum 1.34 at 16.5 deg), so the first maximum jumped with
-    the speed and a band of masses had no stall speed (AVISTAR_ELITE 8.5–9.4 kg). The lift coefficient
-    of the highest maximum is continuous in the speed; only its angle changes where two maxima are
-    equally high. Rules:
+    window, the level-flight point) is picked by one pure function, `stall_math.main_extremum`
+    (`main_extremum_from_zero` adds the side of alpha = 0); one function, one authority (ADR 0022).
+    The decision, verbatim: "Das höchste Maximum mit dem stärksten Einbruch über mehrere Grad dahinter.
+    Bei der Extra 300 ist der eine Punkt kein Maximum mehr, da wir schon ein höheres Maximum gefunden
+    hatten. Ich gehe davon aus, dass wir von links durch die Kurve scannen und beim Windfreak haben wir
+    auch nur ein Maximum mit einem signifikanten Einbruch über mehrere Grad dahinter." Its operational
+    reading (to be confirmed with the canon entry):
+    1. Scan the 0.25 deg sweep upward from alpha = 0. A local maximum (a sample not lower than its
+       predecessor and higher than its successor) is a candidate only if it is higher than every local
+       maximum before it (a record maximum).
+    2. The fall behind a candidate is its C_L minus the lowest C_L between it and the first later
+       sample that lies above it, or the end of the sweep if none does.
+    3. The stall is the candidate with the largest fall; of two with the same fall the lower angle.
+       No threshold, no width parameter, no literal.
+    4. Inverted: mirrored (record minima scanning downward from alpha = 0, the largest rise behind).
+
+    It replaces the *first* local maximum: several fleet aircraft have a shoulder before the real
+    maximum that exists only in a range of Reynolds numbers (AVISTAR_ELITE: 3·10⁻⁴ deep at 8 deg, the
+    maximum 1.34 at 16.5 deg), so the first maximum jumped with the speed and a band of masses had no
+    stall speed (AVISTAR_ELITE 8.5–9.4 kg). It is not simply the highest maximum either: WINDFREAK
+    stalls at 9.5 deg (C_L 0.860, falling to 0.744) and has a higher flat plateau behind it (0.885 at
+    22 deg, falling 0.011). Consequences:
     - The end of the sweep is no maximum. A curve without a local maximum above alpha = 0 is
-      `not_converged` ("no peak"), as before; a curve that ends above every local maximum (low Reynolds
-      numbers) keeps its highest local one.
-    - Of two maxima of exactly the same sampled height the one at the lower angle is the bracket.
+      `not_converged` ("no peak"), as before.
     - IPOPT's window of alpha is unchanged in form: from the end of the sweep to one step past the
-      extremum. It now holds the shoulders before the main maximum; none is higher, IPOPT starts at the
-      main one, and a solution on a lower maximum is refused by the postcondition.
+      extremum. It holds the shoulders before the main maximum; none is higher (a candidate is a
+      record), IPOPT starts at the main one, and a solution elsewhere is refused by the postcondition.
     - The postcondition `optimum_at_main_cl_peak` / `_trough` (formerly `optimum_at_first_cl_*`) holds
-      when `alpha_S` lies within one sweep step of a local extremum of the sweep at `V_S` **and**
-      `C_L,max` is not short of the highest one of that sweep by more than `opt_peak_tolerance`. It does
-      not ask which of two equally high maxima carries `alpha_S`: the sweep that bracketed the solve and
-      the sweep at `V_S` run at slightly different speeds and may each name the other; the lift value,
-      and so `V_S`, is the same.
+      when `alpha_S` lies within one sweep step of the extremum this function picks on the sweep at
+      `V_S`, or of another local extremum of the same height to `opt_peak_tolerance`, **and** `C_L,max`
+      is not short of the picked one by more than that tolerance. Two equally high maxima are one lift
+      value: the sweep that bracketed the solve and the sweep at `V_S` run at slightly different speeds
+      and may each name the other.
+    - Where two record maxima are equally high the angle of the pick changes from one to the other
+      with the speed (`alpha_S` jumps), `C_L,max` and `V_S` do not. Where the *largest fall* changes
+      from one record maximum to another of different height, `C_L,max` itself steps; the rule does not
+      exclude that, and nothing in the solver smooths it.
     - A level-flight point and the start of the steady roll are still read at the crossing **nearest
       below the main peak** (`roll_math.enclosing_sample`). Where a shoulder makes the curve reach a
       lift coefficient three times, that is the crossing past the shoulder; a lift between the shoulder
       and the main maximum, formerly the wing limit, is now a value.
-    - No relocation, retry or minimum-prominence threshold: with a continuous rule there is nothing to
-      relocate (ADR 0020, ADR 0021). A first peak with a minimum depth was measured and rejected: the
-      depth is itself continuous in the speed, so the jump only moves.
+    - No relocation and no retry (ADR 0020, ADR 0021). A first peak with a minimum depth was measured
+      and rejected: the depth is itself continuous in the speed, so the jump only moves.
   - **The AVL adapter** (`solvers/avl.py`, #1203): `neutral_point(airplane, cl)`. One own writer
     (`avl_writer.py`) emits the `.avl` text: no BODY (no fuselage is modelled), no CONTROL, Mach 0, `SREF`,
     `CREF`, `BREF` from the kernel's projected geometry function (one authority, ADR 0022), the reference
@@ -1985,7 +2000,7 @@ They are the first thing a developer or an agent reads to check a change and to 
   - K27: lateral stability from AVL
   - K28/K29: triggering
   - K30: ISA
-  - K32: stall up to the main C_L peak (the highest local maximum; maintainer 2026-11-27, gh-1423)
+  - K32: stall up to the main C_L peak (the record maximum with the largest fall behind it; maintainer 2026-11-27, gh-1423)
 - **Canon rules** A1–A11 in `ANFORDERUNGEN.md` §4.
 
 ## 10. Quality scenarios (= test cases)

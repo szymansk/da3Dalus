@@ -1192,13 +1192,17 @@ Probleme ohne Schranke fallen.
 Gipfel verschiedene Punkte (K32).
 
 **Geändert 27.11.2026 (Maintainer, #1423: „Natürlich gilt hier nur das Hauptmaximum."):** Maßgeblich ist
-nicht der erste, sondern der **Hauptgipfel**: das höchste lokale $C_L$-Maximum der Abtastung oberhalb
-$\alpha = 0$ (Rückenflug: das tiefste lokale Minimum unterhalb). Das Ende der Abtastung ist kein Maximum.
+nicht der erste, sondern der **Hauptgipfel**: „Das höchste Maximum mit dem stärksten Einbruch über mehrere
+Grad dahinter." Operativ: von $\alpha = 0$ aufwärts abgetastet zählt ein lokales Maximum nur, wenn es höher
+ist als alle davor; unter diesen gilt das mit dem größten Einbruch dahinter (bis die Kurve wieder darüber
+liegt oder die Abtastung endet), ohne Schwelle und ohne Breite (Rückenflug gespiegelt). Das Ende der
+Abtastung ist kein Maximum.
 Wo oben „erster Gipfel" und $\alpha_1$ steht, gilt seither der Hauptgipfel. Grund: Eine Schulter vor dem
 eigentlichen Maximum (AVISTAR_ELITE: 3·10⁻⁴ tief bei 8°, Maximum 1,34 bei 16,5°) besteht nur in einem
 Reynolds-Bereich; der erste Gipfel springt deshalb mit der Geschwindigkeit, und für ein Band von Massen
 gab es keine Abrissgeschwindigkeit. Der BRYAN-Befund bleibt: sein erster Gipfel (1,26 bei 12°) ist auch der
-höchste. **Folge für die Annahme oben:** Vor dem Hauptgipfel ist $L$ in $\alpha$ nicht mehr überall
+Hauptgipfel; WINDFREAK zeigt den umgekehrten Fall (Plateau 0,885 bei 22° höher als der Abriss 0,860 bei
+9,5°, aber fast ohne Einbruch dahinter). **Folge für die Annahme oben:** Vor dem Hauptgipfel ist $L$ in $\alpha$ nicht mehr überall
 monoton (im Bereich einer Schulter gibt es bis zu drei Anstellwinkel mit demselben Auftrieb); der
 Kernel liefert den Schnittpunkt, der dem Hauptgipfel von unten am nächsten liegt (aero_kernel ARCHITECTURE
 §8.8). Ob dort stattdessen der kleinste Anstellwinkel gelten soll, ist nicht entschieden.
@@ -2425,7 +2429,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K29 | Sekunden-Rechnungen beim Verlassen der Konstruktionsansicht statt bei jeder Änderung; Änderungen markieren abhängige Werte sofort als veraltet (Kanon-Graph liefert den Unterbaum). Veraltete Werte ausgegraut, alter Wert per Mouse-over. Entschieden 05.10.2026 | O14 | `invalidation_service`, `background_jobs` (heute: entprellt 2 s nach Änderung), Frontend-Werteanzeige |
 | K30 | Luftdichte aus der exakten ISA: `asb.Atmosphere(..., method="isa")` an allen Aufrufstellen statt der geglätteten Standard-Näherung. Entschieden 05.10.2026 | O5 | 15 Aufrufstellen von `asb.Atmosphere` (`analysis_service`, `operating_point_generator_service`, `avl_trim_service`, `aerobuildup_trim_service`, `section_aoa_service`, `neuralfoil_cdcl_service`, `mass_cg_service`, `api/utils.py`) |
 | K31 | Auslegungsrechnungen (Korrekturzweig: Flügelversatz, Leitwerksskalierung, `a_VH`, Empfindlichkeiten, 5·MAC-Klemme) gehören in einen **eigenen Auslegungskanon**; der Rechenkanon enthält nur Analyse eines gegebenen Flugzeugs. Entschieden 05.10.2026 | O1 | `sm_sizing_service`, `tail_sizing_service` (gh-1145) |
-| K32 | Anstellwinkel aus $L = n\,W$ nach §3.4.2 (Abtastung, erster $C_L$-Gipfel als Schranke, IPOPT, ohne Lösung kein Wert + `DesignWarning`); `stall-onset-detection` ab dem **ersten** statt dem globalen $C_L$-Maximum. Entschieden 05.10.2026. **Geändert 27.11.2026 (Maintainer, #1423):** Schranke ist der Hauptgipfel (höchstes lokales $C_L$-Maximum der Abtastung), nicht der erste, siehe §3.4.2 | O3, §3.4.2 | `analysis_service.py:169` (`np.argmax`), Anstellwinkel-Löser der Trimm- und Betriebspunkt-Dienste |
+| K32 | Anstellwinkel aus $L = n\,W$ nach §3.4.2 (Abtastung, erster $C_L$-Gipfel als Schranke, IPOPT, ohne Lösung kein Wert + `DesignWarning`); `stall-onset-detection` ab dem **ersten** statt dem globalen $C_L$-Maximum. Entschieden 05.10.2026. **Geändert 27.11.2026 (Maintainer, #1423):** Schranke ist der Hauptgipfel (Maximum mit dem stärksten Einbruch dahinter), nicht der erste, siehe §3.4.2 | O3, §3.4.2 | `analysis_service.py:169` (`np.argmax`), Anstellwinkel-Löser der Trimm- und Betriebspunkt-Dienste |
 
 ## Arbeitsregeln
 

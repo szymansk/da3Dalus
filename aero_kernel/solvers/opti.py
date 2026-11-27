@@ -452,9 +452,10 @@ def _grid() -> list[float]:
 def _bracket(polar: LiftCurve, upright: bool) -> int:
     """The sample index of the main C_L peak (upright) or trough (inverted) from alpha = 0.
 
-    The main peak is the highest local maximum of the sweep above alpha = 0 (the lowest local minimum
-    below it for the trough), not the first one: the stall is at the main maximum of the lift curve
-    (maintainer 2026-11-27, gh-1423). The end of the sweep is no maximum.
+    The main peak is the one :func:`stall_math.main_extremum_from_zero` picks (maintainer 2026-11-27,
+    gh-1423): scanning up from alpha = 0, the local maximum that is higher than every one before it
+    and has the largest fall behind it; mirrored for the trough. Neither the first local maximum (a
+    shoulder) nor simply the highest (a flat post-stall plateau). The end of the sweep is no maximum.
 
     Raises:
         FormulaError: ``not_converged`` if the series does not turn inside the sampled range.
@@ -521,14 +522,13 @@ class _Solved:
 def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG) -> _Bracketed:
     """Locate the main C_L extremum and the bounds of the problem (canon K32).
 
-    The main extremum (the highest local maximum of C_L for n > 0, the lowest local minimum for
-    n < 0; gh-1423) moves with the Reynolds number, so the bracketing sweep is made at the speed
-    a first estimate implies (one refinement, not a loop); the window of alpha then reaches
-    ``peak_margin_deg`` beyond that extremum, and an optimum on its edge is an error. The window
-    starts at the end of the sweep, so it holds every local maximum before the main one (a
-    shoulder); none of them is higher, and IPOPT starts at the main one. The lift coefficient of the
-    main extremum is continuous in the speed although its angle is not: where two maxima are equally
-    high the angle changes from one to the other, the lift value does not.
+    The main extremum (:func:`_bracket`; gh-1423) moves with the Reynolds number, so the bracketing
+    sweep is made at the speed a first estimate implies (one refinement, not a loop); the window of
+    alpha then reaches ``peak_margin_deg`` beyond that extremum, and an optimum on its edge is an
+    error. The window starts at the end of the sweep, so it holds every local maximum before the
+    main one (a shoulder); none of them is higher, and IPOPT starts at the main one. Where two
+    maxima are equally high the angle of the main extremum changes from one to the other, the lift
+    value does not.
 
     Args:
         request: The problem.
@@ -674,8 +674,8 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     """Solve the stall problem in the pool worker (canon ``stall-speed``).
 
     1. Sweep alpha at the bracketing speed and find the main C_L peak (n > 0) or trough (n < 0)
-       from alpha = 0: the highest local maximum (lowest local minimum), not the first one
-       (maintainer 2026-11-27, gh-1423).
+       from alpha = 0: the record maximum (minimum) with the largest fall (rise) behind it, not
+       the first local one (maintainer 2026-11-27, gh-1423).
     2. Minimise V with IPOPT subject to ``L = n m g``, alpha restricted to the branch up to that
        extremum plus one sweep step.
     3. Refuse the solution if a bound is active at the optimum.

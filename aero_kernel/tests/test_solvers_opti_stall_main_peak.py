@@ -1,4 +1,5 @@
-"""The stall bracket is the main C_L maximum, not the first local one (gh-1423, maintainer 2026-11-27).
+"""The stall bracket is the main C_L maximum, not the first local one (gh-1423, maintainer 2026-11-27):
+the record maximum of the scan from alpha = 0 with the largest fall behind it.
 
 Faked sweeps with more than one local maximum (the solver boundary is the recording fake): the
 bracket, the window of alpha and the start IPOPT receives are read off the problem the worker states.
@@ -37,6 +38,9 @@ SHOULDER: Knots = (
 # Two maxima whose order depends on the speed: at 8 deg and at 18 deg.
 LOW_FIRST: Knots = ((-15.0, -0.6), (8.0, 1.25), (12.0, 1.0), (18.0, 1.20), (25.0, 0.9))
 HIGH_SECOND: Knots = ((-15.0, -0.6), (8.0, 1.20), (12.0, 1.0), (18.0, 1.25), (25.0, 0.9))
+# The WINDFREAK shape: the stall at 9.5 deg (0.860, falling to 0.744) and a higher flat plateau
+# behind it (0.885 at 22 deg, 0.874 at the end of the sweep).
+PLATEAU: Knots = ((-15.0, -0.6), (9.5, 0.860), (13.0, 0.744), (22.0, 0.885), (25.0, 0.874))
 # No interior maximum above alpha = 0: the curve rises to the end of the sweep.
 RISING: Knots = ((-15.0, -0.6), (25.0, 1.4))
 # The curve ends above its only interior maximum (1.1 at 10 deg): the low-Reynolds shape.
@@ -182,3 +186,18 @@ async def test_the_inverted_stall_is_bracketed_at_the_main_trough_behind_a_shoul
     )
     assert math.isclose(swept[1], speed_for(0.7), rel_tol=1e-12)
     assert math.isclose(outcome.value.cl_max, -0.7, abs_tol=1e-12)
+
+
+async def test_the_stall_is_bracketed_before_a_higher_plateau_with_a_small_fall_behind_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The plateau maximum (0.885 at 22 deg) is higher than the stall (0.860 at 9.5 deg) but falls
+    only 0.011 behind it, the stall 0.116: the window ends at 9.75 deg, the start is 9.5 deg and the
+    second sweep runs at the speed 0.860 implies."""
+    request, boundary, swept = install(monkeypatch, lambda _v: PLATEAU, (speed_for(0.86), 9.5))
+    outcome = opti_module.stall_worker(request)
+    (problem,) = boundary.problems
+    alpha = problem.variables["alpha"]
+    assert (alpha["upper_bound"], alpha["init_guess"]) == (9.75, 9.5)
+    assert math.isclose(swept[1], speed_for(0.86), rel_tol=1e-12)
+    assert math.isclose(outcome.value.cl_max, 0.86, abs_tol=1e-12)
