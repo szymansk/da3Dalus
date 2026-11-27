@@ -192,6 +192,10 @@ PR-CI + Sonar grün → squash-mergen, #1474 schließt sich. `rest` bleibt rot b
 **#1481 Teil 1** (Holm im Roundtrip): Ursache `_resolve_single_spare` behandelte `standard_backward`/`orthogonal_backward` wie
 `standard`; **PR #1487** offen (Worktree `.worktrees/gh-1481`). Teil 2 (Designer-Aufgabe endet nicht) und Teil 3 (Linux-only
 `test_shape_tolerant`) nicht begonnen. #1480 wartet weiter auf Maintainer-Freigabe für `cad_designer`.
+**#1481 Teil 2 geklärt:** Test war veraltet (schickte Holm-Maße in mm an `POST …/spars`, das seit gh-366 Meter nimmt → Holme
+1000-fach zu groß). Test in PR #1487 korrigiert (zweiter Commit). Offen: Zeitbudget — zwei Vase-Mode-Stufen je ca. 190 s, Test
+wartet 240 s je Aufgabe, Testlimit 360 s; lokaler Lauf unter Fremdlast lief ins 240-s-Limit. Nicht geändert, Messwert vom Runner fehlt.
+PR #1486: PR-CI + Sonar grün; Merge wartet auf Nightly 46063023420 (Stand 21:45: 6 Teile grün, 0 rot, Rest läuft).
 Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F03, P8-F06, ULTRA_STICK_120-Masse, #1423 für AERONCA_CHAMP.
 
 ## Verlauf
@@ -246,3 +250,5 @@ Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F
 - #1474 Ursache bestätigt, Fix-Zweig gepusht, Release-Freigabe angefragt
 - Release avl-binary-v1.0.1 veröffentlicht, PR #1486 (#1474) und PR #1487 (#1481 Teil 1) offen, Nightly 46063023420 läuft
 - Release avl-binary-v1.0.1, PR #1486 und #1487 offen
+- #1481 Teil 2: veralteter Test (mm statt m), in PR #1487 korrigiert; Zeitbudget offen
+- #1481 Teil 2 geklärt, PR #1487 erweitert
