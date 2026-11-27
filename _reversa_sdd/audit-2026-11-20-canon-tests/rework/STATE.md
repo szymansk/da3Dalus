@@ -186,8 +186,12 @@ Vorteil. Zwei rein rechnende Tests brauchen auf dem Runner 940 s / 575 s (> 360 
 Wheel gebaut und geprüft (dgetrf_, sin/cos double): Scratchpad `wheel/avl_binary-1.0.1-…x86_64.whl` — bei Verlust neu bauen:
 `docker build --platform linux/amd64 -f avl-binary/Dockerfile.avl-amd64 .`, Binary `/home/avl/bin/avl` herauskopieren,
 `build_wheels.py --platform linux_x86_64 --binary <pfad>`.
-**Wiedereinstieg:** Maintainer nach Freigabe für Release `avl-binary-v1.0.1` gefragt. Nach Ja: `gh release create`, Linux-URL in
-`pyproject.toml` auf 1.0.1, `poetry lock`, PR, Nightly per `gh workflow run test.yml --ref <branch> -f run_nightly=true` prüfen, mergen.
+**Release freigegeben und veröffentlicht** (`avl-binary-v1.0.1`, nur Linux-Wheel). **PR #1486** (#1474) offen; Nightly auf dem Zweig:
+Lauf 46063023420 (ca. 3,5 h). **Wiedereinstieg:** Lauf auswerten (`gh run view 46063023420 --json jobs`); Kernteile grün und
+PR-CI + Sonar grün → squash-mergen, #1474 schließt sich. `rest` bleibt rot bis #1480/#1481.
+**#1481 Teil 1** (Holm im Roundtrip): Ursache `_resolve_single_spare` behandelte `standard_backward`/`orthogonal_backward` wie
+`standard`; **PR #1487** offen (Worktree `.worktrees/gh-1481`). Teil 2 (Designer-Aufgabe endet nicht) und Teil 3 (Linux-only
+`test_shape_tolerant`) nicht begonnen. #1480 wartet weiter auf Maintainer-Freigabe für `cad_designer`.
 Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F03, P8-F06, ULTRA_STICK_120-Masse, #1423 für AERONCA_CHAMP.
 
 ## Verlauf
@@ -240,3 +244,5 @@ Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F
 - P1-F08 erledigt (PR #1478); #1475 PR #1482, Folgetickets #1479–#1481; #1474 Gegenlauf läuft
 - #1479 geschlossen (PR #1485); #1474 Ursache bestätigt, Fix-Zweig gepusht, Release-Freigabe angefragt
 - #1474 Ursache bestätigt, Fix-Zweig gepusht, Release-Freigabe angefragt
+- Release avl-binary-v1.0.1 veröffentlicht, PR #1486 (#1474) und PR #1487 (#1481 Teil 1) offen, Nightly 46063023420 läuft
+- Release avl-binary-v1.0.1, PR #1486 und #1487 offen
