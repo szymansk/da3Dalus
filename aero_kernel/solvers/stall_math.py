@@ -1,6 +1,5 @@
 """Pure helpers of the stall problem (canon ``stall-speed``, K32)."""
 
-import math
 from collections.abc import Sequence
 
 __all__ = [
@@ -35,28 +34,32 @@ def local_extrema(values: Sequence[float], *, maximum: bool) -> list[int]:
     return found
 
 
-def main_extremum(values: Sequence[float], *, maximum: bool) -> int | None:
+def main_extremum(
+    values: Sequence[float], *, maximum: bool, recovery_fraction: float
+) -> int | None:
     """Return the index of the main extremum of a series: the stall of a lift curve.
 
-    The rule (maintainer, 2026-11-27, gh-1423: "Das hoechste Maximum mit dem staerksten Einbruch
-    ueber mehrere Grad dahinter", scanning the curve from the left), for a maximum:
+    The rule (maintainer, 2026-11-27, gh-1423: the maximum "wo es danach richtig abstuerzt", "mit
+    dem staerksten Einbruch ueber mehrere Grad dahinter"), for a maximum:
 
-    1. A local maximum (:func:`local_extrema`) is a candidate only if it is higher than every local
-       maximum before it in scan order (a record maximum): after a higher maximum a lower one is no
-       maximum of the scan.
-    2. The fall behind a candidate is its value minus the lowest value between it and the first
-       later sample that lies above it, or the end of the series if none does.
-    3. The main maximum is the candidate with the largest fall; of two with the same fall the first
-       in scan order.
+    1. The fall behind a local maximum (:func:`local_extrema`) is its value minus the lowest value
+       reached behind it before the series has climbed back from that lowest value by more than
+       ``recovery_fraction`` of what it had fallen so far, or up to the end of the series.
+    2. The main maximum is the local maximum with the largest fall; of two with the same fall the
+       first in scan order.
 
-    A minimum is the mirror (record minima, the largest rise behind). There is no threshold and no
-    width: a shoulder before the real maximum has a small fall because the curve soon rises above
-    it, and a flat post-stall plateau has a small fall although it may be the highest maximum. The
-    end of the series is no extremum.
+    A minimum is the mirror (the largest rise behind). A shoulder before the real maximum has a
+    small fall because the curve recovers at once; a ledge inside a descent does not end the fall;
+    a flat post-stall plateau has a small fall although it may be the highest maximum; a hump before
+    the stall that is higher than the stall loses to it if the curve recovers behind the hump and
+    drops behind the stall. The main maximum is therefore not always the highest one. The end of
+    the series is no extremum.
 
     Args:
         values: The series in scan order, e.g. ``C_L`` over rising angle of attack.
         maximum: ``True`` for the main peak, ``False`` for the main trough.
+        recovery_fraction: The share of a fall the series must climb back to end that fall
+            (``opt_stall_recovery_fraction`` of the kernel's configuration).
 
     Returns:
         The index of the extremum, or ``None`` if the series does not turn inside its range.
@@ -65,25 +68,21 @@ def main_extremum(values: Sequence[float], *, maximum: bool) -> int | None:
     series = [sign * value for value in values]
     best: int | None = None
     best_fall = 0.0
-    record = -math.inf
     for index in local_extrema(series, maximum=True):
-        if series[index] <= record:
-            continue
-        record = series[index]
-        fall = _fall_behind(series, index)
+        fall = _fall_behind(series, index, recovery_fraction)
         if best is None or fall > best_fall:
             best, best_fall = index, fall
     return best
 
 
-def _fall_behind(series: Sequence[float], index: int) -> float:
-    """How far ``series`` falls behind ``index`` before it is above ``series[index]`` again."""
-    lowest = series[index]
+def _fall_behind(series: Sequence[float], index: int, recovery_fraction: float) -> float:
+    """How far ``series`` falls behind ``index`` before it recovers by more than the fraction."""
+    top = lowest = series[index]
     for value in series[index + 1 :]:
-        if value > series[index]:
-            break
         lowest = min(lowest, value)
-    return series[index] - lowest
+        if value - lowest > recovery_fraction * (top - lowest):
+            break
+    return top - lowest
 
 
 def _scan_from_zero(alphas_deg: Sequence[float], *, upright: bool) -> list[int]:
@@ -112,24 +111,28 @@ def local_extrema_from_zero(
 
 
 def main_extremum_from_zero(
-    alphas_deg: Sequence[float], cl: Sequence[float], *, upright: bool
+    alphas_deg: Sequence[float], cl: Sequence[float], *, upright: bool, recovery_fraction: float
 ) -> int | None:
     """Return the sample index of the main C_L peak (upright) or trough (inverted) from alpha = 0.
 
     The scan starts at the sample nearest alpha = 0 and runs towards rising alpha for a peak and
-    falling alpha for a trough (canon K32); the main extremum is the record maximum (minimum) of
+    falling alpha for a trough (canon K32); the main extremum is the local maximum (minimum) of
     that side with the largest fall (rise) behind it (:func:`main_extremum`).
 
     Args:
         alphas_deg: Angles of attack in degrees, rising.
         cl: Lift coefficient per sample.
         upright: ``True`` for the C_L,max branch (n > 0), ``False`` for the C_L,min branch.
+        recovery_fraction: The share of a fall the curve must climb back to end that fall
+            (``opt_stall_recovery_fraction``).
 
     Returns:
         The index into the series, or ``None`` if the curve does not turn inside the range.
     """
     scan = _scan_from_zero(alphas_deg, upright=upright)
-    found = main_extremum([cl[k] for k in scan], maximum=upright)
+    found = main_extremum(
+        [cl[k] for k in scan], maximum=upright, recovery_fraction=recovery_fraction
+    )
     return None if found is None else scan[found]
 
 

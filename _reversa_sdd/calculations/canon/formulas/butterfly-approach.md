@@ -82,7 +82,7 @@ from it (maintainer, 2026-10-02):
 **Exists only if the geometry has camber flaps and ailerons** (as A3 for the flap
 configurations): crow needs both.
 
-**The stall optimum at every `s` lies at the main `C_L` peak** (the record maximum of the scan from α = 0 with the largest fall behind it, [[stall-speed]]; maintainer 2026-11-27, #1423) — postcondition
+**The stall optimum at every `s` lies at the main `C_L` peak** (the local maximum above α = 0 with the largest fall behind it, [[stall-speed]]; maintainer 2026-11-27, #1423) — postcondition
 `optimum_at_main_cl_peak`, checked at every s; same check as stall-speed (K32), one shared
 implementation, not a copy (architect, 2026-10-15). Not an embed: a form that re-solves another
 formula's problem under a configuration it varies itself is not an embed (ARCHITECTURE §8.5).

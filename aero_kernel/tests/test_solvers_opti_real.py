@@ -96,7 +96,9 @@ async def test_the_polar_contains_alpha_s_and_the_optimum_is_the_first_peak() ->
     polar = solution.polar
     assert solution.alpha_s in polar.alpha_deg
     assert polar.cl[polar.alpha_deg.index(solution.alpha_s)] == solution.cl_max
-    peak = main_extremum(list(polar.cl[polar.alpha_deg.index(0.0) :]), maximum=True)
+    peak = main_extremum(
+        list(polar.cl[polar.alpha_deg.index(0.0) :]), maximum=True, recovery_fraction=0.5
+    )
     assert peak is not None
     sampled_peak_alpha = polar.alpha_deg[polar.alpha_deg.index(0.0) + peak]
     assert abs(sampled_peak_alpha - solution.alpha_s) <= ALPHA_STEP_DEG + 1e-9
@@ -138,7 +140,7 @@ async def test_the_inverted_stall_obeys_the_lift_balance_and_is_the_first_trough
     polar = solution.polar
     zero = polar.alpha_deg.index(0.0)
     downwards = list(reversed(polar.cl[: zero + 1]))
-    trough = main_extremum(downwards, maximum=False)
+    trough = main_extremum(downwards, maximum=False, recovery_fraction=0.5)
     assert trough is not None
     sampled_trough_alpha = polar.alpha_deg[zero - trough]
     assert abs(sampled_trough_alpha - solution.alpha_s) <= ALPHA_STEP_DEG + 1e-9

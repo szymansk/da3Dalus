@@ -70,6 +70,9 @@ CHEKKER_GOLDEN = (
 WIESEL_GOLDEN = (8.1096438, 1.0832737, 11.8862101)  # #1358: was 8.1057323, 1.0843195, 11.8867507
 
 
+RECOVERY = 0.5  # opt_stall_recovery_fraction of the kernel's configuration
+
+
 def sea_level_air() -> AirState:
     """The ISA state at sea level, as the kernel's ATM adapter returns it."""
     return AirState(
@@ -186,10 +189,15 @@ async def test_bryans_inverted_trough_exists_only_at_the_low_speed_of_the_first_
     grid = [ALPHA_MIN_DEG + k * ALPHA_STEP_DEG for k in range(count + 1)]
     slow = sweep_lift(airplane, air, 5.88, grid, "small")
     fast = sweep_lift(airplane, air, 8.32, grid, "small")
-    index = main_extremum_from_zero(slow.alpha_deg, slow.cl, upright=False)
+    index = main_extremum_from_zero(
+        slow.alpha_deg, slow.cl, upright=False, recovery_fraction=RECOVERY
+    )
     assert index is not None
     assert slow.alpha_deg[index] == -10.5
-    assert main_extremum_from_zero(fast.alpha_deg, fast.cl, upright=False) is None
+    assert (
+        main_extremum_from_zero(fast.alpha_deg, fast.cl, upright=False, recovery_fraction=RECOVERY)
+        is None
+    )
 
 
 async def test_jaguar_regression_goldens() -> None:
@@ -384,6 +392,8 @@ async def test_the_kernel_stall_is_the_fixed_point_of_the_lift_sweep_at_its_own_
     count = round((ALPHA_MAX_DEG - ALPHA_MIN_DEG) / ALPHA_STEP_DEG)
     grid = [ALPHA_MIN_DEG + k * ALPHA_STEP_DEG for k in range(count + 1)]
     curve = sweep_lift(airplane, sea_level_air(), v_s, grid, opti_module.NEURALFOIL_MODEL_SIZE)
-    peak = main_extremum_from_zero(curve.alpha_deg, curve.cl, upright=True)
+    peak = main_extremum_from_zero(
+        curve.alpha_deg, curve.cl, upright=True, recovery_fraction=RECOVERY
+    )
     assert peak is not None
     assert abs(curve.cl[peak] - cl_max) <= 1e-3

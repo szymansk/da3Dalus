@@ -118,8 +118,8 @@ def main_extremum_check(
     """The optimum is at the main sampled C_L peak (trough) of the sweep at ``V_S``.
 
     The main peak is the one :func:`main_extremum_from_zero` picks (maintainer 2026-11-27, gh-1423:
-    the record maximum of the scan from alpha = 0 with the largest fall behind it; neither the
-    first local maximum nor simply the highest). The check holds when ``alpha_S`` lies within one
+    the local maximum above alpha = 0 with the largest fall behind it; neither the first local
+    maximum nor always the highest). The check holds when ``alpha_S`` lies within one
     sweep step of that extremum, or of another local extremum of the same height to
     ``opt_peak_tolerance`` (two maxima of equal height are one lift value, and the sweep that
     bracketed the solve and this one may each name the other), and ``C_L,max`` is not short of the
@@ -129,7 +129,12 @@ def main_extremum_check(
     runs it on its polar, ``butterfly-approach`` on the polar of each crow mix (K32).
     """
     what = "peak" if upright else "trough"
-    index = main_extremum_from_zero(polar.alpha_deg, polar.cl, upright=upright)
+    index = main_extremum_from_zero(
+        polar.alpha_deg,
+        polar.cl,
+        upright=upright,
+        recovery_fraction=config().opt_stall_recovery_fraction.value,
+    )
     if index is None:
         return CheckResult(
             state="violated", message=f"the sweep at V_S has no C_L {what} inside its range"
@@ -195,7 +200,12 @@ def alpha_range_past_inverted_stall(
     polar = _polar(y)
     if polar is None:
         return _unchecked("the sweep range is read off the polar")
-    index = main_extremum_from_zero(polar.alpha_deg, polar.cl, upright=False)
+    index = main_extremum_from_zero(
+        polar.alpha_deg,
+        polar.cl,
+        upright=False,
+        recovery_fraction=config().opt_stall_recovery_fraction.value,
+    )
     if index is None:
         return CheckResult(
             state="violated",

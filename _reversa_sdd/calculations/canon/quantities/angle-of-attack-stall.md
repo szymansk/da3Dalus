@@ -15,7 +15,7 @@ type: scalar
 
 # Angle of attack at the stall · `alpha_stall`
 
-Angle of attack at the stall (clean configuration, main `C_L` peak: the record maximum of the scan from α = 0 with the largest fall behind it, #1423): the optimum α of [[stall-speed]], from the nonlinear polar at the right Reynolds
+Angle of attack at the stall (clean configuration, main `C_L` peak: the local maximum above α = 0 with the largest fall behind it, #1423): the optimum α of [[stall-speed]], from the nonlinear polar at the right Reynolds
 number (maintainer, 2026-10-14, D2). Replaces `characteristic-angle-of-attack`, which carried three
 conditions in one quantity (A2; #1181).
 

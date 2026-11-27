@@ -1008,38 +1008,41 @@ caller's responsibility.
     The decision, verbatim: "Das höchste Maximum mit dem stärksten Einbruch über mehrere Grad dahinter.
     Bei der Extra 300 ist der eine Punkt kein Maximum mehr, da wir schon ein höheres Maximum gefunden
     hatten. Ich gehe davon aus, dass wir von links durch die Kurve scannen und beim Windfreak haben wir
-    auch nur ein Maximum mit einem signifikanten Einbruch über mehrere Grad dahinter." Its operational
-    reading (to be confirmed with the canon entry):
-    1. Scan the 0.25 deg sweep upward from alpha = 0. A local maximum (a sample not lower than its
-       predecessor and higher than its successor) is a candidate only if it is higher than every local
-       maximum before it (a record maximum).
-    2. The fall behind a candidate is its C_L minus the lowest C_L between it and the first later
-       sample that lies above it, or the end of the sweep if none does.
-    3. The stall is the candidate with the largest fall; of two with the same fall the lower angle.
-       No threshold, no width parameter, no literal.
-    4. Inverted: mirrored (record minima scanning downward from alpha = 0, the largest rise behind).
+    auch nur ein Maximum mit einem signifikanten Einbruch über mehrere Grad dahinter." And on SNOOPY: "Beim
+    Snoopy wäre es der zweite niedrigere Punkt. Also da, wo es danach richtig abstürzt." Its operational
+    reading (to be confirmed with the canon entry): the local maximum in front of the real crash.
+    1. For each local maximum of the 0.25 deg sweep above alpha = 0 (a sample not lower than its
+       predecessor and higher than its successor), the fall behind it is its C_L minus the lowest C_L
+       reached behind it before the curve has climbed back from that lowest value by more than the
+       fraction `opt_stall_recovery_fraction` (0.5, `config.yaml`) of what it had fallen so far;
+       otherwise the fall runs to the end of the sweep. A ledge inside a descent does not end the fall,
+       a real recovery does.
+    2. The stall is the local maximum with the largest fall; of two with the same fall the lower angle.
+    3. Inverted: mirrored (local minima below alpha = 0, the largest rise behind).
 
     It replaces the *first* local maximum: several fleet aircraft have a shoulder before the real
     maximum that exists only in a range of Reynolds numbers (AVISTAR_ELITE: 3·10⁻⁴ deep at 8 deg, the
     maximum 1.34 at 16.5 deg), so the first maximum jumped with the speed and a band of masses had no
-    stall speed (AVISTAR_ELITE 8.5–9.4 kg). It is not simply the highest maximum either: WINDFREAK
-    stalls at 9.5 deg (C_L 0.860, falling to 0.744) and has a higher flat plateau behind it (0.885 at
-    22 deg, falling 0.011). Consequences:
+    stall speed (AVISTAR_ELITE 8.5–9.4 kg). It is not the highest maximum either: WINDFREAK stalls at
+    9.5 deg (C_L 0.860, falling to 0.744) and has a higher flat plateau behind it (0.885 at 22 deg,
+    falling 0.011); SNOOPY has a front hump (1.447 at 7.25 deg, falling 0.12) higher than its stall
+    (1.420 at 13 deg, falling 0.42). Consequences:
     - The end of the sweep is no maximum. A curve without a local maximum above alpha = 0 is
       `not_converged` ("no peak"), as before.
     - IPOPT's window of alpha is unchanged in form: from the end of the sweep to one step past the
-      extremum. It holds the shoulders before the main maximum; none is higher (a candidate is a
-      record), IPOPT starts at the main one, and a solution elsewhere is refused by the postcondition.
+      extremum. It holds every local maximum before the main one, and one of them can be higher (a
+      hump); IPOPT starts at the main one, and a solution on another is refused by the postcondition.
     - The postcondition `optimum_at_main_cl_peak` / `_trough` (formerly `optimum_at_first_cl_*`) holds
       when `alpha_S` lies within one sweep step of the extremum this function picks on the sweep at
       `V_S`, or of another local extremum of the same height to `opt_peak_tolerance`, **and** `C_L,max`
       is not short of the picked one by more than that tolerance. Two equally high maxima are one lift
       value: the sweep that bracketed the solve and the sweep at `V_S` run at slightly different speeds
       and may each name the other.
-    - Where two record maxima are equally high the angle of the pick changes from one to the other
-      with the speed (`alpha_S` jumps), `C_L,max` and `V_S` do not. Where the *largest fall* changes
-      from one record maximum to another of different height, `C_L,max` itself steps; the rule does not
-      exclude that, and nothing in the solver smooths it.
+    - The pick is not always the highest maximum, so `C_L,max` is not guaranteed continuous in the
+      speed: where the largest fall changes from one maximum to another of different height, `C_L,max`
+      steps, and a mass inside such a step has no speed at which the picked maximum carries it (the
+      solve then fails, `not_converged` or `postcondition_violated`). Nothing in the solver smooths or
+      relocates it (ADR 0020).
     - A level-flight point and the start of the steady roll are still read at the crossing **nearest
       below the main peak** (`roll_math.enclosing_sample`). Where a shoulder makes the curve reach a
       lift coefficient three times, that is the crossing past the shoulder; a lift between the shoulder
@@ -2000,7 +2003,7 @@ They are the first thing a developer or an agent reads to check a change and to 
   - K27: lateral stability from AVL
   - K28/K29: triggering
   - K30: ISA
-  - K32: stall up to the main C_L peak (the record maximum with the largest fall behind it; maintainer 2026-11-27, gh-1423)
+  - K32: stall up to the main C_L peak (the local maximum with the largest fall behind it; maintainer 2026-11-27, gh-1423)
 - **Canon rules** A1–A11 in `ANFORDERUNGEN.md` §4.
 
 ## 10. Quality scenarios (= test cases)

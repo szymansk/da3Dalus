@@ -80,6 +80,13 @@ opt_peak_tolerance:
   basis: numerical
   source: "float noise between two samples of one sweep"
 
+opt_stall_recovery_fraction:
+  value: 0.5
+  unit: "1"
+  guards: "Stall bracket (stall-speed and every problem bracketed at the stall): the fall behind a local maximum of the lift curve ends once C_L has climbed back from its lowest value by more than this fraction of what it had fallen so far. A ledge inside a descent therefore does not end the fall, a real recovery does. The stall is the local maximum with the largest fall."
+  basis: decision
+  source: "Maintainer 2026-11-27 (#1423): the stall is the maximum 'wo es danach richtig abstuerzt' (EXTRA_300_EP 13 deg, WINDFREAK 9.5 deg, SNOOPY 13 deg). The fraction is the operational reading of that decision, not yet confirmed by the maintainer; measured on the reference fleet 2026-11-27 (36 aircraft, 61 speeds 3-40 m/s, 0.25 deg sweep): the picks are identical for 0.25, 0.5 and 0.75 over each member's range of 0.5 to 1.5 times its mass, except one sample (BF109_E at 0.75). A ratio of two lift-coefficient differences of one curve: dimensionless and not tied to a Reynolds or Mach range (ADR 0028)."
+
 opt_level_lift_tolerance:
   value: 0.000001
   unit: "1"

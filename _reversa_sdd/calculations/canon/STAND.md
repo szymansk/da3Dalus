@@ -668,9 +668,11 @@ the sentence on the app's 7.0 fallback removed). The computation is unchanged. 3
 **The stall is at the main `C_L` maximum (maintainer 2026-11-27, #1423: "Natürlich gilt hier nur das
 Hauptmaximum.").** `stall-speed` no longer asks for the first `C_L` peak from α = 0 but for the main one;
 "Das höchste Maximum mit dem stärksten Einbruch über mehrere Grad dahinter." Operational reading (to be
-confirmed): scanning up from α = 0, a local maximum counts only if it is higher than every one before it;
-of those the one with the largest fall behind it (until the curve is above it again, or the end of the
-sweep), no threshold; mirrored for the inverted application; the end of the sweep is no maximum. Reason: a shoulder before the real maximum exists only in a range of Reynolds numbers, so the first
+confirmed): of the local maxima above α = 0 the one with the largest fall behind it, a fall ending once
+the curve has climbed back by more than `opt_stall_recovery_fraction` = 0.5 of it (new in `config.yaml`,
+fleet measurement), else at the end of the sweep; mirrored for the inverted application; the end of the
+sweep is no maximum; the pick is not always the highest maximum (SNOOPY: "da, wo es danach richtig
+abstürzt"). Reason: a shoulder before the real maximum exists only in a range of Reynolds numbers, so the first
 peak jumped with the speed and a band of masses had no stall speed (AVISTAR_ELITE 8.5–9.4 kg, AERONCA_CHAMP,
 CHEKKER). The postconditions are renamed `optimum_at_main_cl_peak` / `optimum_at_main_cl_trough` (older
 entries of this file keep `optimum_at_first_cl_*`); every bracket of the OPT adapter (best glide, minimum

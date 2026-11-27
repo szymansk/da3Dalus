@@ -100,28 +100,35 @@ peak carries the weight" (AVISTAR_ELITE 8.5–9.4 kg; also AERONCA_CHAMP and CHE
 stärksten Einbruch über mehrere Grad dahinter. Bei der Extra 300 ist der eine Punkt kein Maximum mehr, da
 wir schon ein höheres Maximum gefunden hatten. Ich gehe davon aus, dass wir von links durch die Kurve
 scannen und beim Windfreak haben wir auch nur ein Maximum mit einem signifikanten Einbruch über mehrere
-Grad dahinter."
+Grad dahinter." And on SNOOPY, whose front hump (1.447 at 7.25°) is higher than its stall (1.420 at 13°):
+"Beim Snoopy wäre es der zweite niedrigere Punkt. Also da, wo es danach richtig abstürzt."
 
-**Operational reading** (orchestrator's and implementer's, to be confirmed with this entry):
+**Operational reading** (orchestrator's and implementer's, to be confirmed with this entry): the stall is
+the local maximum in front of the real crash.
 
-1. Scan the sweep upward from α = 0. A local maximum is a candidate only if it is higher than every local
-   maximum before it (a record maximum).
-2. The fall behind a candidate is its `C_L` minus the lowest `C_L` between it and the first later sample
-   that lies above it, or the end of the sweep if none does.
-3. The stall is the candidate with the largest fall. No threshold, no width parameter; of two candidates
-   with the same fall the lower angle.
-4. Inverted application: mirrored (record minima scanning downward from α = 0, the largest rise behind).
+1. For each local maximum of `C_L` above α = 0, the **fall** behind it is its `C_L` minus the lowest `C_L`
+   reached behind it before the curve has climbed back from that lowest value by more than a fraction `R`
+   of what it had fallen so far; otherwise the fall runs to the end of the sweep. A ledge inside a descent
+   therefore does not end the fall, a real recovery does.
+2. The stall is the local maximum with the largest fall; of two with the same fall the lower angle.
+3. `R = 0.5` (`opt_stall_recovery_fraction`, `config.yaml`): on the reference fleet (36 aircraft, 61
+   speeds, 2026-11-27) the picks are the same for 0.25, 0.5 and 0.75 over each aircraft's range of 0.5 to
+   1.5 times its mass, except one sample (BF109_E at 0.75). A ratio of two differences of `C_L` on one
+   curve: dimensionless, not tied to a Reynolds range (ADR 0028).
+4. Inverted application: mirrored (local minima below α = 0, the largest rise behind).
 
 The end of the sweep is not a maximum: a curve that still rises at 25° and has no local maximum keeps the
-"no peak" failure. A shoulder is a candidate with a small fall (the curve soon rises above it); a lower
-maximum behind a higher one is no candidate (EXTRA_300_EP: 1.130 at 13°, then 1.087 at 14.5°); a flat
-post-stall plateau that is higher than the stall has a small fall (WINDFREAK: the stall 0.860 at 9.5°
-falling to 0.744, the plateau 0.885 at 22° falling 0.011). The BRYAN case above is unchanged: its first
-peak (1.26 at 12°) is its only candidate, the 23° plateau (1.07) is lower. Where two candidates are equally
-high the stall angle `α_S` changes from one to the other with the speed, `C_L,max` and `V_S` do not. The
-postcondition `optimum_at_main_cl_peak` (formerly `optimum_at_first_cl_peak`; `_trough` likewise) asks that
-`α_S` is at the maximum this rule picks on the sweep at `V_S` (or at another of the same height) and that
-`C_L,max` is not short of it. A first peak that counts only above a minimum depth was measured and
+"no peak" failure. A shoulder has a small fall (the curve recovers at once); a ledge in the descent
+belongs to the fall of the maximum before it (EXTRA_300_EP: 1.130 at 13°, the ledge 1.087 at 14.5°); a
+flat post-stall plateau that is higher than the stall has a small fall (WINDFREAK: the stall 0.860 at
+9.5° falling to 0.744, the plateau 0.885 at 22° falling 0.011); a hump before the stall loses to it where
+the curve recovers behind the hump and drops behind the stall (SNOOPY: 0.12 against 0.42). The BRYAN case
+above is unchanged: its first peak (1.26 at 12°) has the largest fall, the 23° plateau (1.07) a smaller
+one. **The main maximum is therefore not always the highest one**, and where the pick changes from one
+maximum to another of different height with the speed, `C_L,max` steps; the rule does not exclude that.
+The postcondition `optimum_at_main_cl_peak` (formerly `optimum_at_first_cl_peak`; `_trough` likewise) asks
+that `α_S` is at the maximum this rule picks on the sweep at `V_S` (or at another of the same height) and
+that `C_L,max` is not short of it. A first peak that counts only above a minimum depth was measured and
 rejected: the depth is continuous in the speed, so the jump only moves.
 
 **Third output: `α_S`, the stall angle** (maintainer, 2026-10-14, D2) — the optimum α at the main
@@ -176,7 +183,7 @@ the negative maximum lift coefficient [[inverted-max-lift-coefficient]], the mir
 It replaces the former formula entry `inverted-max-lift-coefficient`, which read the trough off a sampled
 polar and would have been a second producer of the same quantity (A7, ADR 0022).
 
-**Bracketing — K32 mirrored.** The α sweep runs to the **main negative-`C_L` trough** (the mirror of the rule above, scanning downward from α = 0: the record minimum with the largest rise behind it; maintainer 2026-11-27, #1423) before IPOPT, and
+**Bracketing — K32 mirrored.** The α sweep runs to the **main negative-`C_L` trough** (the mirror of the rule above, below α = 0: the local minimum with the largest rise behind it; maintainer 2026-11-27, #1423) before IPOPT, and
 `α` is restricted to that branch. The trough must lie strictly inside the sampled range: the default
 sweep starts at −15°, and a cambered section can stall inverted beyond that; a range chosen for the
 upright polar is not automatically sufficient for the inverted one (postcondition

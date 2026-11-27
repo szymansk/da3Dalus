@@ -453,14 +453,20 @@ def _bracket(polar: LiftCurve, upright: bool) -> int:
     """The sample index of the main C_L peak (upright) or trough (inverted) from alpha = 0.
 
     The main peak is the one :func:`stall_math.main_extremum_from_zero` picks (maintainer 2026-11-27,
-    gh-1423): scanning up from alpha = 0, the local maximum that is higher than every one before it
-    and has the largest fall behind it; mirrored for the trough. Neither the first local maximum (a
-    shoulder) nor simply the highest (a flat post-stall plateau). The end of the sweep is no maximum.
+    gh-1423): above alpha = 0, the local maximum with the largest fall behind it, a fall ending
+    once the curve has recovered by more than ``opt_stall_recovery_fraction`` of it; mirrored for the
+    trough. Neither the first local maximum (a shoulder) nor simply the highest (a flat post-stall
+    plateau, a hump before the stall). The end of the sweep is no maximum.
 
     Raises:
         FormulaError: ``not_converged`` if the series does not turn inside the sampled range.
     """
-    index = main_extremum_from_zero(polar.alpha_deg, polar.cl, upright=upright)
+    index = main_extremum_from_zero(
+        polar.alpha_deg,
+        polar.cl,
+        upright=upright,
+        recovery_fraction=config().opt_stall_recovery_fraction.value,
+    )
     if index is None:
         what = "peak" if upright else "trough"
         raise _not_converged(
@@ -526,9 +532,8 @@ def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG
     sweep is made at the speed a first estimate implies (one refinement, not a loop); the window of
     alpha then reaches ``peak_margin_deg`` beyond that extremum, and an optimum on its edge is an
     error. The window starts at the end of the sweep, so it holds every local maximum before the
-    main one (a shoulder); none of them is higher, and IPOPT starts at the main one. Where two
-    maxima are equally high the angle of the main extremum changes from one to the other, the lift
-    value does not.
+    main one (a shoulder, or a hump that may be higher); IPOPT starts at the main one, and the
+    postcondition refuses a solution on another.
 
     Args:
         request: The problem.
@@ -674,8 +679,8 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     """Solve the stall problem in the pool worker (canon ``stall-speed``).
 
     1. Sweep alpha at the bracketing speed and find the main C_L peak (n > 0) or trough (n < 0)
-       from alpha = 0: the record maximum (minimum) with the largest fall (rise) behind it, not
-       the first local one (maintainer 2026-11-27, gh-1423).
+       from alpha = 0: the local maximum (minimum) with the largest fall (rise) behind it, not
+       the first one (maintainer 2026-11-27, gh-1423).
     2. Minimise V with IPOPT subject to ``L = n m g``, alpha restricted to the branch up to that
        extremum plus one sweep step.
     3. Refuse the solution if a bound is active at the optimum.
@@ -2115,6 +2120,7 @@ class OptiAdapter(SolverAdapter):
             "opt_effectiveness_exponent": EFFECTIVENESS_EXPONENT,
             "opt_probe_tolerance": config().opt_probe_tolerance.value,
             "opt_peak_tolerance": config().opt_peak_tolerance.value,
+            "opt_stall_recovery_fraction": config().opt_stall_recovery_fraction.value,
             "opt_zero_span": config().opt_zero_span.value,
             "opt_level_lift_tolerance": config().opt_level_lift_tolerance.value,
             "opt_level_max_steps": config().opt_level_max_steps.value,

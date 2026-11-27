@@ -72,7 +72,7 @@ unchanged. Still a display value, not a Trefftz-plane span efficiency.
 **Method, window and rejection (#1401).** The points are `fit_points` values of `C_L` equally spaced over the
 window `[max(window_cl_floor, window_lower_fraction · C_L,max), window_upper_fraction · C_L,max]`; each is flown
 at the speed where `L = m g` (`V = sqrt(2 m g / (ρ S_ref C_L))`), at the angle of attack where AeroBuildup's lift
-equals the weight at that speed, on the branch before the main `C_L` peak (the record maximum of the scan from α = 0 with the largest fall behind it, [[stall-speed]], #1423). The fit is ordinary least squares of
+equals the weight at that speed, on the branch before the main `C_L` peak (the local maximum above α = 0 with the largest fall behind it, [[stall-speed]], #1423). The fit is ordinary least squares of
 `C_D` on `C_L²` (intercept `C_D0`, slope `k`), `e = 1/(π AR k)`. The window, the point count and the bound on `e`
 are the parameters of the rule `parabolic-polar-fit` (`rules.yaml`); the window is BR-16's. **Resolution goes up,
 thresholds never move:** `fit_points` is the lever for a poor fit, and no threshold on the residual exists. **The

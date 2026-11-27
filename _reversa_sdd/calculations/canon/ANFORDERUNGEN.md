@@ -1193,10 +1193,11 @@ Gipfel verschiedene Punkte (K32).
 
 **Geändert 27.11.2026 (Maintainer, #1423: „Natürlich gilt hier nur das Hauptmaximum."):** Maßgeblich ist
 nicht der erste, sondern der **Hauptgipfel**: „Das höchste Maximum mit dem stärksten Einbruch über mehrere
-Grad dahinter." Operativ: von $\alpha = 0$ aufwärts abgetastet zählt ein lokales Maximum nur, wenn es höher
-ist als alle davor; unter diesen gilt das mit dem größten Einbruch dahinter (bis die Kurve wieder darüber
-liegt oder die Abtastung endet), ohne Schwelle und ohne Breite (Rückenflug gespiegelt). Das Ende der
-Abtastung ist kein Maximum.
+Grad dahinter." und zu SNOOPY: „Also da, wo es danach richtig abstürzt." Operativ: Unter den lokalen
+Maxima oberhalb $\alpha = 0$ gilt das mit dem größten Einbruch dahinter; der Einbruch endet, sobald die
+Kurve vom tiefsten Punkt um mehr als den Anteil $R = 0{,}5$ des bisherigen Einbruchs wieder gestiegen ist
+(`opt_stall_recovery_fraction`), sonst am Ende der Abtastung (Rückenflug gespiegelt). Der Hauptgipfel ist
+damit nicht immer das höchste Maximum. Das Ende der Abtastung ist kein Maximum.
 Wo oben „erster Gipfel" und $\alpha_1$ steht, gilt seither der Hauptgipfel. Grund: Eine Schulter vor dem
 eigentlichen Maximum (AVISTAR_ELITE: 3·10⁻⁴ tief bei 8°, Maximum 1,34 bei 16,5°) besteht nur in einem
 Reynolds-Bereich; der erste Gipfel springt deshalb mit der Geschwindigkeit, und für ein Band von Massen

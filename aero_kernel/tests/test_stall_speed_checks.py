@@ -334,3 +334,29 @@ def test_the_peak_check_is_violated_on_the_higher_plateau_behind_the_stall() -> 
     assert result.state == "violated"
     assert "is not the main sampled peak" in result.message
     assert "at 9.5 deg: the optimum is on another peak" in result.message
+
+
+def hump_polar() -> Polar:
+    """The SNOOPY shape on -5..25 deg: a front hump 1.447 at 7.25 deg falling 0.12 to 1.327 at 10 deg,
+    then the maximum 1.420 at 13 deg, behind which the curve falls 0.42 to 1.0 at 25 deg."""
+    knots = [(-5.0, -0.3), (7.25, 1.447), (10.0, 1.327), (13.0, 1.420), (25.0, 1.0)]
+    alphas = [a * STEP for a in range(-20, 101)]
+
+    def cl(alpha: float) -> float:
+        for (a0, c0), (a1, c1) in pairwise(knots):
+            if alpha <= a1:
+                return c0 + (c1 - c0) * (alpha - a0) / (a1 - a0)
+        return knots[-1][1]
+
+    return Polar(alpha_deg=tuple(alphas), cl=tuple(cl(a) for a in alphas), cd=(0.05,) * len(alphas))
+
+
+def test_the_peak_check_holds_at_the_lower_maximum_before_the_real_crash() -> None:
+    """Maintainer 2026-11-27: "der zweite niedrigere Punkt, da wo es danach richtig abstuerzt"."""
+    assert optimum_at_main_cl_peak(x_of(), y_of(hump_polar(), 13.0)).state == "held"
+
+
+def test_the_peak_check_is_violated_on_the_higher_hump_before_the_stall() -> None:
+    result = optimum_at_main_cl_peak(x_of(), y_of(hump_polar(), 7.25))
+    assert result.state == "violated"
+    assert "at 13.0 deg: the optimum is on another peak" in result.message
