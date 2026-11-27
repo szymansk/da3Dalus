@@ -31,3 +31,43 @@ def test_shutdown_ends_a_worker_that_is_still_busy():
 
     assert not any(w.is_alive() for w in workers)
     assert cad_service._executor is None
+
+
+class _StubbornWorker:
+    """A worker process that ignores ``terminate`` and ends only on ``kill``."""
+
+    pid = 4711
+
+    def __init__(self) -> None:
+        self.alive = True
+        self.calls: list[str] = []
+
+    def is_alive(self) -> bool:
+        return self.alive
+
+    def terminate(self) -> None:
+        self.calls.append("terminate")
+
+    def kill(self) -> None:
+        self.calls.append("kill")
+        self.alive = False
+
+    def join(self, timeout: float | None = None) -> None:
+        self.calls.append("join")
+
+
+def test_a_worker_that_ignores_terminate_is_killed(monkeypatch, caplog):
+    monkeypatch.setattr(cad_service, "_WORKER_GRACE_S", 0.0)
+    worker = _StubbornWorker()
+    with caplog.at_level("WARNING", logger=cad_service.logger.name):
+        cad_service._end_workers([worker])
+    assert worker.calls == ["terminate", "join", "kill", "join"]
+    assert not worker.is_alive()
+    assert "did not end on terminate" in caplog.text
+
+
+def test_a_worker_that_has_already_ended_is_left_alone():
+    worker = _StubbornWorker()
+    worker.alive = False
+    cad_service._end_workers([worker])
+    assert worker.calls == ["join"]
