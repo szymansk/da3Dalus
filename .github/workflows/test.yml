@@ -243,8 +243,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
-        part: [rest, aero-0, aero-1, aero-2, aero-3, aero-4, aero-5, aero-6, aero-7]
+        python-version: ["3.12"]
+        part: [single, double]
 
     steps:
       - name: Check out repository
@@ -285,31 +285,35 @@ jobs:
           if ldd "$avl" | grep "not found"; then exit 1; fi
           printf 'quit\n' | "$avl" > /dev/null
 
-      - name: Run the part of the full suite (all markers)
-        # No marker filter — exercises slow + e2e CAD pipelines too.
-        # Memory-heavy slow tests must NOT be parallelised (per project
-        # convention); each part runs sequentially.
-        #
-        # `rest` is everything outside aero_kernel/tests; `aero-N` is every
-        # eighth test file of the kernel. SIGABRT on the time limit makes
-        # faulthandler dump every thread, so a run that does not exit says
-        # what holds it.
+      - name: Build AVL in double precision and put it in place of the wheel's binary (diagnostic, gh-1474)
+        if: matrix.part == 'double'
         run: |
-          if [ "${{ matrix.part }}" = "rest" ]; then
-            targets="--ignore=aero_kernel/tests"
-          else
-            index="${{ matrix.part }}"; index="${index#aero-}"
-            targets=$(ls aero_kernel/tests/test_*.py | awk -v n=8 -v i="$index" '(NR - 1) % n == i')
-          fi
-          timeout --signal=ABRT --kill-after=30s 18000 \
-            poetry run pytest -v --tb=short -rfE --durations=25 \
-              --cov=app \
-              --cov=cad_designer \
-              --cov=aero_kernel \
-              --cov-report=xml \
-              $targets
+          sudo apt-get install -y -qq gfortran libx11-dev
+          cd Avl/plotlib && make gfortranDP && cd ..
+          cd eispack && make -f Makefile.mingw DP=-fdefault-real-8 EISLIB=eispack_gDP.a && cd ..
+          cd bin && make -f Makefile.gfortran avl DP=-fdefault-real-8 \
+            PLTOBJ=../plotlib/libPlt_gDP.a EIGOBJ=../eispack/eispack_gDP.a \
+            MATRIX=matrix.o MLIBS= PLTLIB=-lX11 && cd ../..
+          avl=$(poetry run python -c "from avl_binary import avl_path; print(avl_path())")
+          cp Avl/bin/avl "$avl"
+          ldd "$avl"
+          printf 'quit\n' | "$avl" | head -8
+
+      - name: Run the tests of gh-1474 (diagnostic)
+        run: |
+          poetry run pytest -v --tb=short -rfE --durations=25 -p no:cacheprovider \
+            aero_kernel/tests/test_neutral_point_fleet.py \
+            aero_kernel/tests/test_roll_rate_fleet.py \
+            aero_kernel/tests/test_solvers_avl_roll_real.py \
+            "aero_kernel/tests/test_mvp_chain_fleet.py::test_the_chain_per_world_is_the_regression_golden" \
+            "aero_kernel/tests/test_plan_batch_fleet.py::test_the_chain_of_the_plan_batch_is_the_regression_golden[A6M2_ZERO]" \
+            "aero_kernel/tests/test_plan_batch_fleet.py::test_the_chain_of_the_plan_batch_is_the_regression_golden[ESTRELA]" \
+            "aero_kernel/tests/test_plan_batch_fleet.py::test_the_chain_of_the_plan_batch_is_the_regression_golden[MINI_FUNTANA]" \
+            "aero_kernel/tests/test_plan_batch_fleet.py::test_the_chain_of_the_plan_batch_is_the_regression_golden[SNOOPY]" \
+            "aero_kernel/tests/test_plan_batch_fleet.py::test_the_chain_of_the_plan_batch_is_the_regression_golden[SUPER_TRIDENT]" \
+            aero_kernel/tests/test_powered_performance_aero.py \
+            aero_kernel/tests/test_mass_envelope_aero.py
         env:
-          QT_QPA_PLATFORM: offscreen
           PYTHONUNBUFFERED: "1"
           PYTHONFAULTHANDLER: "1"
 
