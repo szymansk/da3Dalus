@@ -365,7 +365,12 @@ class TestPersistWingConfig:
         """
         from unittest.mock import MagicMock
 
-        wing = SimpleNamespace(name="main_wing", surface_type="main_wing", x_secs=["old"])
+        wing = SimpleNamespace(
+            name="main_wing",
+            surface_type="main_wing",
+            surface_type_inferred=False,
+            x_secs=["old"],
+        )
         rebuilt = SimpleNamespace(x_secs=["root", "split", "tip"])
         new_wing_config = object()
 

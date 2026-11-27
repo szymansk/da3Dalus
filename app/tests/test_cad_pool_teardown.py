@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 
+from app.core import process_pool
 from app.services import cad_service
 
 BUSY_S = 30.0  # long against the test, short enough that a leftover worker ends by itself
@@ -31,3 +32,43 @@ def test_shutdown_ends_a_worker_that_is_still_busy():
 
     assert not any(w.is_alive() for w in workers)
     assert cad_service._executor is None
+
+
+class _StubbornWorker:
+    """A worker process that ignores ``terminate`` and ends only on ``kill``."""
+
+    pid = 4711
+
+    def __init__(self) -> None:
+        self.alive = True
+        self.calls: list[str] = []
+
+    def is_alive(self) -> bool:
+        return self.alive
+
+    def terminate(self) -> None:
+        self.calls.append("terminate")
+
+    def kill(self) -> None:
+        self.calls.append("kill")
+        self.alive = False
+
+    def join(self, timeout: float | None = None) -> None:
+        self.calls.append("join")
+
+
+def test_a_worker_that_ignores_terminate_is_killed(monkeypatch, caplog):
+    monkeypatch.setattr(process_pool, "WORKER_GRACE_S", 0.0)
+    worker = _StubbornWorker()
+    with caplog.at_level("WARNING", logger=process_pool.logger.name):
+        process_pool.end_workers([worker], pool_name="CAD")
+    assert worker.calls == ["terminate", "join", "kill", "join"]
+    assert not worker.is_alive()
+    assert "did not end on terminate" in caplog.text
+
+
+def test_a_worker_that_has_already_ended_is_left_alone():
+    worker = _StubbornWorker()
+    worker.alive = False
+    process_pool.end_workers([worker], pool_name="CAD")
+    assert worker.calls == ["join"]

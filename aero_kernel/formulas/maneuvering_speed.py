@@ -6,7 +6,6 @@ the wing still carries ``n_lim m g``, with ``C_L,max`` at the Reynolds number of
 """
 
 from aero_kernel.context import Context, Inputs
-from aero_kernel.formulas.flap_validity import warn_flap_validity
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.registry import formula
 
@@ -34,5 +33,4 @@ async def maneuvering_speed(x: Inputs, ctx: Context) -> dict[str, float]:
         airplane_of(x), number(x, "m"), number(x, "g"), number(x, "n_lim"), air_state(x)
     )
     forward_warnings(ctx, stall.warnings)
-    warn_flap_validity(ctx, airplane_of(x), stall.solution.diagnostics)
     return {"v_a": stall.solution.v_s}
