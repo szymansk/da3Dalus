@@ -179,6 +179,15 @@ Freigabe), #1481 (Holm-Roundtrip/Vase-Rippenschnitt, endlose Designer-Aufgabe, L
 ruft nur double-Mathefunktionen (Indiz für doppelte Genauigkeit); alle Abweichungen liegen in AVL-Größen. Gegenlauf 45991083115
 (Zweig `fix/gh-1474-kernel-aero-linux`, Worktree `.worktrees/gh-1474`, Teile `single`/`double`: AVL auf dem Runner in DP gebaut)
 auswerten. Bestätigt es sich: neues Linux-Wheel in DP (Release = Rückfrage beim Maintainer), sonst weiter suchen.
+**#1479** behoben und geschlossen (PR #1485 gemergt).
+**#1474 bestätigt** (Lauf 46008501679, DP + LAPACK bzw. OpenBLAS): 85 von 85 bestanden, auch Rollraten-Goldens; OpenBLAS ohne
+Vorteil. Zwei rein rechnende Tests brauchen auf dem Runner 940 s / 575 s (> 360 s). Zweig `fix/gh-1474-kernel-aero-linux`
+(Commit fb77c376, gepusht, noch kein PR): beide Dockerfiles DP, `avl-binary` 1.0.1, Nightly-Kernteile `--timeout=1800`.
+Wheel gebaut und geprüft (dgetrf_, sin/cos double): Scratchpad `wheel/avl_binary-1.0.1-…x86_64.whl` — bei Verlust neu bauen:
+`docker build --platform linux/amd64 -f avl-binary/Dockerfile.avl-amd64 .`, Binary `/home/avl/bin/avl` herauskopieren,
+`build_wheels.py --platform linux_x86_64 --binary <pfad>`.
+**Wiedereinstieg:** Maintainer nach Freigabe für Release `avl-binary-v1.0.1` gefragt. Nach Ja: `gh release create`, Linux-URL in
+`pyproject.toml` auf 1.0.1, `poetry lock`, PR, Nightly per `gh workflow run test.yml --ref <branch> -f run_nightly=true` prüfen, mergen.
 Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F03, P8-F06, ULTRA_STICK_120-Masse, #1423 für AERONCA_CHAMP.
 
 ## Verlauf
@@ -229,3 +238,5 @@ Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F
 - #1437 geschlossen (PR #1476); Folgetickets #1474, #1475
 - #1437: Verifikationslauf der Endfassung ausgewertet
 - P1-F08 erledigt (PR #1478); #1475 PR #1482, Folgetickets #1479–#1481; #1474 Gegenlauf läuft
+- #1479 geschlossen (PR #1485); #1474 Ursache bestätigt, Fix-Zweig gepusht, Release-Freigabe angefragt
+- #1474 Ursache bestätigt, Fix-Zweig gepusht, Release-Freigabe angefragt
