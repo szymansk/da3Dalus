@@ -80,7 +80,7 @@ class LinearOpti(StubOpti):
             raise FormulaError(
                 ErrorCategory.NOT_CONVERGED,
                 "not_converged",
-                "the airplane does not reach the level lift below its first C_L peak",
+                "the airplane does not reach the level lift below its main C_L peak",
                 "check mass and speed",
                 detail={"v_ms": v_ms},
             )

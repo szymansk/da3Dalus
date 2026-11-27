@@ -699,7 +699,7 @@ class Polar(BaseModel):
 class StallCurve(Curve):
     """A stall speed over a swept variable, with the sweep each point was solved on (ch. 8.12).
 
-    The postcondition ``optimum_at_first_cl_peak`` is checked at every point, so the curve carries
+    The postcondition ``optimum_at_main_cl_peak`` is checked at every point, so the curve carries
     what the check reads: the stall angle, the lift coefficient and the sweep of each point.
 
     Attributes:

@@ -41,7 +41,7 @@ preconditions:
   - {id: approach_speed_positive, parameter: v_app, on_violation: error}
   - {id: crow_aileron_not_negative, parameter: delta_a_crow, on_violation: error}
 postconditions:
-  - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
+  - {id: optimum_at_main_cl_peak, parameter: v_s0_curve, on_violation: error}
 ---
 
 # Butterfly (crow) in the approach — how far it may be mixed in
@@ -82,8 +82,8 @@ from it (maintainer, 2026-10-02):
 **Exists only if the geometry has camber flaps and ailerons** (as A3 for the flap
 configurations): crow needs both.
 
-**The stall optimum at every `s` lies at the first `C_L` peak** — postcondition
-`optimum_at_first_cl_peak`, checked at every s; same check as stall-speed (K32), one shared
+**The stall optimum at every `s` lies at the main `C_L` peak** (the local maximum above α = 0 with the largest fall behind it, [[stall-speed]]; maintainer 2026-11-27, #1423) — postcondition
+`optimum_at_main_cl_peak`, checked at every s; same check as stall-speed (K32), one shared
 implementation, not a copy (architect, 2026-10-15). Not an embed: a form that re-solves another
 formula's problem under a configuration it varies itself is not an embed (ARCHITECTURE §8.5).
 
@@ -107,8 +107,8 @@ aid for models per the RC sources (§3.7); the reading of the question is the ma
 - **Caveats forwarded.** The adapters report caveats per solve; the formula forwards the caveats of the two solves the answer rests on (the landing stall at `s = 0` and the sample that closes the bracket of `s_max`, full crow where there is no crossing) with the glide read at the same mixes, plus one `control_surface_fit_range_unknown` carrying, per device, the largest deflection and the lowest NeuralFoil confidence over the whole sweep. The regime and drag messages of the other mixes are dropped (they repeat with another Reynolds number); the answer's own Reynolds regime is that of the forwarded solves.
 - **The stall problem is level** (`n = 1`, bound with its source in the application, as in [[stall-speed]]); the preconditions `approach_speed_positive` and `crow_aileron_not_negative` refuse a non-positive approach speed and a negative crow aileron angle before any solve.
 - **`V_app` at or below `V_S0(0)`.** `s_max = 0` and the glide-angle curve is empty: no glide exists below the stall speed, none is read.
-- **The first-peak check also guards the no-crossing path:** a mix on another branch is the error that names it, not "fully mixable".
-- **The check** `optimum_at_first_cl_peak` runs on the sweep of every mix (shared function with `stall-speed`); a violation names the mix in `detail`.
+- **The main-peak check also guards the no-crossing path:** a mix on another branch is the error that names it, not "fully mixable".
+- **The check** `optimum_at_main_cl_peak` runs on the sweep of every mix (shared function with `stall-speed`); a violation names the mix in `detail`.
 
 ## Implementations (1)
 

@@ -24,7 +24,7 @@ then the code. Epic: #1173.
   golden values in the same change.
 - **One file per canon formula** in `formulas/`, file name = slug with underscores (`stall_speed.py`). One implementation per formula;
   applications are bindings, not copies (ARCHITECTURE §8.5). Likewise one implementation per check: a
-  postcondition stated by two entries (`optimum_at_first_cl_peak`) shares one check function.
+  postcondition stated by two entries (`optimum_at_main_cl_peak`) shares one check function.
 - **Formulas compute, they do not judge** (canon A10): no thresholds, bands or pass/fail in this package.
 - **Judgement lives in `evaluation/` only (#1276).** Bands, rule meanings and `when` conditions are data in the
   rule table (`_reversa_sdd/calculations/evaluation/`), never in code; the evaluator is a pure function of a

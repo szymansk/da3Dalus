@@ -173,6 +173,7 @@ def test_a_changed_avl_config_value_misses_the_cache_in_the_avl_world(
     [
         "opt_probe_tolerance",
         "opt_peak_tolerance",
+        "opt_stall_recovery_fraction",
         "opt_zero_span",
         "opt_level_lift_tolerance",
         "opt_level_max_steps",

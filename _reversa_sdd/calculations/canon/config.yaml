@@ -76,9 +76,16 @@ opt_probe_tolerance:
 opt_peak_tolerance:
   value: 0.000001
   unit: "1"
-  guards: "Stall speed, postcondition: C_L,max may fall short of the sampled first peak by this much; both are samples of one curve, so it only absorbs numerical noise."
+  guards: "Stall speed, postcondition: C_L,max may fall short of the sampled main peak (the maximum the stall rule picks on the sweep at V_S) by this much; both are samples of one curve, so it only absorbs numerical noise. Two maxima closer in height than this count as equally high."
   basis: numerical
   source: "float noise between two samples of one sweep"
+
+opt_stall_recovery_fraction:
+  value: 0.5
+  unit: "1"
+  guards: "Stall bracket (stall-speed and every problem bracketed at the stall): the fall behind a local maximum of the lift curve ends once C_L has climbed back from its lowest value by more than this fraction of what it had fallen so far. A ledge inside a descent therefore does not end the fall, a real recovery does. The stall is the local maximum with the largest fall."
+  basis: decision
+  source: "Maintainer 2026-11-27 (#1423): the stall is the maximum 'wo es danach richtig abstuerzt' (EXTRA_300_EP 13 deg, WINDFREAK 9.5 deg, SNOOPY 13 deg). The fraction is the operational reading of that decision, not yet confirmed by the maintainer; measured on the reference fleet 2026-11-27 (36 aircraft, 61 speeds 3-40 m/s, 0.25 deg sweep): the picks are identical for 0.25, 0.5 and 0.75 over each member's range of 0.5 to 1.5 times its mass, except one sample (BF109_E at 0.75). A ratio of two lift-coefficient differences of one curve: dimensionless and not tied to a Reynolds or Mach range (ADR 0028)."
 
 opt_level_lift_tolerance:
   value: 0.000001
@@ -92,7 +99,7 @@ opt_level_max_steps:
   unit: "1"
   guards: "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance."
   basis: numerical
-  source: "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one"
+  source: "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the main C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one"
 
 opt_zero_span:
   value: 1.0e-15

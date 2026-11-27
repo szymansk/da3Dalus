@@ -95,8 +95,10 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
         "spiral-doubling-time-mp": (-41.07589079773987, -19.60452926018001, -24.823477662246262),
     },
     FleetMember.AERONCA_CHAMP: {
-        "stall-speed": Failed("not_converged"),
-        "max-lift-coefficient": Failed("not_converged"),
+        # gh-1423 (stall at the main maximum): was Failed(code='not_converged', causes=())
+        "stall-speed": 6.026195759639523,
+        # gh-1423 (stall at the main maximum): was Failed(code='not_converged', causes=())
+        "max-lift-coefficient": 1.3279918908558153,
         "minimum-drag-speed": 6.995921888883736,
         "max-lift-to-drag-ratio": 10.514759606017298,
         "minimum-sink-speed": 6.716799268910961,
@@ -127,18 +129,14 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
             0.0028408649190000005,
         ),
         "spiral-doubling-time-md": (-3.7114370931085405, -3.182096479474585, -2.1522768356658464),
-        "dihedral-effect-app": Failed(
-            "upstream_failed", (("stall-speed-landing", "not_converged"),)
-        ),
-        "weathercock-stability-app": Failed(
-            "upstream_failed", (("stall-speed-landing", "not_converged"),)
-        ),
-        "spiral-criterion-app": Failed(
-            "upstream_failed", (("stall-speed-landing", "not_converged"),)
-        ),
-        "spiral-doubling-time-app": Failed(
-            "upstream_failed", (("stall-speed-landing", "not_converged"),)
-        ),
+        # gh-1423 (stall at the main maximum): was Failed(code='upstream_failed', causes=(('stall-speed-landing', 'not_converged'),))
+        "dihedral-effect-app": (-0.104638, -0.104646, -0.104667),
+        # gh-1423 (stall at the main maximum): was Failed(code='upstream_failed', causes=(('stall-speed-landing', 'not_converged'),))
+        "weathercock-stability-app": (0.015531, 0.014159, 0.010283),
+        # gh-1423 (stall at the main maximum): was Failed(code='upstream_failed', causes=(('stall-speed-landing', 'not_converged'),))
+        "spiral-criterion-app": (0.0014142277059999999, 0.001604200319, 0.0021408131239999996),
+        # gh-1423 (stall at the main maximum): was Failed(code='upstream_failed', causes=(('stall-speed-landing', 'not_converged'),))
+        "spiral-doubling-time-app": (-4.785378379458586, -4.013223862350841, -2.5723036671264823),
         "dihedral-effect-mp": (-0.122993, -0.123083, -0.123337),
         "roll-due-to-yaw-rate-mp": (0.281468, 0.279688, 0.274643),
         "weathercock-stability-mp": (0.017347, 0.015948, 0.011993),
@@ -450,8 +448,10 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
         "spiral-doubling-time-mp": (-9.13461501269663, -8.43227573921247, -8.391022587446828),
     },
     FleetMember.FORCE_5: {
-        "stall-speed": 5.125843977604058,
-        "max-lift-coefficient": 1.298745662507848,
+        # gh-1423 (stall at the main maximum): was 5.125843977604058
+        "stall-speed": 4.9347358075246115,
+        # gh-1423 (stall at the main maximum): was 1.298745662507848
+        "max-lift-coefficient": 1.4012869014312361,
         "minimum-drag-speed": 7.450972493194853,
         "max-lift-to-drag-ratio": 20.194569311906303,
         "minimum-sink-speed": 6.262107724857891,
@@ -474,10 +474,14 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
         "weathercock-stability-md": (0.011973, 0.010456, 0.010777),
         "spiral-criterion-md": (0.0027188151909999995, 0.002739322554, 0.0027350965200000008),
         "spiral-doubling-time-md": (-3.4451165725345474, -3.3151685676453146, -3.342320440892972),
-        "dihedral-effect-app": (-0.224491, -0.224507, -0.224504),
-        "weathercock-stability-app": (0.00999, 0.008487, 0.008806),
-        "spiral-criterion-app": (0.0033965100760000003, 0.003431631498, 0.0034240755919999998),
-        "spiral-doubling-time-app": (-2.7177394281784477, -2.613855942479592, -2.635838824122973),
+        # gh-1423 (stall at the main maximum): was (-0.224491, -0.224507, -0.224504)
+        "dihedral-effect-app": (-0.228446, -0.228478, -0.228471),
+        # gh-1423 (stall at the main maximum): was (0.00999, 0.008487, 0.008806)
+        "weathercock-stability-app": (0.009352, 0.007855, 0.008172),
+        # gh-1423 (stall at the main maximum): was (0.0033965100760000003, 0.003431631498, 0.0034240755919999998)
+        "spiral-criterion-app": (0.003711653592, 0.003752383352999999, 0.003743725659),
+        # gh-1423 (stall at the main maximum): was (-2.7177394281784477, -2.613855942479592, -2.635838824122973)
+        "spiral-doubling-time-app": (-2.501791540443209, -2.4069703146414523, -2.426884766827514),
         "dihedral-effect-mp": (-0.231131, -0.231173, -0.231164),
         "roll-due-to-yaw-rate-mp": (0.226793, 0.223404, 0.224122),
         "weathercock-stability-mp": (0.008966, 0.007474, 0.00779),
@@ -782,8 +786,10 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
         "spiral-doubling-time-mp": (-4.481004391715403, -4.182579447171285, -4.2769399828164545),
     },
     FleetMember.SNOOPY: {
-        "stall-speed": 5.548502615869733,
-        "max-lift-coefficient": 1.283481289912637,
+        # gh-1423 (stall at the main maximum): was 5.548502615869733
+        "stall-speed": 5.309693080824385,
+        # gh-1423 (stall at the main maximum): was 1.283481289912637
+        "max-lift-coefficient": 1.4015296706051144,
         "minimum-drag-speed": 7.557084154315299,
         "max-lift-to-drag-ratio": 19.445833668433202,
         "minimum-sink-speed": 6.469668761096849,
@@ -810,10 +816,18 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
             -0.00016582399299999977,
         ),
         "spiral-doubling-time-md": (46.80594949105642, 113.95223013091322, 68.66994633401812),
-        "dihedral-effect-app": (-0.132173, -0.132105, -0.132136),
-        "weathercock-stability-app": (0.017573, 0.015866, 0.016631),
-        "spiral-criterion-app": (-0.0002235926369999995, -5.352610700000036e-05, -0.000129787903),
-        "spiral-doubling-time-app": (50.24774429838122, 200.30385099846814, 84.3813439589615),
+        # gh-1423 (stall at the main maximum): was (-0.132173, -0.132105, -0.132136)
+        "dihedral-effect-app": (-0.133988, -0.133938, -0.13396),
+        # gh-1423 (stall at the main maximum): was (0.017573, 0.015866, 0.016631)
+        "weathercock-stability-app": (0.016611, 0.014905, 0.015669),
+        # gh-1423 (stall at the main maximum): was (-0.0002235926369999995, -5.352610700000036e-05, -0.000129787903)
+        "spiral-criterion-app": (
+            -0.00016370855499999977,
+            2.5134915999999816e-05,
+            -5.945564199999953e-05,
+        ),
+        # gh-1423 (stall at the main maximum): was (50.24774429838122, 200.30385099846814, 84.3813439589615)
+        "spiral-doubling-time-app": (66.32432712702872, -412.46166221306135, 178.06342261121208),
         "dihedral-effect-mp": (-0.137017, -0.136996, -0.137006),
         "roll-due-to-yaw-rate-mp": (0.236669, 0.234232, 0.235323),
         "weathercock-stability-mp": (0.015112, 0.013407, 0.014171),
@@ -899,14 +913,17 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
         "spiral-doubling-time-mp": (-6.261366004792846, -5.778125825277631, -5.821863672306091),
     },
     FleetMember.SPRITE: {
-        "stall-speed": 8.905219013863126,
-        "max-lift-coefficient": 1.0637115442374978,
+        # gh-1423 (stall at the main maximum): was 8.905219013863126
+        "stall-speed": 8.179177194619404,
+        # gh-1423 (stall at the main maximum): was 1.0637115442374978
+        "max-lift-coefficient": 1.260938335634407,
         "minimum-drag-speed": 13.814605398407654,
         "max-lift-to-drag-ratio": 14.501883402147183,
         "minimum-sink-speed": 10.724574615169617,
         "neutral-point": (0.2641482570045175, 0.26809136033731945, 0.265268),
         "centre-of-gravity-design": (0.2448208660631007, 0.24876396939590265, 0.2459406090585832),
-        "roll-rate-approach": {"roll-rate=aerobuildup": 389.93808907966087},
+        # gh-1423 (stall at the main maximum): was {'roll-rate=aerobuildup': 389.93808907966087}
+        "roll-rate-approach": {"roll-rate=aerobuildup": 357.6909434271465},
         "horizontal-tail-volume": (0.32622685506123644, 0.32265149795782977, 0.3252115428223753),
         "turn-sideslip": NOT_APPLICABLE,
         "turn-sideslip-gain": NOT_APPLICABLE,
@@ -923,14 +940,18 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
             -0.0034707370849999994,
         ),
         "spiral-doubling-time-md": (7.270912480067985, 7.302593382124019, 7.27983789071139),
-        "dihedral-effect-app": (-0.064477, -0.064528, -0.064492),
-        "weathercock-stability-app": (0.061291, 0.060575, 0.061088),
+        # gh-1423 (stall at the main maximum): was (-0.064477, -0.064528, -0.064492)
+        "dihedral-effect-app": (-0.076714, -0.07678, -0.076732),
+        # gh-1423 (stall at the main maximum): was (0.061291, 0.060575, 0.061088)
+        "weathercock-stability-app": (0.063477, 0.062769, 0.063276),
+        # gh-1423 (stall at the main maximum): was (-0.004575862725999998, -0.004499492204999998, -0.004554188692000001)
         "spiral-criterion-app": (
-            -0.004575862725999998,
-            -0.004499492204999998,
-            -0.004554188692000001,
+            -0.005398096406000002,
+            -0.005309570455000001,
+            -0.005372973535999999,
         ),
-        "spiral-doubling-time-app": (5.054565793418105, 5.079928081407567, 5.061700084949214),
+        # gh-1423 (stall at the main maximum): was (5.054565793418105, 5.079928081407567, 5.061700084949214)
+        "spiral-doubling-time-app": (4.210392672981259, 4.232114318182638, 4.216476495752846),
         "dihedral-effect-mp": (-0.075384, -0.075448, -0.075402),
         "roll-due-to-yaw-rate-mp": (0.167434, 0.166876, 0.167275),
         "weathercock-stability-mp": (0.063211, 0.062503, 0.06301),
@@ -938,43 +959,59 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
         "spiral-doubling-time-mp": (4.290027766203655, 4.312094923302701, 4.296218866798318),
     },
     FleetMember.SUPER_TRIDENT: {
-        "stall-speed": 6.0843250484296245,
-        "max-lift-coefficient": 1.0769457250640162,
+        # gh-1423 (stall at the main maximum): was 6.0843250484296245
+        "stall-speed": 5.253614127148861,
+        # gh-1423 (stall at the main maximum): was 1.0769457250640162
+        "max-lift-coefficient": 1.4444492570903122,
         "minimum-drag-speed": 7.440306961004602,
         "max-lift-to-drag-ratio": 16.769462847003364,
-        "minimum-sink-speed": 6.7431548042373795,
+        # gh-1423 (stall at the main maximum): was 6.7431548042373795
+        "minimum-sink-speed": 5.352154012242642,
         "neutral-point": (0.37249216648298167, 0.40097934077937253, 0.394857),
         "centre-of-gravity-design": (0.3557280275213087, 0.3842152018176996, 0.37809286103832707),
         "roll-rate-approach": NOT_APPLICABLE,
         "horizontal-tail-volume": (0.8512957512318106, 0.8116705003589153, 0.8201865885741908),
-        "turn-sideslip": (8.591229767974621, 8.414922201841689, 8.452809355077585),
-        "turn-sideslip-gain": (1.0977907625644223, 1.0752621115216534, 1.080103347056672),
+        # gh-1423 (stall at the main maximum): was (8.591229767974621, 8.414922201841689, 8.452809355077585)
+        "turn-sideslip": (18.671911994821464, 18.38835900944357, 18.449282070997928),
+        # gh-1423 (stall at the main maximum): was (1.0977907625644223, 1.0752621115216534, 1.080103347056672)
+        "turn-sideslip-gain": (1.5030864988089445, 1.480260520187329, 1.485164818756959),
         "rudder-roll-authority-md": (
             0.03963934717983071,
             0.03573403837606309,
             0.036556268511937016,
         ),
+        # gh-1423 (stall at the main maximum): was (0.03255899917302405, 0.029351253456743158, 0.030026617513383723)
         "rudder-roll-authority-mp": (
-            0.03255899917302405,
-            0.029351253456743158,
-            0.030026617513383723,
+            0.02051171581758285,
+            0.018490880711510654,
+            0.018916350656996532,
         ),
         "vertical-tail-volume": (0.013026485254353834, 0.012368158871192534, 0.012509643541445556),
         "spiral-parameter-md": (3.042981004149379, 2.889196261805265, 2.922247016137819),
-        "spiral-parameter-mp": (2.499446208035424, 2.373130371498302, 2.4002776269286077),
+        # gh-1423 (stall at the main maximum): was (2.499446208035424, 2.373130371498302, 2.4002776269286077)
+        "spiral-parameter-mp": (1.5746162849819547, 1.4950390679876324, 1.5121414606519352),
         "dihedral-effect-md": (-0.20712, -0.207091, -0.207097),
         "weathercock-stability-md": (0.000609, -0.001782, -0.001268),
         "spiral-criterion-md": (0.0033038992769999997, 0.00343856052, 0.0034094853410000002),
         "spiral-doubling-time-md": (-2.345396437323966, -2.0958217307687925, -2.1479038046699883),
-        "dihedral-effect-app": (-0.203934, -0.203875, -0.203887),
-        "weathercock-stability-app": (0.002003, -0.000393, 0.000122),
-        "spiral-criterion-app": (0.0028365590710000004, 0.002951718621, 0.002927018427),
-        "spiral-doubling-time-app": (-2.8129897631752336, -2.507840883535837, -2.5713662175563274),
-        "dihedral-effect-mp": (-0.213241, -0.213268, -0.213262),
-        "roll-due-to-yaw-rate-mp": (0.234094, 0.229319, 0.230345),
-        "weathercock-stability-mp": (-0.001809, -0.004186, -0.003675),
-        "spiral-criterion-mp": (0.004356493049999999, 0.004525983562, 0.004489672621000001),
-        "spiral-doubling-time-mp": (-1.7384913389914587, -1.5650943433000453, -1.6012223240782708),
+        # gh-1423 (stall at the main maximum): was (-0.203934, -0.203875, -0.203887)
+        "dihedral-effect-app": (-0.21237, -0.212389, -0.212385),
+        # gh-1423 (stall at the main maximum): was (0.002003, -0.000393, 0.000122)
+        "weathercock-stability-app": (-0.001485, -0.003865, -0.003353),
+        # gh-1423 (stall at the main maximum): was (0.0028365590710000004, 0.002951718621, 0.002927018427)
+        "spiral-criterion-app": (0.00419524434, 0.004360123712, 0.0043247061500000005),
+        # gh-1423 (stall at the main maximum): was (-2.8129897631752336, -2.507840883535837, -2.5713662175563274)
+        "spiral-doubling-time-app": (-1.8071086290251868, -1.624816050380137, -1.6628431672311081),
+        # gh-1423 (stall at the main maximum): was (-0.213241, -0.213268, -0.213262)
+        "dihedral-effect-mp": (-0.234246, -0.234454, -0.234409),
+        # gh-1423 (stall at the main maximum): was (0.234094, 0.229319, 0.230345)
+        "roll-due-to-yaw-rate-mp": (0.352092, 0.347053, 0.348136),
+        # gh-1423 (stall at the main maximum): was (-0.001809, -0.004186, -0.003675)
+        "weathercock-stability-mp": (-0.007717, -0.010032, -0.009534),
+        # gh-1423 (stall at the main maximum): was (0.004356493049999999, 0.004525983562, 0.004489672621000001)
+        "spiral-criterion-mp": (0.009102639924, 0.009373933624, 0.009315310844),
+        # gh-1423 (stall at the main maximum): was (-1.7384913389914587, -1.5650943433000453, -1.6012223240782708)
+        "spiral-doubling-time-mp": (-0.9352538063400573, -0.8671202161385957, -0.8814645009653704),
     },
     FleetMember.ULTRA_MINI_STICK: {
         "stall-speed": 5.745696698625537,
@@ -1140,35 +1177,51 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
         ),
     },
     FleetMember.WRISTOCRAT: {
-        "stall-speed": 5.127034527483944,
-        "max-lift-coefficient": 0.973267748566667,
+        # gh-1423 (stall at the main maximum): was 5.127034527483944
+        "stall-speed": 4.897219633974993,
+        # gh-1423 (stall at the main maximum): was 0.973267748566667
+        "max-lift-coefficient": 1.0667573710266203,
         "minimum-drag-speed": 6.631941748504025,
         "max-lift-to-drag-ratio": 16.00120553018703,
-        "minimum-sink-speed": 5.790569859985646,
+        # gh-1423 (stall at the main maximum): was 5.790569859985646
+        "minimum-sink-speed": 5.137535570469316,
         "neutral-point": (0.23785454793893585, 0.24872662015474406, 0.24841),
         "centre-of-gravity-design": (0.22309964752227657, 0.23397171973808478, 0.23365509958334071),
         "roll-rate-approach": NOT_APPLICABLE,
         "horizontal-tail-volume": (0.39752390334014776, 0.38798345167250614, 0.3882612919244266),
-        "turn-sideslip": (5.14923614167325, 5.058256952285788, 5.060905198840768),
-        "turn-sideslip-gain": (0.8444147498184852, 0.8294952224688736, 0.8299295040575705),
+        # gh-1423 (stall at the main maximum): was (5.14923614167325, 5.058256952285788, 5.060905198840768)
+        "turn-sideslip": (7.508041698783746, 7.392630553214952, 7.396016979598167),
+        # gh-1423 (stall at the main maximum): was (0.8444147498184852, 0.8294952224688736, 0.8299295040575705)
+        "turn-sideslip-gain": (0.9691851483955315, 0.9542871533214352, 0.9547242944946494),
         "rudder-roll-authority-md": (0.13953478806931563, 0.13320319053600083, 0.1333855031935305),
-        "rudder-roll-authority-mp": (0.10637601137980994, 0.1015490424169038, 0.10168803064772712),
+        # gh-1423 (stall at the main maximum): was (0.10637601137980994, 0.1015490424169038, 0.10168803064772712)
+        "rudder-roll-authority-mp": (0.08373572305613847, 0.07993609068568469, 0.08004549768312072),
         "vertical-tail-volume": (0.020132539950847867, 0.01967046536957725, 0.019683922061413096),
         "spiral-parameter-md": (6.930808949590051, 6.771735596149934, 6.776368184011945),
-        "spiral-parameter-mp": (5.28378493918399, 5.162513469252317, 5.166045177910393),
+        # gh-1423 (stall at the main maximum): was (5.28378493918399, 5.162513469252317, 5.166045177910393)
+        "spiral-parameter-mp": (4.159222992258957, 4.063762050557051, 4.0665420963048815),
         "dihedral-effect-md": (-0.246036, -0.246065, -0.246064),
         "weathercock-stability-md": (0.023812, 0.021815, 0.021873),
         "spiral-criterion-md": (0.005435053380000001, 0.005416902265000001, 0.005417495531),
         "spiral-doubling-time-md": (-2.2337882487942515, -2.186305612938788, -2.1876632508392237),
-        "dihedral-effect-app": (-0.245628, -0.245655, -0.245654),
-        "weathercock-stability-app": (0.023898, 0.0219, 0.021958),
-        "spiral-criterion-app": (0.005414017722000002, 0.005395527675, 0.005395942946000001),
-        "spiral-doubling-time-app": (-2.247322398980169, -2.199603097963278, -2.201024859222071),
-        "dihedral-effect-mp": (-0.258932, -0.259025, -0.259022),
-        "roll-due-to-yaw-rate-mp": (0.218646, 0.21486, 0.21497),
-        "weathercock-stability-mp": (0.021548, 0.019577, 0.019634),
-        "spiral-criterion-mp": (0.006234966291999999, 0.006234206455, 0.006234443027999998),
-        "spiral-doubling-time-mp": (-1.8818103228471703, -1.8388365535069366, -1.8400046291518222),
+        # gh-1423 (stall at the main maximum): was (-0.245628, -0.245655, -0.245654)
+        "dihedral-effect-app": (-0.249539, -0.249586, -0.249585),
+        # gh-1423 (stall at the main maximum): was (0.023898, 0.0219, 0.021958)
+        "weathercock-stability-app": (0.023111, 0.02112, 0.021178),
+        # gh-1423 (stall at the main maximum): was (0.005414017722000002, 0.005395527675, 0.005395942946000001)
+        "spiral-criterion-app": (0.005626679358000001, 0.00561378412, 0.005613982810999999),
+        # gh-1423 (stall at the main maximum): was (-2.247322398980169, -2.199603097963278, -2.201024859222071)
+        "spiral-doubling-time-app": (-2.1246546870239955, -2.078137010034046, -2.0795561253109573),
+        # gh-1423 (stall at the main maximum): was (-0.258932, -0.259025, -0.259022)
+        "dihedral-effect-mp": (-0.273829, -0.273993, -0.273988),
+        # gh-1423 (stall at the main maximum): was (0.218646, 0.21486, 0.21497)
+        "roll-due-to-yaw-rate-mp": (0.265391, 0.261468, 0.261583),
+        # gh-1423 (stall at the main maximum): was (0.021548, 0.019577, 0.019634)
+        "weathercock-stability-mp": (0.019999, 0.018063, 0.018119),
+        # gh-1423 (stall at the main maximum): was (0.006234966291999999, 0.006234206455, 0.006234443027999998)
+        "spiral-criterion-mp": (0.007407695005999999, 0.007424583171, 0.0074243488709999994),
+        # gh-1423 (stall at the main maximum): was (-1.8818103228471703, -1.8388365535069366, -1.8400046291518222)
+        "spiral-doubling-time-mp": (-1.6146490520708114, -1.577210126545534, -1.5782407981819502),
     },
 }
 

@@ -781,7 +781,7 @@ preconditions:
   - {id: approach_speed_positive, parameter: v_app, on_violation: error}
   - {id: crow_aileron_not_negative, parameter: delta_a_crow, on_violation: error}
 postconditions:
-  - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
+  - {id: optimum_at_main_cl_peak, parameter: v_s0_curve, on_violation: error}
 ```
 
 An **optimization** with several applications, sourced constants and
@@ -809,8 +809,8 @@ applications:
 postconditions:
   - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
   - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error, applications: [inverted]}
-  - {id: optimum_at_first_cl_peak, parameter: cl_max, on_violation: error, applications: [clean, takeoff, landing]}
-  - {id: optimum_at_first_cl_trough, parameter: cl_max, on_violation: error, applications: [inverted]}
+  - {id: optimum_at_main_cl_peak, parameter: cl_max, on_violation: error, applications: [clean, takeoff, landing]}
+  - {id: optimum_at_main_cl_trough, parameter: cl_max, on_violation: error, applications: [inverted]}
 ```
 
 An **optimization** that embeds other formulas — per application where the embedded formula has several —

@@ -684,6 +684,7 @@ class KernelConfig(BaseModel):
     avl_cl_tolerance: ConfigValue
     opt_probe_tolerance: ConfigValue
     opt_peak_tolerance: ConfigValue
+    opt_stall_recovery_fraction: ConfigValue
     opt_zero_span: ConfigValue
     opt_level_lift_tolerance: ConfigValue
     opt_level_max_steps: ConfigValue

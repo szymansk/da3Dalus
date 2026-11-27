@@ -1191,6 +1191,23 @@ Probleme ohne Schranke fallen.
 (`np.argmax`). Kanonisch ist der **erste** Gipfel, sonst greifen beide Verfahren bei einem höheren zweiten
 Gipfel verschiedene Punkte (K32).
 
+**Geändert 27.11.2026 (Maintainer, #1423: „Natürlich gilt hier nur das Hauptmaximum."):** Maßgeblich ist
+nicht der erste, sondern der **Hauptgipfel**: „Das höchste Maximum mit dem stärksten Einbruch über mehrere
+Grad dahinter." und zu SNOOPY: „Also da, wo es danach richtig abstürzt." Operativ: Unter den lokalen
+Maxima oberhalb $\alpha = 0$ gilt das mit dem größten Einbruch dahinter; der Einbruch endet, sobald die
+Kurve vom tiefsten Punkt um mehr als den Anteil $R = 0{,}5$ des bisherigen Einbruchs wieder gestiegen ist
+(`opt_stall_recovery_fraction`), sonst am Ende der Abtastung (Rückenflug gespiegelt). Der Hauptgipfel ist
+damit nicht immer das höchste Maximum. Das Ende der Abtastung ist kein Maximum.
+Wo oben „erster Gipfel" und $\alpha_1$ steht, gilt seither der Hauptgipfel. Grund: Eine Schulter vor dem
+eigentlichen Maximum (AVISTAR_ELITE: 3·10⁻⁴ tief bei 8°, Maximum 1,34 bei 16,5°) besteht nur in einem
+Reynolds-Bereich; der erste Gipfel springt deshalb mit der Geschwindigkeit, und für ein Band von Massen
+gab es keine Abrissgeschwindigkeit. Der BRYAN-Befund bleibt: sein erster Gipfel (1,26 bei 12°) ist auch der
+Hauptgipfel; WINDFREAK zeigt den umgekehrten Fall (Plateau 0,885 bei 22° höher als der Abriss 0,860 bei
+9,5°, aber fast ohne Einbruch dahinter). **Folge für die Annahme oben:** Vor dem Hauptgipfel ist $L$ in $\alpha$ nicht mehr überall
+monoton (im Bereich einer Schulter gibt es bis zu drei Anstellwinkel mit demselben Auftrieb); der
+Kernel liefert den Schnittpunkt, der dem Hauptgipfel von unten am nächsten liegt (aero_kernel ARCHITECTURE
+§8.8). Ob dort stattdessen der kleinste Anstellwinkel gelten soll, ist nicht entschieden.
+
 ---
 
 ### 3.5 Der erste Punkt: Reiseflug
@@ -2282,7 +2299,7 @@ eines ohne Abbruchbedingung.
 |---|---|---|
 | **O1** | ✅ **Entschieden 05.10.2026 (Maintainer):** Der Korrekturzweig — Flügelversatz, Leitwerksskalierung (`alpha-vh`, `dsm-dx-wing`, `dsm-dsh` → `wing-shift-lever`, `htail-chord-scale`, 5·MAC-Klemme) — sind **Auslegungsrechnungen und gehören in einen eigenen Kanon**, nicht in diesen. Dieser Kanon rechnet, was ein gegebenes Flugzeug kann; der Auslegungskanon rechnet, was man ändern muss, um ein Ziel zu erreichen. Die Einträge werden hier nicht aufgenommen (K31). **Grenzfälle bleiben hier** (Maintainer 05.10.2026): `cg-for-target-margin`, `stall-wing-loading-limit` und `aileron-throw-fraction` rechnen zwar ein Ziel in eine Konstruktionsgröße um, bleiben aber im Rechenkanon — der Urmodell-Generator braucht sie (O12). Der Ist-Fehler gh-1145 (Leitwerksgeometrie erreicht `sm_sizing_service` nie) bleibt ein Bug im heutigen Code. | Abschluss von §2.1 |
 | **O2** | *Geklärt 01.10.2026, siehe §3.4.1 — als Optimierungsproblem, Methode IPOPT über `asb.Opti`.* Die **drei fehlenden Angaben** zum Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$. | Freigabe von `stall-speed` als Anwendung |
-| **O3** | ✅ **Entschieden 05.10.2026 (Maintainer), siehe §3.4.2:** α-Abtastung → erster $C_L$-Gipfel $\alpha_1$ als Schranke, IPOPT über `asb.Opti`; Lösung nur auf dem Ast vor $\alpha_1$; ohne Lösung kein Wert, sondern `DesignWarning` „unterhalb Abriss“. Freigabetor für Probleme nahe am Abriss bleibt (Befund BRYAN: Plateau mit zweitem Maximum). `stall-onset-detection` wird auf den ersten Gipfel angeglichen (K32). | Freigabe von §2.1 und aller Probleme nahe am Abriss |
+| **O3** | ✅ **Entschieden 05.10.2026 (Maintainer), siehe §3.4.2:** α-Abtastung → erster $C_L$-Gipfel $\alpha_1$ als Schranke, IPOPT über `asb.Opti`; Lösung nur auf dem Ast vor $\alpha_1$; ohne Lösung kein Wert, sondern `DesignWarning` „unterhalb Abriss“. Freigabetor für Probleme nahe am Abriss bleibt (Befund BRYAN: Plateau mit zweitem Maximum). `stall-onset-detection` wird auf den ersten Gipfel angeglichen (seit 27.11.2026 Hauptgipfel statt erster Gipfel, #1423, siehe §3.4.2) (K32). | Freigabe von §2.1 und aller Probleme nahe am Abriss |
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
 | **O5** | ✅ **Entschieden 05.10.2026 (Maintainer):** Kanonisch ist die **exakte ISA** (U.S. 1976 / ICAO, AeroSandbox `method="isa"`) — genau das Gesetz, das `air-density-isa` nennt. Die geglättete Standard-Näherung (`method="differentiable"`) wird nicht gebraucht: Die Höhe ist je Betriebspunkt fest (O10), nicht Optimierungsvariable. Gemessen: Näherung −339 ppm bei 500 m, −0,2 % bei 3 km in der Dichte; exakte ISA 0,06 ms je Aufruf. Ist: alle 15 Aufrufer nutzen die Näherung (K30). Die ISA bleibt eine Nennbedingung, nicht das Tageswetter (§3.2). | Eindeutigkeit von $\rho$ |
 | **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0028 (früher 0023) verlangt für das RC/UAV-Regime geprüfte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
@@ -2413,7 +2430,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K29 | Sekunden-Rechnungen beim Verlassen der Konstruktionsansicht statt bei jeder Änderung; Änderungen markieren abhängige Werte sofort als veraltet (Kanon-Graph liefert den Unterbaum). Veraltete Werte ausgegraut, alter Wert per Mouse-over. Entschieden 05.10.2026 | O14 | `invalidation_service`, `background_jobs` (heute: entprellt 2 s nach Änderung), Frontend-Werteanzeige |
 | K30 | Luftdichte aus der exakten ISA: `asb.Atmosphere(..., method="isa")` an allen Aufrufstellen statt der geglätteten Standard-Näherung. Entschieden 05.10.2026 | O5 | 15 Aufrufstellen von `asb.Atmosphere` (`analysis_service`, `operating_point_generator_service`, `avl_trim_service`, `aerobuildup_trim_service`, `section_aoa_service`, `neuralfoil_cdcl_service`, `mass_cg_service`, `api/utils.py`) |
 | K31 | Auslegungsrechnungen (Korrekturzweig: Flügelversatz, Leitwerksskalierung, `a_VH`, Empfindlichkeiten, 5·MAC-Klemme) gehören in einen **eigenen Auslegungskanon**; der Rechenkanon enthält nur Analyse eines gegebenen Flugzeugs. Entschieden 05.10.2026 | O1 | `sm_sizing_service`, `tail_sizing_service` (gh-1145) |
-| K32 | Anstellwinkel aus $L = n\,W$ nach §3.4.2 (Abtastung, erster $C_L$-Gipfel als Schranke, IPOPT, ohne Lösung kein Wert + `DesignWarning`); `stall-onset-detection` ab dem **ersten** statt dem globalen $C_L$-Maximum. Entschieden 05.10.2026 | O3, §3.4.2 | `analysis_service.py:169` (`np.argmax`), Anstellwinkel-Löser der Trimm- und Betriebspunkt-Dienste |
+| K32 | Anstellwinkel aus $L = n\,W$ nach §3.4.2 (Abtastung, erster $C_L$-Gipfel als Schranke, IPOPT, ohne Lösung kein Wert + `DesignWarning`); `stall-onset-detection` ab dem **ersten** statt dem globalen $C_L$-Maximum. Entschieden 05.10.2026. **Geändert 27.11.2026 (Maintainer, #1423):** Schranke ist der Hauptgipfel (Maximum mit dem stärksten Einbruch dahinter), nicht der erste, siehe §3.4.2 | O3, §3.4.2 | `analysis_service.py:169` (`np.argmax`), Anstellwinkel-Löser der Trimm- und Betriebspunkt-Dienste |
 
 ## Arbeitsregeln
 

@@ -17,7 +17,7 @@ from aero_kernel.formulas.butterfly_approach import (
     approach_speed_positive,
     butterfly_approach,
     crow_aileron_not_negative,
-    optimum_at_first_cl_peak,
+    optimum_at_main_cl_peak,
 )
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import (
@@ -317,7 +317,7 @@ async def test_a_mix_on_another_branch_is_named_even_when_the_stall_never_reache
         await run(OffPeak(), v_app=1.3 * v_stall_landing())
     error = raised.value
     assert error.code == "postcondition_violated"
-    assert error.detail == {"postcondition": "optimum_at_first_cl_peak", "mix": 0.5}
+    assert error.detail == {"postcondition": "optimum_at_main_cl_peak", "mix": 0.5}
 
 
 async def test_an_approach_speed_below_the_landing_stall_gives_zero_without_reading_a_glide() -> (
@@ -512,11 +512,11 @@ def stall_curve(peak_at: float = ALPHA_S) -> StallCurve:
 
 
 async def test_the_postcondition_holds_when_every_mix_is_at_its_first_peak() -> None:
-    assert optimum_at_first_cl_peak({}, {"v_s0_curve": stall_curve()}).state == "held"
+    assert optimum_at_main_cl_peak({}, {"v_s0_curve": stall_curve()}).state == "held"
 
 
 async def test_the_postcondition_names_the_mix_that_is_on_another_branch() -> None:
-    result = optimum_at_first_cl_peak({}, {"v_s0_curve": stall_curve(peak_at=22.0)})
+    result = optimum_at_main_cl_peak({}, {"v_s0_curve": stall_curve(peak_at=22.0)})
     assert result.state == "violated"
     assert "mix s = 0" in result.message
     assert result.detail == {"mix": 0.0}
@@ -524,7 +524,7 @@ async def test_the_postcondition_names_the_mix_that_is_on_another_branch() -> No
 
 
 async def test_the_postcondition_is_unchecked_without_the_curve() -> None:
-    assert optimum_at_first_cl_peak({}, {"v_s0_curve": 1.0}).state == "unchecked"
+    assert optimum_at_main_cl_peak({}, {"v_s0_curve": 1.0}).state == "unchecked"
 
 
 # --- the engine -------------------------------------------------------------------------------
@@ -625,4 +625,4 @@ async def test_the_postcondition_error_discards_all_butterfly_outputs() -> None:
     assert quantity.error is not None
     assert quantity.error.code == "postcondition_violated"
     assert "mix s = 0.5" in quantity.error.message
-    assert quantity.error.detail == {"postcondition": "optimum_at_first_cl_peak", "mix": 0.5}
+    assert quantity.error.detail == {"postcondition": "optimum_at_main_cl_peak", "mix": 0.5}

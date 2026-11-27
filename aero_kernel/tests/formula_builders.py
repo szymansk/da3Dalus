@@ -147,6 +147,7 @@ OPT_SETTINGS: dict[str, JsonValue] = {
     "opt_effectiveness_exponent": 2.751428551177291,
     "opt_probe_tolerance": 1e-6,
     "opt_peak_tolerance": 1e-6,
+    "opt_stall_recovery_fraction": 0.5,
     "opt_zero_span": 1e-15,
     "opt_level_lift_tolerance": 1e-6,
     "opt_level_max_steps": 20,

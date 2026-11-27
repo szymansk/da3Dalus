@@ -721,7 +721,7 @@ quantity.
   - **Not embedding — a varied configuration.** A form that re-solves another formula's problem under a
     configuration it varies itself (`butterfly-approach`: the stall problem in crow configuration, swept
     over the mix `s`) cannot embed the fixed application. It states the same guard as its **own**
-    postcondition on its output (`optimum_at_first_cl_peak` on every point of the curve, K32); the check
+    postcondition on its output (`optimum_at_main_cl_peak` on every point of the curve, K32); the check
     function is shared with `stall-speed`'s (one implementation per check, as per formula; module
     `CLAUDE.md`). No embed with a varied
     configuration exists in the format.
@@ -736,7 +736,7 @@ quantity.
   - **Engine** (built with the first embedder, like `@relation`): an embedded formula is no node — no cache entry and no preconditions of its own (its inputs
     are the embedder's variables or inputs; the embedder's preconditions apply). **Its postconditions do
     run**, on every embedded evaluation — they guard what the relation returns (e.g. `stall-speed`'s
-    `optimum_at_first_cl_peak` at each mass of the sweep, K32): the unscoped ones always, a scoped one when
+    `optimum_at_main_cl_peak` at each mass of the sweep, K32): the unscoped ones always, a scoped one when
     its application is listed. A violation is the embedder's: `on_violation: error` makes it
     `postcondition_violated` with `detail.embedded` = `<slug>.<application-id>`, `detail.postcondition` = the
     id and the variable values of the failing evaluation; `warning` becomes the embedder's `warning` warning
@@ -868,7 +868,7 @@ caller's responsibility.
     `FormulaError`; a dead worker discards its own worker slot (the others and their model functions stay)
     and becomes `internal`. Tested with a stub solver.
   - **The parabolic polar fit (#1401).** `polar_fit_residual` (`notice`, every fit of `parabolic-polar-fit`; `detail`: `points`, `cl_min`, `cl_max`, `v_min_ms`, `v_max_ms`, `rms`, `max_abs`, `max_relative`), `polar_fit_nonphysical` (`error`: a fitted slope or `C_D0` at or below zero, or an Oswald factor above `max_oswald`; the fitted numbers are returned and declared, never replaced; `detail`: `reasons`, `cd0`, `k`, `e_osw`) and `small_glide_angle` (`warning`, `sink-rate` below the glide-ratio floor of the rule `small-glide-angle`; `detail`: `glide_ratio`, `glide_angle_deg`, `from_tan_for_sin`, `from_lift_equals_weight`, `floor`).
-  - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
+  - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the main C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
   - **The lateral chain (#1277).** The static-margin probe and its warnings (`aerobuildup_no_downwash`, `static_margin_probe_disagrees`, `static_margin_probe_sign_disagrees`) are deleted (maintainer 2026-11-05, #1347; reasons in the canon's `STAND.md`). `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
   - **Spanwise loads (#1398).** `spanwise_loads_scope` (`notice`, on every result of `spanwise-loads`): the loads are those of the right half of the main wing from one AVL solution at `L = n m g`, aerodynamic load only (no inertial relief), pitch untrimmed, controls undeflected, normal force only. The three outputs are `curve` results over the spanwise station (gh-1424). No Reynolds or Mach warning is raised for them: the entry's inputs carry neither the viscosity nor the speed of sound (open, maintainer).
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
@@ -937,7 +937,7 @@ caller's responsibility.
     `static-thrust-to-weight` and `motor-propeller-part-load`), the drag at a lift `n m g` is
     `OptiAdapter.level_flight_point(..., n_load)` (the one lift-equals-weight solve, now with the load factor:
     level flight 1, a turn `n`, a climb `cos(gamma)`, a vertical dive 0; a wing that cannot carry the lift before
-    its first C_L peak is `not_converged` with `detail.limit = "wing_lift"`, which the formulas read as the wing
+    its main C_L peak is `not_converged` with `detail.limit = "wing_lift"`, which the formulas read as the wing
     limit, a bound and not an error). The entries pose IPOPT problems; the motor-propeller balance is a bisection on
     the propeller table and cannot enter one, so `alpha` and `n_prop` are eliminated by the two solves and the
     rest is a one-dimensional search over the speed: an upward scan (`powered_speed_scan_*`), Illinois regula
@@ -976,7 +976,7 @@ caller's responsibility.
   - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
     polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
     `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the
-    angle of attack is read from one alpha sweep at that speed on the branch before the first C_L peak
+    angle of attack is read from one alpha sweep at that speed on the branch before the main C_L peak
     (`alpha_for_lift_coefficient`) and refined by secant steps on AeroBuildup's lift until it equals `m g` to
     `opt_level_lift_tolerance` (`config.yaml`); a level the lift curve does not reach, a missing peak or a point
     that does not settle in `LEVEL_MAX_STEPS` is `not_converged`. The secant is bracketed by the two sweep samples
@@ -998,9 +998,57 @@ caller's responsibility.
     count are the parameters of the rule `parabolic-polar-fit`.
   - **Implementation note, `stall-speed` (#1201).** The procedure always makes two bracketing sweeps: one at
     the speed a first lift-coefficient estimate implies (`BRACKET_CL`), one at the speed the first sweep's own
-    extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
+    extremum implies. The main C_L extremum moves with the Reynolds number; at the estimate alone the
     inverted trough lay about three sweep steps outside IPOPT's window. It is unconditional (never
     triggered by a failure) and not a fixed point; an optimum on the edge of the window is still an error.
+  - **The stall is at the main C_L maximum (maintainer 2026-11-27, gh-1423).** The extremum every
+    bracket of the OPT adapter reads (`_bracket`: stall, best glide, minimum sink, the steady roll's
+    window, the level-flight point) is picked by one pure function, `stall_math.main_extremum`
+    (`main_extremum_from_zero` adds the side of alpha = 0); one function, one authority (ADR 0022).
+    The decision, verbatim: "Das höchste Maximum mit dem stärksten Einbruch über mehrere Grad dahinter.
+    Bei der Extra 300 ist der eine Punkt kein Maximum mehr, da wir schon ein höheres Maximum gefunden
+    hatten. Ich gehe davon aus, dass wir von links durch die Kurve scannen und beim Windfreak haben wir
+    auch nur ein Maximum mit einem signifikanten Einbruch über mehrere Grad dahinter." And on SNOOPY: "Beim
+    Snoopy wäre es der zweite niedrigere Punkt. Also da, wo es danach richtig abstürzt." Its operational
+    reading (to be confirmed with the canon entry): the local maximum in front of the real crash.
+    1. For each local maximum of the 0.25 deg sweep above alpha = 0 (a sample not lower than its
+       predecessor and higher than its successor), the fall behind it is its C_L minus the lowest C_L
+       reached behind it before the curve has climbed back from that lowest value by more than the
+       fraction `opt_stall_recovery_fraction` (0.5, `config.yaml`) of what it had fallen so far;
+       otherwise the fall runs to the end of the sweep. A ledge inside a descent does not end the fall,
+       a real recovery does.
+    2. The stall is the local maximum with the largest fall; of two with the same fall the lower angle.
+    3. Inverted: mirrored (local minima below alpha = 0, the largest rise behind).
+
+    It replaces the *first* local maximum: several fleet aircraft have a shoulder before the real
+    maximum that exists only in a range of Reynolds numbers (AVISTAR_ELITE: 3·10⁻⁴ deep at 8 deg, the
+    maximum 1.34 at 16.5 deg), so the first maximum jumped with the speed and a band of masses had no
+    stall speed (AVISTAR_ELITE 8.5–9.4 kg). It is not the highest maximum either: WINDFREAK stalls at
+    9.5 deg (C_L 0.860, falling to 0.744) and has a higher flat plateau behind it (0.885 at 22 deg,
+    falling 0.011); SNOOPY has a front hump (1.447 at 7.25 deg, falling 0.12) higher than its stall
+    (1.420 at 13 deg, falling 0.42). Consequences:
+    - The end of the sweep is no maximum. A curve without a local maximum above alpha = 0 is
+      `not_converged` ("no peak"), as before.
+    - IPOPT's window of alpha is unchanged in form: from the end of the sweep to one step past the
+      extremum. It holds every local maximum before the main one, and one of them can be higher (a
+      hump); IPOPT starts at the main one, and a solution on another is refused by the postcondition.
+    - The postcondition `optimum_at_main_cl_peak` / `_trough` (formerly `optimum_at_first_cl_*`) holds
+      when `alpha_S` lies within one sweep step of the extremum this function picks on the sweep at
+      `V_S`, or of another local extremum of the same height to `opt_peak_tolerance`, **and** `C_L,max`
+      is not short of the picked one by more than that tolerance. Two equally high maxima are one lift
+      value: the sweep that bracketed the solve and the sweep at `V_S` run at slightly different speeds
+      and may each name the other.
+    - The pick is not always the highest maximum, so `C_L,max` is not guaranteed continuous in the
+      speed: where the largest fall changes from one maximum to another of different height, `C_L,max`
+      steps, and a mass inside such a step has no speed at which the picked maximum carries it (the
+      solve then fails, `not_converged` or `postcondition_violated`). Nothing in the solver smooths or
+      relocates it (ADR 0020).
+    - A level-flight point and the start of the steady roll are still read at the crossing **nearest
+      below the main peak** (`roll_math.enclosing_sample`). Where a shoulder makes the curve reach a
+      lift coefficient three times, that is the crossing past the shoulder; a lift between the shoulder
+      and the main maximum, formerly the wing limit, is now a value.
+    - No relocation and no retry (ADR 0020, ADR 0021). A first peak with a minimum depth was measured
+      and rejected: the depth is itself continuous in the speed, so the jump only moves.
   - **The AVL adapter** (`solvers/avl.py`, #1203): `neutral_point(airplane, cl)`. One own writer
     (`avl_writer.py`) emits the `.avl` text: no BODY (no fuselage is modelled), no CONTROL, Mach 0, `SREF`,
     `CREF`, `BREF` from the kernel's projected geometry function (one authority, ADR 0022), the reference
@@ -1774,7 +1822,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
     `@relation(slug)` on the module-level relation function (ch. 8.5); `@precondition(slug, id)` on a
     plain `def check(x) -> CheckResult`, `@postcondition(slug, id)` on `def check(x, y) -> CheckResult`
     (`CheckResult`: `held | violated | unchecked` plus a message). Decorators stack, so one check function
-    serves several `(slug, id)` pairs — one implementation per check (`optimum_at_first_cl_peak` for
+    serves several `(slug, id)` pairs — one implementation per check (`optimum_at_main_cl_peak` for
     `stall-speed` and `butterfly-approach`). A duplicate registration or a non-coroutine `formula` is a
     `RegistryError` at import — a programming error, never a result.
   - **Parameter names are not repeated in code** (precedence note at the top). Considered and rejected,
@@ -1955,7 +2003,7 @@ They are the first thing a developer or an agent reads to check a change and to 
   - K27: lateral stability from AVL
   - K28/K29: triggering
   - K30: ISA
-  - K32: stall up to the first C_L peak
+  - K32: stall up to the main C_L peak (the local maximum with the largest fall behind it; maintainer 2026-11-27, gh-1423)
 - **Canon rules** A1–A11 in `ANFORDERUNGEN.md` §4.
 
 ## 10. Quality scenarios (= test cases)
@@ -1997,8 +2045,8 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 | Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `warning` warning from the adapter and, since #1243, leaves the interval (`world_outside_validity`, ch. 8.13): with BRYAN and JAGUAR at 20° the roll rate is the AeroBuildup world alone |
 | Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a wing whose devices are flaperons only has `has_aileron` but not the butterfly condition — flaperons never count toward it (D10), with one flaperon or several; butterfly needs a device of role `flap` and one of role `aileron` or `elevon`, otherwise the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
-| Q36 | Embedded postcondition and variables (engine half built with the first embedder) | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
-| Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
+| Q36 | Embedded postcondition and variables (engine half built with the first embedder) | a stub `stall-speed` whose optimum is not the main C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
+| Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_main_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
 | Q38 | Non-scalar quantity requested in v1 | requesting `polar-stall` together with `stall-speed`: `polar-stall` is `error`, `not_implemented`, code `non_scalar_result`, no formula called for it; `stall-speed` computes and its formula, which also returns the polar internally, runs once |
 | Q39 | Crow that never reaches the approach speed (interim, #1402) | `butterfly-max-mix` is `error`, category `unsupported_configuration`, code `unsupported_configuration`, the message says "fully mixable": the stall speed stays below the approach speed flown without crow up to `s = 1`, so there is no largest mix; the result is in `detail` (`mix`, `v_s0_m_s`, `v_app_m_s`, `glide_angle_deg`), the hint says it is a result and not a failure. The kernel has no mechanism for a declared absent output yet; the maintainer decides (Soll, #1402). An approach speed at or below `V_S0(0)` gives `s_max = 0` and an empty glide-angle curve; a mix off the first `C_L` peak is named even where there is no crossing; the glide angle at `V_app(s)` is read from `OptiAdapter.level_flight_point` (`atan2(C_D, C_L)`), the kernel's one lift-equals-weight solve |
 | Q40 | Curve requested (gh-1424) | requesting a `curve` quantity: `ok` with `curve: {x, y}` and no `value`; under more than one method world: `error`, `not_implemented`, code `uncertain_curve` (`test_curve_result.py`) |

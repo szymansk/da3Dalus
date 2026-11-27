@@ -2,7 +2,7 @@
 level-flight polar, built on the same ``_level_point``.
 
 Fast tier: the worker with the closed-form stand-in of ``test_solvers_opti_level`` (lift ``q S C_L(alpha)``
-with a first peak at 23 deg, drag ``q S (C_D0 + k C_L^2)``), and the adapter with a canned worker.
+with a main peak at 23 deg, drag ``q S (C_D0 + k C_L^2)``), and the adapter with a canned worker.
 """
 
 import math
@@ -226,7 +226,7 @@ async def test_the_wing_limit_is_named_in_the_failure_detail(
 async def test_a_sweep_without_a_peak_is_not_the_wing_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """No first C_L peak inside the sweep is a solver failure, not a stall: it carries no wing-limit tag."""
+    """No main C_L peak inside the sweep is a solver failure, not a stall: it carries no wing-limit tag."""
     installed(monkeypatch, lambda alpha: 0.05 * (alpha + 20.0))  # rises over the whole sweep
     with pytest.raises(FormulaError) as caught:
         level_point_worker(point_request(18.0))
@@ -245,9 +245,9 @@ async def test_a_zero_lift_angle_outside_the_sweep_is_not_the_wing_limit(
     assert "limit" not in caught.value.detail
 
 
-# A lift curve whose first peak lies between two samples of the 0.25 deg sweep: the sampled peak
+# A lift curve whose main peak lies between two samples of the 0.25 deg sweep: the sampled peak
 # (16.5 deg) is a little lower than the curve's own (C_L = 1.3356 at 16.47 deg), like the Avistar Elite's
-# at its first peak. Curvature and position are those measured there (gh-1426).
+# at its main peak. Curvature and position are those measured there (gh-1426).
 PEAK_ALPHA, PEAK_CL, CURVATURE = 16.47, 1.3356, 0.0052
 
 

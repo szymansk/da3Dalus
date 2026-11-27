@@ -1,7 +1,7 @@
 """Canon formula ``minimum-sink-speed``: the least sink rate as an optimisation.
 
 The formula passes the airplane, the mass, the load factor and the ISA air state to the OPT adapter,
-which brackets the first C_L peak and minimises the sink power ``D V`` subject to the lift balance in
+which brackets the main C_L peak and minimises the sink power ``D V`` subject to the lift balance in
 the process pool (the same procedure as ``minimum-drag-speed``, shared code). The Reynolds
 coupling sits inside the constraint, because AeroBuildup forms the Reynolds number from ``V``.
 """
@@ -33,7 +33,7 @@ async def minimum_sink_speed(x: Inputs, ctx: Context) -> dict[str, float]:
             of ``V`` or the lower bound of alpha active at the optimum is ``not_converged``).
 
     Warnings: ``minimum_sink_stall_limited`` (a ``notice``) if the optimum is the stall boundary:
-        the sink power is still falling at the first C_L peak, and the value is returned there.
+        the sink power is still falling at the main C_L peak, and the value is returned there.
     """
     sink = await ctx.solvers.opti.min_sink(
         airplane_of(x), number(x, "m"), number(x, "g"), number(x, "n_load"), air_state(x)

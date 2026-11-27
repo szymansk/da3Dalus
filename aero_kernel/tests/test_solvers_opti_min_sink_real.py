@@ -116,7 +116,7 @@ async def test_a_minimum_beyond_the_lift_peak_is_returned_at_the_peak_flagged_st
 ) -> None:
     """With CD0 = 0.03 the parabolic minimum-sink lift coefficient (1.34) exceeds C_L,max (0.896):
     the sink power is still falling at the lift peak, so the value is the stall boundary, flagged
-    (#1268, maintainer 2026-10-25): the alpha and C_L of the first peak, no margin."""
+    (#1268, maintainer 2026-10-25): the alpha and C_L of the main peak, no margin."""
     install_parabolic(monkeypatch)
     monkeypatch.setattr(sys.modules[__name__], "CD0", 0.03)
     request = StallRequest(

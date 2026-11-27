@@ -11,7 +11,7 @@ Illinois regula falsi refines it. A thrust curve that dips below the drag and re
 inside the scan (features no narrower than the scan step). If the thrust is still above the drag at the last
 speed the table covers, the optimum is on the bound: the declared failure ``outside_propeller_table``. The
 spurious branch below the stall (the entry's multi-start rule) cannot occur: the level-flight point lives on
-the branch before the first lift peak, and the speeds the wing cannot fly are skipped and declared.
+the branch before the main lift peak, and the speeds the wing cannot fly are skipped and declared.
 """
 
 from aero_kernel.config import config

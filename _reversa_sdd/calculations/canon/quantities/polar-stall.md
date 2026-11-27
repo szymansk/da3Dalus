@@ -17,7 +17,7 @@ type: polar
 
 The sampled whole-aircraft polar — α, `C_L`, `C_D`, of equal length (no `C_m`: no formula reads it, #1347); the solver's drag, not the
 parabola (ADR 0026), `C_D` the kernel's drag over `q·S_ref` (#1346; declared by the formula that reads it, not by [[stall-speed]], whose values carry no drag) — at the clean stall condition `V_S`, `n = 1`: the α sweep [[stall-speed]] runs to
-bracket the first `C_L` peak, published (maintainer, 2026-10-14, D4). Its range runs far enough past the
+bracket the main `C_L` peak, published (maintainer, 2026-10-14, D4). Its range runs far enough past the
 peak for [[stall-break]].
 
 **Unit.** `1` for `C_L`, `C_D`; α in `deg` (the unit of a `polar`, README)

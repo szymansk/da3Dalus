@@ -614,7 +614,7 @@ async def test_a_zero_deflection_runs_no_recording_pass(monkeypatch: pytest.Monk
 async def test_the_window_of_alpha_comes_from_the_clean_sweep(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """D9: the sweep that brackets the first C_L peak and sets the start is made on the clean
+    """D9: the sweep that brackets the main C_L peak and sets the start is made on the clean
     airplane. With the deflection the curve has kinks and its first local maximum lies far below the
     stall, so a sweep on the rolled airplane would bracket nothing (trainer: C_L 0.364 at 1 deg
     against a clean peak of 1.233 at 16 deg)."""

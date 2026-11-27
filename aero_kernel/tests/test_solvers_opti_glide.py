@@ -337,7 +337,7 @@ V_LOW = opti_module.V_MIN_MS
         (V_HIGH, 4.0, "V"),
         (V_LOW, 4.0, "V"),
         (12.0, opti_module.ALPHA_MIN_DEG, "alpha"),
-        (12.0, 16.0, "alpha"),  # the window's upper edge: the first peak (15.75) plus one step
+        (12.0, 16.0, "alpha"),  # the window's upper edge: the main peak (15.75) plus one step
     ],
 )
 async def test_an_optimum_on_a_bound_is_not_converged_and_names_the_variable(

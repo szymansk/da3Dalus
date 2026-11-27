@@ -1,11 +1,11 @@
-"""Polar, air state and the first-extremum search of the stall problem (ch. 8.12, canon K32)."""
+"""Polar, air state and the main-extremum search of the stall problem (ch. 8.12, canon K32)."""
 
 import math
 
 import pytest
 from aero_kernel.schema import Polar
 from aero_kernel.solvers.air import AirState, FixedAtmosphere
-from aero_kernel.solvers.stall_math import first_extremum, first_extremum_from_zero
+from aero_kernel.solvers.stall_math import main_extremum, main_extremum_from_zero
 from pydantic import ValidationError
 
 ALPHAS = (-2.0, 0.0, 2.0, 4.0, 6.0)
@@ -59,23 +59,88 @@ def test_an_air_state_must_be_positive_and_finite(field: str, bad: float) -> Non
         AirState(**fields)
 
 
-def test_the_first_peak_is_the_first_local_maximum_scanning_upwards() -> None:
-    cl = [0.0, 0.4, 0.8, 1.1, 1.2, 1.0, 0.9, 1.0, 0.8]  # a second, lower maximum follows
-    assert first_extremum(cl, maximum=True) == 4
+R = 0.5  # the recovery fraction of the kernel's configuration (opt_stall_recovery_fraction)
+
+
+def test_the_main_peak_is_the_maximum_with_the_largest_fall_behind_it() -> None:
+    """A shoulder (0.9 at index 2: falls 0.02, then the curve recovers) precedes the real maximum
+    (1.2 at index 5, falls 0.3 to the end), gh-1423."""
+    cl = [0.0, 0.5, 0.9, 0.88, 1.0, 1.2, 1.0, 0.9]
+    assert main_extremum(cl, maximum=True, recovery_fraction=R) == 5
+
+
+def test_the_main_peak_stays_the_first_one_when_a_lower_maximum_follows() -> None:
+    """The BRYAN shape: 1.2 at index 4 falls to 0.9, recovers 0.1 (not more than half of 0.3) and
+    falls on to 0.8: a fall of 0.4. The post-stall maximum 1.0 at index 7 falls 0.2."""
+    cl = [0.0, 0.4, 0.8, 1.1, 1.2, 1.0, 0.9, 1.0, 0.8]
+    assert main_extremum(cl, maximum=True, recovery_fraction=R) == 4
+
+
+def test_a_slightly_higher_plateau_behind_the_stall_is_not_the_main_peak() -> None:
+    """The WINDFREAK shape: 0.860 at index 2 falls by 0.116 to 0.744 before the curve recovers; the
+    plateau maximum 0.885 at index 5 is higher but falls only 0.011. The fall decides, not the
+    height."""
+    cl = [0.0, 0.5, 0.860, 0.744, 0.80, 0.885, 0.874, 0.88]
+    assert main_extremum(cl, maximum=True, recovery_fraction=R) == 2
+
+
+def test_a_ledge_inside_a_descent_does_not_end_the_fall() -> None:
+    """The EXTRA_300_EP shape: 1.130 at index 2 falls 0.045 to 1.085, a ledge climbs back 0.002 to
+    1.087 (index 4, less than half of 0.045), then the curve falls to 0.851. The fall behind index 2
+    is 1.130 - 0.851 = 0.279, behind the ledge 0.236: the stall is index 2."""
+    cl = [0.0, 0.8, 1.130, 1.085, 1.087, 0.95, 0.851]
+    assert main_extremum(cl, maximum=True, recovery_fraction=R) == 2
+
+
+def test_a_lower_maximum_before_the_real_crash_wins_over_a_higher_hump_before_it() -> None:
+    """The SNOOPY shape: a front hump 1.447 at index 2 falls 0.12 to 1.327 and the curve recovers
+    0.093 (more than half of 0.12), which ends its fall; the maximum 1.420 at index 4 is lower but
+    falls 0.42 to the end. The stall is where the curve really drops: index 4."""
+    cl = [0.0, 1.0, 1.447, 1.327, 1.420, 1.2, 1.0]
+    assert main_extremum(cl, maximum=True, recovery_fraction=R) == 4
+
+
+def test_a_recovery_of_exactly_the_fraction_does_not_end_the_fall_a_larger_one_does() -> None:
+    """1.0 falls 0.5 to 0.5. A climb back of 0.25 (exactly half) does not end the fall, which goes
+    on to 0.25: 0.75 behind index 1 against 0.5 behind index 3. A climb back of 0.3 ends it: 0.5
+    behind index 1 against 0.8 - 0.25 = 0.55 behind index 3."""
+    assert main_extremum([0.0, 1.0, 0.5, 0.75, 0.25], maximum=True, recovery_fraction=R) == 1
+    assert main_extremum([0.0, 1.0, 0.5, 0.8, 0.25], maximum=True, recovery_fraction=R) == 3
+
+
+def test_the_recovery_fraction_is_the_callers() -> None:
+    """The same series with a fraction of 0.75: the climb back of 0.3 (0.6 of the fall) no longer
+    ends the fall behind index 1."""
+    assert main_extremum([0.0, 1.0, 0.5, 0.8, 0.25], maximum=True, recovery_fraction=0.75) == 1
+
+
+def test_a_series_still_rising_at_its_end_keeps_its_interior_maximum() -> None:
+    """The end of the sweep is no maximum: 1.5 at the last sample does not replace 1.1 at index 2
+    (falls 0.2 before the curve recovers); 0.95 at index 4 falls 0.02."""
+    cl = [0.0, 0.6, 1.1, 0.9, 0.95, 0.93, 1.3, 1.5]
+    assert main_extremum(cl, maximum=True, recovery_fraction=R) == 2
+
+
+def test_of_two_maxima_with_the_same_fall_the_first_in_scan_order_is_taken() -> None:
+    """1.0 (index 1) falls 0.5 before the recovery, 1.5 (index 3) falls 0.5 to the end."""
+    assert main_extremum([0.0, 1.0, 0.5, 1.5, 1.0], maximum=True, recovery_fraction=R) == 1
 
 
 def test_a_plateau_peak_is_the_last_sample_of_the_plateau() -> None:
-    assert first_extremum([0.0, 0.5, 1.0, 1.0, 0.9], maximum=True) == 3
+    assert main_extremum([0.0, 0.5, 1.0, 1.0, 0.9], maximum=True, recovery_fraction=R) == 3
 
 
-def test_the_first_trough_is_the_first_local_minimum() -> None:
-    assert first_extremum([0.0, -0.4, -0.8, -0.7, -0.9], maximum=False) == 2
+def test_the_main_trough_is_the_minimum_with_the_largest_rise_behind_it() -> None:
+    """Mirror. -0.8 (index 2) rises 0.3 to -0.5 before the curve drops back by 0.2 (more than half);
+    -0.95 (index 5) rises 0.05 to the end: index 2, although index 5 is lower."""
+    cl = [0.0, -0.4, -0.8, -0.5, -0.7, -0.95, -0.9]
+    assert main_extremum(cl, maximum=False, recovery_fraction=R) == 2
 
 
 def test_a_series_that_never_turns_has_no_extremum() -> None:
-    assert first_extremum([0.0, 0.5, 1.0, 1.5], maximum=True) is None
-    assert first_extremum([0.0, 0.5], maximum=True) is None
-    assert first_extremum([], maximum=True) is None
+    assert main_extremum([0.0, 0.5, 1.0, 1.5], maximum=True, recovery_fraction=R) is None
+    assert main_extremum([0.0, 0.5], maximum=True, recovery_fraction=R) is None
+    assert main_extremum([], maximum=True, recovery_fraction=R) is None
 
 
 def test_a_fixed_atmosphere_answers_from_its_state_with_ideal_gas_temperature_and_pressure() -> (
@@ -95,13 +160,13 @@ def test_a_fixed_atmosphere_answers_from_its_state_with_ideal_gas_temperature_an
 def test_a_boundary_sample_is_never_an_extremum() -> None:
     """A falling series has its maximum at the first sample, a rising one at the last: neither
     is a turning point (ADR 0020), and a wrapped index must not make it one."""
-    assert first_extremum([3.0, 2.0, 1.0], maximum=True) is None
-    assert first_extremum([1.0, 2.0, 3.0], maximum=False) is None
-    assert first_extremum([1.0, 2.0, 3.0], maximum=True) is None
-    assert first_extremum([3.0, 2.0, 1.0], maximum=False) is None
+    assert main_extremum([3.0, 2.0, 1.0], maximum=True, recovery_fraction=R) is None
+    assert main_extremum([1.0, 2.0, 3.0], maximum=False, recovery_fraction=R) is None
+    assert main_extremum([1.0, 2.0, 3.0], maximum=True, recovery_fraction=R) is None
+    assert main_extremum([3.0, 2.0, 1.0], maximum=False, recovery_fraction=R) is None
 
 
-# --- first_extremum_from_zero (canon K32: the scan starts at alpha = 0, P2-F02) ----------------
+# --- main_extremum_from_zero (canon K32: the scan starts at alpha = 0, P2-F02) -----------------
 
 
 def test_an_upright_scan_ignores_a_local_maximum_below_alpha_zero() -> None:
@@ -114,7 +179,7 @@ def test_an_upright_scan_ignores_a_local_maximum_below_alpha_zero() -> None:
     """
     alphas = (-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0)
     cl = (-0.4, -0.3, -0.5, -0.2, 0.0, 0.3, 0.6, 0.5, 0.4)
-    assert first_extremum_from_zero(alphas, cl, upright=True) == 6
+    assert main_extremum_from_zero(alphas, cl, upright=True, recovery_fraction=R) == 6
 
 
 def test_an_inverted_scan_takes_the_trough_below_zero_not_the_one_above() -> None:
@@ -124,7 +189,7 @@ def test_an_inverted_scan_takes_the_trough_below_zero_not_the_one_above() -> Non
     """
     alphas = (-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0)
     cl = (-0.4, -0.5, -0.6, -0.3, 0.0, -0.2, -0.9, -0.1, 0.2)
-    assert first_extremum_from_zero(alphas, cl, upright=False) == 2
+    assert main_extremum_from_zero(alphas, cl, upright=False, recovery_fraction=R) == 2
 
 
 def test_a_grid_without_alpha_zero_starts_at_the_nearest_sample() -> None:
@@ -135,10 +200,36 @@ def test_a_grid_without_alpha_zero_starts_at_the_nearest_sample() -> None:
     """
     alphas = (-3.0, -1.5, 0.5, 2.0, 3.5, 5.0)
     cl = (0.1, 0.5, 0.4, 0.6, 0.9, 0.7)
-    assert first_extremum_from_zero(alphas, cl, upright=True) == 4
+    assert main_extremum_from_zero(alphas, cl, upright=True, recovery_fraction=R) == 4
 
 
 def test_an_empty_series_and_a_series_that_does_not_turn_have_no_extremum() -> None:
-    assert first_extremum_from_zero((), (), upright=True) is None
-    assert first_extremum_from_zero((0.0, 1.0, 2.0), (0.0, 0.5, 1.0), upright=True) is None
-    assert first_extremum_from_zero((-2.0, -1.0, 0.0), (0.0, -0.5, -1.0), upright=False) is None
+    assert main_extremum_from_zero((), (), upright=True, recovery_fraction=R) is None
+    assert (
+        main_extremum_from_zero((0.0, 1.0, 2.0), (0.0, 0.5, 1.0), upright=True, recovery_fraction=R)
+        is None
+    )
+    assert (
+        main_extremum_from_zero(
+            (-2.0, -1.0, 0.0), (0.0, -0.5, -1.0), upright=False, recovery_fraction=R
+        )
+        is None
+    )
+
+
+def test_an_upright_scan_takes_the_main_maximum_above_alpha_zero_past_a_shoulder() -> None:
+    """The Avistar shape (gh-1423): a shoulder at 2 deg (0.6, then 0.59) and the maximum 0.9 at 5 deg.
+
+    The maximum below zero (-0.3 at -3 deg) lies on the other side and is never taken.
+    """
+    alphas = (-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+    cl = (-0.4, -0.3, -0.5, -0.2, 0.0, 0.3, 0.6, 0.59, 0.8, 0.9, 0.7)
+    assert main_extremum_from_zero(alphas, cl, upright=True, recovery_fraction=R) == 9
+
+
+def test_an_inverted_scan_takes_the_main_minimum_below_alpha_zero() -> None:
+    """Scanning down from 0: -0.3, -0.6 (trough, rises 0.05), -0.55, -0.8 (trough, rises 0.1), -0.7:
+    the one at -4 deg has the larger rise behind it."""
+    alphas = (-5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0)
+    cl = (-0.7, -0.8, -0.55, -0.6, -0.3, 0.0, 0.3)
+    assert main_extremum_from_zero(alphas, cl, upright=False, recovery_fraction=R) == 1

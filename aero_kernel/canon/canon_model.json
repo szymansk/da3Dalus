@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:d0ef489a35fd5aef9535e532d911c35e16b5f65c439e88b5208b01754e568e8a",
+  "content_hash": "sha256:364ac9a2797291ba31118cfd2c762a9712dee7a095c60f8f33074ec84aef9807",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -196,13 +196,13 @@
         "opt_level_max_steps": {
           "basis": "numerical",
           "guards": "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance.",
-          "source": "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one",
+          "source": "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the main C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one",
           "unit": "1",
           "value": 20.0
         },
         "opt_peak_tolerance": {
           "basis": "numerical",
-          "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled first peak by this much; both are samples of one curve, so it only absorbs numerical noise.",
+          "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled main peak (the maximum the stall rule picks on the sweep at V_S) by this much; both are samples of one curve, so it only absorbs numerical noise. Two maxima closer in height than this count as equally high.",
           "source": "float noise between two samples of one sweep",
           "unit": "1",
           "value": 1e-06
@@ -241,6 +241,13 @@
           "source": "two decades above IPOPT's convergence tolerance of 1e-8 on the scaled constraint (see opt_probe_tolerance), and far below the 23 % spread between the worlds",
           "unit": "1",
           "value": 0.0001
+        },
+        "opt_stall_recovery_fraction": {
+          "basis": "decision",
+          "guards": "Stall bracket (stall-speed and every problem bracketed at the stall): the fall behind a local maximum of the lift curve ends once C_L has climbed back from its lowest value by more than this fraction of what it had fallen so far. A ledge inside a descent therefore does not end the fall, a real recovery does. The stall is the local maximum with the largest fall.",
+          "source": "Maintainer 2026-11-27 (#1423): the stall is the maximum 'wo es danach richtig abstuerzt' (EXTRA_300_EP 13 deg, WINDFREAK 9.5 deg, SNOOPY 13 deg). The fraction is the operational reading of that decision, not yet confirmed by the maintainer; measured on the reference fleet 2026-11-27 (36 aircraft, 61 speeds 3-40 m/s, 0.25 deg sweep): the picks are identical for 0.25, 0.5 and 0.75 over each member's range of 0.5 to 1.5 times its mass, except one sample (BF109_E at 0.75). A ratio of two lift-coefficient differences of one curve: dimensionless and not tied to a Reynolds or Mach range (ADR 0028).",
+          "unit": "1",
+          "value": 0.5
         },
         "opt_zero_span": {
           "basis": "numerical",
@@ -1036,7 +1043,7 @@
           "postconditions": [
             {
               "applications": null,
-              "id": "optimum_at_first_cl_peak",
+              "id": "optimum_at_main_cl_peak",
               "on_violation": "error",
               "parameter": "v_s0_curve"
             }
@@ -3643,7 +3650,7 @@
                 "takeoff",
                 "landing"
               ],
-              "id": "optimum_at_first_cl_peak",
+              "id": "optimum_at_main_cl_peak",
               "on_violation": "error",
               "parameter": "cl_max"
             },
@@ -3651,7 +3658,7 @@
               "applications": [
                 "inverted"
               ],
-              "id": "optimum_at_first_cl_trough",
+              "id": "optimum_at_main_cl_trough",
               "on_violation": "error",
               "parameter": "cl_max"
             }

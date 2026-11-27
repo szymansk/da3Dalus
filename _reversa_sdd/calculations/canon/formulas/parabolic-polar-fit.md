@@ -72,7 +72,7 @@ unchanged. Still a display value, not a Trefftz-plane span efficiency.
 **Method, window and rejection (#1401).** The points are `fit_points` values of `C_L` equally spaced over the
 window `[max(window_cl_floor, window_lower_fraction · C_L,max), window_upper_fraction · C_L,max]`; each is flown
 at the speed where `L = m g` (`V = sqrt(2 m g / (ρ S_ref C_L))`), at the angle of attack where AeroBuildup's lift
-equals the weight at that speed, on the branch before the first `C_L` peak. The fit is ordinary least squares of
+equals the weight at that speed, on the branch before the main `C_L` peak (the local maximum above α = 0 with the largest fall behind it, [[stall-speed]], #1423). The fit is ordinary least squares of
 `C_D` on `C_L²` (intercept `C_D0`, slope `k`), `e = 1/(π AR k)`. The window, the point count and the bound on `e`
 are the parameters of the rule `parabolic-polar-fit` (`rules.yaml`); the window is BR-16's. **Resolution goes up,
 thresholds never move:** `fit_points` is the lever for a poor fit, and no threshold on the residual exists. **The
@@ -82,7 +82,7 @@ meaningful is declared and returned, never replaced:** a slope `k ≤ 0` (so `e 
 above `max_oswald` (1, Anderson §5.3.3) gives the warning `polar_fit_nonphysical` of severity `error` with the
 fitted numbers in its `detail`; the formulas that divide by them ([[induced-drag-factor]], the probes) refuse a
 non-positive `e` by their own preconditions. The only refusals of the fit itself are an empty window, a level
-that the airplane does not reach before its first `C_L` peak, a point whose lift does not settle on the weight,
+that the airplane does not reach before its main `C_L` peak, a point whose lift does not settle on the weight,
 a solver drag at or below zero, and a slope of zero to `opt_zero_span` (no finite `e`): each is a `FormulaError`, never a
 value. The refusals carry the codes `empty_fit_window`, `invalid_fit_points` (a point count that is no integer of at least 3), `defective_solver_drag` (any point with `C_D ≤ 0`, before anything is divided by it) and `not_converged`. The kernel's drag is declared as everywhere (`induced_drag_viscous_factor_removed`).
 

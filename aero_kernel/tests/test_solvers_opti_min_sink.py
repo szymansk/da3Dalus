@@ -174,7 +174,7 @@ async def test_any_other_exception_stays_an_exception(monkeypatch: pytest.Monkey
         opti_module.min_sink_worker(request)
 
 
-# The window of alpha ends at the first C_L peak itself (15.75 deg in the faked polar): an optimum
+# The window of alpha ends at the main C_L peak itself (15.75 deg in the faked polar): an optimum
 # there is the stall-limited minimum sink (#1268, maintainer 2026-10-25): value and warning, not an error.
 PEAK_ALPHA = 15.75
 

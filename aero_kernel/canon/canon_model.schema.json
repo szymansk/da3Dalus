@@ -704,6 +704,9 @@
         "opt_roll_target_tolerance": {
           "$ref": "#/$defs/ConfigValue"
         },
+        "opt_stall_recovery_fraction": {
+          "$ref": "#/$defs/ConfigValue"
+        },
         "opt_zero_span": {
           "$ref": "#/$defs/ConfigValue"
         },
@@ -747,6 +750,7 @@
         "avl_cl_tolerance",
         "opt_probe_tolerance",
         "opt_peak_tolerance",
+        "opt_stall_recovery_fraction",
         "opt_zero_span",
         "opt_level_lift_tolerance",
         "opt_level_max_steps",
