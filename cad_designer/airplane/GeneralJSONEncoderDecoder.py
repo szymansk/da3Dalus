@@ -147,7 +147,10 @@ def _coerce_params(cls, params: dict) -> dict:
         if _is_list_type(hint_str) and isinstance(value, str):
             coerced[key] = [value] if value.strip() else []
             continue
-        if _is_list_type(hint_str) and not isinstance(value, list):
+        # Any other value of a list parameter stays as it is. In particular a
+        # list stays a list: the base-type coercion below would turn
+        # list[ShapeId] into str(value) (gh-1480).
+        if _is_list_type(hint_str):
             coerced[key] = value
             continue
 
