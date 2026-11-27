@@ -48,6 +48,8 @@ def test_tessellation_returns_valid_viewer_json(client: TestClient):
         ],
         "nose_pnt": [0, 0, 0],
         "symmetric": True,
+        # gh-1187: the role is required to create a wing.
+        "surface_type": "main_wing",
     }
     wing_res = client.post(
         f"/aeroplanes/{aeroplane_id}/wings/test_wing/from-wingconfig",
@@ -63,7 +65,10 @@ def test_tessellation_returns_valid_viewer_json(client: TestClient):
     deadline = time.monotonic() + 120.0
     result = None
     while time.monotonic() < deadline:
-        status_res = client.get(f"/aeroplanes/{aeroplane_id}/status")
+        status_res = client.get(
+            f"/aeroplanes/{aeroplane_id}/status",
+            params={"task_type": "tessellation", "wing_name": "test_wing"},
+        )
         assert status_res.status_code == 200
         payload = status_res.json()
 

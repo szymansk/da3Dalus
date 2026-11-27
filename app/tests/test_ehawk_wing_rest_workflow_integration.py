@@ -95,7 +95,10 @@ def _build_ehawk_wingconfig_payload() -> dict:
     # Round-trip through JSON so tuples become lists, numpy floats
     # become Python floats, and any surviving non-standard types get
     # converted via the encoder hook above.
-    return json.loads(json.dumps(state, cls=_JsonSafeEncoder))
+    payload = json.loads(json.dumps(state, cls=_JsonSafeEncoder))
+    # gh-1187: the role is required to create a wing; __getstate__ does not carry it.
+    payload["surface_type"] = "main_wing"
+    return payload
 
 
 @pytest.mark.slow

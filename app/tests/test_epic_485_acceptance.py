@@ -565,13 +565,17 @@ def _make_asb_stubs(ac: dict):
     _span = span
     _x_np = x_np
 
+    # gh-1187: the main wing is looked up by name (``main_asb_wing``), so the stub
+    # carries the name the schema converter would record on the airplane.
     fake_wing = SimpleNamespace(
+        name="main_wing",
         area=lambda: _s_ref,
         mean_aerodynamic_chord=lambda: _mac,
         span=lambda: _span,
     )
     fake_airplane = SimpleNamespace(
         wings=[fake_wing],
+        main_wing_name=fake_wing.name,
         xyz_ref=[_x_np - ac["target_sm"] * _mac, 0.0, 0.0],
         s_ref=_s_ref,
         c_ref=_mac,

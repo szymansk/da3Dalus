@@ -19,6 +19,8 @@ Sign convention (Amendment B3, same as ASB path):
 from __future__ import annotations
 
 import math
+
+import numpy as np
 from typing import Literal
 from unittest.mock import MagicMock, patch
 
@@ -754,7 +756,7 @@ class TestForwardCgLimitAvlIntegration:
 
         from app.services.avl_runner import AVLRunner
         from app.services.avl_geometry_service import build_avl_geometry_file
-        from app.schemas.aeroanalysis_schema import SpacingConfig
+        from app.schemas.aeroanalysisschema import SpacingConfig
 
         # Build ASB airplane
         asb_airplane = self._cessna_fixture_aeroplane_schema()
@@ -780,9 +782,10 @@ class TestForwardCgLimitAvlIntegration:
             r_defl = asb.AeroBuildup(airplane=asb_deflected, op_point=op, xyz_ref=xyz_ref).run()
 
             def _cm(r):
-                if isinstance(r, dict):
-                    return float(r.get("Cm", 0.0))
-                return float(getattr(r, "Cm", 0.0))
+                # AeroBuildup returns Cm as a shape-(1,) array; numpy >= 2.4 no longer
+                # lets float() collapse a non-0-d array.
+                value = r.get("Cm", 0.0) if isinstance(r, dict) else getattr(r, "Cm", 0.0)
+                return float(np.asarray(value).reshape(-1)[0])
 
             cm_delta_e_asb = abs((_cm(r_defl) - _cm(r_base)) / delta_e_rad)
         except Exception as exc:
@@ -831,7 +834,11 @@ class TestForwardCgLimitAvlIntegration:
 
 
 def _build_cessna_avl_string() -> str:
-    """Build a minimal Cessna-like AVL geometry string for integration testing."""
+    """Build a minimal Cessna-like AVL geometry string for integration testing.
+
+    Reference quantities (Sref, Cref, Bref) and the elevator hinge (75 % chord) match
+    ``_cessna_fixture_aeroplane_schema`` so both solvers non-dimensionalise the same airplane.
+    """
     return """\
 Cessna-fixture
 #Mach
@@ -839,7 +846,7 @@ Cessna-fixture
 #IYsym   IZsym   Zsym
 0        0       0
 #Sref    Cref    Bref
-0.36     0.30    1.2
+0.30     0.2533  1.2
 #Xref    Yref    Zref
 0.40     0.0     0.0
 
@@ -877,7 +884,7 @@ NACA
 0012
 CONTROL
 #name     gain   Xhinge  XYZhvec       SgnDup
-elevator  1.0    0.7     0.0 0.0 0.0   1.0
+elevator  1.0    0.75    0.0 0.0 0.0   1.0
 
 SECTION
 #Xle    Yle    Zle     Chord   Ainc
@@ -886,5 +893,5 @@ NACA
 0012
 CONTROL
 #name     gain   Xhinge  XYZhvec       SgnDup
-elevator  1.0    0.7     0.0 0.0 0.0   1.0
+elevator  1.0    0.75    0.0 0.0 0.0   1.0
 """

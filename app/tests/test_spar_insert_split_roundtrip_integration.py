@@ -75,7 +75,10 @@ def _wingconfig_payload(wing_config: WingConfiguration) -> dict:
             except Exception:
                 return str(obj)
 
-    return json.loads(json.dumps(state, cls=_Enc))
+    payload = json.loads(json.dumps(state, cls=_Enc))
+    # gh-1187: the role is required to create a wing; __getstate__ does not carry it.
+    payload["surface_type"] = "main_wing"
+    return payload
 
 
 def _telescoping_plan() -> SparPlan:
