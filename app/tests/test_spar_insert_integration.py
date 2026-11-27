@@ -26,6 +26,38 @@ def client(client_and_db):
     yield test_client
 
 
+@pytest.fixture(autouse=True)
+def _seed_spar_tube_stock(client_and_db):
+    """Seed carbon-tube stock into the per-test DB.
+
+    Since gh-1080 the planner snaps every spar piece to a ``spar_tube`` stock row
+    of the Component Library and rejects the plan when none fits. The ``client_and_db``
+    DB seeds types, materials and presets but no stock, so the plan was infeasible.
+    """
+    _, session_local = client_and_db
+    db = session_local()
+    try:
+        for outer_d_mm, inner_d_mm in ((6.0, 4.0), (8.0, 6.0), (10.0, 8.0)):
+            db.add(
+                ComponentModel(
+                    name=f"TestTube OD{outer_d_mm}/ID{inner_d_mm}",
+                    component_type="spar_tube",
+                    specs={
+                        "outer_d_mm": outer_d_mm,
+                        "inner_d_mm": inner_d_mm,
+                        "role_use": "spar",
+                        "geometry_complete": True,
+                        "density_kg_m3": 1550.0,
+                        "allowable_bending_stress_mpa": 600.0,
+                        "length_mm": [1000],
+                    },
+                )
+            )
+        db.commit()
+    finally:
+        db.close()
+
+
 def _build_ehawk_wingconfig_payload() -> dict:
     repo_root = Path(__file__).resolve().parents[2]
     airfoil_path = str((repo_root / "components" / "airfoils" / "mh32.dat").resolve())
@@ -43,7 +75,10 @@ def _build_ehawk_wingconfig_payload() -> dict:
             except Exception:
                 return str(obj)
 
-    return json.loads(json.dumps(state, cls=_JsonSafeEncoder))
+    payload = json.loads(json.dumps(state, cls=_JsonSafeEncoder))
+    # gh-1187: the role is required to create a wing; __getstate__ does not carry it.
+    payload["surface_type"] = "main_wing"
+    return payload
 
 
 def _first_material_id(session_local) -> int:
