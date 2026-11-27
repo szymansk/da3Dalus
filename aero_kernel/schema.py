@@ -101,6 +101,8 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "mach_above_limit": WarningSeverity.NOTICE,
     "mach_beyond_validity": WarningSeverity.ERROR,
     "minimum_sink_stall_limited": WarningSeverity.NOTICE,
+    "stall_bracket_relocated": WarningSeverity.NOTICE,
+    "curve_samples_without_stall_speed": WarningSeverity.WARNING,
     "avl_body_equivalent_round": WarningSeverity.NOTICE,
     "spiral_halving_time_reported": WarningSeverity.NOTICE,
     "fuselage_section_equivalent": WarningSeverity.NOTICE,

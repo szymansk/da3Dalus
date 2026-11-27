@@ -8,7 +8,11 @@ zero-lift angle (``zero-lift-angle``) is the root of C_L(V, alpha) at a given V,
 slope by automatic differentiation; a single AeroBuildup evaluation (``aerobuildup-evaluation``) is
 a numeric run. There is no fixed point on V; the bracketing sweep is made once at a speed refined
 from a first estimate. An active bound at the optimum, a missing extremum or a failed solve is an error, never a value
-(ADR 0020). Each problem is one pool job (a picklable worker). IPOPT sees AeroBuildup through the
+(ADR 0020). The first extremum moves with the Reynolds number: where the stall's solve or its sweep
+at V_S contradicts the bracket, the bracket is located again and the stall solved once more on it,
+declared by ``stall_bracket_relocated``; where the lift asked for lies between two branches of the first
+extremum, no speed closes the lift balance at a first extremum and the stall is the declared failure
+``no_consistent_first_lift_extremum`` (gh-1423). Each problem is one pool job (a picklable worker). IPOPT sees AeroBuildup through the
 airplane's model function (``aero_model``), reused from the worker's cache under the request's
 ``model_key``; the sweeps and the other numeric runs evaluate AeroBuildup directly. Every drag a
 problem reads is the kernel's (``aerobuildup.kernel_drag``: the viscous factor k_e,D0 of the canon rule
@@ -21,7 +25,7 @@ import logging
 import math
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import pairwise
 from typing import Any, ClassVar, Self, cast
 
@@ -70,6 +74,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "BestGlide",
     "BestGlideSolution",
+    "BracketRelocation",
     "DeflectionDiagnostics",
     "DeviceConfidence",
     "DeviceSpan",
@@ -120,11 +125,29 @@ ALPHA_STEP_DEG = 0.25
 # the wing limit, a bound of a search and not a defect. A sweep without a peak and a zero-lift angle outside
 # the sweep are not marked: they are solver or domain failures.
 WING_LIFT_LIMIT = "wing_lift"
+# The code of the stall's declared failure where no speed closes the lift balance at a first C_L
+# extremum, because that extremum changes with the Reynolds number and the lift asked for lies in the
+# jump (gh-1423). A result of the lift model, not a failed solve; ``mass-envelope`` leaves such a
+# sample mass out of its curves and says so.
+NO_CONSISTENT_EXTREMUM = "no_consistent_first_lift_extremum"
 # The lift coefficient assumed to choose the speed of the first bracketing sweep. It only fixes the
 # Reynolds number at which the C_L extremum is first located; the sweep is repeated once at the speed
 # that extremum implies, and the result is re-evaluated at V_S (postcondition
 # ``optimum_at_first_cl_peak`` compares the two).
 BRACKET_CL = 1.0
+# The stall locates its bracket again where the first C_L extremum of the bracketing sweep is not the
+# first extremum at the speed at which it carries the weight (gh-1423): the extremum moves with the
+# Reynolds number. The search steps from each sweep to the speed its extremum implies; this is the
+# number of sweeps it may take before two of them enclose the answer. Termination only: no value
+# depends on it, a search that reaches it is ``not_converged``. Measured on the reference fleet
+# (AERONCA_CHAMP 0.30 to 0.41 kg, AVISTAR_ELITE 8.4 to 9.8 kg): one sweep.
+BRACKET_RELOCATION_SWEEPS = 8
+# How often the speed interval between a sweep whose first extremum cannot carry the weight and one
+# whose first extremum can is halved while the two extrema differ. Termination only: a bracket is
+# accepted at the first halving at which both ends show the same extremum; if none does, the interval
+# (at most the distance of two bracketing speeds, a few m/s, over 2^16) is the resolution of the speed
+# at which the first extremum changes, which the declared failure reports.
+TRANSITION_HALVINGS = 16
 # Speed bounds of the solve: above Mach 0.6 AeroBuildup is beyond its validity (regime table,
 # ADR 0028); the lower bound is far below any RC stall. A bound active at the optimum is an error.
 V_MIN_MS = 1.0
@@ -257,6 +280,24 @@ class DeflectionDiagnostics(BaseModel):
     devices: tuple[DeviceConfidence, ...]
 
 
+class BracketRelocation(BaseModel):
+    """A stall that was solved on a bracket located again (gh-1423, declared by the adapter).
+
+    Attributes:
+        first_v_ms: The speed of the procedure's second bracketing sweep in m/s.
+        first_alpha_deg: The first C_L extremum of that sweep in degrees.
+        v_ms: The speed of the sweep whose bracket the stall was solved on, in m/s.
+        alpha_deg: The first C_L extremum of that sweep in degrees.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    first_v_ms: float
+    first_alpha_deg: float
+    v_ms: float
+    alpha_deg: float
+
+
 class StallSolution(BaseModel):
     """The solution of the stall problem.
 
@@ -267,6 +308,8 @@ class StallSolution(BaseModel):
         polar: The sweep at ``v_s``, with ``alpha_s`` among its samples.
         diagnostics: What NeuralFoil's confidence is at the optimum of an airplane with deflected
             flaps (one recording run at ``v_s`` and ``alpha_s``); ``None`` without a flap.
+        relocation: The two brackets of a stall whose first C_L extremum moved with the speed and was
+            located again; ``None`` where the bracket of the two sweeps held.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -276,6 +319,7 @@ class StallSolution(BaseModel):
     alpha_s: float
     polar: Polar
     diagnostics: DeflectionDiagnostics | None = None
+    relocation: BracketRelocation | None = None
 
 
 class SweepRequest(BaseModel):
@@ -467,6 +511,13 @@ def _bracket(polar: LiftCurve, upright: bool) -> int:
     return index
 
 
+def _window(alpha_peak: float, margin_deg: float, *, upright: bool) -> tuple[float, float]:
+    """The bounds of alpha in degrees: the sweep's range up to ``margin_deg`` past the first extremum."""
+    if upright:
+        return ALPHA_MIN_DEG, alpha_peak + margin_deg
+    return alpha_peak - margin_deg, ALPHA_MAX_DEG
+
+
 @dataclass(frozen=True)
 class _Bracketed:
     """The airplane and the alpha window of a problem that lives on the pre-stall branch.
@@ -476,6 +527,8 @@ class _Bracketed:
         lift: The signed lift the balance asks for, ``n m g`` in N.
         v_bracket: The speed of the bracketing sweep in m/s.
         alpha_peak: The first C_L extremum of that sweep in degrees.
+        cl_peak: The lift coefficient at that extremum (negative on the inverted branch).
+        area: The reference area of the lift coefficient in m^2.
         low: Lower bound of alpha in degrees.
         high: Upper bound of alpha in degrees.
         v_low: Lower bound of the speed in m/s.
@@ -486,6 +539,8 @@ class _Bracketed:
     lift: float
     v_bracket: float
     alpha_peak: float
+    cl_peak: float
+    area: float
     low: float
     high: float
     v_low: float
@@ -540,16 +595,16 @@ def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG
     cl_first = abs(first.cl[_bracket(first, upright)])
     v_bracket = math.sqrt(2.0 * abs(lift) / (air.density * area * cl_first))
     bracket = sweep_lift(airplane, air, v_bracket, grid, NEURALFOIL_MODEL_SIZE)
-    alpha_peak = bracket.alpha_deg[_bracket(bracket, upright)]
-    if upright:
-        low, high = ALPHA_MIN_DEG, alpha_peak + peak_margin_deg
-    else:
-        low, high = alpha_peak - peak_margin_deg, ALPHA_MAX_DEG
+    peak = _bracket(bracket, upright)
+    alpha_peak = bracket.alpha_deg[peak]
+    low, high = _window(alpha_peak, peak_margin_deg, upright=upright)
     return _Bracketed(
         airplane=airplane,
         lift=lift,
         v_bracket=v_bracket,
         alpha_peak=alpha_peak,
+        cl_peak=bracket.cl[peak],
+        area=area,
         low=low,
         high=high,
         v_low=V_MIN_MS,
@@ -661,28 +716,194 @@ def _solve(
     )
 
 
-def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
-    """Solve the stall problem in the pool worker (canon ``stall-speed``).
+@dataclass(frozen=True)
+class _Located:
+    """The first C_L extremum of one sweep.
 
-    1. Sweep alpha at the bracketing speed and find the first C_L peak (n > 0) or trough (n < 0)
-       from alpha = 0.
-    2. Minimise V with IPOPT subject to ``L = n m g``, alpha restricted to the branch up to that
-       extremum plus one sweep step.
-    3. Refuse the solution if a bound is active at the optimum.
-    4. Sweep again at V_S, with alpha_S among the samples: the published polar.
+    Attributes:
+        speed: The speed of the sweep in m/s.
+        alpha: The angle of attack of the extremum in degrees.
+        cl: The lift coefficient there (negative on the inverted branch).
+    """
 
-    Args:
-        request: The problem.
+    speed: float
+    alpha: float
+    cl: float
 
-    Returns:
-        The solution with the worker's diagnostics.
+
+def _locate(problem: _Bracketed, request: StallRequest, speed: float) -> _Located:
+    """Sweep at ``speed`` and read the first C_L extremum of the request's branch.
 
     Raises:
-        FormulaError: ``not_converged`` if the sweep has no extremum, the solve fails or ends on
-            a bound.
+        FormulaError: ``not_converged`` if the sweep has no extremum.
     """
-    started = time.perf_counter()
-    problem = _bracketed(request)
+    curve = sweep_lift(problem.airplane, request.air, speed, _grid(), NEURALFOIL_MODEL_SIZE)
+    index = _bracket(curve, request.n_load > 0.0)
+    return _Located(speed=speed, alpha=curve.alpha_deg[index], cl=curve.cl[index])
+
+
+def _same_extremum(one: _Located, other: _Located) -> bool:
+    """Whether two sweeps show the same first extremum: at most one sweep step apart.
+
+    Two extrema of one curve have a lower sample between them, so they lie at least two steps apart;
+    one step is the drift of an extremum along its branch.
+    """
+    return abs(one.alpha - other.alpha) <= ALPHA_STEP_DEG + config().opt_alpha_margin_deg.value
+
+
+def _extremum_lift(problem: _Bracketed, request: StallRequest, found: _Located) -> float:
+    """The lift in N of a sweep's first extremum at the speed of that sweep (signed like ``C_L``)."""
+    return 0.5 * request.air.density * found.speed**2 * problem.area * found.cl
+
+
+def _carrying_speed(problem: _Bracketed, request: StallRequest, found: _Located) -> float:
+    """The speed in m/s at which the lift coefficient of ``found`` balances the lift asked for."""
+    return math.sqrt(2.0 * abs(problem.lift) / (request.air.density * problem.area * abs(found.cl)))
+
+
+def _no_consistent_extremum(
+    problem: _Bracketed, request: StallRequest, below: _Located, above: _Located
+) -> FormulaError:
+    """The declared failure of a lift that lies between two branches of the first C_L extremum.
+
+    Args:
+        problem: The problem.
+        request: The problem's request.
+        below: The sweep just below the speed at which the first extremum changes; its extremum
+            carries less than the lift asked for.
+        above: The sweep just above it; its extremum carries more.
+    """
+    what = "peak" if request.n_load > 0.0 else "trough"
+    weight_per_kg = request.n_load * request.gravity
+    lift_below = _extremum_lift(problem, request, below)
+    lift_above = _extremum_lift(problem, request, above)
+    mass_below, mass_above = lift_below / weight_per_kg, lift_above / weight_per_kg
+    transition = 0.5 * (below.speed + above.speed)
+    return FormulaError(
+        ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        NO_CONSISTENT_EXTREMUM,
+        f"no stall speed is defined at {request.mass_kg:.4g} kg (n = {request.n_load:g}): the first "
+        f"C_L {what} of the lift curve (sampled every {ALPHA_STEP_DEG:g} deg) changes at "
+        f"{transition:.4g} m/s. Below that speed it lies at "
+        f"{below.alpha:g} deg (C_L {below.cl:.4f}) and carries {lift_below:.4g} N "
+        f"({mass_below:.4g} kg); from that speed on it lies at {above.alpha:g} deg "
+        f"(C_L {above.cl:.4f}) and carries {lift_above:.4g} N ({mass_above:.4g} kg). The lift asked "
+        f"for, {problem.lift:.4g} N, lies between, so no speed closes the lift balance at a first "
+        f"C_L {what}",
+        f"this is a result of the lift model, not a failed solve: the first C_L {what} depends on "
+        "the Reynolds number, and its lift coefficient jumps at the transition speed. Up to "
+        f"{mass_below:.4g} kg and from {mass_above:.4g} kg on the lift balance closes on one of the "
+        "two branches",
+        detail={
+            "transition_v_ms": transition,
+            "alpha_below_deg": below.alpha,
+            "cl_below": below.cl,
+            "lift_below_n": lift_below,
+            "mass_below_kg": mass_below,
+            "alpha_above_deg": above.alpha,
+            "cl_above": above.cl,
+            "lift_above_n": lift_above,
+            "mass_above_kg": mass_above,
+            "lift_required_n": problem.lift,
+        },
+    )
+
+
+def _between(
+    problem: _Bracketed, request: StallRequest, short: _Located, ample: _Located
+) -> _Located:
+    """Halve the speed interval between two sweeps until both show the same first extremum.
+
+    Args:
+        problem: The problem.
+        request: The problem's request.
+        short: The slower sweep; its first extremum carries less than the lift asked for.
+        ample: The faster sweep; its first extremum carries at least that lift.
+
+    Returns:
+        The faster end of an interval on which the first extremum stays where it is, with the
+        extremum of the two ends that lies further along the branch: the lift balance closes inside.
+
+    Raises:
+        FormulaError: ``no_consistent_first_lift_extremum`` if the extremum still differs after
+            ``TRANSITION_HALVINGS`` halvings: it changes at a speed, and the lift lies in the jump.
+    """
+    upright = request.n_load > 0.0
+    for _ in range(TRANSITION_HALVINGS):
+        if _same_extremum(short, ample):
+            further = max if upright else min
+            return _Located(ample.speed, further(short.alpha, ample.alpha), ample.cl)
+        middle = _locate(problem, request, 0.5 * (short.speed + ample.speed))
+        if _carrying_speed(problem, request, middle) > middle.speed:
+            short = middle
+        else:
+            ample = middle
+    raise _no_consistent_extremum(problem, request, short, ample)
+
+
+def _relocated(problem: _Bracketed, request: StallRequest, seen: _Located | None) -> _Located:
+    """Locate a first C_L extremum that is the first extremum at the speed at which it carries the lift.
+
+    The search starts where the solve on the bracket of the two sweeps contradicted that bracket. It
+    steps from a sweep to the speed its extremum implies; as soon as a slower sweep whose extremum
+    carries too little and a faster one whose extremum carries enough enclose the answer, the
+    interval is halved (:func:`_between`).
+
+    Args:
+        problem: The problem with the bracket of the two sweeps.
+        request: The problem's request.
+        seen: The first extremum of the published sweep at the optimum, where that sweep is what
+            contradicted the bracket; ``None`` where the solve ended on the edge of the window.
+
+    Returns:
+        The sweep to bracket the problem with.
+
+    Raises:
+        FormulaError: ``no_consistent_first_lift_extremum`` if the lift lies between two branches
+            of the first extremum; ``not_converged`` if the search does not end in
+            ``BRACKET_RELOCATION_SWEEPS`` sweeps or a sweep has no extremum.
+    """
+    before = _Located(problem.v_bracket, problem.alpha_peak, problem.cl_peak)
+    after = seen
+    for _ in range(BRACKET_RELOCATION_SWEEPS):
+        if after is None:
+            after = _locate(problem, request, _carrying_speed(problem, request, before))
+        if _same_extremum(before, after):
+            return after
+        slower, faster = sorted((before, after), key=lambda found: found.speed)
+        if (
+            _carrying_speed(problem, request, slower) > slower.speed
+            and _carrying_speed(problem, request, faster) < faster.speed
+        ):
+            return _between(problem, request, slower, faster)
+        before, after = after, None
+    what = "peak" if request.n_load > 0.0 else "trough"
+    raise _not_converged(
+        f"the first C_L {what} of the lift curve moves with the speed and the bracketing sweeps did "
+        f"not settle on one in {BRACKET_RELOCATION_SWEEPS} sweeps",
+        "report the case; the step limit BRACKET_RELOCATION_SWEEPS ends the search",
+        sweeps=BRACKET_RELOCATION_SWEEPS,
+        v_ms=before.speed,
+        alpha_deg=before.alpha,
+    )
+
+
+def _on_branch_edge(error: FormulaError, problem: _Bracketed, *, upright: bool) -> bool:
+    """Whether a refused optimum lies on the edge of the window past the first extremum."""
+    value = error.detail.get("value")
+    if error.detail.get("variable") != "alpha" or not isinstance(value, float):
+        return False
+    edge = problem.high if upright else problem.low
+    margin = config().opt_active_bound_fraction.value * (problem.high - problem.low)
+    return abs(value - edge) < margin
+
+
+def _stall_on(problem: _Bracketed, request: StallRequest) -> tuple[_Solved, Polar]:
+    """Minimise V on the bracket and sweep at the optimum: the published polar.
+
+    Raises:
+        FormulaError: ``not_converged`` if the solve fails or ends on a bound.
+    """
     optimum = _solve(
         problem,
         request,
@@ -699,8 +920,98 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
         NEURALFOIL_MODEL_SIZE,
         request.k_e_d0,
     )
+    return optimum, polar
+
+
+def _contradicting(
+    problem: _Bracketed, request: StallRequest, optimum: _Solved, polar: Polar
+) -> _Located | None:
+    """The first extremum of the published sweep where it is neither the optimum nor the bracket's.
+
+    ``None`` where the optimum is that extremum (the answer), where the sweep has no extremum, and
+    where the extremum is the bracket's own while the optimum is not: then the bracket held and the
+    postcondition ``optimum_at_first_cl_peak`` judges the optimum.
+    """
+    index = first_extremum_from_zero(polar.alpha_deg, polar.cl, upright=request.n_load > 0.0)
+    if index is None:
+        return None
+    found = _Located(optimum.speed, polar.alpha_deg[index], polar.cl[index])
+    bracket = _Located(problem.v_bracket, problem.alpha_peak, problem.cl_peak)
+    at_optimum = _Located(optimum.speed, optimum.alpha, found.cl)
+    if _same_extremum(found, at_optimum) or _same_extremum(found, bracket):
+        return None
+    return found
+
+
+def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
+    """Solve the stall problem in the pool worker (canon ``stall-speed``).
+
+    1. Sweep alpha at the bracketing speed and find the first C_L peak (n > 0) or trough (n < 0)
+       from alpha = 0.
+    2. Minimise V with IPOPT subject to ``L = n m g``, alpha restricted to the branch up to that
+       extremum plus one sweep step.
+    3. Refuse the solution if a bound is active at the optimum.
+    4. Sweep again at V_S, with alpha_S among the samples: the published polar.
+    5. Where step 2 ends on the edge of the window past the extremum, or the sweep of step 4 shows
+       a first extremum that is neither the optimum nor the bracket's, the bracket does not hold at
+       the stall speed: the first extremum moved with the Reynolds number. It is located again
+       (:func:`_relocated`) and steps 2 to 4 run once more on it, which the solution records
+       (``relocation``) and the adapter declares (ADR 0020). If the lift lies between two branches
+       of the first extremum, no speed closes the lift balance at a first extremum and there is no
+       value (gh-1423).
+
+    Args:
+        request: The problem.
+
+    Returns:
+        The solution with the worker's diagnostics.
+
+    Raises:
+        FormulaError: ``not_converged`` if the sweep has no extremum, the solve fails or ends on
+            a bound; ``no_consistent_first_lift_extremum`` if no speed closes the lift balance at a
+            first C_L extremum.
+    """
+    started = time.perf_counter()
+    upright = request.n_load > 0.0
+    problem = _bracketed(request)
+    first = _Located(problem.v_bracket, problem.alpha_peak, problem.cl_peak)
+    solved: tuple[_Solved, Polar] | None = None
+    edge: FormulaError | None = None
+    seen: _Located | None = None
+    try:
+        solved = _stall_on(problem, request)
+    except FormulaError as error:
+        if not _on_branch_edge(error, problem, upright=upright):
+            raise
+        edge = error
+    else:
+        seen = _contradicting(problem, request, *solved)
+    relocation: BracketRelocation | None = None
+    if edge is not None or seen is not None:
+        found = _relocated(problem, request, seen)
+        if abs(found.alpha - first.alpha) > config().opt_alpha_margin_deg.value:
+            low, high = _window(found.alpha, ALPHA_STEP_DEG, upright=upright)
+            problem = replace(
+                problem,
+                v_bracket=found.speed,
+                alpha_peak=found.alpha,
+                cl_peak=found.cl,
+                low=low,
+                high=high,
+            )
+            relocation = BracketRelocation(
+                first_v_ms=first.speed,
+                first_alpha_deg=first.alpha,
+                v_ms=found.speed,
+                alpha_deg=found.alpha,
+            )
+            solved = _stall_on(problem, request)
+    if solved is None:
+        # the bracket holds at the speed its extremum implies, and still the solve ended on its edge
+        raise cast("FormulaError", edge)
+    optimum, polar = solved
     cl_max = polar.cl[polar.alpha_deg.index(optimum.alpha)]
-    found = (
+    found_flaps = (
         _flap_diagnostics(request, problem.airplane, optimum.speed, optimum.alpha)
         if flap_segments(request.airplane)
         else None
@@ -710,7 +1021,8 @@ def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
         cl_max=cl_max,
         alpha_s=optimum.alpha,
         polar=polar,
-        diagnostics=found,
+        diagnostics=found_flaps,
+        relocation=relocation,
     )
     diagnostics = _diagnostics(
         started,
@@ -824,6 +1136,23 @@ def _stall_limited_warning(solution: MinSinkSolution) -> KernelWarning:
         f"(alpha {solution.alpha_mp:.2f} deg, C_L {solution.cl_mp:.3f}); the value is the stall "
         "boundary, not an interior optimum, and carries no safety margin",
         detail={"alpha_boundary_deg": solution.alpha_mp, "cl_boundary": solution.cl_mp},
+    )
+
+
+def _relocation_notice(relocation: BracketRelocation) -> KernelWarning:
+    """The declaration of a stall solved on a bracket located again (ADR 0020, a ``notice``, gh-1423)."""
+    return KernelWarning.of(
+        "stall_bracket_relocated",
+        "the first C_L extremum of the lift curve moves with the speed: the bracketing sweep at "
+        f"{relocation.first_v_ms:.4g} m/s found it at {relocation.first_alpha_deg:g} deg, which is not "
+        "where it lies at the speed at which it carries the weight; the stall was solved on the bracket "
+        f"located again at {relocation.v_ms:.4g} m/s, where it lies at {relocation.alpha_deg:g} deg",
+        detail={
+            "first_v_ms": relocation.first_v_ms,
+            "first_alpha_deg": relocation.first_alpha_deg,
+            "v_ms": relocation.v_ms,
+            "alpha_deg": relocation.alpha_deg,
+        },
     )
 
 
@@ -2203,6 +2532,8 @@ class OptiAdapter(SolverAdapter):
         solution = await self.runtime.run_cpu(stall_worker, request)
         warnings = _flap_warnings(flaps, solution.diagnostics)
         warnings += await self._regime_warnings(airplane, solution.v_s, air)
+        if solution.relocation is not None:
+            warnings.append(_relocation_notice(solution.relocation))
         # No drag notice: V_S, C_L,max and alpha_S read lift only. The published polar's C_D is the
         # kernel's drag; the formula that reads it declares it (ADR 0020, #1346).
         logger.debug("stall speed %.4f m/s at %.2f deg", solution.v_s, solution.alpha_s)

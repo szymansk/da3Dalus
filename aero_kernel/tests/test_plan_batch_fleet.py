@@ -95,8 +95,11 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
         "spiral-doubling-time-mp": (-41.07589079773987, -19.60452926018001, -24.823477662246262),
     },
     FleetMember.AERONCA_CHAMP: {
-        "stall-speed": Failed("not_converged"),
-        "max-lift-coefficient": Failed("not_converged"),
+        # gh-1423: was Failed("not_converged") for both, and upstream_failed for the four -app cells.
+        # The first C_L peak moves between the bracketing sweep (4.75 deg at 6.136 m/s) and the stall
+        # speed (7 deg); the bracket is located again and the result carries stall_bracket_relocated.
+        "stall-speed": 6.182099462417455,
+        "max-lift-coefficient": 1.2618563514540206,
         "minimum-drag-speed": 6.995921888883736,
         "max-lift-to-drag-ratio": 10.514759606017298,
         "minimum-sink-speed": 6.716799268910961,
@@ -127,18 +130,10 @@ GOLDEN: dict[FleetMember, dict[str, Golden]] = {
             0.0028408649190000005,
         ),
         "spiral-doubling-time-md": (-3.7114370931085405, -3.182096479474585, -2.1522768356658464),
-        "dihedral-effect-app": Failed(
-            "upstream_failed", (("stall-speed-landing", "not_converged"),)
-        ),
-        "weathercock-stability-app": Failed(
-            "upstream_failed", (("stall-speed-landing", "not_converged"),)
-        ),
-        "spiral-criterion-app": Failed(
-            "upstream_failed", (("stall-speed-landing", "not_converged"),)
-        ),
-        "spiral-doubling-time-app": Failed(
-            "upstream_failed", (("stall-speed-landing", "not_converged"),)
-        ),
+        "dihedral-effect-app": (-0.102117, -0.102114, -0.102104),
+        "weathercock-stability-app": (0.01545, 0.014083, 0.010219),
+        "spiral-criterion-app": (0.001310066973, 0.0014917297839999997, 0.0020053385409999997),
+        "spiral-doubling-time-app": (-5.135236401595784, -4.28397131516872, -2.711706607131066),
         "dihedral-effect-mp": (-0.122993, -0.123083, -0.123337),
         "roll-due-to-yaw-rate-mp": (0.281468, 0.279688, 0.274643),
         "weathercock-stability-mp": (0.017347, 0.015948, 0.011993),

@@ -48,7 +48,10 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, float | Polar]:
 
     Raises:
         TypeError: If ``airplane`` is not the geometry or a number is not a number.
-        FormulaError: From the adapter, unchanged (``tool_unavailable``, ``not_converged``).
+        FormulaError: From the adapter, unchanged (``tool_unavailable``, ``not_converged``, and
+            ``no_consistent_first_lift_extremum`` where the weight lies between two branches of the
+            first C_L extremum, so that no speed closes the lift balance at a first extremum: no
+            value, gh-1423).
     """
     stall = await ctx.solvers.opti.stall(
         airplane_of(x), number(x, "m"), number(x, "g"), number(x, "n_load"), air_state(x)

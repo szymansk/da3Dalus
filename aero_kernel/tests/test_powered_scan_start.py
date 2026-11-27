@@ -217,7 +217,7 @@ STALL_FAILURE = "the optimum of the stall problem lies on the bound of alpha"
 
 
 class FailingStallOpti(pb.PolarOpti):
-    """The stall problem of the airframe does not converge (the message of AERONCA_CHAMP)."""
+    """The stall problem of the airframe does not converge (the message AERONCA_CHAMP gave before gh-1423)."""
 
     async def stall(self, *args: Any, **kwargs: Any) -> Stall:
         raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", STALL_FAILURE, "none")
