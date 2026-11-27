@@ -39,6 +39,7 @@ from app.converters.model_schema_converters import (
     wing_model_to_asb_wing_schema,
 )
 from app.core.exceptions import NotFoundError, ValidationError, ConflictError, InternalError
+from app.core.process_pool import end_workers, pool_workers
 from app.models import AeroplaneModel, WingModel, WingXSecModel
 from app.models.aeroplanemodel import (
     FuselageModel,
@@ -67,7 +68,6 @@ tasks_lock = Lock()
 _mp_context = multiprocessing.get_context("spawn")
 _executor: Optional[ProcessPoolExecutor] = None
 _executor_lock = Lock()
-_WORKER_GRACE_S = 5.0  # seconds a terminated CAD worker gets before it is killed
 
 
 def _get_executor() -> ProcessPoolExecutor:
@@ -94,28 +94,13 @@ def shutdown_executor() -> None:
     global _executor
     with _executor_lock:
         if _executor is not None:
-            # No public accessor before Python 3.14 (`terminate_workers`); the mapping
-            # pid -> process is read before the shutdown clears it.
-            workers = list((getattr(_executor, "_processes", None) or {}).values())
+            workers = pool_workers(_executor)
             try:
                 _executor.shutdown(wait=False, cancel_futures=True)
             except Exception as exc:
                 logger.warning("Error shutting down cad executor: %s", exc)
-            _end_workers(workers)
+            end_workers(workers, pool_name="CAD")
             _executor = None
-
-
-def _end_workers(workers: list[Any]) -> None:
-    """Terminate the given pool workers, and kill those that do not end within the grace time."""
-    for worker in workers:
-        if worker.is_alive():
-            worker.terminate()
-    for worker in workers:
-        worker.join(timeout=_WORKER_GRACE_S)
-        if worker.is_alive():
-            logger.warning("CAD worker %s did not end on terminate; killing it", worker.pid)
-            worker.kill()
-            worker.join(timeout=_WORKER_GRACE_S)
 
 
 def get_aeroplane_with_wings(db: Session, aeroplane_uuid) -> AeroplaneModel:

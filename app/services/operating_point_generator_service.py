@@ -18,6 +18,7 @@ from app.converters.model_schema_converters import (
     aeroplane_schema_to_asb_airplane_async,
 )
 from app.core.exceptions import InternalError, NotFoundError, ValidationError
+from app.core.process_pool import end_workers, pool_workers
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
 from app.models.flightprofilemodel import RCFlightProfileModel
@@ -1257,10 +1258,12 @@ def shutdown_opg_executor() -> None:
     global _opg_executor
     with _opg_executor_lock:
         if _opg_executor is not None:
+            workers = pool_workers(_opg_executor)
             try:
                 _opg_executor.shutdown(wait=False, cancel_futures=True)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Error shutting down OPG executor: %s", exc)
+            end_workers(workers, pool_name="OP-generation")
             _opg_executor = None
 
 
