@@ -5,12 +5,18 @@ import math
 import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.context import Context
-from aero_kernel.devices import with_flaps_at
+from aero_kernel.devices import devices_at_rest, with_flaps_at
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.maneuvering_speed import maneuvering_speed
 from aero_kernel.geometry import AirplaneGeometry
-from aero_kernel.schema import ComputeRequest, ComputeResult, KernelWarning, QuantityStatus
+from aero_kernel.schema import (
+    AircraftInput,
+    ComputeRequest,
+    ComputeResult,
+    KernelWarning,
+    QuantityStatus,
+)
 from aero_kernel.solvers.opti import Stall
 from aero_kernel.tests.formula_builders import (
     STUB_SPEED_OF_SOUND,
@@ -89,13 +95,11 @@ async def test_the_regime_warnings_of_the_optimiser_arrive_on_the_manoeuvring_sp
     ]
 
 
-async def test_a_manoeuvring_speed_on_a_deflected_flap_declares_its_validity() -> None:
-    """The formula called directly with a flap at 45 deg (above the 30 deg limit of the rule
-    flap-model-validity) and NeuralFoil's confidence 0.407 (below the floor 0.85) over the flap.
-
-    The engine never hands the formula a deflected flap (its only application binds the airplane at
-    rest), so the caveat is pinned on the formula itself: both declarations carry the origin.
-    """
+async def test_the_formula_declares_nothing_about_flaps() -> None:
+    """V_A is the value of the clean configuration (canon entry, FAR 23.335(c); maintainer
+    2026-11-27, #1477): the flap-model validity is no concern of this formula. Even called past the
+    engine with a flap at 45 deg and NeuralFoil's confidence 0.407 over it, it declares nothing
+    about flaps."""
 
     class Diagnosed(StubOpti):
         async def stall(self, *args: object) -> Stall:  # type: ignore[override]  # stub forwards
@@ -115,13 +119,29 @@ async def test_a_manoeuvring_speed_on_a_deflected_flap_declares_its_validity() -
     }
     ctx = Context(origin="maneuvering-speed", solvers=solvers_with(opti=Diagnosed()))
     await maneuvering_speed(x, ctx)
-    (beyond,) = [w for w in ctx.warnings if w.code == "flap_deflection_beyond_validity"]
-    assert beyond.origin == "maneuvering-speed"
-    assert beyond.detail["limit_deg"] == 30.0
-    assert beyond.detail["flaps"] == [
-        {"wing": "Main", "device": "device 0", "deflection_deg": 45.0}
-    ]
-    (low,) = [w for w in ctx.warnings if w.code == "flap_confidence_low"]
-    assert low.origin == "maneuvering-speed"
-    assert low.detail["mean_confidence"] == 0.407
-    assert low.detail["threshold"] == 0.85
+    assert [w.code for w in ctx.warnings] == []
+
+
+async def test_a_flap_deflected_in_the_document_does_not_reach_the_manoeuvring_speed() -> None:
+    """Through the engine the optimiser gets the airplane at rest: a 45 deg flap in the document
+    changes neither the problem nor the value, and the result says the deflection was ignored."""
+    deflected = document(True)
+    deflected["wings"]["Main"]["x_secs"][0]["trailing_edge_device"]["deflection_deg"] = 45.0
+    given = AircraftInput.model_validate(
+        {"airplane": deflected, "values": {"aircraft-mass": MASS, "altitude": 0.0}}
+    )
+    flapped = AirplaneGeometry.model_validate(deflected)
+    opti = StubOpti()
+    solvers = solvers_with(atmosphere=StubAtmosphere({0.0: RHO}), opti=opti)
+    request = ComputeRequest(quantities=("maneuvering-speed",))
+    result = await evaluate(shipped_build(), given, request, solvers=solvers)
+    quantity = result.quantities[0]
+    assert quantity.status is QuantityStatus.OK, result
+    (call,) = opti.calls
+    assert call[0] == devices_at_rest(flapped)
+    assert call[0] != flapped
+    clean, _ = await run("maneuvering-speed")
+    assert quantity.value == clean.quantities[0].value
+    codes = {w.code for w in quantity.warnings}
+    assert "geometry_deflection_ignored" in codes
+    assert not {code for code in codes if code.startswith("flap_")}
