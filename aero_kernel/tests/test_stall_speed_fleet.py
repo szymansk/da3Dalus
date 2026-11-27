@@ -61,12 +61,14 @@ RV7_GOLDEN = (
 # (V_S m/s, C_L,max, alpha_S deg, C_L,min) of CHEKKER and WIESEL, whose fuselage sections with two
 # shape exponents are the equivalent symmetric ones (#1307). WIESEL has no inverted stall value
 # (the sweep finds no trough, like BRYAN's, see its test).
+# gh-1423 (stall at the main maximum, not on the shoulder at 9 deg): was 6.5579930, 1.2022533,
+# 8.9087036, -0.5428340 (#1358: was 6.5538734, 1.2037652, 8.9155783, -0.5459634)
 CHEKKER_GOLDEN = (
-    6.5579930,
-    1.2022533,
-    8.9087036,
+    6.2512436,
+    1.3231377,
+    14.4948992,
     -0.5428340,
-)  # #1358: was 6.5538734, 1.2037652, 8.9155783, -0.5459634
+)
 WIESEL_GOLDEN = (8.1096438, 1.0832737, 11.8862101)  # #1358: was 8.1057323, 1.0843195, 11.8867507
 
 
