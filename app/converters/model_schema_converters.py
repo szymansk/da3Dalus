@@ -722,6 +722,12 @@ def _hydrate_wing_configuration_details(
     _resolve_spare_vectors_and_origins(wing_config, scale=scale)
 
 
+_BACKWARD_SPARE_MODES = frozenset({"standard_backward", "orthogonal_backward"})
+# Chordwise spar station used when none is stored; the default of
+# WingConfiguration.add_segment / _set_standard_spare_origin_vector.
+_DEFAULT_SPARE_POSITION_FACTOR = 0.25
+
+
 def _can_follow_previous_spare(
     wing_config: WingConfiguration, segment_index: int, spare_index: int
 ) -> bool:
@@ -748,8 +754,76 @@ def _resolve_single_spare(
             wing_config._set_standard_spare_origin_vector(segment_index, spare)
         return
 
-    if mode in {"standard", "standard_backward", "orthogonal_backward", "normal"}:
+    if mode in _BACKWARD_SPARE_MODES:
+        anchor_segment = _backward_spare_anchor_segment(wing_config, segment_index, spare_index)
+        if anchor_segment is not None:
+            _resolve_backward_spare_run(wing_config, anchor_segment, segment_index, spare_index)
+            return
+        # Nothing to continue (root segment, or the spar run is interrupted):
+        # WingConfiguration.add_segment cannot build that case either, so the
+        # spar is placed like a standard spar of its own segment.
+        logger.warning(
+            "Spar %d of segment %d has mode %r but no spar to continue; placed as 'standard'.",
+            spare_index,
+            segment_index,
+            mode,
+        )
         wing_config._set_standard_spare_origin_vector(segment_index, spare)
+        return
+
+    if mode in {"standard", "normal"}:
+        wing_config._set_standard_spare_origin_vector(segment_index, spare)
+
+
+def _backward_spare_anchor_segment(
+    wing_config: WingConfiguration, segment_index: int, spare_index: int
+) -> Optional[int]:
+    """Segment of the spar a backward-mode spar continues, or ``None`` if there is none.
+
+    Same rule as ``WingConfiguration.add_segment``: the nearest earlier spar of
+    that index whose mode is not ``follow``. A segment without a spar of that
+    index interrupts the run.
+    """
+    for candidate in reversed(range(segment_index)):
+        candidate_spares = wing_config.segments[candidate].spare_list or []
+        if spare_index >= len(candidate_spares):
+            return None
+        if candidate_spares[spare_index].spare_mode != "follow":
+            return candidate
+    return None
+
+
+def _resolve_backward_spare_run(
+    wing_config: WingConfiguration, anchor_segment: int, segment_index: int, spare_index: int
+) -> None:
+    """Re-aim the anchor spar at the tip of ``segment_index`` and let the run follow it (gh-1481).
+
+    Mirrors the ``standard_backward`` / ``orthogonal_backward`` branch of
+    ``WingConfiguration.add_segment``. Without it the rebuilt wing keeps the
+    anchor's own single-segment direction and the spar leaves the wing further
+    outboard.
+    """
+    anchor = wing_config.segments[anchor_segment].spare_list[spare_index]
+    if anchor.spare_position_factor is None:
+        anchor.spare_position_factor = _DEFAULT_SPARE_POSITION_FACTOR
+    vector, origin, orthogonal_vector, orthogonal_origin = (
+        wing_config._get_standard_spare_origin_and_vector(
+            start_segment=anchor_segment,
+            end_segment=segment_index,
+            spare_position_factor=anchor.spare_position_factor,
+        )
+    )
+    spare = wing_config.segments[segment_index].spare_list[spare_index]
+    if spare.spare_mode == "orthogonal_backward":
+        vector, origin = orthogonal_vector, orthogonal_origin
+    anchor.spare_vector = vector
+    anchor.spare_origin = origin
+
+    for follower_segment in range(anchor_segment + 1, segment_index + 1):
+        follower = wing_config.segments[follower_segment].spare_list[spare_index]
+        if follower.spare_position_factor is None:
+            follower.spare_position_factor = _DEFAULT_SPARE_POSITION_FACTOR
+        wing_config._set_follow_spare_origin_vector(follower_segment, follower, spare_index)
 
 
 def _preserve_normal_spare_geometry(spare, scale: float) -> None:
