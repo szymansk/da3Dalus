@@ -370,7 +370,9 @@ def _persist_wing_config(db, aeroplane_uuid, wing, new_wing_config) -> None:
     rebuilt = wing_config_to_wing_model(
         wing_config=new_wing_config,
         wing_name=wing.name,
+        surface_type=wing.surface_type,
         scale=_MM_TO_M,
+        surface_type_inferred=wing.surface_type_inferred,
     )
     # Detach the rebuilt cross-sections from their transient parent so they have
     # exactly one owner. Reassigning ``wing.x_secs`` wholesale lets the
