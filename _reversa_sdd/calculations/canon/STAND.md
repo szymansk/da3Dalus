@@ -664,3 +664,15 @@ Measured fuselage C_D change at α = 0 after the canopy merge: CHEKKER −0.0099
 **Formula `aspect-ratio` approved by the maintainer (2026-11-10)**, `AR = b_ref^2 / S_ref` from the approved
 `airplane-geometry`, with two text corrections (Sadraey's caveat stated as a warning against the MAC as c_bar;
 the sentence on the app's 7.0 fallback removed). The computation is unchanged. 34 of 65 formulas are approved.
+
+**The stall is at the main `C_L` maximum (maintainer 2026-11-27, #1423: "Natürlich gilt hier nur das
+Hauptmaximum.").** `stall-speed` no longer asks for the first `C_L` peak from α = 0 but for the main one;
+operational reading (implementer's, to be confirmed): the highest local maximum of `C_L` inside the sweep
+above α = 0, the lowest local minimum below α = 0 for the inverted application; the end of the sweep is no
+maximum. Reason: a shoulder before the real maximum exists only in a range of Reynolds numbers, so the first
+peak jumped with the speed and a band of masses had no stall speed (AVISTAR_ELITE 8.5–9.4 kg, AERONCA_CHAMP,
+CHEKKER). The postconditions are renamed `optimum_at_main_cl_peak` / `optimum_at_main_cl_trough` (older
+entries of this file keep `optimum_at_first_cl_*`); every bracket of the OPT adapter (best glide, minimum
+sink, level-flight point, steady roll) reads the same extremum (ADR 0022). ANFORDERUNGEN §3.4.2, K32 and O3
+carry a dated note. No approval box was changed; the changed sentences of the approved entries are listed
+in the pull request for confirmation.

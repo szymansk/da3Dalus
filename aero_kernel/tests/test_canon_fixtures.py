@@ -44,7 +44,7 @@ def test_flight_canon_has_scoped_pre_and_postconditions(flight_canon: CanonModel
         "landing",
     )
     scoped = {c.id: c.applications for c in stall.postconditions}
-    assert scoped["optimum_at_first_cl_peak"] == ("clean", "landing")
+    assert scoped["optimum_at_main_cl_peak"] == ("clean", "landing")
     assert scoped["cl_max_at_stall_reynolds_number"] is None
 
 

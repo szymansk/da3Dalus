@@ -1,7 +1,7 @@
 """The level-flight polar of the OPT adapter: every point at the speed where it carries the weight (#1401).
 
 Fast tier: the adapter with a canned worker, and the worker with a closed-form stand-in for AeroBuildup
-(lift ``q S C_L(alpha)`` with a first peak, drag ``q S (C_D0 + k C_L^2)``).
+(lift ``q S C_L(alpha)`` with a main peak, drag ``q S (C_D0 + k C_L^2)``).
 """
 
 import math
@@ -32,7 +32,7 @@ TOLERANCE = 1e-6
 
 
 def stand_in_cl(alpha: float) -> float:
-    """A lift curve with a first peak at alpha = 23 deg (C_L = 1.25): 0.1 (a + 2) - 0.002 (a + 2)^2."""
+    """A lift curve with a main peak at alpha = 23 deg (C_L = 1.25): 0.1 (a + 2) - 0.002 (a + 2)^2."""
     return 0.1 * (alpha + 2.0) - 0.002 * (alpha + 2.0) ** 2
 
 
@@ -313,7 +313,7 @@ async def test_an_evaluation_that_disagrees_with_the_sweep_does_not_leave_the_br
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The sweep reaches C_L = 0.8 near 7 deg, but the evaluation's lift is linear and weak: the search
-    stays inside the two samples that enclose the root (the branch before the first peak) and, since the
+    stays inside the two samples that enclose the root (the branch before the main peak) and, since the
     evaluation never reaches the weight there, ends as a plain failure, not as the wing limit."""
     installed(monkeypatch)
     weight = MASS * GRAVITY

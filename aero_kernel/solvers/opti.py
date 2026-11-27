@@ -1,7 +1,7 @@
 """The Opti adapter: optimisation problems over AeroBuildup (ARCHITECTURE ch. 8.8).
 
 The canon procedure for stall speed (``stall-speed``, K32 / O3) and best glide
-(``minimum-drag-speed``): an alpha sweep brackets the first C_L extremum, IPOPT
+(``minimum-drag-speed``): an alpha sweep brackets the main C_L extremum, IPOPT
 (``asb.Opti``) then minimises V (stall) or D (best glide) on the branch before it. The stall adds one
 more sweep at the resulting V_S, the published polar at the Reynolds number of the stall. The
 zero-lift angle (``zero-lift-angle``) is the root of C_L(V, alpha) at a given V, with its
@@ -62,7 +62,7 @@ from aero_kernel.solvers.roll_math import (
     enclosing_sample,
     stability_rolling_moment,
 )
-from aero_kernel.solvers.stall_math import first_extremum_from_zero
+from aero_kernel.solvers.stall_math import main_extremum_from_zero
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 logger = logging.getLogger(__name__)
@@ -116,14 +116,14 @@ ALPHA_MAX_DEG = 25.0
 # Sample spacing of the sweep (the prototype's 0.25 deg, scripts/canon_checks/*).
 ALPHA_STEP_DEG = 0.25
 # The ``limit`` detail of the not_converged failure of a state whose lift the wing cannot carry before its
-# first lift peak (the lift curve does not reach it below the peak, nor does the curve's own maximum):
+# main lift peak (the lift curve does not reach it below the peak, nor does the curve's own maximum):
 # the wing limit, a bound of a search and not a defect. A sweep without a peak and a zero-lift angle outside
 # the sweep are not marked: they are solver or domain failures.
 WING_LIFT_LIMIT = "wing_lift"
 # The lift coefficient assumed to choose the speed of the first bracketing sweep. It only fixes the
 # Reynolds number at which the C_L extremum is first located; the sweep is repeated once at the speed
 # that extremum implies, and the result is re-evaluated at V_S (postcondition
-# ``optimum_at_first_cl_peak`` compares the two).
+# ``optimum_at_main_cl_peak`` compares the two).
 BRACKET_CL = 1.0
 # Speed bounds of the solve: above Mach 0.6 AeroBuildup is beyond its validity (regime table,
 # ADR 0028); the lower bound is far below any RC stall. A bound active at the optimum is an error.
@@ -339,7 +339,7 @@ class MinSinkSolution(BaseModel):
         alpha_mp: The angle of attack at the optimum in degrees.
         cl_mp: The lift coefficient at the optimum.
         stall_limited: ``True`` if the optimum is the stall boundary, not an interior optimum: the
-            sink power was still falling at the first C_L peak, where the window of alpha ends.
+            sink power was still falling at the main C_L peak, where the window of alpha ends.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -450,12 +450,16 @@ def _grid() -> list[float]:
 
 
 def _bracket(polar: LiftCurve, upright: bool) -> int:
-    """The sample index of the first C_L peak (upright) or trough (inverted) from alpha = 0.
+    """The sample index of the main C_L peak (upright) or trough (inverted) from alpha = 0.
+
+    The main peak is the highest local maximum of the sweep above alpha = 0 (the lowest local minimum
+    below it for the trough), not the first one: the stall is at the main maximum of the lift curve
+    (maintainer 2026-11-27, gh-1423). The end of the sweep is no maximum.
 
     Raises:
         FormulaError: ``not_converged`` if the series does not turn inside the sampled range.
     """
-    index = first_extremum_from_zero(polar.alpha_deg, polar.cl, upright=upright)
+    index = main_extremum_from_zero(polar.alpha_deg, polar.cl, upright=upright)
     if index is None:
         what = "peak" if upright else "trough"
         raise _not_converged(
@@ -475,7 +479,7 @@ class _Bracketed:
         airplane: The ``asb.Airplane`` with the kernel's reference values.
         lift: The signed lift the balance asks for, ``n m g`` in N.
         v_bracket: The speed of the bracketing sweep in m/s.
-        alpha_peak: The first C_L extremum of that sweep in degrees.
+        alpha_peak: The main C_L extremum of that sweep in degrees.
         low: Lower bound of alpha in degrees.
         high: Upper bound of alpha in degrees.
         v_low: Lower bound of the speed in m/s.
@@ -502,7 +506,7 @@ class _Solved:
         aero: The AeroBuildup result expressions, to be read at the optimum with :meth:`value`.
         value: Reads an expression of the problem at the optimum.
         at_upper_alpha: ``True`` if the optimum lies on the upper bound of alpha (only asked for by
-            the minimum-sink problem, where that bound is the first C_L peak).
+            the minimum-sink problem, where that bound is the main C_L peak).
         note: Whether the model function was built or reused, for the worker's diagnostics.
     """
 
@@ -515,15 +519,20 @@ class _Solved:
 
 
 def _bracketed(request: StallRequest, *, peak_margin_deg: float = ALPHA_STEP_DEG) -> _Bracketed:
-    """Locate the first C_L extremum and the bounds of the problem (canon K32).
+    """Locate the main C_L extremum and the bounds of the problem (canon K32).
 
-    The first extremum moves with the Reynolds number, so the bracketing sweep is made at the speed
+    The main extremum (the highest local maximum of C_L for n > 0, the lowest local minimum for
+    n < 0; gh-1423) moves with the Reynolds number, so the bracketing sweep is made at the speed
     a first estimate implies (one refinement, not a loop); the window of alpha then reaches
-    ``peak_margin_deg`` beyond that extremum, and an optimum on its edge is an error.
+    ``peak_margin_deg`` beyond that extremum, and an optimum on its edge is an error. The window
+    starts at the end of the sweep, so it holds every local maximum before the main one (a
+    shoulder); none of them is higher, and IPOPT starts at the main one. The lift coefficient of the
+    main extremum is continuous in the speed although its angle is not: where two maxima are equally
+    high the angle changes from one to the other, the lift value does not.
 
     Args:
         request: The problem.
-        peak_margin_deg: How far the window of alpha reaches past the first extremum. The stall and
+        peak_margin_deg: How far the window of alpha reaches past the main extremum. The stall and
             the best glide take one sweep step, which keeps an optimum at the extremum itself
             interior; a problem whose optimum must lie strictly before the stall takes 0.
 
@@ -664,8 +673,9 @@ def _solve(
 def stall_worker(request: StallRequest) -> WorkerOutcome[StallSolution]:
     """Solve the stall problem in the pool worker (canon ``stall-speed``).
 
-    1. Sweep alpha at the bracketing speed and find the first C_L peak (n > 0) or trough (n < 0)
-       from alpha = 0.
+    1. Sweep alpha at the bracketing speed and find the main C_L peak (n > 0) or trough (n < 0)
+       from alpha = 0: the highest local maximum (lowest local minimum), not the first one
+       (maintainer 2026-11-27, gh-1423).
     2. Minimise V with IPOPT subject to ``L = n m g``, alpha restricted to the branch up to that
        extremum plus one sweep step.
     3. Refuse the solution if a bound is active at the optimum.
@@ -747,7 +757,7 @@ def sweep_worker(request: SweepRequest) -> WorkerOutcome[Polar]:
 # The first guess of the best-glide solve: V_md lies above the stall speed (1.48 times it for the
 # BRYAN of the prototype); IPOPT only needs to start on the pre-stall branch.
 GLIDE_SPEED_FACTOR = 1.4
-# Start value of alpha for that solve, as a fraction of the first C_L peak's angle: a start only, not a
+# Start value of alpha for that solve, as a fraction of the main C_L peak's angle: a start only, not a
 # result or a bound; the optimum is wherever IPOPT finds it inside the window. 0.4 made IPOPT report
 # 'Infeasible_Problem_Detected' for BRYAN at exactly its mass (reference S_ref +0.06 %, gh-1262) while
 # its neighbours 0.1 % either side converged; 0.3, 0.5 and 0.6 converged on all nine masses
@@ -758,7 +768,7 @@ GLIDE_ALPHA_FRACTION = 0.5
 def best_glide_worker(request: StallRequest) -> WorkerOutcome[BestGlideSolution]:
     """Solve the best-glide problem in the pool worker (canon ``minimum-drag-speed``).
 
-    The same bracketing as the stall (the window of alpha ends one sweep step past the first
+    The same bracketing as the stall (the window of alpha ends one sweep step past the main
     C_L peak), then IPOPT minimises ``D`` subject to ``L = n m g``, ``D`` the kernel's drag
     (``kernel_drag``, #1346). At fixed lift the minimum drag is the maximum lift-to-drag ratio. A bound
     active at the optimum is an error.
@@ -820,7 +830,7 @@ def _stall_limited_warning(solution: MinSinkSolution) -> KernelWarning:
     """The declaration of a minimum sink at the stall boundary (ADR 0020, a ``notice``)."""
     return KernelWarning.of(
         "minimum_sink_stall_limited",
-        "minimum sink limited by stall: the sink power D*V is still falling at the first C_L peak "
+        "minimum sink limited by stall: the sink power D*V is still falling at the main C_L peak "
         f"(alpha {solution.alpha_mp:.2f} deg, C_L {solution.cl_mp:.3f}); the value is the stall "
         "boundary, not an interior optimum, and carries no safety margin",
         detail={"alpha_boundary_deg": solution.alpha_mp, "cl_boundary": solution.cl_mp},
@@ -830,13 +840,13 @@ def _stall_limited_warning(solution: MinSinkSolution) -> KernelWarning:
 def min_sink_worker(request: StallRequest) -> WorkerOutcome[MinSinkSolution]:
     """Solve the minimum-sink problem in the pool worker (canon ``minimum-sink-speed``).
 
-    The same bracketing as the stall, but the window of alpha ends at the first C_L peak itself,
+    The same bracketing as the stall, but the window of alpha ends at the main C_L peak itself,
     then IPOPT minimises ``D V`` subject to ``L = n m g``, ``D`` the kernel's drag (``kernel_drag``,
     #1346). At fixed weight ``D V`` is proportional
     to the sink rate, and AeroBuildup forms the Reynolds number from ``V`` inside the constraint.
     The peak is the end of the pre-stall branch: a polar whose sink rate is still falling there has
     its minimum limited by the stall, not at an interior optimum, and that optimum sits on the upper
-    bound of alpha. That case is returned at the boundary (V, alpha and C_L at the first C_L peak, no
+    bound of alpha. That case is returned at the boundary (V, alpha and C_L at the main C_L peak, no
     safety margin: A10) with ``stall_limited`` set, which the adapter declares (#1268, maintainer
     2026-10-25, ADR 0020). A bound of V or the lower bound of alpha active at the optimum is still an
     error, and so is a sweep with no peak at all (no bracket).
@@ -1136,7 +1146,7 @@ def _roll_window(request: RollRequest) -> tuple[float, float, float]:
     """The window of alpha on the pre-stall branch and the start value that carries the weight.
 
     One sweep at V on the airplane without the roll command (D9), with its flaps as configured:
-    the window ends one step past the first C_L peak, the start is where the sweep reaches the C_L
+    the window ends one step past the main C_L peak, the start is where the sweep reaches the C_L
     that carries ``m g``. The sweep is not made on the rolled airplane: with the deflection the curve has kinks (the down-going section's
     NeuralFoil curve is shifted by tau * delta) and its first local maximum lies far below the
     stall (measured: C_L 0.364 at 1 deg against a clean peak of 1.233 at 16 deg), so it brackets
@@ -1237,7 +1247,7 @@ def _roll_start(
 def steady_roll_worker(request: RollRequest) -> WorkerOutcome[RollSolution]:
     """Solve the steady roll in the pool worker (canon ``roll-rate``).
 
-    1. One sweep at V on the clean airplane brackets the first C_L peak (D9, see
+    1. One sweep at V on the clean airplane brackets the main C_L peak (D9, see
        :func:`_roll_window`).
     2. IPOPT finds alpha and the stability-axis roll rate ``p`` with ``L = m g`` and the
        stability-axis rolling moment ``Cl cos(alpha) + Cn sin(alpha) = 0`` (AVL's ``RM``,
@@ -1526,7 +1536,7 @@ class _LevelStart:
         alpha: The linear interpolation of the sweep between the two enclosing samples, in degrees.
         low: The sample angle below the root (its lift is at most the target), in degrees.
         high: The sample angle above the root (its lift is at least the target), in degrees; never
-            beyond the sweep's first C_L peak.
+            beyond the sweep's main C_L peak.
     """
 
     alpha: float
@@ -1542,7 +1552,7 @@ GOLDEN_RATIO_INVERSE = (math.sqrt(5.0) - 1.0) / 2.0
 def _wing_limit(level: float, speed: float, what: str) -> FormulaError:
     """``not_converged`` with ``limit`` = ``wing_lift``: the wing cannot carry the lift of ``level`` at ``speed``."""
     return _not_converged(
-        f"the airplane does not reach C_L = {level:.4g} below its first C_L peak at "
+        f"the airplane does not reach C_L = {level:.4g} below its main C_L peak at "
         f"{speed:.3f} m/s{what}",
         "the level-flight point lies beyond the stall of the airplane at its own Reynolds "
         "number; check mass, wing area and the fit window",
@@ -1553,7 +1563,7 @@ def _wing_limit(level: float, speed: float, what: str) -> FormulaError:
 
 
 def _sampled_peak_cl(sweep: LiftCurve, peak: int) -> float:
-    """The vertex of the parabola through the three samples around the first peak: its C_L.
+    """The vertex of the parabola through the three samples around the main peak: its C_L.
 
     A peak sample is not lower than its predecessor and higher than its successor, so the second
     difference (the curvature) is negative and the division is defined.
@@ -1563,7 +1573,7 @@ def _sampled_peak_cl(sweep: LiftCurve, peak: int) -> float:
 
 
 def _peak_resolution(sweep: LiftCurve, peak: int, tolerance_cl: float) -> float:
-    """The angle width in degrees below which a window around the first peak cannot change the maximum by ``tolerance_cl``.
+    """The angle width in degrees below which a window around the main peak cannot change the maximum by ``tolerance_cl``.
 
     Near its maximum the curve is a parabola: ``C_L = C_max - (k / 2) (alpha - alpha_max)^2`` with
     ``k = |C_L(alpha - h) - 2 C_L(alpha) + C_L(alpha + h)| / h^2`` from the three samples at the peak
@@ -1585,7 +1595,7 @@ def _lift_maximum(
 ) -> tuple[float, float]:
     """The angle and the lift in N of the lift maximum of AeroBuildup inside ``window`` (golden section).
 
-    The window is the two sweep steps around the sampled first peak, where the curve has one maximum.
+    The window is the two sweep steps around the sampled main peak, where the curve has one maximum.
     The search ends when the window is narrower than ``resolution`` (:func:`_peak_resolution`), the
     width below which it cannot change the maximum by more than half the lift tolerance.
 
@@ -1625,7 +1635,7 @@ def _start_at_the_peak(
     lift_target: float,
     level: float,
 ) -> _LevelStart:
-    """The start for a lift above the sampled first peak: the wing limit, or the bracket up to the true peak.
+    """The start for a lift above the sampled main peak: the wing limit, or the bracket up to the true peak.
 
     The sweep's samples can lie a little below the curve's own maximum, so a lift above the highest
     sample may still be reachable. The parabola through the samples around the peak says whether it
@@ -1677,8 +1687,8 @@ def _level_start(
     if level <= 0.0:
         raise _not_converged(
             f"the zero-lift angle of the lift curve at {speed:.3f} m/s is not inside the sweep "
-            f"{ALPHA_MIN_DEG}..{ALPHA_MAX_DEG} deg below its first C_L peak",
-            "the lift curve has no zero crossing before its first peak (a very low Reynolds number or "
+            f"{ALPHA_MIN_DEG}..{ALPHA_MAX_DEG} deg below its main C_L peak",
+            "the lift curve has no zero crossing before its main peak (a very low Reynolds number or "
             "an airfoil outside the sampled angles); this is not a stall",
             cl=level,
             v_ms=speed,
@@ -1717,7 +1727,7 @@ def _lift_point(
     reports in failures).
 
     The angle of attack is the one at which the lift equals the target at that speed, found by
-    secant steps from the linear interpolation of one alpha sweep on the branch before the first
+    secant steps from the linear interpolation of one alpha sweep on the branch before the main
     ``C_L`` peak. The two sweep samples that enclose the root bound the search (:func:`_next_alpha`),
     so it cannot leave that branch: the outcome is the root before the peak or, if the sweep does not
     reach the target, the wing limit, never a function of where the secant happens to stop. The
@@ -1762,7 +1772,7 @@ def _next_alpha(alpha: float, miss: float, slope: float, low: float, high: float
     """The next angle of the level-flight search: the secant step, or the middle of the bracket.
 
     The root lies between ``low`` and ``high`` (the lift is below the target at ``low``, above it at
-    ``high``, both on the branch before the first C_L peak). A secant step that leaves the open
+    ``high``, both on the branch before the main C_L peak). A secant step that leaves the open
     bracket, or whose slope is zero, is replaced by the middle of the bracket, so the iterate never
     crosses the peak onto the branch after the stall, whatever the slope near the peak.
     """
@@ -1852,7 +1862,7 @@ class LevelPoint(BaseModel):
 
     Attributes:
         v_ms: The speed in m/s.
-        alpha_deg: The angle of attack in degrees (on the branch before the first lift peak).
+        alpha_deg: The angle of attack in degrees (on the branch before the main lift peak).
         cl: The lift coefficient (reference area of the airplane).
         cd: The kernel's drag coefficient there.
         lift_n: The lift in N (the weight, to the lift tolerance).
@@ -2183,7 +2193,7 @@ class OptiAdapter(SolverAdapter):
         n_load: float,
         air: AirState,
     ) -> Stall:
-        """Solve ``min V s.t. L(V, alpha) = n m g`` on the branch before the first C_L extremum.
+        """Solve ``min V s.t. L(V, alpha) = n m g`` on the branch before the main C_L extremum.
 
         Args:
             airplane: The geometry with its devices as they are to be evaluated.
@@ -2216,7 +2226,7 @@ class OptiAdapter(SolverAdapter):
         n_load: float,
         air: AirState,
     ) -> BestGlide:
-        """Solve ``min D s.t. L(V, alpha) = n m g`` on the branch before the first C_L peak.
+        """Solve ``min D s.t. L(V, alpha) = n m g`` on the branch before the main C_L peak.
 
         Args:
             airplane: The geometry with its devices as they are to be evaluated.
@@ -2322,7 +2332,7 @@ class OptiAdapter(SolverAdapter):
         """The point at a given speed and load factor: the angle where AeroBuildup's lift equals ``n m g``.
 
         The single-speed reading of :meth:`level_polar` (the kernel's one lift-equals-weight solve):
-        one alpha sweep plus secant steps, bounded by the first lift peak, with the configured
+        one alpha sweep plus secant steps, bounded by the main lift peak, with the configured
         tolerance and step limit; the drag is the kernel's. Level flight is ``n_load = 1``, a
         coordinated level turn ``n_load = n``, a steady climb ``cos(gamma)`` and a vertical dive 0.
 
@@ -2420,7 +2430,7 @@ class OptiAdapter(SolverAdapter):
         n_load: float,
         air: AirState,
     ) -> MinSink:
-        """Solve ``min D V s.t. L(V, alpha) = n m g`` on the branch before the first C_L peak.
+        """Solve ``min D V s.t. L(V, alpha) = n m g`` on the branch before the main C_L peak.
 
         Args:
             airplane: The geometry with its devices as they are to be evaluated.

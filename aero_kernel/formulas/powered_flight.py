@@ -30,7 +30,7 @@ What the searches assume (stated in the canon entries, #1414): one maximum of th
 scan step (two features closer together than the step can be missed).
 
 A speed at which a state cannot be evaluated is never dropped silently. The result of an evaluation is a
-value or an :class:`Unflyable`: ``WING`` (the wing cannot carry the lift before its first lift peak),
+value or an :class:`Unflyable`: ``WING`` (the wing cannot carry the lift before its main lift peak),
 ``THRUST`` (the thrust is below the drag) or ``TABLE`` (the propeller table ends). Speeds skipped below the
 first feasible speed are declared with the notice ``powered_speeds_skipped``; the table edge is a bound of
 the search (an interior optimum is returned, an optimum on the bound is the declared failure
@@ -92,7 +92,7 @@ class Unflyable(StrEnum):
     """Why a state has no value at a speed (a bound of the search, not a defect).
 
     Attributes:
-        WING: the wing cannot carry the lift of the state before its first lift peak.
+        WING: the wing cannot carry the lift of the state before its main lift peak.
         THRUST: the thrust at full throttle is below what the state needs.
         TABLE: the propeller table ends before this speed.
     """
@@ -105,7 +105,7 @@ class Unflyable(StrEnum):
 Objective = Callable[[float], Awaitable[float | Unflyable]]
 
 _SKIP_TEXT = {
-    Unflyable.WING: "the wing cannot carry the lift of the state before its first lift peak",
+    Unflyable.WING: "the wing cannot carry the lift of the state before its main lift peak",
     Unflyable.THRUST: "the thrust at full throttle is below what the state needs",
     Unflyable.TABLE: "the propeller table ends",
 }

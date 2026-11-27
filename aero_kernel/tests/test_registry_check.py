@@ -55,8 +55,8 @@ def test_a_matching_registry_is_ok_and_lists_the_rest_as_not_implemented(
     registry = Registry()
     registry.formula("stall-speed")(impl)
     registry.precondition("stall-speed", "rho_at_evaluation_altitude")(pre)
-    registry.postcondition("stall-speed", "optimum_at_first_cl_peak")(post)
-    registry.postcondition("butterfly-approach", "optimum_at_first_cl_peak")(post)
+    registry.postcondition("stall-speed", "optimum_at_main_cl_peak")(post)
+    registry.postcondition("butterfly-approach", "optimum_at_main_cl_peak")(post)
     report = registry.check_traceability(flight_canon)
     assert report.ok
     assert report.not_implemented == tuple(f for f in ALL_FORMULAS if f != "calc:stall-speed")
@@ -98,7 +98,7 @@ def test_a_check_id_the_formula_does_not_have_is_unknown(
 
 
 def _postcondition_id_used_as_precondition(r: Registry) -> None:
-    r.precondition("stall-speed", "optimum_at_first_cl_peak")(pre)
+    r.precondition("stall-speed", "optimum_at_main_cl_peak")(pre)
 
 
 def _precondition_id_used_as_postcondition(r: Registry) -> None:
@@ -108,7 +108,7 @@ def _precondition_id_used_as_postcondition(r: Registry) -> None:
 @pytest.mark.parametrize(
     ("register", "check_id"),
     [
-        (_postcondition_id_used_as_precondition, "optimum_at_first_cl_peak"),
+        (_postcondition_id_used_as_precondition, "optimum_at_main_cl_peak"),
         (_precondition_id_used_as_postcondition, "rho_at_evaluation_altitude"),
     ],
 )
@@ -127,11 +127,11 @@ def test_findings_are_sorted_by_slug_then_kind_then_check_id(flight_canon: Canon
     registry = Registry()
     registry.precondition("stall-speed", "zzz")(pre)
     registry.precondition("stall-speed", "aaa")(pre)
-    registry.precondition("stall-speed", "optimum_at_first_cl_peak")(pre)
+    registry.precondition("stall-speed", "optimum_at_main_cl_peak")(pre)
     registry.postcondition("a-unknown", "x")(post)
     assert codes(registry.check_traceability(flight_canon)) == [
         ("unknown_formula", "calc:a-unknown", None),
-        ("check_kind_mismatch", "calc:stall-speed", "optimum_at_first_cl_peak"),
+        ("check_kind_mismatch", "calc:stall-speed", "optimum_at_main_cl_peak"),
         ("unknown_check", "calc:stall-speed", "aaa"),
         ("unknown_check", "calc:stall-speed", "zzz"),
     ]

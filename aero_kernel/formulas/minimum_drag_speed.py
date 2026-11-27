@@ -1,7 +1,7 @@
 """Canon formula ``minimum-drag-speed``: best glide as an optimisation (ch. 8.5, 8.12).
 
 The formula passes the airplane, the mass, the load factor and the ISA air state to the OPT adapter,
-which brackets the first C_L peak and minimises the drag subject to the lift balance in the process
+which brackets the main C_L peak and minimises the drag subject to the lift balance in the process
 pool (the same procedure as ``stall-speed``, shared code; no postcondition, decided W9).
 """
 

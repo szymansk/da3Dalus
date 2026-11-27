@@ -120,7 +120,7 @@ async def test_the_real_trainer_best_glide_against_a_dense_sweep() -> None:
     converted = to_asb_airplane(trainer())
     area = float(converted.s_ref)
     weight = MASS_KG * GRAVITY
-    alphas = [-5.0 + 0.05 * k for k in range(0, 360)]  # -5 .. 13 deg, below the first peak
+    alphas = [-5.0 + 0.05 * k for k in range(0, 360)]  # -5 .. 13 deg, below the main peak
     best: tuple[float, float] | None = None
     for v in np.arange(9.0, 25.0, 0.25):
         polar = sweep_polar(

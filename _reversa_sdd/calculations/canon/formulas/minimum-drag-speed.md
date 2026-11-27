@@ -103,7 +103,7 @@ polar instead of a closed form.
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/minimum_drag_speed.py` | EXACT | 🟢 | the OPT adapter (`ctx.solvers.opti.best_glide`) brackets the first C_L peak and minimises the kernel's drag subject to the lift balance, in the bound ISA air state |
+| `aero_kernel/formulas/minimum_drag_speed.py` | EXACT | 🟢 | the OPT adapter (`ctx.solvers.opti.best_glide`) brackets the main C_L peak ([[stall-speed]], #1423) and minimises the kernel's drag subject to the lift balance, in the bound ISA air state |
 | [[i-best-glide]] | DEVIATES | 🟢 | Ist: argmax of `C_L/C_D` over a sampled polar computed at one fixed speed (the broken assumption above), not this optimisation |
 | [[v-best-glide]] | DEVIATES | 🟢 | Ist: the speed read at that argmax index of the fixed-Re sampled polar |
 

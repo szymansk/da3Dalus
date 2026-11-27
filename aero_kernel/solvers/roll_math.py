@@ -103,12 +103,12 @@ def stability_rolling_moment(
 def enclosing_sample(cl: Sequence[float], peak_index: int, wanted: float) -> int | None:
     """The index ``k`` of the sample pair ``(k - 1, k)`` on the pre-stall branch that encloses ``wanted``.
 
-    Scans from the first C_L peak downwards in angle, so the crossing nearest the peak is found even
+    Scans from the main C_L peak downwards in angle, so the crossing nearest the peak is found even
     if the curve is not monotonic far below it.
 
     Args:
         cl: The lift coefficient per sample.
-        peak_index: Index of the first C_L peak.
+        peak_index: Index of the main C_L peak.
         wanted: The lift coefficient to enclose.
 
     Returns:
@@ -131,7 +131,7 @@ def alpha_for_lift_coefficient(
     Args:
         alphas_deg: The sweep angles, rising.
         cl: The lift coefficient per sample.
-        peak_index: Index of the first C_L peak.
+        peak_index: Index of the main C_L peak.
         wanted: The lift coefficient to reach.
 
     Returns:

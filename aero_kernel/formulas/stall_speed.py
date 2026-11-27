@@ -19,14 +19,14 @@ from aero_kernel.registry import CheckResult, formula, postcondition
 from aero_kernel.schema import Polar
 from aero_kernel.solvers.asb_airplane import main_wing_properties
 from aero_kernel.solvers.opti import ALPHA_STEP_DEG
-from aero_kernel.solvers.stall_math import first_extremum_from_zero
+from aero_kernel.solvers.stall_math import local_extrema_from_zero, main_extremum_from_zero
 
 __all__ = [
     "alpha_range_past_inverted_stall",
     "cl_max_at_stall_reynolds_number",
-    "first_extremum_check",
-    "optimum_at_first_cl_peak",
-    "optimum_at_first_cl_trough",
+    "main_extremum_check",
+    "optimum_at_main_cl_peak",
+    "optimum_at_main_cl_trough",
     "stall_speed",
 ]
 
@@ -112,56 +112,68 @@ def cl_max_at_stall_reynolds_number(
     return CheckResult(state="held", message="V_S closes the lift balance at the sweep's C_L")
 
 
-def first_extremum_check(
+def main_extremum_check(
     polar: Polar, alpha_s: float, cl_max: float, *, upright: bool
 ) -> CheckResult:
-    """The optimum is the first sampled C_L peak (trough) from alpha = 0, within one sweep step.
+    """The optimum is the main sampled C_L peak (trough) from alpha = 0: the highest (lowest) one.
 
-    The one implementation of the check ``optimum_at_first_cl_peak`` / ``_trough``: ``stall-speed``
+    Two conditions (maintainer 2026-11-27, gh-1423: the stall is at the main maximum, not at the
+    first local one). ``alpha_S`` lies within one sweep step of a local extremum of the sweep at
+    ``V_S``, so it is a turning point and not a point on a flank; and ``C_L,max`` is not short of the
+    highest local maximum (lowest minimum) of that sweep by more than ``opt_peak_tolerance``. Which
+    of two extrema of equal height carries ``alpha_S`` is not checked: the lift value is the same,
+    and the sweep that bracketed the solve and this one may each name the other.
+
+    The one implementation of the check ``optimum_at_main_cl_peak`` / ``_trough``: ``stall-speed``
     runs it on its polar, ``butterfly-approach`` on the polar of each crow mix (K32).
     """
     what = "peak" if upright else "trough"
-    index = first_extremum_from_zero(polar.alpha_deg, polar.cl, upright=upright)
+    index = main_extremum_from_zero(polar.alpha_deg, polar.cl, upright=upright)
     if index is None:
         return CheckResult(
             state="violated", message=f"the sweep at V_S has no C_L {what} inside its range"
         )
-    peak_alpha, peak_cl = polar.alpha_deg[index], polar.cl[index]
-    if abs(peak_alpha - alpha_s) > ALPHA_STEP_DEG + config().opt_alpha_margin_deg.value:
+    window = ALPHA_STEP_DEG + config().opt_alpha_margin_deg.value
+    turning = local_extrema_from_zero(polar.alpha_deg, polar.cl, upright=upright)
+    if all(abs(polar.alpha_deg[k] - alpha_s) > window for k in turning):
         return CheckResult(
             state="violated",
             message=(
-                f"alpha_S = {alpha_s} deg is not at the first C_L {what} of the sweep "
-                f"({peak_alpha} deg): the optimum is on another branch"
+                f"alpha_S = {alpha_s} deg is not at a C_L {what} of the sweep (the main one is at "
+                f"{polar.alpha_deg[index]} deg): the optimum is on another branch"
             ),
         )
+    peak_cl = polar.cl[index]
     beyond = (peak_cl - cl_max) if upright else (cl_max - peak_cl)
     if beyond > config().opt_peak_tolerance.value:
         return CheckResult(
             state="violated",
-            message=f"C_L = {cl_max} lies {beyond:.2e} short of the first sampled {what} {peak_cl}",
+            message=(
+                f"C_L = {cl_max} lies {beyond:.2e} short of the main sampled {what} {peak_cl} at "
+                f"{polar.alpha_deg[index]} deg: the optimum is on a lower {what}"
+            ),
         )
-    return CheckResult(state="held", message=f"the optimum is the first C_L {what}")
+    return CheckResult(state="held", message=f"the optimum is the main C_L {what}")
 
 
-def _first_extremum_check(y: Mapping[str, object], *, upright: bool) -> CheckResult:
+def _main_extremum_check(y: Mapping[str, object], *, upright: bool) -> CheckResult:
     polar = _polar(y)
     if polar is None:
         what = "peak" if upright else "trough"
-        return _unchecked(f"the first C_L {what} is read off the sweep")
-    return first_extremum_check(polar, number(y, "alpha_s"), number(y, "cl_max"), upright=upright)
+        return _unchecked(f"the main C_L {what} is read off the sweep")
+    return main_extremum_check(polar, number(y, "alpha_s"), number(y, "cl_max"), upright=upright)
 
 
-@postcondition("stall-speed", "optimum_at_first_cl_peak")
-def optimum_at_first_cl_peak(x: Mapping[str, object], y: Mapping[str, object]) -> CheckResult:
-    """For n > 0: ``alpha_S`` is the first sampled C_L peak of the sweep (K32)."""
-    return _first_extremum_check(y, upright=True)
+@postcondition("stall-speed", "optimum_at_main_cl_peak")
+def optimum_at_main_cl_peak(x: Mapping[str, object], y: Mapping[str, object]) -> CheckResult:
+    """For n > 0: ``alpha_S`` is at the main sampled C_L peak of the sweep (K32, gh-1423)."""
+    return _main_extremum_check(y, upright=True)
 
 
-@postcondition("stall-speed", "optimum_at_first_cl_trough")
-def optimum_at_first_cl_trough(x: Mapping[str, object], y: Mapping[str, object]) -> CheckResult:
-    """For n < 0: ``alpha_S`` is the first sampled C_L trough of the sweep (K32 mirrored)."""
-    return _first_extremum_check(y, upright=False)
+@postcondition("stall-speed", "optimum_at_main_cl_trough")
+def optimum_at_main_cl_trough(x: Mapping[str, object], y: Mapping[str, object]) -> CheckResult:
+    """For n < 0: ``alpha_S`` is at the main sampled C_L trough of the sweep (K32 mirrored)."""
+    return _main_extremum_check(y, upright=False)
 
 
 @postcondition("stall-speed", "alpha_range_past_inverted_stall")
@@ -175,7 +187,7 @@ def alpha_range_past_inverted_stall(
     polar = _polar(y)
     if polar is None:
         return _unchecked("the sweep range is read off the polar")
-    index = first_extremum_from_zero(polar.alpha_deg, polar.cl, upright=False)
+    index = main_extremum_from_zero(polar.alpha_deg, polar.cl, upright=False)
     if index is None:
         return CheckResult(
             state="violated",

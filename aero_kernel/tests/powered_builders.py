@@ -83,7 +83,7 @@ class PolarOpti(StubOpti):
             raise FormulaError(
                 ErrorCategory.NOT_CONVERGED,
                 "not_converged",
-                f"the airplane does not reach C_L = {cl:.4g} below its first C_L peak",
+                f"the airplane does not reach C_L = {cl:.4g} below its main C_L peak",
                 "check mass and speed",
                 detail={"limit": "wing_lift", "v_ms": v_ms},
             )

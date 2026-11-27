@@ -57,7 +57,7 @@ def stub_zero_lift(v_ms: float) -> ZeroLiftSolution:
 
 
 def lift_curve(peak: tuple[float, float], upright: bool) -> Polar:
-    """A sweep -15..25 deg with a first extremum at ``peak`` and a second branch behind it."""
+    """A sweep -15..25 deg with a main extremum at ``peak`` and a second branch behind it."""
     return lift_curve_at(peak, upright, [-15.0 + k * STEP for k in range(161)])
 
 

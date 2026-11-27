@@ -76,7 +76,7 @@ opt_probe_tolerance:
 opt_peak_tolerance:
   value: 0.000001
   unit: "1"
-  guards: "Stall speed, postcondition: C_L,max may fall short of the sampled first peak by this much; both are samples of one curve, so it only absorbs numerical noise."
+  guards: "Stall speed, postcondition: C_L,max may fall short of the sampled main peak (the highest local maximum of the sweep at V_S) by this much; both are samples of one curve, so it only absorbs numerical noise. Two maxima closer in height than this count as equally high."
   basis: numerical
   source: "float noise between two samples of one sweep"
 
@@ -92,7 +92,7 @@ opt_level_max_steps:
   unit: "1"
   guards: "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance."
   basis: numerical
-  source: "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one"
+  source: "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the main C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one"
 
 opt_zero_span:
   value: 1.0e-15

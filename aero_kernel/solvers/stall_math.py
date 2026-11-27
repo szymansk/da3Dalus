@@ -4,40 +4,94 @@ from collections.abc import Sequence
 
 __all__ = [
     "first_crossing_below",
-    "first_extremum",
-    "first_extremum_from_zero",
+    "local_extrema",
+    "local_extrema_from_zero",
+    "main_extremum",
+    "main_extremum_from_zero",
 ]
 
 
-def first_extremum(values: Sequence[float], *, maximum: bool) -> int | None:
-    """Return the index of the first local extremum of a series scanned from its start.
+def local_extrema(values: Sequence[float], *, maximum: bool) -> list[int]:
+    """Return the indices of the local extrema of a series, in scan order.
 
-    A maximum is a sample not lower than its predecessor and higher than its successor (a plateau
-    counts at its last sample); a minimum is the mirror. The first or last sample is never an
-    extremum, because a boundary sample is no turning point (ADR 0020).
+    A local maximum is a sample not lower than its predecessor and higher than its successor (a
+    plateau counts at its last sample); a minimum is the mirror. The first or last sample is never
+    an extremum, because a boundary sample is no turning point (ADR 0020).
 
     Args:
         values: The series in scan order, e.g. ``C_L`` over rising angle of attack.
-        maximum: ``True`` for the first peak, ``False`` for the first trough.
+        maximum: ``True`` for the maxima, ``False`` for the minima.
+
+    Returns:
+        The indices, empty if the series does not turn inside its range.
+    """
+    sign = 1.0 if maximum else -1.0
+    found: list[int] = []
+    for index in range(1, len(values) - 1):
+        before, here, after = (sign * values[i] for i in (index - 1, index, index + 1))
+        if here >= before and here > after:
+            found.append(index)
+    return found
+
+
+def main_extremum(values: Sequence[float], *, maximum: bool) -> int | None:
+    """Return the index of the main extremum of a series: its highest local maximum (lowest minimum).
+
+    The stall is at the main maximum of the lift curve, not at the first local one (maintainer,
+    2026-11-27, gh-1423): a shoulder before the real maximum exists only in a range of Reynolds
+    numbers, so the first local maximum is no continuous function of the speed; the height of the
+    highest one is. The end of the series is no extremum (:func:`local_extrema`): a series that
+    still rises at its end above every local maximum keeps its highest local maximum. Of two
+    extrema of exactly the same height the first in scan order is returned.
+
+    Args:
+        values: The series in scan order, e.g. ``C_L`` over rising angle of attack.
+        maximum: ``True`` for the main peak, ``False`` for the main trough.
 
     Returns:
         The index of the extremum, or ``None`` if the series does not turn inside its range.
     """
     sign = 1.0 if maximum else -1.0
-    for index in range(1, len(values) - 1):
-        before, here, after = (sign * values[i] for i in (index - 1, index, index + 1))
-        if here >= before and here > after:
-            return index
-    return None
+    best: int | None = None
+    for index in local_extrema(values, maximum=maximum):
+        if best is None or sign * values[index] > sign * values[best]:
+            best = index
+    return best
 
 
-def first_extremum_from_zero(
+def _scan_from_zero(alphas_deg: Sequence[float], *, upright: bool) -> list[int]:
+    """The sample indices from the sample nearest alpha = 0 towards rising (falling) alpha."""
+    if not alphas_deg:
+        return []
+    start = min(range(len(alphas_deg)), key=lambda k: abs(alphas_deg[k]))
+    return list(range(start, len(alphas_deg))) if upright else list(range(start, -1, -1))
+
+
+def local_extrema_from_zero(
+    alphas_deg: Sequence[float], cl: Sequence[float], *, upright: bool
+) -> list[int]:
+    """Return the sample indices of the C_L peaks (upright) or troughs (inverted) from alpha = 0.
+
+    Args:
+        alphas_deg: Angles of attack in degrees, rising.
+        cl: Lift coefficient per sample.
+        upright: ``True`` for the peaks above alpha = 0, ``False`` for the troughs below it.
+
+    Returns:
+        The indices into the series in scan order, empty if the curve does not turn on that side.
+    """
+    scan = _scan_from_zero(alphas_deg, upright=upright)
+    return [scan[k] for k in local_extrema([cl[k] for k in scan], maximum=upright)]
+
+
+def main_extremum_from_zero(
     alphas_deg: Sequence[float], cl: Sequence[float], *, upright: bool
 ) -> int | None:
-    """Return the sample index of the first C_L peak (upright) or trough (inverted) from alpha = 0.
+    """Return the sample index of the main C_L peak (upright) or trough (inverted) from alpha = 0.
 
     The scan starts at the sample nearest alpha = 0 and runs towards rising alpha for a peak and
-    falling alpha for a trough (canon K32).
+    falling alpha for a trough (canon K32); the main extremum is the highest local maximum (lowest
+    local minimum) of that side (:func:`main_extremum`).
 
     Args:
         alphas_deg: Angles of attack in degrees, rising.
@@ -47,11 +101,8 @@ def first_extremum_from_zero(
     Returns:
         The index into the series, or ``None`` if the curve does not turn inside the range.
     """
-    if not alphas_deg:
-        return None
-    start = min(range(len(alphas_deg)), key=lambda k: abs(alphas_deg[k]))
-    scan = list(range(start, len(alphas_deg))) if upright else list(range(start, -1, -1))
-    found = first_extremum([cl[k] for k in scan], maximum=upright)
+    scan = _scan_from_zero(alphas_deg, upright=upright)
+    found = main_extremum([cl[k] for k in scan], maximum=upright)
     return None if found is None else scan[found]
 
 

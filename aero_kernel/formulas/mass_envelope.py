@@ -19,7 +19,7 @@ that exist (ARCHITECTURE ch. 8.5, 8.12):
 
 The thrust and the drag are the shared ones of ``powered_flight`` (:class:`PoweredFlight`: the drive-train
 relations and ``OptiAdapter.level_flight_point``) and the stall is ``OptiAdapter.stall`` with the check of
-``stall-speed`` (``optimum_at_first_cl_peak``) on every solve; this module writes the two root searches and
+``stall-speed`` (``optimum_at_main_cl_peak``) on every solve; this module writes the two root searches and
 no physics. The embedded optimisations are used as the shared functions of their modules, not through
 ``Context.embedded``, which hands out only the registered relations (the four propulsion relations;
 ARCHITECTURE ch. 8.12 defers the relation form of an embedded optimisation).
@@ -37,7 +37,7 @@ data end, namely ``no_feasible_speed`` of the level problem (no speed inside the
 the wing carries the weight) and ``outside_propeller_table`` of the lift-off problem (the lift-off speed is
 beyond the table). The edge between the last mass that evaluates and the first that does not is bisected to
 ``mass_envelope_edge_tolerance`` and the last mass that evaluates is the answer. Every other failure at any mass
-(a stall solve that does not converge, a stall off the first lift peak, a missing input) is not "not held":
+(a stall solve that does not converge, a stall off the main lift peak, a missing input) is not "not held":
 it surfaces unchanged, with the mass in the message and in ``detail.mass_kg``.
 
 **Warnings forwarded** (ADR 0020): those of the answer of each root, the level-flight state at
@@ -67,7 +67,7 @@ from aero_kernel.formulas.powered_flight import (
     maximise_over_speed,
     no_feasible_speed,
 )
-from aero_kernel.formulas.stall_speed import first_extremum_check
+from aero_kernel.formulas.stall_speed import main_extremum_check
 from aero_kernel.formulas.values import air_state, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import CheckResult, formula, precondition
@@ -137,13 +137,13 @@ def _no_bracket(what: str, mass: float, steps: int) -> FormulaError:
 
 
 def _stall_off_peak(result: CheckResult, mass: float, what: str) -> FormulaError:
-    """The stall optimum is not the first C_L peak at a mass of the scan (the embedded check of ``stall-speed``)."""
+    """The stall optimum is not the main C_L peak at a mass of the scan (the embedded check of ``stall-speed``)."""
     return FormulaError(
         ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "postcondition_violated",
-        f"at the mass {mass:.4g} kg the stall solve of {what} violates optimum_at_first_cl_peak: "
+        f"at the mass {mass:.4g} kg the stall solve of {what} violates optimum_at_main_cl_peak: "
         f"{result.message}",
-        "the stall speed of this mass is not on the branch before the first lift peak; report the case",
+        "the stall speed of this mass is not on the branch before the main lift peak; report the case",
         detail={"embedded": what, "mass_kg": mass},
     )
 
@@ -222,7 +222,7 @@ class Envelope:
                 self.airplane(takeoff=takeoff), mass, self.gravity, LEVEL_FLIGHT, air_state(self.x)
             )
             solution = stall.solution
-            checked = first_extremum_check(
+            checked = main_extremum_check(
                 solution.polar, solution.alpha_s, solution.cl_max, upright=True
             )
             if checked.state != "held":
@@ -505,7 +505,7 @@ async def mass_envelope(x: Inputs, ctx: Context) -> dict[str, float | Curve | tu
         TypeError: If ``airplane``, ``airplane_to`` or ``components`` is not the document.
         FormulaError: ``no_feasible_speed`` where level flight or the lift-off is not held at the current
             mass; ``not_converged`` where a state is still held at the last mass of the scan;
-            ``postcondition_violated`` where a stall solve of the scan is not at the first lift peak;
+            ``postcondition_violated`` where a stall solve of the scan is not at the main lift peak;
             the failures of the searches and the drive train (``outside_propeller_table``,
             ``missing_input``), each with the mass of the scan named.
     """

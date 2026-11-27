@@ -2,13 +2,14 @@
 
 import math
 from collections.abc import Mapping
+from itertools import pairwise
 
 import pytest
 from aero_kernel.formulas.stall_speed import (
     alpha_range_past_inverted_stall,
     cl_max_at_stall_reynolds_number,
-    optimum_at_first_cl_peak,
-    optimum_at_first_cl_trough,
+    optimum_at_main_cl_peak,
+    optimum_at_main_cl_trough,
 )
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.schema import Polar
@@ -91,26 +92,26 @@ def test_the_probe_of_inverted_flight_uses_the_magnitudes() -> None:
     assert cl_max_at_stall_reynolds_number(x_of(-1.0), y).state == "held"
 
 
-def test_the_first_peak_check_holds_when_alpha_s_is_at_the_first_sampled_peak() -> None:
+def test_the_main_peak_check_holds_when_alpha_s_is_at_the_only_sampled_peak() -> None:
     polar = upright_polar()
-    assert optimum_at_first_cl_peak(x_of(), y_of(polar, 15.75)).state == "held"
+    assert optimum_at_main_cl_peak(x_of(), y_of(polar, 15.75)).state == "held"
 
 
-def test_the_first_peak_check_is_violated_on_the_later_lower_branch() -> None:
+def test_the_main_peak_check_is_violated_on_the_later_lower_branch() -> None:
     """The BRYAN failure: IPOPT found the second maximum (23 deg) instead of the first (12 deg)."""
     polar = upright_polar()
-    result = optimum_at_first_cl_peak(x_of(), y_of(polar, 23.0))
+    result = optimum_at_main_cl_peak(x_of(), y_of(polar, 23.0))
     assert result.state == "violated"
 
 
-def test_the_first_peak_check_is_violated_when_the_curve_never_turns() -> None:
+def test_the_main_peak_check_is_violated_when_the_curve_never_turns() -> None:
     alphas = tuple(a * STEP for a in range(0, 41))
     polar = Polar(
         alpha_deg=alphas,
         cl=tuple(0.1 * i * STEP for i in range(41)),
         cd=(0.05,) * 41,
     )
-    assert optimum_at_first_cl_peak(x_of(), y_of(polar, 5.0)).state == "violated"
+    assert optimum_at_main_cl_peak(x_of(), y_of(polar, 5.0)).state == "violated"
 
 
 def inverted_polar(trough_at: float = -10.0) -> Polar:
@@ -119,14 +120,14 @@ def inverted_polar(trough_at: float = -10.0) -> Polar:
     return Polar(alpha_deg=tuple(alphas), cl=tuple(cl), cd=(0.05,) * 81)
 
 
-def test_the_first_trough_check_holds_at_the_first_sampled_trough() -> None:
+def test_the_main_trough_check_holds_at_the_only_sampled_trough() -> None:
     polar = inverted_polar()
-    assert optimum_at_first_cl_trough(x_of(-1.0), y_of(polar, -10.0, n=-1.0)).state == "held"
+    assert optimum_at_main_cl_trough(x_of(-1.0), y_of(polar, -10.0, n=-1.0)).state == "held"
 
 
-def test_the_first_trough_check_is_violated_away_from_the_trough() -> None:
+def test_the_main_trough_check_is_violated_away_from_the_trough() -> None:
     polar = inverted_polar()
-    assert optimum_at_first_cl_trough(x_of(-1.0), y_of(polar, -5.0, n=-1.0)).state == "violated"
+    assert optimum_at_main_cl_trough(x_of(-1.0), y_of(polar, -5.0, n=-1.0)).state == "violated"
 
 
 def test_the_inverted_range_check_holds_when_the_trough_is_inside_the_sweep() -> None:
@@ -143,7 +144,7 @@ def test_the_inverted_range_check_is_violated_when_the_trough_is_on_the_boundary
     assert result.state == "violated"
 
 
-@pytest.mark.parametrize("check", [optimum_at_first_cl_peak, optimum_at_first_cl_trough])
+@pytest.mark.parametrize("check", [optimum_at_main_cl_peak, optimum_at_main_cl_trough])
 def test_the_extremum_checks_are_unchecked_without_a_polar(check: object) -> None:
     y: dict[str, object] = {"v_s": 8.0, "cl_max": 1.2, "alpha_s": 15.0, "polar": None}
     assert check(x_of(), y).state == "unchecked"  # type: ignore[operator]
@@ -162,47 +163,145 @@ def trough_y(alpha_s: float, cl_max: float) -> dict[str, object]:
 def test_the_peak_check_is_violated_when_cl_max_falls_short_of_the_sampled_peak() -> None:
     sampled = upright_polar()
     peak = sampled.cl[sampled.alpha_deg.index(15.75)]
-    result = optimum_at_first_cl_peak(x_of(), peak_y(15.75, peak - 1e-3))
+    result = optimum_at_main_cl_peak(x_of(), peak_y(15.75, peak - 1e-3))
     assert result.state == "violated"
-    assert "short of the first sampled peak" in result.message
+    assert "short of the main sampled peak" in result.message
 
 
 def test_the_peak_check_tolerates_numerical_noise_below_the_sampled_peak() -> None:
     sampled = upright_polar()
     peak = sampled.cl[sampled.alpha_deg.index(15.75)]
-    assert optimum_at_first_cl_peak(x_of(), peak_y(15.75, peak - 1e-7)).state == "held"
-    assert optimum_at_first_cl_peak(x_of(), peak_y(15.75, peak + 1e-3)).state == "held"
+    assert optimum_at_main_cl_peak(x_of(), peak_y(15.75, peak - 1e-7)).state == "held"
+    assert optimum_at_main_cl_peak(x_of(), peak_y(15.75, peak + 1e-3)).state == "held"
 
 
 def test_the_trough_check_is_violated_when_cl_max_lies_above_the_sampled_trough() -> None:
     sampled = inverted_polar()
     trough = sampled.cl[sampled.alpha_deg.index(-10.0)]
-    result = optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.0, trough + 1e-3))
+    result = optimum_at_main_cl_trough(x_of(-1.0), trough_y(-10.0, trough + 1e-3))
     assert result.state == "violated"
-    assert "short of the first sampled trough" in result.message
+    assert "short of the main sampled trough" in result.message
 
 
 def test_the_trough_check_tolerates_numerical_noise_above_the_sampled_trough() -> None:
     sampled = inverted_polar()
     trough = sampled.cl[sampled.alpha_deg.index(-10.0)]
-    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.0, trough + 1e-7)).state == "held"
-    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.0, trough - 1e-3)).state == "held"
+    assert optimum_at_main_cl_trough(x_of(-1.0), trough_y(-10.0, trough + 1e-7)).state == "held"
+    assert optimum_at_main_cl_trough(x_of(-1.0), trough_y(-10.0, trough - 1e-3)).state == "held"
 
 
 def test_the_peak_window_is_one_sweep_step() -> None:
     """alpha_S 0.25 deg from the sampled peak is held, 0.5 deg is another branch."""
     sampled = upright_polar()
     peak = sampled.cl[sampled.alpha_deg.index(15.75)]
-    assert optimum_at_first_cl_peak(x_of(), peak_y(16.0, peak)).state == "held"
-    assert optimum_at_first_cl_peak(x_of(), peak_y(15.5, peak)).state == "held"
-    assert optimum_at_first_cl_peak(x_of(), peak_y(16.25, peak)).state == "violated"
-    assert optimum_at_first_cl_peak(x_of(), peak_y(15.25, peak)).state == "violated"
+    assert optimum_at_main_cl_peak(x_of(), peak_y(16.0, peak)).state == "held"
+    assert optimum_at_main_cl_peak(x_of(), peak_y(15.5, peak)).state == "held"
+    assert optimum_at_main_cl_peak(x_of(), peak_y(16.25, peak)).state == "violated"
+    assert optimum_at_main_cl_peak(x_of(), peak_y(15.25, peak)).state == "violated"
 
 
 def test_the_trough_window_is_one_sweep_step() -> None:
     sampled = inverted_polar()
     trough = sampled.cl[sampled.alpha_deg.index(-10.0)]
-    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-9.75, trough)).state == "held"
-    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.25, trough)).state == "held"
-    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-9.5, trough)).state == "violated"
-    assert optimum_at_first_cl_trough(x_of(-1.0), trough_y(-10.5, trough)).state == "violated"
+    assert optimum_at_main_cl_trough(x_of(-1.0), trough_y(-9.75, trough)).state == "held"
+    assert optimum_at_main_cl_trough(x_of(-1.0), trough_y(-10.25, trough)).state == "held"
+    assert optimum_at_main_cl_trough(x_of(-1.0), trough_y(-9.5, trough)).state == "violated"
+    assert optimum_at_main_cl_trough(x_of(-1.0), trough_y(-10.5, trough)).state == "violated"
+
+
+# --- the main maximum, not the first local one (maintainer 2026-11-27, gh-1423) -------------------
+
+
+def shoulder_polar(
+    shoulder: float = 1.21, main: float = 1.34, plateau: float = 1.07, end: float = 1.0
+) -> Polar:
+    """The Avistar shape on -5..25 deg: a shoulder at 8 deg, the main maximum at 16.5 deg, a
+    post-stall maximum at 23 deg and the value ``end`` at 25 deg. Piecewise linear between the knots
+    (alpha, C_L): (-5, -0.2), (8, shoulder), (8.5, shoulder - 0.01), (16.5, main), (20, 0.9),
+    (23, plateau), (24.75, 0.95), (25, end)."""
+    knots = [
+        (-5.0, -0.2),
+        (8.0, shoulder),
+        (8.5, shoulder - 0.01),
+        (16.5, main),
+        (20.0, 0.9),
+        (23.0, plateau),
+        (24.75, 0.95),
+        (25.0, end),
+    ]
+    alphas = [a * STEP for a in range(-20, 101)]
+
+    def cl(alpha: float) -> float:
+        for (a0, c0), (a1, c1) in pairwise(knots):
+            if alpha <= a1:
+                return c0 + (c1 - c0) * (alpha - a0) / (a1 - a0)
+        return knots[-1][1]
+
+    return Polar(alpha_deg=tuple(alphas), cl=tuple(cl(a) for a in alphas), cd=(0.05,) * len(alphas))
+
+
+def test_the_peak_check_holds_at_the_main_maximum_behind_a_shoulder() -> None:
+    """The first local maximum (1.21 at 8 deg) is a shoulder; the stall is at 1.34 at 16.5 deg."""
+    polar = shoulder_polar()
+    result = optimum_at_main_cl_peak(x_of(), y_of(polar, 16.5))
+    assert result.state == "held"
+    assert result.message == "the optimum is the main C_L peak"
+
+
+def test_the_peak_check_is_violated_on_a_shoulder_below_the_main_maximum() -> None:
+    """An optimum on the shoulder is a local maximum, but 1.34 - 1.21 = 0.13 short of the main one."""
+    result = optimum_at_main_cl_peak(x_of(), y_of(shoulder_polar(), 8.0))
+    assert result.state == "violated"
+    assert "short of the main sampled peak 1.34" in result.message
+
+
+def test_the_peak_check_is_violated_on_the_post_stall_maximum_below_the_main_one() -> None:
+    result = optimum_at_main_cl_peak(x_of(), y_of(shoulder_polar(), 23.0))
+    assert result.state == "violated"
+    assert "short of the main sampled peak 1.34" in result.message
+
+
+def test_the_peak_check_holds_on_either_of_two_maxima_of_equal_height() -> None:
+    """Two maxima within the peak tolerance (1e-6) of each other are one lift value: the sweep that
+    bracketed the stall and the sweep at V_S may each call the other one the main maximum."""
+    polar = shoulder_polar(shoulder=1.34 - 5e-7)
+    assert optimum_at_main_cl_peak(x_of(), y_of(polar, 8.0)).state == "held"
+    assert optimum_at_main_cl_peak(x_of(), y_of(polar, 16.5)).state == "held"
+
+
+def test_the_peak_check_is_violated_between_two_maxima_where_the_curve_has_none() -> None:
+    """A lift value as high as the main maximum, claimed at an angle that is no maximum of the sweep."""
+    polar = shoulder_polar()
+    y: dict[str, object] = {"v_s": 8.0, "cl_max": 1.34, "alpha_s": 12.0, "polar": polar}
+    result = optimum_at_main_cl_peak(x_of(), y)
+    assert result.state == "violated"
+    assert "is not at a C_L peak of the sweep" in result.message
+
+
+def test_the_end_of_the_sweep_is_no_maximum_even_above_every_interior_one() -> None:
+    """The curve ends at 1.5, above the main maximum 1.34: the highest interior maximum still counts."""
+    polar = shoulder_polar(end=1.5)
+    assert optimum_at_main_cl_peak(x_of(), y_of(polar, 16.5)).state == "held"
+    assert optimum_at_main_cl_peak(x_of(), y_of(polar, 25.0)).state == "violated"
+
+
+def inverted_shoulder_polar() -> Polar:
+    """Mirror: a shoulder trough -0.5 at -6 deg, the main trough -0.7 at -11 deg, -15..5 deg."""
+    knots = [(-15.0, -0.4), (-11.0, -0.7), (-6.5, -0.49), (-6.0, -0.5), (5.0, 0.5)]
+    alphas = [a * STEP for a in range(-60, 21)]
+
+    def cl(alpha: float) -> float:
+        for (a0, c0), (a1, c1) in pairwise(knots):
+            if alpha <= a1:
+                return c0 + (c1 - c0) * (alpha - a0) / (a1 - a0)
+        return knots[-1][1]
+
+    return Polar(alpha_deg=tuple(alphas), cl=tuple(cl(a) for a in alphas), cd=(0.05,) * len(alphas))
+
+
+def test_the_trough_check_holds_at_the_main_trough_and_is_violated_on_the_shoulder() -> None:
+    polar = inverted_shoulder_polar()
+    assert optimum_at_main_cl_trough(x_of(-1.0), y_of(polar, -11.0, n=-1.0)).state == "held"
+    result = optimum_at_main_cl_trough(x_of(-1.0), y_of(polar, -6.0, n=-1.0))
+    assert result.state == "violated"
+    assert "short of the main sampled trough -0.7" in result.message

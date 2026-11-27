@@ -315,7 +315,7 @@ def install_recording_solution(
 ) -> tuple[StallRequest, RecordingBoundary, list[PublishedSweep]]:
     """Fake the solver boundary so that IPOPT 'returns' (v_s, alpha_s), and record the problem.
 
-    The lift sweeps answer the stub's curve of the branch (first peak at 15.75 deg upright, first
+    The lift sweeps answer the stub's curve of the branch (main peak at 15.75 deg upright, first
     trough at -10 deg inverted); the converted airplane has S_ref = 0.28 m^2.
 
     Returns:
@@ -390,11 +390,11 @@ async def test_the_stall_problem_minimises_the_speed_subject_to_the_lift_balance
     ("n_load", "alpha_s", "window"),
     [(1.0, 15.75, (-15.0, 16.0)), (-1.0, -5.0, (-10.25, 25.0))],
 )
-async def test_the_window_of_alpha_ends_one_step_past_the_first_extremum_of_the_branch(
+async def test_the_window_of_alpha_ends_one_step_past_the_main_extremum_of_the_branch(
     monkeypatch: pytest.MonkeyPatch, n_load: float, alpha_s: float, window: tuple[float, float]
 ) -> None:
-    """Upright the window runs from the sweep's start (-15 deg) to the first peak plus one step
-    (15.75 + 0.25 = 16 deg); inverted from the first trough minus one step (-10 - 0.25 = -10.25 deg)
+    """Upright the window runs from the sweep's start (-15 deg) to the main peak plus one step
+    (15.75 + 0.25 = 16 deg); inverted from the main trough minus one step (-10 - 0.25 = -10.25 deg)
     to the sweep's end (25 deg). The speed lies between 1 m/s and Mach 0.6 (0.6 * 340.294 =
     204.1764 m/s) on both branches."""
     request, boundary, _ = install_recording_solution(monkeypatch, 8.0, alpha_s, n_load)

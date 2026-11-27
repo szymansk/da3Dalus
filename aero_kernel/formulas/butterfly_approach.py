@@ -30,7 +30,7 @@ from aero_kernel.devices import crow_configuration, flap_deflections
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.formulas.flap_validity import warn_flap_validity
 from aero_kernel.formulas.propulsion import LEVEL_FLIGHT
-from aero_kernel.formulas.stall_speed import first_extremum_check
+from aero_kernel.formulas.stall_speed import main_extremum_check
 from aero_kernel.formulas.values import air_state, airplane_of, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import CheckResult, formula, postcondition, precondition
@@ -43,11 +43,11 @@ __all__ = [
     "approach_speed_positive",
     "butterfly_approach",
     "crow_aileron_not_negative",
-    "optimum_at_first_cl_peak",
+    "optimum_at_main_cl_peak",
 ]
 
 FIT_RANGE = "control_surface_fit_range_unknown"
-CHECK = "optimum_at_first_cl_peak"
+CHECK = "optimum_at_main_cl_peak"
 
 
 @precondition("butterfly-approach", "approach_speed_positive")
@@ -185,8 +185,8 @@ def _stall_curve(mixes: Sequence[float], stalls: Sequence[Stall]) -> StallCurve:
 
 
 def _off_peak(curve: StallCurve) -> FormulaError | None:
-    """The error naming the mix whose stall optimum is not the first C_L peak, if there is one."""
-    result = optimum_at_first_cl_peak({}, {"v_s0_curve": curve})
+    """The error naming the mix whose stall optimum is not the main C_L peak, if there is one."""
+    result = optimum_at_main_cl_peak({}, {"v_s0_curve": curve})
     if result.state != "violated":
         return None
     return FormulaError(
@@ -269,7 +269,7 @@ async def butterfly_approach(x: Inputs, ctx: Context) -> dict[str, float | Curve
         TypeError: If ``airplane`` is not the geometry or a number is not a number.
         FormulaError: From the adapter, unchanged (``tool_unavailable``, ``not_converged``);
             ``unsupported_configuration`` (``postcondition_violated``) if one mix is not at its
-            first C_L peak, the mix in ``detail``, also where there is no largest mix;
+            main C_L peak, the mix in ``detail``, also where there is no largest mix;
             ``unsupported_configuration`` (the message says "fully mixable") if the stall speed
             does not reach the approach speed up to full crow: there is no largest mix, the
             values are in ``detail``.
@@ -312,21 +312,21 @@ async def butterfly_approach(x: Inputs, ctx: Context) -> dict[str, float | Curve
 
 
 @postcondition("butterfly-approach", CHECK)
-def optimum_at_first_cl_peak(x: Mapping[str, object], y: Mapping[str, object]) -> CheckResult:
-    """At every mix the stall optimum is the first sampled C_L peak (K32, the check of ``stall-speed``)."""
+def optimum_at_main_cl_peak(x: Mapping[str, object], y: Mapping[str, object]) -> CheckResult:
+    """At every mix the stall optimum is the main sampled C_L peak (K32, the check of ``stall-speed``)."""
     curve = y["v_s0_curve"]
     if not isinstance(curve, StallCurve):
         return CheckResult(
-            state="unchecked", message="the first C_L peak is read off the sweeps of the curve"
+            state="unchecked", message="the main C_L peak is read off the sweeps of the curve"
         )
     for s, alpha_s, cl_max, polar in zip(
         curve.x, curve.alpha_s, curve.cl_max, curve.polars, strict=True
     ):
-        result = first_extremum_check(polar, alpha_s, cl_max, upright=True)
+        result = main_extremum_check(polar, alpha_s, cl_max, upright=True)
         if result.state != "held":
             return CheckResult(
                 state=result.state,
                 message=f"at the mix s = {s:g}: {result.message}",
                 detail={"mix": s},
             )
-    return CheckResult(state="held", message="the optimum is the first C_L peak at every mix")
+    return CheckResult(state="held", message="the optimum is the main C_L peak at every mix")

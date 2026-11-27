@@ -43,11 +43,11 @@ width       = alpha_break - alpha_S
 
 ### The procedure
 
-**Relation solved.** The crossing `C_L(alpha) = (1 - f) * C_L,max` on the falling branch past `alpha_S`, where `alpha_S` and `C_L,max` are the first peak of the same polar ([[stall-speed]] publishes all three together).
+**Relation solved.** The crossing `C_L(alpha) = (1 - f) * C_L,max` on the falling branch past `alpha_S`, where `alpha_S` and `C_L,max` are the main peak of the same polar (the highest local maximum; maintainer 2026-11-27, #1423) ([[stall-speed]] publishes all three together).
 
 **Method.** Forward scan of the sampled polar from the sample at `alpha_S`; the first sample with `C_L <= (1 - f) * C_L,max` and its predecessor bracket the crossing, which is interpolated linearly between them. The scan is a single pass, O(n).
 
-**Assumptions.** (1) The polar runs far enough past the peak to bracket the crossing ([[polar-stall]] is swept past the first peak for this purpose). (2) The α spacing resolves the post-peak fall; **this is checked, not assumed** (resolution check below). (3) The polar is the one at the stall Reynolds number — `alpha_break` is only meaningful for the Reynolds number the polar was computed at.
+**Assumptions.** (1) The polar runs far enough past the peak to bracket the crossing ([[polar-stall]] is swept past the main peak for this purpose). (2) The α spacing resolves the post-peak fall; **this is checked, not assumed** (resolution check below). (3) The polar is the one at the stall Reynolds number — `alpha_break` is only meaningful for the Reynolds number the polar was computed at.
 
 **Resolution check** (maintainer, 2026-10-24: raise the resolution, never loosen a threshold). The crossing is computed a second time from a sweep at **half the published step** (0.125°), from α_S to the end of the range, at the same airplane and at the flow conditions the polar was computed at (speed `V_S`, density, viscosity and speed of sound, carried by the polar value itself) — which is why the entry takes `airplane` besides the polar, and why its tool is the OPT adapter (one more AeroBuildup sweep). The two angles are compared against **one published step, 0.25°**. Basis: linear interpolation between samples cannot be trusted below the sample spacing, so a finer sweep that moves the break by more than one published step shows the grid, not the polar, resolves the value. The tolerance is fixed from the sweep's own step before any measurement; it is a convention, not a sourced number — none exists for a computed polar (adopted by the maintainer, 2026-10-25). A difference above it is a `DesignWarning` of severity `warning` (`stall_break_resolution`) carrying both angles; the value of the published sweep stands.
 

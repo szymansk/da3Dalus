@@ -52,7 +52,7 @@ subject to:               L(V, alpha) = n_lim * m * g
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| `aero_kernel/formulas/maneuvering_speed.py` | DEVIATES | 🟢 | the OPT adapter (`ctx.solvers.opti.stall`) solves the stall problem with `n = n_lim` in the bound ISA air state; `v_a` is its optimum speed (#1381). **Deviation:** the Probe named above and the first-peak check that [[stall-speed]] runs on its outputs are not run here — the entry declares no postcondition and its only output is `v_a` (#1390) |
+| `aero_kernel/formulas/maneuvering_speed.py` | DEVIATES | 🟢 | the OPT adapter (`ctx.solvers.opti.stall`) solves the stall problem with `n = n_lim` in the bound ISA air state; `v_a` is its optimum speed (#1381). **Deviation:** the Probe named above and the main-peak check that [[stall-speed]] runs on its outputs are not run here — the entry declares no postcondition and its only output is `v_a` (#1390) |
 
 No register node is mapped to this entry.
 

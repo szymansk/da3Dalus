@@ -177,7 +177,7 @@ formulas = {
                 "on_violation": "error",
             },
             {
-                "id": "optimum_at_first_cl_peak",
+                "id": "optimum_at_main_cl_peak",
                 "parameter": "cl_max",
                 "on_violation": "error",
                 "applications": ["clean", "landing"],
@@ -304,7 +304,7 @@ formulas = {
             )
         ],
         "postconditions": [
-            {"id": "optimum_at_first_cl_peak", "parameter": "v_s0_curve", "on_violation": "error"}
+            {"id": "optimum_at_main_cl_peak", "parameter": "v_s0_curve", "on_violation": "error"}
         ],
     },
 }

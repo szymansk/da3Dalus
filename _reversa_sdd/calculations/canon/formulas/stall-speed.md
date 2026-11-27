@@ -34,8 +34,8 @@ applications:
 postconditions:
   - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
   - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error, applications: [inverted]}
-  - {id: optimum_at_first_cl_peak, parameter: cl_max, on_violation: error, applications: [clean, takeoff, landing]}
-  - {id: optimum_at_first_cl_trough, parameter: cl_max, on_violation: error, applications: [inverted]}
+  - {id: optimum_at_main_cl_peak, parameter: cl_max, on_violation: error, applications: [clean, takeoff, landing]}
+  - {id: optimum_at_main_cl_trough, parameter: cl_max, on_violation: error, applications: [inverted]}
 ---
 
 # Stall speed from the lift balance at C_L,max
@@ -80,17 +80,37 @@ defect. Sadraey Eq. 4.30 is unchanged — what changed is how it is evaluated at
 stall the lift curve runs onto a post-stall plateau that can carry a second, lower local maximum
 of `C_L` (BRYAN: 1.26 at 12° and 1.07 at 23°). IPOPT from a generic start found the 23° branch:
 `V_S` 5.68 m/s instead of about 5.2 m/s, and **no bound was active**, so the existing check did
-not catch it. The canonical evaluation therefore first locates the first `C_L` maximum by an α
+not catch it. The canonical evaluation therefore first locates the main `C_L` maximum by an α
 sweep (re-evaluated at the resulting `V_S` for the Reynolds number) and restricts `α` to the
-pre-stall branch. Approval adds: **the optimum must be the first `C_L` peak**, checked against the
+branch up to it. Approval adds: **the optimum must be the main `C_L` peak**, checked against the
 sweep. The procedure always runs two bracketing AeroBuildup sweeps — one at the speed a first
 lift-coefficient estimate implies, one at the speed the first sweep's own extremum implies, because the
-first `C_L` extremum moves with the Reynolds number; this is neither a retry nor triggered by a failure,
-and not a fixed point (aero_kernel ARCHITECTURE §8.8, #1201). Since #1181 the check also runs per evaluation (postcondition `optimum_at_first_cl_peak`, and
-`optimum_at_first_cl_trough` for the inverted application), from K32: without it a wrong-branch value
+main `C_L` extremum moves with the Reynolds number; this is neither a retry nor triggered by a failure,
+and not a fixed point (aero_kernel ARCHITECTURE §8.8, #1201). Since #1181 the check also runs per evaluation (postcondition `optimum_at_main_cl_peak`, and
+`optimum_at_main_cl_trough` for the inverted application), from K32: without it a wrong-branch value
 would be returned silently (ADR 0020).
 
-**Third output: `α_S`, the stall angle** (maintainer, 2026-10-14, D2) — the optimum α at the first
+**The stall is at the main maximum of `C_L`, not at the first local one (maintainer, 2026-11-27,
+#1423: "Natürlich gilt hier nur das Hauptmaximum.").** Until then this entry asked for the *first* `C_L`
+peak counted from α = 0. Several reference aircraft have a small shoulder before the real maximum
+(AVISTAR_ELITE: a local maximum at about 8° only 3·10⁻⁴ deep in `C_L`, the real maximum 1.34 at 16.5°).
+The shoulder exists only in a range of Reynolds numbers, so the first peak jumped with the speed, and for
+a band of masses no speed satisfied "the first peak carries the weight" (AVISTAR_ELITE 8.5–9.4 kg; also
+AERONCA_CHAMP and CHEKKER). **Operational reading** (implementer's, to be confirmed with this entry): the
+main maximum is the **highest local maximum of `C_L` inside the sweep** above α = 0, and for the inverted
+application the lowest local minimum below α = 0. The end of the sweep is not a maximum: a curve that
+still rises at 25° and has no local maximum keeps the "no peak" failure, and where the curve at the end of
+the sweep lies above every local maximum (low Reynolds numbers) the highest local maximum still counts.
+The lift coefficient of the highest maximum is continuous in the speed, so every mass has one stall
+speed; where two maxima are equally high the stall angle `α_S` changes from one to the other, `C_L,max`
+and `V_S` do not. The BRYAN case above is unchanged: its first peak (1.26 at 12°) is also its highest, the
+23° plateau (1.07) is lower. The postcondition `optimum_at_main_cl_peak` (formerly
+`optimum_at_first_cl_peak`; `_trough` likewise) therefore asks that `α_S` is at a local maximum of the sweep
+at `V_S` and that `C_L,max` is not short of the highest one of that sweep. A first peak that counts only
+above a minimum depth was measured and rejected: the depth is continuous in the speed, so the jump only
+moves.
+
+**Third output: `α_S`, the stall angle** (maintainer, 2026-10-14, D2) — the optimum α at the main
 `C_L` peak, clean application. α is a decision variable of this optimisation, so the stall angle comes
 from the nonlinear polar at the correct Reynolds number; a second producer would violate one authority
 per quantity (ADR 0022).
@@ -102,7 +122,7 @@ which took a maximum over a velocity grid and so returned the value at the wrong
 One authority for C_L,max.
 
 **Fourth output: `polar-stall`, the published sweep** (maintainer, 2026-10-14, D4). The α sweep that
-brackets the first `C_L` peak (K32: sweep, then IPOPT restricted to the pre-stall branch) is **published**,
+brackets the main `C_L` peak (K32: sweep, then IPOPT restricted to the branch up to it) is **published**,
 not only an internal step: the sampled whole-aircraft polar (α, `C_L`, `C_D`; the solver's drag, not
 the parabola — ADR 0026) at the clean stall condition `V_S`, `n = 1`. Its `C_D` is the kernel's drag over
 `q·S_ref`, `(D_profile + k_e,D0 · D_induced) / (q·S_ref)` (#1346, [[aerobuildup-evaluation]]); `C_L` is
@@ -142,7 +162,7 @@ the negative maximum lift coefficient [[inverted-max-lift-coefficient]], the mir
 It replaces the former formula entry `inverted-max-lift-coefficient`, which read the trough off a sampled
 polar and would have been a second producer of the same quantity (A7, ADR 0022).
 
-**Bracketing — K32 mirrored.** The α sweep runs to the **first negative-`C_L` trough** before IPOPT, and
+**Bracketing — K32 mirrored.** The α sweep runs to the **main negative-`C_L` trough** (the lowest local minimum below α = 0; maintainer 2026-11-27, #1423) before IPOPT, and
 `α` is restricted to that branch. The trough must lie strictly inside the sampled range: the default
 sweep starts at −15°, and a cambered section can stall inverted beyond that; a range chosen for the
 upright polar is not automatically sufficient for the inverted one (postcondition

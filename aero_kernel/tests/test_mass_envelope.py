@@ -112,7 +112,7 @@ class EnvelopeOpti(pb.PolarOpti):
             raise FormulaError(
                 ErrorCategory.NOT_CONVERGED,
                 "not_converged",
-                f"the airplane does not reach the lift of {mass_kg:.4g} kg below its first C_L peak",
+                f"the airplane does not reach the lift of {mass_kg:.4g} kg below its main C_L peak",
                 "check mass and speed",
                 detail={"limit": "wing_lift", "v_ms": v_ms},
             )

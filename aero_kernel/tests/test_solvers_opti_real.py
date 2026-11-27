@@ -15,7 +15,7 @@ from aero_kernel.solvers import opti as opti_module
 from aero_kernel.solvers.air import AirState
 from aero_kernel.solvers.asb_airplane import load_aerosandbox
 from aero_kernel.solvers.opti import ALPHA_STEP_DEG, OptiAdapter, StallRequest, StallSolution
-from aero_kernel.solvers.stall_math import first_extremum
+from aero_kernel.solvers.stall_math import main_extremum
 from aero_kernel.tests.solver_builders import K_E_D0
 
 pytestmark = [pytest.mark.aero, pytest.mark.asyncio]
@@ -96,7 +96,7 @@ async def test_the_polar_contains_alpha_s_and_the_optimum_is_the_first_peak() ->
     polar = solution.polar
     assert solution.alpha_s in polar.alpha_deg
     assert polar.cl[polar.alpha_deg.index(solution.alpha_s)] == solution.cl_max
-    peak = first_extremum(list(polar.cl[polar.alpha_deg.index(0.0) :]), maximum=True)
+    peak = main_extremum(list(polar.cl[polar.alpha_deg.index(0.0) :]), maximum=True)
     assert peak is not None
     sampled_peak_alpha = polar.alpha_deg[polar.alpha_deg.index(0.0) + peak]
     assert abs(sampled_peak_alpha - solution.alpha_s) <= ALPHA_STEP_DEG + 1e-9
@@ -127,7 +127,7 @@ async def test_the_inverted_stall_obeys_the_lift_balance_and_is_the_first_trough
     None
 ):
     """n = -1: V_S = sqrt(2 |n| m g / (rho S |C_L|)) with the C_L at alpha_S (hand: S = 2 * 0.7 m *
-    0.2 m = 0.28 m^2), and alpha_S is the first C_L trough scanned from alpha = 0 downwards."""
+    0.2 m = 0.28 m^2), and alpha_S is the main C_L trough scanned from alpha = 0 downwards."""
     solution = await solve(-1.0)
     air = sea_level()
     reference_area = 0.28
@@ -138,7 +138,7 @@ async def test_the_inverted_stall_obeys_the_lift_balance_and_is_the_first_trough
     polar = solution.polar
     zero = polar.alpha_deg.index(0.0)
     downwards = list(reversed(polar.cl[: zero + 1]))
-    trough = first_extremum(downwards, maximum=False)
+    trough = main_extremum(downwards, maximum=False)
     assert trough is not None
     sampled_trough_alpha = polar.alpha_deg[zero - trough]
     assert abs(sampled_trough_alpha - solution.alpha_s) <= ALPHA_STEP_DEG + 1e-9

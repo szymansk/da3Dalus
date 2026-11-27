@@ -104,7 +104,7 @@ def sweep_lift(
     """Run AeroBuildup over the angles of attack and read the lift coefficient only.
 
     The bracketing sweeps of the IPOPT problems and of the roll window locate the
-    first C_L extremum; they read no drag. Runs in a pool worker.
+    main C_L extremum; they read no drag. Runs in a pool worker.
 
     Args:
         asb_airplane: The ``asb.Airplane`` (from ``to_asb_airplane``).

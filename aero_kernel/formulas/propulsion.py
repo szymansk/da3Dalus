@@ -196,7 +196,7 @@ async def level_flight_at(x: Inputs, ctx: Context, v: float) -> LevelFlightPoint
     """The level-flight point at the speed ``v``: the kernel's one lift-equals-weight solve.
 
     ``OptiAdapter.level_flight_point`` (the machinery of the level-flight polar: an alpha sweep plus
-    secant steps bounded by the first lift peak, tolerance and step limit ``opt_level_*`` in
+    secant steps bounded by the main lift peak, tolerance and step limit ``opt_level_*`` in
     ``config.yaml``). The caveats stay in the result: the caller forwards those of the answer only.
 
     Args:
@@ -209,7 +209,7 @@ async def level_flight_at(x: Inputs, ctx: Context, v: float) -> LevelFlightPoint
 
     Raises:
         FormulaError: ``not_converged`` from the adapter if the weight is not carried before the
-            first lift peak at this speed.
+            main lift peak at this speed.
     """
     return await ctx.solvers.opti.level_flight_point(
         airplane_of(x), number(x, "m"), number(x, "g"), air_state(x), v, LEVEL_FLIGHT

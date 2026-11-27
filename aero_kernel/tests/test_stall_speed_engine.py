@@ -181,7 +181,7 @@ async def test_the_inverted_application_solves_at_minus_one_g() -> None:
     assert opti.calls[0][3] == -1.0
 
 
-INVERTED_POSTCONDITIONS = {"alpha_range_past_inverted_stall", "optimum_at_first_cl_trough"}
+INVERTED_POSTCONDITIONS = {"alpha_range_past_inverted_stall", "optimum_at_main_cl_trough"}
 
 
 def boundary_trough_answer() -> StallSolution:
@@ -256,7 +256,7 @@ async def test_an_inconsistent_optimum_is_a_postcondition_error_and_no_value() -
 
 
 async def test_the_wrong_branch_is_a_postcondition_error() -> None:
-    """The BRYAN failure: the optimum on the lower second maximum instead of the first peak."""
+    """The BRYAN failure: the optimum on the lower second maximum instead of the main peak."""
     polar = lift_curve(UPRIGHT_PEAK, upright=True)
     index = polar.alpha_deg.index(23.0)
     area = 0.28
@@ -272,7 +272,7 @@ async def test_the_wrong_branch_is_a_postcondition_error() -> None:
     assert only.error is not None
     assert (only.error.code, only.error.detail) == (
         "postcondition_violated",
-        {"postcondition": "optimum_at_first_cl_peak"},
+        {"postcondition": "optimum_at_main_cl_peak"},
     )
 
 

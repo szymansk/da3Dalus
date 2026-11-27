@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:aac40f238ef237faac2f475839fa24e7dbdd372483357351e73c653cb877b65b",
+  "content_hash": "sha256:e2cc8fd2df5fb6520edf4145d9e9441bf9fde0b5d3bd9052f27beeedb9cc3abb",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
@@ -102,7 +102,7 @@
           "postconditions": [
             {
               "applications": null,
-              "id": "optimum_at_first_cl_peak",
+              "id": "optimum_at_main_cl_peak",
               "on_violation": "error",
               "parameter": "v_s0_curve"
             }
@@ -366,7 +366,7 @@
                 "clean",
                 "landing"
               ],
-              "id": "optimum_at_first_cl_peak",
+              "id": "optimum_at_main_cl_peak",
               "on_violation": "error",
               "parameter": "cl_max"
             },

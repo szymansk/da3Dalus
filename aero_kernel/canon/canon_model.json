@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:d0ef489a35fd5aef9535e532d911c35e16b5f65c439e88b5208b01754e568e8a",
+  "content_hash": "sha256:dc0617dea3574ce18c10779bc484d4cf5489a98eade1d96b79fc588f54a77614",
   "importer_version": "1.0.0",
   "namespaces": {
     "calc": {
@@ -196,13 +196,13 @@
         "opt_level_max_steps": {
           "basis": "numerical",
           "guards": "Parabolic polar fit: the number of secant steps allowed to bring the lift of one level-flight point onto the weight; a point that has not settled by then is declared not converged. Termination only: no result depends on it, since a converged point is accepted at the first step that meets opt_level_lift_tolerance.",
-          "source": "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the first C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one",
+          "source": "the start is the linear interpolation of a 0.25 deg sweep, within a fraction of a percent of the root, and the lift is smooth below the main C_L peak, so the secant (superlinear) needs a handful of steps; measured on the seven reference aircraft: at most a few steps per point. A limit that is never reached on a smooth curve, high enough not to cut a slow one",
           "unit": "1",
           "value": 20.0
         },
         "opt_peak_tolerance": {
           "basis": "numerical",
-          "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled first peak by this much; both are samples of one curve, so it only absorbs numerical noise.",
+          "guards": "Stall speed, postcondition: C_L,max may fall short of the sampled main peak (the highest local maximum of the sweep at V_S) by this much; both are samples of one curve, so it only absorbs numerical noise. Two maxima closer in height than this count as equally high.",
           "source": "float noise between two samples of one sweep",
           "unit": "1",
           "value": 1e-06
@@ -1036,7 +1036,7 @@
           "postconditions": [
             {
               "applications": null,
-              "id": "optimum_at_first_cl_peak",
+              "id": "optimum_at_main_cl_peak",
               "on_violation": "error",
               "parameter": "v_s0_curve"
             }
@@ -3643,7 +3643,7 @@
                 "takeoff",
                 "landing"
               ],
-              "id": "optimum_at_first_cl_peak",
+              "id": "optimum_at_main_cl_peak",
               "on_violation": "error",
               "parameter": "cl_max"
             },
@@ -3651,7 +3651,7 @@
               "applications": [
                 "inverted"
               ],
-              "id": "optimum_at_first_cl_trough",
+              "id": "optimum_at_main_cl_trough",
               "on_violation": "error",
               "parameter": "cl_max"
             }
