@@ -20,6 +20,7 @@ unit-tested in ``test_marker_auto_tagging.py``.
 
 from __future__ import annotations
 
+import multiprocessing
 import os
 import uuid
 from datetime import datetime, timezone
@@ -169,6 +170,29 @@ def client_and_db() -> Tuple[TestClient, sessionmaker]:
     Base.metadata.drop_all(bind=engine)
 
 
+def terminate_cad_pool_workers() -> None:
+    """Shut the CAD pool down and kill every worker that is still alive (gh-1475).
+
+    ``cad_service.shutdown_executor`` uses ``shutdown(wait=False)``, which leaves a worker
+    that is still inside a CAD task running. Such a worker (a test that timed out while the
+    OCC kernel was still busy) keeps burning CPU through the later tests, and at interpreter
+    exit ``concurrent.futures.process._python_exit`` joins the pool's manager thread, which
+    waits for that worker: the pytest process never ends after the summary line.
+
+    This only reaps processes; the test whose task hung has already failed through its own
+    wait or ``pytest-timeout``.
+    """
+    # The pool is usually already gone here (the app lifespan shutdown of the TestClient runs
+    # earlier and drops the reference), so the workers are taken from the children of this
+    # process, not from ``cad_service._executor``.
+    cad_service.shutdown_executor()
+    workers = multiprocessing.active_children()
+    for worker in workers:
+        worker.kill()
+    for worker in workers:
+        worker.join(timeout=10)
+
+
 @pytest.fixture(autouse=True)
 def clean_cad_task_state():
     """Clear cad_service task state + process pool around every test.
@@ -192,7 +216,7 @@ def clean_cad_task_state():
     yield
     with cad_service.tasks_lock:
         cad_service.tasks.clear()
-    cad_service.shutdown_executor()
+    terminate_cad_pool_workers()
     _opg.shutdown_opg_executor()
 
 
@@ -356,7 +380,9 @@ def seed_integration_aeroplane(session: Session) -> AeroplaneModel:
     session.flush()
 
     # --- main wing ---
-    main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id, surface_type="main_wing")
+    main_wing = WingModel(
+        name="main_wing", symmetric=True, aeroplane_id=aeroplane.id, surface_type="main_wing"
+    )
     session.add(main_wing)
     session.flush()
     _add_xsec(
@@ -390,7 +416,12 @@ def seed_integration_aeroplane(session: Session) -> AeroplaneModel:
     )
 
     # --- horizontal tail ---
-    htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id, surface_type="horizontal_tail")
+    htail = WingModel(
+        name="horizontal_tail",
+        symmetric=True,
+        aeroplane_id=aeroplane.id,
+        surface_type="horizontal_tail",
+    )
     session.add(htail)
     session.flush()
     _add_xsec(
@@ -424,7 +455,12 @@ def seed_integration_aeroplane(session: Session) -> AeroplaneModel:
     )
 
     # --- vertical tail ---
-    vtail = WingModel(name="vertical_tail", symmetric=False, aeroplane_id=aeroplane.id, surface_type="vertical_tail")
+    vtail = WingModel(
+        name="vertical_tail",
+        symmetric=False,
+        aeroplane_id=aeroplane.id,
+        surface_type="vertical_tail",
+    )
     session.add(vtail)
     session.flush()
     _add_xsec(
@@ -533,7 +569,9 @@ def _smoke_main_wing(
     sec1_ted: dict | None = None,
 ) -> WingModel:
     """3-section symmetric main wing (sd7037). sec2 never has a TED."""
-    wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane_id, surface_type="main_wing")
+    wing = WingModel(
+        name="main_wing", symmetric=True, aeroplane_id=aeroplane_id, surface_type="main_wing"
+    )
     session.add(wing)
     session.flush()
 
@@ -576,7 +614,12 @@ def _smoke_htail(
     ted_kwargs: dict | None = None,
 ) -> WingModel:
     """Symmetric horizontal tail (naca0010). TED on root section if provided."""
-    htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane_id, surface_type="horizontal_tail")
+    htail = WingModel(
+        name="horizontal_tail",
+        symmetric=True,
+        aeroplane_id=aeroplane_id,
+        surface_type="horizontal_tail",
+    )
     session.add(htail)
     session.flush()
 
@@ -608,7 +651,12 @@ def _smoke_vtail(
     ted_kwargs: dict | None = None,
 ) -> WingModel:
     """Non-symmetric vertical tail (naca0010). TED on root section if provided."""
-    vtail = WingModel(name="vertical_tail", symmetric=False, aeroplane_id=aeroplane_id, surface_type="vertical_tail")
+    vtail = WingModel(
+        name="vertical_tail",
+        symmetric=False,
+        aeroplane_id=aeroplane_id,
+        surface_type="vertical_tail",
+    )
     session.add(vtail)
     session.flush()
 
@@ -656,7 +704,9 @@ def seed_smoke_vtail_ruddervator(session: Session) -> AeroplaneModel:
     _smoke_main_wing(session, aeroplane.id, sec1_ted=_AILERON)
 
     # V-tail: symmetric wing with dihedral simulated via z at tip
-    vtail = WingModel(name="v_tail", symmetric=True, aeroplane_id=aeroplane.id, surface_type="v_tail")
+    vtail = WingModel(
+        name="v_tail", symmetric=True, aeroplane_id=aeroplane.id, surface_type="v_tail"
+    )
     session.add(vtail)
     session.flush()
 
