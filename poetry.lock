@@ -362,19 +362,19 @@ url = "https://github.com/szymansk/da3Dalus/releases/download/avl-binary-v1.0.0/
 
 [[package]]
 name = "avl-binary"
-version = "1.0.0"
+version = "1.0.1"
 description = "Pre-compiled AVL (Athena Vortex Lattice) binary for da3Dalus"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 markers = "sys_platform == \"linux\" and platform_machine == \"x86_64\""
 files = [
-    {file = "avl_binary-1.0.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:33173648bc9c3f5c060cc76d63739048c1515d4dded425354c04417f980a12b1"},
+    {file = "avl_binary-1.0.1-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b480283040d138ee9ce9c4cb0cb44562c711f41e73025366bbf31ca5565b6bfe"},
 ]
 
 [package.source]
 type = "url"
-url = "https://github.com/szymansk/da3Dalus/releases/download/avl-binary-v1.0.0/avl_binary-1.0.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+url = "https://github.com/szymansk/da3Dalus/releases/download/avl-binary-v1.0.1/avl_binary-1.0.1-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
 
 [[package]]
 name = "backports-tarfile"
@@ -6523,4 +6523,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "33148ae74aae244aa36234709fa90471f55f7dd74340ff4570bf2740f0028baf"
+content-hash = "363703a99fdc21b96c3c541a8d811967d2a3ad40fe6c900c77b275ee9fdaa8f1"
