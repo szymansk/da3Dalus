@@ -354,3 +354,32 @@ class TestServiceSplitFlow:
         assert resp.committed is True
         # no split planned
         assert resp.planned_segment_lengths is None
+
+
+class TestPersistWingConfig:
+    def test_the_rebuilt_wing_gets_the_role_of_the_wing_it_replaces(self, plane_id):
+        """gh-1475: the converter requires ``surface_type`` since gh-1187.
+
+        ``autospec`` keeps the real signature, so a call without the role fails
+        here as it did in the slow round-trip test.
+        """
+        from unittest.mock import MagicMock
+
+        wing = SimpleNamespace(name="main_wing", surface_type="main_wing", x_secs=["old"])
+        rebuilt = SimpleNamespace(x_secs=["root", "split", "tip"])
+        new_wing_config = object()
+
+        with (
+            patch(
+                "app.converters.model_schema_converters.wing_config_to_wing_model",
+                autospec=True,
+                return_value=rebuilt,
+            ) as convert,
+            patch("app.services.wing_service._recompute_spare_vectors", autospec=True),
+        ):
+            spar_insert_service._persist_wing_config(MagicMock(), plane_id, wing, new_wing_config)
+
+        assert convert.call_args.kwargs["surface_type"] == "main_wing"
+        assert convert.call_args.kwargs["wing_config"] is new_wing_config
+        assert wing.x_secs == ["root", "split", "tip"]
+        assert rebuilt.x_secs == []
