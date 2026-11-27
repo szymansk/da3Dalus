@@ -168,6 +168,19 @@ vermutlich die CAD-Aufgabe von `test_ehawk_designer_workflow_stepwise`) → Bug 
 Der nächtliche Lauf bleibt rot, bis #1474 und #1475 behoben sind; beide Tickets sind nicht begonnen.
 Verifikationslauf der Endfassung auf main 45071176949: 18 Jobs, längster 3 h 20 min, kein Job am Limit; dieselben 16 Kern-Tests rot auf 3.11 und 3.12 (#1474), `rest` 3.12 wie #1475; ein Job scheiterte an `poetry install` (Connection reset, kalter Cache, zum zweiten Mal — Retry um den Installationsschritt wäre die Abhilfe, nicht gemacht). Worktree `.worktrees/gh-1437` ist entfernt.
 
+**Stand 2026-11-27.** P1-F08 entschieden (Maintainer: V_A nur saubere Konfiguration, Code folgt): Task #1477, PR #1478 gemergt
+(1b7049d2) — Aufruf `warn_flap_validity` aus `maneuvering-speed` entfernt, der WP-P1-Test des entfernten Verhaltens durch zwei Tests
+des beschlossenen Verhaltens ersetzt. Entscheidungsvorlage: https://claude.ai/artifact/JaNxNynRYAYYuAq5bxz9A4.
+Auftrag „CI wieder grün“: **#1475** → PR #1482 (Zweig `fix/gh-1475-nightly-app-tests`, Worktree `.worktrees/gh-1475`): 11 veraltete
+Tests angepasst, `cad_service.shutdown_executor` beendet noch rechnende Worker (Test vorher rot); vier Tests bleiben rot wegen
+Produktionsfehlern → Bugs #1479 (Holm-Einbau ohne surface_type), #1480 (GeneralJSONDecoder list→str, cad_designer gesperrt, braucht
+Freigabe), #1481 (Holm-Roundtrip/Vase-Rippenschnitt, endlose Designer-Aufgabe, Linux-only test_shape_tolerant).
+**#1474**: Hypothese — Linux-Wheel von AVL ist einfache Genauigkeit + LAPACK (`avl-binary/Dockerfile.avl-amd64`), macOS-Binary
+ruft nur double-Mathefunktionen (Indiz für doppelte Genauigkeit); alle Abweichungen liegen in AVL-Größen. Gegenlauf 45991083115
+(Zweig `fix/gh-1474-kernel-aero-linux`, Worktree `.worktrees/gh-1474`, Teile `single`/`double`: AVL auf dem Runner in DP gebaut)
+auswerten. Bestätigt es sich: neues Linux-Wheel in DP (Release = Rückfrage beim Maintainer), sonst weiter suchen.
+Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F03, P8-F06, ULTRA_STICK_120-Masse, #1423 für AERONCA_CHAMP.
+
 ## Verlauf
 
 - 2026-11-21 — Schritt 0 fertig. Schritte 1, 2, 2b vergeben (14 Subagents).
@@ -215,3 +228,4 @@ Verifikationslauf der Endfassung auf main 45071176949: 18 Jobs, längster 3 h 20
 - #1437: Ursache liblapack3 belegt, zweiter Diagnoselauf 45053284171 läuft
 - #1437 geschlossen (PR #1476); Folgetickets #1474, #1475
 - #1437: Verifikationslauf der Endfassung ausgewertet
+- P1-F08 erledigt (PR #1478); #1475 PR #1482, Folgetickets #1479–#1481; #1474 Gegenlauf läuft
