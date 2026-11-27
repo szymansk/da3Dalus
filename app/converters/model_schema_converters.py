@@ -748,8 +748,70 @@ def _resolve_single_spare(
             wing_config._set_standard_spare_origin_vector(segment_index, spare)
         return
 
+    if mode in _BACKWARD_SPARE_MODES and _resolve_backward_spare(
+        wing_config, segment_index, spare_index, mode
+    ):
+        return
+
     if mode in {"standard", "standard_backward", "orthogonal_backward", "normal"}:
         wing_config._set_standard_spare_origin_vector(segment_index, spare)
+
+
+_BACKWARD_SPARE_MODES = frozenset({"standard_backward", "orthogonal_backward"})
+
+
+def _resolve_backward_spare(
+    wing_config: WingConfiguration, segment_index: int, spare_index: int, mode: str
+) -> bool:
+    """Re-span the inboard spar up to this segment, as ``WingConfiguration`` does.
+
+    A ``*_backward`` spar means: the spar that started further inboard (the
+    nearest one that is not ``follow``) runs straight to the tip of this
+    segment, and every segment from there to here follows that line. The
+    topology resolves this once, when the segment is added; this is the same
+    rule for a configuration whose spar vectors were cleared for the
+    recompute. Without it the spar of a swept wing stays at the root's chord
+    position and leaves the airfoil further outboard (gh-1475).
+
+    Returns:
+        False when there is no inboard spar to re-span, or it is a
+        ``normal``-mode spar (the caller then resolves the spar on its own
+        segment).
+    """
+    anchor_index = None
+    for candidate in reversed(range(segment_index)):
+        spares = wing_config.segments[candidate].spare_list or []
+        if spare_index < len(spares) and spares[spare_index].spare_mode != "follow":
+            anchor_index = candidate
+            break
+    if anchor_index is None:
+        return False
+    between = range(anchor_index + 1, segment_index + 1)
+    if any(spare_index >= len(wing_config.segments[i].spare_list or []) for i in between):
+        return False
+
+    anchor = wing_config.segments[anchor_index].spare_list[spare_index]
+    if anchor.spare_mode == "normal":
+        # A normal-mode spar carries a solved or explicit line (gh-1053); it is
+        # not re-spanned.
+        return False
+    if anchor.spare_position_factor is None:
+        anchor.spare_position_factor = 0.25
+    vector, origin, orthogonal_vector, orthogonal_origin = (
+        wing_config._get_standard_spare_origin_and_vector(
+            start_segment=anchor_index,
+            end_segment=segment_index,
+            spare_position_factor=anchor.spare_position_factor,
+        )
+    )
+    if mode == "orthogonal_backward":
+        vector, origin = orthogonal_vector, orthogonal_origin
+    anchor.spare_vector = vector
+    anchor.spare_origin = origin
+    for index in between:
+        follower = wing_config.segments[index].spare_list[spare_index]
+        wing_config._set_follow_spare_origin_vector(index, follower, spare_index)
+    return True
 
 
 def _preserve_normal_spare_geometry(spare, scale: float) -> None:
