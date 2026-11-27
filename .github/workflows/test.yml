@@ -244,7 +244,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.12"]
-        part: [single, double]
+        part: [dp-lapack, dp-openblas]
 
     steps:
       - name: Check out repository
@@ -285,15 +285,18 @@ jobs:
           if ldd "$avl" | grep "not found"; then exit 1; fi
           printf 'quit\n' | "$avl" > /dev/null
 
-      - name: Build AVL in double precision and put it in place of the wheel's binary (diagnostic, gh-1474)
-        if: matrix.part == 'double'
+      - name: Build AVL in double precision with the LAPACK solver (diagnostic, gh-1474)
         run: |
-          sudo apt-get install -y -qq gfortran libx11-dev
+          sudo apt-get install -y -qq gfortran libx11-dev liblapack-dev libblas-dev
+          if [ "${{ matrix.part }}" = "dp-openblas" ]; then
+            sudo apt-get install -y -qq libopenblas-dev
+            update-alternatives --display liblapack.so.3-x86_64-linux-gnu | head -5 || true
+          fi
           cd Avl/plotlib && make gfortranDP && cd ..
           cd eispack && make -f Makefile.mingw DP=-fdefault-real-8 EISLIB=eispack_gDP.a && cd ..
           cd bin && make -f Makefile.gfortran avl DP=-fdefault-real-8 \
             PLTOBJ=../plotlib/libPlt_gDP.a EIGOBJ=../eispack/eispack_gDP.a \
-            MATRIX=matrix.o MLIBS= PLTLIB=-lX11 && cd ../..
+            MATRIX=matrix-lapackdp.o "MLIBS=-llapack -lblas" PLTLIB=-lX11 && cd ../..
           avl=$(poetry run python -c "from avl_binary import avl_path; print(avl_path())")
           cp Avl/bin/avl "$avl"
           ldd "$avl"
@@ -301,7 +304,7 @@ jobs:
 
       - name: Run the tests of gh-1474 (diagnostic)
         run: |
-          poetry run pytest -v --tb=short -rfE --durations=25 -p no:cacheprovider \
+          poetry run pytest -v --tb=short -rfE --durations=40 -p no:cacheprovider --timeout=1800 \
             aero_kernel/tests/test_neutral_point_fleet.py \
             aero_kernel/tests/test_roll_rate_fleet.py \
             aero_kernel/tests/test_solvers_avl_roll_real.py \
