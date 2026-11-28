@@ -74,30 +74,20 @@ COPY external/ ./external/
 
 # Install Python + nlopt from conda-forge (linux/arm64 supported)
 # Then install Python deps with Poetry (excluding CadQuery and its heavy deps)
-# Then install CadQuery and its heavy deps with pip --no-deps (to avoid building them from source)
+# Then install CadQuery and its geometry kernel with pip, pinned to the lock file versions
 RUN micromamba create -y -n py311 -c conda-forge  \
      python=3.11.5 \
      nlopt \
     && micromamba install -y -n py311 -c conda-forge "poetry>=2.0.0,<3.0.0" \
     && micromamba run -n py311 poetry lock --no-cache --regenerate \
     && micromamba run -n py311 poetry install --no-ansi --without binary \
-    # CadQuery installed with --no-deps -> install its pure-Python runtime deps explicitly
-    && micromamba run -n py311 pip install --no-deps \
-        cadquery==2.6.1 \
-    && micromamba run -n py311 pip install --no-deps \
-        multimethod \
-        nptyping \
-        typish \
-        pyparsing \
-        typing-extensions \
-        ezdxf \
-        numpy \
-        scipy \
-        casadi \
-        path \
-        questionary \
-    && micromamba run -n py311 pip install --no-deps vtk==9.5.2 \
-    && micromamba run -n py311 pip install --no-deps cadquery-ocp==7.9.3.0 \
+    # CadQuery and its geometry kernel at the versions of poetry.lock (gh-1494).
+    # Since cadquery-ocp 7.9.3 and vtk 9.5 there are linux/arm64 wheels, so pip
+    # resolves the dependencies itself.
+    && micromamba run -n py311 pip install \
+        cadquery==2.8.0 \
+        cadquery-ocp==7.9.3.1.1 \
+        vtk==9.6.2 \
     #&& micromamba run -n py311 pip install ocp_vscode \
     && micromamba run -n py311 pip install aerosandbox[full] \
     && micromamba clean -a -y
