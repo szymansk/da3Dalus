@@ -956,8 +956,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
                     f"Rib layout of wing segment {segment} makes no progress towards the tip: "
                     f"a rib row at y={row_y:.2f} mm follows the row at y={previous_row_y:.2f} mm "
                     f"(segment length {wing_config.segments[segment].length:.2f} mm). "
-                    f"The spar support (width {spare.spare_support_dimension_width:.2f} mm) leaves no room "
-                    f"for ribs between the spar and the trailing-edge offset line; "
+                    f"The spar support (width {spare.spare_support_dimension_width:.2f} mm) and the "
+                    f"trailing-edge offset ({trailing_edge_offset:.2f} mm) leave no room for ribs between "
+                    f"the spar and the trailing-edge offset line; "
                     f"check the spar dimensions and their unit (mm)."
                 )
             try:
