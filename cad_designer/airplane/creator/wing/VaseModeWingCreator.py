@@ -934,6 +934,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         id_s = ''
         while (tcast(Edge, const_lines._tags['help_top' + id_s][0]).startPoint().y
                < wing_config.segments[segment].length):
+            previous_row_y = tcast(Edge, const_lines._tags['help_top' + id_s][0]).startPoint().y
             const_lines = (
                 const_lines
                 .segmentToEdge('rib_tr' + id_s, 180 - minimum_rib_angle, 'spare_tail', 'rib_tl_' + id_s)
@@ -944,6 +945,22 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 .segmentToEdge('help_middle_' + id_s, 1, 'help_top_' + id_s, 1., 'rib_nr_' + id_s)
                 .select('help_top' + id_s).delete()
             )
+            # Progress guard (gh-1481): every rib row has to lie outboard of the
+            # one before. If the spar support is wider than the rib field between
+            # spar and trailing-edge offset line, the rows step inboard and the
+            # loop would never reach the tip.
+            row_y = tcast(Edge, const_lines._tags['help_top_' + id_s][0]).startPoint().y
+            if row_y <= previous_row_y:
+                spare = wing_config.segments[segment].spare_list[spare_idx]
+                raise ValueError(
+                    f"Rib layout of wing segment {segment} makes no progress towards the tip: "
+                    f"a rib row at y={row_y:.2f} mm follows the row at y={previous_row_y:.2f} mm "
+                    f"(segment length {wing_config.segments[segment].length:.2f} mm). "
+                    f"The spar support (width {spare.spare_support_dimension_width:.2f} mm) and the "
+                    f"trailing-edge offset ({trailing_edge_offset:.2f} mm) leave no room for ribs between "
+                    f"the spar and the trailing-edge offset line; "
+                    f"check the spar dimensions and their unit (mm)."
+                )
             try:
                 # if not start_upper_part:
                 const_lines.select('help_middle' + id_s).delete()
