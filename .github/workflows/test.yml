@@ -294,15 +294,24 @@ jobs:
         # eighth test file of the kernel. SIGABRT on the time limit makes
         # faulthandler dump every thread, so a run that does not exit says
         # what holds it.
+        #
+        # Per-test limit of the kernel parts (gh-1474): the 360 s of
+        # pyproject.toml guard against a CAD test that hangs. Two kernel
+        # tests that only compute take 940 s and 575 s on this runner
+        # (measured 2026-11-27, run 46008501679), so the kernel parts get
+        # 1800 s. `rest` keeps the 360 s.
         run: |
           if [ "${{ matrix.part }}" = "rest" ]; then
             targets="--ignore=aero_kernel/tests"
+            limit=360
           else
+            limit=1800
             index="${{ matrix.part }}"; index="${index#aero-}"
             targets=$(ls aero_kernel/tests/test_*.py | awk -v n=8 -v i="$index" '(NR - 1) % n == i')
           fi
           timeout --signal=ABRT --kill-after=30s 18000 \
             poetry run pytest -v --tb=short -rfE --durations=25 \
+              --timeout="$limit" \
               --cov=app \
               --cov=cad_designer \
               --cov=aero_kernel \

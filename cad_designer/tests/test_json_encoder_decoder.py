@@ -6,7 +6,9 @@ import pytest
 from cad_designer.airplane.GeneralJSONEncoderDecoder import (
     GeneralJSONDecoder,
     GeneralJSONEncoder,
+    _coerce_params,
 )
+from cad_designer.airplane.types import CreatorId, ShapeId
 from cad_designer.airplane.ConstructionRootNode import ConstructionRootNode
 from cad_designer.airplane.ConstructionStepNode import ConstructionStepNode
 
@@ -120,3 +122,39 @@ class TestRoundTrip:
         encoded = json.dumps(node, cls=GeneralJSONEncoder)
         parsed = json.loads(encoded)
         assert isinstance(parsed, dict)
+
+
+class _ListParamCreator:
+    """Creator stub with a list-typed parameter, as FuseMultipleShapesCreator has."""
+
+    def __init__(self, creator_id: CreatorId, shapes: list[ShapeId]):
+        self.creator_id = creator_id
+        self.shapes = shapes
+
+
+class _ListParamCreatorWithStringHints:
+    def __init__(self, creator_id: "CreatorId", shapes: "list[ShapeId]"):
+        self.creator_id = creator_id
+        self.shapes = shapes
+
+
+class TestListParametersStayLists:
+    """gh-1480: a list value of a list-typed parameter must stay a list."""
+
+    @pytest.mark.parametrize("cls", [_ListParamCreator, _ListParamCreatorWithStringHints])
+    def test_a_list_value_of_a_list_parameter_stays_a_list(self, cls):
+        params = {"creator_id": "winglet", "shapes": ["vase_wing[6]", "vase_wing[7]"]}
+
+        coerced = _coerce_params(cls, params)
+
+        assert coerced["shapes"] == ["vase_wing[6]", "vase_wing[7]"]
+
+    def test_an_empty_list_stays_an_empty_list(self):
+        coerced = _coerce_params(_ListParamCreator, {"creator_id": "c", "shapes": []})
+
+        assert coerced["shapes"] == []
+
+    def test_a_single_string_is_still_wrapped_into_a_list(self):
+        coerced = _coerce_params(_ListParamCreator, {"creator_id": "c", "shapes": "wing"})
+
+        assert coerced["shapes"] == ["wing"]

@@ -1,6 +1,6 @@
 [project]
 name = "avl-binary"
-version = "1.0.0"
+version = "1.0.1"
 description = "Pre-compiled AVL (Athena Vortex Lattice) binary for da3Dalus"
 requires-python = ">=3.11"
 

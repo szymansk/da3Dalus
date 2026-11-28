@@ -65,7 +65,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.converters.model_schema_converters import wing_config_to_asb_wing_schema
-from app.services.wing_service import _convert_spare_to_meters
 from test.ehawk_workflow_helpers import _build_main_wing
 
 
@@ -595,9 +594,19 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
         if not x_sec.spare_list:
             continue
         for spare in x_sec.spare_list:
-            # The converter's schema carries spar dimensions in mm (the storage
-            # unit, gh-402); the endpoint takes metres.
-            payload = _convert_spare_to_meters(spare).model_dump()
+            # The schema derived from the WingConfiguration carries spar
+            # dimensions in mm; POST /spars takes metres (gh-366).
+            payload = spare.model_dump()
+            for field in (
+                "spare_support_dimension_width",
+                "spare_support_dimension_height",
+                "spare_length",
+                "spare_start",
+            ):
+                if payload[field] is not None:
+                    payload[field] = payload[field] * 0.001
+            if payload["spare_origin"] is not None:
+                payload["spare_origin"] = [v * 0.001 for v in payload["spare_origin"]]
             spar_response = client.post(
                 f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
                 f"/cross_sections/{cross_section_index}/spars",
