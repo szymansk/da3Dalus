@@ -199,6 +199,16 @@ wartet 240 s je Aufgabe, Testlimit 360 s; lokaler Lauf unter Fremdlast lief ins 
 (PR #1489 gemergt; Maintainer hat die Decoder-Änderung in `cad_designer` am 2026-11-27 freigegeben: Liste bleibt Liste).
 #1481 bleibt offen: Zeitbudget des Designer-Tests, Teil 3. Worktrees gh-1480/gh-1481 entfernt.
 PR #1486: PR-CI + Sonar grün; Merge wartet auf Nightly 46063023420 (Stand 21:45: 6 Teile grün, 0 rot, Rest läuft).
+## Stand 2026-11-28
+**#1474 geschlossen** (PR #1486 gemergt). Nightly 46063023420 auf dem Zweig: 15 von 16 Kernteilen grün, keine Wertabweichung mehr.
+Rot: `(3.11, aero-5)` — `test_the_chain_of_the_plan_batch_is_the_regression_golden[MINI_FUNTANA]`, AVL-Rolllauf > 120 s
+(`AVL_MAX_RUN_S`), auf 3.12 grün → schwankend → **Bug #1490** (nicht begonnen; Produktionskonstante = Maintainer-Entscheidung).
+`rest` im selben Lauf (vor den Merges von #1487/#1489) rot mit 4 Tests: Designer stepwise (240-s-Warten), REST-Vase-Mode (Warten),
+`test_shape_tolerant[single_segment_with_twist_and_dihedral]` (Linux-only, #1481 Teil 3), `test_ehawk_wing_workflow_end_to_end`
+(360 s pytest-Limit; lokal 157 s). **Wiedereinstieg:** geplanten Nightly auf main (cron 03:00 UTC) vom 2026-11-28 auswerten —
+zeigt, was nach den drei Merges in `rest` übrig ist (erwartet: Zeitbudgets der drei CAD-Tests auf dem Runner + Teil 3). #1475 erst
+schließen, wenn `rest` grün ist.
+
 Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F03, P8-F06, ULTRA_STICK_120-Masse, #1423 für AERONCA_CHAMP.
 
 ## Verlauf
@@ -257,3 +267,5 @@ Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F
 - #1481 Teil 2 geklärt, PR #1487 erweitert
 - PR #1487 und #1489 gemergt, #1480 geschlossen; PR #1486 wartet auf Nightly (aero-5 läuft noch, alle anderen Kernteile grün)
 - PR #1487 und #1489 gemergt, #1480 geschlossen
+- #1474 geschlossen (PR #1486); Folgebug #1490 (AVL-Laufzeit am 120-s-Limit); rest wartet auf Nightly auf main
+- #1474 geschlossen, Folgebug #1490
