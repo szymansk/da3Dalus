@@ -104,14 +104,19 @@ def airfoil(self: cq.Workplane, selig_file: str, chord: float, offset: float = 0
     if number_interpolation_points is not None:
         scaled_points = reparameterize_airfoil(scaled_points, number_interpolation_points)
 
-    plane = self.plane
-    new_plane = cq.Plane(xDir=plane.xDir, origin=(0, 0, 0), normal=plane.zDir)
-    shape = (cq.Workplane(inPlane=new_plane)
-             .splineApprox(points=scaled_points,
-                           forConstruction=forConstruction,
-                           tol=1e-4).close()
-             .val())
-    trans_shape = shape.translate(plane.origin)
+    # Fit the spline in the XY plane and move the finished wire rigidly into
+    # the section plane (gh-1493). A fit made directly in a plane that is not
+    # axis-aligned is free to leave that plane by up to its tolerance (measured
+    # ~2e-6 mm with dihedral), which is more than the 1e-7 mm edge tolerance:
+    # OCCT then finds no plane through the wire and the loft gets no end caps.
+    flat_shape = (cq.Workplane("XY")
+                  .splineApprox(points=scaled_points,
+                                forConstruction=forConstruction,
+                                tol=1e-4).close()
+                  .val())
+    # Plane.rG maps local plane coordinates to world coordinates (rotation
+    # and origin); transformShape keeps the curve type, so this is a rigid move.
+    trans_shape = flat_shape.transformShape(self.plane.rG)
 
     return self.newObject([trans_shape])
 
