@@ -39,7 +39,7 @@ from app.converters.model_schema_converters import (
     wing_model_to_asb_wing_schema,
 )
 from app.core.exceptions import NotFoundError, ValidationError, ConflictError, InternalError
-from app.core.process_pool import end_workers, pool_workers
+from app.core.process_pool import end_workers, worker_table
 from app.models import AeroplaneModel, WingModel, WingXSecModel
 from app.models.aeroplanemodel import (
     FuselageModel,
@@ -94,12 +94,12 @@ def shutdown_executor() -> None:
     global _executor
     with _executor_lock:
         if _executor is not None:
-            workers = pool_workers(_executor)
+            workers = worker_table(_executor)
             try:
                 _executor.shutdown(wait=False, cancel_futures=True)
             except Exception as exc:
                 logger.warning("Error shutting down cad executor: %s", exc)
-            end_workers(workers, pool_name="CAD")
+            end_workers(list(workers.values()), pool_name="CAD")
             _executor = None
 
 

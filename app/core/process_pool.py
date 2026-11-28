@@ -20,12 +20,16 @@ logger = logging.getLogger(__name__)
 WORKER_GRACE_S = 5.0
 
 
-def pool_workers(executor: ProcessPoolExecutor) -> list[BaseProcess]:
-    """Return the pool's worker processes; call it before ``shutdown``, which clears them.
+def worker_table(executor: ProcessPoolExecutor) -> dict[int, BaseProcess]:
+    """Return the pool's own pid -> process mapping; take it before ``shutdown``.
 
-    There is no public accessor before Python 3.14 (``terminate_workers``).
+    ``shutdown`` drops the executor's reference to the mapping, so it has to be
+    taken first. It is the live mapping, not a copy: a ``submit`` that races the
+    shutdown can still start a worker, and that worker is in it once ``shutdown``
+    has returned. There is no public accessor before Python 3.14
+    (``terminate_workers``).
     """
-    return list((getattr(executor, "_processes", None) or {}).values())
+    return getattr(executor, "_processes", None) or {}
 
 
 def end_workers(workers: list[BaseProcess], *, pool_name: str) -> None:
@@ -41,3 +45,5 @@ def end_workers(workers: list[BaseProcess], *, pool_name: str) -> None:
             )
             worker.kill()
             worker.join(timeout=WORKER_GRACE_S)
+            if worker.is_alive():
+                logger.error("%s worker %s is still alive after kill", pool_name, worker.pid)

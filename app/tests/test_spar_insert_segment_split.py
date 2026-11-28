@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import uuid
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -363,8 +363,6 @@ class TestPersistWingConfig:
         ``autospec`` keeps the real signature, so a call without the role fails
         here as it did in the slow round-trip test.
         """
-        from unittest.mock import MagicMock
-
         wing = SimpleNamespace(
             name="main_wing",
             surface_type="main_wing",
