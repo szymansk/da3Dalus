@@ -10,7 +10,7 @@ import pytest
 from aero_kernel.build import shipped_build
 from aero_kernel.devices import FLAP_ROLES
 from aero_kernel.engine import evaluate
-from aero_kernel.errors import ErrorCategory
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.runtime import WorkerDiagnostics, WorkerOutcome
 from aero_kernel.schema import (
@@ -22,7 +22,13 @@ from aero_kernel.schema import (
     QuantityStatus,
 )
 from aero_kernel.solvers import opti as opti_module
-from aero_kernel.solvers.opti import OptiAdapter, StallRequest, StallSolution
+from aero_kernel.solvers.opti import (
+    NO_CONSISTENT_EXTREMUM,
+    OptiAdapter,
+    Stall,
+    StallRequest,
+    StallSolution,
+)
 from aero_kernel.tests.asb_fakes import stand_in_main_wing_properties
 from aero_kernel.tests.formula_builders import OPT_SETTINGS, StubAtmosphere, close, solvers_with
 from aero_kernel.tests.solver_builders import InProcessRuntime
@@ -393,3 +399,50 @@ async def test_the_flapped_stall_declares_a_low_confidence_and_an_over_limit_def
     assert declared.detail["flaps"] == [
         {"wing": "Main", "device": "device 0", "deflection_deg": 31.0}
     ]
+
+
+class NoStallSpeed(StubOpti):
+    """The stall problem has no value: the weight lies between two branches of the first C_L peak."""
+
+    async def stall(self, *args: Any, **kwargs: Any) -> Stall:
+        raise FormulaError(
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            NO_CONSISTENT_EXTREMUM,
+            "no stall speed is defined at 1.5 kg (n = 1): the first C_L peak changes at 8.6 m/s",
+            "this is a result of the lift model, not a failed solve",
+            detail={"transition_v_ms": 8.6, "mass_below_kg": 1.42, "mass_above_kg": 1.62},
+        )
+
+
+async def test_a_mass_without_a_stall_speed_is_one_declared_failure_and_what_reads_it_names_it() -> (
+    None
+):
+    """gh-1423: the quantities of the stall problem carry the failure with its reason and its facts,
+    not retryable (the same input gives the same answer); a quantity that reads the stall speed is
+    `upstream_failed` and its causes lead back to the quantity and the code."""
+    result, _ = await run(
+        "stall-speed", "max-lift-coefficient", "approach-speed", stub=NoStallSpeed()
+    )
+    found = by_slug(result)
+    for slug in ("stall-speed", "max-lift-coefficient"):
+        error = found[slug].error
+        assert found[slug].value is None
+        assert error is not None
+        assert (error.category, error.code) == (
+            ErrorCategory.UNSUPPORTED_CONFIGURATION,
+            NO_CONSISTENT_EXTREMUM,
+        )
+        assert (error.retryable, error.escalate) == (False, False)
+        assert "no stall speed is defined" in error.message
+        assert error.detail == {
+            "transition_v_ms": 8.6,
+            "mass_below_kg": 1.42,
+            "mass_above_kg": 1.62,
+        }
+    downstream = found["approach-speed"].error
+    assert downstream is not None
+    assert downstream.code == "upstream_failed"
+    assert downstream.detail == {
+        "causes": [{"quantity": "stall-speed-landing", "code": NO_CONSISTENT_EXTREMUM}]
+    }
+    assert (downstream.retryable, downstream.escalate) == (False, False)

@@ -33,7 +33,12 @@ from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import DEFAULT_REGISTRY
 from aero_kernel.schema import Curve, KernelWarning
 from aero_kernel.solvers.air import AirState
-from aero_kernel.solvers.opti import LevelFlightPoint, Stall, StallSolution
+from aero_kernel.solvers.opti import (
+    NO_CONSISTENT_EXTREMUM,
+    LevelFlightPoint,
+    Stall,
+    StallSolution,
+)
 from aero_kernel.tests import powered_builders as pb
 from aero_kernel.tests.formula_builders import close
 from aero_kernel.tests.stall_stubs import UPRIGHT_PEAK, lift_curve
@@ -75,6 +80,7 @@ class EnvelopeOpti(pb.PolarOpti):
         stall_scale: float = 1.0,
         lift_cap_mass: float = math.inf,
         stall_warning_above: float = math.inf,
+        no_stall_speed_between: tuple[float, float] = (math.inf, math.inf),
         takeoff: AirplaneGeometry | None = None,
         takeoff_cd0: float | None = None,
         takeoff_stall_scale: float = 1.0,
@@ -92,6 +98,7 @@ class EnvelopeOpti(pb.PolarOpti):
         self.stall_scale = stall_scale
         self.lift_cap_mass = lift_cap_mass
         self.stall_warning_above = stall_warning_above
+        self.no_stall_speed_between = no_stall_speed_between
         self.stall_masses: list[float] = []
         self.stall_airplanes: list[AirplaneGeometry] = []
         self.level_airplanes: list[AirplaneGeometry] = []
@@ -132,6 +139,15 @@ class EnvelopeOpti(pb.PolarOpti):
         if mass_kg > self.stall_fails_above:
             raise failure(
                 "not_converged", "the optimum of the stall problem lies on the bound of alpha"
+            )
+        low, high = self.no_stall_speed_between
+        if low < mass_kg < high:
+            raise FormulaError(
+                ErrorCategory.UNSUPPORTED_CONFIGURATION,
+                NO_CONSISTENT_EXTREMUM,
+                f"no stall speed is defined at {mass_kg:.4g} kg: the first C_L peak changes at 9 m/s",
+                "a result of the lift model",
+                detail={"transition_v_ms": 9.0, "mass_below_kg": low, "mass_above_kg": high},
             )
         scale = self.stall_scale * (self.takeoff_stall_scale if airplane is self.takeoff else 1.0)
         solution = StallSolution(
@@ -673,6 +689,70 @@ async def test_a_sample_in_a_window_narrower_than_the_scan_step_fails_with_its_m
         await run()
     assert caught.value.code == "no_feasible_speed"
     assert "at the mass 5.824 kg:" in caught.value.message
+
+
+# --- a sample mass without a stall speed (gh-1423) -----------------------------------------------------------
+
+
+async def second_sample_mass() -> float:
+    """The second of the three sample masses of the undisturbed run (about 4.4 kg; no mass of the scan)."""
+    got, _ = await run()
+    return got["roc_curve"].x[1]
+
+
+async def test_a_sample_mass_without_a_stall_speed_has_no_point_and_the_curves_say_why() -> None:
+    """The lift model defines no stall speed in a band of masses (``no_consistent_first_lift_extremum``):
+    a sample inside it has no stall speed, so no speed range and no climb either. The three curves leave
+    the mass out and one warning names it with the reason; the masses outside the band and both largest
+    masses are what they are without the band."""
+    undisturbed, _ = await run()
+    mass = await second_sample_mass()
+    got, ctx = await run(EnvelopeOpti(no_stall_speed_between=(mass - 1e-6, mass + 1e-6)))
+    stall_curve, level_curve = got["speed_range"]
+    climb = got["roc_curve"]
+    assert got["m_max_level"] == undisturbed["m_max_level"]
+    assert got["m_max_to"] == undisturbed["m_max_to"]
+    expected = tuple(x for x in undisturbed["roc_curve"].x if x != mass)
+    assert len(expected) == CURVE_POINTS  # one of the four points is gone
+    assert stall_curve.x == level_curve.x == climb.x == expected
+    assert climb.y == tuple(
+        y
+        for x, y in zip(undisturbed["roc_curve"].x, undisturbed["roc_curve"].y, strict=True)
+        if x != mass
+    )
+    (warning,) = [w for w in ctx.warnings if w.code == "curve_samples_without_stall_speed"]
+    assert warning.severity == "warning"
+    assert warning.detail["masses_kg"] == [mass]
+    assert warning.detail["by_mass"] == [
+        {
+            "mass_kg": mass,
+            "code": NO_CONSISTENT_EXTREMUM,
+            "message": f"at the mass {mass:.4g} kg: no stall speed is defined at {mass:.4g} kg: "
+            "the first C_L peak changes at 9 m/s",
+            "transition_v_ms": 9.0,
+            "mass_below_kg": mass - 1e-6,
+            "mass_above_kg": mass + 1e-6,
+        }
+    ]
+    assert "no point at 1 of 4 sample masses" in warning.message
+    assert "no stall speed is defined" in warning.message
+
+
+async def test_without_such_a_mass_the_curves_carry_no_such_warning() -> None:
+    _, ctx = await run()
+    assert [w for w in ctx.warnings if w.code == "curve_samples_without_stall_speed"] == []
+
+
+async def test_a_scan_mass_without_a_stall_speed_is_the_declared_failure_with_the_mass() -> None:
+    """The root search needs the stall speed of every mass it visits: a scan mass inside the band (4.42 kg)
+    ends the formula with the reason and the mass, not with a root found around the band."""
+    with pytest.raises(FormulaError) as caught:
+        await run(EnvelopeOpti(no_stall_speed_between=(4.41, 4.43)))
+    assert caught.value.code == NO_CONSISTENT_EXTREMUM
+    assert caught.value.category is ErrorCategory.UNSUPPORTED_CONFIGURATION
+    assert "at the mass 4.42 kg: no stall speed is defined" in caught.value.message
+    assert close(float(str(caught.value.detail["mass_kg"])), 4.42, 1e-3)
+    assert caught.value.detail["transition_v_ms"] == 9.0
 
 
 # --- the refinement goes through the same wrapper as the scan ----------------------------------------------

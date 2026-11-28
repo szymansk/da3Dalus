@@ -40,6 +40,14 @@ beyond the table). The edge between the last mass that evaluates and the first t
 (a stall solve that does not converge, a stall off the first lift peak, a missing input) is not "not held":
 it surfaces unchanged, with the mass in the message and in ``detail.mass_kg``.
 
+**A mass without a stall speed** (gh-1423, ADR 0020). The stall problem has no value where the first lift
+peak changes with the Reynolds number and the weight lies in the jump (``no_consistent_first_lift_extremum``,
+a result of the lift model). A mass the root searches visit (the current mass, a scan mass, an iterate) ends
+the formula with that failure and the mass, as every other failure does: the searches need the stall speed of
+each mass. A curve sample at such a mass has no stall speed, so no speed range and no climb either: the three
+curves leave the mass out, and ``curve_samples_without_stall_speed`` names it with the reason
+(``detail.masses_kg``, ``detail.by_mass``: the failure's code, message and detail per mass).
+
 **Warnings forwarded** (ADR 0020): those of the answer of each root, the level-flight state at
 ``m_max,level`` and the take-off state at ``m_max,TO`` (with the flap-validity declaration of its stall
 solve), the route notice and the skipped speeds once, and those of the curve samples as one summary per
@@ -72,7 +80,7 @@ from aero_kernel.formulas.values import air_state, forward_warnings, number
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.registry import CheckResult, formula, precondition
 from aero_kernel.schema import Curve, KernelWarning
-from aero_kernel.solvers.opti import Stall
+from aero_kernel.solvers.opti import NO_CONSISTENT_EXTREMUM, Stall
 from pydantic import JsonValue
 
 __all__ = ["current_mass_positive", "mass_envelope", "takeoff_speed_above_stall_speed"]
@@ -403,10 +411,27 @@ class Envelope:
           search found and the rate of climb is zero (within the tolerance of the root); only the stall
           speed is computed.
 
+        A sample mass at which the lift model defines no stall speed has no point on any of the three
+        curves; :meth:`declare_without_stall_speed` names it with the reason (gh-1423). The root is not
+        such a mass: the root search solved its stall problem.
+
         The warnings of all the samples are forwarded as one summary (:meth:`forward_samples`).
         """
-        masses = [self.mass + (root - self.mass) * k / self.points for k in range(self.points)]
-        samples = [await self.sample(mass) for mass in masses]
+        planned = [self.mass + (root - self.mass) * k / self.points for k in range(self.points)]
+        masses: list[float] = []
+        samples: list[tuple[float, float, float, tuple[KernelWarning, ...]]] = []
+        without: list[tuple[float, FormulaError]] = []
+        for mass in planned:
+            try:
+                found = await self.sample(mass)
+            except FormulaError as error:
+                if error.code != NO_CONSISTENT_EXTREMUM:
+                    raise
+                without.append((mass, error))
+            else:
+                masses.append(mass)
+                samples.append(found)
+        self.declare_without_stall_speed(without, len(planned) + 1)
         masses.append(root)
         if edge:
             samples.append(await self.sample(root))
@@ -421,6 +446,36 @@ class Envelope:
             Curve(x=grid, y=tuple(x[1] for x in samples)),
         )
         return speed_range, Curve(x=grid, y=tuple(x[2] for x in samples)), grid
+
+    def declare_without_stall_speed(
+        self, without: list[tuple[float, FormulaError]], points: int
+    ) -> None:
+        """Declare the sample masses the curves leave out because no stall speed is defined there (ADR 0020).
+
+        One warning with the masses (``detail.masses_kg``) and, per mass, the code, the message and the
+        detail of the stall problem's failure (``detail.by_mass``): the speed at which the first lift peak
+        changes and the two masses between which no stall speed exists.
+
+        Args:
+            without: The sample masses in kg with the failure of their stall problem.
+            points: The number of points the curves were to have, the root included.
+        """
+        if not without:
+            return
+        masses: list[JsonValue] = [mass for mass, _ in without]
+        self.ctx.warn(
+            "curve_samples_without_stall_speed",
+            f"The curves over the mass have no point at {len(without)} of {points} sample masses "
+            f"({', '.join(f'{mass:.4g} kg' for mass, _ in without)}): no stall speed is defined there, "
+            f"so no speed range and no rate of climb either. {without[0][1].message}",
+            {
+                "masses_kg": masses,
+                "by_mass": [
+                    {"code": error.code, "message": error.message, **error.detail}
+                    for _, error in without
+                ],
+            },
+        )
 
     def forward_samples(self, masses: list[float], found: list[tuple[KernelWarning, ...]]) -> None:
         """Forward the warnings of the curve samples as summaries with the masses they occurred at (ADR 0020).

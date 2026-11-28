@@ -248,6 +248,12 @@ nothing failed. The category enum holds only the eight rows above.
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
+- **No stall speed at a first lift peak** (`unsupported_configuration`): `no_consistent_first_lift_extremum` — the
+  first C_L extremum of the lift curve changes at a speed (Reynolds number) and the lift asked for lies between
+  what the extremum carries just below and just above that speed, so no speed closes the lift balance at a first
+  extremum (`stall-speed`, gh-1423). A result of the lift model, not a failed solve: not retryable, the same
+  input gives the same answer; `detail`: the transition speed and both branches (ch. 8.8). Everything that reads
+  the stall speed is then `upstream_failed` with this code in `detail.causes`.
 - **Refused layouts and tool limits** (`unsupported_configuration`): `outside_propeller_table` — the propeller table does not cover the operating point (a propeller speed outside the first and last rpm block, an advance ratio beyond a block's range, or no balance found on the rpm grid points the table covers; never extrapolated, `detail`: the point and the range, gh-1411); `propeller_windmilling` — the propeller is driven by the airstream (negative `C_P` on the covered points) and the torque balance of a driven propeller has no solution (gh-1411); `no_thrust_at_full_throttle` — the drive train gives no thrust at full throttle, so the thrust demand ratio is undefined (gh-1411); `no_feasible_speed` — the airplane cannot fly the state of a powered-performance formula at any speed at full throttle: the thrust is below the drag, the wing cannot carry the lift, or the propeller table ends before any speed is feasible (the message says which; gh-1414); `no_level_flight_speed` — no scan speed of `endurance-and-range-optimum` lies inside the domain (level flight at full throttle or less, on the propeller table; `detail`: the stall speed, the Mach-limit speed and the outcome per speed, gh-1415); `non_positive_battery_power` — the drive train draws no power at a speed, so no flight time follows (gh-1415); `unsupported_layout` — the neutral point
   is defined for one `main_wing` with one `horizontal_tail` or `v_tail` (any `vertical_tail` and `winglet`), decided from
   `surface_type` only, before any world runs (`detail.surface_types`, ch. 8.5); `avl_array_limit` — the
@@ -869,6 +875,7 @@ caller's responsibility.
     and becomes `internal`. Tested with a stub solver.
   - **The parabolic polar fit (#1401).** `polar_fit_residual` (`notice`, every fit of `parabolic-polar-fit`; `detail`: `points`, `cl_min`, `cl_max`, `v_min_ms`, `v_max_ms`, `rms`, `max_abs`, `max_relative`), `polar_fit_nonphysical` (`error`: a fitted slope or `C_D0` at or below zero, or an Oswald factor above `max_oswald`; the fitted numbers are returned and declared, never replaced; `detail`: `reasons`, `cd0`, `k`, `e_osw`) and `small_glide_angle` (`warning`, `sink-rate` below the glide-ratio floor of the rule `small-glide-angle`; `detail`: `glide_ratio`, `glide_angle_deg`, `from_tan_for_sin`, `from_lift_equals_weight`, `floor`).
   - **`minimum_sink_stall_limited`** (`notice`, #1268): the OPT adapter adds it to a minimum-sink solution whose optimum is the stall boundary (the sink power still falling at the first C_L peak); the value is returned there, with the boundary alpha and C_L in `detail`.
+  - **`stall_bracket_relocated`** (`notice`, gh-1423): the OPT adapter adds it to a stall solution whose first C_L extremum moved between the bracketing sweep and the stall speed, so the bracket was located again and the stall solved a second time on it; `detail`: `first_v_ms`, `first_alpha_deg` (the bracket of the two sweeps), `v_ms`, `alpha_deg` (the bracket the value comes from). **`curve_samples_without_stall_speed`** (`warning`, gh-1423): `mass-envelope` leaves a sample mass out of its three curves where the stall problem has no value there (`no_consistent_first_lift_extremum`); `detail`: `masses_kg` and, per mass, the failure's `code`, `message` and detail (`by_mass`).
   - **The lateral chain (#1277).** The static-margin probe and its warnings (`aerobuildup_no_downwash`, `static_margin_probe_disagrees`, `static_margin_probe_sign_disagrees`) are deleted (maintainer 2026-11-05, #1347; reasons in the canon's `STAND.md`). `avl_body_equivalent_round` (`notice`): the AVL adapter models each fuselage as a round BODY of the area-equivalent radius on a straight axis (AVL's body is round and axisymmetric); the bodies are named in `detail`. `spiral_halving_time_reported` (`notice`): the spiral is stable, so no doubling time exists and the reported time is the time to halve, with the sign marked negative.
   - **Spanwise loads (#1398).** `spanwise_loads_scope` (`notice`, on every result of `spanwise-loads`): the loads are those of the right half of the main wing from one AVL solution at `L = n m g`, aerodynamic load only (no inertial relief), pitch untrimmed, controls undeflected, normal force only. The three outputs are `curve` results over the spanwise station (gh-1424). No Reynolds or Mach warning is raised for them: the entry's inputs carry neither the viscosity nor the speed of sound (open, maintainer).
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
@@ -972,7 +979,11 @@ caller's responsibility.
     `evaluation_edge` root; the warnings of the samples are forwarded as one summary per code and declared limit
     with the masses (`Context.scratch`). The embedded
     stall check runs on every stall solve (`postcondition_violated`, `detail.embedded`); the four propulsion
-    relations go through `Context.embedded`.
+    relations go through `Context.embedded`. **A mass without a stall speed (gh-1423):** where the stall problem
+    has no value at a mass (`no_consistent_first_lift_extremum`), a mass the root searches visit ends the formula
+    with that failure and the mass named, like every other failure; a curve sample at such a mass has no point on
+    any of the three curves, declared by `curve_samples_without_stall_speed` with the masses and, per mass, the
+    failure's code, message and detail.
   - **Implementation note, `parabolic-polar-fit` (#1401).** The OPT adapter's `level_polar` returns the solver
     polar along level flight (`level_polar_worker`): for each level `C_L` of the fit window the speed is
     `V = sqrt(2 m g / (rho S_ref C_L))` (the lift balance, so every point has its own Reynolds number); the
@@ -1001,6 +1012,29 @@ caller's responsibility.
     extremum implies. The first C_L extremum moves with the Reynolds number; at the estimate alone the
     inverted trough lay about three sweep steps outside IPOPT's window. It is unconditional (never
     triggered by a failure) and not a fixed point; an optimum on the edge of the window is still an error.
+  - **Implementation note, `stall-speed`: a first extremum that moves between the bracket and the stall speed
+    (gh-1423).** The second sweep runs at the speed the first sweep's extremum implies, and the stall speed is the
+    speed the second sweep's extremum implies; where the first extremum is another one at that speed, the bracket
+    does not hold. The worker sees it in two ways: IPOPT ends on the edge of the window past the extremum (the
+    lift still rises there at the speed it needs), or the published sweep at `V_S` shows a first extremum that is
+    neither the optimum nor the bracket's. Then, and only then, the bracket is located again (`_relocated`): from a
+    sweep to the speed its extremum implies, until a slower sweep whose extremum carries less than `n m g` and a
+    faster one whose extremum carries at least that enclose the answer, then by halving that speed interval until
+    both ends show the same extremum (at most one sweep step apart). The stall is solved once more on that bracket
+    and the result carries the notice `stall_bracket_relocated` (`detail`: both brackets; ADR 0020: a second
+    solve is declared). If the two ends still show different extrema after `TRANSITION_HALVINGS` halvings, the
+    first extremum changes at that speed and the lift asked for lies in the jump of its lift: **no speed closes
+    the lift balance at a first extremum, so there is no value**, and the failure is
+    `no_consistent_first_lift_extremum` (`unsupported_configuration`: a result of the lift model, not retryable;
+    `detail`: `transition_v_ms`, and for the sweep just below and just above it `alpha_*_deg`, `cl_*`, `lift_*_n`,
+    `mass_*_kg`, and `lift_required_n`). One failure for the whole band of masses, whichever way the worker met it.
+    A bracket that holds at the speed its extremum implies and still gives an optimum on its edge stays
+    `not_converged`; a search that does not end in `BRACKET_RELOCATION_SWEEPS` sweeps is `not_converged` too. Where
+    the two sweeps hold, nothing changes: two sweeps, one solve, one published sweep. Measured (sea level): AVISTAR_ELITE
+    has no stall speed from 8.75 to 9.40 kg (the first peak is a shoulder at 8 deg, C_L 1.211, below 17.28 m/s and
+    the peak at 16.5 deg, C_L 1.342, from there on; they carry 8.50 and 9.43 kg at that speed), AERONCA_CHAMP none
+    from 0.365 to 0.380 kg (0.3648 to 0.3841 kg carried at 6.139 m/s) and a relocated bracket at 0.36, 0.385 and 0.39 kg (its nominal mass: 6.183 m/s). The extremum is the first one of the sampled
+    sweep (0.25 deg): a shoulder shallower than the sampling resolves is seen only where the optimiser lands on it.
   - **The AVL adapter** (`solvers/avl.py`, #1203): `neutral_point(airplane, cl)`. One own writer
     (`avl_writer.py`) emits the `.avl` text: no BODY (no fuselage is modelled), no CONTROL, Mach 0, `SREF`,
     `CREF`, `BREF` from the kernel's projected geometry function (one authority, ADR 0022), the reference
