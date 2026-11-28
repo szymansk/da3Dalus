@@ -9,6 +9,17 @@ RUN apt-get update \
        build-essential gfortran liblapack-dev libblas-dev libx11-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN cd plotlib && make gfortran && ln -s libPlt_gSP.a libPlt.a
-RUN cd eispack && make -f Makefile.mingw && ln -s eispack_gSP.a libeispack.a
-RUN cd bin && make -f Makefile.gfortran avl
+# Double precision throughout (gh-1474). The single-precision build that
+# `make gfortran` gives by default differs from the macOS wheel in the
+# fourth significant digit of stability derivatives, enough to move the
+# regression values of the kernel. All three parts must agree in real size,
+# and the LAPACK interface must be the double one (DGETRF/DGETRS).
+RUN cd plotlib && make gfortranDP
+RUN cd eispack && make -f Makefile.mingw DP=-fdefault-real-8 EISLIB=eispack_gDP.a
+RUN cd bin && make -f Makefile.gfortran avl \
+      DP=-fdefault-real-8 \
+      PLTOBJ=../plotlib/libPlt_gDP.a \
+      EIGOBJ=../eispack/eispack_gDP.a \
+      MATRIX=matrix-lapackdp.o \
+      "MLIBS=-llapack -lblas" \
+      PLTLIB=-lX11

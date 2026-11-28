@@ -15,18 +15,25 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Double precision throughout (gh-1474), as in avl-binary/Dockerfile.avl-amd64:
+# the single-precision default differs from the macOS wheel in the fourth
+# significant digit of stability derivatives.
 RUN cd plotlib \
-    && make gfortran \
-    && ln -s libPlt_gSP.a libPlt.a \
+    && make gfortranDP \
     && cd ..
 
 RUN cd eispack \
-    && make -f Makefile.mingw \
-    && ln -s eispack_gSP.a libeispack.a \
+    && make -f Makefile.mingw DP=-fdefault-real-8 EISLIB=eispack_gDP.a \
     && cd ..
 
 RUN cd bin \
-    && make -f Makefile.gfortran avl
+    && make -f Makefile.gfortran avl \
+       DP=-fdefault-real-8 \
+       PLTOBJ=../plotlib/libPlt_gDP.a \
+       EIGOBJ=../eispack/eispack_gDP.a \
+       MATRIX=matrix-lapackdp.o \
+       "MLIBS=-llapack -lblas" \
+       PLTLIB=-lX11
 
 
 FROM mambaorg/micromamba:2.5-debian13-slim AS runtime
