@@ -269,3 +269,22 @@ Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F
 - PR #1487 und #1489 gemergt, #1480 geschlossen
 - #1474 geschlossen (PR #1486); Folgebug #1490 (AVL-Laufzeit am 120-s-Limit); rest wartet auf Nightly auf main
 - #1474 geschlossen, Folgebug #1490
+
+## Stand 2026-11-28 (Nachtrag, vormittags)
+
+- Nightly 46085561106 auf main ausgewertet: alle 16 Kern-Teile grün (#1490 trat nicht auf);
+  `rest` auf 3.11 und 3.12 mit denselben fünf roten Tests.
+- Neu rot durch #1487: `test_spar_insert_commit_preserves_solved_origin_and_vector_gh1053`
+  → Bug #1491, Fix in PR #1492 (Branch `fix/gh-1491-backward-run-keeps-normal-anchor`,
+  Worktree `.worktrees/spar-anchor`). Merge bei grüner CI + Sonar.
+- Offen in `rest` (#1481): Designer-Test 282 s und REST-Vase-Mode 241 s gegen 240-s-Wartelimit,
+  `test_ehawk_wing_workflow_end_to_end` 652 s gegen 360-s-Limit, `test_shape_tolerant[...]`
+  (Linux, `VolumeProperties_s`).
+- Maintainer-Ja zu Dependency-Update: Ticket #1494 (Stufen: Geometriekern, Kleinkram, Numerik,
+  große Sprünge, dann Python 3.12). Stufe 1 = PR #1496 (cadquery 2.8.0, OCP 7.9.3.1.1, vtk 9.6.2;
+  Worktree `.worktrees/deps-cadquery`, eigene venv `--gPqo5A8-py3.11`). Lokal 1101 grün,
+  Image baut auf arm64. Nightly auf dem Branch: Lauf 46132242722.
+- Wiedereinstieg: (1) #1492 mergen, (2) Nightly 46132242722 auswerten — zeigt auch, ob
+  `test_shape_tolerant` mit dem neuen OCP verschwindet, (3) #1496 mergen wenn kein neuer roter
+  Test, (4) Zeitbudget der CAD-Tests (#1481).
+- ledger: nightly 46085561106 evaluated, #1491/#1492, dependency ticket #1494 / PR #1496
