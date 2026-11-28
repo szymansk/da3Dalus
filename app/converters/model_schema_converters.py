@@ -806,18 +806,34 @@ def _resolve_backward_spare_run(
     anchor = wing_config.segments[anchor_segment].spare_list[spare_index]
     if anchor.spare_position_factor is None:
         anchor.spare_position_factor = _DEFAULT_SPARE_POSITION_FACTOR
-    vector, origin, orthogonal_vector, orthogonal_origin = (
-        wing_config._get_standard_spare_origin_and_vector(
-            start_segment=anchor_segment,
-            end_segment=segment_index,
-            spare_position_factor=anchor.spare_position_factor,
-        )
-    )
     spare = wing_config.segments[segment_index].spare_list[spare_index]
-    if spare.spare_mode == "orthogonal_backward":
-        vector, origin = orthogonal_vector, orthogonal_origin
-    anchor.spare_vector = vector
-    anchor.spare_origin = origin
+    if (
+        anchor.spare_mode == "normal"
+        and anchor.spare_origin is not None
+        and anchor.spare_vector is not None
+    ):
+        # gh-1491: a ``normal`` spar is placed explicitly (the solved spar of
+        # the spar insert, gh-1053). The run follows it; it is not re-aimed.
+        logger.warning(
+            "Spar %d of segment %d has mode %r, but the spar it continues (segment %d) "
+            "keeps its explicit placement; the run follows it without re-aiming.",
+            spare_index,
+            segment_index,
+            spare.spare_mode,
+            anchor_segment,
+        )
+    else:
+        vector, origin, orthogonal_vector, orthogonal_origin = (
+            wing_config._get_standard_spare_origin_and_vector(
+                start_segment=anchor_segment,
+                end_segment=segment_index,
+                spare_position_factor=anchor.spare_position_factor,
+            )
+        )
+        if spare.spare_mode == "orthogonal_backward":
+            vector, origin = orthogonal_vector, orthogonal_origin
+        anchor.spare_vector = vector
+        anchor.spare_origin = origin
 
     for follower_segment in range(anchor_segment + 1, segment_index + 1):
         follower = wing_config.segments[follower_segment].spare_list[spare_index]
