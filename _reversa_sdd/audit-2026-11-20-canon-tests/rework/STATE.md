@@ -288,3 +288,7 @@ Noch offen aus der Restliste: Fragen P4-F17, P6b-F12, P8-F03, P1-F09 Rest, P6b-F
   `test_shape_tolerant` mit dem neuen OCP verschwindet, (3) #1496 mergen wenn kein neuer roter
   Test, (4) Zeitbudget der CAD-Tests (#1481).
 - ledger: nightly 46085561106 evaluated, #1491/#1492, dependency ticket #1494 / PR #1496
+- 2026-11-28 mittags: #1492 gemergt (f98bf9d8), #1491 geschlossen. main in den Branch von #1496
+  gemergt (d42ece2c). Nightly 46132242722 abgebrochen, ersetzt durch **46133045619** (Branch-Head
+  mit #1491-Fix). Erwartung in `rest`: höchstens die vier #1481-Tests rot.
+- ledger: #1492 merged, nightly 46133045619 on #1496
