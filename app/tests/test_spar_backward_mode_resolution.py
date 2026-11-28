@@ -104,3 +104,19 @@ def test_a_backward_spar_with_nothing_to_continue_is_placed_as_standard_and_says
 
     assert wing.calls == [("standard", 0)]
     assert "no spar to continue" in caplog.text
+
+
+def test_a_normal_spar_with_explicit_placement_is_followed_but_not_re_aimed(caplog):
+    """gh-1491: the solved spar of the spar insert (gh-1053) keeps its origin and vector."""
+    wing = _Wing([["normal"], ["follow"], ["standard_backward"]])
+    anchor = wing.segments[0].spare_list[0]
+    anchor.spare_origin = (0.0, 0.00075, 0.0037)
+    anchor.spare_vector = (0.0, 1.0, 0.0)
+
+    with caplog.at_level("WARNING"):
+        _resolve_backward_spare_run(wing, anchor_segment=0, segment_index=2, spare_index=0)
+
+    assert anchor.spare_origin == (0.0, 0.00075, 0.0037)
+    assert anchor.spare_vector == (0.0, 1.0, 0.0)
+    assert wing.calls == [("follow", 1, 0), ("follow", 2, 0)]
+    assert "keeps its explicit placement" in caplog.text
